@@ -388,7 +388,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center border border-gray-300 rounded-lg px-2 py-1 bg-white focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-200 transition-all shadow-sm">
+                <div className="flex-1 flex items-center border border-gray-300 rounded-lg px-2 py-1 bg-white focus-within:border-[#2F6BFF] focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-sm">
                     <div
                         className="w-5 h-5 rounded-full border border-gray-200 shadow-sm shrink-0 mr-2"
                         style={{ background: pickerTab === 'solid' ? pickerColor : (gradientStops[activeStopIndex]?.color || '#000') }}
@@ -424,14 +424,14 @@ const EditPanel: React.FC<EditPanelProps> = ({
         >
             <div className="flex border-b border-gray-100">
                 <button
-                    className={`flex-1 py-2.5 text-xs font-semibold transition-colors relative ${pickerTab === 'solid' ? 'text-violet-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                    className={`flex-1 py-2.5 text-xs font-semibold transition-colors relative ${pickerTab === 'solid' ? 'text-[#2F6BFF]' : 'text-gray-500 hover:bg-gray-50'}`}
                     onClick={() => setPickerTab('solid')}
                 >
                     Solid
-                    {pickerTab === 'solid' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-t-full mx-4"></div>}
+                    {pickerTab === 'solid' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2F6BFF] rounded-t-full mx-4"></div>}
                 </button>
                 <button
-                    className={`flex-1 py-2.5 text-xs font-semibold transition-colors relative ${pickerTab === 'gradient' ? 'text-violet-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                    className={`flex-1 py-2.5 text-xs font-semibold transition-colors relative ${pickerTab === 'gradient' ? 'text-[#2F6BFF]' : 'text-gray-500 hover:bg-gray-50'}`}
                     onClick={() => {
                         setPickerTab('gradient');
                         if (!pickerColor.includes('gradient')) {
@@ -442,7 +442,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                     }}
                 >
                     Gradient
-                    {pickerTab === 'gradient' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-t-full mx-4"></div>}
+                    {pickerTab === 'gradient' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2F6BFF] rounded-t-full mx-4"></div>}
                 </button>
                 <button className="px-3 text-gray-400 hover:text-gray-600 hover:bg-gray-50" onClick={() => setShowColorPicker(false)}>
                     <X size={14} />
@@ -458,7 +458,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                                 {gradientStops.map((stop, idx) => (
                                     <button
                                         key={idx}
-                                        className={`w-8 h-8 rounded-full border-2 shadow-sm transition-transform flex items-center justify-center ${activeStopIndex === idx ? 'border-violet-600 ring-2 ring-violet-100 scale-110' : 'border-gray-200 hover:border-gray-300'}`}
+                                        className={`w-8 h-8 rounded-full border-2 shadow-sm transition-transform flex items-center justify-center ${activeStopIndex === idx ? 'border-[#2F6BFF] ring-2 ring-blue-100 scale-110' : 'border-gray-200 hover:border-gray-300'}`}
                                         style={{ background: stop.color }}
                                         onClick={() => {
                                             setActiveStopIndex(idx);
@@ -481,7 +481,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                                             setGradientDirection(style.value);
                                             updateGradientString(gradientStops, style.value);
                                         }}
-                                        className={`w-7 h-7 rounded-md border flex-shrink-0 transition-all ${gradientDirection === style.value ? 'border-violet-600 ring-2 ring-violet-100 bg-violet-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                                        className={`w-7 h-7 rounded-md border flex-shrink-0 transition-all ${gradientDirection === style.value ? 'border-[#2F6BFF] ring-2 ring-blue-100 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
                                         style={{ background: style.css }}
                                         title={style.label}
                                     />
@@ -522,7 +522,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                     {(['none', 'shadow', 'lift', 'hollow', 'splice', 'outline', 'echo', 'glitch', 'neon', 'background'] as const).map((type) => (
                         <button
                             key={type}
-                            className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-all aspect-square justify-center ${itemToRender?.textEffect?.type === type ? 'border-violet-600 bg-violet-50 ring-1 ring-violet-200' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                            className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-all aspect-square justify-center ${itemToRender?.textEffect?.type === type ? 'border-[#2F6BFF] bg-blue-50 ring-1 ring-blue-200' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                             onClick={() => itemToRender && onUpdate({
                                 ...itemToRender,
                                 textEffect: type === 'none' ? undefined : { type, intensity: 50, offset: 50, color: '#000000', direction: 45 }
@@ -599,7 +599,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                             placeholder='Try "Calligraphy" or "Open Sans"'
                             value={fontSearch}
                             onChange={(e) => setFontSearch(e.target.value)}
-                            className="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-200 transition-all shadow-sm"
+                            className="w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#2F6BFF] focus:ring-1 focus:ring-blue-200 transition-all shadow-sm"
                         />
                         <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded">
                             <SlidersHorizontal size={14} className="text-gray-500" />
@@ -609,18 +609,18 @@ const EditPanel: React.FC<EditPanelProps> = ({
 
                 <div className="px-1">
                     <h3 className="text-xs font-bold text-gray-800 mb-3 flex items-center gap-2">
-                        <span className="text-violet-600">↗</span> Popular fonts
+                        <span className="text-[#2F6BFF]">↗</span> Popular fonts
                     </h3>
                     <div className="space-y-1">
                         {filteredFonts.map(font => (
                             <button
                                 key={font.name}
                                 onClick={() => { itemToRender && onUpdate({ ...itemToRender, fontFamily: font.family }); }}
-                                className={`w-full px-4 py-3 text-left text-base hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between ${itemToRender?.fontFamily === font.family ? 'bg-violet-50 text-violet-700' : 'text-gray-700'}`}
+                                className={`w-full px-4 py-3 text-left text-base hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between ${itemToRender?.fontFamily === font.family ? 'bg-blue-50 text-[#2F6BFF]' : 'text-gray-700'}`}
                                 style={{ fontFamily: font.family }}
                             >
                                 {font.name}
-                                {itemToRender?.fontFamily === font.family && <div className="w-1.5 h-1.5 rounded-full bg-violet-600"></div>}
+                                {itemToRender?.fontFamily === font.family && <div className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF]"></div>}
                             </button>
                         ))}
                     </div>
@@ -685,7 +685,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                             type="number"
                             value={Math.round(itemToRender?.x || 0)}
                             onChange={(e) => itemToRender && onUpdate({ ...itemToRender, x: Number(e.target.value) })}
-                            className="w-full pl-2 pr-1 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-gray-900 focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none transition-all font-mono"
+                            className="w-full pl-2 pr-1 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-gray-900 focus:border-[#2F6BFF] focus:ring-1 focus:ring-blue-200 outline-none transition-all font-mono"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">X</span>
                     </div>
@@ -697,7 +697,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                             type="number"
                             value={Math.round(itemToRender?.y || 0)}
                             onChange={(e) => itemToRender && onUpdate({ ...itemToRender, y: Number(e.target.value) })}
-                            className="w-full pl-2 pr-1 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-gray-900 focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none transition-all font-mono"
+                            className="w-full pl-2 pr-1 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-gray-900 focus:border-[#2F6BFF] focus:ring-1 focus:ring-blue-200 outline-none transition-all font-mono"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">Y</span>
                     </div>
@@ -705,7 +705,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
             </div>
 
             {/* Rotate & Flip */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid md:grid-cols-2 grid-cols-1 gap-2">
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-gray-400 uppercase">Rotate</label>
                     <div className="flex items-center gap-2">
@@ -719,7 +719,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                         <input
                             value={Math.round(itemToRender?.rotation || 0)}
                             onChange={(e) => itemToRender && onUpdate({ ...itemToRender, rotation: Number(e.target.value) })}
-                            className="w-full py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-center text-gray-900 focus:border-violet-500 outline-none font-mono"
+                            className="w-full py-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-center text-gray-900 focus:border-[#2F6BFF] outline-none font-mono"
                         />
                         <button
                             onClick={() => itemToRender && onUpdate({ ...itemToRender, rotation: (itemToRender.rotation || 0) + 90 })}
@@ -735,14 +735,14 @@ const EditPanel: React.FC<EditPanelProps> = ({
                     <div className="flex gap-2">
                         <button
                             onClick={() => itemToRender && onUpdate({ ...itemToRender, flipH: !itemToRender.flipH })}
-                            className={`flex-1 py-1.5 border rounded flex items-center justify-center transition-colors ${itemToRender?.flipH ? 'bg-violet-50 border-violet-200 text-violet-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
+                            className={`flex-1 py-1.5 border rounded flex items-center justify-center transition-colors ${itemToRender?.flipH ? 'bg-blue-50 border-blue-200 text-[#2F6BFF]' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
                             title="Flip Horizontal"
                         >
                             <MoveHorizontal size={14} />
                         </button>
                         <button
                             onClick={() => itemToRender && onUpdate({ ...itemToRender, flipV: !itemToRender.flipV })}
-                            className={`flex-1 py-1.5 border rounded flex items-center justify-center transition-colors ${itemToRender?.flipV ? 'bg-violet-50 border-violet-200 text-violet-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
+                            className={`flex-1 py-1.5 border rounded flex items-center justify-center transition-colors ${itemToRender?.flipV ? 'bg-blue-50 border-blue-200 text-[#2F6BFF]' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
                             title="Flip Vertical"
                         >
                             <MoveVertical size={14} />
@@ -805,22 +805,22 @@ const EditPanel: React.FC<EditPanelProps> = ({
             </div>
 
             <div className={`grid grid-cols-6 gap-1.5 mb-4 ${itemToRender?.isBackground ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-                <button onClick={() => onAlign && onAlign('left')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-violet-300 hover:text-violet-600 text-gray-600 transition-all" title="Align Left">
+                <button onClick={() => onAlign && onAlign('left')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-blue-300 hover:text-[#2F6BFF] text-gray-600 transition-all" title="Align Left">
                     <AlignLeft size={16} />
                 </button>
-                <button onClick={() => onAlign && onAlign('center')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-violet-300 hover:text-violet-600 text-gray-600 transition-all" title="Align Center">
+                <button onClick={() => onAlign && onAlign('center')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-blue-300 hover:text-[#2F6BFF] text-gray-600 transition-all" title="Align Center">
                     <AlignCenter size={16} />
                 </button>
-                <button onClick={() => onAlign && onAlign('right')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-violet-300 hover:text-violet-600 text-gray-600 transition-all" title="Align Right">
+                <button onClick={() => onAlign && onAlign('right')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-blue-300 hover:text-[#2F6BFF] text-gray-600 transition-all" title="Align Right">
                     <AlignRight size={16} />
                 </button>
-                <button onClick={() => onAlign && onAlign('top')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-violet-300 hover:text-violet-600 text-gray-600 transition-all" title="Align Top">
+                <button onClick={() => onAlign && onAlign('top')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-blue-300 hover:text-[#2F6BFF] text-gray-600 transition-all" title="Align Top">
                     <AlignStartVertical size={16} />
                 </button>
-                <button onClick={() => onAlign && onAlign('middle')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-violet-300 hover:text-violet-600 text-gray-600 transition-all" title="Align Middle">
+                <button onClick={() => onAlign && onAlign('middle')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-blue-300 hover:text-[#2F6BFF] text-gray-600 transition-all" title="Align Middle">
                     <AlignVerticalJustifyCenter size={16} />
                 </button>
-                <button onClick={() => onAlign && onAlign('bottom')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-violet-300 hover:text-violet-600 text-gray-600 transition-all" title="Align Bottom">
+                <button onClick={() => onAlign && onAlign('bottom')} className="p-2 bg-white border border-gray-100 rounded-lg flex items-center justify-center hover:border-blue-300 hover:text-[#2F6BFF] text-gray-600 transition-all" title="Align Bottom">
                     <AlignEndVertical size={16} />
                 </button>
             </div>
@@ -834,13 +834,13 @@ const EditPanel: React.FC<EditPanelProps> = ({
                 {itemToRender?.isBackground && (
                     <button
                         onClick={() => setView('color')}
-                        className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-violet-300 hover:shadow-sm transition-all group text-center h-full"
+                        className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-blue-300 hover:shadow-sm transition-all group text-center h-full"
                     >
                         <div className="w-8 h-8 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
                             {itemToRender?.type === 'color' ? (
                                 <div className="w-full h-full" style={{ background: itemToRender.src }}></div>
                             ) : (
-                                <PaintBucket size={16} className="text-gray-600 group-hover:text-violet-600" />
+                                <PaintBucket size={16} className="text-gray-600 group-hover:text-[#2F6BFF]" />
                             )}
                         </div>
                         <div className="min-w-0 w-full">
@@ -854,10 +854,10 @@ const EditPanel: React.FC<EditPanelProps> = ({
                     <>
                         <button
                             onClick={() => setView('font')}
-                            className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-violet-300 hover:shadow-sm transition-all group text-center h-full"
+                            className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-blue-300 hover:shadow-sm transition-all group text-center h-full"
                         >
                             <div className="w-8 h-8 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform">
-                                <Type size={16} className="text-gray-600 group-hover:text-violet-600" />
+                                <Type size={16} className="text-gray-600 group-hover:text-[#2F6BFF]" />
                             </div>
                             <div className="min-w-0 w-full">
                                 <p className="text-xs font-bold text-gray-800 truncate">Font</p>
@@ -867,10 +867,10 @@ const EditPanel: React.FC<EditPanelProps> = ({
 
                         <button
                             onClick={() => setView('text-effects')}
-                            className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-violet-300 hover:shadow-sm transition-all group text-center h-full"
+                            className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-blue-300 hover:shadow-sm transition-all group text-center h-full"
                         >
                             <div className="w-8 h-8 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform">
-                                <Wand2 size={16} className="text-gray-600 group-hover:text-violet-600" />
+                                <Wand2 size={16} className="text-gray-600 group-hover:text-[#2F6BFF]" />
                             </div>
                             <div className="min-w-0 w-full">
                                 <p className="text-xs font-bold text-gray-800 truncate">Text Effects</p>
@@ -882,10 +882,10 @@ const EditPanel: React.FC<EditPanelProps> = ({
 
                 <button
                     onClick={() => setView('animate')}
-                    className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-violet-300 hover:shadow-sm transition-all group text-center h-full"
+                    className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-blue-300 hover:shadow-sm transition-all group text-center h-full"
                 >
                     <div className="w-8 h-8 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <PlayCircle size={16} className="text-gray-600 group-hover:text-violet-600" />
+                        <PlayCircle size={16} className="text-gray-600 group-hover:text-[#2F6BFF]" />
                     </div>
                     <div className="min-w-0 w-full">
                         <p className="text-xs font-bold text-gray-800 truncate">Animate</p>
@@ -895,14 +895,14 @@ const EditPanel: React.FC<EditPanelProps> = ({
 
                 <button
                     onClick={() => setView('adjust')}
-                    className="p-2 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-violet-300 hover:shadow-sm transition-all group text-center h-full"
+                    className="md:p-2 p-1.5 bg-white border border-gray-100 rounded-lg flex flex-col items-center gap-2 hover:border-blue-300 hover:shadow-sm transition-all group text-center h-full"
                 >
-                    <div className="w-8 h-8 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Sliders size={16} className="text-gray-600 group-hover:text-violet-600" />
+                    <div className="md:w-8 w-6 md:h-8 h-6 rounded-md bg-gray-50 border border-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Sliders size={16} className="text-gray-600 group-hover:text-[#2F6BFF]" />
                     </div>
                     <div className="min-w-0 w-full">
-                        <p className="text-xs font-bold text-gray-800 truncate">Adjustments</p>
-                        <p className="text-[9px] text-gray-500 truncate">Light, color & more</p>
+                        <p className="md:text-xs text-[10px] font-bold text-gray-800 truncate">Adjustments</p>
+                        <p className="md:text-[9px] text-[8px] text-gray-500 truncate">Light, color & more</p>
                     </div>
                 </button>
 
@@ -924,7 +924,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                             onClick={() => itemToRender?.animation && onUpdate({ ...itemToRender, animation: { ...itemToRender.animation, timing: t as any } })}
                             disabled={!itemToRender?.animation}
                             className={`flex-1 py-1.5 text-[10px] font-bold rounded-md capitalize transition-all ${itemToRender?.animation?.timing === t || (!itemToRender?.animation?.timing && t === 'both')
-                                ? 'bg-white shadow text-violet-700'
+                                ? 'bg-white shadow text-[#2F6BFF]'
                                 : 'text-gray-400 hover:text-gray-600'
                                 } ${!itemToRender?.animation ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
@@ -964,7 +964,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                         <button
                             key={cat}
                             onClick={() => setAnimCategory(cat)}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors ${animCategory === cat ? 'bg-violet-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors ${animCategory === cat ? 'bg-[#2F6BFF] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                         >
                             {cat}
                         </button>
@@ -974,7 +974,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                 <div className="grid grid-cols-4 gap-2">
                     <button
                         onClick={() => itemToRender && onUpdate({ ...itemToRender, animation: undefined })}
-                        className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-all aspect-square justify-center ${!itemToRender?.animation ? 'border-violet-600 bg-violet-50 ring-1 ring-violet-200' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                        className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-all aspect-square justify-center ${!itemToRender?.animation ? 'border-[#2F6BFF] bg-blue-50 ring-1 ring-blue-200' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                     >
                         <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
                             <X size={16} />
@@ -988,12 +988,12 @@ const EditPanel: React.FC<EditPanelProps> = ({
                             onClick={() => handleAnimClick(anim.id)}
                             onMouseEnter={() => handleAnimHoverStart(anim.id)}
                             onMouseLeave={handleAnimHoverEnd}
-                            className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-all aspect-square justify-center group relative overflow-hidden ${itemToRender?.animation?.type === anim.id ? 'border-violet-600 bg-violet-50 ring-1 ring-violet-200' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                            className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-all aspect-square justify-center group relative overflow-hidden ${itemToRender?.animation?.type === anim.id ? 'border-[#2F6BFF] bg-blue-50 ring-1 ring-blue-200' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                         >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${itemToRender?.animation?.type === anim.id ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-violet-500'}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${itemToRender?.animation?.type === anim.id ? 'bg-blue-100 text-[#2F6BFF]' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-blue-500'}`}>
                                 {anim.icon}
                             </div>
-                            <span className="text-[9px] font-medium text-gray-600 truncate w-full text-center group-hover:text-violet-700">{anim.name}</span>
+                            <span className="text-[9px] font-medium text-gray-600 truncate w-full text-center group-hover:text-[#2F6BFF]">{anim.name}</span>
                         </button>
                     ))}
                 </div>
@@ -1032,7 +1032,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                         <div key={color} className="relative group w-full aspect-square">
                             <button
                                 onClick={() => selectPresetColor(color)}
-                                className={`w-full h-full rounded-lg border border-gray-200 shadow-sm transition-transform ${itemToRender?.src === color ? 'ring-2 ring-violet-500 ring-offset-1' : ''}`}
+                                className={`w-full h-full rounded-lg border border-gray-200 shadow-sm transition-transform ${itemToRender?.src === color ? 'ring-2 ring-[#2F6BFF] ring-offset-1' : ''}`}
                                 style={{ background: color }}
                             />
                         </div>
@@ -1049,7 +1049,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                         <button
                             key={idx}
                             onClick={() => selectPresetColor(color)}
-                            className={`w-full aspect-square rounded-lg border border-gray-200 shadow-sm hover:scale-110 transition-transform ${itemToRender?.src === color ? 'ring-2 ring-violet-500 ring-offset-1' : ''}`}
+                            className={`w-full aspect-square rounded-lg border border-gray-200 shadow-sm hover:scale-110 transition-transform ${itemToRender?.src === color ? 'ring-2 ring-[#2F6BFF] ring-offset-1' : ''}`}
                             style={{ background: color }}
                         />
                     ))}
@@ -1062,7 +1062,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
         <div className="animate-in slide-in-from-right duration-200 flex flex-col h-full pt-2">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-bold text-gray-800">Eraser Settings</h3>
-                <button onClick={() => setInteractionMode('none')} className="text-xs font-bold text-violet-600 hover:text-violet-700">Exit</button>
+                <button onClick={() => setInteractionMode('none')} className="text-xs font-bold text-[#2F6BFF] hover:text-[#2a5fe3]">Exit</button>
             </div>
 
             <div className="mb-6">
@@ -1082,7 +1082,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                 <label className="text-xs text-gray-700 font-medium">Compare Original</label>
                 <button
                     onClick={() => setEraserSettings({ ...eraserSettings, showOriginal: !eraserSettings.showOriginal })}
-                    className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${eraserSettings.showOriginal ? 'bg-violet-600' : 'bg-gray-300'}`}
+                    className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${eraserSettings.showOriginal ? 'bg-[#2F6BFF]' : 'bg-gray-300'}`}
                 >
                     <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ease-in-out ${eraserSettings.showOriginal ? 'translate-x-4' : 'translate-x-0'}`}></div>
                 </button>
@@ -1097,7 +1097,7 @@ const EditPanel: React.FC<EditPanelProps> = ({
                 </button>
                 <button
                     onClick={() => setInteractionMode('none')}
-                    className="py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold shadow-sm"
+                    className="py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-lg text-xs font-bold shadow-sm"
                 >
                     Done
                 </button>
@@ -1119,42 +1119,42 @@ const EditPanel: React.FC<EditPanelProps> = ({
     };
 
     return (
-        <div className={`bg-white h-full border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out overflow-hidden relative z-20 ${isOpen ? 'w-80' : 'w-0 opacity-0'}`}>
-            <div className="w-80 h-full flex flex-col overflow-x-hidden">
+        <div className={`bg-white md:h-full h-auto border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out overflow-hidden relative z-20 ${isOpen ? 'md:w-80 w-36' : 'w-0 opacity-0'}`}>
+            <div className="md:w-80 w-36 md:h-full h-auto flex flex-col overflow-x-hidden">
                 {itemToRender && (
                     <>
                         {view !== 'eraser' && (
-                            <div className="h-12 flex items-center justify-between px-4 border-b border-gray-100 shrink-0 bg-white z-10">
-                                <span className="font-bold text-gray-800 capitalize text-lg tracking-tight">{getHeaderTitle()}</span>
-                                <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
-                                    <X size={18} />
+                            <div className="md:h-12 h-10 flex items-center justify-between md:px-4 px-3 border-b border-gray-100 shrink-0 bg-white z-10">
+                                <span className="font-bold text-gray-800 capitalize md:text-lg text-[10px] tracking-tight">{getHeaderTitle()}</span>
+                                <button onClick={onClose} className="md:p-2 p-1 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
+                                    <X className="md:size-4 size-3" size={18} />
                                 </button>
                             </div>
                         )}
 
-                        <div className={`flex-1 overflow-y-auto custom-scrollbar relative ${view === 'eraser' ? 'p-3' : 'p-3'}`}>
+                        <div className={`md:flex-1 flex-none overflow-y-auto custom-scrollbar relative ${view === 'eraser' ? 'p-3' : 'p-3'}`}>
                             {view === 'main' && (
                                 <div className="animate-in fade-in slide-in-from-left-2 duration-200">
                                     {renderMainAdjust()}
                                     {itemToRender.type !== 'text' && (
                                         <div className="mb-6">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Filters</h3>
+                                            <div className="flex items-center justify-between md:mb-3 mb-2">
+                                                <h3 className="md:text-[11px] text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filters</h3>
                                             </div>
-                                            <div className="grid grid-cols-4 gap-2">
+                                            <div className="grid md:grid-cols-4 grid-cols-2 gap-2">
                                                 {FILTERS.map(f => (
-                                                    <div key={f.id} className="flex flex-col items-center gap-1 group cursor-pointer" onClick={() => itemToRender && onUpdate({ ...itemToRender, filter: f.id, filterIntensity: 50 })}>
-                                                        <div className={`w-full aspect-square rounded-lg overflow-hidden border-2 transition-all relative ${itemToRender.filter === f.id ? 'border-violet-600 ring-2 ring-violet-100' : 'border-transparent hover:border-gray-200'}`}>
-                                                            <div className="w-full h-full bg-gray-100 relative">
-                                                                <img src={itemToRender.thumbnail || itemToRender.src} className="w-full h-full object-cover" style={{ filter: f.style }} loading="lazy" />
+                                                    <div key={f.id} className="flex flex-col md:items-center md:gap-1 gap-0.5 group cursor-pointer" onClick={() => itemToRender && onUpdate({ ...itemToRender, filter: f.id, filterIntensity: 50 })}>
+                                                        <div className={`md:w-full w-6 md:aspect-square aspect-square rounded-lg overflow-hidden border-2 transition-all relative ${itemToRender.filter === f.id ? 'border-[#2F6BFF] ring-2 ring-blue-100' : 'border-transparent hover:border-gray-200'}`}>
+                                                            <div className="md:w-full w-6 md:h-full h-6 bg-gray-100 relative">
+                                                                <img src={itemToRender.thumbnail || itemToRender.src} className="md:w-full w-6 md:h-full h-6 object-cover" style={{ filter: f.style }} loading="lazy" />
                                                             </div>
                                                             {itemToRender.filter === f.id && (
-                                                                <div className="absolute inset-0 bg-violet-600/20 flex items-center justify-center">
-                                                                    <div className="w-2 h-2 bg-white rounded-full shadow-sm"></div>
+                                                                <div className="absolute inset-0 bg-[#2F6BFF]/20 flex items-center justify-center">
+                                                                    <div className="md:w-2 w-1.5 md:h-2 h-1.5 bg-white rounded-full shadow-sm"></div>
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <span className={`text-[9px] font-bold truncate w-full text-center ${itemToRender.filter === f.id ? 'text-violet-600' : 'text-gray-400'}`}>{f.name}</span>
+                                                        <span className={`text-[9px] font-bold truncate w-full text-center ${itemToRender.filter === f.id ? 'text-[#2F6BFF]' : 'text-gray-400'}`}>{f.name}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1164,24 +1164,24 @@ const EditPanel: React.FC<EditPanelProps> = ({
                             )}
                             {view === 'adjust' && (
                                 <div className="animate-in slide-in-from-right duration-200">
-                                    <div className="sticky top-0 bg-white/80 backdrop-blur-sm z-10 pb-4 border-b border-gray-100 mb-4 -mx-1 px-1 pt-0">
+                                    <div className="sticky md:top-0 top-12 bg-white/80 backdrop-blur-sm z-10 md:pb-4 pb-3 border-b border-gray-100 md:mb-4 mb-3 -mx-1 px-1 pt-0">
                                         <button onClick={() => setView('main')} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 font-medium mb-3">
                                             <ChevronLeft size={12} /> Back
                                         </button>
 
-                                        <div className="space-y-4 mb-4">
-                                            <div className="flex items-center gap-2 text-gray-800 font-bold text-xs">
+                                        <div className="md:space-y-4 space-y-3 md:mb-4 mb-3">
+                                            <div className="flex items-center gap-2 text-gray-800 font-bold md:text-xs text-[10px]">
                                                 <Palette size={14} /> White Balance
                                             </div>
-                                            <div className="space-y-3 pl-1">
-                                                <div className="space-y-1"><div className="flex justify-between"><span className="text-xs text-gray-600">Temp</span><span className="text-[10px] bg-gray-100 px-1 rounded text-gray-500">{adjustments.temperature}</span></div><input type="range" min="-100" max="100" value={adjustments.temperature} onChange={(e) => handleAdjustmentChange('temperature', Number(e.target.value))} className="w-full accent-violet-600 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" /></div>
+                                            <div className="md:space-y-3 space-y-2 md:pl-1 pl-0.5">
+                                                <div className="space-y-1"><div className="flex justify-between"><span className="text-xs text-gray-600">Temp</span><span className="text-[10px] bg-gray-100 px-1 rounded text-gray-500">{adjustments.temperature}</span></div><input type="range" min="-100" max="100" value={adjustments.temperature} onChange={(e) => handleAdjustmentChange('temperature', Number(e.target.value))} className="w-full accent-violet-600 md:h-1 h-0.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" /></div>
                                                 <div className="space-y-1"><div className="flex justify-between"><span className="text-xs text-gray-600">Tint</span><span className="text-[10px] bg-gray-100 px-1 rounded text-gray-500">{adjustments.tint}</span></div><input type="range" min="-100" max="100" value={adjustments.tint} onChange={(e) => handleAdjustmentChange('tint', Number(e.target.value))} className="w-full accent-violet-600 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" /></div>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4 mb-4">
-                                            <div className="flex items-center gap-2 text-gray-800 font-bold text-xs"><Sparkles size={14} /> Light</div>
-                                            <div className="space-y-3 pl-1">
+                                        <div className="md:space-y-4 space-y-3 md:mb-4 mb-3">
+                                            <div className="flex items-center gap-2 text-gray-800 font-bold md:text-xs text-[10px]"><Sparkles size={14} /> Light</div>
+                                            <div className="md:space-y-3 space-y-2 md:pl-1 pl-0.5">
                                                 {['brightness', 'contrast', 'highlights', 'shadows', 'whites', 'blacks'].map((key) => (
                                                     <div key={key} className="space-y-1"><div className="flex justify-between capitalize"><span className="text-xs text-gray-600">{key}</span><span className="text-[10px] bg-gray-100 px-1 rounded text-gray-500">{adjustments[key as keyof Adjustments]}</span></div><input type="range" min="-100" max="100" value={adjustments[key as keyof Adjustments]} onChange={(e) => handleAdjustmentChange(key as keyof Adjustments, Number(e.target.value))} className="w-full accent-violet-600 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" /></div>
                                                 ))}

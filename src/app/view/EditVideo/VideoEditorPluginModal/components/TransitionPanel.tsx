@@ -146,7 +146,7 @@ const TransitionPanel: React.FC<TransitionPanelProps> = ({ transition, onUpdate,
     const displayedTransitions = activeSection === 'normal' ? normalTransitions : advancedTransitions;
 
     return (
-        <div className="absolute left-[72px] top-0 bottom-0 w-80 bg-white border-r border-gray-200 z-50 flex flex-col shadow-xl animate-in slide-in-from-left duration-200">
+        <div className="absolute left-[72px] top-0 bottom-0 md:w-80 w-48 bg-white border-r border-gray-200 z-50 flex flex-col shadow-xl animate-in slide-in-from-left duration-200">
             {/* Header */}
             <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 shrink-0 bg-white">
                 <span className="font-bold text-gray-800 text-lg tracking-tight">Transitions</span>
@@ -161,13 +161,13 @@ const TransitionPanel: React.FC<TransitionPanelProps> = ({ transition, onUpdate,
                     <div className="flex p-1 bg-gray-100 rounded-xl">
                         <button
                             onClick={() => setActiveSection('normal')}
-                            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${activeSection === 'normal' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${activeSection === 'normal' ? 'bg-white text-[#2F6BFF] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             Normal
                         </button>
                         <button
                             onClick={() => setActiveSection('advanced')}
-                            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${activeSection === 'advanced' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${activeSection === 'advanced' ? 'bg-white text-[#2F6BFF] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             Advanced
                         </button>
@@ -178,19 +178,19 @@ const TransitionPanel: React.FC<TransitionPanelProps> = ({ transition, onUpdate,
                         <div className="grid grid-cols-3 gap-2">
                             <button
                                 onClick={() => onUpdate({ ...transition!, timing: 'prefix' })}
-                                className={`py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md border transition-all ${(transition?.timing || 'postfix') === 'prefix' ? 'bg-violet-50 border-violet-500 text-violet-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}
+                                className={`py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md border transition-all ${(transition?.timing || 'postfix') === 'prefix' ? 'bg-blue-50 border-[#2F6BFF] text-[#2F6BFF]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}
                             >
                                 Prefix
                             </button>
                             <button
                                 onClick={() => onUpdate({ ...transition!, timing: 'overlap' })}
-                                className={`py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md border transition-all ${(transition?.timing || 'postfix') === 'overlap' ? 'bg-violet-50 border-violet-500 text-violet-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}
+                                className={`py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md border transition-all ${(transition?.timing || 'postfix') === 'overlap' ? 'bg-blue-50 border-[#2F6BFF] text-[#2F6BFF]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}
                             >
                                 Overlap
                             </button>
                             <button
                                 onClick={() => onUpdate({ ...transition!, timing: 'postfix' })}
-                                className={`py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md border transition-all ${(transition?.timing || 'postfix') === 'postfix' ? 'bg-violet-50 border-violet-500 text-violet-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}
+                                className={`py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-md border transition-all ${(transition?.timing || 'postfix') === 'postfix' ? 'bg-blue-50 border-[#2F6BFF] text-[#2F6BFF]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}
                             >
                                 Postfix
                             </button>
@@ -211,8 +211,8 @@ const TransitionPanel: React.FC<TransitionPanelProps> = ({ transition, onUpdate,
                             >
                                 <div
                                     className={`w-full aspect-video rounded-lg flex items-center justify-center border transition-all duration-200 relative overflow-hidden ${currentType === t.id
-                                        ? 'border-violet-600 bg-violet-50 text-violet-600 ring-2 ring-violet-100 ring-offset-1'
-                                        : 'border-gray-200 bg-gray-50 text-gray-500 group-hover:border-violet-300 group-hover:bg-white group-hover:shadow-sm'
+                                        ? 'border-[#2F6BFF] bg-blue-50 text-[#2F6BFF] ring-2 ring-blue-100 ring-offset-1'
+                                        : 'border-gray-200 bg-gray-50 text-gray-500 group-hover:border-blue-300 group-hover:bg-white group-hover:shadow-sm'
                                         }`}
                                 >
                                     <t.icon size={24} strokeWidth={1.5} />

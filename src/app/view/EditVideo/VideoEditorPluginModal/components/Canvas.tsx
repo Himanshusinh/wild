@@ -1313,7 +1313,7 @@ const Canvas: React.FC<CanvasProps> = ({
 
     return (
         <div
-            className={`flex-1 relative overflow-hidden flex items-center justify-center ${className || 'bg-gray-100 p-8'}`}
+            className={`flex-1 relative overflow-hidden min-h-[12rem] flex items-center justify-center ${className || 'bg-gray-100 md:p-0 p-1'}`}
             onClick={(e) => {
                 if (selectedItemId) {
                     onSelectClip('', null);
@@ -1346,12 +1346,12 @@ const Canvas: React.FC<CanvasProps> = ({
                 rotateCenterRef.current = null;
             }}
         >
-            <div className="w-full h-full flex items-center justify-center overflow-hidden relative">
+            <div className="md:w-full w-full md:h-full h-full overflow-y-auto custom-scrollbar flex items-center justify-center relative">
 
                 {/* Main Canvas Background / Wrapper */}
                 <div
                     ref={canvasWrapperRef}
-                    className="bg-white shadow-2xl relative transition-transform duration-300 ease-in-out origin-center group"
+                    className="bg-white md:shadow-2xl relative transition-transform duration-300 ease-in-out origin-center group"
                     style={{
                         width: renderWidth,
                         height: renderHeight,
@@ -1370,7 +1370,7 @@ const Canvas: React.FC<CanvasProps> = ({
                     }}
                 >
                     {/* Layer 1: Content (Clipped) */}
-                    <div className="absolute inset-0 overflow-hidden bg-white">
+                    <div className="absolute inset-0 overflow-hidden md:bg-white bg-gray-100">
                         <canvas
                             ref={mainCanvasRef}
                             width={renderWidth}
@@ -1379,7 +1379,7 @@ const Canvas: React.FC<CanvasProps> = ({
                             style={{ width: '100%', height: '100%' }}
                         />
                         {renderItems.length === 0 && (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold text-4xl">
+                            <div className="w-full md:h-full h-auto flex items-center justify-center text-gray-300 font-bold text-4xl">
                                 Empty
                             </div>
                         )}
@@ -1390,7 +1390,7 @@ const Canvas: React.FC<CanvasProps> = ({
                     </div>
 
                     {/* Layer 2: UI Overlays (Not Clipped by viewport, but inside canvas wrapper) */}
-                    <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute md:inset-0 inset-y-auto inset-x-0 pointer-events-none">
                         {renderItems.filter(obj => obj.item.type !== 'audio').map((obj) => renderItemContent(obj, true))}
                     </div>
 
@@ -1409,7 +1409,7 @@ const Canvas: React.FC<CanvasProps> = ({
                 {/* Eraser Cursor (Fixed Position) */}
                 {selectedItemId && interactionMode === 'erase' && cursorPos && (
                     <div
-                        className="fixed rounded-full border border-gray-800 bg-white/20 backdrop-invert pointer-events-none z-[9999] shadow-sm"
+                        className="fixed md:rounded-full rounded-full border border-gray-800 bg-white/20 backdrop-invert pointer-events-none z-[9999] shadow-sm"
                         style={{
                             width: eraserSettings.size * currentScale,
                             height: eraserSettings.size * currentScale,
@@ -1425,16 +1425,16 @@ const Canvas: React.FC<CanvasProps> = ({
                 {/* Crop Popup (unchanged logic) */}
                 {selectedItem && interactionMode === 'crop' && (
                     <div
-                        className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-xl py-2 px-4 flex items-center gap-3 z-[100] animate-in fade-in slide-in-from-top-4 duration-200 border border-gray-100"
+                        className="absolute md:top-4 top-0 left-1/2 transform -translate-x-1/2 bg-white md:rounded-full rounded-full shadow-xl py-2 px-4 flex items-center gap-3 z-[100] animate-in fade-in slide-in-from-top-4 duration-200 border border-gray-100"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex flex-col w-32">
+                        <div className="flex flex-col md:w-32 w-24">
                             <label className="text-[10px] font-bold text-gray-500 mb-1">Zoom</label>
                             <input type="range" min="1" max="3" step="0.1" value={cropState.zoom} onChange={(e) => setCropState(prev => ({ ...prev, zoom: Number(e.target.value) }))} className="w-full accent-violet-600 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                         </div>
-                        <div className="h-8 w-px bg-gray-200"></div>
+                        <div className="md:h-8 h-4 w-px bg-gray-200"></div>
                         <div className="text-xs text-gray-500 font-medium">Drag image to pan</div>
-                        <div className="h-8 w-px bg-gray-200"></div>
+                        <div className="md:h-8 h-4 w-px bg-gray-200"></div>
                         <button onClick={() => setInteractionMode('none')} className="p-2 hover:bg-red-50 rounded-full text-red-500"><X size={20} /></button>
                         <button onClick={() => saveCrop(selectedItem.trackId, selectedItem)} className="p-2 bg-violet-600 hover:bg-violet-700 rounded-full text-white"><Check size={20} /></button>
                     </div>
