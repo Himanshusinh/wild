@@ -4,6 +4,41 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
 import { API_BASE } from '../routes'
+import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
+
+// Helper to normalize media URL (same as ArtStation) - moved outside component for stability
+const normalizeMediaUrl = (url?: string): string | undefined => {
+  if (!url || typeof url !== 'string') return undefined
+  const trimmed = url.trim()
+  if (!trimmed) return undefined
+  // Reject replicate URLs to prevent 404s - only use Zata URLs
+  if (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com')) {
+    return undefined
+  }
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/api/')) return trimmed
+  // If it's a relative path, assume it's a Zata path and proxy it
+  if (!trimmed.startsWith('/')) return toMediaProxy(trimmed)
+  return toDirectUrl(trimmed)
+}
+
+// Resolve media URL with fallbacks (same as ArtStation) - moved outside component for stability
+const resolveMediaUrl = (m: any): string | undefined => {
+  if (!m) return undefined
+  // Try multiple URL properties in order of preference
+  const candidates = [
+    m.url,
+    m.webpUrl,
+    m.avifUrl,
+    m.thumbnailUrl,
+    m.storagePath,
+  ]
+  for (const candidate of candidates) {
+    const normalized = normalizeMediaUrl(candidate)
+    if (normalized) return normalized
+  }
+  return undefined
+}
 
 export default function CommunityCreations({
   className = "",
@@ -13,20 +48,53 @@ export default function CommunityCreations({
   const router = useRouter();
   const [items, setItems] = useState<PublicItem[]>([])
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PublicItem | null>(null)
-  
-  // Fetch from our new cached API
+
+  // Fetch from our new cached API with better error handling
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const res = await fetch('/api/community-showcase')
-        if (!res.ok) throw new Error('Failed to load')
-        const json = await res.json()
-        if (json.responseStatus === 'success' && Array.isArray(json.data)) {
-          setItems(json.data)
+        setError(null)
+        const res = await fetch('/api/community-showcase', {
+          credentials: 'include',
+          cache: 'force-cache', // Use cached version when available
+        })
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`)
         }
-      } catch (e) {
-        console.error('Failed to load community creations', e)
+        
+        const json = await res.json()
+        
+        if (json.responseStatus === 'success' && Array.isArray(json.data)) {
+          // Validate and filter items to ensure they have valid image data
+          const validItems = json.data.filter((item: PublicItem) => {
+            // Must have an ID
+            if (!item?.id) return false
+            
+            // Must have at least one valid image with a resolvable URL
+            if (Array.isArray(item.images) && item.images.length > 0) {
+              const hasValidImage = item.images.some((img: any) => {
+                const url = resolveMediaUrl(img)
+                return !!url && url.length > 0
+              })
+              if (hasValidImage) return true
+            }
+            
+            // Try to resolve from root level if images array is empty
+            const rootUrl = resolveMediaUrl(item)
+            return !!rootUrl && rootUrl.length > 0
+          })
+          
+          setItems(validItems)
+        } else {
+          throw new Error('Invalid response format')
+        }
+      } catch (e: any) {
+        console.error('[CommunityCreations] Failed to load community creations', e)
+        setError(e?.message || 'Failed to load community creations')
+        setItems([]) // Set empty array on error
       } finally {
         setLoading(false)
       }
@@ -34,17 +102,35 @@ export default function CommunityCreations({
     fetchItems()
   }, [])
 
-  // Prepare cards for Masonry
+  // Prepare cards for Masonry with validation
   const cards = useMemo(() => {
-    return items.map(item => {
-      // Find the best image
-      const img = item.images?.[0]
-      return {
-        item,
-        media: img || { id: '0', url: '' },
-        kind: 'image' as const
-      }
-    })
+    return items
+      .map(item => {
+        // Find the best image with valid URL
+        let img = item.images?.[0]
+        let mediaUrl = resolveMediaUrl(img)
+        
+        // If no valid image in array, try root level
+        if (!mediaUrl) {
+          mediaUrl = resolveMediaUrl(item)
+          if (mediaUrl) {
+            img = { id: item.id || '0', url: mediaUrl }
+          }
+        }
+        
+        // Only include if we have a valid URL
+        if (!mediaUrl || !img) return null
+        
+        return {
+          item,
+          media: {
+            ...img,
+            url: mediaUrl, // Ensure we use the resolved URL
+          },
+          kind: 'image' as const
+        }
+      })
+      .filter((card): card is NonNullable<typeof card> => card !== null) // Remove null entries
   }, [items])
 
   // Limit to 20 items for the homepage
@@ -65,6 +151,11 @@ export default function CommunityCreations({
               <p className="text-white/60 mt-2">Loading creations...</p>
             </div>
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-400 text-lg mb-2">Error loading creations</p>
+            <p className="text-white/60 text-sm">{error}</p>
+          </div>
         ) : limitedCards.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-white/60 text-lg">No community creations to display</p>
@@ -73,19 +164,30 @@ export default function CommunityCreations({
           <div className="columns-2 md:columns-3 lg:columns-4 gap-2 space-y-2">
             {limitedCards.map((card, idx) => {
               const { item, media } = card
+              // Double-check we have a valid URL before rendering
+              if (!media?.url || typeof media.url !== 'string' || media.url.length === 0) {
+                return null
+              }
+              
               return (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${idx}`}
                   className="break-inside-avoid relative w-full mb-2 cursor-pointer group"
                   onClick={() => setPreview(item)}
                 >
                   {/* Image */}
                   <img
                     src={media.url}
-                    alt={item.prompt || ''}
+                    alt={item.prompt || 'Community creation'}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-auto object-contain block rounded-xl"
+                    onError={(e) => {
+                      // Hide broken images
+                      const target = e.currentTarget
+                      target.style.display = 'none'
+                      console.warn('[CommunityCreations] Image failed to load:', media.url)
+                    }}
                   />
                   
                   {/* Hover Overlay (ArtStation style) */}
@@ -113,18 +215,30 @@ export default function CommunityCreations({
       </div>
 
       {/* Preview Modal */}
-      {preview && (
-        <ArtStationPreview
-          preview={{ kind: 'image', url: preview.images?.[0]?.url || '', item: preview }}
-          onClose={() => setPreview(null)}
-          onConfirmDelete={async () => {}} // Read-only view
-          currentUid={null} // Read-only view
-          currentUser={null}
-          cards={cards} // Allow navigation through the set
-          likedCards={new Set()} // No interaction in this view
-          toggleLike={() => {}}
-        />
-      )}
+      {preview && (() => {
+        // Resolve preview URL safely
+        const previewImage = preview.images?.[0]
+        const previewUrl = previewImage ? resolveMediaUrl(previewImage) : resolveMediaUrl(preview)
+        
+        // Only render if we have a valid URL
+        if (!previewUrl) {
+          console.warn('[CommunityCreations] Preview item has no valid image URL:', preview.id)
+          return null
+        }
+        
+        return (
+          <ArtStationPreview
+            preview={{ kind: 'image', url: previewUrl, item: preview }}
+            onClose={() => setPreview(null)}
+            onConfirmDelete={async () => {}} // Read-only view
+            currentUid={null} // Read-only view
+            currentUser={null}
+            cards={cards} // Allow navigation through the set
+            likedCards={new Set()} // No interaction in this view
+            toggleLike={() => {}}
+          />
+        )
+      })()}
     </section>
   );
 }
