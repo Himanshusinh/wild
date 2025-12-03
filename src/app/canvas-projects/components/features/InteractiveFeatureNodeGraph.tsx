@@ -216,7 +216,7 @@ export function InteractiveFeatureNodeGraph() {
                             className={`
                     absolute top-0 left-0 px-5 py-3 rounded-xl border text-sm font-medium transition-all duration-100 z-20 flex items-center gap-2 cursor-grab active:cursor-grabbing
                     ${activeFeature === feature.id
-                                    ? 'bg-[#2563eb]/20 border-[#60a5fa] text-white scale-110 shadow-[0_0_30px_rgba(96,165,250,0.4)] backdrop-blur-md'
+                                    ? 'bg-[#2563eb]/20 border-[#60a5fa] text-white shadow-[0_0_30px_rgba(96,165,250,0.4)] backdrop-blur-md'
                                     : 'bg-[#111]/80 border-white/10 text-slate-400 hover:border-white/30 hover:text-white backdrop-blur-sm'}
                   `}
                             style={{
