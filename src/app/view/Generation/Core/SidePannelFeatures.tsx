@@ -117,6 +117,7 @@ const SidePannelFeatures = ({
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits();
   const [showProfileDropdown, setShowProfileDropdown] = React.useState(false);
   const profileDropdownRef = React.useRef<HTMLDivElement>(null);
+  const portalRef = React.useRef<HTMLDivElement>(null);
   const profileButtonRef = React.useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, left: 0, bottom: 0 });
 
@@ -377,8 +378,13 @@ const SidePannelFeatures = ({
   // Close profile dropdown on outside click
   React.useEffect(() => {
     const handler = (event: MouseEvent) => {
-      if (!profileDropdownRef.current) return;
-      if (!profileDropdownRef.current.contains(event.target as Node)) {
+      // Check if click is outside BOTH the button wrapper and the portal content
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target as Node) &&
+        portalRef.current &&
+        !portalRef.current.contains(event.target as Node)
+      ) {
         setShowProfileDropdown(false);
       }
     };
@@ -991,22 +997,13 @@ const SidePannelFeatures = ({
                       {userData?.username || 'User'}
                     </span>
                     {/* Credits below username */}
-                    <div
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         refreshCredits();
                       }}
-                      className="flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity cursor-pointer"
+                      className="flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity"
                       title="Click to refresh credits"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          refreshCredits();
-                        }
-                      }}
                     >
                       <Image
                         src="/icons/coinswhite.svg"
@@ -1019,7 +1016,7 @@ const SidePannelFeatures = ({
                       <span className="text-xs font-semibold text-white tabular-nums">
                         {creditsLoading ? '…' : (creditBalance ?? userData?.credits ?? 0)}
                       </span>
-                    </div>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1031,8 +1028,9 @@ const SidePannelFeatures = ({
 
             {showProfileDropdown && mounted && createPortal(
               <div
-                className="fixed w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300"
+                ref={portalRef}
                 onMouseLeave={() => setShowProfileDropdown(false)}
+                className="fixed w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300"
                 style={{ 
                   zIndex: 999999,
                   position: 'fixed',
