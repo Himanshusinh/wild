@@ -3,10 +3,10 @@
  * Can be imported from client components or server helpers.
  */
 export async function enhancePromptAPI(
-  prompt: string, 
+  prompt: string,
   model?: string,
   mediaType?: 'image' | 'video' | 'music'
-): Promise<{ ok: boolean; enhancedPrompt?: string; error?: string } > {
+): Promise<{ ok: boolean; enhancedPrompt?: string; error?: string }> {
   if (!prompt || typeof prompt !== 'string') throw new Error('prompt is required');
   const base = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || '').replace(/\/$/, '');
   const url = `${base}/api/prompt-enhancer/enhance`;
@@ -14,12 +14,13 @@ export async function enhancePromptAPI(
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      prompt, 
-      media_type: mediaType || 'image', // Default to image for backward compatibility
+    body: JSON.stringify({
+      prompt,
+      media_type: mediaType || 'image',
+      target_model: model,
     }),
   });
- 
+
   if (!res.ok) {
     let body: any;
     try { body = await res.json(); } catch { body = { error: res.statusText }; }
