@@ -319,4 +319,30 @@ body::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
+
+/* Text Shine Animation */
+@keyframes text-shine {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-text-shine {
+  background: linear-gradient(
+    to right,
+    #ffffff 20%,
+    #fbbf24 30%,
+    #f59e0b 70%,
+    #ffffff 80%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-fill-color: transparent;
+  background-size: 500% auto;
+  animation: text-shine 2s ease-in-out infinite alternate;
+}
  

@@ -20,7 +20,7 @@ import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
-import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX } from 'lucide-react';
+import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { getApiClient } from "@/lib/axiosInstance";
@@ -28,6 +28,7 @@ import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
 import VideoUploadModal from "./VideoUploadModal";
 import { getVideoCreditCost } from "@/utils/creditValidation";
+import { enhancePromptAPI } from '@/lib/api/geminiApi';
 
 // Extend window interface for temporary video data storage
 declare global {
@@ -52,7 +53,7 @@ import AssetViewerModal from '@/components/AssetViewerModal';
 
 interface InputBoxProps {
   placeholder?: string;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate' ;
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate';
   showHistory?: boolean; // Control whether to show the history section
 }
 
@@ -76,7 +77,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     title: 'Uploaded Asset'
   });
   const inputEl = useRef<HTMLTextAreaElement>(null);
-  
+
   // Helper functions for proxy URLs (same as History.tsx)
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
@@ -114,6 +115,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [references, setReferences] = usePersistedGenerationState<string[]>("references", [], "text-to-video");
   const [generationMode, setGenerationMode] = usePersistedGenerationState<"text_to_video" | "image_to_video" | "video_to_video">("generationMode", "text_to_video", "text-to-video");
   const [error, setError] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   // Handle image parameter from URL for image-to-video mode
   useEffect(() => {
@@ -127,7 +129,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (imageUrl) {
       // Decode the URL-encoded image parameter
       let decodedImageUrl = decodeURIComponent(imageUrl);
-      
+
       // Convert proxy URL to full Zata URL if needed
       if (decodedImageUrl.startsWith('/api/proxy/resource/')) {
         const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || '';
@@ -135,7 +137,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         decodedImageUrl = `${ZATA_PREFIX}${decodeURIComponent(path)}`;
         console.log('Video generation - converted proxy URL to full Zata URL:', decodedImageUrl);
       }
-      
+
       console.log('Loading image from URL parameter for video generation:', decodedImageUrl);
 
       // Set generation mode to image-to-video
@@ -219,6 +221,44 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
   };
 
+  // Handle manual prompt enhancement
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) {
+      toast('Please enter a prompt to enhance');
+      return;
+    }
+
+    if (isEnhancing) return;
+
+    try {
+      setIsEnhancing(true);
+      // Explicitly pass 'video' as media type for video generation
+      const res = await enhancePromptAPI(prompt, 'openai/gpt-4o', 'video');
+      if (res.ok && res.enhancedPrompt) {
+        const enhancedPrompt = res.enhancedPrompt;
+
+        // Update state
+        setPrompt(enhancedPrompt);
+
+        // Update textarea directly if ref exists
+        if (inputEl.current) {
+          inputEl.current.value = enhancedPrompt;
+          // Trigger height adjustment
+          adjustTextareaHeight(inputEl.current);
+        }
+
+        toast.success('Prompt enhanced');
+      } else {
+        toast.error(res.error || 'Failed to enhance prompt');
+      }
+    } catch (e: any) {
+      console.error('Prompt enhancement error:', e);
+      toast.error(e?.message || 'Failed to enhance prompt. Please try again.');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   // Delete handler - same logic as ImagePreviewModal
   const handleDeleteVideo = async (e: React.MouseEvent, entry: HistoryEntry) => {
     try {
@@ -226,7 +266,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       e.preventDefault();
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch {}
+      try { dispatch(removeHistoryEntry(entry.id)); } catch { }
       toast.success('Video deleted');
     } catch (err) {
       console.error('Delete failed:', err);
@@ -334,23 +374,23 @@ const InputBox = (props: InputBoxProps = {}) => {
       capabilities.supportsTextToVideo = true;
       capabilities.supportsImageToVideo = true;
     }
-    
+
     // Text-to-video only models
     if (model === "T2V-01-Director") {
       capabilities.supportsTextToVideo = true;
     }
-    
+
     // Image-to-video only models (explicit i2v variants or image-only models)
-    if (model === "I2V-01-Director" || 
-        model === "S2V-01" ||
-        model === "gen4_turbo" ||
-        model === "gen3a_turbo" ||
-        (model.includes("veo3") && model.includes("i2v")) ||
-        (model.includes("wan-2.5") && model.includes("i2v")) ||
-        (model.startsWith('kling-') && model.includes('i2v')) ||
-        (model.includes('seedance') && model.includes('i2v')) ||
-        (model.includes('pixverse') && model.includes('i2v')) ||
-        (model.includes('sora2') && model.includes('i2v'))) {
+    if (model === "I2V-01-Director" ||
+      model === "S2V-01" ||
+      model === "gen4_turbo" ||
+      model === "gen3a_turbo" ||
+      (model.includes("veo3") && model.includes("i2v")) ||
+      (model.includes("wan-2.5") && model.includes("i2v")) ||
+      (model.startsWith('kling-') && model.includes('i2v')) ||
+      (model.includes('seedance') && model.includes('i2v')) ||
+      (model.includes('pixverse') && model.includes('i2v')) ||
+      (model.includes('sora2') && model.includes('i2v'))) {
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
     }
@@ -449,13 +489,13 @@ const InputBox = (props: InputBoxProps = {}) => {
     prevModelForModeRef.current = selectedModel;
 
     const caps = getModelCapabilities(selectedModel);
-    
+
     // Determine appropriate generation mode based on model capabilities only
     let newMode: "text_to_video" | "image_to_video" | "video_to_video" | null = null;
-    
+
     // Special handling for I2V-only models - they require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
     if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
-        selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+      selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
       // These models require image, so force image-to-video mode
       newMode = "image_to_video";
     } else if (caps.supportsTextToVideo) {
@@ -503,7 +543,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       const isI2V = selectedModel.includes('i2v');
       const isPro = selectedModel.includes('pro');
       const isFast = selectedModel.includes('fast');
-      
+
       if (generationMode === 'text_to_video' && isI2V) {
         // Switch from i2v to t2v variant
         const newModel = isPro ? 'ltx2-pro-t2v' : (isFast ? 'ltx2-fast-t2v' : 'ltx2-pro-t2v');
@@ -518,12 +558,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         }
       }
     }
-    
+
     // Convert WAN 2.5 models
     if (selectedModel.includes('wan-2.5') && !selectedModel.includes('v2v')) {
       const isI2V = selectedModel.includes('i2v');
       const isFast = selectedModel.includes('fast');
-      
+
       if (generationMode === 'text_to_video' && isI2V) {
         // Switch from i2v to t2v variant
         const newModel = isFast ? 'wan-2.5-t2v-fast' : 'wan-2.5-t2v';
@@ -538,13 +578,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         }
       }
     }
-    
+
     // Convert Kling models (except v2.5 which supports both without conversion)
     if (selectedModel.startsWith('kling-') && !selectedModel.includes('v2.5')) {
       const isI2V = selectedModel.includes('i2v');
       const isV21 = selectedModel.includes('v2.1');
       const isMaster = selectedModel.includes('master');
-      
+
       // Kling 2.1 and 2.1 Master require image (I2V only), so always use i2v variant
       if (isV21 && !isI2V) {
         // Switch from t2v to i2v variant for v2.1 models
@@ -1051,7 +1091,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     const urlVideoTypes = allEntries.filter((entry: any) =>
       Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
     );
-    
+
     // Also get entries that have videos array with video URLs
     const videosArrayTypes = allEntries.filter((entry: any) =>
       entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl))
@@ -1064,7 +1104,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     });
 
     const mergedEntries = Object.values(byId);
-    
+
     // Debug: Log all video entries and specifically animate entries
     const animateEntries = mergedEntries.filter((e: any) => {
       const model = String(e?.model || '').toLowerCase();
@@ -1078,7 +1118,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         status: e.status
       })));
     }
-    
+
     // Debug: Log video-to-video entries to ensure they're being included
     const videoToVideoEntries = mergedEntries.filter((e: any) => {
       const normalizedType = normalizeGenerationType(e?.generationType);
@@ -1235,8 +1275,8 @@ const InputBox = (props: InputBoxProps = {}) => {
           currentEntriesCount: libraryImageEntries.length
         });
       }
-  // Ensure createdAt ordering always requested
-  params.sortBy = 'createdAt';
+      // Ensure createdAt ordering always requested
+      params.sortBy = 'createdAt';
       const res = await api.get('/api/generations', { params });
       const payload = res.data?.data || res.data || {};
       const items: any[] = Array.isArray(payload.items) ? payload.items : [];
@@ -1246,7 +1286,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       const normalizedItems = items.map((item: any) => {
         // Clone the item to avoid mutating the original
         const normalized = { ...item };
-        
+
         // If item doesn't have images array, try to extract from other properties
         if (!Array.isArray(normalized.images) || normalized.images.length === 0) {
           // Some APIs might return images in a different structure
@@ -1259,7 +1299,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (!Array.isArray(normalized.images)) {
           normalized.images = [];
         }
-        
+
         // Ensure each image has required properties
         if (Array.isArray(normalized.images)) {
           normalized.images = normalized.images.map((img: any) => {
@@ -1270,7 +1310,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             return img;
           });
         }
-        
+
         return normalized;
       });
 
@@ -1317,13 +1357,13 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Always return a new array reference
           return [...sorted];
         }
-        
+
         // For pagination loads, merge with existing entries
         // IMPORTANT: Check if items are actually new by comparing IDs
         const existingIds = new Set(prevEntries.map((e: any) => e?.id).filter(Boolean));
         const newItems = normalizedItems.filter((item: any) => item?.id && !existingIds.has(item.id));
         const existingItems = normalizedItems.filter((item: any) => item?.id && existingIds.has(item.id));
-        
+
         console.log('[VideoPage] fetchLibraryImages pagination merge:', {
           previousCount: prevEntries.length,
           newItemsReceived: normalizedItems.length,
@@ -1332,23 +1372,23 @@ const InputBox = (props: InputBoxProps = {}) => {
           newItemIds: newItems.slice(0, 5).map((e: any) => e.id),
           newItemsWithImages: newItems.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
         });
-        
+
         if (newItems.length === 0) {
           console.warn('[VideoPage] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.');
           return [...prevEntries];
         }
-        
+
         const existingById: Record<string, any> = {};
         // Add existing entries first
-        prevEntries.forEach((e: any) => { 
+        prevEntries.forEach((e: any) => {
           if (e?.id) {
-            existingById[e.id] = e; 
+            existingById[e.id] = e;
           }
         });
         // Then add only NEW entries (avoid unnecessary updates)
-        newItems.forEach((e: any) => { 
+        newItems.forEach((e: any) => {
           if (e?.id) {
-            existingById[e.id] = e; 
+            existingById[e.id] = e;
           }
         });
         // Create a new array and sort by createdAt (newest first)
@@ -1377,7 +1417,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         // Always return a new array reference (even if contents are the same)
         return [...merged];
       });
-      
+
       // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
       // This ensures the cursor is available for the next pagination request
       const previousCursor = libraryImageNextCursorRef.current;
@@ -1386,7 +1426,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       // IMPORTANT: Store the cursor immediately so it's available for the next request
       const newCursor = nextCursor ? (typeof nextCursor === 'string' ? nextCursor : String(nextCursor)) : undefined;
       libraryImageNextCursorRef.current = newCursor;
-      
+
       // Log cursor update immediately
       console.log('[VideoPage] 📥 Cursor updated in ref:', {
         previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
@@ -1394,14 +1434,14 @@ const InputBox = (props: InputBoxProps = {}) => {
         cursorChanged: previousCursor !== newCursor,
         itemsReceived: items.length
       });
-      
+
       // Set hasMore: if there's a nextCursor, we definitely have more items to load
       // The presence of nextCursor is the definitive indicator from the backend
       const hasMoreItems = Boolean(nextCursor);
-      
-      console.log('[VideoPage] 📥 fetchLibraryImages response received:', { 
-        itemsCount: items.length, 
-        requested: params.limit || 30, 
+
+      console.log('[VideoPage] 📥 fetchLibraryImages response received:', {
+        itemsCount: items.length,
+        requested: params.limit || 30,
         previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
         newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'null',
         newCursorType: typeof nextCursor,
@@ -1410,12 +1450,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         hasMoreItems,
         currentEntriesCount: libraryImageEntries.length
       });
-      
+
       // If cursor didn't change and we got items, it means we're getting duplicates
       if (!initial && previousCursor === newCursor && items.length > 0) {
         console.warn('[VideoPage] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.');
       }
-      
+
       setLibraryImageHasMore(hasMoreItems);
     } catch (e) {
       console.error('[VideoPage] Failed to fetch library images:', e);
@@ -1458,7 +1498,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       setLibraryImageHasMore(true);
       setLibraryImageEntries([]); // Clear previous entries for fresh load
       setLibraryImageLoading(false); // Ensure loading state is reset
-      
+
       // Only load the first page when modal opens - pagination will happen on scroll
       const fetchPromise = fetchLibraryImages(true);
       fetchPromise
@@ -1497,27 +1537,27 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Local, ephemeral preview entry for video generations
   const [localVideoPreview, setLocalVideoPreview] = useState<HistoryEntry | null>(null);
-  
+
   // Track which videos have loaded to hide loading effects
   const [loadedVideos, setLoadedVideos] = useState<Set<string>>(new Set());
-  
+
   // Track entries that have been added to history to prevent duplicate rendering
   const historyEntryIdsRef = useRef<Set<string>>(new Set());
-  
+
   // Get current entries from Redux
   const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
-  
+
   useEffect(() => {
     if (!localVideoPreview) return;
-    
+
     // Check if this entry already exists in Redux history
     const entryId = localVideoPreview.id;
     const entryFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
-    
+
     // FIRST: Check ref (updated immediately when entry is added to history)
     const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
-                       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
-    
+      (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
+
     // SECOND: Check Redux state
     const existsInHistory = existingEntries.some((e: HistoryEntry) => {
       const eId = e.id;
@@ -1526,13 +1566,13 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
       return false;
     });
-    
+
     // CRITICAL: If entry exists in ref OR history, immediately clear local preview
     if (existsInRef || existsInHistory) {
       setLocalVideoPreview(null);
       return;
     }
-    
+
     // If entry completes/fails but not in history yet, clear after delay
     if (localVideoPreview.status === 'completed' || localVideoPreview.status === 'failed') {
       const t = setTimeout(() => setLocalVideoPreview(null), 1500);
@@ -1548,8 +1588,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       const item = res.data?.data?.item;
       if (!item) {
         console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
-        dispatch(loadHistory({ 
-          filters: { mode: 'video' } as any, 
+        dispatch(loadHistory({
+          filters: { mode: 'video' } as any,
           paginationParams: { limit: 50 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
@@ -1557,7 +1597,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         } as any));
         return;
       }
-      
+
       // Normalize the item to match HistoryEntry format
       const created = item?.createdAt || item?.updatedAt || item?.timestamp;
       const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
@@ -1567,20 +1607,20 @@ const InputBox = (props: InputBoxProps = {}) => {
         timestamp: iso,
         createdAt: iso,
       } as HistoryEntry;
-      
+
       // Check if entry already exists in current Redux state
       const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
-      
+
       // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
       historyEntryIdsRef.current.add(historyId);
       if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
       if ((normalizedEntry as any)?.firebaseHistoryId) {
         historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
       }
-      
+
       if (exists) {
-        dispatch(updateHistoryEntry({ 
-          id: historyId, 
+        dispatch(updateHistoryEntry({
+          id: historyId,
           updates: {
             status: normalizedEntry.status,
             images: normalizedEntry.images,
@@ -1591,29 +1631,29 @@ const InputBox = (props: InputBoxProps = {}) => {
       } else {
         dispatch(addHistoryEntry(normalizedEntry));
       }
-      
+
       // CRITICAL: Immediately clear local preview when history entry is added/updated
       setLocalVideoPreview((prev) => {
         if (!prev) return null;
-        
+
         const prevId = prev.id;
         const prevFirebaseId = (prev as any)?.firebaseHistoryId;
-        
+
         // Check if IDs match
         if (prevId === historyId || prevFirebaseId === historyId) return null;
         if (normalizedEntry.id && (prevId === normalizedEntry.id || prevFirebaseId === normalizedEntry.id)) return null;
         const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
         if (normalizedFirebaseId && (prevId === normalizedFirebaseId || prevFirebaseId === normalizedFirebaseId)) return null;
-        
+
         // If local preview is completed and we just added a completed history entry, clear it
         if (prev.status === 'completed' && normalizedEntry.status === 'completed') return null;
-        
+
         return prev;
       });
     } catch (error) {
       console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
-      dispatch(loadHistory({ 
-        filters: { mode: 'video' } as any, 
+      dispatch(loadHistory({
+        filters: { mode: 'video' } as any,
         paginationParams: { limit: 50 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
@@ -1889,8 +1929,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     try {
       // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
       // This is the same approach History.tsx uses and ensures all video types are loaded
-      dispatch(loadHistory({ 
-        filters: { mode: 'video' } as any, 
+      dispatch(loadHistory({
+        filters: { mode: 'video' } as any,
         paginationParams: { limit: 50 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
@@ -1925,7 +1965,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       try {
         // Use mode: 'video' which backend converts to all video types including video-to-video
         await (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } })).unwrap();
-      } catch {/* swallow */}
+      } catch {/* swallow */ }
     }
   });
 
@@ -2186,7 +2226,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     // Users can continue generating with the same settings or modify them as needed
     // No clearing of prompt, uploaded assets, or configurations
     return;
-    
+
     // OLD CODE (disabled):
     // setPrompt("");
     // setUploadedImages([]);
@@ -2249,7 +2289,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Validate I2V-only models require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
     if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
-        selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+      selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
       if (uploadedImages.length === 0 && references.length === 0) {
         // Get model display name
         let modelName = '';
@@ -2407,16 +2447,16 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Priority: If image is uploaded and model supports I2V, use I2V
       // If only text is provided and model supports T2V, use T2V
       let actualGenerationMode = generationMode;
-      
+
       const hasImage = uploadedImages.length > 0 || references.length > 0;
       const hasText = prompt.trim().length > 0;
-      
+
       // Smart mode detection:
       // 1. If image is uploaded and model supports I2V -> use I2V
       // 2. If only text and model supports T2V -> use T2V
       // 3. If model only supports I2V (like Runway) -> use I2V (will validate image requirement)
       // 4. If model supports both -> choose based on input
-      
+
       if (hasImage && caps.supportsImageToVideo) {
         // Image uploaded and model supports I2V -> use image-to-video
         actualGenerationMode = "image_to_video";
@@ -2522,21 +2562,21 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Kling v2.1 and v2.1-master require start_image (I2V only)
           const isV25 = selectedModel.includes('v2.5');
           const isV21 = selectedModel.includes('v2.1');
-          
+
           if (isV21) {
             // Kling 2.1 and 2.1 Master require an image (start_image is required)
             toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
             setIsGenerating(false);
             return;
           }
-          
+
           // Only v2.5 supports pure T2V
           if (!isV25) {
             toast.error('This Kling model requires an input image. Please upload an image or select Kling 2.5 Turbo Pro for text-to-video.');
             setIsGenerating(false);
             return;
           }
-          
+
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: 'kwaivgi/kling-v2.5-turbo-pro',
@@ -2584,7 +2624,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Sora 2 T2V
           const isPro = selectedModel.includes('pro');
           const apiPrompt = getApiPrompt(prompt);
-          
+
           // Ensure duration is a number and one of [4, 8, 12]
           let soraDuration = duration;
           if (typeof duration !== 'number') {
@@ -2597,7 +2637,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             else if (soraDuration < 10) soraDuration = 8;
             else soraDuration = 12;
           }
-          
+
           // Ensure resolution is valid
           let soraResolution = selectedQuality || '720p';
           if (isPro) {
@@ -2609,10 +2649,10 @@ const InputBox = (props: InputBoxProps = {}) => {
             // Standard only supports 720p
             soraResolution = '720p';
           }
-          
+
           // Ensure aspect_ratio is valid
           const soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "16:9");
-          
+
           // Sora 2 supports generate_audio parameter
           requestBody = {
             prompt: apiPrompt,
@@ -2651,20 +2691,20 @@ const InputBox = (props: InputBoxProps = {}) => {
       } else if (actualGenerationMode === "image_to_video") {
         // Check if we need uploaded images
         // S2V-01 uses references, others need uploadedImages
-        const needsImage = selectedModel !== "S2V-01" && 
-                          !selectedModel.includes("veo3") && 
-                          !selectedModel.includes("wan-2.5") && 
-                          !selectedModel.includes('seedance') && 
-                          !selectedModel.includes('pixverse') && 
-                          !selectedModel.includes('sora2') &&
-                          !selectedModel.includes('ltx2') &&
-                          !selectedModel.includes('kling-');
-        
+        const needsImage = selectedModel !== "S2V-01" &&
+          !selectedModel.includes("veo3") &&
+          !selectedModel.includes("wan-2.5") &&
+          !selectedModel.includes('seedance') &&
+          !selectedModel.includes('pixverse') &&
+          !selectedModel.includes('sora2') &&
+          !selectedModel.includes('ltx2') &&
+          !selectedModel.includes('kling-');
+
         if (needsImage && uploadedImages.length === 0) {
           setError("Please upload at least one image");
           return;
         }
-        
+
         // Validation: Ensure image is provided for I2V mode
         // This should have been caught by mode detection, but double-check for safety
         if (uploadedImages.length === 0 && references.length === 0) {
@@ -2834,15 +2874,15 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (isV25) {
             // Kling 2.5 Turbo Pro - uses 'image' parameter for I2V
             const apiPrompt = getApiPrompt(prompt);
-            requestBody = { 
-              model: 'kwaivgi/kling-v2.5-turbo-pro', 
+            requestBody = {
+              model: 'kwaivgi/kling-v2.5-turbo-pro',
               prompt: apiPrompt,
               originalPrompt: prompt, // Store original prompt for display
-              image: uploadedImages[0], 
-              duration, 
-              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'), 
-              generationType: 'image-to-video', 
-              isPublic 
+              image: uploadedImages[0],
+              duration,
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              generationType: 'image-to-video',
+              isPublic
             };
           } else {
             // Kling v2.1 and v2.1-master - use 'start_image' parameter (required)
@@ -2914,7 +2954,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           const isPro = selectedModel.includes('pro');
           const apiPrompt = getApiPrompt(prompt);
-          
+
           // Ensure duration is a number and one of [4, 8, 12]
           let soraDuration = duration;
           if (typeof duration !== 'number') {
@@ -2927,7 +2967,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             else if (soraDuration < 10) soraDuration = 8;
             else soraDuration = 12;
           }
-          
+
           // Ensure resolution is valid for I2V
           let soraResolution = selectedQuality || 'auto';
           if (isPro) {
@@ -2941,10 +2981,10 @@ const InputBox = (props: InputBoxProps = {}) => {
               soraResolution = 'auto'; // Default to auto for Standard I2V
             }
           }
-          
+
           // Ensure aspect_ratio is valid
           let soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "auto");
-          
+
           requestBody = {
             prompt: apiPrompt,
             image_url: uploadedImages[0], // Sora 2 expects image_url
@@ -2988,7 +3028,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             setError("An input image is required for Runway image-to-video generation");
             return;
           }
-          
+
           const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
           const apiPrompt = getApiPrompt(prompt);
           const imageToVideoBody = buildImageToVideoBody({
@@ -2998,7 +3038,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             duration: duration as 5 | 10,
             promptImage: uploadedImages[0]
           });
-          
+
           console.log('🎬 Runway I2V payload:', {
             mode: "image_to_video",
             sku: runwaySku,
@@ -3007,7 +3047,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               promptImage: imageToVideoBody.promptImage ? 'provided' : 'missing'
             }
           });
-          
+
           requestBody = {
             mode: "image_to_video",
             sku: runwaySku,
@@ -3094,7 +3134,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             setIsGenerating(false);
             return;
           }
-          
+
           requestBody = {
             model: 'kwaivgi/kling-lip-sync',
             video_url: uploadedVideo || undefined, // Use video_url if uploaded
@@ -3121,9 +3161,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             setIsGenerating(false);
             return;
           }
-          
+
           const characterImage = uploadedCharacterImage || uploadedImages[0];
-          
+
           requestBody = {
             model: 'wan-video/wan-2.2-animate-replace',
             video: uploadedVideo,
@@ -3223,7 +3263,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       } catch (e: any) {
         // Check if this is a network error (no response from server)
         const isNetworkError = !e?.response && (e?.code === 'ECONNABORTED' || e?.code === 'ERR_NETWORK' || e?.code === 'ETIMEDOUT' || e?.message?.includes('Network Error') || e?.message?.includes('Failed to fetch') || e?.message?.includes('timeout'));
-        
+
         if (isNetworkError) {
           const baseUrl = api.defaults.baseURL || 'the server';
           const errorMsg = `Network error: Unable to connect to ${baseUrl}. Please check your internet connection and try again.`;
@@ -3242,13 +3282,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         const body = e?.response?.data;
         const msg = body?.message || e?.message || 'Request failed';
         const queuedRequestId = body?.data?.requestId || body?.requestId;
-        
+
         if (String(statusCode) === '413' || /request entity too large/i.test(String(msg))) {
           toast.error('Video too large for provider. Max 16MB. Please upload ≤ 14MB');
           console.error('❌ API 413 payload too large');
           throw new Error(`HTTP ${statusCode || 500}: ${msg}`);
         }
-        
+
         // If a requestId is present despite error status, proceed as submitted
         if (queuedRequestId) {
           console.warn('⚠️ Provider returned error but included requestId; proceeding as submitted', { statusCode, msg, queuedRequestId });
@@ -3264,7 +3304,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             originalError: e?.message
           };
           console.error('❌ API response not ok:', errorDetails);
-          
+
           // Create a more helpful error message
           let userFriendlyMsg = msg;
           if (statusCode === 401) {
@@ -3278,7 +3318,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           } else if (!statusCode) {
             userFriendlyMsg = `Request failed: ${msg}. Please check your connection and try again.`;
           }
-          
+
           throw new Error(userFriendlyMsg);
         }
       }
@@ -4060,24 +4100,24 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Confirm credit transaction as successful
       await handleGenerationSuccess(transactionId);
       console.log('✅ Credits confirmed for successful generation');
-      
+
       // Clear all inputs and configurations
       clearInputs();
 
-  // Refresh only the single completed generation instead of reloading all
-  if (result.historyId) {
-    await refreshSingleGeneration(result.historyId);
-  } else {
-    // Fallback to full refresh if no historyId
-    dispatch(clearFilters());
-    dispatch(loadHistory({ 
-      filters: { mode: 'video' } as any, 
-      paginationParams: { limit: 50 },
-      requestOrigin: 'page',
-      expectedType: 'text-to-video',
-      debugTag: `InputBox:refresh:video-mode:${Date.now()}`
-    } as any));
-  }
+      // Refresh only the single completed generation instead of reloading all
+      if (result.historyId) {
+        await refreshSingleGeneration(result.historyId);
+      } else {
+        // Fallback to full refresh if no historyId
+        dispatch(clearFilters());
+        dispatch(loadHistory({
+          filters: { mode: 'video' } as any,
+          paginationParams: { limit: 50 },
+          requestOrigin: 'page',
+          expectedType: 'text-to-video',
+          debugTag: `InputBox:refresh:video-mode:${Date.now()}`
+        } as any));
+      }
 
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
@@ -4139,10 +4179,10 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.error('❌ Failed to rollback credits:', creditError);
       }
 
-      try { 
-        const toast = (await import('react-hot-toast')).default; 
+      try {
+        const toast = (await import('react-hot-toast')).default;
         const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Video generation failed');
-        toast.error(errorMessage, { duration: 5000 }); 
+        toast.error(errorMessage, { duration: 5000 });
       } catch { }
     } finally {
       setIsGenerating(false);
@@ -4156,327 +4196,327 @@ const InputBox = (props: InputBoxProps = {}) => {
     <React.Fragment>
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
-            <div className="md:space-y-8 space-y-2">
-              {/* If there's a local preview and no row for today, render a dated block for today */}
-              {localVideoPreview && !groupedByDate[todayKey] && (
-                <div className="md:space-y-4 space-y-2">
-                  <div className="flex items-center md:gap-3 gap-2">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                    </h3>
+          <div className="md:space-y-8 space-y-2">
+            {/* If there's a local preview and no row for today, render a dated block for today */}
+            {localVideoPreview && !groupedByDate[todayKey] && (
+              <div className="md:space-y-4 space-y-2">
+                <div className="flex items-center md:gap-3 gap-2">
+                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                    </svg>
                   </div>
-                  <div className="flex flex-wrap md:gap-3 gap-2 ml-0">
-                    <div className="relative w-[165px] h-[165px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                      {localVideoPreview.status === 'generating' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-black/90">
-                          <div className="flex flex-col items-center gap-2">
-                            <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                            <div className="text-xs text-white/60">Generating...</div>
-                          </div>
+                  <h3 className="text-sm font-medium text-white/70">
+                    {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                  </h3>
+                </div>
+                <div className="flex flex-wrap md:gap-3 gap-2 ml-0">
+                  <div className="relative w-[165px] h-[165px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                    {localVideoPreview.status === 'generating' ? (
+                      <div className="w-full h-full flex items-center justify-center bg-black/90">
+                        <div className="flex flex-col items-center gap-2">
+                          <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                          <div className="text-xs text-white/60">Generating...</div>
                         </div>
-                      ) : localVideoPreview.status === 'failed' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                          <div className="flex flex-col items-center gap-2">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                            </svg>
-                            <div className="text-xs text-red-400">Failed</div>
-                          </div>
+                      </div>
+                    ) : localVideoPreview.status === 'failed' ? (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                          </svg>
+                          <div className="text-xs text-red-400">Failed</div>
                         </div>
-                      ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                        <div className="relative w-full h-full">
-                          <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                          <div className="text-xs text-white/60">No preview</div>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                      <div className="relative w-full h-full">
+                        <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                        <div className="text-xs text-white/60">No preview</div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              {sortedDates.map((date) => (
-                <div key={date} className="md:space-y-4 space-y-1">
-                  {/* Date Header */}
-                  <div className="flex items-center md:gap-3 gap-2">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="text-white/60"
-                      >
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {new Date(date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </h3>
+              </div>
+            )}
+            {sortedDates.map((date) => (
+              <div key={date} className="md:space-y-4 space-y-1">
+                {/* Date Header */}
+                <div className="flex items-center md:gap-3 gap-2">
+                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="text-white/60"
+                    >
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                    </svg>
                   </div>
+                  <h3 className="text-sm font-medium text-white/70">
+                    {new Date(date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </h3>
+                </div>
 
-                  {/* All Videos for this Date - Grid Layout (2 columns on mobile, flex on desktop) */}
-                  <div className="grid grid-cols-2 gap-2 md:gap-3 ml-0 md:mb-0 mb-4 md:flex md:flex-wrap">
-                    {/* Prepend local video preview to today's row to push existing items right */}
-                    {date === todayKey && localVideoPreview && (() => {
+                {/* All Videos for this Date - Grid Layout (2 columns on mobile, flex on desktop) */}
+                <div className="grid grid-cols-2 gap-2 md:gap-3 ml-0 md:mb-0 mb-4 md:flex md:flex-wrap">
+                  {/* Prepend local video preview to today's row to push existing items right */}
+                  {date === todayKey && localVideoPreview && (() => {
+                    const localEntryId = localVideoPreview.id;
+                    const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
+
+                    // Check if this local preview already exists in history
+                    const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
+                      (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
+                    const existsInHistory = historyEntries.some((e: HistoryEntry) => {
+                      const eId = e.id;
+                      const eFirebaseId = (e as any)?.firebaseHistoryId;
+                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                      return false;
+                    });
+                    const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
+                      const eId = e.id;
+                      const eFirebaseId = (e as any)?.firebaseHistoryId;
+                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
+                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
+                      return false;
+                    });
+
+                    // If entry exists anywhere, don't render local preview
+                    if (existsInRef || existsInHistory || existsInGrouped) {
+                      return null;
+                    }
+
+                    // Safety check: if local preview is completed and history exists, don't show it
+                    if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                        {localVideoPreview.status === 'generating' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-black/90">
+                            <div className="flex flex-col items-center gap-2">
+                              <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                              <div className="text-xs text-white/60 text-center">Generating...</div>
+                            </div>
+                          </div>
+                        ) : localVideoPreview.status === 'failed' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                            <div className="flex flex-col items-center gap-2">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                              </svg>
+                              <div className="text-xs text-red-400">Failed</div>
+                            </div>
+                          </div>
+                        ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
+                          <div className="relative w-full h-full">
+                            <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
+                          </div>
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
+                            <div className="text-xs text-white/60">No preview</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {(() => {
+                    // Create a set of all local preview IDs for fast lookup
+                    const localPreviewIds = new Set<string>();
+                    if (date === todayKey && localVideoPreview) {
                       const localEntryId = localVideoPreview.id;
                       const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
-                      
-                      // Check if this local preview already exists in history
-                      const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
-                                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
-                      const existsInHistory = historyEntries.some((e: HistoryEntry) => {
-                        const eId = e.id;
-                        const eFirebaseId = (e as any)?.firebaseHistoryId;
-                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                        return false;
-                      });
-                      const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
-                        const eId = e.id;
-                        const eFirebaseId = (e as any)?.firebaseHistoryId;
-                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                        return false;
-                      });
-                      
-                      // If entry exists anywhere, don't render local preview
-                      if (existsInRef || existsInHistory || existsInGrouped) {
-                        return null;
-                      }
-                      
-                      // Safety check: if local preview is completed and history exists, don't show it
-                      if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
-                        return null;
-                      }
-                      
-                      return (
-                        <div className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                          {localVideoPreview.status === 'generating' ? (
-                            <div className="w-full h-full flex items-center justify-center bg-black/90">
-                              <div className="flex flex-col items-center gap-2">
-                                <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                                <div className="text-xs text-white/60 text-center">Generating...</div>
-                              </div>
-                            </div>
-                          ) : localVideoPreview.status === 'failed' ? (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                              <div className="flex flex-col items-center gap-2">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                </svg>
-                                <div className="text-xs text-red-400">Failed</div>
-                              </div>
-                            </div>
-                          ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                            <div className="relative w-full h-full">
-                              <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                            </div>
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                              <div className="text-xs text-white/60">No preview</div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {(() => {
-                      // Create a set of all local preview IDs for fast lookup
-                      const localPreviewIds = new Set<string>();
-                      if (date === todayKey && localVideoPreview) {
-                        const localEntryId = localVideoPreview.id;
-                        const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
-                        if (localEntryId) localPreviewIds.add(localEntryId);
-                        if (localFirebaseId) localPreviewIds.add(localFirebaseId);
-                      }
-                      
-                      // Filter out history entries that match local preview
-                      const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
-                        if (localPreviewIds.size === 0) return true;
-                        const entryId = entry.id;
-                        const entryFirebaseId = (entry as any)?.firebaseHistoryId;
-                        if (entryId && localPreviewIds.has(entryId)) return false;
-                        if (entryFirebaseId && localPreviewIds.has(entryFirebaseId)) return false;
-                        return true;
-                      });
-                      
-                      return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
-                        // More defensive approach to get media items
-                        let mediaItems: any[] = [];
-                        if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
-                          mediaItems = entry.images;
-                        } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-                          mediaItems = entry.videos;
-                        }
+                      if (localEntryId) localPreviewIds.add(localEntryId);
+                      if (localFirebaseId) localPreviewIds.add(localFirebaseId);
+                    }
 
-                        return mediaItems.map((video: any, videoIdx: number) => {
-                          const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
-                          const isVideoLoaded = loadedVideos.has(uniqueVideoKey);
-                          
-                          return (
-                            <div
-                              key={uniqueVideoKey}
-                              data-video-id={uniqueVideoKey}
-                              onClick={(e) => {
-                                // Don't open preview if clicking on copy button
-                                if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
-                                  return;
-                                }
-                                setPreview({ entry, video });
-                              }}
-                                className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64 md:max-h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                            >
-                          {entry.status === "generating" ? (
-                            // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-black/90">
-                              <div className="flex flex-col items-center gap-2">
-                                <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                                <div className="text-xs text-white/60 text-center">
-                                  Generating...
+                    // Filter out history entries that match local preview
+                    const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
+                      if (localPreviewIds.size === 0) return true;
+                      const entryId = entry.id;
+                      const entryFirebaseId = (entry as any)?.firebaseHistoryId;
+                      if (entryId && localPreviewIds.has(entryId)) return false;
+                      if (entryFirebaseId && localPreviewIds.has(entryFirebaseId)) return false;
+                      return true;
+                    });
+
+                    return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
+                      // More defensive approach to get media items
+                      let mediaItems: any[] = [];
+                      if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
+                        mediaItems = entry.images;
+                      } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+                        mediaItems = entry.videos;
+                      }
+
+                      return mediaItems.map((video: any, videoIdx: number) => {
+                        const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
+                        const isVideoLoaded = loadedVideos.has(uniqueVideoKey);
+
+                        return (
+                          <div
+                            key={uniqueVideoKey}
+                            data-video-id={uniqueVideoKey}
+                            onClick={(e) => {
+                              // Don't open preview if clicking on copy button
+                              if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
+                                return;
+                              }
+                              setPreview({ entry, video });
+                            }}
+                            className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64 md:max-h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          >
+                            {entry.status === "generating" ? (
+                              // Loading frame
+                              <div className="w-full h-full flex items-center justify-center bg-black/90">
+                                <div className="flex flex-col items-center gap-2">
+                                  <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
+                                  <div className="text-xs text-white/60 text-center">
+                                    Generating...
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ) : entry.status === "failed" ? (
-                            // Error frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                              <div className="flex flex-col items-center gap-2">
-                                <svg
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="text-red-400"
-                                >
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                </svg>
-                                <div className="text-xs text-red-400">Failed</div>
-                              </div>
-                            </div>
-                          ) : (
-                            // Completed video thumbnail (exact same as History.tsx)
-                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
-                              {(video.firebaseUrl || video.url) ? (
-                                (() => {
-                                  const mediaUrl = video.firebaseUrl || video.url;
-                                  const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                                  const vsrc = proxied || mediaUrl;
-                                  return (
-                                    <video 
-                                      src={vsrc} 
-                                      className="w-full h-full object-cover transition-opacity duration-200" 
-                                      muted 
-                                      playsInline 
-                                      loop 
-                                      preload="metadata"
-                                      poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
-                                      onMouseEnter={async (e) => { 
-                                        try { 
-                                          await (e.currentTarget as HTMLVideoElement).play();
-                                        } catch { } 
-                                      }}
-                                      onMouseLeave={(e) => { 
-                                        const v = e.currentTarget as HTMLVideoElement; 
-                                        try { v.pause(); v.currentTime = 0 } catch { }
-                                      }}
-                                      onClick={async (e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const videoEl = e.currentTarget;
-                                        
-                                        if (videoEl.paused) {
-                                          try {
-                                            await videoEl.play();
-                                          } catch (error) {
-                                            // silent
-                                          }
-                                        } else {
-                                          videoEl.pause();
-                                          videoEl.currentTime = 0;
-                                        }
-                                      }}
-                                      onLoadStart={() => { 
-                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
-                                      }}
-                                      onLoadedData={() => { 
-                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
-                                      }}
-                                      onCanPlay={() => { 
-                                        setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
-                                      }}
-                                    />
-                                  );
-                                })()
-                              ) : (
-                                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                  <span className="text-gray-400 text-xs">Video not available</span>
-                                </div>
-                              )}
-                              {/* Video play icon overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                    <path d="M8 5v14l11-7z" />
+                            ) : entry.status === "failed" ? (
+                              // Error frame
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                                <div className="flex flex-col items-center gap-2">
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="text-red-400"
+                                  >
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                                   </svg>
+                                  <div className="text-xs text-red-400">Failed</div>
                                 </div>
                               </div>
-                              {/* Hover buttons overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
-                                <button
-                                  aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                  onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                </button>
-                                <button
-                                  aria-label="Delete video"
-                                  className="pointer-events-auto p-1 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                  onClick={(e) => handleDeleteVideo(e, entry)}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                              {/* Video duration or other info */}
-                              {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                            ) : (
+                              // Completed video thumbnail (exact same as History.tsx)
+                              <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
+                                {(video.firebaseUrl || video.url) ? (
+                                  (() => {
+                                    const mediaUrl = video.firebaseUrl || video.url;
+                                    const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                    const vsrc = proxied || mediaUrl;
+                                    return (
+                                      <video
+                                        src={vsrc}
+                                        className="w-full h-full object-cover transition-opacity duration-200"
+                                        muted
+                                        playsInline
+                                        loop
+                                        preload="metadata"
+                                        poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
+                                        onMouseEnter={async (e) => {
+                                          try {
+                                            await (e.currentTarget as HTMLVideoElement).play();
+                                          } catch { }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          const v = e.currentTarget as HTMLVideoElement;
+                                          try { v.pause(); v.currentTime = 0 } catch { }
+                                        }}
+                                        onClick={async (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const videoEl = e.currentTarget;
+
+                                          if (videoEl.paused) {
+                                            try {
+                                              await videoEl.play();
+                                            } catch (error) {
+                                              // silent
+                                            }
+                                          } else {
+                                            videoEl.pause();
+                                            videoEl.currentTime = 0;
+                                          }
+                                        }}
+                                        onLoadStart={() => {
+                                          setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                        }}
+                                        onLoadedData={() => {
+                                          setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                        }}
+                                        onCanPlay={() => {
+                                          setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
+                                        }}
+                                      />
+                                    );
+                                  })()
+                                ) : (
+                                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                    <span className="text-gray-400 text-xs">Video not available</span>
+                                  </div>
+                                )}
+                                {/* Video play icon overlay */}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                      <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                {/* Hover buttons overlay */}
+                                <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
+                                  <button
+                                    aria-label="Copy prompt"
+                                    className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                  </button>
+                                  <button
+                                    aria-label="Delete video"
+                                    className="pointer-events-auto p-1 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                    onClick={(e) => handleDeleteVideo(e, entry)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                                {/* Video duration or other info */}
+                                {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
                                 <span className="text-xs text-white">Video</span>
                               </div> */}
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                        </div>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          </div>
                         );
                       });
-                      });
-                    })()}
-                  </div>
+                    });
+                  })()}
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {/* Loader for scroll loading */}
-              {hasMore && loading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="flex flex-col items-center gap-3">
-                    <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
-                    <div className="text-sm text-white/60">Loading more generations...</div>
-                  </div>
+            {/* Loader for scroll loading */}
+            {hasMore && loading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex flex-col items-center gap-3">
+                  <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
+                  <div className="text-sm text-white/60">Loading more generations...</div>
                 </div>
-              )}
-              {/* Sentinel for IO-based infinite scroll */}
-              <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
-            </div>
+              </div>
+            )}
+            {/* Sentinel for IO-based infinite scroll */}
+            <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
+          </div>
         </div>
       )}
 
@@ -4515,7 +4555,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 autoComplete="off"
                 autoCorrect="on"
                 autoCapitalize="on"
-                className={`flex-1 mt-2  bg-transparent md:h-[4rem] h-[3rem] text-white placeholder-white/50 outline-none md:text-[15px] text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'
+                className={`flex-1 mt-2  bg-transparent md:h-[4rem] h-[3rem] text-white placeholder-white/50 outline-none md:text-[15px] text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}
                   }`}
                 rows={1}
                 style={{
@@ -4556,6 +4596,24 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </svg>
                     </button>
                     <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                  </div>
+                )}
+                {/* Enhance Prompt Button */}
+                {prompt.trim() && (
+                  <div className="relative group ml-1">
+                    <button
+                      onClick={handleEnhancePrompt}
+                      disabled={isEnhancing}
+                      className={`md:px-2 px-1.5 md:py-1.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white md:text-sm text-[11px] font-medium transition-colors duration-200 flex items-center gap-1.5 ${isEnhancing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      aria-label="Enhance prompt"
+                    >
+                      {isEnhancing ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Sparkles size={14} className="text-yellow-300" />
+                      )}
+                    </button>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Enhance Prompt</div>
                   </div>
                 )}
                 <div className="flex items-center gap-1 h-[40px]">
@@ -4728,10 +4786,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                   )}
 
                   {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01 which have separate handlers) */}
-                  {currentModelCapabilities.supportsImageToVideo && 
-                   !selectedModel.includes("MiniMax") && 
-                   selectedModel !== "I2V-01-Director" && 
-                   selectedModel !== "S2V-01" && (
+                  {currentModelCapabilities.supportsImageToVideo &&
+                    !selectedModel.includes("MiniMax") &&
+                    selectedModel !== "I2V-01-Director" &&
+                    selectedModel !== "S2V-01" && (
                       <div className="relative">
                         <button
                           className="md:p-2  pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -4750,25 +4808,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                     )}
 
                   {/* MiniMax/I2V-01-Director Image Uploads - Show when model requires first frame */}
-                  {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") && 
+                  {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") &&
                     (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
-                    <div className="relative">
-                      <button
-                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                        onClick={() => {
-                          setUploadModalType('image');
-                          setUploadModalTarget('first_frame');
-                          setIsUploadModalOpen(true);
-                        }}
-                      >
-                        <div className="relative">
-                          <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
-                          <div className={newLocal}> First Frame </div>
-                        </div>
-                      </button>
+                      <div className="relative">
+                        <button
+                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          onClick={() => {
+                            setUploadModalType('image');
+                            setUploadModalTarget('first_frame');
+                            setIsUploadModalOpen(true);
+                          }}
+                        >
+                          <div className="relative">
+                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
+                            <div className={newLocal}> First Frame </div>
+                          </div>
+                        </button>
 
-                      {/* Model Requirements Helper */}
-                      {/* <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
+                        {/* Model Requirements Helper */}
+                        {/* <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
                     <div className="text-xs text-white/80 mb-2 font-medium">Model Requirements:</div>
                     {selectedModel === "I2V-01-Director" && (
                       <div className="text-xs text-white/60">• Requires first frame image</div>
@@ -4780,44 +4838,44 @@ const InputBox = (props: InputBoxProps = {}) => {
                       <div className="text-xs text-white/60">• First frame image is optional</div>
                     )}
                   </div> */}
-                    </div>
-                  )}
+                      </div>
+                    )}
 
                   {/* Arrow icon between first and last frame uploads */}
-                  {selectedModel === "MiniMax-Hailuo-02" && 
-                   (selectedResolution === "768P" || selectedResolution === "1080P") &&
-                   currentModelCapabilities.supportsImageToVideo && (
-                    <div className="flex items-center justify-center">
-                      <Image
-                        src="/icons/arrow-right-left.svg"
-                        alt="Arrow"
-                        width={16}
-                        height={16}
-                        className="opacity-80 mr-1 -ml-1  "
-                      />
-                    </div>
-                  )}
+                  {selectedModel === "MiniMax-Hailuo-02" &&
+                    (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                    currentModelCapabilities.supportsImageToVideo && (
+                      <div className="flex items-center justify-center">
+                        <Image
+                          src="/icons/arrow-right-left.svg"
+                          alt="Arrow"
+                          width={16}
+                          height={16}
+                          className="opacity-80 mr-1 -ml-1  "
+                        />
+                      </div>
+                    )}
 
                   {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) */}
-                  {selectedModel === "MiniMax-Hailuo-02" && 
-                   (selectedResolution === "768P" || selectedResolution === "1080P") &&
-                   currentModelCapabilities.supportsImageToVideo && (
-                    <div className="relative ">
-                      <button
-                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                        onClick={() => {
-                          setUploadModalType('image');
-                          setUploadModalTarget('last_frame');
-                          setIsUploadModalOpen(true);
-                        }}
-                      >
-                        <div className="relative">
-                          <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${lastFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> Last Frame (optional)</div>
-                        </div>
-                      </button>
-                    </div>
-                  )}
+                  {selectedModel === "MiniMax-Hailuo-02" &&
+                    (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                    currentModelCapabilities.supportsImageToVideo && (
+                      <div className="relative ">
+                        <button
+                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          onClick={() => {
+                            setUploadModalType('image');
+                            setUploadModalTarget('last_frame');
+                            setIsUploadModalOpen(true);
+                          }}
+                        >
+                          <div className="relative">
+                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${lastFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> Last Frame (optional)</div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
 
                   {/* Video Upload (for video-to-video models) */}
                   {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
@@ -4972,7 +5030,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       // Handle blob URLs directly, otherwise use proxy
                       const isBlob = uploadedVideo.startsWith('blob:') || uploadedVideo.startsWith('data:');
                       const videoSrc = isBlob ? uploadedVideo : toFrontendProxyMediaUrl(uploadedVideo);
-                      
+
                       return (
                         <video
                           src={videoSrc}
@@ -5078,22 +5136,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.includes('ltx2') ||
                   (selectedModel.includes("veo3.1") && !(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1"))) ||
                   (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1"))) && (
-                  <button
-                    onClick={() => setGenerateAudio(v => !v)}
-                    className={`group md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative flex-shrink-0 ${
-                      generateAudio 
-                        ? 'bg-transparent text-white ' 
+                    <button
+                      onClick={() => setGenerateAudio(v => !v)}
+                      className={`group md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative flex-shrink-0 ${generateAudio
+                        ? 'bg-transparent text-white '
                         : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                    }`}
-                  >
-                    <div className="relative">
-                      {generateAudio ? <Volume2 className="w-4 h-4 md:w-5 md:h-5" /> : <VolumeX className="w-4 h-4 md:w-5 md:h-5" />}
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                        {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                        }`}
+                    >
+                      <div className="relative">
+                        {generateAudio ? <Volume2 className="w-4 h-4 md:w-5 md:h-5" /> : <VolumeX className="w-4 h-4 md:w-5 md:h-5" />}
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                )}
+                    </button>
+                  )}
                 {/* Audio upload button for WAN 2.5 models (mobile only) */}
                 {selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2") && (
                   <div className="relative flex-shrink-0">
@@ -5154,412 +5211,344 @@ const InputBox = (props: InputBoxProps = {}) => {
             <div className="hidden md:flex flex-col gap-3 flex-wrap">
               {/* Model selector */}
               <VideoModelsDropdown
-                  selectedModel={selectedModel}
-                  onModelChange={handleModelChange}
-                  generationMode={generationMode}
-                  selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
-                  selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
-                  activeFeature={activeFeature}
-                  onCloseOtherDropdowns={() => {
-                    // Close frame size dropdown
-                    setCloseFrameSizeDropdown(true);
-                    setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                    // Close duration dropdown
-                    setCloseDurationDropdown(true);
-                    setTimeout(() => setCloseDurationDropdown(false), 0);
-                  }}
-                  onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
-                />
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
+                generationMode={generationMode}
+                selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
+                selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
+                activeFeature={activeFeature}
+                onCloseOtherDropdowns={() => {
+                  // Close frame size dropdown
+                  setCloseFrameSizeDropdown(true);
+                  setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                  // Close duration dropdown
+                  setCloseDurationDropdown(true);
+                  setTimeout(() => setCloseDurationDropdown(false), 0);
+                }}
+                onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
+              />
 
 
-                {/* Dynamic Controls Based on Model Capabilities */}
-                {(() => {
-                  // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
-                  // MUST BE FIRST CHECK to prevent other controls from showing
-                  const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" || 
-                                              (activeFeature === 'Animate' && selectedModel && 
-                                               (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
-                  
-                  if (isWanAnimateReplace) {
-                    return (
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-row gap-2 flex-wrap">
-                          {/* Resolution Dropdown - 480 or 720 ONLY */}
-                          <div className="relative">
-                            <select
-                              value={wanAnimateResolution}
-                              onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
-                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
-                            >
-                              <option value="720">720p</option>
-                              <option value="480">480p</option>
-                            </select>
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
-                                <path d="M6 9l6 6 6-6" />
-                              </svg>
-                            </div>
-                          </div>
-                          {/* Refert Num - 1 or 5 */}
-                          <div className="relative">
-                            <select
-                              value={wanAnimateRefertNum}
-                              onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
-                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
-                            >
-                              <option value="1">Ref Frames: 1</option>
-                              <option value="5">Ref Frames: 5</option>
-                            </select>
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
-                                <path d="M6 9l6 6 6-6" />
-                              </svg>
-                            </div>
-                          </div>
-                          {/* Seed Input (Optional) */}
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={wanAnimateSeed || ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
-                                if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
-                                  setWanAnimateSeed(val);
-                                }
-                              }}
-                              placeholder="Seed (optional)"
-                              className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
-                            />
+              {/* Dynamic Controls Based on Model Capabilities */}
+              {(() => {
+                // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
+                // MUST BE FIRST CHECK to prevent other controls from showing
+                const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" ||
+                  (activeFeature === 'Animate' && selectedModel &&
+                    (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
+
+                if (isWanAnimateReplace) {
+                  return (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-row gap-2 flex-wrap">
+                        {/* Resolution Dropdown - 480 or 720 ONLY */}
+                        <div className="relative">
+                          <select
+                            value={wanAnimateResolution}
+                            onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                          >
+                            <option value="720">720p</option>
+                            <option value="480">480p</option>
+                          </select>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
                           </div>
                         </div>
-                        <div className="flex flex-row gap-4 items-center">
-                          {/* Go Fast Checkbox */}
-                          <label className="flex items-center gap-2 cursor-pointer group">
-                            <input
-                              type="checkbox"
-                              checked={wanAnimateGoFast}
-                              onChange={(e) => setWanAnimateGoFast(e.target.checked)}
-                              className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                            />
-                            <span className="text-sm text-white/80">Go fast</span>
-                            <span className="text-xs text-white/50">(Default: true)</span>
-                          </label>
-                          {/* Merge Audio Checkbox */}
-                          <label className="flex items-center gap-2 cursor-pointer group">
-                            <input
-                              type="checkbox"
-                              checked={wanAnimateMergeAudio}
-                              onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
-                              className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
-                            />
-                            <span className="text-sm text-white/80">Merge audio</span>
-                            <span className="text-xs text-white/50">(Default: true)</span>
-                          </label>
-                        </div>
-                        {/* FPS Input with Slider */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm text-white/80">Frames per second:</label>
-                            <input
-                              type="number"
-                              min={5}
-                              max={60}
-                              value={wanAnimateFps}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                if (!isNaN(val) && val >= 5 && val <= 60) {
-                                  setWanAnimateFps(val);
-                                }
-                              }}
-                              className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
-                            />
-                            <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                        {/* Refert Num - 1 or 5 */}
+                        <div className="relative">
+                          <select
+                            value={wanAnimateRefertNum}
+                            onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
+                          >
+                            <option value="1">Ref Frames: 1</option>
+                            <option value="5">Ref Frames: 5</option>
+                          </select>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
                           </div>
+                        </div>
+                        {/* Seed Input (Optional) */}
+                        <div className="relative">
                           <input
-                            type="range"
-                            min={5}
-                            max={60}
-                            value={wanAnimateFps}
-                            onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
-                            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
-                            style={{
-                              background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                            type="number"
+                            value={wanAnimateSeed || ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                              if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
+                                setWanAnimateSeed(val);
+                              }
                             }}
+                            placeholder="Seed (optional)"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 placeholder-white/40 w-32"
                           />
                         </div>
                       </div>
-                    );
-                  }
-
-                  // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
-                  if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-                    return (
-                      <div className="flex flex-row gap-2">
-                        {/* Fixed Resolution Display */}
-                        <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
-                          <TvMinimalPlay className="w-4 h-4 mr-1" />
-                          720P (Fixed)
-                        </div>
-                        {/* Fixed Duration Display */}
-                        <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
-                          <Clock className="w-4 h-4 mr-1" />
-                          6s (Fixed)
-                        </div>
+                      <div className="flex flex-row gap-4 items-center">
+                        {/* Go Fast Checkbox */}
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={wanAnimateGoFast}
+                            onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                          />
+                          <span className="text-sm text-white/80">Go fast</span>
+                          <span className="text-xs text-white/50">(Default: true)</span>
+                        </label>
+                        {/* Merge Audio Checkbox */}
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={wanAnimateMergeAudio}
+                            onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
+                          />
+                          <span className="text-sm text-white/80">Merge audio</span>
+                          <span className="text-xs text-white/50">(Default: true)</span>
+                        </label>
                       </div>
-                    );
-                  }
+                      {/* FPS Input with Slider */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-white/80">Frames per second:</label>
+                          <input
+                            type="number"
+                            min={5}
+                            max={60}
+                            value={wanAnimateFps}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val) && val >= 5 && val <= 60) {
+                                setWanAnimateFps(val);
+                              }
+                            }}
+                            className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
+                          />
+                          <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={5}
+                          max={60}
+                          value={wanAnimateFps}
+                          onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                          style={{
+                            background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
 
-                  // Sora 2 Models: Full customization (check before Veo 3.1)
-                  if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Sora 2 models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
+                // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
+                if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                  return (
+                    <div className="flex flex-row gap-2">
+                      {/* Fixed Resolution Display */}
+                      <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                        <TvMinimalPlay className="w-4 h-4 mr-1" />
+                        720P (Fixed)
+                      </div>
+                      {/* Fixed Duration Display */}
+                      <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                        <Clock className="w-4 h-4 mr-1" />
+                        6s (Fixed)
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Sora 2 Models: Full customization (check before Veo 3.1)
+                if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for Sora 2 models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Use unified ResolutionDropdown for Sora 2 */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {/* Duration - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                        <VideoDurationDropdown
+                          selectedDuration={duration}
+                          onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                        {/* Resolution - Use unified ResolutionDropdown for Sora 2 */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={selectedQuality}
-                          onResolutionChange={setSelectedQuality}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Audio toggle for Sora 2 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                            generateAudio 
-                              ? 'bg-transparent text-white ' 
-                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                      )}
+                      {/* Audio toggle for Sora 2 */}
+                      <button
+                        onClick={() => setGenerateAudio(v => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
                           }`}
-                        >
-                          <div className="relative">
-                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                            </div>
+                      >
+                        <div className="relative">
+                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
                           </div>
-                        </button>
-                      </div>
-                    );
-                  }
+                        </div>
+                      </button>
+                    </div>
+                  );
+                }
 
-                  // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
-                  if (selectedModel.includes('ltx2')) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
-                        {generationMode === 'image_to_video' ? (
-                          <VideoFrameSizeDropdown
-                            selectedFrameSize={frameSize}
-                            onFrameSizeChange={setFrameSize}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                              setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                          />
-                        ) : (
-                          <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
-                            16:9 (Fixed)
-                          </div>
-                        )}
-                        {/* Resolution - LTX V2 supports 1080p/1440p/2160p */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
-                          onResolutionChange={setSelectedResolution as any}
-                        />
-                        {/* Duration - 6/8/10s */}
-                        <VideoDurationDropdown
-                          selectedDuration={duration}
-                          onDurationChange={setDuration}
+                // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
+                if (selectedModel.includes('ltx2')) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
+                      {generationMode === 'image_to_video' ? (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                            setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                         />
-                        {/* FPS selector for LTX V2 */}
-                        <div className="relative">
-                          <button
-                            onClick={() => {/* simple toggle between 25 and 50 */ setFps(prev => prev === 25 ? 50 : 25); }}
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent  text-white"
-                          >
-                            FPS: {fps}
-                          </button>
+                      ) : (
+                        <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+                          16:9 (Fixed)
                         </div>
-                        {/* Audio toggle for LTX V2 */}
+                      )}
+                      {/* Resolution - LTX V2 supports 1080p/1440p/2160p */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
+                        onResolutionChange={setSelectedResolution as any}
+                      />
+                      {/* Duration - 6/8/10s */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* FPS selector for LTX V2 */}
+                      <div className="relative">
                         <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                            generateAudio 
-                              ? 'bg-transparent text-white ' 
-                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                          onClick={() => {/* simple toggle between 25 and 50 */ setFps(prev => prev === 25 ? 50 : 25); }}
+                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent  text-white"
                         >
-                          <div className="relative">
-                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                            </div>
-                          </div>
+                          FPS: {fps}
                         </button>
                       </div>
-                    );
-                  }
+                      {/* Audio toggle for LTX V2 */}
+                      <button
+                        onClick={() => setGenerateAudio(v => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
+                      >
+                        <div className="relative">
+                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                }
 
-                  // Veo 3.1 Models: Full customization (check before Veo3)
-                  if (selectedModel.includes("veo3.1")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Veo 3.1 models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
+                // Veo 3.1 Models: Full customization (check before Veo3)
+                if (selectedModel.includes("veo3.1")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for Veo 3.1 models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Veo 3.1 uses 720p/1080p */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {/* Duration - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                        <VideoDurationDropdown
+                          selectedDuration={duration}
+                          onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                        {/* Resolution - Veo 3.1 uses 720p/1080p */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={selectedQuality}
-                          onResolutionChange={setSelectedQuality}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Audio toggle for Veo 3.1 - Hide in Lipsync feature */}
-                        {!(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1")) && (
-                          <button
-                            onClick={() => setGenerateAudio(v => !v)}
-                            className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                              generateAudio 
-                                ? 'bg-transparent text-white ' 
-                                : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                      )}
+                      {/* Audio toggle for Veo 3.1 - Hide in Lipsync feature */}
+                      {!(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1")) && (
+                        <button
+                          onClick={() => setGenerateAudio(v => !v)}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                            ? 'bg-transparent text-white '
+                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
                             }`}
-                          >
-                            <div className="relative">
-                              {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                                {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                              </div>
-                            </div>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  // Veo3 Models: Full customization (check after Veo 3.1)
-                  if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Veo3 models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Resolution - Veo3 uses 720p/1080p */}
-                        <ResolutionDropdown
-                          selectedModel={selectedModel}
-                          selectedResolution={selectedQuality}
-                          onResolutionChange={setSelectedQuality}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Audio toggle for Veo 3 */}
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                            generateAudio 
-                              ? 'bg-transparent text-white ' 
-                              : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
                         >
                           <div className="relative">
                             {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
@@ -5568,49 +5557,39 @@ const InputBox = (props: InputBoxProps = {}) => {
                             </div>
                           </div>
                         </button>
-                      </div>
-                    );
-                  }
+                      )}
+                    </div>
+                  );
+                }
 
-                  // Kling Models: Full customization
-                  if (selectedModel.startsWith('kling-')) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Kling models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Mode - Only for Kling v2.1 base (standard/pro), not master variant */}
-                        {selectedModel.includes('kling-v2.1') && !selectedModel.includes('master') && (
-                          <KlingModeDropdown
-                            value={klingMode}
-                            onChange={setKlingMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                              // Close duration dropdown
-                              setCloseDurationDropdown(true);
-                              setTimeout(() => setCloseDurationDropdown(false), 0);
-                            }}
-                          />
-                        )}
-                        {/* Duration - Always shown for Kling models */}
+                // Veo3 Models: Full customization (check after Veo 3.1)
+                if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for Veo3 models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - Veo3 uses 720p/1080p */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {/* Duration - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -5626,109 +5605,51 @@ const InputBox = (props: InputBoxProps = {}) => {
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                      </div>
-                    );
-                  }
-
-                  // WAN 2.5 Models: Full customization (exclude wan-2.2-animate-replace)
-                  if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for WAN models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Duration - Always shown for WAN models */}
-                        <VideoDurationDropdown
-                          selectedDuration={duration}
-                          onDurationChange={setDuration}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                        />
-                        {/* Audio Upload - Only for WAN models */}
+                      )}
+                      {/* Audio toggle for Veo 3 */}
+                      <button
+                        onClick={() => setGenerateAudio(v => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
+                      >
                         <div className="relative">
-                          <input
-                            type="file"
-                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
-                            onChange={handleAudioUpload}
-                            className="hidden"
-                            id="audio-upload-wan"
-                          />
-                          <label
-                            htmlFor="audio-upload-wan"
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
-                          >
-                            <Music className="w-4 h-4" />
-                            {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
-                          </label>
-                          {uploadedAudio && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setUploadedAudio("");
-                                toast.success('Audio file removed');
-                              }}
-                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
-                              title="Remove audio"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
+                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
+                      </button>
+                    </div>
+                  );
+                }
 
-                  // Seedance Models: Full customization
-                  if (selectedModel.includes("seedance")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Only shown for T2V (ignored for I2V) */}
-                        {generationMode === "text_to_video" && (
-                          <VideoFrameSizeDropdown
-                            selectedFrameSize={frameSize}
-                            onFrameSizeChange={setFrameSize}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close duration dropdown
-                              setCloseDurationDropdown(true);
-                              setTimeout(() => setCloseDurationDropdown(false), 0);
-                              // Close quality dropdown (for Seedance)
-                              // QualityDropdown handles its own state
-                            }}
-                            onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                          />
-                        )}
-                        {/* Quality - Always shown for Seedance models */}
-                        <QualityDropdown
-                          selectedModel={selectedModel}
-                          selectedQuality={seedanceResolution}
-                          onQualityChange={setSeedanceResolution}
+                // Kling Models: Full customization
+                if (selectedModel.startsWith('kling-')) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for Kling models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Mode - Only for Kling v2.1 base (standard/pro), not master variant */}
+                      {selectedModel.includes('kling-v2.1') && !selectedModel.includes('master') && (
+                        <KlingModeDropdown
+                          value={klingMode}
+                          onChange={setKlingMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
@@ -5740,71 +5661,248 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseDurationDropdown(true);
                             setTimeout(() => setCloseDurationDropdown(false), 0);
                           }}
-                          onCloseThisDropdown={undefined}
                         />
-                        {/* Duration - Always shown for Seedance models */}
-                        <VideoDurationDropdown
-                          selectedDuration={duration}
-                          onDurationChange={setDuration}
+                      )}
+                      {/* Duration - Always shown for Kling models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
+
+                // WAN 2.5 Models: Full customization (exclude wan-2.2-animate-replace)
+                if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for WAN models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Duration - Always shown for WAN models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* Audio Upload - Only for WAN models */}
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                          onChange={handleAudioUpload}
+                          className="hidden"
+                          id="audio-upload-wan"
+                        />
+                        <label
+                          htmlFor="audio-upload-wan"
+                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                        >
+                          <Music className="w-4 h-4" />
+                          {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
+                        </label>
+                        {uploadedAudio && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadedAudio("");
+                              toast.success('Audio file removed');
+                            }}
+                            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                            title="Remove audio"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Seedance Models: Full customization
+                if (selectedModel.includes("seedance")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Only shown for T2V (ignored for I2V) */}
+                      {generationMode === "text_to_video" && (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
                             // Close quality dropdown (for Seedance)
                             // QualityDropdown handles its own state
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                        />
-                      </div>
-                    );
-                  }
-
-                  // PixVerse Models: Full customization
-                  if (selectedModel.includes("pixverse")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                            // Close quality dropdown
-                            // QualityDropdown handles its own state
-                          }}
                           onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                         />
-                        {/* Quality - Always shown for PixVerse models */}
-                        <QualityDropdown
-                          selectedModel={selectedModel}
-                          selectedQuality={pixverseQuality}
-                          onQualityChange={setPixverseQuality}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={undefined}
-                        />
-                        {/* Duration - Always shown for PixVerse models */}
+                      )}
+                      {/* Quality - Always shown for Seedance models */}
+                      <QualityDropdown
+                        selectedModel={selectedModel}
+                        selectedQuality={seedanceResolution}
+                        onQualityChange={setSeedanceResolution}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={undefined}
+                      />
+                      {/* Duration - Always shown for Seedance models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close quality dropdown (for Seedance)
+                          // QualityDropdown handles its own state
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
+
+                // PixVerse Models: Full customization
+                if (selectedModel.includes("pixverse")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                          // Close quality dropdown
+                          // QualityDropdown handles its own state
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Quality - Always shown for PixVerse models */}
+                      <QualityDropdown
+                        selectedModel={selectedModel}
+                        selectedQuality={pixverseQuality}
+                        onQualityChange={setPixverseQuality}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={undefined}
+                      />
+                      {/* Duration - Always shown for PixVerse models */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          // Close quality dropdown
+                          // QualityDropdown handles its own state
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
+
+                // Runway Models: Full customization (exclude wan-2.2-animate-replace)
+                if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) &&
+                  selectedModel !== "wan-2.2-animate-replace" &&
+                  !selectedModel.includes("wan-2.2-animate")) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Always shown for Runway models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Duration - For image→video and text→video modes */}
+                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -5817,113 +5915,68 @@ const InputBox = (props: InputBoxProps = {}) => {
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
                             setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            // Close quality dropdown
-                            // QualityDropdown handles its own state
                           }}
                           onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                         />
-                      </div>
-                    );
-                  }
+                      )}
+                    </div>
+                  );
+                }
 
-                  // Runway Models: Full customization (exclude wan-2.2-animate-replace)
-                  if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) && 
-                      selectedModel !== "wan-2.2-animate-replace" && 
-                      !selectedModel.includes("wan-2.2-animate")) {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Aspect Ratio - Always shown for Runway models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Duration - For image→video and text→video modes */}
-                        {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
-                          <VideoDurationDropdown
-                            selectedDuration={duration}
-                            onDurationChange={setDuration}
-                            selectedModel={selectedModel}
-                            generationMode={generationMode}
-                            onCloseOtherDropdowns={() => {
-                              // Close models dropdown
-                              setCloseModelsDropdown(true);
-                              setTimeout(() => setCloseModelsDropdown(false), 0);
-                              // Close frame size dropdown
-                              setCloseFrameSizeDropdown(true);
-                              setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            }}
-                            onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                          />
-                        )}
-                      </div>
-                    );
-                  }
+                // MiniMax & Director Models
+                if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Resolution - For MiniMax models */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={selectedResolution}
+                        onFrameSizeChange={setSelectedResolution}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        miniMaxDuration={selectedMiniMaxDuration}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close duration dropdown
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Duration - For MiniMax models */}
+                      <VideoDurationDropdown
+                        selectedDuration={selectedMiniMaxDuration}
+                        onDurationChange={setSelectedMiniMaxDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          // Close models dropdown
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          // Close frame size dropdown
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                    </div>
+                  );
+                }
 
-                  // MiniMax & Director Models
-                  if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-                    return (
-                      <div className="flex flex-row gap-2 flex-wrap">
-                        {/* Resolution - For MiniMax models */}
-                        <VideoFrameSizeDropdown
-                          selectedFrameSize={selectedResolution}
-                          onFrameSizeChange={setSelectedResolution}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          miniMaxDuration={selectedMiniMaxDuration}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close duration dropdown
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
-                        />
-                        {/* Duration - For MiniMax models */}
-                        <VideoDurationDropdown
-                          selectedDuration={selectedMiniMaxDuration}
-                          onDurationChange={setSelectedMiniMaxDuration}
-                          selectedModel={selectedModel}
-                          generationMode={generationMode}
-                          onCloseOtherDropdowns={() => {
-                            // Close models dropdown
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
-                        />
-                      </div>
-                    );
-                  }
-
-                  return null;
-                })()}
-              </div>
+                return null;
+              })()}
+            </div>
 
             {/* Mobile: Second row - All other dropdowns */}
             <div className="flex md:hidden flex-wrap gap-2 w-full">
               {/* Use the same dynamic controls logic as desktop - extract it to avoid duplication */}
               {(() => {
                 // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
-                const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" || 
-                                            (activeFeature === 'Animate' && selectedModel && 
-                                             (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
-                
+                const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" ||
+                  (activeFeature === 'Animate' && selectedModel &&
+                    (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
+
                 if (isWanAnimateReplace) {
                   return (
                     <div className="flex flex-col gap-3 w-full">
@@ -6057,11 +6110,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {/* Audio toggle for LTX V2 */}
                       <button
                         onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio 
-                            ? 'bg-transparent text-white ' 
-                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                        }`}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                       >
                         <div className="relative">
                           {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
@@ -6153,11 +6205,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {/* Audio toggle for Veo 3 */}
                       <button
                         onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio 
-                            ? 'bg-transparent text-white ' 
-                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                        }`}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
                       >
                         <div className="relative">
                           {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
@@ -6346,9 +6397,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
-                if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) && 
-                    selectedModel !== "wan-2.2-animate-replace" && 
-                    !selectedModel.includes("wan-2.2-animate")) {
+                if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) &&
+                  selectedModel !== "wan-2.2-animate-replace" &&
+                  !selectedModel.includes("wan-2.2-animate")) {
                   return (
                     <div className="flex flex-row gap-2 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -6484,10 +6535,10 @@ const InputBox = (props: InputBoxProps = {}) => {
         // Always create a new array reference to ensure React detects changes
         // When modal is open, always use libraryImageEntries (even if empty initially)
         // This ensures we show the fetched data once it loads
-        const modalHistoryEntries = isUploadModalOpen 
-          ? [...libraryImageEntries] 
+        const modalHistoryEntries = isUploadModalOpen
+          ? [...libraryImageEntries]
           : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
-        
+
         // Log what's being passed to the modal (only when modal is open to avoid spam)
         if (isUploadModalOpen && libraryImageEntries.length > 0) {
           console.log('[VideoPage] UploadModal historyEntries prop:', {
@@ -6504,7 +6555,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             }))
           });
         }
-        
+
         return (
           <UploadModal
             isOpen={isUploadModalOpen}
@@ -6513,7 +6564,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             remainingSlots={uploadModalType === 'image' ?
               // For WAN 2.2 Animate Replace character image, only 1 slot
               ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
-              (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
+                (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
               (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
             }
           />
