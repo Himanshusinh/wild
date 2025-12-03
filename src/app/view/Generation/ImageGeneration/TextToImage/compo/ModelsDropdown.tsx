@@ -22,8 +22,9 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   let models = [
-    { name: "Flux 2 Pro", value: "flux-2-pro" },
-    { name: "Seedream v4 4k", value: "seedream-v4" },
+    { name: 'Flux 2 Pro', value: 'flux-2-pro' },
+    { name: 'Seedream v4 4k', value: 'seedream-v4' },
+    { name: 'Seedream 4.5', value: 'seedream-4.5' },
 
     { name: "Flux Kontext Pro", value: "flux-kontext-pro" },
     { name: "Flux Kontext Max", value: "flux-kontext-max" },
@@ -78,6 +79,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'gemini-25-flash-image' ||
       m.value === 'google/nano-banana-pro' ||
       m.value === 'seedream-v4' ||
+      m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro'
     );
   }

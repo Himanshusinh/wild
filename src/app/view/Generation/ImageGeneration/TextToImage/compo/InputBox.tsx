@@ -289,6 +289,7 @@ const InputBox = () => {
           if (!m) return m;
           // Normalize known backend → UI mappings
           if (m === 'bytedance/seedream-4') return 'seedream-v4';
+          if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
           return m;
         };
         dispatch(setSelectedModel(mapIncomingModel(mdl)));
@@ -407,7 +408,7 @@ const InputBox = () => {
       if (entry.model) {
         // Map backend model ids to UI dropdown ids where needed
         const m = String(entry.model);
-        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : (m === 'bytedance/seedream-4.5' ? 'seedream-4.5' : m);
         qs.set('model', mapped);
       }
       if (entry.frameSize) qs.set('frame', String(entry.frameSize));
@@ -876,6 +877,7 @@ const InputBox = () => {
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
+  // Seedream 4.5-specific UI state (2K only, limited aspect ratios)
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
   const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
@@ -901,13 +903,20 @@ const InputBox = () => {
       const filtered = allEntries.filter((entry: any) => {
         const normalizedType = normalize(entry.generationType);
         const normalizedModel = normalize(entry.model);
+        const isSeedream = normalizedModel.includes('seedream');
+        const isTextToImage = normalizedType === 'text-to-image';
 
-        // Hide Seedream generations that come from non-text-to-image features (e.g. Edit Image),
-        // but keep Seedream text-to-image generations visible on the Image Generation page.
-        if (normalizedModel.includes('seedream') && normalizedType !== 'text-to-image') {
+        // Explicitly show Seedream text-to-image generations (from Image Generation page)
+        if (isSeedream && isTextToImage) {
+          return true;
+        }
+
+        // Hide Seedream generations from other features (e.g. Edit Image, upscale, etc.)
+        if (isSeedream && !isTextToImage) {
           return false;
         }
 
+        // For non-Seedream entries, apply normal type filtering
         const isVectorize =
           normalizedType === 'vectorize' ||
           normalizedType === 'image-vectorize' ||
@@ -2508,6 +2517,81 @@ const InputBox = () => {
           }
           const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream');
           toast.error(errorMessage, { duration: 5000 });
+          return;
+        }
+      } else if (selectedModel === 'seedream-4.5') {
+        // Replicate Seedream 4.5 (beta: 2K only, limited aspect ratios, up to 14 image_input)
+        try {
+          // Build Seedream 4.5 payload per schema
+          const seedream45AllowedAspect = new Set(['match_input_image', '1:1']);
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const payload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            model: 'bytedance/seedream-4.5',
+            size: '2K', // Only 2K supported in beta
+            aspect_ratio: seedream45AllowedAspect.has(frameSize) ? frameSize : 'match_input_image',
+            sequential_image_generation: 'disabled',
+            max_images: Math.min(imageCount, 15), // Up to 15 images
+            isPublic,
+          };
+          // Filter out SVG files - Seedream doesn't support SVG as input
+          if (uploadedImages && uploadedImages.length > 0) {
+            const validImages = uploadedImages
+              .slice(0, 14) // Up to 14 images for seedream-4.5
+              .map((u: string) => toAbsoluteFromProxy(u))
+              .filter((url: string) => {
+                // Exclude SVG files (vectorized images)
+                const lowerUrl = url.toLowerCase();
+                return !lowerUrl.includes('.svg') && !lowerUrl.includes('vectorized');
+              });
+            if (validImages.length > 0) {
+              payload.image_input = validImages;
+            }
+          }
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch { }
+
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
