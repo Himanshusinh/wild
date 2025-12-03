@@ -19,12 +19,6 @@ export const bflGenerate = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      // Validate prompt for profanity before sending to backend
-      const { validatePrompt } = await import('@/utils/profanityFilter');
-      const profanityCheck = validatePrompt(payload.prompt);
-      if (!profanityCheck.isValid) {
-        return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-      }
       // Normalize isPublic: if caller didn't supply it, resolve from /me policy like Nano Banana flow
       try {
         if (typeof (payload as any)?.isPublic !== 'boolean') {
@@ -48,14 +42,6 @@ export const runwayGenerate = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      // Validate promptText for profanity before sending to backend
-      if (body.promptText && typeof body.promptText === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(body.promptText);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
       try {
         if (typeof body?.isPublic !== 'boolean') {
           const mod = await import('@/lib/publicFlag');
@@ -88,14 +74,6 @@ export const runwayVideo = createAsyncThunk(
   'generations/runwayVideo',
   async (body: any, { rejectWithValue }) => {
     try {
-      // Validate promptText for profanity before sending to backend
-      if (body.promptText && typeof body.promptText === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(body.promptText);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
       const api = getApiClient();
       const res = await api.post('/api/runway/video', body);
       return res.data?.data || res.data;
@@ -109,14 +87,6 @@ export const minimaxGenerate = createAsyncThunk(
   'generations/minimaxGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
-      // Validate prompt for profanity before sending to backend
-      if (payload.prompt && typeof payload.prompt === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.prompt);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
       try {
         if (typeof payload?.isPublic !== 'boolean') {
           const mod = await import('@/lib/publicFlag');
@@ -136,21 +106,6 @@ export const minimaxMusic = createAsyncThunk(
   'generations/minimaxMusic',
   async (payload: any, { rejectWithValue }) => {
     try {
-      // Validate prompt and lyrics for profanity before sending to backend
-      if (payload.prompt && typeof payload.prompt === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.prompt);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
-      if (payload.lyrics && typeof payload.lyrics === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.lyrics);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your lyrics contain inappropriate language. Please revise and try again.');
-        }
-      }
       const api = getApiClient();
       const res = await api.post('/api/minimax/music', payload);
       return res.data?.data || res.data;
@@ -178,21 +133,6 @@ export const falGenerate = createAsyncThunk(
   'generations/falGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
-      // Validate prompt and negative_prompt for profanity before sending to backend
-      if (payload.prompt && typeof payload.prompt === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.prompt);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
-      if (payload.negative_prompt && typeof payload.negative_prompt === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.negative_prompt);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your negative prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
       try {
         if (typeof payload?.isPublic !== 'boolean') {
           const mod = await import('@/lib/publicFlag');
@@ -238,21 +178,6 @@ export const replicateGenerate = createAsyncThunk(
   'generations/replicateGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
-      // Validate prompt and negative_prompt for profanity before sending to backend
-      if (payload.prompt && typeof payload.prompt === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.prompt);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
-      if (payload.negative_prompt && typeof payload.negative_prompt === 'string') {
-        const { validatePrompt } = await import('@/utils/profanityFilter');
-        const profanityCheck = validatePrompt(payload.negative_prompt);
-        if (!profanityCheck.isValid) {
-          return rejectWithValue(profanityCheck.error || 'Your negative prompt contains inappropriate language. Please revise and try again.');
-        }
-      }
       try {
         if (typeof payload?.isPublic !== 'boolean') {
           const mod = await import('@/lib/publicFlag');
