@@ -156,6 +156,12 @@ export const getImageGenerationCreditCost = (
   style?: string,
   resolution?: string
 ): number => {
+  // Special case: z-image-turbo (new-turbo-model) is free for launch offer
+  if (frontendModel === 'new-turbo-model') {
+    console.log('getImageGenerationCreditCost: new-turbo-model is free (0 credits)');
+    return 0;
+  }
+
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== 'image') {
     console.warn(`Unknown or invalid image model: ${frontendModel}`);

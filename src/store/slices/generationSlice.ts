@@ -43,7 +43,7 @@ interface GenerationState {
 
 const initialState: GenerationState = {
   prompt: '',
-  selectedModel: 'gemini-25-flash-image',
+  selectedModel: 'new-turbo-model', // Default to Infinite (z-image-turbo) - free unlimited
   imageCount: 1,
   frameSize: '1:1',
   style: 'none',

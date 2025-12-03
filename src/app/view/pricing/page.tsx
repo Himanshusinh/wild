@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -28,30 +28,92 @@ import {
   Cpu,
   PenTool
 } from 'lucide-react';
+import FooterNew from '../core/FooterNew';
 
 const PricingPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [trialStartDate, setTrialStartDate] = useState<Date | null>(null);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
 
   // Typewriter state for teaser text
   const typewriterSource = 'Full pricing plans coming soon';
   const [typewriterIndex, setTypewriterIndex] = useState<number>(0);
   const [showCursor, setShowCursor] = useState<boolean>(true);
 
-  // Check authentication status
+  // Check authentication status and fetch plan
   useEffect(() => {
-    try {
-      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      if (userStr) {
-        const u = JSON.parse(userStr);
-        setIsAuthenticated(!!u?.uid);
-      } else {
+    const checkAuthAndFetchPlan = async () => {
+      try {
+        const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          setIsAuthenticated(!!u?.uid);
+          
+          // Fetch user plan and trial info
+          if (u?.uid) {
+            try {
+              const { getApiClient } = await import('@/lib/axiosInstance');
+              const api = getApiClient();
+              const response = await api.get('/api/credits/me');
+              const creditsData = response.data?.data || response.data;
+              
+              if (creditsData) {
+                const planCode = creditsData.planCode || 'FREE';
+                setUserPlan(planCode);
+                
+                // Calculate days remaining if on launch plan
+                if (planCode === 'LAUNCH_4000_FIXED' && creditsData.launchTrialStartDate) {
+                  let startDate: Date;
+                  
+                  // Handle different Firestore timestamp formats
+                  if (creditsData.launchTrialStartDate.toDate) {
+                    // Firestore Timestamp object
+                    startDate = creditsData.launchTrialStartDate.toDate();
+                  } else if (creditsData.launchTrialStartDate._seconds) {
+                    // Firestore timestamp with _seconds and _nanoseconds
+                    startDate = new Date(creditsData.launchTrialStartDate._seconds * 1000 + (creditsData.launchTrialStartDate._nanoseconds || 0) / 1000000);
+                  } else if (typeof creditsData.launchTrialStartDate === 'string') {
+                    // ISO string
+                    startDate = new Date(creditsData.launchTrialStartDate);
+                  } else if (typeof creditsData.launchTrialStartDate === 'number') {
+                    // Unix timestamp in seconds
+                    startDate = new Date(creditsData.launchTrialStartDate * 1000);
+                  } else {
+                    // Try to parse as Date
+                    startDate = new Date(creditsData.launchTrialStartDate);
+                  }
+                  
+                  setTrialStartDate(startDate);
+                  
+                  // Calculate initial days remaining
+                  const now = new Date();
+                  const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const remaining = Math.max(0, 15 - daysSinceStart);
+                  setDaysRemaining(remaining);
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch plan info:', error);
+            }
+          }
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (err) {
         setIsAuthenticated(false);
       }
-    } catch (err) {
-      setIsAuthenticated(false);
-    }
+    };
+    
+    checkAuthAndFetchPlan();
   }, []);
 
   // State for the Generations Calculator
@@ -75,6 +137,53 @@ const PricingPage: React.FC = () => {
     }, 450);
     return () => clearInterval(cursorInterval);
   }, []);
+
+  // Countdown timer for trial end
+  useEffect(() => {
+    if (!trialStartDate) return;
+
+    // Launch plan cutoff date: December 18, 2025 (end of day UTC)
+    // This should match the backend LAUNCH_PLAN_CUTOFF_DATE constant
+    // Default: 2025-12-18T23:59:59.999Z (end of day UTC)
+    const cutoffDate = new Date('2025-12-18T23:59:59.999Z');
+    
+    // Calculate trial end date (15 days from start)
+    const trialEndDate15Days = new Date(trialStartDate);
+    trialEndDate15Days.setDate(trialEndDate15Days.getDate() + 15);
+    
+    // Trial ends on whichever comes first: cutoff date OR 15 days from start
+    // Use <= to handle edge case where both dates are equal
+    const trialEndDate = trialEndDate15Days.getTime() <= cutoffDate.getTime() 
+      ? trialEndDate15Days 
+      : cutoffDate;
+
+    // Calculate detailed time remaining
+    const updateTimeRemaining = () => {
+      const now = new Date();
+      const diff = trialEndDate.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ days, hours, minutes, seconds });
+    };
+
+    // Initial calculation
+    updateTimeRemaining();
+
+    // Update every second
+    const interval = setInterval(updateTimeRemaining, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [trialStartDate]);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -230,9 +339,9 @@ const PricingPage: React.FC = () => {
   const calculateCount = (cost: number): string => {
     if (!cost || cost === 0) return '0';
     return Math.floor(currentCredits / cost).toLocaleString();
-  };
+    };
 
-  return (
+    return (
     <div className={`min-h-screen bg-[#07070B] text-white font-sans selection:bg-[#60a5fa] selection:text-white overflow-x-hidden ${isAuthenticated ? 'md:ml-[68px]' : ''}`}>
       {/* --- Ambient Background Effects (WildCanvas Theme) --- */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -255,21 +364,21 @@ const PricingPage: React.FC = () => {
       <div className="relative z-10  md:pt-24 pb-12 px-6 text-center animate-in fade-in duration-700 slide-in-from-bottom-4">
         <div className="inline-flex items-center gap-2 border border-[#60a5fa]/30 bg-[#60a5fa]/10 rounded-full px-3 py-1 text-[10px] uppercase tracking-widest text-[#60a5fa] mb-8 shadow-[0_0_10px_rgba(96,165,250,0.2)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse"></span>
-          Upgrade Your Workflow
+          Generate unlimited images from z image turbo
         </div>
 
         <h1 className="text-5xl md:text-7xl font-medium tracking-tight text-white mb-6 leading-[0.95]">
-          Launching Offer: <br />
+          Launching Offer<br />
           <span className="bg-gradient-to-r from-[#60a5fa] to-white bg-clip-text text-transparent">15 Days Free</span>
         </h1>
         <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
-          Get <span className="text-[#60a5fa] font-bold">2,000 daily credits</span> for 15 days. 
-          Create <span className="text-white font-semibold">120 images</span> or <span className="text-white font-semibold">10 videos</span> every day, absolutely free.
+          Get <span className="text-[#60a5fa] font-bold">4,000 credits</span>  for 15 days. 
+          Create <span className="text-white font-semibold">unlimited images &</span> <span className="text-white font-semibold">20 videos</span>, absolutely free.
         </p>
 
         {/* Billing toggle - Hidden for launch */}
         <div className="hidden">
-          <button
+                    <button
             onClick={() => setBillingCycle('monthly')}
             className={`relative px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
               billingCycle === 'monthly' ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
@@ -279,11 +388,11 @@ const PricingPage: React.FC = () => {
               <div className="absolute inset-0 bg-[#2563eb] rounded-full shadow-[0_0_20px_rgba(37,99,235,0.6)] animate-in zoom-in-95 duration-200"></div>
             )}
             <span className="relative z-10">Monthly</span>
-          </button>
+                    </button>
 
           <div className="w-px h-4 bg-white/10 mx-1"></div>
 
-          <button
+                    <button
             onClick={() => setBillingCycle('yearly')}
             className={`relative px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
               billingCycle === 'yearly' ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
@@ -294,7 +403,7 @@ const PricingPage: React.FC = () => {
             )}
             <span className="relative z-10 flex items-center gap-2">
               Annually
-              <span
+                      <span
                 className={`text-[10px] px-1.5 py-0.5 rounded border ${
                   billingCycle === 'yearly'
                     ? 'bg-white/20 text-white border-white/30'
@@ -304,7 +413,7 @@ const PricingPage: React.FC = () => {
                 -20%
               </span>
             </span>
-          </button>
+                    </button>
         </div>
 
         {/* Launching Offer Banner - 15 Days Free */}
@@ -330,23 +439,23 @@ const PricingPage: React.FC = () => {
                 <div className="flex-1 text-center md:text-left">
                   <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
                     <span className="bg-gradient-to-r from-white to-[#60a5fa] bg-clip-text text-transparent">
-                      15 Days Free
+                     Free
                     </span>
-                    <br />
-                    <span className="text-3xl md:text-4xl text-slate-300">For Everyone</span>
+                   
+                    <span className="text-xl md:text-4xl text-slate-300"> for 15 days</span>
                   </h2>
                   
                   <div className="mt-6 space-y-4">
-                    {/* Daily Credits */}
+                    {/* Fixed Credits */}
                     <div className="flex items-center justify-center md:justify-start gap-3">
                       <div className="p-2 bg-[#60a5fa]/20 rounded-lg">
                         <Zap size={20} className="text-[#60a5fa]" fill="currentColor" />
                       </div>
                       <div>
                         <div className="text-2xl md:text-3xl font-bold text-white">
-                          <span className="text-[#60a5fa]">2,000</span> Daily Credits
+                          <span className="text-[#60a5fa]">4,000</span> Credits
                         </div>
-                        <p className="text-slate-400 text-sm">Renewed every day for 15 days</p>
+                        <p className="text-slate-400 text-sm">Free for 15 days</p>
                       </div>
                     </div>
 
@@ -354,26 +463,85 @@ const PricingPage: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-6 pt-6 border-t border-white/10">
                       <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10">
                         <ImageIcon size={18} className="text-[#60a5fa]" />
-                        <span className="text-white font-semibold">120 Images</span>
-                        <span className="text-slate-500 text-sm">daily</span>
+                        <span className="text-white font-semibold">Unlimited Images</span>
                       </div>
-                      <div className="text-slate-500">OR</div>
                       <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10">
                         <Video size={18} className="text-[#60a5fa]" />
-                        <span className="text-white font-semibold">10 Videos</span>
-                        <span className="text-slate-500 text-sm">daily</span>
+                        <span className="text-white font-semibold">20 Videos</span>
                       </div>
+                    </div>
+                    <div className="mt-4 text-xs text-slate-400 text-center md:text-left">
+                    Other models available at their credit cost
                     </div>
                   </div>
                 </div>
 
                 {/* CTA Button */}
                 <div className="flex-shrink-0">
-                  <button className="group relative px-8 py-4 bg-gradient-to-r from-white to-[#60a5fa] text-black font-bold rounded-full hover:from-[#60a5fa] hover:to-[#3b82f6] hover:text-white transition-all duration-300 shadow-[0_0_30px_rgba(96,165,250,0.5)] hover:shadow-[0_0_40px_rgba(96,165,250,0.8)] transform hover:scale-105 flex items-center gap-2">
-                    <span>Start Free Trial</span>
-                    <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                  </button>
-                  <p className="text-center mt-3 text-xs text-slate-400">No credit card required</p>
+                  {isAuthenticated && userPlan === 'LAUNCH_4000_FIXED' ? (
+                    <div className="text-center">
+                      <div className="px-8 py-4 bg-gradient-to-r from-[#60a5fa]/20 to-[#3b82f6]/20 border-2 border-[#60a5fa]/40 text-white font-bold rounded-full flex items-center justify-center gap-2">
+                        <Check size={20} className="text-[#60a5fa]" />
+                        <span>You're already in free trial</span>
+                      </div>
+                      {timeRemaining === null ? (
+                        // Still calculating time remaining
+                        <div className="mt-3 h-16 flex items-center justify-center">
+                          <div className="text-xs text-slate-500">Loading...</div>
+                        </div>
+                      ) : (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
+                        // Trial is still active - show countdown
+                        <div className="mt-4 space-y-2">
+                          <p className="text-center text-xs text-slate-400 uppercase tracking-wider">
+                            Your free trial ends in
+                          </p>
+                          <div className="flex items-center justify-center gap-2">
+                            {timeRemaining.days > 0 && (
+                              <div className="flex flex-col items-center px-3 py-2 bg-[#0A0A0A] border border-[#60a5fa]/30 rounded-lg">
+                                <span className="text-2xl font-bold text-[#60a5fa] tabular-nums">
+                                  {String(timeRemaining.days).padStart(2, '0')}
+                                </span>
+                                <span className="text-[10px] text-slate-400 uppercase tracking-wider">
+                                  {timeRemaining.days === 1 ? 'Day' : 'Days'}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex flex-col items-center px-3 py-2 bg-[#0A0A0A] border border-[#60a5fa]/30 rounded-lg">
+                              <span className="text-2xl font-bold text-[#60a5fa] tabular-nums">
+                                {String(timeRemaining.hours).padStart(2, '0')}
+                              </span>
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hours</span>
+                            </div>
+                            <div className="flex flex-col items-center px-3 py-2 bg-[#0A0A0A] border border-[#60a5fa]/30 rounded-lg">
+                              <span className="text-2xl font-bold text-[#60a5fa] tabular-nums">
+                                {String(timeRemaining.minutes).padStart(2, '0')}
+                              </span>
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Minutes</span>
+                            </div>
+                            <div className="flex flex-col items-center px-3 py-2 bg-[#0A0A0A] border border-[#60a5fa]/30 rounded-lg">
+                              <span className="text-2xl font-bold text-[#60a5fa] tabular-nums">
+                                {String(timeRemaining.seconds).padStart(2, '0')}
+                              </span>
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Seconds</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // Trial has ended
+                        <p className="text-center mt-3 text-sm text-slate-400">
+                          Your free trial has ended
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <button className="group relative px-8 py-4 bg-gradient-to-r from-white to-[#60a5fa] text-black font-bold rounded-full hover:from-[#60a5fa] hover:to-[#3b82f6] hover:text-white transition-all duration-300 shadow-[0_0_30px_rgba(96,165,250,0.5)] hover:shadow-[0_0_40px_rgba(96,165,250,0.8)] transform hover:scale-105 flex items-center gap-2">
+                        <span>Start Free Trial</span>
+                        <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                      </button>
+                      <p className="text-center mt-3 text-xs text-slate-400">No credit card required</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -392,7 +560,7 @@ const PricingPage: React.FC = () => {
       <div className="relative z-10 max-w-[1400px] mx-auto px-6 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch relative">
           {/* Blur overlay with centered typewriter text */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-md rounded-3xl z-30 pointer-events-none flex items-center justify-center">
+          <div className="absolute inset-0 rounded-3xl z-30 pointer-events-none flex items-center justify-center">
             <span className="font-mono text-lg md:text-2xl lg:text-3xl tracking-wide text-[#60a5fa] font-semibold text-center px-4">
               {typewriterSource.slice(0, typewriterIndex)}
               <span className={showCursor ? 'opacity-100' : 'opacity-0'}>|</span>
@@ -526,7 +694,7 @@ const PricingPage: React.FC = () => {
       </div>
 
       {/* --- Generations Calculator --- */}
-      <div className="relative z-10 py-24 px-6 max-w-[1400px] mx-auto">
+      <div className="relative z-10  px-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-center gap-3 mb-12">
           {/* <h2 className="text-3xl font-medium text-white">Monthly Generations with</h2> */}
 
@@ -717,66 +885,7 @@ const PricingPage: React.FC = () => {
       </div> */}
 
       {/* --- Footer --- */}
-      {/* <footer className="relative z-10 border-t border-white/5 bg-[#020203] pt-20 pb-10 px-6">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="md:col-span-1">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 flex items-center justify-center bg-[#60a5fa] rounded-lg">
-                <Hexagon size={18} className="text-black fill-white/20" strokeWidth={2.5} />
-              </div>
-              <span className="text-lg font-bold tracking-tighter text-white">
-                WILD<span className="text-slate-500">MIND</span>
-              </span>
-            </div>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-              The operating system for creative intelligence. Unify text, image, and video models on a single infinite
-              canvas.
-            </p>
-            <div className="flex gap-4">
-              <Facebook size={18} className="text-slate-600 hover:text-[#60a5fa] cursor-pointer transition-colors" />
-              <Twitter size={18} className="text-slate-600 hover:text-[#60a5fa] cursor-pointer transition-colors" />
-              <Instagram size={18} className="text-slate-600 hover:text-[#60a5fa] cursor-pointer transition-colors" />
-              <Youtube size={18} className="text-slate-600 hover:text-[#60a5fa] cursor-pointer transition-colors" />
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-6">Product</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Pricing</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Enterprise</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Documentation</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Changelog</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-white mb-6">Solutions</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Generative Video</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Image Synthesis</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Voice Cloning</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">3D Assets</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-white mb-6">Company</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">About</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Careers</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Blog</li>
-              <li className="hover:text-[#60a5fa] cursor-pointer transition-colors">Contact</li>
-            </ul>
-          </div>
-        </div>
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600">
-          <div>© 2025 WildMind Inc. All rights reserved.</div>
-          <div className="flex gap-6">
-            <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
-            <span className="hover:text-slate-400 cursor-pointer">Terms of Service</span>
-            <span className="hover:text-slate-400 cursor-pointer">Cookies</span>
-          </div>
-        </div>
-      </footer> */}
+      <FooterNew/>
 
       {/* Style for custom scrollbar in calc */}
       <style>{`
@@ -795,8 +904,8 @@ const PricingPage: React.FC = () => {
           background: rgba(96, 165, 250, 0.5);
         }
       `}</style>
-    </div>
-  );
+      </div>
+    );
 };
 
 export default PricingPage;

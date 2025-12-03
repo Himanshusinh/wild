@@ -16,6 +16,7 @@ import { registerBrowserPushToken, attachForegroundMessageListener } from '@/lib
 export default function ChromeMount() {
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
+  const reduxUser = useAppSelector((state: any) => state?.auth?.user);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
@@ -34,9 +35,16 @@ export default function ChromeMount() {
     }
   }, []);
 
-  // Check authentication status
+  // Check authentication status - use both localStorage and Redux state
   useEffect(() => {
     try {
+      // Check Redux state first (more reliable)
+      if (reduxUser?.uid) {
+        setIsAuthenticated(true);
+        return;
+      }
+      
+      // Fallback to localStorage
       const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       if (userStr) {
         const u = JSON.parse(userStr);
@@ -44,14 +52,14 @@ export default function ChromeMount() {
         console.log('[ChromeMount] user loaded from localStorage, uid:', u?.uid, 'isAuthenticated:', authed);
         setIsAuthenticated(authed);
       } else {
-        console.log('[ChromeMount] no user in localStorage, treating as unauthenticated');
+        console.log('[ChromeMount] no user in localStorage or Redux, treating as unauthenticated');
         setIsAuthenticated(false);
       }
     } catch (err) {
       console.error('[ChromeMount] error reading user from localStorage', err);
       setIsAuthenticated(false);
     }
-  }, [pathname]); // Re-check when pathname changes
+  }, [pathname, reduxUser]); // Re-check when pathname or Redux user changes
 
   // Once authenticated in the browser, decide whether to show the notification permission prompt.
   useEffect(() => {
