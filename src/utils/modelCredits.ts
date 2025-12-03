@@ -9,19 +9,25 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'flux-pro-1.1-ultra': 140,    // FLUX 1.1 [pro] Ultra
   'flux-pro': 130,              // FLUX.1 [pro]
   'flux-dev': 90,               // FLUX.1 [dev]
-  'gen4_image': 180,            // Runway Gen 4 Image 1080p
-  'gen4_image_turbo': 44,       // Runway Gen 4 Image Turbo
-  'minimax-image-01': 24,       // Minimax Image-01
+  'gen4_image': 180,            // Runway Gen 4 Image 720p (updated to 180 credits)
+  'gen4_image_1080p': 180,      // Runway Gen 4 Image 1080p
+  'gen4_image_turbo': 60,       // Runway Gen 4 Image Turbo
+  'minimax-image-01': 17,       // Minimax Image-01 (17 credits per creditDistribution)
   'gemini-25-flash-image': 98,  // Google nano banana (T2I)
-  'google/nano-banana-pro': 300, // Google nano banana pro (default 1K/2K - 300 credits, 4K - 500 credits)
+  'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
+  'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
+  'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
   // Imagen 4 family (FAL/Google)
   'imagen-4-ultra': 140,
   'imagen-4': 100,
-  'imagen-4-fast': 44,
-  'flux-2-pro': 80, // Default to 1K (60 credits), will be resolved based on resolution
+  'imagen-4-fast': 60,  // Fixed: was 44, should be 60 per creditDistribution
+  'flux-2-pro': 80, // Default to 1K (80 credits), will be resolved based on resolution
+  'flux-2-pro-1080p': 80,      // FLUX.2 [pro] 1080p
+  'flux-2-pro-2k': 160,        // FLUX.2 [pro] 2K
+  'z-image-turbo': 26,         // Z Image Turbo
   'leonardoai/lucid-origin': 173,
   'leonardoai/phoenix-1.0': 170,
   // Z-Image Turbo: Free (0 credits) for launch offer
@@ -33,7 +39,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Video Generation Models - Default durations
   'gen4_turbo': 520,            // Gen-4 Turbo 5s (default)
   'gen3a_turbo': 520,           // Gen-3a Turbo 5s (default)
-  'gen4_aleph': 3060,           // Gen-4 Aleph 10s
+  'gen4_aleph': 360,            // Gen-4 Aleph 1s (creditDistribution shows 1s variant)
+  'minimax-hailuo-01': 220,     // Minimax-Hailuo-01 512P 6s
   'MiniMax-Hailuo-02': 320,     // Minimax-Hailuo-02 512P 6s (legacy default)
   'T2V-01-Director': 980,       // T2V-01-Director
   'I2V-01-Director': 980,       // I2V-01-Director
@@ -41,11 +48,17 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 
   // Music Generation Models
   'minimax-music-2': 60,        // MiniMax Music 2 ($0.03 = 60 credits)
-  'elevenlabs-tts': 98,         // ElevenLabs TTS v3
-  'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS
+  'minimax-music-2-5min': 80,   // MinMax Music 2.0 5minutes
+  'elevenlabs-tts': 98,         // ElevenLabs TTS v3 (legacy/default)
+  'elevenlabs-tts-1000': 220,   // Elevenlabs Eleven v3 TTS 1000 Characters
+  'elevenlabs-tts-2000': 420,   // Elevenlabs Eleven v3 TTS 2000 Characters
+  'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS (legacy/default)
+  'chatterbox-multilingual-1000': 70, // Chatter Box Multilingual 1000 Characters
   'maya-tts': 98,                // Maya TTS
-  'elevenlabs-dialogue': 98,     // ElevenLabs Dialogue
-  'elevenlabs-sfx': 98,          // ElevenLabs Sound Effects
+  'elevenlabs-dialogue': 98,     // ElevenLabs Dialogue (legacy/default)
+  'elevenlabs-dialogue-1000': 840, // Elevenlabs Eleven v3 TTD 1000 Characters
+  'elevenlabs-dialogue-2000': 840, // Elevenlabs Eleven v3 TTD 2000 Characters
+  'elevenlabs-sfx': 24,          // Elevenlabs Sound-Effects v2 1s
 
   // Ad Generation Models (same as image generation)
   'flux-kontext-pro-ad': 110,
@@ -88,15 +101,32 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'veo3-fast-i2v-8s': 2460,
   'RW-veo3-8s': 6460,
   
-  // Veo 3.1 models
+  // Veo 3.1 models (AUDIO ON - default)
   'veo3.1-t2v-4s': 3260,
   'veo3.1-t2v-6s': 4860,
   'veo3.1-t2v-8s': 6460,
+  'veo3.1-i2v-4s': 3260,
+  'veo3.1-i2v-6s': 4860,
   'veo3.1-i2v-8s': 6460,
   'veo3.1-fast-t2v-4s': 1260,
   'veo3.1-fast-t2v-6s': 1860,
   'veo3.1-fast-t2v-8s': 2460,
+  'veo3.1-fast-i2v-4s': 1260,
+  'veo3.1-fast-i2v-6s': 1860,
   'veo3.1-fast-i2v-8s': 2460,
+  // Veo 3.1 models (AUDIO OFF)
+  'veo3.1-t2v-4s-audio-off': 1660,
+  'veo3.1-t2v-6s-audio-off': 2460,
+  'veo3.1-t2v-8s-audio-off': 3260,
+  'veo3.1-i2v-4s-audio-off': 1660,
+  'veo3.1-i2v-6s-audio-off': 2460,
+  'veo3.1-i2v-8s-audio-off': 3260,
+  'veo3.1-fast-t2v-4s-audio-off': 860,
+  'veo3.1-fast-t2v-6s-audio-off': 1260,
+  'veo3.1-fast-t2v-8s-audio-off': 1660,
+  'veo3.1-fast-i2v-4s-audio-off': 860,
+  'veo3.1-fast-i2v-6s-audio-off': 1260,
+  'veo3.1-fast-i2v-8s-audio-off': 1660,
   
   // WAN 2.5 Standard T2V (updated per provided sheet)
   'wan-2.5-t2v-5s-480p': 480,
@@ -213,10 +243,42 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'sora2-pro-i2v-4s-1080p': 4060,
   'sora2-pro-i2v-8s-1080p': 8060,
   'sora2-pro-i2v-12s-1080p': 12060,
+
+  // SeedVR2 models (duration and resolution variants)
+  'seedvr2-5s-720p': 1060,
+  'seedvr2-5s-1080p': 3060,
+  'seedvr2-5s-2k': 6060,
+  'seedvr2-10s-720p': 2060,
+  'seedvr2-10s-1080p': 6060,
+  'seedvr2-10s-2k': 12060,
+
+  // Image Utility Models
+  'fal-image2svg': 30,          // Image to SVG
+  'fal-recraft-vectorize': 26,   // Recraft Vectorize
+  'fal-outpaint': 70,            // fal-ai/outpaint
+  'fal-bria-genfill': 100,       // fal-ai/bria/genfill
+  'fal-topaz-upscale-24mp': 180, // fal-ai/topaz/upscale/image 24MP
+  'fal-topaz-upscale-48mp': 340, // fal-ai/topaz/upscale/image 48MP
+  'fal-topaz-upscale-96mp': 660, // fal-ai/topaz/upscale/image 96MP
+  'fal-topaz-upscale-512mp': 2740, // fal-ai/topaz/upscale/image 512MP
+  'replicate-magic-image-refiner': 84, // replicate/fermatresearch/magic-image-refiner
+  'replicate-clarity-upscaler': 62,   // replicate/philz1337x/clarity-upscaler
+  'replicate-lucataco-remove-bg': 31,  // replicate/ lucataco/remove-bg
+  'replicate-851-labs-remove-bg': 61,  // replicate/851-labs/background-remover (61.28 rounded)
+  'replicate-bria-expand-image': 100, // replicate/bria/expand-image
+  'replicate-real-esrgan': 32,         // replicate/nightmareai/real-esrgan (32.4 rounded)
+  'replicate-swin2sr': 43,             // replicate/mv-lab/swin2sr
+  // Crystal Upscaler variants
+  'replicate-crystal-upscaler-1080p': 220,
+  'replicate-crystal-upscaler-1440p': 420,
+  'replicate-crystal-upscaler-2160p': 820,
+  'replicate-crystal-upscaler-6k': 1620,
+  'replicate-crystal-upscaler-8k': 3220,
+  'replicate-crystal-upscaler-12k': 6420,
 };
 
 // Function to get credit cost for a model
-export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string): number | null => {
+export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean): number | null => {
   // Handle special cases for video models with duration and resolution
   if (modelValue === 'MiniMax-Hailuo-02' && duration && resolution) {
     const durationNum = parseInt(duration.replace('s', ''));
@@ -248,14 +310,33 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle veo3.1 models (check before veo3)
   if (modelValue.includes('veo3.1')) {
-    if (modelValue.includes('fast')) {
-      if (duration === '4s') return MODEL_CREDITS_MAPPING['veo3.1-fast-t2v-4s'];
-      else if (duration === '6s') return MODEL_CREDITS_MAPPING['veo3.1-fast-t2v-6s'];
-      else if (duration === '8s') return MODEL_CREDITS_MAPPING[modelValue.includes('i2v') ? 'veo3.1-fast-i2v-8s' : 'veo3.1-fast-t2v-8s'];
+    const isFast = modelValue.includes('fast');
+    const isI2V = modelValue.includes('i2v');
+    const modelType = isI2V ? 'i2v' : 't2v';
+    const audioSuffix = (generateAudio === false) ? '-audio-off' : '';
+    
+    if (isFast) {
+      if (duration === '4s') {
+        const key = `veo3.1-fast-${modelType}-4s${audioSuffix}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      } else if (duration === '6s') {
+        const key = `veo3.1-fast-${modelType}-6s${audioSuffix}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      } else if (duration === '8s') {
+        const key = `veo3.1-fast-${modelType}-8s${audioSuffix}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      }
     } else {
-      if (duration === '4s') return MODEL_CREDITS_MAPPING['veo3.1-t2v-4s'];
-      else if (duration === '6s') return MODEL_CREDITS_MAPPING['veo3.1-t2v-6s'];
-      else if (duration === '8s') return MODEL_CREDITS_MAPPING[modelValue.includes('i2v') ? 'veo3.1-i2v-8s' : 'veo3.1-t2v-8s'];
+      if (duration === '4s') {
+        const key = `veo3.1-${modelType}-4s${audioSuffix}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      } else if (duration === '6s') {
+        const key = `veo3.1-${modelType}-6s${audioSuffix}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      } else if (duration === '8s') {
+        const key = `veo3.1-${modelType}-8s${audioSuffix}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      }
     }
   }
 
@@ -418,12 +499,58 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   // Handle Flux 2 Pro with resolution
   if (modelValue === 'flux-2-pro') {
     if (resolution === '2K') {
-      return 160; // Flux 2 Pro 2K: $0.07 = 140 credits
+      return 160; // Flux 2 Pro 2K: 160 credits
     } else if (resolution === '1K') {
-      return 80; // Flux 2 Pro 1K: $0.03 = 60 credits
+      return 80; // Flux 2 Pro 1K: 80 credits
     }
     // Default to 1K if no resolution specified (will be overridden by buildCreditModelName for 9:16)
     return 80;
+  }
+
+  // Handle FLUX.2 Pro variants
+  if (modelValue === 'flux-2-pro-1080p') {
+    return 80; // FLUX.2 [pro] 1080p
+  }
+  if (modelValue === 'flux-2-pro-2k') {
+    return 160; // FLUX.2 [pro] 2K
+  }
+
+  // Handle Google nano banana pro with resolution
+  if (modelValue === 'google/nano-banana-pro' && resolution) {
+    if (resolution === '4K') {
+      return 620; // Nano banana Pro 4K: 620 credits (per creditDistribution)
+    } else if (resolution === '1K' || resolution === '2K') {
+      return 320; // Nano banana Pro 1K/2K: 320 credits (per creditDistribution)
+    }
+    return 320; // Default to 2K (320 credits per creditDistribution)
+  }
+
+  // Handle SeedVR2 models
+  if (modelValue.includes('seedvr2')) {
+    const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const res = (resolution || '').toLowerCase();
+    let resKey = '';
+    if (res.includes('2k')) resKey = '2k';
+    else if (res.includes('1080')) resKey = '1080p';
+    else resKey = '720p';
+    
+    const key = `seedvr2-${durationNum}s-${resKey}`;
+    return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
+  // Handle Crystal Upscaler with resolution
+  if (modelValue === 'replicate-crystal-upscaler' && resolution) {
+    const res = String(resolution).toLowerCase();
+    let resKey = '';
+    if (res.includes('12k')) resKey = '12k';
+    else if (res.includes('8k')) resKey = '8k';
+    else if (res.includes('6k')) resKey = '6k';
+    else if (res.includes('2160') || res.includes('4k')) resKey = '2160p';
+    else if (res.includes('1440')) resKey = '1440p';
+    else resKey = '1080p';
+    
+    const key = `replicate-crystal-upscaler-${resKey}`;
+    return MODEL_CREDITS_MAPPING[key] || null;
   }
 
   // Default lookup
@@ -431,8 +558,8 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 };
 
 // Function to get model info for display
-export const getModelCreditInfo = (modelValue: string, duration?: string, resolution?: string) => {
-  const credits = getCreditsForModel(modelValue, duration, resolution);
+export const getModelCreditInfo = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean) => {
+  const credits = getCreditsForModel(modelValue, duration, resolution, generateAudio);
   return {
     credits,
     hasCredits: credits !== null,
@@ -441,8 +568,8 @@ export const getModelCreditInfo = (modelValue: string, duration?: string, resolu
 };
 
 // Helper function to format model name with credits
-export const formatModelWithCredits = (modelName: string, modelValue: string, duration?: string, resolution?: string): string => {
-  const creditInfo = getModelCreditInfo(modelValue, duration, resolution);
+export const formatModelWithCredits = (modelName: string, modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean): string => {
+  const creditInfo = getModelCreditInfo(modelValue, duration, resolution, generateAudio);
   
   if (creditInfo.hasCredits) {
     return `${modelName} - ${creditInfo.displayText}`;

@@ -2,6 +2,33 @@
 export function toZataPath(urlOrPath: string): string {
   if (!urlOrPath) return ''
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
+  
+  // Handle proxy URLs: /api/proxy/resource/... or /api/proxy/media/...
+  if (urlOrPath.startsWith('/api/proxy/resource/')) {
+    const encodedPath = urlOrPath.substring('/api/proxy/resource/'.length)
+    try {
+      return decodeURIComponent(encodedPath)
+    } catch {
+      return encodedPath // If decoding fails, return as-is
+    }
+  }
+  if (urlOrPath.startsWith('/api/proxy/media/')) {
+    const encodedPath = urlOrPath.substring('/api/proxy/media/'.length)
+    try {
+      return decodeURIComponent(encodedPath)
+    } catch {
+      return encodedPath // If decoding fails, return as-is
+    }
+  }
+  if (urlOrPath.startsWith('/api/proxy/thumb/')) {
+    const encodedPath = urlOrPath.substring('/api/proxy/thumb/'.length).split('?')[0] // Remove query params
+    try {
+      return decodeURIComponent(encodedPath)
+    } catch {
+      return encodedPath // If decoding fails, return as-is
+    }
+  }
+  
   // If the URL starts with the known Zata bucket prefix, strip it
   if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length)
   // If it's an absolute URL but not Zata, do not attempt to treat it as a path

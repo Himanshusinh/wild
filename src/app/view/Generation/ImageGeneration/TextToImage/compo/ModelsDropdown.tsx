@@ -181,6 +181,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'new-turbo-model', // z-image-turbo - should be first
               'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
+              
+              'z-image-turbo',
               'flux-kontext-max',
               'flux-kontext-pro',
               'flux-pro-1.1-ultra',

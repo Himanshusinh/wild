@@ -3,6 +3,7 @@ import { getApiClient } from '@/lib/axiosInstance';
 import { requestCreditsRefresh } from '@/lib/creditsBus';
 import { GeneratedImage } from '@/types/history';
 import { GenerationType as SharedGenerationType } from '@/types/generation';
+import { getModelMapping } from '@/utils/modelMapping';
 
 interface GenerationState {
   prompt: string;
@@ -93,9 +94,28 @@ export const generateImages = createAsyncThunk(
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const api = getApiClient();
 
-      // Decide provider based on model
-  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
-      const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
+      // Decide provider based on model mapping (fal | bfl | replicate | runway)
+      const mapping = getModelMapping(model);
+      const provider = mapping?.provider;
+
+      // Backward-compatible fal detection for older models without mapping
+      const isFalModel =
+        provider === 'fal' ||
+        model === 'gemini-25-flash-image' ||
+        model === 'seedream-v4' ||
+        model === 'imagen-4-ultra' ||
+        model === 'imagen-4' ||
+        model === 'imagen-4-fast';
+
+      let endpoint: string;
+      if (provider === 'replicate') {
+        endpoint = '/api/replicate/generate';
+      } else if (isFalModel) {
+        endpoint = '/api/fal/generate';
+      } else {
+        // Default to BFL for Flux and other canvas-style models
+        endpoint = '/api/bfl/generate';
+      }
 
       // Resolve isPublic from backend policy when not explicitly provided
       let resolvedIsPublic: boolean | undefined = isPublic;
@@ -155,9 +175,25 @@ export const generateLiveChatImage = createAsyncThunk(
   ) => {
     try {
       const api = getApiClient();
-      // Use different endpoints based on model
-  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
-      const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
+      // Use different endpoints based on model/provider
+      const mapping = getModelMapping(model);
+      const provider = mapping?.provider;
+      const isFalModel =
+        provider === 'fal' ||
+        model === 'gemini-25-flash-image' ||
+        model === 'seedream-v4' ||
+        model === 'imagen-4-ultra' ||
+        model === 'imagen-4' ||
+        model === 'imagen-4-fast';
+
+      let endpoint: string;
+      if (provider === 'replicate') {
+        endpoint = '/api/replicate/generate';
+      } else if (isFalModel) {
+        endpoint = '/api/fal/generate';
+      } else {
+        endpoint = '/api/bfl/generate';
+      }
       
       // Resolve isPublic if absent
       let resolvedIsPublic: boolean | undefined = isPublic;

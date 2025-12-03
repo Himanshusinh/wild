@@ -408,6 +408,42 @@ const EditImageInterface: React.FC = () => {
     return filtered;
   }, [allHistoryEntries, historyFilters]);
 
+  // Flatten history entries into UploadModal-friendly image items (similar shape to LibraryItem)
+  const uploadModalHistoryEntries = useMemo(() => {
+    const items: any[] = [];
+    try {
+      for (const entry of historyEntries as any[]) {
+        const images = Array.isArray(entry?.images) ? entry.images : [];
+        images.forEach((img: any, index: number) => {
+          const storagePath = img?.storagePath || img?.storage_path;
+          const url =
+            storagePath ||
+            img?.thumbnailUrl ||
+            img?.avifUrl ||
+            img?.url ||
+            img?.originalUrl;
+
+          if (!url) return;
+
+          items.push({
+            id: img?.id || `${entry.id || 'history'}-${index}`,
+            historyId: entry.id,
+            url,
+            type: 'image',
+            storagePath,
+            originalUrl: img?.originalUrl || img?.url || storagePath,
+            thumbnailUrl: img?.thumbnailUrl || img?.avifUrl || undefined,
+            avifUrl: img?.avifUrl || undefined,
+          });
+        });
+      }
+    } catch (e) {
+      // If anything goes wrong, fall back to empty list so modal still renders
+      console.error('[EditImage] Failed to build uploadModalHistoryEntries:', e);
+    }
+    return items;
+  }, [historyEntries]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTabChangeRef = useRef<string | null>(null);
 
@@ -3054,7 +3090,7 @@ const EditImageInterface: React.FC = () => {
         key={`upload-modal-${isUploadOpen}`}
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        historyEntries={historyEntries as any}
+        historyEntries={uploadModalHistoryEntries as any}
         remainingSlots={1}
         hasMore={historyHasMore}
         loading={historyLoading}

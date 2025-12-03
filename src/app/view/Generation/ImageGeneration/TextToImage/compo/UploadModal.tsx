@@ -517,10 +517,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                             hasMore: result.hasMore,
                             nextCursor: result.nextCursor
                           });
-                          // Deduplicate items by id
+                          // Deduplicate items using a stable composite key (id + historyId + storagePath + url)
                           setLibraryItems(prev => {
-                            const existingIds = new Set(prev.map(item => item.id));
-                            const newItems = result.items.filter(item => !existingIds.has(item.id));
+                            const makeKey = (item: any) =>
+                              `${item.historyId || ''}|${item.storagePath || ''}|${item.id || ''}|${item.url || ''}`;
+                            const existingKeys = new Set(prev.map(makeKey));
+                            const newItems = result.items.filter(item => !existingKeys.has(makeKey(item)));
                             return [...prev, ...newItems];
                           });
                           setLibraryNextCursor(result.nextCursor);
@@ -539,10 +541,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                             hasMore: result.hasMore,
                             nextCursor: result.nextCursor
                           });
-                          // Deduplicate items by id
+                          // Deduplicate items using a stable composite key (id + historyId + storagePath + url)
                           setUploadItems(prev => {
-                            const existingIds = new Set(prev.map(item => item.id));
-                            const newItems = result.items.filter(item => !existingIds.has(item.id));
+                            const makeKey = (item: any) =>
+                              `${item.historyId || ''}|${item.storagePath || ''}|${item.id || ''}|${item.url || ''}`;
+                            const existingKeys = new Set(prev.map(makeKey));
+                            const newItems = result.items.filter(item => !existingKeys.has(makeKey(item)));
                             return [...prev, ...newItems];
                           });
                           setUploadNextCursor(result.nextCursor);
@@ -597,8 +601,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
                     const selected = selection.has(im.url);
                     // Create unique key using id, url, and index to prevent duplicates
                     const key = `${tab}-${im.id || im.url || index}-${index}`;
-                    const imageSrc = im.thumbnailUrl || im.avifUrl || im.url || im.originalUrl;
+                    // Prefer storagePath (direct Zata path) over URLs to avoid double-encoding issues
+                    const imageSrc = im.storagePath || im.thumbnailUrl || im.avifUrl || im.url || im.originalUrl;
                     // Use media proxy for caching and optimization
+                    // If storagePath is available, use it directly; otherwise try to extract path from URL
                     const proxiedSrc = imageSrc ? (toMediaProxy(imageSrc) || imageSrc) : null;
                     
                     return (
