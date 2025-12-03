@@ -20,6 +20,20 @@ export default function ChromeMount() {
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
 
+  // Check if video editor is open (via body data attribute)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const checkVideoEditor = () => {
+        setIsVideoEditorOpen(document.body.hasAttribute('data-video-editor-open'));
+      };
+      checkVideoEditor();
+      // Watch for changes
+      const observer = new MutationObserver(checkVideoEditor);
+      observer.observe(document.body, { attributes: true, attributeFilter: ['data-video-editor-open'] });
+      return () => observer.disconnect();
+    }
+  }, []);
+
   // Check authentication status
   useEffect(() => {
     try {
@@ -185,20 +199,6 @@ export default function ChromeMount() {
                      isAccountRoute ||
                      isEditImageRoute ||
                      isEditVideoRoute;
-  
-  // Check if video editor is open (via body data attribute)
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      const checkVideoEditor = () => {
-        setIsVideoEditorOpen(document.body.hasAttribute('data-video-editor-open'));
-      };
-      checkVideoEditor();
-      // Watch for changes
-      const observer = new MutationObserver(checkVideoEditor);
-      observer.observe(document.body, { attributes: true, attributeFilter: ['data-video-editor-open'] });
-      return () => observer.disconnect();
-    }
-  }, []);
 
   // If should show, render chrome (but hide sidebar if video editor is open)
   if (shouldShow) {
