@@ -49,7 +49,7 @@ const MODEL_OPTIONS = [
   {
     label: 'ElevenLabs Sound Effects',
     value: 'elevenlabs-sfx',
-    description: 'fal-ai/elevenlabs/sound-effects/v2'
+    description: 'fal-ai/elevenlabs/sound-effects/v2. Pricing: 6 credits per second of generated audio.'
   }
 ];
 
@@ -309,20 +309,20 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const isLyricsValid = (s: string) => {
     const n = s.trim().length;
-    // For ElevenLabs TTS, Chatterbox, and Maya, max is 300 characters; for others, 600
     if (isDialogueModel) return true; // Dialogue uses inputs array, not single text
-    const maxLength = (isTtsModel || isChatterboxModel || isMayaModel) ? 300 : 600;
+    // Chatterbox Multilingual has a 300 character limit due to FAL API restrictions
+    const maxLength = isChatterboxModel ? 300 : 1000;
     return n >= 10 && n <= maxLength;
   };
 
   const isPromptValid = (s: string) => {
     const n = s.trim().length;
-    return n >= 10 && n <= 300; // 10-300 characters for prompt
+    return n >= 10 && n <= 1000; // 10-1000 characters for prompt
   };
 
   const isLyricsPromptValid = (s: string) => {
     const n = s.trim().length;
-    return n >= 10 && n <= 3000; // 10-3000 characters for lyrics_prompt
+    return n >= 10 && n <= 1000; // 10-1000 characters for lyrics_prompt
   };
 
   const canGenerate = isDialogueModel 
@@ -355,6 +355,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setModel('elevenlabs-tts');
     }
   }, []); // Only run on mount
+
+  // Truncate text when switching to Chatterbox if it exceeds 300 characters
+  useEffect(() => {
+    if (isChatterboxModel && lyrics.length > 300) {
+      setLyrics(lyrics.substring(0, 300));
+    }
+  }, [isChatterboxModel]); // Only run when model changes to/from chatterbox
 
   const fetchUserAudioFiles = useCallback(async () => {
     if (!isChatterboxModel) return;
@@ -815,8 +822,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       payload.cfg_scale = Number(elevenlabsCfgScale.toFixed(2));
     } else {
       // MiniMax Music 2 generation
-      // prompt: description of music (10-300 chars)
-      // lyrics_prompt: lyrics with structure tags (10-3000 chars)
+      // prompt: description of music (10-1000 chars)
+      // lyrics_prompt: lyrics with structure tags (10-1000 chars)
       payload.model = 'minimax-music-2';
       payload.prompt = prompt.trim(); // Description: style, mood, scenario
       payload.lyrics_prompt = lyricsPrompt.trim(); // Lyrics with optional structure tags
@@ -907,7 +914,16 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'minimax-music-2');
     }
     
-    const activeOption = filteredOptions.find((opt) => opt.value === model) || filteredOptions[0];
+    // Add credit information to each option
+    const filteredOptionsWithCredits = filteredOptions.map(opt => {
+      const optCreditInfo = getModelCreditInfo(opt.value);
+      return {
+        ...opt,
+        creditInfo: optCreditInfo
+      };
+    });
+    
+    const activeOption = filteredOptionsWithCredits.find((opt) => opt.value === model) || filteredOptionsWithCredits[0];
     
     // If current model is not in filtered options, set to first available
     useEffect(() => {
@@ -918,12 +934,18 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     
     if (isVoiceCloning) {
       const chatterboxOption = MODEL_OPTIONS.find(opt => opt.value === 'chatterbox-multilingual');
-    return (
+      const chatterboxCreditInfo = getModelCreditInfo('chatterbox-multilingual');
+      return (
         <div className="relative">
           <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black flex items-center gap-2 cursor-default select-none">
             <Music4 className="w-4 h-4 text-black" />
             {chatterboxOption?.label || 'Chatterbox Multilingual'}
           </div>
+          {chatterboxCreditInfo.hasCredits && (
+            <div className="text-[11px] text-white/50 mt-1 pl-1">
+              {chatterboxCreditInfo.displayText}
+            </div>
+          )}
           <p className="text-xs text-white/50 mt-1">Voice cloning always uses Chatterbox Multilingual.</p>
         </div>
       );
@@ -955,7 +977,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         </button>
         {modelOpen && (
           <div className="absolute top-full left-0 mt-0 w-64 bg-black/85 z-[100] backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
-            {filteredOptions.map((option) => (
+            {filteredOptionsWithCredits.map((option) => (
             <button 
                 key={option.value}
                 onClick={() => { setModel(option.value); setModelOpen(false); }}
@@ -965,7 +987,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span>{option.label}</span>
-                  {model === option.value && <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>}
+                  <div className="flex items-center gap-2">
+                    {option.creditInfo.hasCredits && (
+                      <span className={`text-xs font-medium ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
+                        {option.creditInfo.displayText}
+                      </span>
+                    )}
+                    {model === option.value && <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>}
+                  </div>
                 </div>
                 <span className={`text-xs ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
                   {option.description}
@@ -2106,6 +2135,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     value={input.text}
                     onChange={(e) => updateDialogueInput(index, 'text', e.target.value)}
                     placeholder="Enter dialogue text... You can use emotion tags like [applause], [excited], etc."
+                    maxLength={1000}
                     className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg resize-y"
                     rows={2}
                     style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}
@@ -2356,6 +2386,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       setPrompt(e.target.value);
                       adjustTextareaHeight(e.target);
                     }}
+                    maxLength={1000}
                     className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-sm outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
                       promptLen > 0 && !isPromptValid(prompt) ? 'ring-red-500/50' : ''
                     }`}
@@ -2367,14 +2398,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                   />
                   {promptLen > 0 && !isPromptValid(prompt) && (
                     <p className="text-red-400 text-xs mt-1">
-                      Prompt must be between 10-300 characters
+                      Prompt must be between 10-1000 characters
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-2 mt-2">
                     <p className="text-white/70 text-xs pl-1">
                       A description of the music, specifying style, mood, and scenario.
                     </p>
-                    <span className="text-xs text-white/60">({promptLen}/300)</span>
+                    <span className="text-xs text-white/60">({promptLen}/1000)</span>
                   </div>
                 </div>
 
@@ -2398,6 +2429,7 @@ In a familiar corner, a stranger gazes"
                       setLyricsPrompt(e.target.value);
                       adjustTextareaHeight(e.target);
                     }}
+                    maxLength={1000}
                     className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-sm outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
                       lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) ? 'ring-red-500/50' : ''
                     }`}
@@ -2409,14 +2441,14 @@ In a familiar corner, a stranger gazes"
                   />
                   {lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) && (
                     <p className="text-red-400 text-xs mt-1">
-                      Lyrics prompt must be between 10-3000 characters
+                      Lyrics prompt must be between 10-1000 characters
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-2 mt-2">
                     <p className="text-white/70 text-xs pl-1">
                       Lyrics of the song. Use \n to separate lines. You may add structure tags like [Intro], [Verse], [Chorus], [Bridge], [Outro] to enhance the arrangement.
                     </p>
-                    <span className="text-xs text-white/60">({lyricsPromptLen}/3000)</span>
+                    <span className="text-xs text-white/60">({lyricsPromptLen}/1000)</span>
                   </div>
                 </div>
               </>
@@ -2424,12 +2456,13 @@ In a familiar corner, a stranger gazes"
               /* Standard Lyrics Input for other models */
               <div className="w-full">
                 <textarea
-                  placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
+                  placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (maximum 300 characters, supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
               value={lyrics}
               onChange={(e) => {
                 setLyrics(e.target.value);
                 adjustTextareaHeight(e.target);
               }}
+              maxLength={isChatterboxModel ? 300 : 1000}
                   className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 placeholder-t p-4 rounded-lg resize-none overflow-hidden transition-all ${
                 lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
               }`}
@@ -2441,22 +2474,20 @@ In a familiar corner, a stranger gazes"
             />
             {lyricsLen > 0 && !isLyricsValid(lyrics) && (
               <p className="text-red-400 text-xs mt-1">
-                    {isChatterboxModel 
-                      ? 'Text must be between 10-300 characters'
-                      : 'Lyrics must be between 10-600 characters'}
+                    Text must be between 10-{isChatterboxModel ? 300 : 1000} characters
               </p>
             )}
             <div className="flex items-center justify-between gap-2 mt-2">
               <p className="text-white/70 text-xs pl-1">
                     {isTtsModel
                       ? (isMayaModel
-                          ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious.'
+                          ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious. Pricing: 6 credits per second of generated audio.'
                           : (isChatterboxModel 
-                              ? 'Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.'
-                              : 'The text to be converted to speech (maximum 300 characters). '))
+                              ? `The text to be converted to speech (maximum 300 characters). Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.`
+                              : 'The text to be converted to speech (maximum 1000 characters). '))
                       : 'Use intro, verse, chorus, bridge, outro tags to structure your song.....'}
                   </p>
-                  <span className="text-xs text-white/60">({lyricsLen}/{isTtsModel || isChatterboxModel || isMayaModel ? 300 : 600})</span>
+                  <span className="text-xs text-white/60">({lyricsLen}/{isChatterboxModel ? 300 : 1000})</span>
             </div>
           </div>
             )}

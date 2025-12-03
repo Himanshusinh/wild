@@ -92,6 +92,7 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
   const loading = useAppSelector((s: any) => s.history?.loading || false);
   // Initial fetch on mount with correct filters - always fetch when component mounts
   // Also refetch when component remounts (e.g., when switching tabs)
+  // BUT: Don't clear existing entries - merge with what's already in Redux
   React.useEffect(() => {
     const fetchTTSHistory = async () => {
       try {
@@ -99,9 +100,10 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
           generationType: ['text-to-speech', 'text_to_speech', 'tts'] as unknown as HistoryFilters['generationType'],
         };
         setPage(1);
-        // Set filters first (for client-side filtering)
+        // Set filters first (for client-side filtering) - this doesn't clear entries
         (dispatch as any)(setFilters(genFilter));
         // Load history with generationType filter - backend should support it
+        // Use merge mode to preserve existing entries (especially generating ones)
         await (dispatch as any)(loadHistory({
           filters: genFilter,
           backendFilters: genFilter, // Ensure backend receives the filter
@@ -109,6 +111,7 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
           requestOrigin: 'page',
           expectedType: 'text-to-speech',
           debugTag: `tts-history:init:${Date.now()}`,
+          forceRefresh: false, // Don't force refresh - merge with existing
         })).unwrap();
         console.log('[TTSHistory] Loaded history with filter:', genFilter);
       } catch (err) {
@@ -181,8 +184,27 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
           <div className="space-y-8">
             {sortedDates.map((date) => (
               <DateRow key={date} dateKey={date}>
-                {date === todayKey && localPreview && <AudioTileGenerating preview={localPreview} />}
+                {date === todayKey && localPreview && localPreview.status === 'generating' && <AudioTileGenerating preview={localPreview} />}
                 {grouped[date].flatMap((entry: any) => {
+                  // Skip if this entry matches the localPreview (to avoid duplicates)
+                  if (localPreview && (entry.id === localPreview.id || (entry.status === 'generating' && localPreview.status === 'generating' && entry.prompt === localPreview.prompt))) {
+                    // If localPreview is completed, skip the generating entry from Redux
+                    if (localPreview.status === 'completed' || localPreview.status === 'failed') {
+                      return [];
+                    }
+                  }
+                  // Show generating entries even if they don't have media yet
+                  if (entry.status === 'generating') {
+                    return [(
+                      <div
+                        key={`${entry.id}-generating`}
+                        className="relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 ring-1 ring-white/10 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] opacity-60"
+                      >
+                        <StaticAudioTile status="generating" entry={entry} index={0} />
+                      </div>
+                    )];
+                  }
+                  
                   const rawSources = [ ...(entry.audios||[]), ...(entry.images||[]), ...(entry.audio?[entry.audio]:[]) ].filter(Boolean);
                   // Deduplicate by resolved URL to avoid triple copies
                   const dedupMap = new Map<string, any>();
@@ -255,6 +277,7 @@ const DateRow: React.FC<{ dateKey: string; children: React.ReactNode }> = ({ dat
 
 const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }> = ({ status, entry, index = 0 }) => {
   const colorTheme = entry ? getColorTheme(entry, index) : 'from-purple-900/30 via-purple-800/20 to-pink-900/30';
+  const fileName = entry?.fileName || entry?.name || '';
   
   return status === 'generating' ? (
     <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -271,13 +294,20 @@ const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }>
       </div>
     </div>
   ) : (
-    <div className={`w-full h-full flex items-center justify-center relative overflow-hidden`}>
+    <div className={`w-full h-full flex flex-col items-center justify-center relative overflow-hidden`}>
       <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
       <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
       <div className="relative z-10 w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
         <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
         <Music4 className="w-10 h-10 text-white drop-shadow-md relative z-10" />
       </div>
+      {fileName && (
+        <div className="absolute bottom-2 left-2 right-2 z-20">
+          <div className="bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md ring-1 ring-white/10 truncate text-center">
+            {fileName}
+          </div>
+        </div>
+      )}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
     </div>
   );
@@ -285,11 +315,51 @@ const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }>
 
 const AudioTileGenerating = ({ preview }: { preview?: any }) => {
   const colorTheme = preview ? getColorTheme(preview, 0) : 'from-purple-900/30 via-purple-800/20 to-pink-900/30';
+  const fileName = preview?.fileName || preview?.name || '';
+  const status = preview?.status || 'generating';
   
+  // If preview is completed or failed, show it as a regular tile (not generating)
+  if (status === 'completed' || status === 'failed') {
+    const rawSources = [...(preview.audios || []), ...(preview.images || []), ...(preview.audio ? [preview.audio] : [])].filter(Boolean);
+    const dedupMap = new Map<string, any>();
+    rawSources.forEach((a: any) => {
+      const url = a?.url || a?.firebaseUrl || a?.originalUrl;
+      if (!url) return;
+      if (!dedupMap.has(url)) dedupMap.set(url, a);
+    });
+    const media = Array.from(dedupMap.values());
+    
+    if (media.length === 0) return null;
+    
+    return media.map((audio: any, i: number) => {
+      const audioColorTheme = getColorTheme(preview, i);
+      return (
+        <div
+          key={`${preview.id || 'preview'}-${audio.id || i}`}
+          onClick={() => {}}
+          className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${audioColorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
+        >
+          <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+          </div>
+          <StaticAudioTile status={status} entry={preview} index={i} />
+        </div>
+      );
+    });
+  }
+  
+  // Show generating state
   return (
     <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_20px_35px_-20px_rgba(15,23,42,0.9)] transition-all duration-300 cursor-pointer group opacity-60`}>
       <StaticAudioTile status="generating" entry={preview} />
-      <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
+      {fileName ? (
+        <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md ring-1 ring-white/10 truncate text-center">
+          {fileName}
+        </div>
+      ) : (
+        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
+      )}
     </div>
   );
 };

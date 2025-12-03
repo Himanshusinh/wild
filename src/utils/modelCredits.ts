@@ -17,6 +17,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
   'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
+  'seedream-4.5': 100, // Bytedance Seedream-4.5
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
@@ -47,18 +48,18 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'S2V-01': 1420,               // S2V-01
 
   // Music Generation Models
-  'minimax-music-2': 60,        // MiniMax Music 2 ($0.03 = 60 credits)
-  'minimax-music-2-5min': 80,   // MinMax Music 2.0 5minutes
-  'elevenlabs-tts': 98,         // ElevenLabs TTS v3 (legacy/default)
-  'elevenlabs-tts-1000': 220,   // Elevenlabs Eleven v3 TTS 1000 Characters
-  'elevenlabs-tts-2000': 420,   // Elevenlabs Eleven v3 TTS 2000 Characters
-  'chatterbox-multilingual': 98, // Chatterbox Multilingual TTS (legacy/default)
-  'chatterbox-multilingual-1000': 70, // Chatter Box Multilingual 1000 Characters
-  'maya-tts': 98,                // Maya TTS
-  'elevenlabs-dialogue': 98,     // ElevenLabs Dialogue (legacy/default)
-  'elevenlabs-dialogue-1000': 840, // Elevenlabs Eleven v3 TTD 1000 Characters
-  'elevenlabs-dialogue-2000': 840, // Elevenlabs Eleven v3 TTD 2000 Characters
-  'elevenlabs-sfx': 24,          // Elevenlabs Sound-Effects v2 1s
+  'minimax-music-2': 80,        // MiniMax Music 2 (60 credits per creditDistribution.ts)
+  'minimax-music-2 10min': 160,   // MinMax Music 2.0 5minutes (80 credits per creditDistribution.ts)
+  'elevenlabs-tts': 220,        // Elevenlabs Eleven v3 TTS 1000 Characters (220 credits per creditDistribution.ts - default to 1000 chars)
+  'elevenlabs-tts-1000': 220,   // Elevenlabs Eleven v3 TTS 1000 Characters (220 credits per creditDistribution.ts)
+  'elevenlabs-tts-2000': 420,   // Elevenlabs Eleven v3 TTS 2000 Characters (420 credits per creditDistribution.ts)
+  'chatterbox-multilingual': 70, // Chatter Box Multilingual 1000 Characters (70 credits per creditDistribution.ts)
+  'chatterbox-multilingual-1000': 70, // Chatter Box Multilingual 1000 Characters (70 credits per creditDistribution.ts)
+  'maya-tts': 6,                 // Maya TTS (6 credits per second - actual cost calculated dynamically based on audio duration)
+  'elevenlabs-dialogue': 220,    // Elevenlabs Eleven v3 TTD 1000 Characters (220 credits per creditDistribution.ts - default to 1000 chars, same as TTS)
+  'elevenlabs-dialogue-1000': 220,   // Elevenlabs Eleven v3 TTD 1000 Characters (220 credits per creditDistribution.ts)
+  'elevenlabs-dialogue-2000': 420, // Elevenlabs Eleven v3 TTD 2000 Characters (420 credits per creditDistribution.ts)
+  'elevenlabs-sfx': 6,          // Elevenlabs Sound-Effects v2 1s (24 credits per creditDistribution.ts)
 
   // Ad Generation Models (same as image generation)
   'flux-kontext-pro-ad': 110,
@@ -560,6 +561,24 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 // Function to get model info for display
 export const getModelCreditInfo = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean) => {
   const credits = getCreditsForModel(modelValue, duration, resolution, generateAudio);
+  
+  // Special handling for Maya TTS and ElevenLabs SFX - show per-second pricing
+  if (modelValue === 'maya-tts') {
+    return {
+      credits: 6, // Per second
+      hasCredits: true,
+      displayText: '6 credits per second'
+    };
+  }
+  
+  if (modelValue === 'elevenlabs-sfx') {
+    return {
+      credits: 6, // Per second
+      hasCredits: true,
+      displayText: '6 credits per second'
+    };
+  }
+  
   return {
     credits,
     hasCredits: credits !== null,
