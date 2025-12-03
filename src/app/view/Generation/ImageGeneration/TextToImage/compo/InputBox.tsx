@@ -902,18 +902,24 @@ const InputBox = () => {
         const normalizedType = normalize(entry.generationType);
         const normalizedModel = normalize(entry.model);
 
-        // Hide generations produced with the Seedream model from the Image Generation history grid.
-        // This includes both backend id 'bytedance/seedream-4' and any UI alias containing 'seedream'.
-        if (normalizedModel.includes('seedream')) {
+        // Hide Seedream generations that come from non-text-to-image features (e.g. Edit Image),
+        // but keep Seedream text-to-image generations visible on the Image Generation page.
+        if (normalizedModel.includes('seedream') && normalizedType !== 'text-to-image') {
           return false;
         }
 
-        const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
-        return normalizedType === 'text-to-image' ||
+        const isVectorize =
+          normalizedType === 'vectorize' ||
+          normalizedType === 'image-vectorize' ||
+          normalizedType.includes('vector');
+
+        return (
+          normalizedType === 'text-to-image' ||
           normalizedType === 'image-upscale' ||
           normalizedType === 'image-to-svg' ||
           normalizedType === 'image-edit' ||
-          isVectorize;
+          isVectorize
+        );
       });
 
       if (filtered.length === 0) {
