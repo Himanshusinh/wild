@@ -216,18 +216,16 @@ const InputBox = () => {
       return false;
     });
 
-    // CRITICAL: If entry exists in ref OR history, immediately clear local entry
-    // This prevents flickering - once in history, history handles all rendering
+    // CRITICAL FIX: Don't clear local entry when it's added to history
+    // The duplicate detection logic in render (line 3979) already handles hiding it
+    // Clearing it here causes the frame to disappear and then reappear
+    // Instead, let the render logic seamlessly switch from local to history entry
+    // This keeps the frame in the DOM continuously
+
+    // Just reset the generating button state when entry is in history
     if (existsInRef || existsInHistory) {
       setIsGeneratingLocally(false);
-      setLocalGeneratingEntries((prev) => {
-        const filtered = prev.filter((e) => {
-          const eId = e.id || (e as any)?.firebaseHistoryId;
-          const entryIdToMatch = entry.id || (entry as any)?.firebaseHistoryId;
-          return eId !== entryIdToMatch;
-        });
-        return filtered;
-      });
+      // DON'T clear localGeneratingEntries here - let render handle the transition
       return;
     }
 
@@ -1015,8 +1013,37 @@ const InputBox = () => {
       }
     });
 
+    // CRITICAL FIX: Merge local generating entries into today's group
+    // This ensures a SINGLE frame that transitions from loading to showing the image
+    // Instead of having TWO separate frames (one for local, one for history)
+    if (localGeneratingEntries.length > 0) {
+      const todayKey = new Date().toDateString();
+      if (!groups[todayKey]) {
+        groups[todayKey] = [];
+      }
+
+      // Add local entries at the beginning (newest first) if not already in history
+      localGeneratingEntries.forEach(localEntry => {
+        const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
+        const existsInGroup = groups[todayKey].some((e: HistoryEntry) => {
+          const eId = e.id || (e as any)?.firebaseHistoryId;
+          return eId === localId;
+        });
+
+        // Only add if not already in the group (prevents duplicates)
+        if (!existsInGroup && localId) {
+          // Add at the beginning for newest-first sort
+          if (sortOrder === 'desc') {
+            groups[todayKey].unshift(localEntry);
+          } else {
+            groups[todayKey].push(localEntry);
+          }
+        }
+      });
+    }
+
     return groups;
-  }, [filteredAndSortedEntries, sortOrder]);
+  }, [filteredAndSortedEntries, sortOrder, localGeneratingEntries]);
 
   // Calculate today key - recalculate on every render to handle day changes
   // This ensures localGeneratingEntries show correctly when generating on a new day
@@ -1047,9 +1074,19 @@ const InputBox = () => {
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
   useEffect(() => {
     const currentEntryIds = new Set<string>(filteredAndSortedEntries.map((e: HistoryEntry) => e.id));
+
+    // CRITICAL FIX: Also add local entry IDs to prevent animation when they transition to history
+    // This ensures the same frame doesn't animate when it moves from local to history
+    localGeneratingEntries.forEach((localEntry) => {
+      const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
+      if (localId) {
+        currentEntryIds.add(localId);
+      }
+    });
+
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
-  }, [filteredAndSortedEntries]);
+  }, [filteredAndSortedEntries, localGeneratingEntries]);
 
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
@@ -3889,235 +3926,20 @@ const InputBox = () => {
 
                 {/* All Images for this Date - Simple Grid with stable layout */}
                 <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
-                  {/* Prepend local preview tiles at the start of today's row to push images right */}
-                  {/* CRITICAL: Only show localGeneratingEntries if they don't already exist in historyEntries to prevent duplicates */}
-                  {date === todayKey && localGeneratingEntries.length > 0 && (() => {
-                    const localEntry = localGeneratingEntries[0];
-                    const localEntryId = localEntry.id;
-                    const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
+                  {/* Local entries are now merged into history entries below, so we don't render them separately here */}
+                  {/* This prevents the "two frames" issue where local and history entries both render */}
 
-                    console.log('[DEBUG LocalEntry Render] Checking if local entry should render:', {
-                      localEntryId,
-                      localFirebaseId,
-                      localEntryStatus: localEntry.status,
-                      localEntryImageCount: localEntry.images?.length || 0,
-                      refSize: historyEntryIdsRef.current.size,
-                      refContents: Array.from(historyEntryIdsRef.current),
-                      historyEntriesCount: historyEntries.length,
-                      groupedByDateCount: groupedByDate[date]?.length || 0
-                    });
-
-                    // FIRST CHECK: Check ref (updated immediately when entry is added to history)
-                    // This catches duplicates even before Redux state propagates
-                    const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
-                      (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
-
-                    console.log('[DEBUG LocalEntry Render] Ref check result:', {
-                      existsInRef,
-                      localEntryIdInRef: localEntryId ? historyEntryIdsRef.current.has(localEntryId) : false,
-                      localFirebaseIdInRef: localFirebaseId ? historyEntryIdsRef.current.has(localFirebaseId) : false
-                    });
-
-                    // SECOND CHECK: Check historyEntries (from Redux selector)
-                    const existsInHistory = historyEntries.some((e: HistoryEntry) => {
-                      const eId = e.id;
-                      const eFirebaseId = (e as any)?.firebaseHistoryId;
-                      // Check all possible ID matches - comprehensive check
-                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                      return false;
-                    });
-
-                    const matchingHistoryEntry = historyEntries.find((e: HistoryEntry) => {
-                      const eId = e.id;
-                      const eFirebaseId = (e as any)?.firebaseHistoryId;
-                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                      return false;
-                    });
-
-                    console.log('[DEBUG LocalEntry Render] History check result:', {
-                      existsInHistory,
-                      matchingEntry: matchingHistoryEntry ? {
-                        id: matchingHistoryEntry.id,
-                        firebaseId: (matchingHistoryEntry as any)?.firebaseHistoryId,
-                        status: matchingHistoryEntry.status,
-                        imageCount: matchingHistoryEntry.images?.length || 0
-                      } : null
-                    });
-
-                    // THIRD CHECK: Check groupedByDate (might have entries not yet in historyEntries)
-                    const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
-                      const eId = e.id;
-                      const eFirebaseId = (e as any)?.firebaseHistoryId;
-                      // Check all possible ID matches
-                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                      return false;
-                    });
-
-                    const matchingGroupedEntry = groupedByDate[date]?.find((e: HistoryEntry) => {
-                      const eId = e.id;
-                      const eFirebaseId = (e as any)?.firebaseHistoryId;
-                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                      return false;
-                    });
-
-                    console.log('[DEBUG LocalEntry Render] Grouped check result:', {
-                      existsInGrouped,
-                      matchingEntry: matchingGroupedEntry ? {
-                        id: matchingGroupedEntry.id,
-                        firebaseId: (matchingGroupedEntry as any)?.firebaseHistoryId,
-                        status: matchingGroupedEntry.status,
-                        imageCount: matchingGroupedEntry.images?.length || 0
-                      } : null
-                    });
-
-                    // CRITICAL: If entry exists ANYWHERE (ref, history, or grouped), IMMEDIATELY don't show local entry
-                    // This is the primary duplicate prevention - once in history, history handles all rendering
-                    if (existsInRef || existsInHistory || existsInGrouped) {
-                      console.log('[DEBUG LocalEntry Render] BLOCKING local entry render (duplicate detected):', {
-                        existsInRef,
-                        existsInHistory,
-                        existsInGrouped,
-                        localEntryId,
-                        localFirebaseId
-                      });
-                      return null;
-                    }
-
-                    // ADDITIONAL SAFETY CHECK: If local entry is completed and we have history entries,
-                    // don't show it (it should have been cleared, but if not, prevent duplicate)
-                    // Since there's only one local entry at a time, if it's completed and history exists, it's likely a duplicate
-                    if (localEntry.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
-                      console.log('[DEBUG LocalEntry Render] BLOCKING completed local entry (safety check - history exists):', {
-                        localEntryId,
-                        localFirebaseId,
-                        historyEntriesCount: historyEntries.length,
-                        groupedCount: groupedByDate[date]?.length || 0,
-                        status: localEntry.status
-                      });
-                      return null;
-                    }
-
-                    console.log('[DEBUG LocalEntry Render] ALLOWING local entry render (no duplicates found):', {
-                      localEntryId,
-                      localFirebaseId,
-                      status: localEntry.status
-                    });
-
-                    return (
-                      <>
-                        {localEntry.images.map((image: any, idx: number) => {
-                          // Generate unique key for local entries to prevent duplicates
-                          const localEntryId = localEntry.id || (localEntry as any)?.firebaseHistoryId || `local-${Date.now()}`;
-                          const uniqueImageKey = image?.id ? `local-${localEntryId}-${image.id}` : `local-${localEntryId}-img-${idx}`;
-
-                          return (
-                            <div
-                              key={uniqueImageKey}
-                              className="image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
-                              style={{ minHeight: localEntry.status === 'generating' ? '165px' : undefined }}
-                            >
-                              <div className="absolute inset-0 group animate-fade-in-up" style={{
-                                animation: 'fadeInUp 0.6s ease-out forwards',
-                                opacity: 0,
-                              }} onAnimationEnd={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                              }}>
-                                {/* Always show loading overlay when generating, even if no image URL yet */}
-                                {localEntry.status === 'generating' && (
-                                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
-                                    <div className="flex flex-col items-center gap-2">
-                                      <GifLoader size={64} alt="Generating" />
-                                      <div className="text-xs text-white/60 text-center">Generating...</div>
-                                    </div>
-                                  </div>
-                                )}
-                                {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
-                                  <img
-                                    src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
-                                    alt=""
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="absolute inset-0 w-full h-full object-contain"
-                                    onLoad={() => {
-                                      setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                    }}
-                                  />
-                                ) : localEntry.status !== 'generating' ? (
-                                  // Only show shimmer if not generating (generating shows GIF loader)
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                ) : null}
-                                {!loadedImages.has(uniqueImageKey) && localEntry.status !== 'generating' && (
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                )}
-                                {localEntry.status === 'failed' && (
-                                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
-                                    <div className="flex flex-col items-center gap-2">
-                                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                      </svg>
-                                      <div className="text-xs text-red-400">Failed</div>
-                                    </div>
-                                  </div>
-                                )}
-                                {localEntry.status === 'completed' && (
-                                  <>
-                                    {/* Hover copy button overlay */}
-                                    <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                      <button
-                                        aria-label="Copy prompt"
-                                        className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
-                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                      >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
-                  {/* Render history entries - filter out any that match local entries to prevent duplicates */}
+                  {/* Render all entries for this date - includes both history and merged local entries */}
                   {(() => {
-                    // Create a set of all local entry IDs for fast lookup
-                    const localEntryIds = new Set<string>();
-                    if (date === todayKey && localGeneratingEntries.length > 0) {
-                      localGeneratingEntries.forEach((localEntry) => {
-                        const localEntryId = localEntry.id;
-                        const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
-                        if (localEntryId) localEntryIds.add(localEntryId);
-                        if (localFirebaseId) localEntryIds.add(localFirebaseId);
-                      });
-                    }
+                    // Since local entries are now merged into groupedByDate, just render all entries
+                    const allEntries = groupedByDate[date] || [];
 
-                    // Filter out history entries that match local entries
-                    const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
-                      if (localEntryIds.size === 0) return true; // No local entries, show all history
-                      const entryId = entry.id;
-                      const entryFirebaseId = (entry as any)?.firebaseHistoryId;
-                      // If history entry matches any local entry ID, filter it out (local will show instead)
-                      if (entryId && localEntryIds.has(entryId)) return false;
-                      if (entryFirebaseId && localEntryIds.has(entryFirebaseId)) return false;
-                      return true;
-                    });
-
-                    return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
+                    return allEntries.flatMap((entry: HistoryEntry) => {
                       // Check if entry has ready images
                       const hasImages = entry.images && entry.images.length > 0;
                       const hasReadyImages = hasImages && entry.images.some((img: any) =>
                         img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
                       );
-                      // Show loading if generating OR if completed but no ready images yet
-                      const shouldShowLoading = entry.status === "generating" ||
-                        (entry.status === "completed" && !hasReadyImages);
 
                       return entry.images.map((image: any, imgIdx: number) => {
                         // Generate unique key: use image.id if available, otherwise use index
@@ -4125,6 +3947,13 @@ const InputBox = () => {
                         const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
                         const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
                         const isImageLoaded = loadedImages.has(uniqueImageKey);
+
+                        // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
+                        // This prevents the frame from disappearing during the transition
+                        // For images that have URLs, check if they're loaded
+                        const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
+                        const shouldShowLoading = entry.status === "generating" ||
+                          (entry.status === "completed" && hasImageUrl && !isImageLoaded);
 
                         // Check if this is a newly loaded entry for animation
                         // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
@@ -4150,18 +3979,8 @@ const InputBox = () => {
                               }
                             }}
                           >
-                            {shouldShowLoading ? (
-                              // Loading frame - show if generating OR if completed but no images ready yet
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                <div className="flex flex-col items-center gap-2">
-                                  <GifLoader size={64} alt="Generating" />
-
-                                  <div className="text-xs text-white/60 text-center">
-                                    {entry.status === "generating" ? "Generating..." : "Loading..."}
-                                  </div>
-                                </div>
-                              </div>
-                            ) : entry.status === "failed" ? (
+                            {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
+                            {entry.status === "failed" ? (
                               // Error frame
                               <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
                                 <div className="flex flex-col items-center gap-2">
@@ -4178,53 +3997,69 @@ const InputBox = () => {
                                 </div>
                               </div>
                             ) : (
-                              // Completed image
-                              <div className="absolute inset-0 group">
-                                <img
-                                  src={image.thumbnailUrl || image.avifUrl || image.url}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                  onLoad={() => {
-                                    setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                  }}
-                                />
-                                {/* Shimmer loading effect - only show if image hasn't loaded yet */}
-                                {!isImageLoaded && (
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                )}
-                                {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                                <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                  <button
-                                    aria-label="Recreate image"
-                                    className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                    onClick={(e) => handleRecreate(e, entry)}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
-                                  </button>
+                              <>
+                                {/* Image - always render so onLoad fires */}
+                                {hasImageUrl && (
+                                  <div className="absolute inset-0 group">
+                                    <img
+                                      src={image.thumbnailUrl || image.avifUrl || image.url}
+                                      alt=""
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                      onLoad={() => {
+                                        setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                      }}
+                                    />
+                                    {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                    {!isImageLoaded && (
+                                      <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                    )}
+                                    {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                                    <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                      <button
+                                        aria-label="Recreate image"
+                                        className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => handleRecreate(e, entry)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                      </button>
 
-                                </div>
-                                <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                  <button
-                                    aria-label="Copy prompt"
-                                    className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                  </button>
-                                  <button
-                                    aria-label="Delete image"
-                                    className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                    onClick={(e) => handleDeleteImage(e, entry)}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </div>
+                                    </div>
+                                    <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                      <button
+                                        aria-label="Delete image"
+                                        className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                        onClick={(e) => handleDeleteImage(e, entry)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Loading overlay - show on top of image while loading */}
+                                {shouldShowLoading && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
+                                    <div className="flex flex-col items-center gap-2">
+                                      <GifLoader size={64} alt="Generating" />
+                                      <div className="text-xs text-white/60 text-center">
+                                        {entry.status === "generating" ? "Generating..." : "Loading..."}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                           </div>
