@@ -1592,13 +1592,8 @@ const InputBox = () => {
           // Let updateContentEditable run after Redux state has updated to properly format
           // with character tags if needed (runs via useEffect watching prompt)
           // Also call it directly after a brief delay to ensure proper formatting
-          setTimeout(() => {
-            try {
-              updateContentEditable();
-            } catch (err) {
-              console.error('Error in updateContentEditable after enhancement:', err);
-            }
-          }, 100);
+          // updateContentEditable will be triggered by the useEffect watching 'prompt'
+          // No need to call it manually here, as it might use a stale closure of 'prompt'
         } else {
           // Non-fatal: show an error but continue with original prompt
           if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
@@ -3402,13 +3397,8 @@ const InputBox = () => {
         // Let updateContentEditable run after Redux state has updated to properly format
         // with character tags if needed (runs via useEffect watching prompt)
         // Also call it directly after a brief delay to ensure proper formatting
-        setTimeout(() => {
-          try {
-            updateContentEditable();
-          } catch (err) {
-            console.error('Error in updateContentEditable after enhancement:', err);
-          }
-        }, 100);
+        // updateContentEditable will be triggered by the useEffect watching 'prompt'
+        // No need to call it manually here, as it might use a stale closure of 'prompt'
 
         toast.success('Prompt enhanced');
       } else {
