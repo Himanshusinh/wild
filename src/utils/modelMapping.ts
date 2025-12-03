@@ -88,13 +88,37 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'gemini-25-flash-image-i2i',
+    creditModelName: 'Google nano banana (I2I)',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
     frontendValue: 'google/nano-banana-pro',
-    creditModelName: 'Google nano banana pro 2K', // Default to 2K, will be resolved based on resolution
+    creditModelName: 'Nano banana Pro 2K', // Default to 2K, will be resolved based on resolution
     generationType: 'image',
     provider: 'replicate',
     options: {
       resolution: ['1K', '2K', '4K']
     }
+  },
+  {
+    frontendValue: 'z-image-turbo',
+    creditModelName: 'Z Image Turbo',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'flux-2-pro-1080p',
+    creditModelName: 'FLUX.2 [pro] 1080p',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'flux-2-pro-2k',
+    creditModelName: 'FLUX.2 [pro] 2K',
+    generationType: 'image',
+    provider: 'fal'
   },
   {
     frontendValue: 'imagen-4-ultra',
@@ -142,8 +166,14 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'ideogram-3-turbo',
+    creditModelName: 'Ideogram 3 Turbo',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
     frontendValue: 'leonardoai/lucid-origin',
-    creditModelName: 'replicate/leonardoai/lucid-origin',
+    creditModelName: 'Lucid Origin',
     generationType: 'image',
     provider: 'replicate'
   },
@@ -230,9 +260,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'gen4_aleph',
-    creditModelName: 'Gen-4 Aleph 10s',
+    creditModelName: 'Gen-4 Aleph 1s', // Note: creditDistribution has 1s variant
     generationType: 'video',
     provider: 'runway'
+  },
+  {
+    frontendValue: 'minimax-hailuo-01',
+    creditModelName: 'Minimax-Hailuo-01 512P 6s',
+    generationType: 'video',
+    provider: 'minimax'
   },
   {
     frontendValue: 'runway-act-two',
@@ -317,8 +353,32 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'veo3.1-i2v-4s',
+    creditModelName: 'Veo 3.1 I2V 4s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-i2v-6s',
+    creditModelName: 'Veo 3.1 I2V 6s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
     frontendValue: 'veo3.1-i2v-8s',
     creditModelName: 'Veo 3.1 I2V 8s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-i2v-4s',
+    creditModelName: 'Veo 3.1 Fast I2V 4s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-i2v-6s',
+    creditModelName: 'Veo 3.1 Fast I2V 6s',
     generationType: 'video',
     provider: 'fal'
   },
@@ -394,6 +454,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
   {
     frontendValue: 'kling-v2.1-i2v',
     creditModelName: 'Kling 2.1 I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.1-master-t2v',
+    creditModelName: 'Kling 2.1 Master T2V',
     generationType: 'video',
     provider: 'replicate',
     options: { duration: [5, 10] }
@@ -568,6 +635,16 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'video',
     provider: 'fal'
   },
+  {
+    frontendValue: 'seedvr2',
+    creditModelName: 'SeedVR2', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['720p', '1080p', '2k'],
+      duration: [5, 10]
+    }
+  },
 
   // LTX V2 (FAL)
   {
@@ -632,8 +709,44 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'elevenlabs-sfx',
-    creditModelName: 'ElevenLabs Sound Effects',
+    creditModelName: 'Elevenlabs Sound-Effects v2 1s',
     generationType: 'sfx',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-tts-1000',
+    creditModelName: 'Elevenlabs Eleven v3 TTS 1000 Characters',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-tts-2000',
+    creditModelName: 'Elevenlabs Eleven v3 TTS 2000 Characters',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue-1000',
+    creditModelName: 'Elevenlabs Eleven v3 TTD 1000 Characters',
+    generationType: 'text-to-dialogue',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue-2000',
+    creditModelName: 'Elevenlabs Eleven v3 TTD 2000 Characters',
+    generationType: 'text-to-dialogue',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'chatterbox-multilingual-1000',
+    creditModelName: 'Chatter Box Multilingual 1000 Characters',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'minimax-music-2-5min',
+    creditModelName: 'MinMax Music 2.0 5minutes',
+    generationType: 'music',
     provider: 'fal'
   },
 
@@ -648,17 +761,103 @@ export const MODEL_MAPPING: ModelMapping[] = [
   // IMAGE UTILITIES (FAL)
   {
     frontendValue: 'fal-image2svg',
-    creditModelName: 'fal-ai/image2svg',
+    creditModelName: 'Image to SVG',
     generationType: 'image',
     provider: 'fal'
   },
   {
     frontendValue: 'fal-recraft-vectorize',
-    creditModelName: 'fal-ai/recraft/vectorize',
+    creditModelName: 'Recraft Vectorize',
     generationType: 'image',
     provider: 'fal'
-  }
-  ,
+  },
+  {
+    frontendValue: 'fal-outpaint',
+    creditModelName: 'fal-ai/outpaint',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-bria-genfill',
+    creditModelName: 'fal-ai/bria/genfill',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-24mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 24MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-48mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 48MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-96mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 96MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-512mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 512MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'replicate-magic-image-refiner',
+    creditModelName: 'replicate/fermatresearch/magic-image-refiner',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-clarity-upscaler',
+    creditModelName: 'replicate/philz1337x/clarity-upscaler',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-lucataco-remove-bg',
+    creditModelName: 'replicate/ lucataco/remove-bg',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-851-labs-remove-bg',
+    creditModelName: 'replicate/851-labs/background-remover',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-bria-expand-image',
+    creditModelName: 'replicate/bria/expand-image',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-real-esrgan',
+    creditModelName: 'replicate/nightmareai/real-esrgan',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-swin2sr',
+    creditModelName: 'replicate/mv-lab/swin2sr',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-crystal-upscaler',
+    creditModelName: 'replicate/crystal-upscaler', // Base name, resolution appended dynamically
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      resolution: ['1080p', '1440p', '2160p', '6K', '8K', '12K']
+    }
+  },
   // Topaz Image Upscaler (dynamic per-MP pricing; display handled as dynamic)
   {
     frontendValue: 'fal-topaz-upscale-image',
@@ -793,7 +992,24 @@ export const buildCreditModelName = (
   // Handle Google nano banana pro with resolution
   else if (mapping.frontendValue === 'google/nano-banana-pro' && options?.resolution) {
     const res = String(options.resolution).toUpperCase();
-    modelName = `Google nano banana pro ${res}`;
+    modelName = `Nano banana Pro ${res}`;
+  }
+  // Handle Crystal Upscaler with resolution
+  else if (mapping.frontendValue === 'replicate-crystal-upscaler' && options?.resolution) {
+    const res = String(options.resolution).toUpperCase();
+    modelName = `replicate/crystal-upscaler ${res}`;
+  }
+  // Handle SeedVR2 with duration and resolution
+  else if (mapping.frontendValue === 'seedvr2' && options?.duration && options?.resolution) {
+    const d = options.duration;
+    const res = String(options.resolution).toLowerCase();
+    const resNormalized = res.includes('2k') ? '2k' : (res.includes('1080') ? '1080p' : '720p');
+    modelName = `SeedVR2 ${d}s ${resNormalized}`;
+  }
+  // Handle FLUX.2 Pro with resolution
+  else if ((mapping.frontendValue === 'flux-2-pro-1080p' || mapping.frontendValue === 'flux-2-pro-2k')) {
+    // These are already specific resolution variants
+    modelName = mapping.creditModelName;
   }
   // Handle Flux 2 Pro with resolution
   else if (mapping.frontendValue === 'flux-2-pro') {

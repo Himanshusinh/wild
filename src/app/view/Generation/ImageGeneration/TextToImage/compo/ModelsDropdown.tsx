@@ -41,9 +41,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Imagen 4 Ultra', value: 'imagen-4-ultra' },
     { name: 'Imagen 4', value: 'imagen-4' },
     { name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
-    // TODO: Update model name and value with actual model identifier
-    // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
-    { name: 'z-image-turbo', value: 'new-turbo-model' },
+    { name: 'Z Image Turbo', value: 'z-image-turbo' },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -164,7 +162,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
               
-              'new-turbo-model',
+              'z-image-turbo',
               'flux-kontext-max',
               'flux-kontext-pro',
               'flux-pro-1.1-ultra',
