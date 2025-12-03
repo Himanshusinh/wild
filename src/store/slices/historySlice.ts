@@ -166,13 +166,30 @@ export const loadHistory = createAsyncThunk(
         if (!incoming) return incoming;
         const arr = Array.isArray(incoming) ? incoming : [incoming];
         const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
-        // Backend does NOT accept these audio feature generationType filters yet; skip sending and filter client-side.
-        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
-        return mapGenerationTypeForBackend(incoming as any);
+        // Backend now accepts audio generationType values, so we can send them directly
+        // But still normalize them to canonical forms
+        const normalized = arr.map(t => {
+          const n = norm(t);
+          // Map common variations to canonical forms
+          if (n === 'tts' || n === 'text_to_speech') return 'text-to-speech';
+          if (n === 'sound_effect' || n === 'sound-effects' || n === 'sound_effects') return 'sfx';
+          if (n === 'dialogue' || n === 'text_to_dialogue') return 'text-to-dialogue';
+          if (n === 'voice-cloning') return 'voicecloning';
+          return t;
+        });
+        return normalized.length === 1 ? normalized[0] : normalized;
       };
       if (filtersForBackend?.generationType) {
+        // If backendFilters is explicitly provided, send generationType directly to backend
+        // Backend validation now accepts audio types, so we can send them
+        if (backendFilters && !skipBackendGenerationFilter) {
+          // Normalize audio types to canonical forms before sending
+          const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+          params.generationType = normalized;
+        } else {
         const mapped = canonicalAudioType(filtersForBackend.generationType as any);
         if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
+        }
       }
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
@@ -417,24 +434,52 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
   const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
+      
+      // Normalize audio types to canonical forms
       const canonicalAudioType = (incoming: string | string[] | undefined): string | string[] | undefined => {
         if (!incoming) return incoming;
         const arr = Array.isArray(incoming) ? incoming : [incoming];
         const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
-        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
-        return mapGenerationTypeForBackend(incoming as any);
+        // Map common variations to canonical forms
+        const normalized = arr.map(t => {
+          const n = norm(t);
+          if (n === 'tts' || n === 'text_to_speech') return 'text-to-speech';
+          if (n === 'sound_effect' || n === 'sound-effects' || n === 'sound_effects') return 'sfx';
+          if (n === 'dialogue' || n === 'text_to_dialogue') return 'text-to-dialogue';
+          if (n === 'voice-cloning') return 'voicecloning';
+          return t;
+        });
+        return normalized.length === 1 ? normalized[0] : normalized;
       };
+      
       const filtersForBackend = backendFilters || filters;
-      if (filtersForBackend?.generationType) {
-        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-        if (mapped) params.generationType = mapped;
+      
+      // Only include generationType if explicitly provided in backendFilters
+      // When no search, don't send generationType array - rely on mode: 'image' only
+      if (filtersForBackend?.generationType && backendFilters) {
+        // Backend validation now accepts audio types, so normalize and send them
+        const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+        // Only set if it's actually an array or string (not undefined)
+        if (normalized) {
+          params.generationType = normalized;
       }
+      }
+      // Don't set generationType if not in backendFilters - let mode handle it
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
-      // Add search parameter if present
-      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
-        params.search = (filters as any).search.trim();
+      // Add search parameter if present (check both filtersForBackend and filters)
+      const searchQuery = (filtersForBackend as any)?.search || (filters as any)?.search;
+      if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+        params.search = searchQuery.trim();
       }
+      // Add sort order only if explicitly provided (when searching)
+      // Don't include sortOrder in default payload
+      if ((filtersForBackend as any)?.sortOrder) {
+        params.sortOrder = (filtersForBackend as any).sortOrder;
+      } else if ((filters as any)?.sortOrder) {
+        params.sortOrder = (filters as any).sortOrder;
+      }
+      // If sortOrder is not provided, don't set it (backend will use default)
       // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
       if (nextPageParams.cursor?.timestamp) {
         try {
@@ -448,9 +493,15 @@ export const loadMoreHistory = createAsyncThunk(
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
-  // Always request createdAt sorting explicitly
+  // Always set sortBy (use value from backendFilters if provided, otherwise default to createdAt)
+  if ((filtersForBackend as any)?.sortBy) {
+    params.sortBy = (filtersForBackend as any).sortBy;
+  } else if (!params.sortBy) {
   params.sortBy = 'createdAt';
+  }
+  // Don't set default sortOrder - only include it if explicitly provided (when searching)
+  
+  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
   
   const res = await client.get('/api/generations', { params });
   

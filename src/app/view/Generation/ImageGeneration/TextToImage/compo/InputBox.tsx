@@ -64,7 +64,7 @@ import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { toResourceProxy, toZataPath } from '@/lib/thumb';
+import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 // Replaced per-page IntersectionObserver with unified bottom scroll pagination
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
@@ -136,6 +136,49 @@ const InputBox = () => {
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
 
+  // Filter states for search, sort, and date
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+  const [dateInput, setDateInput] = useState<string>("");
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
+  const calendarRef = useRef<HTMLDivElement | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
+  const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
+
+  // Handle calendar click outside
+  useEffect(() => {
+    if (!showCalendar) return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [showCalendar]);
+
+  // Handle search query changes with loading state
+  useEffect(() => {
+    if (searchQuery.trim() || dateRange.start || sortOrder !== 'desc') {
+      setIsFiltering(true);
+      const timer = setTimeout(() => {
+        setIsFiltering(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setIsFiltering(false);
+    }
+  }, [searchQuery, dateRange, sortOrder]);
+
   // Track entries that have been added to history to prevent duplicate rendering
   // This ref is updated immediately when entries are added, before React re-renders
   const historyEntryIdsRef = useRef<Set<string>>(new Set());
@@ -199,25 +242,45 @@ const InputBox = () => {
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
-      const img = current.searchParams.get('image');
-      const sp = current.searchParams.get('sp');
+      // Support multiple uploads: allow repeated ?sp= and ?image= params
+      const spAll = current.searchParams.getAll('sp');
+      const imgAll = current.searchParams.getAll('image');
+      const img = current.searchParams.get('image'); // legacy single param
+      const sp = current.searchParams.get('sp');     // legacy single param
       const prm = current.searchParams.get('prompt');
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
 
-      // Handle image upload - prioritize sp (storage path) over image URL
-      if (sp) {
-        const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-        const directUrl = `${zataBase}${decodedPath}`;
-        dispatch(setUploadedImages([directUrl] as any));
-      } else if (img) {
-        // Ensure the image URL is valid and not a blob/data URL
-        const imageUrl = img.trim();
-        if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
-          dispatch(setUploadedImages([imageUrl] as any));
+      // Handle image upload - prioritize sp (storage path) over image URL.
+      // Collect all URLs from sp/image params so multiple uploads are supported.
+      const collectedUrls: string[] = [];
+
+      const allSp = spAll.length ? spAll : (sp ? [sp] : []);
+      const allImg = imgAll.length ? imgAll : (img ? [img] : []);
+
+      allSp.forEach((spVal) => {
+        if (!spVal) return;
+        const decodedPath = decodeURIComponent(spVal).replace(/^\/+/, '');
+        const directUrl = toDirectUrl(decodedPath);
+        if (directUrl) {
+          collectedUrls.push(directUrl);
         }
+      });
+
+      if (!allSp.length) {
+        allImg.forEach((imgVal) => {
+          if (!imgVal) return;
+          const imageUrl = imgVal.trim();
+          if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+            collectedUrls.push(imageUrl);
+          }
+        });
+      }
+
+      if (collectedUrls.length > 0) {
+        // Cap to first 10 uploads to avoid overloading the UI
+        dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
       if (prm) dispatch(setPrompt(prm));
@@ -237,10 +300,13 @@ const InputBox = () => {
         try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
       }
       // Consume params once so a refresh doesn't keep the image selected
-      if (img || prm || sp || mdl || frm || sty) {
+      if (img || prm || sp || mdl || frm || sty || spAll.length || imgAll.length) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
         current.searchParams.delete('sp');
+        // Also delete any repeated params
+        imgAll.forEach(() => current.searchParams.delete('image'));
+        spAll.forEach(() => current.searchParams.delete('sp'));
         current.searchParams.delete('model');
         current.searchParams.delete('frame');
         current.searchParams.delete('style');
@@ -273,50 +339,68 @@ const InputBox = () => {
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
 
   // Helper function for frontend proxy resource URL
+  // NOTE: For regenerate/remix flows we prefer direct Zata URLs instead of localhost paths,
+  // so callers should usually pass storagePath via `sp` and only use this for in-app proxying.
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
     if (!urlOrPath) return '';
     return toResourceProxy(urlOrPath);
   };
 
-  // Handle recreate - navigate to text-to-image with entry parameters (same as ImagePreviewModal)
+  // Handle recreate (hover regenerate button) - navigate to text-to-image with entry parameters.
+  // Uses the same logic as the Regenerate button in ImagePreviewModal:
+  // - Prefer ALL "Your Upload" images (inputImages) as inputs
+  // - If there are no uploads, only send prompt/model/frame/style (no image)
   const handleRecreate = (e: React.MouseEvent, entry: HistoryEntry) => {
     try {
       e.stopPropagation();
       e.preventDefault();
 
-      // Get the first image from the entry
-      const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
-
-      // Extract storagePath from image
-      const storagePath = (entryImage as any)?.storagePath || (() => {
-        try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-          const original = entryImage?.url || '';
-          if (!original) return '';
-          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch { }
-        return '';
-      })();
-
-      // Get fallback HTTP URL (not blob/data URLs)
-      const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
-
-      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
-      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
-
       const qs = new URLSearchParams();
+
+      const entryAny: any = entry as any;
+      const inputImages: any[] = Array.isArray(entryAny?.inputImages) ? entryAny.inputImages : [];
+
+      // Collect ALL user uploads (Your Upload images)
+      const storagePaths: string[] = [];
+      const directUrls: string[] = [];
+
+      inputImages.forEach((img: any) => {
+        try {
+          let sp = img?.storagePath || '';
+          if (!sp) {
+            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
+            const original = img?.url || img?.originalUrl || '';
+            if (original && original.startsWith(ZATA_PREFIX)) {
+              sp = original.substring(ZATA_PREFIX.length);
+            }
+          }
+          if (sp) {
+            storagePaths.push(sp);
+            return;
+          }
+          const rawUrl = img?.url || img?.originalUrl || '';
+          if (rawUrl && !isBlobOrDataUrl(rawUrl)) {
+            const direct = toDirectUrl(rawUrl);
+            if (direct) directUrls.push(direct);
+          }
+        } catch { }
+      });
 
       // Use userPrompt for remix if available, otherwise use cleanPrompt
       const cleanPrompt = getCleanPrompt(entry.prompt || '');
       const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
       if (remixPrompt) qs.set('prompt', remixPrompt);
 
-      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
-      if (storagePath) {
-        qs.set('sp', storagePath);
-      } else if (imgUrl) {
-        // If no storagePath, set image URL directly
-        qs.set('image', imgUrl);
+      // Attach all uploads:
+      // - Prefer storage paths via repeated sp= params
+      // - Fallback direct URLs via repeated image= params
+      storagePaths.forEach((spVal) => {
+        if (spVal) qs.append('sp', spVal);
+      });
+      if (!storagePaths.length) {
+        directUrls.forEach((u) => {
+          if (u) qs.append('image', u);
+        });
       }
 
       // Also pass model, frameSize and style for preselection
@@ -331,8 +415,8 @@ const InputBox = () => {
       const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
       if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
 
-      // Client-side navigation to avoid full page reload
-      router.push(`/text-to-image?${qs.toString()}`);
+      // Client-side navigation to avoid full page reload (and don't scroll to top)
+      router.push(`/text-to-image?${qs.toString()}`, { scroll: false });
     } catch (error) {
       console.error('Error recreating image:', error);
     }
@@ -816,6 +900,14 @@ const InputBox = () => {
 
       const filtered = allEntries.filter((entry: any) => {
         const normalizedType = normalize(entry.generationType);
+        const normalizedModel = normalize(entry.model);
+
+        // Hide generations produced with the Seedream model from the Image Generation history grid.
+        // This includes both backend id 'bytedance/seedream-4' and any UI alias containing 'seedream'.
+        if (normalizedModel.includes('seedream')) {
+          return false;
+        }
+
         const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
         return normalizedType === 'text-to-image' ||
           normalizedType === 'image-upscale' ||
@@ -841,12 +933,55 @@ const InputBox = () => {
     shallowEqual
   );
 
+  // Filter entries by search query, date range, and sort order
+  const filteredAndSortedEntries = useMemo(() => {
+    let filtered = [...historyEntries];
+
+    // Filter by search query (search in prompt)
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((entry: HistoryEntry) => {
+        const prompt = (entry.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }
+
+    // Filter by date range
+    if (dateRange.start && dateRange.end) {
+      filtered = filtered.filter((entry: HistoryEntry) => {
+        const entryDate = new Date(entry.timestamp);
+        const start = new Date(dateRange.start!);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(dateRange.end!);
+        end.setHours(23, 59, 59, 999);
+        return entryDate >= start && entryDate <= end;
+      });
+    }
+
+    // Sort by sort order
+    const getTs = (x: any) => {
+      const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+      if (!raw) return 0;
+      const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
+      const ms = Date.parse(t);
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+
+    if (sortOrder === 'asc') {
+      filtered.sort((a: any, b: any) => getTs(a) - getTs(b)); // Oldest first
+    } else {
+      filtered.sort((a: any, b: any) => getTs(b) - getTs(a)); // Newest first (default)
+    }
+
+    return filtered;
+  }, [historyEntries, searchQuery, dateRange, sortOrder]);
+
   // Sentinel element at bottom of list (place near end of render)
 
   // Group entries by date and sort within each group for stable ordering
   // Memoize groupedByDate to prevent unnecessary recalculations
   const groupedByDate = useMemo(() => {
-    const groups = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const groups = filteredAndSortedEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
       const date = new Date(entry.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
@@ -855,19 +990,24 @@ const InputBox = () => {
       return groups;
     }, {});
 
-    // Sort entries within each date group by timestamp (newest first) for stable ordering
+    // Sort entries within each date group by timestamp based on sortOrder
+    const getTs = (entry: HistoryEntry) => new Date(entry.timestamp).getTime();
     Object.keys(groups).forEach(date => {
-      groups[date].sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      if (sortOrder === 'asc') {
+        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(a) - getTs(b)); // Oldest first
+      } else {
+        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(b) - getTs(a)); // Newest first
+      }
     });
 
     return groups;
-  }, [historyEntries]);
+  }, [filteredAndSortedEntries, sortOrder]);
 
   // Calculate today key - recalculate on every render to handle day changes
   // This ensures localGeneratingEntries show correctly when generating on a new day
   const todayKey = new Date().toDateString();
 
-  // Sort dates in descending order (newest first)
+  // Sort dates based on sortOrder
   // Include today's date if we have localGeneratingEntries (for first generation of new day)
   const sortedDates = useMemo(() => {
     const dates = new Set(Object.keys(groupedByDate));
@@ -876,18 +1016,25 @@ const InputBox = () => {
     if (localGeneratingEntries.length > 0 && !dates.has(todayKey)) {
       dates.add(todayKey);
     }
-    return Array.from(dates).sort((a: string, b: string) =>
-      new Date(b).getTime() - new Date(a).getTime()
-    );
-  }, [groupedByDate, localGeneratingEntries, todayKey]);
+    const datesArray = Array.from(dates);
+    if (sortOrder === 'asc') {
+      return datesArray.sort((a: string, b: string) =>
+        new Date(a).getTime() - new Date(b).getTime() // Oldest first
+      );
+    } else {
+      return datesArray.sort((a: string, b: string) =>
+        new Date(b).getTime() - new Date(a).getTime() // Newest first
+      );
+    }
+  }, [groupedByDate, localGeneratingEntries, todayKey, sortOrder]);
 
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
   useEffect(() => {
-    const currentEntryIds = new Set<string>(historyEntries.map((e: HistoryEntry) => e.id));
+    const currentEntryIds = new Set<string>(filteredAndSortedEntries.map((e: HistoryEntry) => e.id));
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
-  }, [historyEntries]);
+  }, [filteredAndSortedEntries]);
 
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
@@ -3229,15 +3376,16 @@ const InputBox = () => {
         
         /* Simple fixed-size image containers */
         .image-item {
-          min-width: 165px;
+          width: 100%;
+          aspect-ratio: 1;
           min-height: 165px;
           position: relative;
         }
         
         @media (min-width: 768px) {
           .image-item {
-            width: 272px;
-            height: 272px;
+            width: 100%;
+            aspect-ratio: 1;
           }
         }
         
@@ -3245,15 +3393,23 @@ const InputBox = () => {
         .image-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
+          gap: 4px;
           grid-auto-rows: auto;
         }
         
         @media (min-width: 768px) {
           .image-grid {
-            grid-template-columns: repeat(auto-fill, 272px);
-            grid-auto-rows: 272px;
+            grid-template-columns: repeat(5, 1fr);
+            grid-auto-rows: auto;
             gap: 12px;
+          }
+        }
+        
+        @media (min-width: 1024px) {
+          .image-grid {
+            grid-template-columns: repeat(6, 1fr);
+            grid-auto-rows: auto;
+            gap: 4px;
           }
         }
         
@@ -3270,20 +3426,342 @@ const InputBox = () => {
       `}</style>
 
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
-        <div className="md:py-6  py-0 md:pl-4  ">
+        <div className="md:py-0  py-0 md:pl-4  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
-            <h2 className="md:text-xl text-md font-semibold text-white">Image Generation</h2>
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-4 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
+            <div className="flex items-center justify-between md:mb-2 mb-0">
+              <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+            </div>
+            
+            {/* Desktop: Search, Sort, and Date controls - on same line */}
+            
+            </div>
+
+            {/* Mobile: Search, Sort, and Date controls */}
+            {/* <div className="flex md:hidden flex-col gap-1 mt-2">
+              First row: Sort buttons
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setSortOrder('desc')}
+                  className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                  aria-label="Newest"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+                    <span className="text-xs">Newest</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setSortOrder('asc')}
+                  className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                  aria-label="Oldest"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+                    <span className="text-xs">Oldest</span>
+                  </div>
+                </button>
+              </div>
+              
+              Second row: Search input and Date picker
+              <div className="flex items-center gap-1 w-full">
+                Search Input - placed before date picker
+                <div className="flex-1 relative flex items-center">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by prompt..."
+                    className={`w-full px-2 py-1 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 placeholder:text-xs ${searchQuery ? 'pr-10' : ''}`}
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                
+                Date picker
+                <div className="relative flex items-center gap-1">
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={dateInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setDateInput(value);
+                      if (!value) {
+                        setDateRange({ start: null, end: null });
+                        return;
+                      }
+                      const d = new Date(value + 'T00:00:00');
+                      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                      setDateRange({ start, end });
+                    }}
+                    style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+                  />
+                  <button
+                    onClick={() => {
+                      const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                      setCalendarMonth(base.getMonth());
+                      setCalendarYear(base.getFullYear());
+                      setShowCalendar((v) => !v);
+                    }}
+                    className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                    aria-label="Date"
+                  >
+                    <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+                  </button>
+                  {showCalendar && (
+                    <div ref={calendarRef} className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2">
+                      <div className="flex items-center justify-between mb-0 text-white">
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                          setCalendarYear(prev.getFullYear());
+                          setCalendarMonth(prev.getMonth());
+                        }}>‹</button>
+                        <div className="text-sm font-semibold">
+                          {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                        </div>
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const next = new Date(calendarYear, calendarMonth + 1, 1);
+                          setCalendarYear(next.getFullYear());
+                          setCalendarMonth(next.getMonth());
+                        }}>›</button>
+                      </div>
+                      <div className="grid grid-cols-7 text-[11px] text-white/70 mb-0">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                          <div key={`pad-${i}`} className="h-6 text-xs" />
+                        ))}
+                        {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                          const day = i + 1;
+                          const thisDate = new Date(calendarYear, calendarMonth, day);
+                          const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                          return (
+                            <button
+                              key={day}
+                              className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                              onClick={() => {
+                                const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                                const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                                setDateInput(thisDate.toISOString().slice(0, 10));
+                                setDateRange({ start, end });
+                                setShowCalendar(false);
+                              }}
+                            >{day}</button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <button className="text-white/80 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          setDateInput('');
+                          setDateRange({ start: null, end: null });
+                          setShowCalendar(false);
+                        }}>Clear</button>
+                        <button className="text-white/90 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const now = new Date();
+                          setCalendarMonth(now.getMonth());
+                          setCalendarYear(now.getFullYear());
+                        }}>Today</button>
+                      </div>
+                    </div>
+                  )}
+                  {dateRange.start && (
+                    <button
+                      className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                      onClick={() => {
+                        setDateInput('');
+                        setDateRange({ start: null, end: null });
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div> */}
           </div>
+
+          {/* <div className="hidden md:flex items-center justify-end gap-2 md:mt-5 -mb-4">
+              Search Input
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by prompt..."
+                  className={`px-4 py-2 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              Sort buttons
+              <button
+                onClick={() => setSortOrder('desc')}
+                className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Newest"
+              >
+                <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Newest</span>
+              </button>
+              <button
+                onClick={() => setSortOrder('asc')}
+                className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Oldest"
+              >
+                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Oldest</span>
+              </button>
+
+              Date picker
+              <div className="relative ml-0 flex items-center gap-2">
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={dateInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setDateInput(value);
+                      if (!value) {
+                        setDateRange({ start: null, end: null });
+                        return;
+                      }
+                      const d = new Date(value + 'T00:00:00');
+                      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                      setDateRange({ start, end });
+                    }}
+                    style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+                  />
+                  <button
+                    onClick={() => {
+                      const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                      setCalendarMonth(base.getMonth());
+                      setCalendarYear(base.getFullYear());
+                      setShowCalendar((v) => !v);
+                    }}
+                    className={`relative group px-1 py-1 rounded-lg text-sm ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                    aria-label="Date"
+                  >
+                    <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                    <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Date</span>
+                  </button>
+
+                  {showCalendar && (
+                    <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                      <div className="flex items-center justify-between mb-2 text-white">
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                          setCalendarYear(prev.getFullYear());
+                          setCalendarMonth(prev.getMonth());
+                        }}>‹</button>
+                        <div className="text-sm font-semibold">
+                          {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                        </div>
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const next = new Date(calendarYear, calendarMonth + 1, 1);
+                          setCalendarYear(next.getFullYear());
+                          setCalendarMonth(next.getMonth());
+                        }}>›</button>
+                      </div>
+                      <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                          <div key={`pad-${i}`} className="h-8" />
+                        ))}
+                        {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                          const day = i + 1;
+                          const thisDate = new Date(calendarYear, calendarMonth, day);
+                          const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                          return (
+                            <button
+                              key={day}
+                              className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                              onClick={() => {
+                                const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                                const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                                setDateInput(thisDate.toISOString().slice(0, 10));
+                                setDateRange({ start, end });
+                                setShowCalendar(false);
+                              }}
+                            >{day}</button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          setDateInput('');
+                          setDateRange({ start: null, end: null });
+                          setShowCalendar(false);
+                        }}>Clear</button>
+                        <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const now = new Date();
+                          setCalendarMonth(now.getMonth());
+                          setCalendarYear(now.getFullYear());
+                        }}>Today</button>
+                      </div>
+                    </div>
+                  )}
+                  {dateRange.start && (
+                    <button
+                      className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                      onClick={() => {
+                        setDateInput('');
+                        setDateRange({ start: null, end: null });
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div> */}
+          
           {/* Spacer to keep content below fixed header */}
-          <div className="h-0"></div>
 
             {/* Initial loading overlay - show when loading and no entries */}
             {loading && historyEntries.length === 0 && (
-              <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4 px-4">
                 <GifLoader size={72} alt="Loading" />
                 <div className="text-white text-lg text-center">Loading generations...</div>
+              </div>
+            </div>
+          )}
+
+          {/* Filtering overlay - show when filtering/searching */}
+          {isFiltering && (
+            <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 px-4">
+                <GifLoader size={72} alt="Filtering" />
+                <div className="text-white text-lg text-center">Filtering generations...</div>
               </div>
             </div>
           )}
@@ -3293,11 +3771,11 @@ const InputBox = () => {
             {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
             {/* History Entries - Grouped by Date */}
-            <div className=" space-y-8 md:px-0 px-2 ">
+            <div className=" space-y-4 md:px-0 px-2 md:mt-6 ">
               {sortedDates.map((date) => (
-                <div key={date} className="space-y-4">
+                <div key={date} className="space-y-2 md:-mt-2">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center md:mx-8  md:gap-2 gap-2">
                     <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <svg
                         width="12"
@@ -3679,7 +4157,7 @@ const InputBox = () => {
             <div ref={sentinelRef} style={{ height: 24 }} />
           </div>
         </div>
-      </div>
+      
       {/* Mobile-only: Selected images/characters grid above input box */}
       {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
@@ -3766,8 +4244,8 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed md:bottom-6 bottom-0 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div className="rounded-lg md:rounded-b-lg rounded-b-none bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
+      <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch md:gap-0 gap-0">
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">

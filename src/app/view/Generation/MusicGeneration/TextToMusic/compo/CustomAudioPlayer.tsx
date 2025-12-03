@@ -12,9 +12,10 @@ interface CustomAudioPlayerProps {
   model: string;
   lyrics?: string;
   autoPlay?: boolean;
+  generationType?: string;
 }
 
-const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt, model, lyrics, autoPlay = false }) => {
+const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt, model, lyrics, autoPlay = false, generationType }) => {
   const user = useAppSelector((state: any) => state.auth?.user);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -107,8 +108,6 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
     }
   };
 
-  const promptToShow = (lyrics && lyrics.trim().length > 0) ? lyrics : prompt;
-
   // Helpers to infer extension from URL or data URI
   const getExtensionFromMime = (mime: string): string | null => {
     const map: Record<string, string> = {
@@ -166,6 +165,22 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
 
   const fileTypeLabel = (getExtensionFromUrl(audioUrl) || 'mp3').toUpperCase();
 
+  const normalizeGenType = (t?: string) =>
+    t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '';
+
+  // Show lyrics ONLY for music tracks.
+  // Support legacy aliases like "music" / "music-generation" / "text_to_music".
+  const normType = normalizeGenType(generationType);
+  const isMusicType =
+    normType === 'text-to-music' ||
+    normType === 'music' ||
+    normType === 'music-generation';
+
+  const shouldShowLyrics =
+    !!lyrics &&
+    lyrics.trim().length > 0 &&
+    isMusicType;
+
   return (
     <div className="w-full">
       {/* Hidden audio element */}
@@ -173,15 +188,14 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
       
       {/* New Layout: Prompt + Lyrics + Music Box */}
       <div className="space-y-4">
-        {/* Prompt block with label and copy */
-        }
+        {/* Prompt block with label and copy */}
         <div className="flex items-start gap-2">
           <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Prompt</div>
           <div className="flex-1 bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/90 text-sm leading-relaxed">
-            {promptToShow}
+            {prompt}
           </div>
           <button
-            onClick={() => copyToClipboard(promptToShow, 'prompt')}
+            onClick={() => copyToClipboard(prompt, 'prompt')}
             className="p-1.5 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white mt-2"
             title="Copy prompt"
           >
@@ -204,13 +218,13 @@ const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioUrl, prompt,
           </button>
         </div>
 
-        {/* Lyrics block with label, copy, and collapse */}
-        {lyrics && (
+        {/* Lyrics block with label, copy, and collapse – only for text-to-music */}
+        {shouldShowLyrics && (
           <div className="flex items-start gap-2">
             <div className="text-xs uppercase tracking-wide text-white/50 mt-2">Lyrics</div>
-            <div className="flex-1">
+            <div className="flex-1 w-40">
               <div
-                className="bg-white/5 ring-1 ring-white/10 rounded-lg px-3 py-2 text-white/80 text-sm leading-relaxed cursor-pointer hover:bg-white/10"
+                className="bg-white/5 ring-1 w-full ring-white/10 rounded-lg px-3 py-2 text-white/80 text-sm leading-relaxed cursor-pointer hover:bg-white/10"
                 onClick={() => setLyricsExpanded(!lyricsExpanded)}
                 title={lyricsExpanded ? 'Click to collapse' : 'Click to expand'}
               >

@@ -93,6 +93,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
 
     const modelName = payload.model || 'elevenlabs-tts';
     
+    const fileName = payload.fileName || '';
+    
     setLocalMusicPreview({
       id: `tts-loading-${Date.now()}`,
       prompt: normalizedText,
@@ -102,7 +104,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
-      status: 'generating'
+      status: 'generating',
+      fileName: fileName
     });
 
     const tempId = Date.now().toString();
@@ -116,7 +119,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       status: "generating" as 'generating',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      imageCount: 1
+      imageCount: 1,
+      fileName: fileName
     };
     
     console.log('[TextToSpeech] Creating loading entry:', {
@@ -219,7 +223,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         lyrics: payload.lyrics || payload.text || payload.prompt,
         // Ensure model name is preserved (use frontend model name, not backend endpoint name)
         model: modelName,
-        generationType: 'text-to-speech' as const
+        generationType: 'text-to-speech' as const,
+        fileName: fileName
       };
 
       console.log('[TextToSpeech] Updating history entry:', {
@@ -350,7 +355,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
           )}
 
           {/* TTS Input Box */}
-          <div className="w-full -mt-6 bg-white/5 backdrop-blur-3xl  rounded-2xl">
+          <div className="w-full -mt-6 bg-[#1f1f23]  rounded-2xl">
             <MusicInputBox
               onGenerate={handleGenerate}
               isGenerating={isGenerating}
@@ -383,6 +388,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType}
               autoPlay={true}
             />
           </div>

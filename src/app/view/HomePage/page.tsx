@@ -8,7 +8,7 @@ import '@/utils/checkSessionStatus'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Image from 'next/image'
-import { getImageUrl, API_BASE } from './routes'
+import { getImageUrl, API_BASE, imageRoutes } from './routes'
 // Lazy load non-critical components for better performance
 import dynamic from 'next/dynamic'
 
@@ -35,7 +35,7 @@ const FooterNew = dynamic(() => import('../core/FooterNew'), {
 })
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
-import type { Creation } from './compo/CommunityCreations'
+
 
 import { ViewType, GenerationType } from '@/types/generation';
 
@@ -193,158 +193,15 @@ const HomePage: React.FC = () => {
   ];
 
 
-  // Removed static ITEMS fallback; homepage will use live Art Station feed only
-
-  const [artItems, setArtItems] = useState<Creation[]>([])
-
-  const didInitArtRef = React.useRef(false)
-  
-  // Memoize dimensions array to prevent recreation
-  const dims = useMemo(() => [
-    { w: 900, h: 1400 },
-    { w: 1200, h: 1150 },
-    { w: 1000, h: 1000 },
-    { w: 1200, h: 1810 },
-    { w: 1600, h: 1400 },
-    { w: 1100, h: 1800 },
-    { w: 1500, h: 1000 },
-    { w: 1400, h: 1200 },
-    { w: 1200, h: 1200 },
-  ], []);
-
-  // Memoize base URL processing
-  const baseUrl = useMemo(() => API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE, []);
-
-  // Optimized category mapping function
-  const getCategory = useCallback((generationType: string, firstAudio: any) => {
-    if (firstAudio) return 'Music';
-    const t = generationType.toLowerCase();
-    if (t.includes('music') || t.includes('audio')) return 'Music';
-    if (t === 'text-to-image') return 'Images';
-    if (t === 'text-to-video') return 'Videos';
-    if (t === 'logo' || t === 'logo-generation') return 'Logos';
-    if (t === 'sticker-generation' || t === 'sticker') return 'Stickers';
-    if (t === 'product-generation' || t === 'product') return 'Products';
-    return 'All';
-  }, []);
-
-  useEffect(() => {
-    if (didInitArtRef.current) return; // Prevent React StrictMode double-invoke in dev
-    didInitArtRef.current = true;
-    const fetchHomeArt = async () => {
-      try {
-        let nextCursor: string | undefined = undefined
-        const out: Creation[] = []
-        let page = 0
-        const maxPages = 3
-        while (page < maxPages && out.length < 48) {
-          try {
-            const url = new URL(`${baseUrl}/api/feed`)
-            url.searchParams.set('limit', '24')
-            // Home page: prefer images for aesthetic layout
-            url.searchParams.set('mode', 'image')
-            if (nextCursor) url.searchParams.set('cursor', nextCursor)
-            
-            const res = await fetch(url.toString(), { 
-              credentials: 'include',
-              // Add cache headers for better performance
-              cache: 'default',
-              headers: {
-                'Accept': 'application/json',
-              }
-            })
-            
-            if (!res.ok) {
-              const errorText = await res.text().catch(() => 'Unknown error')
-              console.error(`[HomePage] Feed API error (page ${page}):`, res.status, errorText)
-              // If we have items already, use them; otherwise break
-              if (out.length > 0) break
-              // If first page fails, try to continue or break
-              break
-            }
-            
-            const data = await res.json()
-            // Removed verbose logging for production performance
-            
-            // Handle API response format: { responseStatus: 'success', data: { items: [], meta: {} } }
-            const payload = data?.data || data
-            const items: any[] = payload?.items || []
-            nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
-
-            // Removed verbose logging for production performance
-
-            // If no items in this page, break to avoid infinite loop
-            if (items.length === 0) {
-              // Removed verbose logging for production performance
-              break
-            }
-
-            items.forEach((it: any, idx: number) => {
-              const firstImage = (it.images && Array.isArray(it.images) && it.images[0])
-              const firstVideo = (it.videos && Array.isArray(it.videos) && it.videos[0])
-              const firstAudio = (it.audios && Array.isArray(it.audios) && it.audios[0])
-              const media = firstVideo || firstImage || firstAudio
-              // Try multiple URL fields (same as ArtStation)
-              const src = media?.url || media?.firebaseUrl || media?.originalUrl || ''
-              if (!src) {
-                return // Skip items without media URL
-              }
-              const cat = getCategory(it.generationType || '', firstAudio)
-              const dim = dims[(out.length + idx) % dims.length]
-              const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
-              out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
-            })
-
-            page += 1
-            if (!nextCursor) {
-              // Removed verbose logging for production performance
-              break
-            }
-          } catch (pageError: any) {
-            console.error(`[HomePage] Error fetching page ${page}:`, pageError?.message || pageError)
-            // If we have items already, use them; otherwise continue to next page
-            if (out.length > 0) {
-              console.log(`[HomePage] Using ${out.length} items collected so far`)
-              break
-            }
-            // If first page fails, break to avoid infinite loop
-            break
-          }
-        }
-
-        setArtItems(out)
-      } catch (e: any) {
-        console.error('[HomePage] Fatal error fetching art:', e?.message || e)
-        // fallback to static
-        setArtItems([])
-      }
-    }
-    fetchHomeArt()
-  }, [baseUrl, dims, getCategory])
-
   return (
     <div className="min-h-screen bg-[#07070B]">
-      {/* DEBUG: This is HomePage component */}
-      {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
-        🔍 DEBUG: HomePage Component is Rendering
-      </div> */}
-
-      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
-      <div className="flex md:pt-[40px] md:ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
+      <div className="flex md:pt-[40px] md:ml-[68px]">
         <div className="flex-1 min-w-0">
           <Header />
           <Recentcreation />
-          {/* <Second />
-          <main className="min-h-screen bg-[#07070B] text-white pt-10">
-            <div className="w-full md:pl-12 mt-10">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-0 ">Workflow</h2>
-              <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
-            </div>
-          </main> */}
-
           <main className="min-h-screen bg-[#07070B] text-white md:px-4 md:px-8 pt-4 ">
             <div className="w-full px-4 md:pl-4">
-              <CommunityCreations items={artItems} initialFilter="All" />
+              <CommunityCreations />
             </div>
           </main>
 
@@ -384,13 +241,14 @@ const HomePage: React.FC = () => {
                     >
                       <Image
                         src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
-                        alt="AI Art Community"
+                        alt="Pricing plans artwork"
                         fill
                         className="object-cover rounded-r-2xl"
                         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
                         priority
                         quality={85}
                         loading="eager"
+                        unoptimized
                       />
                     </div>
                   </div>

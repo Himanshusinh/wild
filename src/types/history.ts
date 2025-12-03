@@ -103,9 +103,9 @@ export interface HistoryFilters {
   model?: string;
   // Allow filtering by a single type or multiple types (e.g., ['text-to-speech','text_to_speech','tts'])
   generationType?: (
-    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
+    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts' | 'text-to-dialogue' | 'text_to_dialogue' | 'dialogue' | 'sfx' | 'sound-effects' | 'sound_effects' | 'voicecloning' | 'voice-cloning'
   ) | Array<
-    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts'
+    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts' | 'text-to-dialogue' | 'text_to_dialogue' | 'dialogue' | 'sfx' | 'sound-effects' | 'sound_effects' | 'voicecloning' | 'voice-cloning'
   >;
   mode?: 'image' | 'video' | 'music' | 'all';
   dateRange?: {

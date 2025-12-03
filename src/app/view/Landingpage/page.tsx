@@ -669,8 +669,9 @@ const LandingPage: React.FC = () => {
                       src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2Ffree%20plan%20(1).jpg?alt=media&token=24ca1409-6f04-45d5-a9c4-f891a7f6fcc6"
                       width={500}
                       height={500}
-                      alt="WildmindAI demo image"
+                      alt="Free pricing plan artwork"
                       className="grayscale filter object-contain rounded-2xl scale-90"
+                      unoptimized
                     />
                   </div>
                 </LazyWobbleCard>
@@ -701,8 +702,9 @@ const LandingPage: React.FC = () => {
                     src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2Fexplore_plans%20(1).jpg?alt=media&token=9c03c318-b7c3-4326-b53f-7310e70815bc"
                     width={500}
                     height={500}
-                    alt="WildmindAI demo image"
+                    alt="Explore pricing plans artwork"
                     className="grayscale filter absolute -right-10 md:-right-[20%] lg:-right-[20%] -bottom-10 object-contain rounded-2xl mb:static mb:mt-6 mb:w-[80%] mb:max-w-[320px] mb:mx-auto mobile:w-[85%]"
+                    unoptimized
                   />
                 </LazyWobbleCard>
               </div>
