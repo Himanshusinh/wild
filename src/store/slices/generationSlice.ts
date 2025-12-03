@@ -89,6 +89,12 @@ export const generateImages = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Validate prompt for profanity before sending to backend
+      const { validatePrompt } = await import('@/utils/profanityFilter');
+      const profanityCheck = validatePrompt(prompt);
+      if (!profanityCheck.isValid) {
+        return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
+      }
       // Enforce app-wide max of 4 images
       const requestedCount = Math.min(imageCount, 4);
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -174,6 +180,12 @@ export const generateLiveChatImage = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Validate prompt for profanity before sending to backend
+      const { validatePrompt } = await import('@/utils/profanityFilter');
+      const profanityCheck = validatePrompt(prompt);
+      if (!profanityCheck.isValid) {
+        return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
+      }
       const api = getApiClient();
       // Use different endpoints based on model/provider
       const mapping = getModelMapping(model);
@@ -233,6 +245,13 @@ export const generateRunwayImages = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Validate prompt for profanity before sending to backend
+      const { validatePrompt } = await import('@/utils/profanityFilter');
+      const profanityCheck = validatePrompt(prompt);
+      if (!profanityCheck.isValid) {
+        return rejectWithValue(profanityCheck.error || 'Your prompt contains inappropriate language. Please revise and try again.');
+      }
+      
       // Validate that gen4_image_turbo has at least one reference image
       if (model === 'gen4_image_turbo' && (!uploadedImages || uploadedImages.length === 0)) {
         throw new Error('gen4_image_turbo requires at least one reference image');
