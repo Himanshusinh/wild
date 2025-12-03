@@ -6,6 +6,7 @@ import { TabButton } from './components/ui/TabButton';
 import { LandingView } from './components/views/LandingView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { TemplatesView } from './components/views/TemplatesView';
+import FooterNew from '../view/core/FooterNew';
 
 /**
  * WILD CANVAS - Premium AI Creative Suite
@@ -62,6 +63,8 @@ export default function App() {
                     {renderView()}
                 </div>
             </main>
+
+            <FooterNew />
         </div>
     );
 }
