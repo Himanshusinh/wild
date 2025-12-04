@@ -396,14 +396,6 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
           </span>
         </div>
 
-        <div>
-          {/* <span
-            className="px-3 py-1 hover:bg-gradient-to-l hover:bg-clip-text cursor-pointer hover:text-[#dbdbdb]"
-            onClick={() => router.push(NAV_ROUTES.TEMPLATES)}
-          >
-            Workflows
-          </span> */}
-        </div>
 
         {/* Other Links */}
         <div>
