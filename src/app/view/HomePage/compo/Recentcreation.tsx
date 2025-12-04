@@ -575,7 +575,7 @@ const Recentcreation: React.FC = () => {
   }
 
   return (
-    <section className="w-full px-4 md:px-6 lg:px-6 mt-6 md:mt-6">
+    <section className="w-full px-4 md:px-6 lg:px-6 mt-2 md:mt-6">
       {/* Heading */}
       <h3 className="text-white text-xl md:text-4xl font-medium md:mb-4 mb-2">Recent Creations</h3>
 

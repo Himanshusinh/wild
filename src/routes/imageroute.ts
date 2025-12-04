@@ -51,6 +51,7 @@ export const imageRoutes: FolderImageRoutes = {
       remix2:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fartstation%2Fremix1.png?alt=media&token=08a34931-9e9b-40d8-baf0-7d2c0ce22b90'
   },
   home:{
+    banner:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fbanner-1.jpg?alt=media&token=fb4a23e1-235f-4411-880b-b5dabae95db6',
       fluxshanell:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fhome%2Fshanell.png?alt=media&token=575796b0-209b-4975-b3b8-55f0a9673ee4',
       fluxdev:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fhome%2Fdev.png?alt=media&token=ef4c49d1-9ee0-43f6-81b1-19a64b84d211',
       imagin:'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Fhome%2Fimagin.png?alt=media&token=477b2629-3cc7-4a3b-8a61-379f3032a970',

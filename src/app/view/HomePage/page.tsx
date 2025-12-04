@@ -200,11 +200,29 @@ const HomePage: React.FC = () => {
       <div className="flex  md:ml-[68px] pt-2">
         <div className="flex-1 min-w-0">
           {/* <Header /> */}
+          
+          {/* Promotional Banner */}
+          <section className="w-full md:px-6 px-4 md:pt-4 pt-6 pb-0 md:pb-6">
+            <div className="relative w-full rounded-lg overflow-hidden border border-white/10 group cursor-pointer hover:border-white/20 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <div className="relative w-full aspect-[3/1] md:aspect-[3.25/1]">
+                <Image
+                  src={getImageUrl('home', 'banner')}
+                  alt="WILDMIND AI Launching Offer - 15 days free with 4000 credits"
+                  fill
+                  className="object-cover"
+                  priority
+                  unoptimized
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+                />
+              </div>
+            </div>
+          </section>
+
           <Recentcreation />
 
-          <section className="w-full md:pl-6 md:pr-6 pl-4 pr-4 pt-12 md:pb-12 pb-4 animate-in fade-in duration-1000 delay-200">
-                <div className="md:mb-12 mb-4">
-                    <h2 className="text-xl md:text-5xl font-medium tracking-tight text-white md:mb-4 mb-2">All Your AI Tools Live Under One Roof.</h2>
+          <section className="w-full md:pl-6 md:pr-6 pl-4 pr-4 md:mt-12 mt-6 md:pb-12 pb-4 animate-in fade-in duration-1000 delay-200">
+                <div className="md:mb-4 mb-4">
+                    <h2 className="text-xl md:text-3xl font-medium tracking-tight text-white md:mb-2 mb-2">All Your AI Tools Live Under One Roof.</h2>
                     <p className="text-slate-400 text-lg md:text-lg text-sm">Stop jumping between apps. Create, build, design, and automate from one powerful place.</p>
                 </div>
 

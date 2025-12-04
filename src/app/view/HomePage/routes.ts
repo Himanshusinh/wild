@@ -97,6 +97,11 @@ export const imageRoutes: FolderImageRoutes = {
         editImage : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fedit_image.svg?alt=media&token=1c3cf10c-a167-4610-be92-e447ab085354',
         wildmindskit : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fyy666.png?alt=media&token=8c3408e7-6e86-47e7-9bf3-1601bfc713ae',
         artStation : 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fartstation.svg?alt=media&token=9be89cd6-49ad-4b62-a085-1d8e86905fa8'
+    },
+
+    // Home page images
+    home: {
+        banner: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fbanner-1.jpg?alt=media&token=fb4a23e1-235f-4411-880b-b5dabae95db6'
     }
 };
 
