@@ -118,12 +118,23 @@ export const getRunwayVideoCreditCost = (model: string, duration?: number): numb
 /**
  * Get credit cost for music generation
  */
-export const getMusicCreditCost = (frontendModel: string, duration?: number, inputs?: any[]): number => {
+export const getMusicCreditCost = (frontendModel: string, duration?: number, inputs?: any[], text?: string): number => {
   const mapping = getModelMapping(frontendModel);
-  // Accept 'music', 'sfx', and 'text-to-dialogue' generation types for audio-related models
-  if (!mapping || (mapping.generationType !== 'music' && mapping.generationType !== 'sfx' && mapping.generationType !== 'text-to-dialogue')) {
+  // Accept 'music', 'sfx', 'text-to-dialogue', and 'text-to-speech' generation types for audio-related models
+  const validGenerationTypes = ['music', 'sfx', 'text-to-dialogue', 'text-to-speech'];
+  if (!mapping || !validGenerationTypes.includes(mapping.generationType as string)) {
     console.warn(`Unknown or invalid music model: ${frontendModel}`);
     return 0;
+  }
+
+  // Handle Maya TTS with per-second pricing (6 credits per second) based on text length
+  // Same logic as backend: estimate duration from text length (~15 characters per second)
+  if (frontendModel === 'maya-tts' && text != null && typeof text === 'string') {
+    // Estimate duration: ~15 characters per second (matches backend for accurate estimation)
+    // Minimum 1 second
+    const estimatedDuration = Math.max(1, Math.ceil(text.length / 15));
+    const creditsPerSecond = 6;
+    return estimatedDuration * creditsPerSecond;
   }
   
   // Handle ElevenLabs Dialogue with character-based pricing (same as TTS)
@@ -258,9 +269,10 @@ export const getVideoGenerationCreditCost = (
 export const getMusicGenerationCreditCost = (
   frontendModel: string,
   duration?: number,
-  inputs?: any[]
+  inputs?: any[],
+  text?: string // Added for Maya TTS per-second pricing based on text length
 ): number => {
-  return getMusicCreditCost(frontendModel, duration, inputs);
+  return getMusicCreditCost(frontendModel, duration, inputs, text);
 };
 
 /**

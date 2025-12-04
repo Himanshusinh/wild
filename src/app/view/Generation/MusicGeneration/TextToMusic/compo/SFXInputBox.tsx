@@ -119,6 +119,7 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
       setResultUrl(audioUrl);
       confirmGenerationSuccess(transactionId);
+      setIsGenerating(false); // Stop generating immediately after success
 
       const firebaseHistoryId = result.historyId || tempId;
       const finalModelName = result.model || modelName;
@@ -173,11 +174,33 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
       }, 1000);
     } catch (error: any) {
       console.error('[SFXInputBox] Generation failed:', error);
-      setErrorMessage(error?.message || 'SFX generation failed');
+      setIsGenerating(false); // Stop generating immediately
+      setErrorMessage(error?.message || error?.response?.data?.message || 'SFX generation failed');
       confirmGenerationFailure(transactionId);
-      setLocalMusicPreview((prev: any) => prev ? { ...prev, status: 'failed' } : null);
-    } finally {
-      setIsGenerating(false);
+      
+      // Update Redux entry to failed status
+      dispatch(updateHistoryEntry({ 
+        id: tempId, 
+        updates: { 
+          status: 'failed',
+          error: error?.message || error?.response?.data?.message || 'SFX generation failed'
+        } 
+      }));
+      
+      // Update local preview to failed status
+      setLocalMusicPreview((prev: any) => prev ? { 
+        ...prev, 
+        status: 'failed',
+        error: error?.message || error?.response?.data?.message || 'SFX generation failed'
+      } : null);
+      
+      // Request credit refresh to update UI
+      try {
+        const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+        requestCreditsRefresh();
+      } catch (e) {
+        console.error('[SFXInputBox] Failed to refresh credits:', e);
+      }
     }
   };
 

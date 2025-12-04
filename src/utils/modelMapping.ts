@@ -703,7 +703,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'maya-tts',
-    creditModelName: 'Maya TTS', // Not found in creditDistribution.ts, will use MODEL_CREDITS_MAPPING fallback
+    creditModelName: 'Maya TTS',
     generationType: 'music',
     provider: 'fal'
   },
