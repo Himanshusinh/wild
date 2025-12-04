@@ -559,9 +559,12 @@ const InputBox = () => {
     // Get dimensions for the aspect ratio, default to square
     const dimensions = aspectRatioMap[frameSize] || { width: baseSize, height: baseSize };
 
-    // Ensure dimensions are within API limits (64-2048) and are multiples of 8 for better compatibility
+    // Ensure dimensions are within API limits (64-2048) and are multiples of 16 (required by z-image-turbo)
     const clampToLimits = (value: number): number => {
-      const clamped = Math.max(64, Math.min(2048, Math.round(value / 8) * 8));
+      // Round to nearest multiple of 16
+      const rounded = Math.round(value / 16) * 16;
+      // Clamp to valid range (64-2048) and ensure it's still a multiple of 16
+      const clamped = Math.max(64, Math.min(2048, rounded));
       return clamped;
     };
 
