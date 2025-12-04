@@ -157,7 +157,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
     frontendValue: 'seedream-4.5',
     creditModelName: 'Bytedance Seedream-4.5',
     generationType: 'image',
-    provider: 'replicate'
+    provider: 'fal'
   },
   {
     frontendValue: 'ideogram-ai/ideogram-v3',

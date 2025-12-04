@@ -875,7 +875,8 @@ const InputBox = () => {
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
-  // Seedream 4.5-specific UI state (2K only, limited aspect ratios)
+  // Seedream 4.5-specific UI state (FAL image_size auto_2K/auto_4K)
+  const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
   const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
@@ -2540,35 +2541,42 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'seedream-4.5') {
-        // Replicate Seedream 4.5 (beta: 2K only, limited aspect ratios, up to 14 image_input)
+        // FAL Seedream 4.5 (v45) text-to-image - map frame size to proper enum values
         try {
-          // Build Seedream 4.5 payload per schema
-          const seedream45AllowedAspect = new Set(['match_input_image', '1:1']);
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
-          const payload: any = {
-            prompt: `${promptAdjusted} [Style: ${style}]`,
-            model: 'bytedance/seedream-4.5',
-            size: '2K', // Only 2K supported in beta
-            aspect_ratio: seedream45AllowedAspect.has(frameSize) ? frameSize : 'match_input_image',
-            sequential_image_generation: 'disabled',
-            max_images: Math.min(imageCount, 15), // Up to 15 images
-            isPublic,
+          const combinedImages = getCombinedUploadedImages();
+          
+          // Map frame size to Seedream 4.5 enum values (square_hd, portrait_4_3, landscape_16_9, etc.)
+          const frameSizeToEnum: Record<string, string> = {
+            '1:1': 'square_hd',
+            'square': 'square_hd',
+            '4:3': 'landscape_4_3',
+            '3:4': 'portrait_4_3',
+            '16:9': 'landscape_16_9',
+            '9:16': 'portrait_16_9',
           };
-          // Filter out SVG files - Seedream doesn't support SVG as input
-          if (uploadedImages && uploadedImages.length > 0) {
-            const validImages = uploadedImages
-              .slice(0, 14) // Up to 14 images for seedream-4.5
-              .map((u: string) => toAbsoluteFromProxy(u))
-              .filter((url: string) => {
-                // Exclude SVG files (vectorized images)
-                const lowerUrl = url.toLowerCase();
-                return !lowerUrl.includes('.svg') && !lowerUrl.includes('vectorized');
-              });
-            if (validImages.length > 0) {
-              payload.image_input = validImages;
-            }
-          }
-          const result = await dispatch(replicateGenerate(payload)).unwrap();
+          
+          // Always use the proper frame size enum based on selected aspect ratio
+          const imageSizeEnum = frameSizeToEnum[frameSize] || 'square_hd';
+
+          const result = await dispatch(falGenerate({
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt,
+            model: 'seedream-4.5',
+            generationType: 'text-to-image',
+            // Pass selected frame size and aspect ratio for backend reference
+            frameSize,
+            aspect_ratio: frameSize as any,
+            // Send proper frame size enum (square_hd, portrait_4_3, landscape_16_9, etc.)
+            // Backend will use this directly, respecting the selected frame size
+            image_size: imageSizeEnum,
+            resolution: seedream45Resolution, // Send resolution for backend reference (2K/4K)
+            num_images: imageCount,
+            max_images: imageCount,
+            enable_safety_checker: true,
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
+            isPublic,
+          })).unwrap();
 
           try {
             const completedEntry: HistoryEntry = {
@@ -2611,7 +2619,8 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
+          toast.error(errorMessage, { duration: 5000 });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
@@ -4533,6 +4542,16 @@ const InputBox = () => {
                   />
                 </div>
               )}
+              {selectedModel === 'seedream-4.5' && (
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={seedream45Resolution}
+                    onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                    options={['2K', '4K']}
+                    dropdownId="seedream45Resolution"
+                  />
+                </div>
+              )}
               {selectedModel === 'seedream-v4' && (
                 <div className="flex items-center gap-2 relative">
                   <ResolutionDropdown
@@ -4604,6 +4623,16 @@ const InputBox = () => {
                       onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
                       options={['1K', '2K']}
                       dropdownId="flux2ProResolution"
+                    />
+                  </div>
+                )}
+                {selectedModel === 'seedream-4.5' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={seedream45Resolution}
+                      onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                      options={['2K', '4K']}
+                      dropdownId="seedream45Resolution"
                     />
                   </div>
                 )}
