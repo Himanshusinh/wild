@@ -57,12 +57,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // { name: 'Playground SDXL (Local)', value: 'playground' },
   ];
 
-  // Add credits information to models (but don't display credits)
+  // Add credits information to models from distribution data
   const modelsWithCredits = models.map((model) => {
     const creditInfo = getModelCreditInfo(model.value);
     return {
       ...model,
       credits: creditInfo.credits,
+      displayText: creditInfo.displayText,
       isFree: model.value === "new-turbo-model", // Mark z-image-turbo as special
       displayName: model.name,
     };
@@ -233,6 +234,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>
+                        {!model.isFree && (
+                          <span className={`md:text-[11px] text-[9px] -mt-0.5 font-normal ${
+                            selectedModel === model.value ? 'text-black/70' : 'opacity-80'
+                          }`}>
+                            {model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}
+                          </span>
+                        )}
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
@@ -271,6 +279,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>
+                        {!model.isFree && (
+                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
+                            selectedModel === model.value ? 'text-black/70' : 'opacity-80'
+                          }`}>
+                            {model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}
+                          </span>
+                        )}
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
@@ -304,6 +319,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           )}
                           {model.name}
                         </span>
+                        {!model.isFree && (
+                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
+                            selectedModel === model.value ? 'text-black/70' : 'opacity-80'
+                          }`}>
+                            {model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}
+                          </span>
+                        )}
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
