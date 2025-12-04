@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FilePlus, ChevronUp } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
@@ -44,6 +44,7 @@ const normalizeEditImageUrl = (raw: string | null | undefined): string => {
 const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedFeature, setSelectedFeature] = useState<EditFeature>('upscale');
   const [inputs, setInputs] = useState<Record<EditFeature, string | null>>({
     'upscale': null,
@@ -3151,45 +3152,50 @@ const EditImageInterface: React.FC = () => {
               onScroll={handleFeatureTabsScroll}
             >
               <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1  md:pl-0 pb-0">
-              {features.map((feature) => (
-                <button
-                  key={feature.id}
-                  onClick={() => {
-                    setSelectedFeature(feature.id as EditFeature);
-                    if (feature.id === 'remove-bg') {
-                      setModel('851-labs/background-remover');
-                    } else if (feature.id === 'upscale') {
-                      setModel('philz1337x/crystal-upscaler');
-                    } else if (feature.id === 'resize') {
-                      setModel('fal-ai/bria/expand');
-                    } else if (feature.id === 'vectorize') {
-                      setModel('fal-ai/recraft/vectorize' as any);
-                    }
-                    setProcessing((p) => ({ ...p, [feature.id]: false }));
-                  }}
-                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
-                >
-                  <div className="flex items-center gap-0 justify-center  ">
-                    <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
-                      {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="md:w-6 md:h-6 w-5 h-5" />)}
-                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="md:w-6 md:h-6 w-5 h-5" />)}
-                      {/* {feature.id === 'expand' && (<img src="/icons/resize.svg" alt="Expand" className="w-6 h-6" />)} */}
-                      {feature.id === 'erase' && (<img src="/icons/erase.svg" alt="Erase" className="md:w-8 md:h-8 w-5 h-5" />)}
+                {features.map((feature) => (
+                  <button
+                    key={feature.id}
+                    onClick={() => {
+                      setSelectedFeature(feature.id as EditFeature);
+                      // Update URL with feature parameter
+                      const params = new URLSearchParams(window.location.search);
+                      params.set('feature', feature.id);
+                      router.push(`/view/EditImage?${params.toString()}`, { scroll: false });
 
-                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="md:w-5 md:h-5 w-4 h-4" />)}
-                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="md:w-6 md:h-6 w-5 h-5" />)}
-                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
-                      {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
-                      {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
+                      if (feature.id === 'remove-bg') {
+                        setModel('851-labs/background-remover');
+                      } else if (feature.id === 'upscale') {
+                        setModel('philz1337x/crystal-upscaler');
+                      } else if (feature.id === 'resize') {
+                        setModel('fal-ai/bria/expand');
+                      } else if (feature.id === 'vectorize') {
+                        setModel('fal-ai/recraft/vectorize' as any);
+                      }
+                      setProcessing((p) => ({ ...p, [feature.id]: false }));
+                    }}
+                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                  >
+                    <div className="flex items-center gap-0 justify-center  ">
+                      <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
+                        {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="md:w-6 md:h-6 w-5 h-5" />)}
+                        {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="md:w-6 md:h-6 w-5 h-5" />)}
+                        {/* {feature.id === 'expand' && (<img src="/icons/resize.svg" alt="Expand" className="w-6 h-6" />)} */}
+                        {feature.id === 'erase' && (<img src="/icons/erase.svg" alt="Erase" className="md:w-8 md:h-8 w-5 h-5" />)}
+
+                        {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="md:w-5 md:h-5 w-4 h-4" />)}
+                        {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="md:w-6 md:h-6 w-5 h-5" />)}
+                        {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
+                        {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
+                        {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
+                      </div>
+
+                    </div>
+                    <div className="flex items-center justify-center pt-1">
+                      <span className="text-white text-[10px] md:text-sm text-center">{feature.label}</span>
                     </div>
 
-                  </div>
-                  <div className="flex items-center justify-center pt-1">
-                    <span className="text-white text-[10px] md:text-sm text-center">{feature.label}</span>
-                  </div>
-
-                </button>
-              ))}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -3233,7 +3239,7 @@ const EditImageInterface: React.FC = () => {
                   if (el) {
                     el.scrollBy({ left: 120, behavior: 'smooth' });
                   }
-                } catch {}
+                } catch { }
               }}
               aria-label="Scroll feature tabs"
             >
@@ -3341,8 +3347,8 @@ const EditImageInterface: React.FC = () => {
                     <button
                       onClick={() => setVectorizeSuperMode(false)}
                       className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-0 md:text-xs text-[11px] font-medium rounded transition-colors ${!vectorizeSuperMode
-                          ? 'bg-white text-black'
-                          : 'text-white/70 hover:text-white'
+                        ? 'bg-white text-black'
+                        : 'text-white/70 hover:text-white'
                         }`}
                     >
                       Line Vector
@@ -3350,8 +3356,8 @@ const EditImageInterface: React.FC = () => {
                     <button
                       onClick={() => setVectorizeSuperMode(true)}
                       className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-1 md:text-xs text-[11px] font-medium rounded transition-colors whitespace-nowrap ${vectorizeSuperMode
-                          ? 'bg-white text-black'
-                          : 'text-white/70 hover:text-white'
+                        ? 'bg-white text-black'
+                        : 'text-white/70 hover:text-white'
                         }`}
                     >
                       Art Vector
