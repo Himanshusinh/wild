@@ -213,111 +213,127 @@ const HomePage: React.FC = () => {
 
                     {/* 1. Google (Wide Hero) */}
                     <div className="lg:col-span-3 md:col-span-2 relative h-80 rounded-3xl overflow-hidden border border-white/5 group bg-[#020617]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-transparent mix-blend-multiply"></div>
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
                         <div className="absolute top-8 left-8"><h3 className="text-4xl font-bold text-white">Google</h3></div>
-                        <div className="absolute bottom-8 left-8 right-8 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
-                            <ModelItem title="Gemini 2.5 Flash" desc="SOTA Image Generation" pro />
-                            <ModelItem title="Imagen 3" desc="Photorealistic synthesis" pro />
-                            <ModelItem title="Imagen 4" desc="High-fidelity image synthesis" pro />
-                            <ModelItem title="Gemini 2.5 Pro" desc="Advanced reasoning" pro />
-                            <ModelItem title="Veo2" desc="Realistic short video" pro />
-                            <ModelItem title="Veo3" desc="Cinematic long-form" pro />
+                        <div className="absolute bottom-8 left-8 right-8 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8">
+                            <ModelItem title="Nano Banana" desc="SOTA Image Generation" pro />
+                            <ModelItem title="Imagen 4" desc="Photorealistic synthesis" pro />
+
+                            <ModelItem title="Veo3.1 " desc="Realistic short video" pro />
+                            <ModelItem title="Imagen 4 Fast" desc="High-fidelity image synthesis" pro />
+
+
+                            <ModelItem title="Nano Banana Pro" desc="Advanced reasoning" pro />
+                            <ModelItem title="Imagen 4 Ultra" desc="Ultra-high-fidelity image synthesis" pro />
+
+                            <ModelItem title="Veo3.1 Fast" desc="Cinematic long-form" pro />
+                            <ModelItem title="Gemini 3 Pro Preview" desc="Professional-grade image generation" pro />
                         </div>
                     </div>
 
                     {/* 2. Runway (Tall Hero) */}
                     <div className="lg:col-span-1 md:col-span-1 md:row-span-2 relative h-[41rem] rounded-3xl overflow-hidden border border-white/5 group bg-[#0F0F05]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544967082-d9d25d867d66?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-50 group-hover:scale-105 transition-all duration-700 grayscale mix-blend-screen"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544967082-d9d25d867d66?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700 grayscale mix-blend-screen"></div>
                         <div className="absolute inset-0 bg-gradient-to-b from-amber-500/20 to-amber-900/40 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black"></div>
-                        <div className="absolute top-8 left-8"><h3 className="text-4xl font-bold text-white">runway</h3></div>
+                        <div className="absolute top-8 left-8"><h3 className="text-4xl font-bold text-white">Runway</h3></div>
                         <div className="absolute bottom-8 left-8 right-8 flex flex-col gap-6">
-                            <ModelItem title="Aleph" desc="Creative foundation model" pro />
-                            <ModelItem title="Gen-4 Turbo" desc="Real-time video generation" pro />
-                            <ModelItem title="References" desc="Style/subject consistency" />
+                            <ModelItem title="Gen-4 Aleph" desc="Creative foundation model" pro />
+                            <ModelItem title="Gen-4 Image " desc="Real-time video generation" pro />
+                            <ModelItem title="Gen-4 Image Turbo" desc="Style/subject consistency" />
+
                             <ModelItem title="Act-Two" desc="Narrative video storytelling" />
-                            <ModelItem title="Gen-3 Alpha" desc="Cinematic video realism" pro />
+                            <ModelItem title="Gen-3a Turbo" desc="Cinematic video realism" pro />
                         </div>
                     </div>
 
                     {/* 3. Wan */}
                     <div className="lg:col-span-1 md:col-span-1 relative h-80 rounded-3xl overflow-hidden border border-white/5 group bg-[#110505]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-50 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-gradient-to-tr from-orange-600/40 to-red-900/40 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors"></div>
                         <div className="absolute top-8 left-8"><h3 className="text-3xl font-bold text-white flex items-center gap-2"><Hexagon size={24} fill="white" /> Wan</h3></div>
                         <div className="absolute bottom-8 left-8 right-8 space-y-4">
-                            <ModelItem title="Wan 2.2" desc="Culturally tuned image model" pro />
+                            <ModelItem title="Wan 2.5" desc="Culturally tuned Video model" pro />
+                            <ModelItem title="Wan 2.5 Fast" desc="Real-time video generation" pro />
+
                         </div>
                     </div>
 
                     {/* 4. OpenAI */}
                     <div className="lg:col-span-2 md:col-span-1 relative h-80 rounded-3xl overflow-hidden border border-white/5 group bg-[#021109]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-emerald-900/30 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-black/60"></div>
                         <div className="absolute top-8 left-8"><h3 className="text-3xl font-bold text-white">OpenAI</h3></div>
                         <div className="absolute bottom-8 left-8 right-8 grid grid-cols-2 gap-4">
-                            <ModelItem title="GPT-5" desc="State-of-the-art multimodal AI" pro />
-                            <ModelItem title="GPT-4o Mini" desc="Small, fast multimodal" />
-                            <ModelItem title="GPT Image" desc="Detailed image editing" />
+                            <ModelItem title="Sora 2" desc="Real-time video generation" pro />
+                            <ModelItem title="Gpt 4o" desc="Small, fast multimodal" />
+                            <ModelItem title="Sora 2 Pro" desc="Advanced video generation" />
+
                         </div>
                     </div>
 
                     {/* 5. Black Forest Labs */}
                     <div className="lg:col-span-2 md:col-span-2 relative h-72 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1635776062360-af423602aff3?q=80&w=800')] bg-cover bg-center opacity-30 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1635776062360-af423602aff3?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-900/40 to-black mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
                         <div className="absolute top-8 left-8"><h3 className="text-2xl font-bold text-white">Black Forest Labs</h3></div>
                         <div className="absolute bottom-8 left-8 right-8 grid grid-cols-2 gap-y-4 gap-x-8">
-                            <ModelItem title="FLUX 1.1 Pro" desc="Balanced photo/creative" pro />
+                        <ModelItem title="FLUX 2 Pro" desc="Professional-grade image generation" />
+                        <ModelItem title="FLUX 2 Pro 2k" desc="Professional-grade image generation" />
+
+                            <ModelItem title="FLUX Pro 1.1 ULTRA" desc="Balanced photo/creative" pro />
                             <ModelItem title="FLUX Kontext Max" desc="Multi-reference guided" pro />
-                            <ModelItem title="FLUX Dev" desc="Developer-focused gen" />
-                            <ModelItem title="FLUX Redux" desc="Image refinement polish" />
-                            <ModelItem title="FLUX Depth" desc="Depth-map guided" />
-                            <ModelItem title="FLUX Canny" desc="Edge-map controlled" />
+                            <ModelItem title="FLUX Kontext PRO" desc="Professional-grade image generation" pro />
                         </div>
                     </div>
 
                     {/* 6. Stability AI */}
                     <div className="lg:col-span-1 md:col-span-1 relative h-72 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614728263952-84ea256f9679?q=80&w=800')] bg-cover bg-center opacity-50 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614728263952-84ea256f9679?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-yellow-600/20 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-black/50"></div>
-                        <div className="absolute top-8 left-8"><h3 className="text-2xl font-bold text-white">stability.ai</h3></div>
-                        <div className="absolute bottom-8 left-8 right-8">
-                            <ModelItem title="Stable Diffusion 3.5" desc="Open, versatile synthesis" />
+                        <div className="absolute top-8 left-8"><h3 className="text-2xl font-bold text-white">Ideogram</h3></div>
+                        <div className="absolute bottom-8 left-8 space-y-3 right-8">
+                            <ModelItem title="Ideogram V3 Turbo" desc="Open, versatile synthesis" />
+                            <ModelItem title="Ideogram V3 Quality" desc="Open, versatile synthesis" />
+
                         </div>
                     </div>
 
                     {/* 7. Hailuo AI */}
                     <div className="lg:col-span-1 md:col-span-3 relative h-72 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=800')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-cyan-900/30 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-black/60"></div>
-                        <div className="absolute top-8 left-8"><h3 className="text-2xl font-bold text-white">Hailuo AI</h3></div>
-                        <div className="absolute bottom-8 left-8 right-8 space-y-3">
-                            <ModelItem title="Minimax Hailuo" desc="General-purpose image" pro />
-                            <ModelItem title="Minimax Hailuo 02 Pro" desc="Enhanced precision" pro />
+                        <div className="absolute top-8 left-8"><h3 className="text-2xl font-bold text-white">Minimax</h3></div>
+                        <div className="absolute bottom-8 left-8 right-8 space-y-3 grid grid-cols-2 gap-4">
+                            <ModelItem title=" Image-01" desc="General-purpose image" pro />
+                            <ModelItem title=" Hailuo-02" desc="Enhanced precision" pro />
+                            <ModelItem title=" Hailuo 2.3" desc="Enhanced precision" pro />
+                            <ModelItem title=" Hailuo 2.3 Fast" desc="Enhanced precision" pro />
                         </div>
                     </div>
 
                     {/* 8. Pika */}
                     <div className="lg:col-span-1 relative h-64 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614726365723-49cfae968603?q=80&w=800')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614726365723-49cfae968603?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-black/50"></div>
-                        <div className="absolute top-6 left-6"><h3 className="text-3xl font-bold text-white">Pika</h3></div>
+                        <div className="absolute top-6 left-6"><h3 className="text-3xl font-bold text-white">LTX Studio                        </h3></div>
                         <div className="absolute bottom-6 left-6 right-6">
-                            <ModelItem title="Pika" desc="Creative, fast video" />
+                            <ModelItem title="LTX V2 Pro" desc="Creative, fast video" />
+                            <ModelItem title="LTX V2 Fast" desc="Creative, fast video" />
+
                         </div>
                     </div>
 
                     {/* 9. Kling AI */}
                     <div className="lg:col-span-2 relative h-64 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1634986666676-ec8fd927c23d?q=80&w=800')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1634986666676-ec8fd927c23d?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-red-900/20 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
                         <div className="absolute top-6 left-6"><h3 className="text-2xl font-bold text-white flex gap-2"><Sparkles size={24} className="text-[#60a5fa]" /> KlingAI</h3></div>
@@ -331,27 +347,36 @@ const HomePage: React.FC = () => {
 
                     {/* 10. Recraft */}
                     <div className="lg:col-span-1 relative h-64 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-fuchsia-600/20 mix-blend-overlay"></div>
                         <div className="absolute inset-0 bg-black/50"></div>
-                        <div className="absolute top-6 left-6"><h3 className="text-2xl font-bold text-white tracking-widest uppercase font-mono">RECRAFT</h3></div>
+                        <div className="absolute top-6 left-6"><h3 className="text-2xl font-bold text-white tracking-widest uppercase font-mono">PixVerse</h3></div>
                         <div className="absolute bottom-6 left-6 right-6">
-                            <ModelItem title="Recraft V3" desc="Vector & design-oriented" />
+                            <ModelItem title="PixVerse V5" desc="Vector & design-oriented" />
                         </div>
                     </div>
 
                     {/* 11. ByteDance | Seed */}
                     <div className="lg:col-span-2 relative h-48 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=800')] bg-cover bg-center opacity-30 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-black/60"></div>
-                        <div className="absolute top-6 left-6"><h3 className="text-xl font-bold text-white flex items-center gap-2">ByteDance | Seed</h3></div>
+                        <div className="absolute top-6 left-6"><h3 className="text-xl font-bold text-white flex items-center gap-2">ByteDance </h3></div>
+                        <div className="absolute bottom-6 left-6 right-6 space-y-0 grid grid-cols-2 gap-4">
+                            <ModelItem title="Seedream V4 4K " desc="High-quality image generation" />
+                            <ModelItem title="Seedream v4.5 4K" desc="High-quality image generation" />
+                            <ModelItem title="Seedream 1 Pro" desc="High-quality image generation" />
+                            <ModelItem title="Seedream 1 Pro Lite" desc="High-quality image generation" />
+                        </div>
                     </div>
 
                     {/* 12. Moonvalley */}
                     <div className="lg:col-span-2 relative h-48 rounded-3xl overflow-hidden border border-white/5 group bg-[#080808]">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-all duration-700"></div>
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800')] bg-cover bg-center opacity-100 group-hover:scale-105 transition-all duration-700"></div>
                         <div className="absolute inset-0 bg-black/50"></div>
-                        <div className="absolute top-6 left-6"><h3 className="text-xl font-bold text-white tracking-widest">MOONVALLEY</h3></div>
+                        <div className="absolute top-6 left-6"><h3 className="text-xl font-bold text-white tracking-widest">Tongyi-MAI</h3></div>
+                        <div className="absolute bottom-6 left-6 right-6 space-y-0 grid grid-cols-2 gap-4">
+                          <ModelItem title="Z-Image-Turbo" desc="High-quality image generation" />
+                        </div>
                     </div>
 
                 </div>

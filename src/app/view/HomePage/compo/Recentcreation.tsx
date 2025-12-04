@@ -14,6 +14,7 @@ import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/P
 import { toMediaProxy, toThumbUrl, toDirectUrl } from '@/lib/thumb'
 import SmartImage from '@/components/media/SmartImage'
 import { isUserAuthenticated } from '@/lib/axiosInstance'
+import { Music4 } from 'lucide-react'
 
 // Types for items and categories
 type CreationItem = {
@@ -130,12 +131,16 @@ const Recentcreation: React.FC = () => {
     }
 
     // Map category to request filters
-    const computeFiltersForCategory = (category: string): { generationType?: string; mode?: string } => {
+    const computeFiltersForCategory = (category: string): { generationType?: string | string[]; mode?: string } => {
       switch (category) {
         case 'Images':
           return { generationType: 'text-to-image' }
         case 'Videos':
           return { mode: 'video' } // groups t2v, i2v, v2v on backend
+        case 'Music':
+          // On the backend we support multiple audio generation types (music, tts, dialogue, sfx)
+          // The history API accepts an array for generationType, so widen the type here.
+          return { generationType: ['text-to-music', 'text-to-speech', 'text-to-dialogue', 'sfx'] as string[] }
         case 'Logo':
           return { generationType: 'logo' }
         case 'Stickers':
@@ -247,6 +252,9 @@ const Recentcreation: React.FC = () => {
           case 'video-to-video':
             return 'Videos'
           case 'text-to-music':
+          case 'text-to-speech':
+          case 'text-to-dialogue':
+          case 'sfx':
             return 'Music'
           case 'logo':
             return 'Logo'
@@ -260,8 +268,11 @@ const Recentcreation: React.FC = () => {
       }
 
       // Process images (for text-to-image, ad-generation, mockup-generation, etc.)
+      // Exclude audio generation types to prevent duplicates (they're processed separately as music items)
+      const audioGenerationTypes = ['text-to-music', 'text-to-speech', 'text-to-dialogue', 'sfx']
       if (entry.images && entry.images.length > 0 && 
-          !['logo', 'sticker-generation', 'product-generation'].includes(entry.generationType)) {
+          !['logo', 'sticker-generation', 'product-generation'].includes(entry.generationType) &&
+          !audioGenerationTypes.includes(entry.generationType)) {
         entry.images.forEach((image, index) => {
           const normalizedUrl = normalizeImageUrl(image);
           if (!normalizedUrl) return; // Skip if no valid URL
@@ -299,22 +310,33 @@ const Recentcreation: React.FC = () => {
         })
       }
 
-  // Process music (text-to-music entries)
-      if (entry.generationType === 'text-to-music') {
+      // Process music/audio entries (text-to-music, text-to-speech, text-to-dialogue, sfx)
+      // Reuse audioGenerationTypes defined above
+      if (audioGenerationTypes.includes(entry.generationType)) {
         // Prefer audios[] from backend; fallback to images[0] if older format
         const audioFromAudios = (entry as any)?.audios && (entry as any).audios.length > 0
-          ? ((entry as any).audios[0].url || (entry as any).audios[0].firebaseUrl || '')
+          ? ((entry as any).audios[0].url || (entry as any).audios[0].firebaseUrl || (entry as any).audios[0].originalUrl || '')
           : ''
         const audioFromImages = entry.images && entry.images.length > 0
-          ? (entry.images[0].url || entry.images[0].firebaseUrl || '')
+          ? (entry.images[0].url || entry.images[0].firebaseUrl || entry.images[0].originalUrl || '')
           : ''
-        const audioUrl = audioFromAudios || audioFromImages
+        const audioFromSingleAudio = (entry as any)?.audio
+          ? ((entry as any).audio.url || (entry as any).audio.firebaseUrl || (entry as any).audio.originalUrl || '')
+          : ''
+        const audioUrl = audioFromAudios || audioFromSingleAudio || audioFromImages
 
         if (audioUrl) {
           items.push({
             id: `${entry.id}-music`,
             src: audioUrl,
-            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
+            // fileName is stored on HistoryEntry as an optional field in many places, but not typed here.
+            // Use a safe cast and fallback to prompt.
+            title: (() => {
+              const anyEntry = entry as any
+              const safeName: string | undefined = anyEntry?.fileName || anyEntry?.name
+              const base = (entry.prompt || safeName || '') as string
+              return base.length > 50 ? base.substring(0, 50) + '...' : base
+            })(),
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
@@ -390,9 +412,34 @@ const Recentcreation: React.FC = () => {
       }
     })
 
-    // Sort by date (most recent first) and limit to 5 items
-    const colsLocal = gridSize === 'small' ? 9 : gridSize === 'medium' ? 7 : 5
-    const result = items
+    // Deduplicate items by entry ID to prevent duplicates (e.g., same entry processed as both music and image)
+    // Strategy: Group by entry ID, then prefer music items over image items
+    const itemsByEntryId = new Map<string, CreationItem>()
+    
+    items.forEach((item) => {
+      const entryId = item.entry.id
+      const existing = itemsByEntryId.get(entryId)
+      
+      if (!existing) {
+        // First time seeing this entry ID, add it
+        itemsByEntryId.set(entryId, item)
+      } else {
+        // Entry ID already exists
+        // Prefer music items over non-music items
+        if (item.isMusic && !existing.isMusic) {
+          // Replace non-music item with music item
+          itemsByEntryId.set(entryId, item)
+        }
+        // If both are music or both are non-music, keep the first one (or we could prefer the one with better data)
+      }
+    })
+    
+    const deduplicatedItems = Array.from(itemsByEntryId.values())
+
+    // Sort by date (most recent first) and limit based on grid size
+    // For the smallest dot (compact grid), show 10 recent creations on desktop
+    const colsLocal = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
+    const result = deduplicatedItems
       .sort((a, b) => new Date(b.entry.timestamp).getTime() - new Date(a.entry.timestamp).getTime())
       .slice(0, colsLocal)
     
@@ -436,10 +483,16 @@ const Recentcreation: React.FC = () => {
       if (videoItem) {
         setVideoPreview({ entry, video: videoItem })
       }
-    } else if (audio || entry.generationType === 'text-to-music') {
+    } else if (audio || entry.generationType === 'text-to-music' || entry.generationType === 'text-to-speech' || entry.generationType === 'text-to-dialogue' || entry.generationType === 'sfx') {
       // Audio preview - use the audio URL
-      const audioUrl = item.src || (entry.images && entry.images.length > 0 
-        ? (entry.images[0].url || entry.images[0].firebaseUrl || '')
+      const audioFromAudios = (entry as any)?.audios && (entry as any).audios.length > 0
+        ? ((entry as any).audios[0].url || (entry as any).audios[0].firebaseUrl || (entry as any).audios[0].originalUrl || '')
+        : ''
+      const audioFromSingleAudio = (entry as any)?.audio
+        ? ((entry as any).audio.url || (entry as any).audio.firebaseUrl || (entry as any).audio.originalUrl || '')
+        : ''
+      const audioUrl = item.src || audioFromAudios || audioFromSingleAudio || (entry.images && entry.images.length > 0 
+        ? (entry.images[0].url || entry.images[0].firebaseUrl || entry.images[0].originalUrl || '')
         : '')
       
       // Removed console.log for production performance
@@ -463,7 +516,8 @@ const Recentcreation: React.FC = () => {
     }
   }
 
-  const cols = gridSize === 'small' ? 9 : gridSize === 'medium' ? 7 : 5
+  // Number of placeholder cards during loading; match colsLocal above
+  const cols = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
   // Mobile heights (reduced) and desktop heights
   const cardHeightMobile = gridSize === 'small' ? 80 : gridSize === 'medium' ? 100 : 140
   const cardHeightDesktop = gridSize === 'small' ? 170 : gridSize === 'medium' ? 220 : 320
@@ -764,28 +818,53 @@ const Recentcreation: React.FC = () => {
                     </div>
                   )
                 ) : item.isMusic ? (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center relative">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M9 18V5l12-2v13"/>
-                          <circle cx="6" cy="18" r="3"/>
-                          <circle cx="18" cy="16" r="3"/>
-                        </svg>
+                  (() => {
+                    // Use the same music tile component from music generation feature
+                    const getColorTheme = (entry: any, index: number = 0): string => {
+                      const seed = entry?.id || entry?.model || index || 0;
+                      const hash = String(seed).split('').reduce((acc: number, char: string) => {
+                        return char.charCodeAt(0) + ((acc << 5) - acc);
+                      }, 0);
+                      const themes = [
+                        'from-sky-500/60 via-blue-600/60 to-indigo-600/60',
+                        'from-cyan-500/60 via-sky-600/60 to-blue-700/60',
+                        'from-blue-500/60 via-indigo-600/60 to-purple-600/60',
+                        'from-indigo-600/60 via-violet-600/60 to-fuchsia-600/60',
+                        'from-blue-600/60 via-purple-600/60 to-sky-500/60',
+                        'from-indigo-700/60 via-blue-600/60 to-cyan-600/60',
+                        'from-purple-700/60 via-indigo-600/60 to-blue-600/60',
+                        'from-blue-500/60 via-cyan-500/60 to-teal-500/60',
+                        'from-sky-600/60 via-indigo-600/60 to-purple-700/60',
+                        'from-cyan-600/60 via-blue-700/60 to-indigo-800/60',
+                      ];
+                      return themes[Math.abs(hash) % themes.length];
+                    };
+                    const colorTheme = getColorTheme(item.entry, 0);
+                    const fileName: string | undefined = (item.entry as any)?.fileName || (item.entry as any)?.name;
+                    return (
+                      <div className={`w-full h-full rounded-lg overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10`}>
+                        <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                        </div>
+                        <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
+                          <div className="relative z-10 w-16 h-16 md:w-20 md:h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
+                            <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
+                            <Music4 className="w-8 h-8 md:w-10 md:h-10 text-white drop-shadow-md relative z-10" />
+                          </div>
+                          {fileName && (
+                            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10 max-w-[calc(100%-4rem)] truncate">
+                              {fileName}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
+                        </div>
                       </div>
-                      <div className="text-white/80 text-sm font-medium">Music Track</div>
-                      <div className="text-white/60 text-xs mt-1">Click to play</div>
-                    </div>
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                ) : item.src && item.src.trim() !== '' ? (
+                    );
+                  })()
+                ) : item.src && item.src.trim() !== '' && !isAudioUrl(item.src) ? (
                   (() => {
                     // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
                     // Match by comparing normalized URLs or original URLs
@@ -904,28 +983,53 @@ const Recentcreation: React.FC = () => {
                     </div>
                   )
                 ) : item.isMusic ? (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center relative">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M9 18V5l12-2v13"/>
-                          <circle cx="6" cy="18" r="3"/>
-                          <circle cx="18" cy="16" r="3"/>
-                        </svg>
+                  (() => {
+                    // Use the same music tile component from music generation feature
+                    const getColorTheme = (entry: any, index: number = 0): string => {
+                      const seed = entry?.id || entry?.model || index || 0;
+                      const hash = String(seed).split('').reduce((acc: number, char: string) => {
+                        return char.charCodeAt(0) + ((acc << 5) - acc);
+                      }, 0);
+                      const themes = [
+                        'from-sky-500/60 via-blue-600/60 to-indigo-600/60',
+                        'from-cyan-500/60 via-sky-600/60 to-blue-700/60',
+                        'from-blue-500/60 via-indigo-600/60 to-purple-600/60',
+                        'from-indigo-600/60 via-violet-600/60 to-fuchsia-600/60',
+                        'from-blue-600/60 via-purple-600/60 to-sky-500/60',
+                        'from-indigo-700/60 via-blue-600/60 to-cyan-600/60',
+                        'from-purple-700/60 via-indigo-600/60 to-blue-600/60',
+                        'from-blue-500/60 via-cyan-500/60 to-teal-500/60',
+                        'from-sky-600/60 via-indigo-600/60 to-purple-700/60',
+                        'from-cyan-600/60 via-blue-700/60 to-indigo-800/60',
+                      ];
+                      return themes[Math.abs(hash) % themes.length];
+                    };
+                    const colorTheme = getColorTheme(item.entry, 0);
+                    const fileName: string | undefined = (item.entry as any)?.fileName || (item.entry as any)?.name;
+                    return (
+                      <div className={`w-full h-full rounded-lg overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10`}>
+                        <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                        </div>
+                        <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
+                          <div className="relative z-10 w-16 h-16 md:w-20 md:h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
+                            <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
+                            <Music4 className="w-8 h-8 md:w-10 md:h-10 text-white drop-shadow-md relative z-10" />
+                          </div>
+                          {fileName && (
+                            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10 max-w-[calc(100%-4rem)] truncate">
+                              {fileName}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
+                        </div>
                       </div>
-                      <div className="text-white/80 text-sm font-medium">Music Track</div>
-                      <div className="text-white/60 text-xs mt-1">Click to play</div>
-                    </div>
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                ) : item.src && item.src.trim() !== '' ? (
+                    );
+                  })()
+                ) : item.src && item.src.trim() !== '' && !isAudioUrl(item.src) ? (
                   (() => {
                     // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
                     // Match by comparing normalized URLs or original URLs
