@@ -1,6 +1,7 @@
   'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Check,
   X,
@@ -31,6 +32,7 @@ import {
 import FooterNew from '../core/FooterNew';
 
 const PricingPage: React.FC = () => {
+  const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -535,7 +537,16 @@ const PricingPage: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      <button className="group relative px-8 py-4 bg-gradient-to-r from-white to-[#60a5fa] text-black font-bold rounded-full hover:from-[#60a5fa] hover:to-[#3b82f6] hover:text-white transition-all duration-300 shadow-[0_0_30px_rgba(96,165,250,0.5)] hover:shadow-[0_0_40px_rgba(96,165,250,0.8)] transform hover:scale-105 flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          if (isAuthenticated) {
+                            router.push('/');
+                          } else {
+                            router.push('/view/signup');
+                          }
+                        }}
+                        className="group relative px-8 py-4 bg-gradient-to-r from-white to-[#60a5fa] text-black font-bold rounded-full hover:from-[#60a5fa] hover:to-[#3b82f6] hover:text-white transition-all duration-300 shadow-[0_0_30px_rgba(96,165,250,0.5)] hover:shadow-[0_0_40px_rgba(96,165,250,0.8)] transform hover:scale-105 flex items-center gap-2"
+                      >
                         <span>Start Free Trial</span>
                         <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                       </button>
