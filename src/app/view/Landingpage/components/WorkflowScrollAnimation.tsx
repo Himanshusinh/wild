@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { workflowCards } from '../data/workflowData';
 
 // Split cards into pairs
-const pairs = [];
+const pairs: typeof workflowCards[] = [];
 for (let i = 0; i < workflowCards.length; i += 2) {
     pairs.push(workflowCards.slice(i, i + 2));
 }
