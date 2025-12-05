@@ -453,11 +453,11 @@ const LandingPage: React.FC = () => {
               <LazyScrollCircularGallery
                 radius={450}
                 items={[
-                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex9.jpg?alt=media&token=08712171-a305-4bf5-969d-f8b548a65c81', text: 'Image Generation' },
-                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex8.jpg?alt=media&token=7deea9d9-80ce-4f43-ab39-25fd93ef5b82', text: 'Video Generation' },
-                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex7.jpg?alt=media&token=65905b8e-b572-4473-823a-a18306a3666b', text: 'Audio Generation' },
-                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex6.jpg?alt=media&token=afeeeb2a-0a1e-41e2-a1ef-87bd87b87783', text: 'Video Editor' },
-                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex5.jpg?alt=media&token=e6a9e826-fe91-40fa-8347-2b61d938f468', text: 'AI Studio Canvas' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex9.jpg?alt=media', text: 'Image Generation' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex8.jpg?alt=media', text: 'Video Generation' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex7.jpg?alt=media', text: 'Audio Generation' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex6.jpg?alt=media', text: 'Video Editor' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex5.jpg?alt=media', text: 'AI Studio Canvas' },
                 ]}
               />
             </React.Suspense>

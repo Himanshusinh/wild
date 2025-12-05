@@ -75,6 +75,7 @@ export default function ScrollCircularGallery({
                                     fill
                                     className="object-contain drop-shadow-2xl"
                                     priority
+                                    unoptimized
                                 />
                             </div>
                         </div>
@@ -98,6 +99,7 @@ export default function ScrollCircularGallery({
                                         alt={item.text || `Gallery item ${index}`}
                                         fill
                                         className="object-cover"
+                                        unoptimized // Ensure external images load reliably
                                     />
                                     {item.text && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
