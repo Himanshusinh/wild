@@ -537,6 +537,7 @@ const LandingPage: React.FC = () => {
                           width={300}
                           className="h-60 md:h-48 lg:h-56 w-full object-cover rounded-xl group-hover/card:shadow-xl"
                           alt="thumbnail"
+                          unoptimized
                         />
                       ) : (
                         <div className="h-60 md:h-48 lg:h-56 w-full bg-gray-800 rounded-xl flex items-center justify-center">
@@ -544,11 +545,11 @@ const LandingPage: React.FC = () => {
                         </div>
                       )}
                     </CardItem>
-                    <div className="flex justify-end items-center mt-16 md:mt-12 lg:mt-14">
+                    {/* <div className="flex justify-end items-center mt-16 md:mt-12 lg:mt-14">
                       <CardItem translateZ="20" translateX={40} as="button" className="px-4 md:px-3 lg:px-4 py-2 md:py-1.5 lg:py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs md:text-[10px] lg:text-xs font-bold">
                         Explore
                       </CardItem>
-                    </div>
+                    </div> */}
                   </CardBody>
                 </CardContainer>
               ))}
@@ -594,30 +595,7 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* WorldMap Section */}
-          {/* <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-16 md:mt-12 lg:mt-16" ref={hGlobalRef}>
-          <h2 className="text-white text-center font-bold font-poppins dark:text-neutral-200 text-[3rem] md:text-[2.5rem] lg:text-[2.8rem] mb-10 md:mb-6 lg:mb-10 md:px-4 lg:px-6">
-            <VariableProximity
-              label={'Powering users across the globe, one platform everywhere.'}
-              className={''}
-              fromFontVariationSettings="'wght' 400"
-              toFontVariationSettings="'wght' 900"
-              containerRef={hGlobalRef}
-              radius={140}
-              falloff='linear'
-            />
-          </h2>
-          {loadWorldMap ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
-              <LazyWorldMap 
-                dots={worldMapDots}
-                lineColor="#0ea5e9"
-              />
-            </React.Suspense>
-          ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
-          )}
-        </div> */}
+
 
           {/* Why choose wildmindAI Section */}
           <div className="w-full max-w-7xl mx-auto px-8 md:px-6 lg:px-8 mt-32 md:mt-20 lg:mt-28" ref={hWhyRef}>
