@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowUpRight } from 'lucide-react'
 
-import ScrollFloat from './components/ScrollFloat'
+import ScrollColorRevealSection from './components/ScrollColorRevealSection'
 import VariableProximity from './components/VariableProximity'
 import { Card } from './components/CardsCarousel'
 import { CardContainer, CardBody, CardItem } from './components/3DCardEffect'
@@ -19,6 +19,7 @@ import { worldMapDots } from './data/worldMapData'
 import FooterNew from '../core/FooterNew'
 import { HoverBorderGradient } from './components/hover-border-gradiant'
 import { WorkflowVisualizer } from '../../canvas-projects/components/features/WorkflowVisualizer'
+import WorkflowScrollAnimation from './components/WorkflowScrollAnimation'
 
 // Lazy load heavy components with better performance
 const LazyCircularGallery = React.lazy(() => import('./components/CicularGallery').then(module => ({ default: module.default })))
@@ -326,55 +327,27 @@ const LandingPage: React.FC = () => {
       {/* <div className="h-0 bg-[#07070B] md:h-32 md:mt-48 md:mb-24"></div> */}
 
       {/* New sections after HeroParallax (not nested inside) */}
-      <div className={`relative z-[10] -mt-96 bg-[#07070B] px-8 md:px-8 md:mt-32 desktop:-mt-40 desktop-lg:-mt-56 lg:px-8 desktop:px-24 desktop-lg:px-32 pt-2 md:pt-1 lg:pt-2 pb-10 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh] overflow-hidden'}`}>
-        <ScrollFloat
-          containerClassName="text-center md:mt-24 desktop:mt-0 desktop-lg:mt-0"
-          animationDuration={5}
-          ease="back.inOut(5)"
-          textClassName="text-white font-medium md:font-semibold -mb-20 font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
-          scrollStart="top 85%"
-          scrollEnd="bottom 25%"
+      <div className={`relative z-[10] -mt-96 bg-[#07070B] px-8 md:px-8 md:mt-32 desktop:-mt-40 desktop-lg:-mt-56 lg:px-8 desktop:px-24 desktop-lg:px-32 pt-2 md:pt-1 lg:pt-2 pb-10 md:pb-16 lg:pb-20 flex flex-col items-center text-center ${unlockBelow ? '' : 'min-h-[100vh]'}`}>
+        <ScrollColorRevealSection
+          containerClassName="md:mt-24 desktop:mt-0 desktop-lg:mt-0"
+          textClassName="font-medium md:font-semibold font-poppins text-[clamp(1.5rem,4vw,2rem)] md:text-[clamp(3rem,5vw,4rem)] lg:text-[clamp(4rem,6vw,4.5rem)]"
         >
-          Streamline The Entire Visual
-        </ScrollFloat>
+          <p>Streamline The Entire Visual</p>
+          <p>Content Production Pipeline</p>
+          <p>From Initial Scripting</p>
+          <p>To Final Scene Generation</p>
+        </ScrollColorRevealSection>
 
-        <ScrollFloat
-          containerClassName="text-center -mt-5  md:-mt-6 lg:-mt-8 md:mb-16"
-          textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
-          scrollStart="top 100%"
-          scrollEnd="bottom 25%"
-        >
-          Content Production Pipeline
-        </ScrollFloat>
-
-        <ScrollFloat
-          containerClassName="text-center -mb-4  md:mt-8 lg:mt-3"
-          textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
-          scrollStart="top 85%"
-          scrollEnd="bottom 25%"
-        >
-          From Initial Scripting
-        </ScrollFloat>
-
-        <ScrollFloat
-          containerClassName="text-center -mb-4  md:-mt-6 lg:-mt-8"
-          textClassName="text-white font-medium md:font-semibold font-poppins text-[clamp(1.8rem,4.5vw,2.5rem)] md:text-[clamp(4rem,6vw,5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
-          scrollStart="top 85%"
-          scrollEnd="bottom 25%"
-        >
-          To Final Scene Generation
-        </ScrollFloat>
-
-        <div ref={afterScrollFloatRef} className="h-[16vh] md:h-[24vh] lg:h-[28vh]" />
+        <div ref={afterScrollFloatRef} className="h-[5vh] md:h-[8vh] lg:h-[10vh]" />
 
         {/* Invisible unlock sentinel placed after both ScrollFloat headings */}
         <div ref={unlockRef} className="h-1" />
 
         {unlockBelow && showProximity && (
-          <div ref={proximityContainerRef} style={{ position: 'relative' }} className="-mt-10 md:mt-6 lg:-mt-44 mx-auto max-w-[680px] md:max-w-3xl lg:max-w-[1440px]">
+          <div ref={proximityContainerRef} style={{ position: 'relative' }} className="-mt-16 md:-mt-10 lg:-mt-56 mx-auto max-w-[680px] md:max-w-3xl lg:max-w-[1440px]">
             <VariableProximity
               label={'We have got you covered with\nImage Generation, Video Creation,\nAudio Production, Branding Requirements,\nFilming Tools, and 3D Objects!'}
-              className={'variable-proximity-demo text-white font-semibold text-left text-[1.25rem] leading-[1.2] whitespace-pre-line px-4 md:px-0 md:text-[2.5rem] lg:text-[2.8rem] md:leading-normal'}
+              className={'variable-proximity-demo text-white font-semibold text-center text-[0.625rem] leading-[1.2] whitespace-pre-line px-4 md:px-0 md:text-[1.25rem] lg:text-[1.4rem] md:leading-normal'}
               fromFontVariationSettings="'wght' 400"
               toFontVariationSettings="'wght' 900"
               containerRef={proximityContainerRef}
@@ -467,132 +440,32 @@ const LandingPage: React.FC = () => {
 
 
           {/* Additional ScrollFloat under Features section - ensure visibility even with short content */}
-          <div className="relative z-[10] px-8 md:px-6 lg:px-8 py-4 md:py-2 lg:py-6 flex flex-col items-center text-center ">
-            <ScrollFloat
-              containerClassName="text-center"
-              textClassName="text-white font-semibold font-poppins text-[clamp(1.5rem,4vw,2rem)] md:text-[clamp(2.2rem,3vw,2.5rem)] lg:text-[clamp(5rem,7vw,5.5rem)]"
-              scrollStart="top 85%"
-              scrollEnd="bottom 25%"
-            >
-              From Imagination To Creation
-            </ScrollFloat>
+          <div className="relative z-[10] px-8 md:px- lg:px-8 py-4 md:py-2 lg:py-6 flex flex-col items-center text-center ">
+            <p className="animate-shine font-medium tracking-tight font-satoshi text-3xl md:text-[48px] leading-[1.15]">From Imagination To Creation</p>
           </div>
-
           {/* Heading under the second ScrollFloat */}
           <div ref={hHighlightsRef}>
-            <p className="text-white text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[1.25rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 mt-10 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
-              <VariableProximity
-                label={'Check The Latest AI Models Added!'}
-                className={''}
-                fromFontVariationSettings="'wght' 400"
-                toFontVariationSettings="'wght' 900"
-                containerRef={hHighlightsRef}
-                radius={140}
-                falloff='linear'
-              />
+            <p className="text-white text-center flex justify-center items-center font-bold font-satoshi dark:text-neutral-200 text-[1.25rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 mt-10 md:mb-4 lg:mb-6 md:px-4 lg:px-6">
+              <span className="animate-shine font-medium tracking-tight font-satoshi text-3xl md:text-[48px] leading-[1.15]">
+                Check The Latest AI Models Added!
+              </span>
             </p>
           </div>
-
-          {/* LayoutGrid section */}
-          {/* <div className="px-8 md:px-6 lg:px-8 -mt-4 md:-mt-2 lg:-mt-4">
-          {loadLayoutGrid ? (
-            <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
-              <LazyLayoutGrid cards={layoutGridCards} />
-            </React.Suspense>
-          ) : (
-            <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
-          )}
-        </div> */}
-
           {/* Workflows */}
           <div ref={hWorkflowsRef}>
-            <p className="text-white  text-center flex justify-center items-center font-bold font-poppins dark:text-neutral-200 text-[1.25rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:mt-8 lg:mt-12 md:px-4 lg:px-6">
-              <VariableProximity
-                label={'Workflows Filtered Based On Your Requirements'}
-                className={''}
-                fromFontVariationSettings="'wght' 400"
-                toFontVariationSettings="'wght' 900"
-                containerRef={hWorkflowsRef}
-                radius={140}
-                falloff='linear'
-              />
+            <p className="text-white  text-center flex justify-center items-center font-bold font-satoshi dark:text-neutral-200 text-[1.25rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 md:mt-8 lg:mt-12 md:px-4 lg:px-6">
+              <span className="animate-shine font-medium tracking-tight font-satoshi text-3xl md:text-[48px] leading-[1.15]">
+                Workflows Filtered Based On Your Requirements
+              </span>
             </p>
 
 
 
           </div>
           <div className="relative w-full">
-            <div className="flex gap-6 md:gap-4 lg:gap-6 overflow-x-auto px-4 md:px-3 lg:px-4 py-4 md:py-3 lg:py-4 [scrollbar-width:none] scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} ref={workflowScrollRef} onScroll={checkWorkflowScrollability}>
-              {workflowCards.map((item, idx) => (
-                <CardContainer key={item.title + idx} className="inter-var" containerClassName="py-6">
-                  <CardBody className="bg-[#0f181f] relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-[24rem] md:w-[20rem] lg:w-[22rem] h-auto rounded-xl p-6 md:p-4 lg:p-5 border">
-                    <CardItem translateZ="50" className="text-xl md:text-lg lg:text-xl font-bold text-white dark:text-white">
-                      {item.title}
-                    </CardItem>
-                    <CardItem translateZ="100" rotateX={20} rotateZ={-10} className="w-full mt-4 md:mt-3 lg:mt-4">
-                      {item.src ? (
-                        <Image
-                          src={item.src}
-                          height={300}
-                          width={300}
-                          className="h-60 md:h-48 lg:h-56 w-full object-cover rounded-xl group-hover/card:shadow-xl"
-                          alt="thumbnail"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="h-60 md:h-48 lg:h-56 w-full bg-gray-800 rounded-xl flex items-center justify-center">
-                          <span className="text-gray-400">Image not available</span>
-                        </div>
-                      )}
-                    </CardItem>
-                    {/* <div className="flex justify-end items-center mt-16 md:mt-12 lg:mt-14">
-                      <CardItem translateZ="20" translateX={40} as="button" className="px-4 md:px-3 lg:px-4 py-2 md:py-1.5 lg:py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs md:text-[10px] lg:text-xs font-bold">
-                        Explore
-                      </CardItem>
-                    </div> */}
-                  </CardBody>
-                </CardContainer>
-              ))}
-            </div>
+            <WorkflowScrollAnimation />
             {/* Workflow Navigation Arrows */}
-            <div className="flex justify-end gap-2 mr-10 md:mr-6 lg:mr-8">
-              <button
-                onClick={scrollWorkflowLeft}
-                className="relative z-40 flex h-10 w-10 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
-                disabled={!canScrollWorkflowLeft}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 md:h-5 md:w-5 lg:h-6 lg:w-6 text-gray-500"
-                >
-                  <polyline points="15,18 9,12 15,6" />
-                </svg>
-              </button>
-              <button
-                onClick={scrollWorkflowRight}
-                className="relative z-40 flex h-10 w-10 md:h-9 md:w-9 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
-                disabled={!canScrollWorkflowRight}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 md:h-5 md:w-5 lg:h-6 lg:w-6 text-gray-500"
-                >
-                  <polyline points="9,18 15,12 9,6" />
-                </svg>
-              </button>
-            </div>
+
           </div>
 
 
