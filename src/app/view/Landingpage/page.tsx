@@ -22,6 +22,7 @@ import { WorkflowVisualizer } from '../../canvas-projects/components/features/Wo
 
 // Lazy load heavy components with better performance
 const LazyCircularGallery = React.lazy(() => import('./components/CicularGallery').then(module => ({ default: module.default })))
+const LazyScrollCircularGallery = React.lazy(() => import('./components/ScrollCircularGallery'))
 const LazyWorldMap = React.lazy(() => import('./components/worldmap').then(module => ({ default: module.WorldMap })))
 const LazyHeroParallax = React.lazy(() => import('./components/HeroParallax').then(module => ({ default: module.HeroParallax })))
 const LazyCarousel = React.lazy(() => import('./components/CardsCarousel').then(module => ({ default: module.Carousel })))
@@ -386,7 +387,7 @@ const LandingPage: React.FC = () => {
 
       {/* Consolidated sections with same background */}
       <div className={`bg-[#07070B] ${unlockBelow ? '' : 'opacity-0 pointer-events-none'}`}>
-        <div className="w-full h-full py-20 md:py-16 lg:py-20" ref={hKnowRef}>
+        {/* <div className="w-full h-full py-20 md:py-16 lg:py-20" ref={hKnowRef}>
           <h2 className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2.5rem] lg:text-[2.8rem] mb-6 md:mb-4 lg:mb-6 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
             <VariableProximity
               label={'Feature Categories'}
@@ -407,12 +408,12 @@ const LandingPage: React.FC = () => {
               <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
             )}
           </div>
-        </div>
+        </div> */}
 
         <div className="relative z-[10]">
           {/* <ArtGallery /> */}
           {/* <SocialMediaSuite /> */}
-          <div ref={hFeaturesRef}>
+          {/* <div ref={hFeaturesRef}>
             <p id="features-heading" className="text-white text-left flex justify-start items-start font-bold font-poppins dark:text-neutral-200 text-[2rem] md:text-[2rem] lg:text-[2.5rem] mb-10 md:mb-6 lg:mb-10 px-6 md:px-8 lg:px-10 lg:flex lg:justify-center lg:items-center">
               <VariableProximity
                 label={'Explore All Our Features'}
@@ -424,8 +425,8 @@ const LandingPage: React.FC = () => {
                 falloff='linear'
               />
             </p>
-          </div>
-          <div>
+          </div> */}
+          {/* <div>
             {loadFeatures ? (
               <React.Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
                 <LazyFeaturesAll />
@@ -433,20 +434,37 @@ const LandingPage: React.FC = () => {
             ) : (
               <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
             )}
-          </div>
+          </div> */}
 
           {/* WorkflowVisualizer Component */}
           <div className="w-full">
             <WorkflowVisualizer />
           </div>
-
-          {/* Launching Soon Button */}
           <div className="flex justify-center items-center py-12">
             <button onClick={() => { }} className="group relative px-8 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
               <span className="relative z-10 flex items-center gap-2">Launching Soon<ArrowUpRight size={18} /></span>
               <div className="absolute inset-0 bg-[#60a5fa] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
             </button>
           </div>
+
+          {/* Scroll Circular Gallery */}
+          <div className="w-full relative z-[20]">
+            <React.Suspense fallback={<div className="h-screen bg-gray-800 rounded-lg animate-pulse" />}>
+              <LazyScrollCircularGallery
+                radius={450}
+                items={[
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex9.jpg?alt=media&token=08712171-a305-4bf5-969d-f8b548a65c81', text: 'Image Generation' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex8.jpg?alt=media&token=7deea9d9-80ce-4f43-ab39-25fd93ef5b82', text: 'Video Generation' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex7.jpg?alt=media&token=65905b8e-b572-4473-823a-a18306a3666b', text: 'Audio Generation' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex6.jpg?alt=media&token=afeeeb2a-0a1e-41e2-a1ef-87bd87b87783', text: 'Video Editor' },
+                  { image: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fherosection%2Fex5.jpg?alt=media&token=e6a9e826-fe91-40fa-8347-2b61d938f468', text: 'AI Studio Canvas' },
+                ]}
+              />
+            </React.Suspense>
+          </div>
+
+          {/* Launching Soon Button */}
+
 
           {/* Additional ScrollFloat under Features section - ensure visibility even with short content */}
           <div className="relative z-[10] px-8 md:px-6 lg:px-8 py-4 md:py-2 lg:py-6 flex flex-col items-center text-center ">
@@ -515,8 +533,8 @@ const LandingPage: React.FC = () => {
                       {item.src ? (
                         <Image
                           src={item.src}
-                          height={1000}
-                          width={1000}
+                          height={300}
+                          width={300}
                           className="h-60 md:h-48 lg:h-56 w-full object-cover rounded-xl group-hover/card:shadow-xl"
                           alt="thumbnail"
                         />
