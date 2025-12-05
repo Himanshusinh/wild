@@ -60,10 +60,16 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   // Add credits information to models (but don't display credits)
   const modelsWithCredits = models.map((model) => {
     const creditInfo = getModelCreditInfo(model.value);
+    const isFree = model.value === "new-turbo-model";
+    const creditLabel = isFree
+      ? 'Free (0 credits)'
+      : (creditInfo.displayText || (creditInfo.credits != null ? `${creditInfo.credits} credits` : null));
+
     return {
       ...model,
       credits: creditInfo.credits,
-      isFree: model.value === "new-turbo-model", // Mark z-image-turbo as special
+      isFree, // Mark z-image-turbo as special
+      creditLabel,
       displayName: model.name,
     };
   });
@@ -175,7 +181,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-100 md:max-h-150 overflow-y-auto dropdown-scrollbar`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             // z-image-turbo is first and highlighted as special
@@ -233,6 +239,11 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>
+                        {model.creditLabel && (
+                          <span className={`text-[10px] -mt-0.5 ${selectedModel === model.value && !model.isFree ? 'text-black/70' : 'text-white/60'}`}>
+                            {model.creditLabel}
+                          </span>
+                        )}
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
@@ -257,7 +268,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                             ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
                             : "bg-white text-black"
                           : model.isFree
-                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
+                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border hover:border-[#60a5fa]/50"
                           : "text-white/90 hover:bg-white/10"
                       }`}
                     >
@@ -268,9 +279,15 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           )}
                           {model.name}
                           {!model.isFree && (
+                            
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>
+                        {model.creditLabel && (
+                          <span className={`text-[10px] -mt-0.5 ${selectedModel === model.value && !model.isFree ? 'text-black/70' : 'text-white/60'}`}>
+                            {model.creditLabel}
+                          </span>
+                        )}
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
@@ -304,6 +321,11 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           )}
                           {model.name}
                         </span>
+                        {model.creditLabel && (
+                          <span className={`text-[10px] -mt-0.5 ${selectedModel === model.value && !model.isFree ? 'text-black/70' : 'text-white/60'}`}>
+                            {model.creditLabel}
+                          </span>
+                        )}
                       </div>
                       {selectedModel === model.value && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>

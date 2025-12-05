@@ -3149,7 +3149,24 @@ export const creditDistributionData: ModelCreditInfo[] = [
       planD: 2472,
       free: 25,
     },
+  },
+  {
+    srNo: 146.1,
+    modelName: "FLUX.2 [pro] I2I 1080p",
+    priceToPay: 0.045,
+    overCharge: 0.01,
+    userCost: 0.055,
+    creditsPerGeneration: 110,
+    plans: {
+      planA: 112.3636364,
+      planB: 224.7272727,
+      planC: 561.8181818,
+      planD: 1797.818182,
+      free: 18.18181818,
+    },
   }
+
+  
   , {
     srNo: 146,
     modelName: "FLUX.2 [pro] 2K",
@@ -3164,7 +3181,23 @@ export const creditDistributionData: ModelCreditInfo[] = [
       planD: 1236,
       free: 12.5,
     },
+  },
+  {
+    srNo: 146.2,
+    modelName: "FLUX.2 [pro] I2I 2K",
+    priceToPay: 0.085,
+    overCharge: 0.01,
+    userCost: 0.095,
+    creditsPerGeneration: 190,
+    plans: {
+      planA: 65.05263158,
+      planB: 130.1052632,
+      planC: 325.2631579,
+      planD: 1040.842105,
+      free: 10.52631579,
+    },
   }
+
   , {
     srNo: 147,
     modelName: "Ideogram 3 Turbo",
@@ -3589,6 +3622,8 @@ export const creditDistributionData: ModelCreditInfo[] = [
       free: 20,
     },
   }
+
+
 
 
 

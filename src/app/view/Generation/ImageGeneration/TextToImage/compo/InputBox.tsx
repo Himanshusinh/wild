@@ -48,6 +48,7 @@ import LucidOriginOptions from "./LucidOriginOptions";
 import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
+import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -529,49 +530,88 @@ const InputBox = () => {
     return "1024:1024";
   };
 
-  // Helper function to convert frameSize and resolution to z-turbo-model dimensions
-  const convertFrameSizeToZTurboDimensions = (frameSize: string, resolution: '1K' | '2K'): { width: number; height: number } => {
-    // Base resolution: 1K = 1024, 2K = 2048
-    const baseSize = resolution === '1K' ? 1024 : 2048;
+  // Calculate dimensions for z-image-turbo based on frame size, keeping under 1MP and divisible by 16
+  const convertFrameSizeToZTurboDimensions = (frameSize: string): { width: number; height: number } => {
+    const MAX_PIXELS = 1000000; // 1MP = 1,000,000 pixels (under 1MP means < 1,000,000)
+    const MIN_DIMENSION = 64;
+    const MAX_DIMENSION = 1440;
+    const MULTIPLE_OF = 16;
 
-    // Aspect ratio mappings - calculate dimensions based on base size
-    // Supports all common aspect ratios: 1:1, 3:4, 2:3, 9:16, 4:3, 3:2, 16:9, 21:9, 4:5, 5:4, 2:1, 1:2, 3:1, 1:3, 10:16, 16:10, 9:21
-    const aspectRatioMap: { [key: string]: { width: number; height: number } } = {
-      "1:1": { width: baseSize, height: baseSize },
-      "4:3": { width: baseSize, height: Math.round(baseSize * 3 / 4) },
-      "3:4": { width: Math.round(baseSize * 3 / 4), height: baseSize },
-      "16:9": { width: baseSize, height: Math.round(baseSize * 9 / 16) },
-      "9:16": { width: Math.round(baseSize * 9 / 16), height: baseSize },
-      "3:2": { width: baseSize, height: Math.round(baseSize * 2 / 3) },
-      "2:3": { width: Math.round(baseSize * 2 / 3), height: baseSize },
-      "21:9": { width: baseSize, height: Math.round(baseSize * 9 / 21) },
-      "4:5": { width: Math.round(baseSize * 4 / 5), height: baseSize },
-      "5:4": { width: baseSize, height: Math.round(baseSize * 4 / 5) },
-      "2:1": { width: baseSize, height: Math.round(baseSize * 1 / 2) },
-      "1:2": { width: Math.round(baseSize * 1 / 2), height: baseSize },
-      "3:1": { width: baseSize, height: Math.round(baseSize * 1 / 3) },
-      "1:3": { width: Math.round(baseSize * 1 / 3), height: baseSize },
-      "10:16": { width: Math.round(baseSize * 10 / 16), height: baseSize },
-      "16:10": { width: baseSize, height: Math.round(baseSize * 10 / 16) },
-      "9:21": { width: Math.round(baseSize * 9 / 21), height: baseSize },
+    // Parse aspect ratio from frameSize (e.g., "16:9" -> { widthRatio: 16, heightRatio: 9 })
+    const parseAspectRatio = (ratio: string): { widthRatio: number; heightRatio: number } => {
+      const parts = ratio.split(':');
+      if (parts.length !== 2) return { widthRatio: 1, heightRatio: 1 };
+      const w = parseFloat(parts[0]);
+      const h = parseFloat(parts[1]);
+      if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return { widthRatio: 1, heightRatio: 1 };
+      return { widthRatio: w, heightRatio: h };
     };
 
-    // Get dimensions for the aspect ratio, default to square
-    const dimensions = aspectRatioMap[frameSize] || { width: baseSize, height: baseSize };
+    const { widthRatio, heightRatio } = parseAspectRatio(frameSize);
+    const aspectRatio = widthRatio / heightRatio;
 
-    // Ensure dimensions are within API limits (64-2048) and are multiples of 16 (required by z-image-turbo)
+    // Calculate maximum dimensions that stay under 1MP
+    // For landscape (width > height): start with max width, calculate height
+    // For portrait (height > width): start with max height, calculate width
+    // For square: use equal dimensions
+
+    let width: number;
+    let height: number;
+
+    if (aspectRatio > 1) {
+      // Landscape: width > height
+      // Start with max width (1440), calculate height, then scale down if needed
+      width = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS * aspectRatio)));
+      height = Math.round(width / aspectRatio);
+    } else if (aspectRatio < 1) {
+      // Portrait: height > width
+      // Start with max height (1440), calculate width, then scale down if needed
+      height = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS / aspectRatio)));
+      width = Math.round(height * aspectRatio);
+    } else {
+      // Square: 1:1
+      width = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS)));
+      height = width;
+    }
+
+    // Round to nearest multiple of 16
+    width = Math.round(width / MULTIPLE_OF) * MULTIPLE_OF;
+    height = Math.round(height / MULTIPLE_OF) * MULTIPLE_OF;
+
+    // Ensure we're still under 1MP after rounding
+    while (width * height >= MAX_PIXELS) {
+      if (aspectRatio > 1) {
+        width -= MULTIPLE_OF;
+        height = Math.round(width / aspectRatio / MULTIPLE_OF) * MULTIPLE_OF;
+      } else if (aspectRatio < 1) {
+        height -= MULTIPLE_OF;
+        width = Math.round(height * aspectRatio / MULTIPLE_OF) * MULTIPLE_OF;
+      } else {
+        width -= MULTIPLE_OF;
+        height = width;
+      }
+    }
+
+    // Clamp to valid range (64-1440) and ensure divisible by 16
     const clampToLimits = (value: number): number => {
-      // Round to nearest multiple of 16
-      const rounded = Math.round(value / 16) * 16;
-      // Clamp to valid range (64-2048) and ensure it's still a multiple of 16
-      const clamped = Math.max(64, Math.min(2048, rounded));
-      return clamped;
+      const rounded = Math.round(value / MULTIPLE_OF) * MULTIPLE_OF;
+      return Math.max(MIN_DIMENSION, Math.min(MAX_DIMENSION, rounded));
     };
 
-    return {
-      width: clampToLimits(dimensions.width),
-      height: clampToLimits(dimensions.height),
-    };
+    width = clampToLimits(width);
+    height = clampToLimits(height);
+
+    // Final check: ensure we're still under 1MP after clamping
+    if (width * height >= MAX_PIXELS) {
+      // Scale down proportionally
+      const scale = Math.sqrt(MAX_PIXELS / (width * height));
+      width = Math.round((width * scale) / MULTIPLE_OF) * MULTIPLE_OF;
+      height = Math.round((height * scale) / MULTIPLE_OF) * MULTIPLE_OF;
+      width = Math.max(MIN_DIMENSION, width);
+      height = Math.max(MIN_DIMENSION, height);
+    }
+
+    return { width, height };
   };
 
   // Helper function to convert frameSize to flux-pro-1.1 dimensions
@@ -882,7 +922,7 @@ const InputBox = () => {
   const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
-  const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
+  const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -3067,8 +3107,8 @@ const InputBox = () => {
         try {
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
 
-          // Calculate width and height from resolution and aspect ratio
-          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1', zTurboResolution);
+          // Calculate dimensions based on frame size, keeping under 1MP and divisible by 16
+          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1');
           const width = dimensions.width;
           const height = dimensions.height;
 
@@ -3078,10 +3118,10 @@ const InputBox = () => {
             model: 'new-turbo-model',
             width: width,
             height: height,
-            num_inference_steps: 14,
-            guidance_scale: 0,
-            output_format: 'jpg',
-            output_quality: 80,
+            num_inference_steps: 8, // Schema default
+            guidance_scale: 0, // Schema default (should be 0 for Turbo models)
+            output_format: zTurboOutputFormat, // Use selected output format
+            output_quality: 80, // Schema default
             num_images: Math.min(imageCount, 4), // Cap at 4 like other models
           };
 
@@ -4589,11 +4629,10 @@ const InputBox = () => {
               )}
               {selectedModel === 'new-turbo-model' && (
                 <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={zTurboResolution}
-                    onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
-                    options={['1K', '2K']}
-                    dropdownId="zTurboResolution"
+                  <ZTurboOutputFormatDropdown
+                    outputFormat={zTurboOutputFormat}
+                    onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                    dropdownId="zTurboOutputFormat"
                   />
                 </div>
               )}
@@ -4673,11 +4712,10 @@ const InputBox = () => {
                 )}
                 {selectedModel === 'new-turbo-model' && (
                   <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={zTurboResolution}
-                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
-                      options={['1K', '2K']}
-                      dropdownId="zTurboResolution"
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={zTurboOutputFormat}
+                      onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                      dropdownId="zTurboOutputFormat"
                     />
                   </div>
                 )}
