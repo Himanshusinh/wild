@@ -130,14 +130,14 @@ export const imageRoutes: FolderImageRoutes = {
 
     // Workflow images
     workflow: {
-        designing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fdeisgning.jpg?alt=media',
-        filmMaking: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Ffilm-making.jpg?alt=media',
-        printing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fprinting.jpg?alt=media',
-        branding: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fbranding.jpg?alt=media',
-        contentCreation: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fcontent-creation.jpg?alt=media',
-        artDirection: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fart-direction.jpg?alt=media',
-        marketing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fmarketing.jpg?alt=media',
-        photography: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/landingpageimages%2Fworkflow%2Fphotography.jpg?alt=media'
+        designing: '/catagoryimages/designer.jpg',
+        filmMaking: '/catagoryimages/film.jpg',
+        printing: '/catagoryimages/printing.jpg',
+        branding: '/catagoryimages/branding.jpg',
+        contentCreation: '/catagoryimages/content.jpg',
+        artDirection: '/catagoryimages/art.jpg',
+        marketing: '/catagoryimages/marketing.jpg',
+        photography: '/catagoryimages/photography.jpg'
     },
 
     // Feature category images
