@@ -37,6 +37,14 @@ export async function registerBrowserPushToken(): Promise<void> {
   }
 
   const messaging = getMessaging();
+
+  // CRITICAL FIX: Check if Notification API exists before accessing it
+  // Fixes "Can't find variable: Notification" crash on iPhone Safari
+  if (typeof Notification === 'undefined') {
+    console.warn('[FCM] Notification API not available in this environment');
+    return;
+  }
+
   console.log('[FCM] About to request Notification permission');
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
@@ -81,7 +89,7 @@ export function attachForegroundMessageListener(handler: (payload: any) => void)
         handler(payload);
       });
     })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 
