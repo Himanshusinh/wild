@@ -954,6 +954,11 @@ const SidePannelFeatures = ({
             <button
               ref={profileButtonRef}
               onClick={() => {
+                // On mobile, navigate directly to account settings instead of opening dropdown
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
+                  return;
+                }
                 // Expand sidebar when profile is clicked (if not already expanded)
                 if (!isSidebarHovered && !isMobileSidebarOpen) {
                   setIsSidebarHovered(true);
@@ -1030,7 +1035,7 @@ const SidePannelFeatures = ({
               <div
                 ref={portalRef}
                 onMouseLeave={() => setShowProfileDropdown(false)}
-                className="fixed w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300"
+                className="fixed w-[calc(100vw-2rem)] max-w-80 md:w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300"
                 style={{ 
                   zIndex: 999999,
                   position: 'fixed',
@@ -1040,7 +1045,7 @@ const SidePannelFeatures = ({
                   overflowY: 'auto'
                 }}
               >
-                <div className="p-4">
+                <div className="p-3 md:p-4">
                   {/* Header */}
                   <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">

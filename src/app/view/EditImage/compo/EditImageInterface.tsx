@@ -14,6 +14,7 @@ import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { toast } from 'react-hot-toast';
+import { saveUpload } from '@/lib/libraryApi';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
@@ -276,6 +277,54 @@ const EditImageInterface: React.FC = () => {
     ''
   );
 
+  // Helper function to upload image to Zata if it's still a blob URL or base64
+  // Returns the Zata URL (either already uploaded or newly uploaded)
+  const ensureZataUrl = async (url: string | null | undefined): Promise<string | null> => {
+    if (!url) return null;
+    const normalized = normalizeEditImageUrl(url);
+    
+    // If it's already a Zata URL or HTTP URL, use it directly
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+      return normalized;
+    }
+    
+    // If it's a blob URL or base64, upload it to Zata
+    if (normalized.startsWith('data:') || normalized.startsWith('blob:')) {
+      try {
+        console.log('[ensureZataUrl] Uploading image to Zata before generation:', normalized.substring(0, 50));
+        const resp = await saveUpload({ url: normalized, type: 'image' });
+        
+        if (resp.responseStatus === 'success' && resp.data?.url) {
+          const zataUrl = resp.data.url;
+          
+          // Update inputs with the Zata URL
+          setInputs(prev => {
+            const updated: typeof prev = { ...prev };
+            Object.keys(prev).forEach(key => {
+              const currentValue = prev[key as EditFeature];
+              if (currentValue === normalized || currentValue === url) {
+                updated[key as EditFeature] = zataUrl;
+                console.log('[ensureZataUrl] Updated input for feature:', key);
+              }
+            });
+            return updated;
+          });
+          
+          console.log('[ensureZataUrl] Successfully uploaded to Zata:', zataUrl.substring(0, 50));
+          return zataUrl;
+        } else {
+          console.error('[ensureZataUrl] Upload failed:', resp);
+          return normalized; // Fallback to original
+        }
+      } catch (error) {
+        console.error('[ensureZataUrl] Error uploading to Zata:', error);
+        return normalized; // Fallback to original
+      }
+    }
+    
+    return normalized;
+  };
+
   const handleLiveGenerate = async () => {
     try {
       const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex] : null);
@@ -293,6 +342,9 @@ const EditImageInterface: React.FC = () => {
         { role: 'assistant', text: 'Generating...', status: 'generating' },
       ]);
 
+      // Upload image to Zata if it's still a blob URL or base64
+      const imageUrl = await ensureZataUrl(img);
+
       let out = '';
       if (liveModel === 'seedream-v4') {
         const payload: any = {
@@ -300,7 +352,7 @@ const EditImageInterface: React.FC = () => {
           model: 'bytedance/seedream-4',
           size: liveResolution,
           aspect_ratio: liveFrameSize,
-          image_input: [img],
+          image_input: [imageUrl],
           sequential_image_generation: 'disabled',
           max_images: 1,
           isPublic: true,
@@ -312,7 +364,7 @@ const EditImageInterface: React.FC = () => {
           prompt: livePrompt,
           model: liveModel,
           n: 1,
-          uploadedImages: [img],
+          uploadedImages: [imageUrl],
           output_format: 'jpeg',
           frameSize: liveFrameSize,
           size: liveResolution,
@@ -1864,12 +1916,14 @@ const EditImageInterface: React.FC = () => {
         // Super mode: First convert image to 2D vector using Seedream
         if (vectorizeSuperMode) {
           try {
-            // Step 1: Use Seedream to convert image to 2D vector
+            // Step 1: Upload image to Zata if needed, then use Seedream to convert image to 2D vector
+            const imageInput = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
+            const seedreamImageUrl = await ensureZataUrl(imageInput);
             const seedreamPayload: any = {
               prompt: 'convert into 2D vector image',
               model: 'bytedance/seedream-4',
               size: '2K',
-              image_input: [String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput],
+              image_input: [seedreamImageUrl],
               sequential_image_generation: 'disabled',
               max_images: 1,
               isPublic: false, // Intermediate step, don't make public
@@ -2590,12 +2644,14 @@ const EditImageInterface: React.FC = () => {
               default: return '1024:1024';
             }
           };
+          // Upload image to Zata if needed
+          const runwayImageUrl = await ensureZataUrl(currentInputRaw);
           const runwayPayload: any = {
             promptText: prompt || '',
             model: chosenModel,
             ratio: mapToRunwayRatio(String(frameSize)),
-            referenceImages: [{ uri: currentInput }],
-            uploadedImages: [currentInput],
+            referenceImages: [{ uri: runwayImageUrl }],
+            uploadedImages: [runwayImageUrl],
             generationType: 'text-to-image',
             isPublic,
           };
@@ -2638,12 +2694,14 @@ const EditImageInterface: React.FC = () => {
           let payload: any;
           if (chosenModel.toLowerCase().includes('seedream')) {
             // Seedream v4 expects specific fields
+            // Upload image to Zata if needed
+            const seedreamImageUrl = await ensureZataUrl(currentInputRaw);
             payload = {
               prompt: promptWithStyle,
               model: 'bytedance/seedream-4',
               size: '2K',
               aspect_ratio: frameSize,
-              image_input: [currentInput],
+              image_input: [seedreamImageUrl],
               sequential_image_generation: 'disabled',
               max_images: 1,
               isPublic,
@@ -2656,8 +2714,11 @@ const EditImageInterface: React.FC = () => {
             return;
           } else {
             // Google Nano Banana (gemini-25-flash-image)
-            // Use the same image handling as image generation flow
-            const imagesToUse = reduxUploadedImages && reduxUploadedImages.length > 0 ? reduxUploadedImages : [currentInput];
+            // Upload image to Zata if needed
+            const falImageUrl = await ensureZataUrl(currentInputRaw);
+            const imagesToUse = reduxUploadedImages && reduxUploadedImages.length > 0 
+              ? await Promise.all(reduxUploadedImages.map((img: string) => ensureZataUrl(img)))
+              : [falImageUrl];
             payload = {
               prompt: promptWithStyle,
               model: chosenModel,
@@ -2673,13 +2734,15 @@ const EditImageInterface: React.FC = () => {
           if (out) { }
         } else if (isFluxKontext) {
           // Flux Kontext I2I through the same payload shape as text-to-image
+          // Upload image to Zata if needed
+          const fluxKontextImageUrl = await ensureZataUrl(currentInputRaw);
           const payload: any = {
             prompt: prompt || '',
             model: chosenModel,
             n: 1,
             frameSize: frameSize,
             generationType: 'text-to-image',
-            uploadedImages: [currentInput],
+            uploadedImages: [fluxKontextImageUrl],
             style: 'none',
             isPublic,
           };
