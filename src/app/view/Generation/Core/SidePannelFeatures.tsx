@@ -956,6 +956,11 @@ const SidePannelFeatures = ({
               tabIndex={0}
               ref={profileButtonRef}
               onClick={() => {
+                // On mobile, navigate directly to account settings instead of opening dropdown
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
+                  return;
+                }
                 // Expand sidebar when profile is clicked (if not already expanded)
                 if (!isSidebarHovered && !isMobileSidebarOpen) {
                   setIsSidebarHovered(true);
@@ -1050,7 +1055,7 @@ const SidePannelFeatures = ({
                   overflowY: 'auto'
                 }}
               >
-                <div className="p-4">
+                <div className="p-3 md:p-4">
                   {/* Header */}
                   <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">

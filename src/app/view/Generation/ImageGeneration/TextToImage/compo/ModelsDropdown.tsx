@@ -90,22 +90,32 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     );
   }
 
-  // Set default model to z-image-turbo on mount if not set
+  // Set default model to z-image-turbo on mount if not set (only if no images uploaded)
   useEffect(() => {
     if (!selectedModel || selectedModel === 'flux-dev') {
-      dispatch(setSelectedModel('new-turbo-model'));
+      // If images are uploaded, use nano banana instead of z-image-turbo
+      if (uploadedImages.length > 0) {
+        dispatch(setSelectedModel('gemini-25-flash-image'));
+      } else {
+        dispatch(setSelectedModel('new-turbo-model'));
+      }
     }
   }, []); // Only run on mount
 
-  // If user switches to image-to-image (uploaded images) while an Ideogram model is selected, auto-switch to a supported model
+  // If user switches to image-to-image (uploaded images) while an unsupported model is selected, auto-switch to nano banana
   useEffect(() => {
     if (!restrictForImages) return;
     const isIdeogram = typeof selectedModel === 'string' && selectedModel.startsWith('ideogram-ai/ideogram-v3');
     const isImagen4 = typeof selectedModel === 'string' && (selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'imagen-4-ultra');
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
     const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
-    if (isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
-      const fallback = filteredModels[0]?.value || 'gemini-25-flash-image';
+    const isZImageTurbo = typeof selectedModel === 'string' && (selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo');
+    
+    // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
+    if (isZImageTurbo || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
+      // Prefer nano banana (gemini-25-flash-image) for image-to-image
+      const nanoBanana = filteredModels.find(m => m.value === 'gemini-25-flash-image');
+      const fallback = nanoBanana?.value || filteredModels[0]?.value || 'gemini-25-flash-image';
       dispatch(setSelectedModel(fallback));
     }
   }, [restrictForImages, selectedModel, filteredModels, dispatch]);

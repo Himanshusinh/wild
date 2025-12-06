@@ -383,47 +383,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
     }
 
     // tab === 'computer' – user uploaded from their device.
-    // Persist these images as true uploads in Zata WITHOUT tying them
-    // to a specific generation; they become reusable in "Your Uploads".
+    // Just pass blob URLs/base64 to onAdd - don't upload to Zata yet
+    // Upload will happen when user generates something with the image
     const chosen = localUploads.slice(0, remainingSlots);
     if (!chosen.length) {
       onClose();
       return;
     }
 
-    const savedUrls: string[] = [];
-    for (const url of chosen) {
-      try {
-        const resp = await saveUpload({ url, type: 'image' });
-        console.log('[UploadModal] Save upload response:', {
-          responseStatus: resp.responseStatus,
-          hasData: !!resp.data,
-          url: resp.data?.url,
-          storagePath: resp.data?.storagePath,
-          historyId: resp.data?.historyId
-        });
-        if (resp.responseStatus === 'success' && resp.data?.url) {
-          // Use the URL from the response (Zata public URL)
-          savedUrls.push(resp.data.url);
-        } else {
-          console.warn('[UploadModal] Save upload failed:', resp);
-          // Fallback: still pass the original data URL so generation can proceed.
-          savedUrls.push(url);
-        }
-      } catch (error) {
-        console.error('[UploadModal] Error saving upload:', error);
-        savedUrls.push(url);
-      }
-    }
+    // Pass blob URLs/base64 to onAdd so images show instantly
+    // No upload to Zata here - will be uploaded when user generates
+    onAdd(chosen);
 
-    if (savedUrls.length) {
-      onAdd(savedUrls);
-      // Reset uploads state so it reloads next time the modal opens on uploads tab
-      setUploadItems([]);
-      setUploadNextCursor(undefined);
-      setUploadHasMore(false);
-      hasLoadedUploadsRef.current = false; // Reset flag so it reloads when modal opens again
-    }
     setLocalUploads([]);
     onClose();
   };
