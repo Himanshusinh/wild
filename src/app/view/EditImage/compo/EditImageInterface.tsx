@@ -2487,10 +2487,14 @@ const EditImageInterface: React.FC = () => {
             const endpoint = isReplace ? '/api/canvas/replace' : '/api/canvas/erase';
             const actionName = isReplace ? 'Replace' : 'Erase';
 
+            // Upload image and mask to Zata if needed to avoid large payload (which causes timeouts in production)
+            const imageUrl = await ensureZataUrl(String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput);
+            const maskUrl = await ensureZataUrl(maskDataUrl);
+
             // 2. Prepare Payload
             const payload: any = {
-              image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
-              mask: maskDataUrl, // Data URI
+              image: imageUrl,
+              mask: maskUrl,
               prompt: finalPrompt, // Required for replace, optional for erase
               meta: {
                 source: 'canvas',
@@ -2604,20 +2608,16 @@ const EditImageInterface: React.FC = () => {
         }
 
         // 2. Prepare Payload
-        // Note: api.ts usage uses `image_url` but backend falService require `image` for Data URIs to trigger upload.
+        // Note: api.ts usage uses `image_url`. Sending large Data URIs causes timeouts in production.
+        // We upload client-side first, then send the URL.
         const inputStr = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
-        const isDataInput = String(inputStr).startsWith('data:');
+        const imageUrl = await ensureZataUrl(inputStr);
 
         const payload: any = {
           isPublic,
           sync_mode: !!resizeSyncMode,
+          image_url: imageUrl,
         };
-
-        if (isDataInput) {
-          payload.image = inputStr;
-        } else {
-          payload.image_url = inputStr;
-        }
 
         if (prompt && prompt.trim()) payload.prompt = prompt.trim();
         if (resizeNegativePrompt && resizeNegativePrompt.trim()) payload.negative_prompt = resizeNegativePrompt.trim();
