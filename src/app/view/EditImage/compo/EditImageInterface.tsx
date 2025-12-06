@@ -18,6 +18,7 @@ import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
 import { EditImageExpandFrame } from './EditImageExpandFrame';
 import { EditImageExpandControls } from './EditImageExpandControls';
+import { saveUpload } from '@/lib/libraryApi';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
@@ -311,21 +312,21 @@ const EditImageInterface: React.FC = () => {
   const ensureZataUrl = async (url: string | null | undefined): Promise<string | null> => {
     if (!url) return null;
     const normalized = normalizeEditImageUrl(url);
-    
+
     // If it's already a Zata URL or HTTP URL, use it directly
     if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
       return normalized;
     }
-    
+
     // If it's a blob URL or base64, upload it to Zata
     if (normalized.startsWith('data:') || normalized.startsWith('blob:')) {
       try {
         console.log('[ensureZataUrl] Uploading image to Zata before generation:', normalized.substring(0, 50));
         const resp = await saveUpload({ url: normalized, type: 'image' });
-        
+
         if (resp.responseStatus === 'success' && resp.data?.url) {
           const zataUrl = resp.data.url;
-          
+
           // Update inputs with the Zata URL
           setInputs(prev => {
             const updated: typeof prev = { ...prev };
@@ -338,7 +339,7 @@ const EditImageInterface: React.FC = () => {
             });
             return updated;
           });
-          
+
           console.log('[ensureZataUrl] Successfully uploaded to Zata:', zataUrl.substring(0, 50));
           return zataUrl;
         } else {
@@ -350,7 +351,7 @@ const EditImageInterface: React.FC = () => {
         return normalized; // Fallback to original
       }
     }
-    
+
     return normalized;
   };
 
@@ -2828,7 +2829,7 @@ const EditImageInterface: React.FC = () => {
             // Google Nano Banana (gemini-25-flash-image)
             // Upload image to Zata if needed
             const falImageUrl = await ensureZataUrl(currentInputRaw);
-            const imagesToUse = reduxUploadedImages && reduxUploadedImages.length > 0 
+            const imagesToUse = reduxUploadedImages && reduxUploadedImages.length > 0
               ? await Promise.all(reduxUploadedImages.map((img: string) => ensureZataUrl(img)))
               : [falImageUrl];
             payload = {
