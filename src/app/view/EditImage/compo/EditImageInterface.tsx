@@ -2488,14 +2488,10 @@ const EditImageInterface: React.FC = () => {
             const endpoint = isReplace ? '/api/wildmind/replace' : '/api/wildmind/erase';
             const actionName = isReplace ? 'Replace' : 'Erase';
 
-            // Upload image and mask to Zata if needed to avoid large payload (which causes timeouts in production)
-            const imageUrl = await ensureZataUrl(String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput);
-            const maskUrl = await ensureZataUrl(maskDataUrl);
-
             // 2. Prepare Payload
             const payload: any = {
-              image: imageUrl,
-              mask: maskUrl,
+              image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
+              mask: maskDataUrl,
               prompt: finalPrompt, // Required for replace, optional for erase
               meta: {
                 source: 'canvas',
@@ -2614,16 +2610,20 @@ const EditImageInterface: React.FC = () => {
         }
 
         // 2. Prepare Payload
-        // Note: api.ts usage uses `image_url`. Sending large Data URIs causes timeouts in production.
-        // We upload client-side first, then send the URL.
+        // Note: We send Data URI directly to backend (via direct connection) to match Canvas logic
+        // The backend (falService) handles uploading to Zata if needed.
         const inputStr = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
-        const imageUrl = await ensureZataUrl(inputStr);
 
         const payload: any = {
           isPublic,
           sync_mode: !!resizeSyncMode,
-          image_url: imageUrl,
         };
+
+        if (String(inputStr).startsWith('data:')) {
+          payload.image = inputStr;
+        } else {
+          payload.image_url = inputStr;
+        }
 
         if (prompt && prompt.trim()) payload.prompt = prompt.trim();
         if (resizeNegativePrompt && resizeNegativePrompt.trim()) payload.negative_prompt = resizeNegativePrompt.trim();
