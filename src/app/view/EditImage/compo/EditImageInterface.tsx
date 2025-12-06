@@ -2484,7 +2484,8 @@ const EditImageInterface: React.FC = () => {
             }
 
             // Determine Endpoint
-            const endpoint = isReplace ? '/api/canvas/replace' : '/api/canvas/erase';
+            // Refactored to use 'wildmind' namespace matching Upscale/RemoveBG patterns
+            const endpoint = isReplace ? '/api/wildmind/replace' : '/api/wildmind/erase';
             const actionName = isReplace ? 'Replace' : 'Erase';
 
             // Upload image and mask to Zata if needed to avoid large payload (which causes timeouts in production)
@@ -2503,8 +2504,13 @@ const EditImageInterface: React.FC = () => {
             };
 
             // 3. Call API
-            console.log(`[${actionName}] Calling ${endpoint} with:`, { hasImage: !!payload.image, hasMask: !!payload.mask, projectId, prompt: finalPrompt });
-            const res = await axiosInstance.post(endpoint, payload);
+            // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel timeouts
+            // We construct the full URL to the backend service directly because these operations can be slow
+            const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+            const directEndpoint = `${backendBase}${endpoint}`;
+
+            console.log(`[${actionName}] Calling DIRECT backend: ${directEndpoint} with:`, { hasImage: !!payload.image, hasMask: !!payload.mask, projectId, prompt: finalPrompt });
+            const res = await axiosInstance.post(directEndpoint, payload);
 
             // 4. Handle Response
             // The API returns { data: { url, ... } } or just the data object directly depending on the wrapper
@@ -2631,10 +2637,21 @@ const EditImageInterface: React.FC = () => {
         if (resizeOrigW && resizeOrigH) payload.original_image_size = [Number(resizeOrigW), Number(resizeOrigH)];
         if (resizeOrigX !== '' && resizeOrigY !== '') payload.original_image_location = [Number(resizeOrigX), Number(resizeOrigY)];
 
-        // Bria Expand can take longer than default timeout, so set a longer timeout (120 seconds)
-        const res = await axiosInstance.post('/api/fal/bria/expand', payload, {
-          timeout: 120000 // 120 seconds
+        // Bria Expand can take longer than default timeout, so set a longer timeout (300 seconds)
+        console.log('[EditImage] Specifying timeout: 300000ms for Expand request');
+        const expandStartTime = Date.now();
+
+        // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel 60s timeout on rewrites
+        // We construct the full URL to the backend service directly
+        const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+        const directUrl = `${backendBase}/api/wildmind/expand`;
+
+        console.log('[EditImage] Making DIRECT backend call to:', directUrl);
+
+        const res = await axiosInstance.post(directUrl, payload, {
+          timeout: 300000 // 300 seconds
         });
+        console.log(`[EditImage] Expand request completed in ${Date.now() - expandStartTime}ms`);
         const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }

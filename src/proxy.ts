@@ -47,6 +47,23 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(url, { status: 308 });
   }
 
+  // Proxy /api/canvas requests to the backend (Python Service)
+  // This resolves the issue where /api/canvas/* routes were 404ing in production
+  if (pathname.startsWith('/api/canvas')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      // Clean backend URL to remove trailing slash
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+
+      // Rewrite request to the backend
+      // NextResponse.rewrite preserves original headers
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/canvas');
+    }
+  }
+
   // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
   // forwards all traffic to Next.js using the www.* host which causes an infinite
   // redirect loop if we try to rewrite it at the edge. Canonical host enforcement
@@ -224,3 +241,5 @@ export const config = {
 };
 
 
+
+export default proxy;
