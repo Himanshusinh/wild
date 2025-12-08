@@ -121,8 +121,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       // { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
       
       { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
-      { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Image→Video only, 5s/10s, 720p/1080p (requires start image)", provider: "replicate" },
-      { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Image→Video only, 5s/10s, 1080p (requires start image)", provider: "replicate" },
+      { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video & Image→Video, 5s/10s, 720p/1080p", provider: "replicate" },
+      { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Text→Video & Image→Video, 5s/10s, 1080p", provider: "replicate" },
       { value: "MiniMax-Hailuo-2.3", label: "Hailuo-2.3", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
       { value: "MiniMax-Hailuo-2.3-Fast", label: "Hailuo-2.3 Fast", description: "Image→Video only (faster), 6s/10s, 768P/1080P", provider: "minimax" },
       { value: "MiniMax-Hailuo-02", label: "Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },

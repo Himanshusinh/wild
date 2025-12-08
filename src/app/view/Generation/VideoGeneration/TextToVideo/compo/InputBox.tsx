@@ -349,8 +349,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Kling 2.5 Turbo Pro supports both T2V and I2V
       capabilities.supportsTextToVideo = true;
       capabilities.supportsImageToVideo = true;
-    } else if (model.startsWith('kling-') && (model.includes('v2.1') || model.includes('master'))) {
-      // Kling 2.1 and 2.1 Master are I2V-only (require start_image)
+    } else if (model.startsWith('kling-') && model.includes('v2.1-master')) {
+      // Kling 2.1 Master supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model.startsWith('kling-') && model.includes('v2.1')) {
+      // Kling 2.1 (non-master) remains image-to-video only
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
     } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
@@ -579,28 +583,16 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     }
 
-    // Convert Kling models (except v2.5 which supports both without conversion)
-    if (selectedModel.startsWith('kling-') && !selectedModel.includes('v2.5')) {
+    // Kling v2.1 conversions: allow Master to stay T2V; non-master stays I2V-only
+    if (selectedModel.startsWith('kling-') && selectedModel.includes('v2.1') && !selectedModel.includes('v2.5')) {
       const isI2V = selectedModel.includes('i2v');
-      const isV21 = selectedModel.includes('v2.1');
       const isMaster = selectedModel.includes('master');
 
-      // Kling 2.1 and 2.1 Master require image (I2V only), so always use i2v variant
-      if (isV21 && !isI2V) {
-        // Switch from t2v to i2v variant for v2.1 models
-        const newModel = isMaster ? 'kling-v2.1-master-i2v' : 'kling-v2.1-i2v';
+      // For non-master v2.1, force I2V; for master, leave as-is (supports T2V)
+      if (!isMaster && !isI2V) {
+        const newModel = 'kling-v2.1-i2v';
         if (newModel !== selectedModel) {
-          console.log('🔄 Auto-converting Kling 2.1 from T2V to I2V variant:', newModel);
-          setSelectedModel(newModel);
-        }
-      } else if (generationMode === 'text_to_video' && isI2V && isV21) {
-        // If somehow in T2V mode with I2V variant, this shouldn't happen for v2.1, but handle it
-        // Actually, v2.1 can't do T2V, so don't convert back
-      } else if (generationMode === 'image_to_video' && !isI2V && isV21) {
-        // Ensure v2.1 uses i2v variant in image-to-video mode
-        const newModel = isMaster ? 'kling-v2.1-master-i2v' : 'kling-v2.1-i2v';
-        if (newModel !== selectedModel) {
-          console.log('🔄 Auto-converting Kling 2.1 to I2V variant for image-to-video mode:', newModel);
+          console.log('🔄 Auto-converting Kling 2.1 to I2V variant:', newModel);
           setSelectedModel(newModel);
         }
       }
@@ -2275,16 +2267,14 @@ const InputBox = (props: InputBoxProps = {}) => {
     // Get current model capabilities
     const caps = currentModelCapabilities;
 
-    // Validate I2V-only models require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
-    if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
+    // Validate I2V-only models require image (Kling 2.1 non-master, Gen-4 Turbo, Gen-3a Turbo)
+    if ((selectedModel.startsWith('kling-') && selectedModel.includes('v2.1') && !selectedModel.includes('master')) ||
       selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
       if (uploadedImages.length === 0 && references.length === 0) {
         // Get model display name
         let modelName = '';
         if (selectedModel.startsWith('kling-')) {
-          if (selectedModel.includes('master')) {
-            modelName = 'Kling 2.1 Master';
-          } else if (selectedModel.includes('v2.1')) {
+          if (selectedModel.includes('v2.1')) {
             modelName = 'Kling 2.1';
           }
         } else if (selectedModel === 'gen4_turbo') {
@@ -2546,28 +2536,22 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
         } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
-          // Kling T2V - only v2.5-turbo-pro supports pure T2V
-          // Kling v2.1 and v2.1-master require start_image (I2V only)
+          // Kling T2V
           const isV25 = selectedModel.includes('v2.5');
-          const isV21 = selectedModel.includes('v2.1');
+          const isV21Master = selectedModel.includes('v2.1-master');
+          const isV21 = selectedModel.includes('v2.1') && !isV21Master;
 
-          if (isV21) {
-            // Kling 2.1 and 2.1 Master require an image (start_image is required)
-            toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
-            setIsGenerating(false);
-            return;
-          }
-
-          // Only v2.5 supports pure T2V
-          if (!isV25) {
-            toast.error('This Kling model requires an input image. Please upload an image or select Kling 2.5 Turbo Pro for text-to-video.');
+          if (!isV25 && !isV21Master) {
+            // Only Kling 2.5 Turbo Pro and Kling 2.1 Master allow pure T2V
+            toast.error('This Kling model requires an input image. Please upload an image or select Kling 2.1 Master / Kling 2.5 Turbo Pro for text-to-video.');
             setIsGenerating(false);
             return;
           }
 
           const apiPrompt = getApiPrompt(prompt);
+          const modelName = isV21Master ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.5-turbo-pro';
           requestBody = {
-            model: 'kwaivgi/kling-v2.5-turbo-pro',
+            model: modelName,
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             duration,

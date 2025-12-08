@@ -166,14 +166,15 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'kling-v2.1-master-t2v-10s': 5720,
   'kling-v2.1-master-i2v-5s': 2920,
   'kling-v2.1-master-i2v-10s': 5720,
-  'kling-v2.1-t2v-5s-720p': 620,
-  'kling-v2.1-t2v-5s-1080p': 1020,
-  'kling-v2.1-t2v-10s-720p': 1120,
-  'kling-v2.1-t2v-10s-1080p': 1920,
-  'kling-v2.1-i2v-5s-720p': 620,
-  'kling-v2.1-i2v-5s-1080p': 1020,
-  'kling-v2.1-i2v-10s-720p': 1120,
-  'kling-v2.1-i2v-10s-1080p': 1920,
+  // Kling 2.1 (non-master) – supports only I2V; align T2V keys to I2V pricing to avoid mismatches
+  'kling-v2.1-t2v-5s-720p': 560,
+  'kling-v2.1-t2v-5s-1080p': 960,
+  'kling-v2.1-t2v-10s-720p': 1060,
+  'kling-v2.1-t2v-10s-1080p': 1860,
+  'kling-v2.1-i2v-5s-720p': 560,
+  'kling-v2.1-i2v-5s-1080p': 960,
+  'kling-v2.1-i2v-10s-720p': 1060,
+  'kling-v2.1-i2v-10s-1080p': 1860,
   
   // Seedance 1.0 Pro T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
   'seedance-1.0-pro-t2v-5s-480p': 360,
