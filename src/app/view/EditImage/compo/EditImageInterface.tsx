@@ -261,7 +261,7 @@ const EditImageInterface: React.FC = () => {
   const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   // Live Chat feature state
-  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4'>('gemini-25-flash-image');
+  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5'>('gemini-25-flash-image');
   const [liveFrameSize, setLiveFrameSize] = useState<'1:1' | '3:4' | '4:3' | '16:9' | '9:16'>('1:1');
   const [liveResolution, setLiveResolution] = useState<'1K' | '2K' | '4K'>('1K');
   const [livePrompt, setLivePrompt] = useState<string>('');
@@ -285,10 +285,11 @@ const EditImageInterface: React.FC = () => {
 
   // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
 
-  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' }> = [
+  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' }> = [
     { label: 'Google Nano Banana', value: 'gemini-25-flash-image' },
     { label: 'Google Nano Banana Pro', value: 'google/nano-banana-pro' },
     { label: 'Seedream v4 4k', value: 'seedream-v4' },
+    { label: 'Seedream v4.5', value: 'seedream-v4.5' },
   ];
 
   const liveFrameSizes = [
@@ -376,10 +377,11 @@ const EditImageInterface: React.FC = () => {
       const imageUrl = await ensureZataUrl(img);
 
       let out = '';
-      if (liveModel === 'seedream-v4') {
+      if (liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') {
+        const modelName = liveModel === 'seedream-v4' ? 'bytedance/seedream-4' : 'bytedance/seedream-4.5';
         const payload: any = {
           prompt: livePrompt,
-          model: 'bytedance/seedream-4',
+          model: modelName,
           size: liveResolution,
           aspect_ratio: liveFrameSize,
           image_input: [imageUrl],
@@ -3366,7 +3368,9 @@ const EditImageInterface: React.FC = () => {
                       }
                       setProcessing((p) => ({ ...p, [feature.id]: false }));
                     }}
-                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id ? 'border-white/30 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id 
+                      ? (feature.id === 'resize' ? 'border-[#2F6BFF] bg-[#2F6BFF]/10' : 'border-white/30 bg-white/10')
+                      : 'border-white/10 hover:bg-white/10'}`}
                   >
                     <div className="flex items-center gap-0 justify-center  ">
                       <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
@@ -3384,7 +3388,13 @@ const EditImageInterface: React.FC = () => {
 
                     </div>
                     <div className="flex items-center justify-center pt-1">
-                      <span className="text-white text-[10px] md:text-sm text-center">{feature.label}</span>
+                      {feature.id === 'fill' ? (
+                        <span className="text-white text-[10px] md:text-xs text-center leading-tight">
+                          Erase /<br />Replace
+                        </span>
+                      ) : (
+                        <span className="text-white text-[10px] md:text-sm text-center">{feature.label}</span>
+                      )}
                     </div>
 
                   </button>
@@ -3748,7 +3758,7 @@ const EditImageInterface: React.FC = () => {
                   </div>
 
                   {/* Resolution shown for Pro & Seedream */}
-                  {(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4') && (
+                  {(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') && (
                     <div>
                       <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-1 md:text-sm">Resolution</label>
                       <div className="relative edit-dropdown">
@@ -3773,7 +3783,7 @@ const EditImageInterface: React.FC = () => {
                   {/* Chat UI */}
                   <div className="mt-3">
                     <label className="block text-xs font-medium text-white/70 mb-1 pl-0.5 md:text-sm">Chat to Edit</label>
-                    <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4') ? 'md:h-[23rem] h-[16rem]' : 'md:h-[27rem] h-[20rem]'}`}>
+                    <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') ? 'md:h-[23rem] h-[16rem]' : 'md:h-[27rem] h-[20rem]'}`}>
                       <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar">
                         {liveChatMessages.length === 0 && (
                           <div className="md:text-[12px] text-[10px] text-white/70">Start by uploading an image on the right, then tell me what to change.</div>

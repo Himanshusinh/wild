@@ -55,7 +55,7 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
     const selectBg = '#121212';
     const selectText = '#ffffff';
     const selectBorder = 'rgba(255, 255, 255, 0.2)';
-    const buttonBg = aspectPreset === 'custom' ? '#437eb5' : '#1a1a1a';
+    const buttonBg = aspectPreset === 'custom' ? '#2F6BFF' : '#1a1a1a';
     const buttonText = 'white';
     const promptInputBg = '#121212';
     const promptInputText = '#ffffff';
@@ -152,7 +152,7 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
                             onAspectPresetChange('custom');
                             setShowCustomInput(!showCustomInput);
                         }}
-                        className={`h-[32px] px-3 rounded-lg border border-white/20 text-xs font-medium transition-colors ${aspectPreset === 'custom' ? 'bg-[#437eb5] text-white' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                        className={`h-[32px] px-3 rounded-lg border border-white/20 text-xs font-medium transition-colors ${aspectPreset === 'custom' ? 'bg-[#2F6BFF] text-white' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
                     >
                         Custom
                     </button>

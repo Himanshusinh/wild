@@ -24,30 +24,14 @@ interface SidePannelFeaturesProps {
 
 // Memoized SidebarIcon to prevent re-renders of the mask when parent state changes (e.g. hover)
 const SidebarIcon = React.memo(({ icon, label, isActive }: { icon: string, label: string, isActive: boolean }) => (
-  isActive ? (
-    <div
-      className="flex-none w-[24px] h-[24px] bg-blue-400"
-      style={{
-        maskImage: `url(${icon})`,
-        maskSize: 'contain',
-        maskRepeat: 'no-repeat',
-        maskPosition: 'center',
-        WebkitMaskImage: `url(${icon})`,
-        WebkitMaskSize: 'contain',
-        WebkitMaskRepeat: 'no-repeat',
-        WebkitMaskPosition: 'center'
-      }}
-    />
-  ) : (
-    <Image
-      src={icon}
-      alt={label}
-      width={30}
-      height={30}
-      className="flex-none w-[24px] h-[24px]"
-      unoptimized
-    />
-  )
+  <Image
+    src={icon}
+    alt={label}
+    width={30}
+    height={30}
+    className="flex-none w-[24px] h-[24px]"
+    unoptimized
+  />
 ));
 SidebarIcon.displayName = 'SidebarIcon';
 

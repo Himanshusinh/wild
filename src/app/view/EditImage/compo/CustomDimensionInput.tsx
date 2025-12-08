@@ -379,7 +379,7 @@ export const CustomDimensionInput: React.FC<CustomDimensionInputProps> = ({
                         padding: '6px 12px',
                         borderRadius: '4px',
                         border: 'none',
-                        backgroundColor: '#10b981',
+                        backgroundColor: '#2F6BFF',
                         color: 'white',
                         fontSize: '12px',
                         cursor: 'pointer',
