@@ -3214,8 +3214,11 @@ const InputBox = () => {
           }
 
           // Show error notification
-          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
-          toast.error(errorMessage);
+          const moderationCode = error?.response?.data?.code || error?.response?.data?.data?.code;
+          if (moderationCode !== 'CONTENT_BLOCKED') {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
+            toast.error(errorMessage);
+          }
           return;
         }
       } else {
