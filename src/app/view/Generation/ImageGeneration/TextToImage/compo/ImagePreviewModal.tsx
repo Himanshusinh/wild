@@ -654,12 +654,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [preview, isFsOpen, onClose]);
 
   // Keep visibility toggle in sync when user switches images in same run
+  // Prefer per-image visibility if present, otherwise fall back to entry-level isPublic.
   React.useEffect(() => {
     try {
       const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
       const selectedImage = selectedPair.image || preview?.image;
-      const isPublic = ((selectedImage as any)?.isPublic !== false);
-      setIsPublicFlag(isPublic);
+      const imageIsPublic = (selectedImage as any)?.isPublic;
+      const entryIsPublic = (selectedPair.entry as any)?.isPublic ?? (preview?.entry as any)?.isPublic;
+
+      let nextFlag: boolean;
+      if (typeof imageIsPublic === 'boolean') {
+        nextFlag = imageIsPublic;
+      } else if (typeof entryIsPublic === 'boolean') {
+        nextFlag = entryIsPublic;
+      } else {
+        // Default to public only when no explicit flag is stored
+        nextFlag = true;
+      }
+
+      setIsPublicFlag(nextFlag);
     } catch { }
   }, [selectedIndex, sameDateGallery, preview]);
 
@@ -1131,13 +1144,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           const payload: any = target?.url || target?.id || target?.storagePath ? { image: { id: (target as any)?.id, url: (target as any)?.url, storagePath: (target as any)?.storagePath, isPublic: next } } : { isPublic: next };
           await axiosInstance.patch(`/api/generations/${selectedEntry.id}`, payload);
           try {
-            const images = Array.isArray((selectedEntry as any).images) ? (selectedEntry as any).images.map((im: any) => {
-              if ((target?.id && im.id === target.id) || (target?.url && im.url === target.url) || (target as any)?.storagePath && im.storagePath === (target as any).storagePath) {
-                return { ...im, isPublic: next };
-              }
-              return im;
-            }) : (selectedEntry as any).images;
-            dispatch(updateHistoryEntry({ id: selectedEntry.id, updates: { images } as any }));
+            const images = Array.isArray((selectedEntry as any).images)
+              ? (selectedEntry as any).images.map((im: any) => {
+                  if (
+                    (target?.id && im.id === target.id) ||
+                    (target?.url && im.url === target.url) ||
+                    ((target as any)?.storagePath && im.storagePath === (target as any).storagePath)
+                  ) {
+                    return { ...im, isPublic: next };
+                  }
+                  return im;
+                })
+              : (selectedEntry as any).images;
+
+            // Update both image-level and entry-level visibility so other views (home, history)
+            // see the correct icon state when reopening the modal.
+            dispatch(updateHistoryEntry({
+              id: selectedEntry.id,
+              updates: { images, isPublic: next } as any,
+            }));
           } catch { }
         }
       } catch { }

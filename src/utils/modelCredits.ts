@@ -279,7 +279,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 };
 
 // Function to get credit cost for a model
-export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean): number | null => {
+export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean, uploadedImages?: any[]): number | null => {
   // Handle special cases for video models with duration and resolution
   if (modelValue === 'MiniMax-Hailuo-02' && duration && resolution) {
     const durationNum = parseInt(duration.replace('s', ''));
@@ -497,15 +497,26 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     }
   }
 
-  // Handle Flux 2 Pro with resolution
+  // Handle Flux 2 Pro with resolution and I2I/T2I
   if (modelValue === 'flux-2-pro') {
-    if (resolution === '2K') {
-      return 160; // Flux 2 Pro 2K: 160 credits
-    } else if (resolution === '1K') {
-      return 80; // Flux 2 Pro 1K: 80 credits
+    // Check if this is I2I (image-to-image) by checking if uploadedImages are present
+    const isI2I = Array.isArray(uploadedImages) && uploadedImages.length > 0;
+    
+    if (isI2I) {
+      // I2I pricing: 110 credits for 1K, 190 credits for 2K
+      if (resolution === '2K') {
+        return 190; // Flux 2 Pro I2I 2K: 190 credits
+      } else {
+        return 110; // Flux 2 Pro I2I 1K: 110 credits
+      }
+    } else {
+      // T2I pricing: 80 credits for 1K, 160 credits for 2K
+      if (resolution === '2K') {
+        return 160; // Flux 2 Pro T2I 2K: 160 credits
+      } else {
+        return 80; // Flux 2 Pro T2I 1K: 80 credits
+      }
     }
-    // Default to 1K if no resolution specified (will be overridden by buildCreditModelName for 9:16)
-    return 80;
   }
 
   // Handle FLUX.2 Pro variants

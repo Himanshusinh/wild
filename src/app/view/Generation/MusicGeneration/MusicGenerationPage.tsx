@@ -11,20 +11,20 @@ import AudioCloningInputBox from './TextToMusic/compo/AudioCloningInputBox';
 import DialogueInputBox from './TextToMusic/compo/DialogueInputBox';
 import AudioGenerationInputBox from './TextToMusic/compo/AudioGenerationInputBox';
 
-type MusicFeature =  'Music' | 'Voice (TTS)' | 'SFX' | 'Voice Cloning' | 'Dialogue';
+type MusicFeature = 'Music' | 'Voice (TTS)' | 'SFX' | 'Voice Cloning' | 'Dialogue';
 
 export default function MusicGenerationPage() {
     const dispatch = useAppDispatch();
     const router = useRouter();
     const searchParams = useSearchParams();
     const featureParam = (searchParams?.get('feature') || '').toLowerCase();
-    
+
     // Set UI generation type immediately to prevent showing wrong page on refresh
     React.useMemo(() => {
-        try { (dispatch as any)(setCurrentGenerationType('text-to-music' as any)); } catch {}
+        try { (dispatch as any)(setCurrentGenerationType('text-to-music' as any)); } catch { }
     }, [dispatch]);
 
-    const validFeatures: MusicFeature[] = ['Music','Voice (TTS)','SFX','Voice Cloning','Dialogue'];
+    const validFeatures: MusicFeature[] = ['Music', 'Voice (TTS)', 'SFX', 'Voice Cloning', 'Dialogue'];
 
     const mapParamToFeature = (param: string): MusicFeature | null => {
         switch (param) {
@@ -70,17 +70,17 @@ export default function MusicGenerationPage() {
         if (fromUrl && fromUrl !== activeFeature) {
             setActiveFeature(fromUrl);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [featureParam]);
 
     // Reflect active feature in UI slice for consistent expectedType gating
     useEffect(() => {
         const type = activeFeature === 'Music' ? 'text-to-music'
-                    : activeFeature === 'Voice (TTS)' ? 'text-to-speech'
-                    : activeFeature === 'SFX' ? 'sfx'
+            : activeFeature === 'Voice (TTS)' ? 'text-to-speech'
+                : activeFeature === 'SFX' ? 'sfx'
                     : activeFeature === 'Dialogue' ? 'text-to-dialogue'
-                    : 'text-to-music';
-        try { (dispatch as any)(setCurrentGenerationType(type as any)); } catch {}
+                        : 'text-to-music';
+        try { (dispatch as any)(setCurrentGenerationType(type as any)); } catch { }
     }, [activeFeature, dispatch]);
 
     // Persist active feature to localStorage & URL
@@ -91,10 +91,10 @@ export default function MusicGenerationPage() {
         }
         // Map feature back to short param
         const param = feature === 'Music' ? 'music' :
-                      feature === 'Voice (TTS)' ? 'tts' :
-                      feature === 'SFX' ? 'sfx' :
-                      feature === 'Voice Cloning' ? 'audio-cloning' :
-                      feature === 'Dialogue' ? 'dialogue' : 'music';
+            feature === 'Voice (TTS)' ? 'tts' :
+                feature === 'SFX' ? 'sfx' :
+                    feature === 'Voice Cloning' ? 'audio-cloning' :
+                        feature === 'Dialogue' ? 'dialogue' : 'music';
         const current = new URLSearchParams(searchParams?.toString());
         current.set('feature', param);
         router.replace(`?${current.toString()}`);
@@ -166,7 +166,7 @@ export default function MusicGenerationPage() {
                         {/* Feature Filter Bar */}
                         <div className="mb-0 w-full">
                             <div className="flex items-center flex-nowrap w-full md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-2 scrollbar-none scroll-smooth">
-                                {(['Music', 'Voice (TTS)',  'Dialogue','SFX', 'Voice Cloning',] as MusicFeature[]).map((feature) => (
+                                {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning',] as MusicFeature[]).map((feature) => (
                                     <button
                                         key={feature}
                                         onClick={() => handleSetFeature(feature)}
@@ -185,19 +185,19 @@ export default function MusicGenerationPage() {
                     {/* Responsive layout: stack on small screens, columns on large */}
                     <div className="flex flex-col lg:flex-row gap-6 mt-6 items-start flex-1 min-h-0">
                         {/* Left Column: Input Box (sticky) */}
-                                                <div
-                                                    className="w-full lg:w-[30%] flex-shrink-0"
-                                                    style={{ position: 'sticky', top: '6.5rem', left: 0, alignSelf: 'flex-start', zIndex: 30, height: 'calc(100vh - 6.5rem)' }}
-                                                >
-                                                        <div
-                                                            style={{
-                                                                height: '100%',
-                                                                overflowY: 'auto',
-                                                                overflowX: 'hidden',
-                                                                WebkitOverflowScrolling: 'touch'
-                                                            }}
-                                                            className="input-scrollbar px-1 pt-4 lg:pt-8 pb-20"
-                                                        >
+                        <div
+                            className="w-full lg:w-[30%] flex-shrink-0"
+                            style={{ position: 'sticky', top: '6.5rem', left: 0, alignSelf: 'flex-start', zIndex: 30, height: 'calc(100vh - 6.5rem)' }}
+                        >
+                            <div
+                                style={{
+                                    height: '100%',
+                                    overflowY: 'auto',
+                                    overflowX: 'hidden',
+                                    WebkitOverflowScrolling: 'touch'
+                                }}
+                                className="input-scrollbar px-1 pt-4 lg:pt-8 pb-20"
+                            >
                                 <div className="pr-2" style={{ position: 'relative', paddingBottom: '160px' }}>
                                     {activeFeature === 'Music' && (
                                         <MusicGenerationInputBox />

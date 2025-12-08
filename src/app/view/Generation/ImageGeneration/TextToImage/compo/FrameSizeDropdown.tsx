@@ -208,11 +208,9 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
 
   const frameSizes = (() => {
     if (isSeedream45) {
-      // Seedream 4.5: Only match_input_image and 1:1 supported in beta
-      return [
-        { name: 'Match Input Image', value: 'match_input_image', icon: 'square' },
-        { name: 'Square', value: '1:1', icon: 'square' },
-      ];
+      // Seedream 4.5 on FAL: supports 1:1, 4:3, 3:4, 16:9, 9:16 via image_size enums
+      const allowed = new Set(['1:1', '4:3', '3:4', '16:9', '9:16']);
+      return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isFlux2Pro) {
       // Flux 2 Pro: supported aspect ratios from schema

@@ -7,6 +7,13 @@ import { db } from './firebase';
 export async function registerBrowserPushToken(): Promise<void> {
   if (typeof window === 'undefined') return;
 
+  // CRITICAL FIX: Check if Notification API exists before accessing it
+  // Fixes "Can't find variable: Notification" crash on iPhone Safari
+  if (typeof Notification === 'undefined') {
+    console.warn('[FCM] Notification API not available in this environment');
+    return;
+  }
+
   const supported = await isSupported().catch(() => false);
   if (!supported) {
     console.warn('[FCM] Messaging not supported in this browser');
@@ -37,12 +44,7 @@ export async function registerBrowserPushToken(): Promise<void> {
   }
 
   const messaging = getMessaging();
-  console.log('[FCM] About to request Notification permission');
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    console.warn('[FCM] Notification permission not granted, permission =', permission);
-    return;
-  }
+
 
   console.log('[FCM] Permission granted, requesting FCM token with VAPID key');
   const token = await getToken(messaging, { vapidKey }).catch((err) => {
@@ -81,7 +83,7 @@ export function attachForegroundMessageListener(handler: (payload: any) => void)
         handler(payload);
       });
     })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 

@@ -60,6 +60,11 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   // Add credits information to models from distribution data
   const modelsWithCredits = models.map((model) => {
     const creditInfo = getModelCreditInfo(model.value);
+    const isFree = model.value === "new-turbo-model";
+    const creditLabel = isFree
+      ? 'Free (0 credits)'
+      : (creditInfo.displayText || (creditInfo.credits != null ? `${creditInfo.credits} credits` : null));
+
     return {
       ...model,
       credits: creditInfo.credits,
@@ -85,22 +90,32 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     );
   }
 
-  // Set default model to z-image-turbo on mount if not set
+  // Set default model to z-image-turbo on mount if not set (only if no images uploaded)
   useEffect(() => {
     if (!selectedModel || selectedModel === 'flux-dev') {
-      dispatch(setSelectedModel('new-turbo-model'));
+      // If images are uploaded, use nano banana instead of z-image-turbo
+      if (uploadedImages.length > 0) {
+        dispatch(setSelectedModel('gemini-25-flash-image'));
+      } else {
+        dispatch(setSelectedModel('new-turbo-model'));
+      }
     }
   }, []); // Only run on mount
 
-  // If user switches to image-to-image (uploaded images) while an Ideogram model is selected, auto-switch to a supported model
+  // If user switches to image-to-image (uploaded images) while an unsupported model is selected, auto-switch to nano banana
   useEffect(() => {
     if (!restrictForImages) return;
     const isIdeogram = typeof selectedModel === 'string' && selectedModel.startsWith('ideogram-ai/ideogram-v3');
     const isImagen4 = typeof selectedModel === 'string' && (selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'imagen-4-ultra');
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
     const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
-    if (isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
-      const fallback = filteredModels[0]?.value || 'gemini-25-flash-image';
+    const isZImageTurbo = typeof selectedModel === 'string' && (selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo');
+    
+    // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
+    if (isZImageTurbo || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
+      // Prefer nano banana (gemini-25-flash-image) for image-to-image
+      const nanoBanana = filteredModels.find(m => m.value === 'gemini-25-flash-image');
+      const fallback = nanoBanana?.value || filteredModels[0]?.value || 'gemini-25-flash-image';
       dispatch(setSelectedModel(fallback));
     }
   }, [restrictForImages, selectedModel, filteredModels, dispatch]);
@@ -176,7 +191,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-100 md:max-h-150 overflow-y-auto dropdown-scrollbar`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             // z-image-turbo is first and highlighted as special
@@ -265,7 +280,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                             ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
                             : "bg-white text-black"
                           : model.isFree
-                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
+                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border hover:border-[#60a5fa]/50"
                           : "text-white/90 hover:bg-white/10"
                       }`}
                     >
@@ -276,6 +291,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           )}
                           {model.name}
                           {!model.isFree && (
+                            
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>

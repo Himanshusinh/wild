@@ -4,8 +4,6 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const nextConfig: NextConfig = {
   images: {
-    // Explicitly allow our Firebase Storage bucket for remote images
-    domains: ['wild-mind-ai.firebasestorage.app'],
     remotePatterns: [
       {
         protocol: 'https',

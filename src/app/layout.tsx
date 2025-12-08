@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Poppins } from "next/font/google";
+import { Geist, Geist_Mono, Poppins, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
@@ -30,6 +30,12 @@ const poppins = Poppins({
   display: "swap",
   preload: true,
   adjustFontFallback: true,
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 const artega = localFont({
@@ -127,7 +133,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} ${inter.variable}`}>
       <head>
         {/* Preconnect to required origins - Limit to 4 most critical for performance */}
         {/* Most important: Firebase Storage (LCP images/videos) */}
@@ -141,9 +147,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google Tag Manager - DNS prefetch only (deferred loading) */}
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         {/* Preload hero video for LCP - Static link in head for immediate discovery with fetchpriority=high */}
-        <link 
-          rel="preload" 
-          as="video" 
+        <link
+          rel="preload"
+          as="video"
           href="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FKLING_Ultra_Real_Text_to_Video_Model%20(1).mp4?alt=media&token=e1312e5a-cdf5-4df2-8f4f-1c0bc5195382"
           fetchPriority="high"
         />
@@ -177,15 +183,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         {/* Google Tag Manager (noscript) */}
         <noscript>
-          <iframe 
+          <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-W8R7DSW7"
-            height="0" 
-            width="0" 
+            height="0"
+            width="0"
             style={{ display: 'none', visibility: 'hidden' }}
           />
         </noscript>
         {/* End Google Tag Manager (noscript) */}
-        
+
         <ReduxProvider>
           <AuthBootstrap />
           <ConsoleSilencer />
