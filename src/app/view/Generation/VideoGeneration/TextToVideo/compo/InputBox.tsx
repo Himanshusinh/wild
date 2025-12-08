@@ -2780,28 +2780,53 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = "image-to-video";
           apiEndpoint = '/api/minimax/video';
         } else if (selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
-          // Veo 3.1 image-to-video generation (i2v variant or when image is uploaded)
+          // Veo 3.1: if two frames are present use first-last-frame model; otherwise image-to-video
           if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo 3.1 image-to-video requires an input image");
             return;
           }
           const isFast = selectedModel.includes("fast");
-          // Use uploaded image or reference image
-          const imageUrl = uploadedImages.length > 0 ? uploadedImages[0] : references[0];
           const apiPrompt = getApiPrompt(prompt);
           const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
-          requestBody = {
-            prompt: apiPrompt,
-            originalPrompt: prompt, // Store original prompt for display
-            image_url: imageUrl, // Veo 3.1 expects a single image URL
-            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
-            duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
-            resolution: selectedQuality, // Use selected quality (720p or 1080p)
-            generate_audio: true,
-            isPublic
-          };
-          generationType = "image-to-video";
-          apiEndpoint = isFast ? '/api/fal/veo3_1/image-to-video/fast/submit' : '/api/fal/veo3_1/image-to-video/submit';
+          const firstFrame = uploadedImages[0] || references[0];
+          const lastFrame = uploadedImages[1] || lastFrameImage || references[1] || null;
+
+          const isFirstLastMode = Boolean(firstFrame && lastFrame);
+
+          if (isFirstLastMode) {
+            // First/Last frame -> dedicated model, only two frame URLs
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              first_frame_url: firstFrame,
+              last_frame_url: lastFrame,
+              aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
+              duration: modelDuration,
+              resolution: selectedQuality,
+              generate_audio: true,
+              isPublic
+            };
+            generationType = "image-to-video";
+            apiEndpoint = isFast
+              ? '/api/fal/veo3_1/first-last/fast/submit'
+              : '/api/fal/veo3_1/first-last/submit';
+          } else {
+            // Single frame -> standard I2V
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              image_url: firstFrame, // single image
+              first_frame_url: firstFrame,
+              ...(lastFrameImage && { last_frame_url: lastFrameImage }),
+              aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
+              duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
+              resolution: selectedQuality, // Use selected quality (720p or 1080p)
+              generate_audio: true,
+              isPublic
+            };
+            generationType = "image-to-video";
+            apiEndpoint = isFast ? '/api/fal/veo3_1/image-to-video/fast/submit' : '/api/fal/veo3_1/image-to-video/submit';
+          }
         } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
           // Veo3 image-to-video generation (i2v variant or when image is uploaded)
           if (uploadedImages.length === 0 && references.length === 0) {
@@ -4147,13 +4172,6 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       try { const toast = (await import('react-hot-toast')).default; toast.success('Video generated successfully!'); } catch { }
 
-      // Clear form
-      setPrompt("");
-      setUploadedImages([]);
-      setUploadedVideo("");
-      setSourceHistoryEntryId(""); // Clear source history entry when clearing video
-      setReferences([]);
-
     } catch (error) {
       console.error('❌ Video generation failed:', error);
       setError(error instanceof Error ? error.message : 'Video generation failed');
@@ -4198,7 +4216,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                   </h3>
                 </div>
-                <div className="flex flex-wrap md:gap-3 gap-2 ml-0">
+                <div className="flex flex-wrap md:gap-3 gap-2 md:ml-2">
                   <div className="relative w-[165px] h-[165px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
                     {localVideoPreview.status === 'generating' ? (
                       <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -4255,7 +4273,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
 
                 {/* All Videos for this Date - Grid Layout (2 columns on mobile, flex on desktop) */}
-                <div className="grid grid-cols-2 gap-2 md:gap-3 ml-0 md:mb-0 mb-4 md:flex md:flex-wrap">
+                <div className="grid grid-cols-2 gap-2 md:gap-3 md:ml-1 ml-0 md:mb-0 mb-4 md:flex md:flex-wrap">
                   {/* Prepend local video preview to today's row to push existing items right */}
                   {date === todayKey && localVideoPreview && (() => {
                     const localEntryId = localVideoPreview.id;
@@ -4830,8 +4848,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                     )}
 
                   {/* Arrow icon between first and last frame uploads */}
-                  {selectedModel === "MiniMax-Hailuo-02" &&
-                    (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                  {(((selectedModel === "MiniMax-Hailuo-02") &&
+                    (selectedResolution === "768P" || selectedResolution === "1080P")) ||
+                    selectedModel.includes("veo3.1")) &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="flex items-center justify-center">
                         <Image
@@ -4844,9 +4863,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </div>
                     )}
 
-                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) */}
-                  {selectedModel === "MiniMax-Hailuo-02" &&
-                    (selectedResolution === "768P" || selectedResolution === "1080P") &&
+                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) and Veo 3.1 (fast/standard) */}
+                  {((((selectedModel === "MiniMax-Hailuo-02") &&
+                    (selectedResolution === "768P" || selectedResolution === "1080P")) ||
+                    selectedModel.includes("veo3.1"))) &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="relative ">
                         <button
@@ -4922,81 +4942,86 @@ const InputBox = (props: InputBoxProps = {}) => {
           {/* Uploaded Content Display */}
           <div className="px-3 md:pb-3 pb-0">
             {/* Uploaded Images */}
-            {(uploadedImages.length > 0 || (!!lastFrameImage && selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo)) && (
-              <div className="md:mb-3 -mb-6">
-                <div className="text-xs text-white/60 mb-2">Uploaded Images ({uploadedImages.length + (!!lastFrameImage && selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo ? 1 : 0)})</div>
-                <div className="flex gap-2 flex-wrap">
-                  {uploadedImages.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <div
-                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                        onClick={() => {
-                          setAssetViewer({
-                            isOpen: true,
-                            assetUrl: image,
-                            assetType: 'image',
-                            title: `Uploaded Image ${index + 1}`
-                          });
-                        }}
-                      >
-                        <img
-                          src={image}
-                          alt={`Uploaded ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onLoad={() => console.log('Video generation - image loaded successfully:', image)}
-                          onError={(e) => console.error('Video generation - image failed to load:', image, e)}
-                        />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                          {index === 0 ? 'First Frame' : `Image ${index + 1}`}
+            {(() => {
+              const displayImages = selectedModel.includes("veo3.1") ? uploadedImages.slice(0, 2) : uploadedImages;
+              const extraLastFrame =
+                !!lastFrameImage && (selectedModel.includes("veo3.1") || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
+              return (displayImages.length > 0 || extraLastFrame) ? (
+                <div className="md:mb-3 -mb-6">
+                  <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {displayImages.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <div
+                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: image,
+                              assetType: 'image',
+                              title: `Uploaded Image ${index + 1}`
+                            });
+                          }}
+                        >
+                          <img
+                            src={image}
+                            alt={`Uploaded ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onLoad={() => console.log('Video generation - image loaded successfully:', image)}
+                            onError={(e) => console.error('Video generation - image failed to load:', image, e)}
+                          />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                            {index === 0 ? 'First Frame' : `Image ${index + 1}`}
+                          </div>
                         </div>
+                        <button
+                          aria-label="Remove image"
+                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                          onClick={() => {
+                            setUploadedImages(prev => prev.filter((_, i) => i !== index));
+                          }}
+                        >
+                          ×
+                        </button>
                       </div>
-                      <button
-                        aria-label="Remove image"
-                        className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                        onClick={() => {
-                          setUploadedImages(prev => prev.filter((_, i) => i !== index));
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                    ))}
 
-                  {/* Last Frame Image Display */}
-                  {!!lastFrameImage && selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo && (
-                    <div className="relative group">
-                      <div
-                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                        onClick={() => {
-                          setAssetViewer({
-                            isOpen: true,
-                            assetUrl: lastFrameImage,
-                            assetType: 'image',
-                            title: 'Last Frame Image'
-                          });
-                        }}
-                      >
-                        <img
-                          src={lastFrameImage}
-                          alt="Last Frame"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Last Frame</div>
+                    {/* Last Frame Image Display */}
+                    {extraLastFrame && (
+                      <div className="relative group">
+                        <div
+                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: lastFrameImage,
+                              assetType: 'image',
+                              title: 'Last Frame Image'
+                            });
+                          }}
+                        >
+                          <img
+                            src={lastFrameImage}
+                            alt="Last Frame"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Last Frame</div>
+                        </div>
+                        <button
+                          aria-label="Remove last frame"
+                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                          onClick={() => {
+                            setLastFrameImage("");
+                          }}
+                        >
+                          ×
+                        </button>
                       </div>
-                      <button
-                        aria-label="Remove last frame"
-                        className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                        onClick={() => {
-                          setLastFrameImage("");
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null;
+            })()}
 
             {/* Uploaded Video */}
             {uploadedVideo && (

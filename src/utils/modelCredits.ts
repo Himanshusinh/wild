@@ -312,7 +312,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   // Handle veo3.1 models (check before veo3)
   if (modelValue.includes('veo3.1')) {
     const isFast = modelValue.includes('fast');
-    const isI2V = modelValue.includes('i2v');
+    const isI2V = modelValue.includes('i2v') || modelValue.includes('first-last-frame-to-video');
     const modelType = isI2V ? 'i2v' : 't2v';
     const audioSuffix = (generateAudio === false) ? '-audio-off' : '';
     
