@@ -133,7 +133,7 @@ export function WorkflowVisualizer() {
             </div>
 
             {/* Node Graph Container */}
-            <div ref={containerRef} className="relative w-full max-w-5xl h-[550px] bg-[#050505] rounded-3xl border border-white/5 shadow-2xl overflow-hidden">
+            <div ref={containerRef} className="relative w-full max-w-5xl h-[550px] bg-[#050505] rounded-3xl border-4 border-white/10 shadow-2xl overflow-hidden">
                 {/* Background Grid */}
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#333 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 

@@ -49,16 +49,16 @@ export default function App() {
 
             {/* --- Floating "Dock" Navigation --- */}
             <div className="fixed top-24 left-[calc(50%+2.5rem)] -translate-x-1/2 z-50">
-                <nav className="p-1.5 bg-[#0A0A0A]/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_40px_-10px_rgba(0,0,0,0.8)] flex items-center gap-1">
-                    <TabButton isActive={activeTab === 'landing'} onClick={() => setActiveTab('landing')} label="WildCanvas" icon={<Zap size={14} />} />
-                    <div className="w-px h-4 bg-white/10 mx-1"></div>
-                    <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} />
-                    {/* <TabButton isActive={activeTab === 'templates'} onClick={() => setActiveTab('templates')} label="Templates" icon={<Box size={14} />} /> */}
-                </nav>
+                {/* <nav className="p-1.5 bg-[#0A0A0A]/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_40px_-10px_rgba(0,0,0,0.8)] flex items-center gap-1"> */}
+                {/* <TabButton isActive={activeTab === 'landing'} onClick={() => setActiveTab('landing')} label="WildCanvas" icon={<Zap size={14} />} /> */}
+                {/* <div className="w-px h-4 bg-white/10 mx-1"></div> */}
+                {/* <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} /> */}
+                {/* <TabButton isActive={activeTab === 'templates'} onClick={() => setActiveTab('templates')} label="Templates" icon={<Box size={14} />} /> */}
+                {/* </nav> */}
             </div>
 
             {/* --- Main Content --- */}
-            <main className="relative z-10 pt-40 pb-32 px-6 min-h-screen">
+            <main className="relative z-10  pb-32 px-6 min-h-screen">
                 <div className="max-w-[1400px] mx-auto">
                     {renderView()}
                 </div>

@@ -138,8 +138,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" },
       { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
 
-      { value: "T2V-01-Director", label: "Hailuo-T2V-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" },
-      { value: "I2V-01-Director", label: "Hailuo-I2V-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },
+      // { value: "T2V-01-Director", label: "Hailuo-T2V-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" },
+      // { value: "I2V-01-Director", label: "Hailuo-I2V-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },
       // { value: "S2V-01", label: "S2V-01", description: "Subject→Video (character reference), 6s, 720P", provider: "minimax" }
     ];
   };
