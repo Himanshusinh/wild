@@ -101,7 +101,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'veo3-fast-t2v-8s': 2460,
   'veo3-fast-i2v-8s': 2460,
   'RW-veo3-8s': 6460,
-  
+
   // Veo 3.1 models (AUDIO ON - default)
   'veo3.1-t2v-4s': 3260,
   'veo3.1-t2v-6s': 4860,
@@ -128,7 +128,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'veo3.1-fast-i2v-4s-audio-off': 860,
   'veo3.1-fast-i2v-6s-audio-off': 1260,
   'veo3.1-fast-i2v-8s-audio-off': 1660,
-  
+
   // WAN 2.5 Standard T2V (updated per provided sheet)
   'wan-2.5-t2v-5s-480p': 480,
   'wan-2.5-t2v-5s-720p': 900,
@@ -136,7 +136,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'wan-2.5-t2v-10s-480p': 900,
   'wan-2.5-t2v-10s-720p': 1740,
   'wan-2.5-t2v-10s-1080p': 2860,
-  
+
   // WAN 2.5 Standard I2V (updated per provided sheet)
   'wan-2.5-i2v-5s-480p': 480,
   'wan-2.5-i2v-5s-720p': 900,
@@ -144,24 +144,24 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'wan-2.5-i2v-10s-480p': 900,
   'wan-2.5-i2v-10s-720p': 1740,
   'wan-2.5-i2v-10s-1080p': 2860,
-  
+
   // WAN 2.5 Fast T2V (updated per provided sheet)
   'wan-2.5-fast-t2v-5s-720p': 740,
   'wan-2.5-fast-t2v-5s-1080p': 1080,
   'wan-2.5-fast-t2v-10s-720p': 1420,
   'wan-2.5-fast-t2v-10s-1080p': 2100,
-  
+
   // WAN 2.5 Fast I2V (updated per provided sheet)
   'wan-2.5-fast-i2v-5s-720p': 740,
   'wan-2.5-fast-i2v-5s-1080p': 1080,
   'wan-2.5-fast-i2v-10s-720p': 1420,
   'wan-2.5-fast-i2v-10s-1080p': 2100,
-  
+
   // Kling credit SKUs (map to distribution names)
-  'kling-v2.5-turbo-pro-t2v-5s': 900,
-  'kling-v2.5-turbo-pro-t2v-10s': 1740,
-  'kling-v2.5-turbo-pro-i2v-5s': 960,
-  'kling-v2.5-turbo-pro-i2v-10s': 1800,
+  'kling-v2.5-turbo-pro-t2v-5s': 760,
+  'kling-v2.5-turbo-pro-t2v-10s': 1460,
+  'kling-v2.5-turbo-pro-i2v-5s': 760,
+  'kling-v2.5-turbo-pro-i2v-10s': 1460,
   'kling-v2.1-master-t2v-5s': 2920,
   'kling-v2.1-master-t2v-10s': 5720,
   'kling-v2.1-master-i2v-5s': 2920,
@@ -175,7 +175,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'kling-v2.1-i2v-5s-1080p': 960,
   'kling-v2.1-i2v-10s-720p': 1060,
   'kling-v2.1-i2v-10s-1080p': 1860,
-  
+
   // Seedance 1.0 Pro T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
   'seedance-1.0-pro-t2v-5s-480p': 360,
   'seedance-1.0-pro-t2v-5s-720p': 660,
@@ -189,7 +189,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedance-1.0-pro-i2v-10s-480p': 660,
   'seedance-1.0-pro-i2v-10s-720p': 1260,
   'seedance-1.0-pro-i2v-10s-1080p': 3060,
-  
+
   // Seedance 1.0 Lite T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
   'seedance-1.0-lite-t2v-5s-480p': 200,
   'seedance-1.0-lite-t2v-5s-720p': 380,
@@ -203,19 +203,19 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedance-1.0-lite-i2v-10s-480p': 380,
   'seedance-1.0-lite-i2v-10s-720p': 740,
   'seedance-1.0-lite-i2v-10s-1080p': 1460,
-  
+
   // PixVerse 5 T2V/I2V (duration: 5s or 8s)
-  'pixverse-v5-t2v-5s-360p': 1260,
-  'pixverse-v5-t2v-5s-540p': 1260,
-  'pixverse-v5-t2v-5s-720p': 1660,
+  'pixverse-v5-t2v-5s-360p': 660,
+  'pixverse-v5-t2v-5s-540p': 660,
+  'pixverse-v5-t2v-5s-720p': 860,
   'pixverse-v5-t2v-5s-1080p': 1660,
   'pixverse-v5-t2v-8s-360p': 1260,
   'pixverse-v5-t2v-8s-540p': 1260,
   'pixverse-v5-t2v-8s-720p': 1660,
   'pixverse-v5-t2v-8s-1080p': 3260,
-  'pixverse-v5-i2v-5s-360p': 1260,
-  'pixverse-v5-i2v-5s-540p': 1260,
-  'pixverse-v5-i2v-5s-720p': 1660,
+  'pixverse-v5-i2v-5s-360p': 660,
+  'pixverse-v5-i2v-5s-540p': 660,
+  'pixverse-v5-i2v-5s-720p': 860,
   'pixverse-v5-i2v-5s-1080p': 1660,
   'pixverse-v5-i2v-8s-360p': 1260,
   'pixverse-v5-i2v-8s-540p': 1260,
@@ -287,8 +287,8 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const resolutionP = resolution.replace('P', 'P');
     const key = `MiniMax-Hailuo-02-${resolutionP}-${durationNum}s`;
     return MODEL_CREDITS_MAPPING[key] || null;
-  } 
-  
+  }
+
   // MiniMax-Hailuo-2.3 Standard and Fast
   if ((modelValue === 'MiniMax-Hailuo-2.3' || modelValue === 'MiniMax-Hailuo-2.3-Fast') && duration && resolution) {
     const durationNum = parseInt(duration.replace('s', ''));
@@ -297,13 +297,13 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const key = `MiniMax-Hailuo-2.3-${fastPart}${resolutionP}-${durationNum}s`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
-  
+
   if (modelValue === 'gen4_turbo' && duration) {
     const durationNum = parseInt(duration.replace('s', ''));
     const key = `gen4_turbo-${durationNum}s`;
     return MODEL_CREDITS_MAPPING[key] || null;
-  } 
-  
+  }
+
   if (modelValue === 'gen3a_turbo' && duration) {
     const durationNum = parseInt(duration.replace('s', ''));
     const key = `gen3a_turbo-${durationNum}s`;
@@ -316,7 +316,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const isI2V = modelValue.includes('i2v') || modelValue.includes('first-last-frame-to-video');
     const modelType = isI2V ? 'i2v' : 't2v';
     const audioSuffix = (generateAudio === false) ? '-audio-off' : '';
-    
+
     if (isFast) {
       if (duration === '4s') {
         const key = `veo3.1-fast-${modelType}-4s${audioSuffix}`;
@@ -361,16 +361,16 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const isI2V = modelValue.includes('i2v');
     const modelType = isI2V ? 'i2v' : 't2v';
     const speedPrefix = isFast ? 'fast-' : '';
-    
+
     // Map resolution to our format
     let resolutionKey = '';
     if (resolution?.includes('480')) resolutionKey = '480p';
     else if (resolution?.includes('720')) resolutionKey = '720p';
     else if (resolution?.includes('1080')) resolutionKey = '1080p';
-    
+
     // Map duration to our format
     const durationNum = duration ? parseInt(duration.replace('s', '')) : 5;
-    
+
     const key = `wan-2.5-${speedPrefix}${modelType}-${durationNum}s-${resolutionKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
@@ -404,17 +404,17 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const isI2V = modelValue.includes('i2v');
     const modelType = isI2V ? 'i2v' : 't2v';
     const tier = modelValue.includes('lite') ? 'lite' : 'pro';
-    
+
     // Map resolution
     let resolutionKey = '';
     if (resolution?.includes('480')) resolutionKey = '480p';
     else if (resolution?.includes('720')) resolutionKey = '720p';
     else if (resolution?.includes('1080')) resolutionKey = '1080p';
-    
+
     // Map duration: 2-6s -> 5s, 7-12s -> 10s for pricing
     const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
     const durForPricing = (durationNum >= 2 && durationNum <= 6) ? 5 : (durationNum >= 7 && durationNum <= 12) ? 10 : 5;
-    
+
     const key = `seedance-1.0-${tier}-${modelType}-${durForPricing}s-${resolutionKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
@@ -423,7 +423,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   if (modelValue.includes('pixverse')) {
     const isI2V = modelValue.includes('i2v');
     const modelType = isI2V ? 'i2v' : 't2v';
-    
+
     // Map quality/resolution: 360p, 540p, 720p, 1080p
     let qualityKey = '';
     if (resolution?.includes('360')) qualityKey = '360p';
@@ -431,11 +431,11 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     else if (resolution?.includes('720')) qualityKey = '720p';
     else if (resolution?.includes('1080')) qualityKey = '1080p';
     else qualityKey = '720p'; // Default
-    
+
     // Duration: 5 or 8 seconds
     const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
     const durForPricing = (durationNum === 5 || durationNum === 8) ? durationNum : 5;
-    
+
     const key = `pixverse-v5-${modelType}-${durForPricing}s-${qualityKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
@@ -444,9 +444,9 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   if (modelValue.includes('ltx2')) {
     const isPro = modelValue.includes('pro');
     const res = (resolution || '1080p').toLowerCase();
-    const durNum = duration ? parseInt(String(duration).replace('s','')) : 6;
+    const durNum = duration ? parseInt(String(duration).replace('s', '')) : 6;
     // Pricing table (credits) based on user's provided chart
-    const table: Record<'pro'|'fast', Record<'1080p'|'1440p'|'2160p', Record<6|8|10, number>>> = {
+    const table: Record<'pro' | 'fast', Record<'1080p' | '1440p' | '2160p', Record<6 | 8 | 10, number>>> = {
       pro: {
         '1080p': { 6: 780, 8: 1020, 10: 1260 },
         '1440p': { 6: 1500, 8: 1980, 10: 2460 },
@@ -458,9 +458,9 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
         '2160p': { 6: 1980, 8: 2620, 10: 3260 }
       }
     };
-    const tier: 'pro'|'fast' = isPro ? 'pro' : 'fast';
-    const resKey = (res.includes('1440') ? '1440p' : (res.includes('2160') || res.includes('4k') ? '2160p' : '1080p')) as '1080p'|'1440p'|'2160p';
-    const d: 6|8|10 = (durNum === 8 ? 8 : (durNum === 10 ? 10 : 6));
+    const tier: 'pro' | 'fast' = isPro ? 'pro' : 'fast';
+    const resKey = (res.includes('1440') ? '1440p' : (res.includes('2160') || res.includes('4k') ? '2160p' : '1080p')) as '1080p' | '1440p' | '2160p';
+    const d: 6 | 8 | 10 = (durNum === 8 ? 8 : (durNum === 10 ? 10 : 6));
     const cost = table[tier][resKey][d];
     return cost || null;
   }
@@ -470,7 +470,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     const isPro = modelValue.includes('pro');
     const isI2V = modelValue.includes('i2v');
     const isV2V = modelValue.includes('v2v');
-    
+
     // V2V Remix uses source video's parameters for pricing (handled by backend)
     // Return a default/estimated cost here to avoid "Unknown model" error
     // The actual cost will be calculated on the backend based on source video
@@ -479,13 +479,13 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       // The backend will use the actual source video parameters for final pricing
       return MODEL_CREDITS_MAPPING['sora2-t2v-8s'] || 1660; // Default to standard 8s cost
     }
-    
+
     const modelType = isI2V ? 'i2v' : 't2v';
-    
+
     // Duration: 4, 8, or 12 seconds
     const durationNum = duration ? parseInt(String(duration).replace('s', '')) : 8;
     const durForPricing = (durationNum === 4 || durationNum === 8 || durationNum === 12) ? durationNum : 8;
-    
+
     if (isPro) {
       // Pro models: resolution matters (720p or 1080p)
       const res = (resolution || '').toLowerCase().includes('1080') ? '1080p' : '720p';
@@ -502,7 +502,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   if (modelValue === 'flux-2-pro') {
     // Check if this is I2I (image-to-image) by checking if uploadedImages are present
     const isI2I = Array.isArray(uploadedImages) && uploadedImages.length > 0;
-    
+
     if (isI2I) {
       // I2I pricing: 110 credits for 1K, 190 credits for 2K
       if (resolution === '2K') {
@@ -546,7 +546,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     if (res.includes('2k')) resKey = '2k';
     else if (res.includes('1080')) resKey = '1080p';
     else resKey = '720p';
-    
+
     const key = `seedvr2-${durationNum}s-${resKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
@@ -561,7 +561,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     else if (res.includes('2160') || res.includes('4k')) resKey = '2160p';
     else if (res.includes('1440')) resKey = '1440p';
     else resKey = '1080p';
-    
+
     const key = `replicate-crystal-upscaler-${resKey}`;
     return MODEL_CREDITS_MAPPING[key] || null;
   }
@@ -573,7 +573,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 // Function to get model info for display
 export const getModelCreditInfo = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean) => {
   const credits = getCreditsForModel(modelValue, duration, resolution, generateAudio);
-  
+
   // Special handling for Maya TTS and ElevenLabs SFX - show per-second pricing
   if (modelValue === 'maya-tts') {
     return {
@@ -582,7 +582,7 @@ export const getModelCreditInfo = (modelValue: string, duration?: string, resolu
       displayText: '6 credits per second'
     };
   }
-  
+
   if (modelValue === 'elevenlabs-sfx') {
     return {
       credits: 6, // Per second
@@ -590,7 +590,7 @@ export const getModelCreditInfo = (modelValue: string, duration?: string, resolu
       displayText: '6 credits per second'
     };
   }
-  
+
   return {
     credits,
     hasCredits: credits !== null,
@@ -601,11 +601,11 @@ export const getModelCreditInfo = (modelValue: string, duration?: string, resolu
 // Helper function to format model name with credits
 export const formatModelWithCredits = (modelName: string, modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean): string => {
   const creditInfo = getModelCreditInfo(modelValue, duration, resolution, generateAudio);
-  
+
   if (creditInfo.hasCredits) {
     return `${modelName} - ${creditInfo.displayText}`;
   }
-  
+
   return modelName;
 };
 
