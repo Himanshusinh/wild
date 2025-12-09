@@ -95,7 +95,7 @@ export default function AiCompanion() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 
-          w-14 h-14 md:w-16 md:h-16 
+          w-12 h-12 md:w-14 md:h-14 
           rounded-full shadow-lg 
           bg-gradient-to-br from-blue-600 to-purple-600 
           hover:from-blue-500 hover:to-purple-500 
@@ -105,7 +105,7 @@ export default function AiCompanion() {
         aria-label="Open AI Companion"
       >
         <svg
-          className="w-7 h-7 md:w-8 md:h-8 text-white"
+          className="w-5 h-5 md:w-6 md:h-6 text-white"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -136,20 +136,12 @@ export default function AiCompanion() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-2">
+              <img 
+                src="/icons/wildmind_icon_darkbg.svg" 
+                alt="WildMind AI" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h3 className="text-white font-semibold text-sm md:text-base">
