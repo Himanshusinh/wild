@@ -614,7 +614,7 @@ const LandingPage: React.FC = () => {
           {/* Circular Gallery (same placement as landingPage) */}
           <div className="w-full max-w-10xl mx-auto px-8 md:px-6 lg:px-8 mt-16 md:mt-12 lg:mt-16" ref={hArtGalleryRef}>
             <div className="relative">
-              {/* translucent overlay and big label covering both galleries */}
+            
               <div className="pointer-events-none absolute inset-0 z-[35] flex items-center justify-center">
                 <div className="absolute inset-0" />
                 <span className="relative block text-white font-bold text-4xl md:text-[10rem] lg:text-[10rem] xl:text-[9rem]">
@@ -632,7 +632,7 @@ const LandingPage: React.FC = () => {
 
               {loadGallery ? (
                 <>
-                  {/* First gallery */}
+                 
                   <div className="relative mt-30 z-[30]">
                     <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
                       <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
@@ -657,7 +657,7 @@ const LandingPage: React.FC = () => {
                       </React.Suspense>
                     </div>
                   </div>
-                  {/* Second gallery below, opposite direction */}
+           
                   <div className="relative -mt-[96px] md:-mt-[140px] lg:-mt-[180px] z-[30]">
                     <div style={{ height: '600px', position: 'relative' }} className="opacity-40">
                       <React.Suspense fallback={<div className="h-full bg-gray-800 rounded-lg animate-pulse" />}>
