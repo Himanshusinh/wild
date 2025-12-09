@@ -214,7 +214,7 @@ const HomePage: React.FC = () => {
             </div>
           </main>
 
-          {/* WobbleCard Section */}
+    
           <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
             <div className="w-full px-4 md:px-8 lg:px-12">
               <div className="w-full">
@@ -226,7 +226,7 @@ const HomePage: React.FC = () => {
                     className="flex w-full md:h-full h-96 relative"
                    
                   >
-                    {/* Left side content */}
+                  
                     <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
                       <div className="w-full">
                         <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
@@ -237,13 +237,13 @@ const HomePage: React.FC = () => {
                         </p>
                       </div>
 
-                      {/* Join Community Button - Bottom Left */}
+                
                       <button className="font-poppins md:text-lg text-xs bg-white text-[#1C303D] font-semibold md:px-6 px-2 md:py-3 py-1 rounded-full transition-all duration-200 shadow-lg w-fit">
                         Pricing Plans
                       </button>
                     </div>
 
-                    {/* Right side image */}
+                 
                     <div
                       className="absolute right-0 top-0 w-1/2 h-full"
                       style={{ height: '100%', minHeight: '500px' }}

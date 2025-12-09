@@ -1984,7 +1984,8 @@ const InputBox = () => {
                 setIsGeneratingLocally(false);
                 break;
               }
-              if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
+              // Check for success statuses (completed, SUCCEEDED, succeeded, etc.)
+              if ((s === 'COMPLETED' || s === 'SUCCEEDED' || s === 'SUCCEED') && Array.isArray(status?.images) && status.images.length > 0) {
                 imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                 break;
               }
