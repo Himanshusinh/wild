@@ -79,14 +79,62 @@ export function InteractiveFeatureNodeGraph() {
         const handleMouseMove = (e: MouseEvent) => {
             if (!dragState.isDragging || dragState.nodeId === null) return;
 
-            const dx = e.clientX - dragState.startX;
-            const dy = e.clientY - dragState.startY;
+            let dx = e.clientX - dragState.startX;
+            let dy = e.clientY - dragState.startY;
+
+            let newX = dragState.originalX + dx;
+            let newY = dragState.originalY + dy;
+
+            // --- MAGNETIC SNAPPING ---
+            const SNAP_THRESHOLD = 50; // Increased threshold for better UX
+            const isLeft = features.find(f => f.id === dragState.nodeId)?.side === 'left';
+
+            // Calculate target snap point (The "inner" connection point on the box edge)
+            // Logic mirrors getPath's endX calculation
+            const targetX = isLeft ? (CENTER_X - BOX_HALF_W) - CENTER_X : (CENTER_X + BOX_HALF_W) - CENTER_X; // Relative to CENTER_X
+            // For Y, we want to snap to the center-ish or the "ideal" connection height
+            // Let's snap to the generic 0 (vertical center) or allow sliding along edge?
+            // User said "connect to that", implying a specific point. Let's snap to the box edge at the same Y level first, then clamp.
+
+            // Let's define the ideal snap point as the specific anchor for that node if it were docked? 
+            // Or just snap to the box edge?
+            // "Automaticlly connect to that like magner" -> Snap to the box edge.
+
+            const distToBoxEdge = Math.abs(newX - targetX);
+
+            if (distToBoxEdge < SNAP_THRESHOLD) {
+                // Snap X to the box edge (with slight padding for visual separation if needed, but "connect" implies touch)
+                // getPath uses endX which is exactly on the box edge.
+                // We'll snap to a point slightly off the edge so the node doesn't overlap the image content?
+                // The node width is involved. The node position is its center.
+                // If snap to `targetX`, the node center is at the box edge. This might overlap.
+                // Let's assume we snap such that the node *connector* touches.
+                // But `getPath` starts at `pos.x`.
+                // Let's snap the X coordinate to `targetX` +/- some offset to sit nicely next to it.
+                // Let's try snapping exactly to `targetX + (isLeft ? -80 : 80)` to sit outside.
+
+                // Simpler approach: If close to the "default" docked x-pos for that side?
+                // No, user wants it to connect when moved NEAR the receiver.
+
+                // Let's snap X to be "attached" to the box.
+                // Box edge is at +/- (BOX_HALF_W). Node center is newX.
+                // We want to snap newX.
+
+                const snapX = isLeft ? (-BOX_HALF_W - 80) : (BOX_HALF_W + 80);
+
+                // Check distance to this snap point
+                if (Math.abs(newX - snapX) < SNAP_THRESHOLD) {
+                    newX = snapX;
+                    // Optional: Snap Y to center if close to center?
+                    if (Math.abs(newY) < 30) newY = 0;
+                }
+            }
 
             setNodePositions(prev => ({
                 ...prev,
                 [dragState.nodeId!]: {
-                    x: dragState.originalX + dx,
-                    y: dragState.originalY + dy
+                    x: newX,
+                    y: newY
                 }
             }));
         };

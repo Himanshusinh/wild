@@ -28,8 +28,8 @@ export function LandingView({ setActiveTab }: LandingViewProps) {
                     Everything - text, image, and video - on one unified canvas.
                 </p>
                 <div className="mt-12 flex items-center justify-center gap-4">
-                    <button onClick={() => setActiveTab('')} className="group relative px-8 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                        <span className="relative z-10 flex items-center gap-2">Launching Soon<ArrowUpRight size={18} /></span>
+                    <button onClick={() => setActiveTab('projects')} className="group relative px-8 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                        <span className="relative z-10 flex items-center gap-2">Try Now<ArrowUpRight size={18} /></span>
                         <div className="absolute inset-0 bg-[#60a5fa] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                     </button>
                     {/* <button className="px-8 py-4 bg-[#111] border border-white/10 text-white rounded-full text-base font-medium hover:bg-[#222] transition-colors flex items-center gap-2">
