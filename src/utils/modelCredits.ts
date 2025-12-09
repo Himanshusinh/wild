@@ -31,6 +31,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'z-image-turbo': 26,         // Z Image Turbo
   'leonardoai/lucid-origin': 173,
   'leonardoai/phoenix-1.0': 170,
+  // Google Nano Banana (used by erase/replace in Edit Image)
+  'google_nano_banana': 98,
   // Z-Image Turbo: Free (0 credits) for launch offer
   'new-turbo-model': 0, // Free unlimited image generation
   // Product Generation Models
@@ -265,8 +267,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'fal-topaz-upscale-512mp': 2740, // fal-ai/topaz/upscale/image 512MP
   'replicate-magic-image-refiner': 84, // replicate/fermatresearch/magic-image-refiner
   'replicate-clarity-upscaler': 62,   // replicate/philz1337x/clarity-upscaler
-  'replicate-lucataco-remove-bg': 31,  // replicate/ lucataco/remove-bg
-  'replicate-851-labs-remove-bg': 61,  // replicate/851-labs/background-remover (61.28 rounded)
+  // Background removal (Replicate) - align with creditDistribution (10 credits)
+  'replicate-lucataco-remove-bg': 10,  // Lucataco/remove-bg
+  'replicate-851-labs-remove-bg': 10,  // 851-labs/background-remover
   'replicate-bria-expand-image': 100, // replicate/bria/expand-image
   'replicate-real-esrgan': 32,         // replicate/nightmareai/real-esrgan (32.4 rounded)
   'replicate-swin2sr': 43,             // replicate/mv-lab/swin2sr

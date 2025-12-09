@@ -13,6 +13,7 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { getCreditsForModel } from '@/utils/modelCredits';
 import { toast } from 'react-hot-toast';
 import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
@@ -69,7 +70,9 @@ const EditImageInterface: React.FC = () => {
   const [eraseIsPreviewing, setEraseIsPreviewing] = useState<boolean>(false);
   const [eraseModel, setEraseModel] = useState<string>('bria/eraser');
   const [erasePrompt, setErasePrompt] = useState<string>('');
+  const [eraseActionMode, setEraseActionMode] = useState<'replace' | 'erase'>('replace');
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
+  const eraseCredits = useMemo(() => getCreditsForModel('google_nano_banana') ?? 98, []);
 
   // Live Chat state
   // ... (rest of existing state)
@@ -195,7 +198,7 @@ const EditImageInterface: React.FC = () => {
     if (m === 'google_nano_banana') return 'Google Nano Banana';
     if (m === 'seedream_4') return 'Seedream 4';
     if (m === '851-labs/background-remover') return '851 Labs Remove BG';
-    if (m === 'lucataco/remove-bg') return 'LucaTaco Remove BG';
+    if (m === 'lucataco/remove-bg') return 'Lucataco Remove BG';
     return m;
   };
   const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
@@ -2146,10 +2149,9 @@ const EditImageInterface: React.FC = () => {
         const img = inputs[selectedFeature];
         if (!img) throw new Error(`Please upload an image for ${selectedFeature === 'fill' ? 'fill' : selectedFeature === 'erase' ? 'erase' : 'reimagine'}`);
 
-        // For fill, prompt is required; for erase, we use hardcoded prompt
-        // Smart Erase/Replace: If prompt is empty, we treat it as Erase.
-        // So we do NOT block on empty prompt anymore.
-        const activePrompt = (selectedFeature === 'fill' && eraseMaskData) ? erasePrompt : prompt;
+        const hardErasePrompt = 'remove or erase the masked part of mask from the image';
+        const isEraseMode = selectedFeature === 'fill' && eraseActionMode === 'erase';
+        const activePrompt = selectedFeature === 'fill' ? (isEraseMode ? hardErasePrompt : erasePrompt) : prompt;
 
         // Only block if we are in a mode where prompt is absolutely mandatory and we have no fallback.
         // But here, empty prompt -> Erase, so we allow it.
@@ -2479,11 +2481,10 @@ const EditImageInterface: React.FC = () => {
             const userPrompt = activePrompt ? activePrompt.trim() : '';
             const isReplace = userPrompt.length > 0;
 
-            // Construct Advanced Replace Prompt
-            let finalPrompt = userPrompt;
-            if (isReplace) {
-              finalPrompt = `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be replaced in the original image. Replace the content in the white masked regions of Image 0 with the following description: ${userPrompt}. Ensure the replaced object integrates naturally with the scene, matching the lighting, shadows, and perspective of the original background. Do not alter any unmasked areas.`;
-            }
+            // Use concise prompts
+            const finalPrompt = isReplace
+              ? userPrompt
+              : 'remove or erase the masked part of mask from the image';
 
             // Determine Endpoint
             // Refactored to use 'wildmind' namespace matching Upscale/RemoveBG patterns
@@ -2543,9 +2544,10 @@ const EditImageInterface: React.FC = () => {
             throw eraseErr;
           }
         }
+        const promptToSend = (activePrompt || '').trim();
         const body: any = {
           isPublic,
-          prompt: (selectedFeature === 'fill' && eraseMaskData ? erasePrompt : prompt.trim()),
+          prompt: promptToSend,
         };
         // Add image (data URI or URL)
         if (String(fillSourceImage).startsWith('data:')) {
@@ -2730,6 +2732,8 @@ const EditImageInterface: React.FC = () => {
           console.log('[EditImage] remove-bg output URL:', { first, selectedFeature });
           // Set output directly like upscale does - no URL conversion needed since backend returns full URL
           setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
+          // Default to Zoom mode for remove-bg so transparent outputs are visible
+          setUpscaleViewMode('zoom');
           // Ensure processing is set to false
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
@@ -3852,8 +3856,8 @@ const EditImageInterface: React.FC = () => {
                             <div className={`absolute top-full z-100 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30  md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                               {(selectedFeature === 'remove-bg'
                                 ? [
-                                  { label: '851-labs', value: '851-labs/background-remover' },
-                                  { label: 'lucataco', value: 'lucataco/remove-bg' },
+                                  { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
+                                  { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
                                 ]
                                 : selectedFeature === 'resize'
                                   ? [
@@ -3897,6 +3901,8 @@ const EditImageInterface: React.FC = () => {
                     setBrushSize={setEraseBrushSize}
                     prompt={erasePrompt}
                     setPrompt={setErasePrompt}
+                    mode={eraseActionMode}
+                    setMode={setEraseActionMode}
                     model={eraseModel}
                     setModel={setEraseModel}
                     isProcessing={processing['fill']}
@@ -4387,6 +4393,11 @@ const EditImageInterface: React.FC = () => {
                   >
                     {processing[selectedFeature] ? 'Processing...' : 'Generate'}
                   </button>
+                  {selectedFeature === 'fill' && (
+                    <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                      {eraseCredits} credits
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -4603,9 +4614,13 @@ const EditImageInterface: React.FC = () => {
                       )}
 
                       {selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && upscaleViewMode === 'comparison' ? (
-                        // Comparison slider mode
+                        // Comparison slider mode: Original on left, Generated on right, no overlap
                         <>
-                          <div className="absolute inset-0">
+                          {/* Original (left) */}
+                          <div
+                            className="absolute inset-0"
+                            style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                          >
                             <Image
                               src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
                               alt="Original"
@@ -4614,11 +4629,11 @@ const EditImageInterface: React.FC = () => {
                               className="object-contain object-center"
                             />
                           </div>
+
+                          {/* Generated (right) */}
                           <div
                             className="absolute inset-0"
-                            style={{
-                              clipPath: `inset(0 0 0 ${sliderPosition}%)`
-                            }}
+                            style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
                           >
                             <Image
                               src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
@@ -4642,6 +4657,8 @@ const EditImageInterface: React.FC = () => {
                               }}
                             />
                           </div>
+
+                          {/* Slider */}
                           <div className="absolute inset-0">
                             <input
                               type="range"
@@ -4655,6 +4672,10 @@ const EditImageInterface: React.FC = () => {
                               className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
                               style={{ left: `${sliderPosition}%` }}
                             />
+                          </div>
+
+                          <div className="absolute top-5 left-4 z-30 2xl:top-6 2xl:left-6">
+                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Original</span>
                           </div>
                           <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
                             <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>

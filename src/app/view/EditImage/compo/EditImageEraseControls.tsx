@@ -7,6 +7,8 @@ interface EditImageEraseControlsProps {
     setBrushSize: (size: number) => void;
     prompt: string;
     setPrompt: (t: string) => void;
+    mode: 'replace' | 'erase';
+    setMode: (m: 'replace' | 'erase') => void;
     model: string;
     setModel: (m: string) => void;
     isProcessing: boolean;
@@ -21,6 +23,8 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
     setBrushSize,
     prompt,
     setPrompt,
+    mode,
+    setMode,
     model,
     setModel,
     isProcessing,
@@ -31,6 +35,22 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
 }) => {
     return (
         <div className="flex flex-col gap-3 w-full">
+            {/* Mode toggle */}
+            <div className="flex bg-white/5 border border-white/10 rounded-lg p-1 w-full">
+                <button
+                    onClick={() => setMode('replace')}
+                    className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${mode === 'replace' ? 'bg-white text-black' : 'text-white/80 hover:bg-white/10'}`}
+                >
+                    Replace
+                </button>
+                <button
+                    onClick={() => setMode('erase')}
+                    className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${mode === 'erase' ? 'bg-white text-black' : 'text-white/80 hover:bg-white/10'}`}
+                >
+                    Erase
+                </button>
+            </div>
+
             {/* Brush Size */}
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
@@ -66,20 +86,22 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
             </div>
 
             {/* Prompt Input */}
-            <div className="flex flex-col gap-1.5">
-                <span className="text-white/60 text-xs">Prompt (Optional)</span>
-                <input
-                    type="text"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe change..."
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-white/40 focus:border-white/30 outline-none transition-colors"
-                    onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === 'Enter') onGenerate();
-                    }}
-                />
-            </div>
+            {mode === 'replace' && (
+                <div className="flex flex-col gap-1.5">
+                    <span className="text-white/60 text-xs">Prompt (Optional)</span>
+                    <input
+                        type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Describe change..."
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-white/40 focus:border-white/30 outline-none transition-colors"
+                        onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') onGenerate();
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 };

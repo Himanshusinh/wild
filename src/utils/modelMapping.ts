@@ -827,13 +827,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'replicate-lucataco-remove-bg',
-    creditModelName: 'replicate/ lucataco/remove-bg',
+    creditModelName: 'Lucataco/remove-bg',
     generationType: 'image',
     provider: 'replicate'
   },
   {
     frontendValue: 'replicate-851-labs-remove-bg',
-    creditModelName: 'replicate/851-labs/background-remover',
+    creditModelName: '851-labs/background-remover',
     generationType: 'image',
     provider: 'replicate'
   },
