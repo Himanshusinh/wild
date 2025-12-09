@@ -70,17 +70,6 @@ const isApiDebugEnabled = (): boolean => {
   return process.env.NEXT_PUBLIC_API_DEBUG === 'true'
 }
 
-const showModerationToast = async (message: string) => {
-  try {
-    const toast = (await import('react-hot-toast')).default
-    toast.error(message, { duration: 5000 })
-  } catch (err) {
-    if (process.env.NEXT_PUBLIC_API_DEBUG === 'true') {
-      console.warn('[API][moderation-toast] Failed to show toast', err)
-    }
-  }
-}
-
 // Attach device headers; rely on Bearer tokens primarily (session cookie is optional fallback)
 axiosInstance.interceptors.request.use(async (config) => {
   try {
@@ -584,22 +573,7 @@ axiosInstance.interceptors.response.use(
     const original = error?.config || {}
     const status = error?.response?.status
     const errorData = error?.response?.data
-    const moderationCode = errorData?.code || errorData?.data?.code
-
-    if (moderationCode === 'CONTENT_BLOCKED') {
-      const category = errorData?.data?.category || errorData?.category
-      const matchedTerm = errorData?.data?.matchedTerm || errorData?.matchedTerm
-      const baseMessage =
-        errorData?.message ||
-        (category === 'nudity'
-          ? 'This prompt was blocked for nudity. Please adjust and try again.'
-          : 'This prompt was blocked for self-harm content. Please adjust and try again.');
-      const message = matchedTerm ? `${baseMessage} (term: ${matchedTerm})` : baseMessage;
-      try { await showModerationToast(message) } catch {}
-      return Promise.reject(error)
-    }
-
-    // For non-moderation errors, show the generic error toast
+    // Generic error toast
     try { await showFalErrorToast(error); } catch {}
     try {
       const urlStr = String(error?.config?.url || '')
