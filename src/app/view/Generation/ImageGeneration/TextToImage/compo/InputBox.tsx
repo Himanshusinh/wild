@@ -2269,9 +2269,13 @@ const InputBox = () => {
 
         // Update the local loading entry with completed images
         try {
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
           const completedEntry: HistoryEntry = {
             ...(localGeneratingEntries[0] || tempEntry),
-            id: (localGeneratingEntries[0]?.id || tempEntryId),
+            // Use the backend historyId when available so the local card matches the real entry.
+            id: resultHistoryId || (localGeneratingEntries[0]?.id || tempEntryId),
+            // Also store firebaseHistoryId for duplicate-detection helpers
+            ...(resultHistoryId ? { firebaseHistoryId: resultHistoryId } : {}),
             images: result.images,
             status: 'completed',
             timestamp: new Date().toISOString(),
@@ -2286,8 +2290,9 @@ const InputBox = () => {
         clearInputs();
 
         // Refresh only the single completed generation instead of reloading all
-        if (firebaseHistoryId) {
-          await refreshSingleGeneration(firebaseHistoryId);
+        const historyIdToRefresh = (result as any)?.historyId || firebaseHistoryId;
+        if (historyIdToRefresh) {
+          await refreshSingleGeneration(historyIdToRefresh);
         } else {
           await refreshHistory();
         }
