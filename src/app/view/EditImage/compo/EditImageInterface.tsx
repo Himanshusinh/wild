@@ -20,6 +20,7 @@ import { EditImageEraseControls } from './EditImageEraseControls';
 import { EditImageExpandFrame } from './EditImageExpandFrame';
 import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
+import { useCredits } from '@/hooks/useCredits';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
@@ -73,6 +74,12 @@ const EditImageInterface: React.FC = () => {
   const [eraseActionMode, setEraseActionMode] = useState<'replace' | 'erase'>('replace');
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
   const eraseCredits = useMemo(() => getCreditsForModel('google_nano_banana') ?? 98, []);
+  const expandCredits = useMemo(() => getCreditsForModel('replicate/bria/expand-image') ?? 100, []);
+  const {
+    deductCreditsOptimisticForGeneration,
+    rollbackOptimisticDeduction,
+    refreshCredits,
+  } = useCredits();
 
   // Live Chat state
   // ... (rest of existing state)
@@ -1938,8 +1945,21 @@ const EditImageInterface: React.FC = () => {
     setErrorMsg('');
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
+
+    // Track optimistic debit so we can roll back on failure
+    let optimisticDebit = 0;
     try {
       const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
+
+      // Optimistic debit for expand (100 credits) as soon as user clicks generate
+      if (selectedFeature === 'expand' && expandCredits > 0 && optimisticDebit === 0) {
+        try {
+          deductCreditsOptimisticForGeneration(expandCredits);
+          optimisticDebit = expandCredits;
+        } catch {
+          // ignore optimistic debit errors
+        }
+      }
       const isPublic = await getIsPublic();
       if (selectedFeature === 'vectorize') {
         const img = inputs[selectedFeature];
@@ -2143,6 +2163,7 @@ const EditImageInterface: React.FC = () => {
         const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (out) setOutputs((prev) => ({ ...prev, ['expand']: out }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+        try { await refreshCredits(); } catch { }
         return;
       }
       if (selectedFeature === 'fill' || selectedFeature === 'erase') {
@@ -2483,8 +2504,8 @@ const EditImageInterface: React.FC = () => {
 
             // Use concise prompts
             const finalPrompt = isReplace
-              ? userPrompt
-              : 'remove or erase the masked part of mask from the image';
+              ? `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be replaced in the original image. Replace the content in the white masked regions of Image 0 with the following description: ${userPrompt}. Ensure the replaced object integrates naturally with the scene, matching the lighting, shadows, and perspective of the original background. Do not alter any unmasked areas.`
+              : `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be removed and erased from Image 0. Remove and erase the masked regions in Image 0, leaving those areas transparent/clean while keeping every unmasked area unchanged. Preserve lighting, shadows, perspective, and overall scene consistency.`;
 
             // Determine Endpoint
             // Refactored to use 'wildmind' namespace matching Upscale/RemoveBG patterns
@@ -3080,6 +3101,9 @@ const EditImageInterface: React.FC = () => {
         } catch { }
       }
     } catch (e) {
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       console.error('[EditImage] run.error', e);
       const errorData = (e as any)?.response?.data;
       let msg = (errorData && (errorData.message || errorData.error)) || (e as any)?.message || 'Request failed';
@@ -4393,9 +4417,9 @@ const EditImageInterface: React.FC = () => {
                   >
                     {processing[selectedFeature] ? 'Processing...' : 'Generate'}
                   </button>
-                  {selectedFeature === 'fill' && (
+                  {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
                     <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                      {eraseCredits} credits
+                      {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
                     </div>
                   )}
                 </div>
