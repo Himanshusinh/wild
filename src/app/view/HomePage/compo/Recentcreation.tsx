@@ -31,10 +31,8 @@ const CATEGORIES: Array<CreationItem['category']> = [
   'All',
   'Images',
   'Videos',
-  // 'Music', // Commented out for now
-  // 'Logo',
-  // 'Stickers',
-  // 'Products',
+  'Music',
+  // Additional types (Logo/Stickers/Products) can be re-enabled later if needed
 ]
 
 // Helper function to normalize image URLs
@@ -90,11 +88,39 @@ const normalizeImageUrl = (image: any): string => {
   return url;
 }
 
+// Normalize generation type for comparisons
+const normalizeGenType = (type: string | undefined): string => {
+  if (!type || typeof type !== 'string') return '';
+  return type.replace(/[_-]/g, '-').toLowerCase();
+};
+
+// Treat any of these as "music/audio" generations (music, TTS, dialogue, SFX, generic audio)
+const MUSIC_LIKE_TYPES = new Set<string>([
+  'text-to-music',
+  'text-to-speech',
+  'tts',
+  'text-to-dialogue',
+  'dialogue',
+  'sound-effects',
+  'sound-effect',
+  'sfx',
+  'text-to-audio',
+  'audio-generation',
+  'music',
+  'audio',
+]);
+
+const isMusicLikeGeneration = (type: string | undefined): boolean => {
+  const n = normalizeGenType(type);
+  return MUSIC_LIKE_TYPES.has(n);
+};
+
 const Recentcreation: React.FC = () => {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const [active, setActive] = useState<CreationItem['category']>('All')
   const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large')
+  const [isMobile, setIsMobile] = useState(false)
   const [ratios, setRatios] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -114,6 +140,17 @@ const Recentcreation: React.FC = () => {
   const hasRetriedRef = React.useRef(false)
   const fetchInFlightRef = React.useRef(false)
 
+  // Track viewport to apply mobile-specific limits (e.g., show 9 instead of 10)
+  useEffect(() => {
+    const updateIsMobile = () => {
+      if (typeof window === 'undefined') return
+      setIsMobile(window.innerWidth < 768)
+    }
+    updateIsMobile()
+    window.addEventListener('resize', updateIsMobile)
+    return () => window.removeEventListener('resize', updateIsMobile)
+  }, [])
+
   // Reset retry guard on category change
   useEffect(() => { hasRetriedRef.current = false }, [active])
   
@@ -130,12 +167,15 @@ const Recentcreation: React.FC = () => {
     }
 
     // Map category to request filters
-    const computeFiltersForCategory = (category: string): { generationType?: string; mode?: string } => {
+    const computeFiltersForCategory = (category: string): { generationType?: string | string[]; mode?: string } => {
       switch (category) {
         case 'Images':
           return { generationType: 'text-to-image' }
         case 'Videos':
           return { mode: 'video' } // groups t2v, i2v, v2v on backend
+        case 'Music':
+          // Use unified music mode so backend returns text-to-music, TTS, SFX, dialogue, etc.
+          return { mode: 'music' }
         case 'Logo':
           return { generationType: 'logo' }
         case 'Stickers':
@@ -164,12 +204,19 @@ const Recentcreation: React.FC = () => {
         const filters: any = { sortOrder: 'desc', status: 'completed', ...baseFilters }
         
         // Wait for both the API call and minimum loading time
-        const cols = gridSize === 'small' ? 9 : gridSize === 'medium' ? 7 : 5
+        const baseCount =
+          gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5;
+        // On mobile, cap the smallest-dot view to 9 items instead of 10
+        const visibleCount =
+          isMobile && gridSize === 'small' ? 9 : baseCount;
+
         const [result] = await Promise.all([
           dispatch(loadHistory({ 
             filters, 
             paginationParams: { 
-              limit: active === 'All' ? cols : 12
+              // Fetch just enough to populate the single visible row based
+              // on the active dot (5 / 7 / 10 latest generations).
+              limit: visibleCount
             },
             debugTag: `recent:${active}:${Date.now()}`
           })),
@@ -260,8 +307,23 @@ const Recentcreation: React.FC = () => {
       }
 
       // Process images (for text-to-image, ad-generation, mockup-generation, etc.)
-      if (entry.images && entry.images.length > 0 && 
-          !['logo', 'sticker-generation', 'product-generation'].includes(entry.generationType)) {
+      // IMPORTANT: Skip audio-based generations like music / TTS / SFX so we don't
+      // accidentally treat audio storage paths as images. Those are handled in the
+      // dedicated music/audio section below.
+      if (
+        entry.images &&
+        entry.images.length > 0 &&
+        ![
+          'logo',
+          'sticker-generation',
+          'product-generation',
+          // Skip music / audio-like generations
+          'text-to-music',
+          'text-to-speech',
+          'text-to-dialogue',
+          'sfx',
+        ].includes(entry.generationType)
+      ) {
         entry.images.forEach((image, index) => {
           const normalizedUrl = normalizeImageUrl(image);
           if (!normalizedUrl) return; // Skip if no valid URL
@@ -299,31 +361,51 @@ const Recentcreation: React.FC = () => {
         })
       }
 
-  // Process music (text-to-music entries)
-      if (entry.generationType === 'text-to-music') {
-        // Prefer audios[] from backend; fallback to images[0] if older format
-        const audioFromAudios = (entry as any)?.audios && (entry as any).audios.length > 0
-          ? ((entry as any).audios[0].url || (entry as any).audios[0].firebaseUrl || '')
-          : ''
-        const audioFromImages = entry.images && entry.images.length > 0
-          ? (entry.images[0].url || entry.images[0].firebaseUrl || '')
-          : ''
-        const audioUrl = audioFromAudios || audioFromImages
+      // Process music / audio-like generations (music, TTS, dialogue, SFX, generic audio)
+      if (isMusicLikeGeneration(entry.generationType)) {
+        let audioUrl = '';
+
+        // Prefer audios[] from backend
+        const audios = (entry as any)?.audios as any[] | undefined;
+        if (Array.isArray(audios) && audios.length > 0) {
+          const a0 = audios[0] || {};
+          audioUrl =
+            a0.url ||
+            a0.firebaseUrl ||
+            (a0.storagePath ? toDirectUrl(a0.storagePath) : '');
+        }
+
+        // Fallback: single audio field
+        if (!audioUrl && (entry as any)?.audio) {
+          const a = (entry as any).audio;
+          audioUrl =
+            a.url ||
+            a.firebaseUrl ||
+            (a.storagePath ? toDirectUrl(a.storagePath) : '');
+        }
+
+        // Legacy fallback: derive from images[0] if older format stored audio there
+        if (!audioUrl && entry.images && entry.images.length > 0) {
+          audioUrl = entry.images[0].url || entry.images[0].firebaseUrl || '';
+        }
 
         if (audioUrl) {
           items.push({
             id: `${entry.id}-music`,
             src: audioUrl,
-            title: (entry.prompt || '').length > 50 ? (entry.prompt || '').substring(0, 50) + '...' : (entry.prompt || ''),
+            title:
+              (entry.prompt || '').length > 50
+                ? (entry.prompt || '').substring(0, 50) + '...'
+                : entry.prompt || '',
             date: new Date(entry.timestamp).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
-              year: 'numeric'
+              year: 'numeric',
             }),
             category: 'Music',
             entry,
-            isMusic: true
-          })
+            isMusic: true,
+          });
         }
       }
 
@@ -390,13 +472,25 @@ const Recentcreation: React.FC = () => {
       }
     })
 
-    // Sort by date (most recent first) and limit to 5 items
-    const colsLocal = gridSize === 'small' ? 9 : gridSize === 'medium' ? 7 : 5
+    // Sort by date (most recent first).
+    // Decide how many items to show based on the size selector dots:
+    // - smallest dot  => 10 on desktop, 9 on mobile
+    // - middle dot    => 7
+    // - largest dot   => 5
+    const baseCount =
+      gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5;
+    const visibleCount =
+      isMobile && gridSize === 'small' ? 9 : baseCount;
+
     const result = items
-      .sort((a, b) => new Date(b.entry.timestamp).getTime() - new Date(a.entry.timestamp).getTime())
-      .slice(0, colsLocal)
-    
-    return result
+      .sort(
+        (a, b) =>
+          new Date(b.entry.timestamp).getTime() -
+          new Date(a.entry.timestamp).getTime()
+      )
+      .slice(0, visibleCount);
+
+    return result;
   }, [historyEntries, gridSize])
 
   const filtered = useMemo(() => {
@@ -463,18 +557,17 @@ const Recentcreation: React.FC = () => {
     }
   }
 
-  const cols = gridSize === 'small' ? 9 : gridSize === 'medium' ? 7 : 5
+  // Number of visible cards in the single row, tied to the three size dots
+  // small  => 5, medium => 7, large => 10
+  const cols = gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5
   // Mobile heights (reduced) and desktop heights
-  const cardHeightMobile = gridSize === 'small' ? 80 : gridSize === 'medium' ? 100 : 140
+  const cardHeightMobile = gridSize === 'small' ? 80 : gridSize === 'medium' ? 140 : 140
   const cardHeightDesktop = gridSize === 'small' ? 170 : gridSize === 'medium' ? 220 : 320
 
   const gridColsClass = (base: string) => {
-    // Mobile-specific grid columns
-    // Small: 3 columns (3 per row, 9 items = 3 rows)
-    // Medium: 6 columns (allows 2+2+3 layout: items span 3 cols each for first 4, then 2 cols each for last 3)
-    // Large: 2 columns (2+2+1 layout)
+    // Mobile-specific grid columns – still allow wrapping on very small screens
     const mobile = gridSize === 'small' ? 'grid-cols-3' : gridSize === 'medium' ? 'grid-cols-6' : 'grid-cols-2'
-    // Desktop grid columns (xl breakpoint)
+    // Desktop grid columns (xl breakpoint) – match counts 5 / 7 / 10
     const xl = gridSize === 'small' ? 'xl:grid-cols-10' : gridSize === 'medium' ? 'xl:grid-cols-7' : 'xl:grid-cols-5'
     // Remove grid-cols-1 from base and use mobile class, keep sm/md/lg for intermediate breakpoints
     const baseWithoutMobile = base.replace('grid-cols-1', '').trim()
@@ -482,7 +575,7 @@ const Recentcreation: React.FC = () => {
   }
 
   return (
-    <section className="w-full px-4 md:px-8 lg:px-12 mt-6 md:mt-32">
+    <section className="w-full px-4 md:px-6 lg:px-6 mt-2 md:mt-6">
       {/* Heading */}
       <h3 className="text-white text-xl md:text-4xl font-medium md:mb-4 mb-2">Recent Creations</h3>
 
@@ -764,26 +857,24 @@ const Recentcreation: React.FC = () => {
                     </div>
                   )
                 ) : item.isMusic ? (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center relative">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  // Match tile styling with Music/TTS/SFX history tiles (StaticAudioTile + gradient)
+                  <div className="w-full h-full bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 flex items-center justify-center relative rounded-2xl overflow-hidden ring-1 ring-white/10">
+                    <div className="absolute inset-0 opacity-70">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 mx-auto mb-3 text-white/90 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12">
                           <path d="M9 18V5l12-2v13"/>
                           <circle cx="6" cy="18" r="3"/>
                           <circle cx="18" cy="16" r="3"/>
                         </svg>
                       </div>
-                      <div className="text-white/80 text-sm font-medium">Music Track</div>
-                      <div className="text-white/60 text-xs mt-1">Click to play</div>
+                      <div className="text-white font-medium text-sm">Music Track</div>
+                      <div className="text-white/70 text-xs mt-1">Click to play</div>
                     </div>
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors duration-300" />
                   </div>
                 ) : item.src && item.src.trim() !== '' ? (
                   (() => {
@@ -904,26 +995,24 @@ const Recentcreation: React.FC = () => {
                     </div>
                   )
                 ) : item.isMusic ? (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center relative">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  // Match tile styling with Music/TTS/SFX history tiles (StaticAudioTile + gradient)
+                  <div className="w-full h-full bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 flex items-center justify-center relative rounded-2xl overflow-hidden ring-1 ring-white/10">
+                    <div className="absolute inset-0 opacity-70">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 mx-auto mb-3 text-white/90 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12">
                           <path d="M9 18V5l12-2v13"/>
                           <circle cx="6" cy="18" r="3"/>
                           <circle cx="18" cy="16" r="3"/>
                         </svg>
                       </div>
-                      <div className="text-white/80 text-sm font-medium">Music Track</div>
-                      <div className="text-white/60 text-xs mt-1">Click to play</div>
+                      <div className="text-white font-medium text-sm">Music Track</div>
+                      <div className="text-white/70 text-xs mt-1">Click to play</div>
                     </div>
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors duration-300" />
                   </div>
                 ) : item.src && item.src.trim() !== '' ? (
                   (() => {

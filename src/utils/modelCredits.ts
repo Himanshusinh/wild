@@ -166,14 +166,15 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'kling-v2.1-master-t2v-10s': 5720,
   'kling-v2.1-master-i2v-5s': 2920,
   'kling-v2.1-master-i2v-10s': 5720,
-  'kling-v2.1-t2v-5s-720p': 620,
-  'kling-v2.1-t2v-5s-1080p': 1020,
-  'kling-v2.1-t2v-10s-720p': 1120,
-  'kling-v2.1-t2v-10s-1080p': 1920,
-  'kling-v2.1-i2v-5s-720p': 620,
-  'kling-v2.1-i2v-5s-1080p': 1020,
-  'kling-v2.1-i2v-10s-720p': 1120,
-  'kling-v2.1-i2v-10s-1080p': 1920,
+  // Kling 2.1 (non-master) – supports only I2V; align T2V keys to I2V pricing to avoid mismatches
+  'kling-v2.1-t2v-5s-720p': 560,
+  'kling-v2.1-t2v-5s-1080p': 960,
+  'kling-v2.1-t2v-10s-720p': 1060,
+  'kling-v2.1-t2v-10s-1080p': 1860,
+  'kling-v2.1-i2v-5s-720p': 560,
+  'kling-v2.1-i2v-5s-1080p': 960,
+  'kling-v2.1-i2v-10s-720p': 1060,
+  'kling-v2.1-i2v-10s-1080p': 1860,
   
   // Seedance 1.0 Pro T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
   'seedance-1.0-pro-t2v-5s-480p': 360,
@@ -279,7 +280,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 };
 
 // Function to get credit cost for a model
-export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean): number | null => {
+export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean, uploadedImages?: any[]): number | null => {
   // Handle special cases for video models with duration and resolution
   if (modelValue === 'MiniMax-Hailuo-02' && duration && resolution) {
     const durationNum = parseInt(duration.replace('s', ''));
@@ -312,7 +313,7 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   // Handle veo3.1 models (check before veo3)
   if (modelValue.includes('veo3.1')) {
     const isFast = modelValue.includes('fast');
-    const isI2V = modelValue.includes('i2v');
+    const isI2V = modelValue.includes('i2v') || modelValue.includes('first-last-frame-to-video');
     const modelType = isI2V ? 'i2v' : 't2v';
     const audioSuffix = (generateAudio === false) ? '-audio-off' : '';
     
@@ -497,15 +498,26 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     }
   }
 
-  // Handle Flux 2 Pro with resolution
+  // Handle Flux 2 Pro with resolution and I2I/T2I
   if (modelValue === 'flux-2-pro') {
-    if (resolution === '2K') {
-      return 160; // Flux 2 Pro 2K: 160 credits
-    } else if (resolution === '1K') {
-      return 80; // Flux 2 Pro 1K: 80 credits
+    // Check if this is I2I (image-to-image) by checking if uploadedImages are present
+    const isI2I = Array.isArray(uploadedImages) && uploadedImages.length > 0;
+    
+    if (isI2I) {
+      // I2I pricing: 110 credits for 1K, 190 credits for 2K
+      if (resolution === '2K') {
+        return 190; // Flux 2 Pro I2I 2K: 190 credits
+      } else {
+        return 110; // Flux 2 Pro I2I 1K: 110 credits
+      }
+    } else {
+      // T2I pricing: 80 credits for 1K, 160 credits for 2K
+      if (resolution === '2K') {
+        return 160; // Flux 2 Pro T2I 2K: 160 credits
+      } else {
+        return 80; // Flux 2 Pro T2I 1K: 80 credits
+      }
     }
-    // Default to 1K if no resolution specified (will be overridden by buildCreditModelName for 9:16)
-    return 80;
   }
 
   // Handle FLUX.2 Pro variants

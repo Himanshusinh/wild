@@ -1,13 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import InputBox from './TextToVideo/compo/InputBox';
 import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 
 type VideoFeature = 'Video' | 'Lipsync' | 'Animate';
 
 export default function VideoGenerationPage() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [activeFeature, setActiveFeature] = useState<VideoFeature>('Video');
+
+    // Initialize from URL parameter
+    useEffect(() => {
+        const featureParam = searchParams?.get('feature');
+        if (featureParam) {
+            const normalized = featureParam.toLowerCase();
+            if (normalized === 'lipsync') {
+                setActiveFeature('Lipsync');
+            } else if (normalized === 'animation' || normalized === 'animate') {
+                setActiveFeature('Animate');
+            }
+        }
+    }, [searchParams]);
 
     return (
         <div className="min-h-screen bg-[#07070B]">
@@ -31,7 +47,20 @@ export default function VideoGenerationPage() {
                                 {(['Video', 'Lipsync', 'Animate'] as VideoFeature[]).map((feature) => (
                                     <button
                                         key={feature}
-                                        onClick={() => setActiveFeature(feature)}
+                                        onClick={() => {
+                                            setActiveFeature(feature);
+                                            // Update URL with feature parameter
+                                            const params = new URLSearchParams(window.location.search);
+                                            if (feature === 'Video') {
+                                                params.delete('feature');
+                                            } else if (feature === 'Lipsync') {
+                                                params.set('feature', 'lipsync');
+                                            } else if (feature === 'Animate') {
+                                                params.set('feature', 'animation');
+                                            }
+                                            const queryString = params.toString();
+                                            router.push(`/text-to-video${queryString ? '?' + queryString : ''}`, { scroll: false });
+                                        }}
                                         className={`inline-flex items-center md:gap-2 gap-1 md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-xs font-medium transition-all border ${activeFeature === feature
                                             ? 'bg-white border-white/5 text-black shadow-sm'
                                             : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
@@ -47,11 +76,11 @@ export default function VideoGenerationPage() {
                     {/* Input Box Section - Show for all features, in scrollable area */}
                     <div className="mb-6">
                         {activeFeature === 'Animate' ? (
-                            <AnimateInputBox 
+                            <AnimateInputBox
                                 placeholder="Type your video prompt..."
                             />
                         ) : (
-                            <InputBox 
+                            <InputBox
                                 placeholder={activeFeature === 'Lipsync' ? "What should the character say?" : "Type your video prompt..."}
                                 activeFeature={activeFeature}
                             />

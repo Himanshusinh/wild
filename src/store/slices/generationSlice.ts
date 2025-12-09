@@ -103,6 +103,7 @@ export const generateImages = createAsyncThunk(
         provider === 'fal' ||
         model === 'gemini-25-flash-image' ||
         model === 'seedream-v4' ||
+        model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
         model === 'imagen-4' ||
         model === 'imagen-4-fast';
@@ -182,6 +183,7 @@ export const generateLiveChatImage = createAsyncThunk(
         provider === 'fal' ||
         model === 'gemini-25-flash-image' ||
         model === 'seedream-v4' ||
+        model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
         model === 'imagen-4' ||
         model === 'imagen-4-fast';

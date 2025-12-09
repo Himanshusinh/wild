@@ -26,7 +26,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black/70  z-[100] flex items-center justify-center p-4">
             <div
-                className={`relative w-full max-w-5xl lg:h-auto md:h-[90vh] pb-6 bg-[#1c303d]/30 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                className={`relative w-full max-w-5xl lg:h-auto h-[30vh] md:h-[90vh] pb-6 bg-[#1c303d]/30 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
                     }`}
             >
                 {/* Close Button */}
