@@ -43,7 +43,7 @@ export default function ChromeMount() {
         setIsAuthenticated(true);
         return;
       }
-      
+
       // Fallback to localStorage
       const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       if (userStr) {
@@ -72,7 +72,7 @@ export default function ChromeMount() {
     if (typeof window === 'undefined') return;
 
     // If permission already handled, don't show our custom prompt
-    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+    if (typeof Notification !== 'undefined' && (Notification.permission === 'granted' || Notification.permission === 'denied')) {
       return;
     }
 
@@ -94,7 +94,7 @@ export default function ChromeMount() {
 
       try {
         // If the user already granted permission, show a Notification while in foreground
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification(title, { body });
         }
       } catch (err) {
@@ -124,7 +124,7 @@ export default function ChromeMount() {
 
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
-  
+
   // Public routes - hide chrome on these
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
@@ -135,12 +135,12 @@ export default function ChromeMount() {
   const isLegalRoute = pathnameLower.startsWith('/legal/');
   const isProductRoute = pathnameLower.startsWith('/product/');
   const isCompanyRoute = pathnameLower.startsWith('/company/');
-  
+
   // Authenticated routes - show chrome on these
   const isHistoryRoute = pathnameLower.startsWith('/history');
   const isBookmarksRoute = pathnameLower.startsWith('/bookmarks');
   const isAccountRoute = pathnameLower.startsWith('/view/account-management');
-  
+
   // Generation routes (all the generation type routes) - authenticated
   const generationRoutes = [
     'text-to-image',
@@ -157,17 +157,17 @@ export default function ChromeMount() {
     'edit-image',
     'edit-video'
   ];
-  
-  const isGenerationRoute = generationRoutes.some(route => 
-    pathnameLower === `/${route}` || 
+
+  const isGenerationRoute = generationRoutes.some(route =>
+    pathnameLower === `/${route}` ||
     pathnameLower.startsWith(`/${route}/`)
   );
-  
+
   // Home page route - authenticated (actual route is /view/HomePage with capital H and P)
   const isHomeRoute = pathnameLower.startsWith('/view/homepage');
   const isEditImageRoute = pathnameLower.startsWith('/view/editimage');
   const isEditVideoRoute = pathnameLower.startsWith('/view/editvideo');
-  
+
   // For ArtStation: hide chrome if not authenticated, show if authenticated
   if (isArtStationRoute) {
     if (isAuthenticated) {
@@ -193,32 +193,32 @@ export default function ChromeMount() {
     }
     return null; // Hide chrome when not authenticated
   }
-  
+
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
-                     isLandingRoute || 
-                     isSignupRoute ||
-                     isForgotPasswordRoute ||
-                     isWorkflowsRoute ||
-                     isLegalRoute ||
-                     isProductRoute ||
-                     isCompanyRoute ||
-                     (isRoot && currentView === 'landing');
+    isLandingRoute ||
+    isSignupRoute ||
+    isForgotPasswordRoute ||
+    isWorkflowsRoute ||
+    isLegalRoute ||
+    isProductRoute ||
+    isCompanyRoute ||
+    (isRoot && currentView === 'landing');
 
   // If should hide, return null immediately
   if (shouldHide) return null;
-  
+
   // Show chrome only on authenticated pages
-  const shouldShow = isHomeRoute || 
-                     currentView === 'home' ||
-                     isGenerationRoute || 
-                     currentView === 'generation' || 
-                     isHistoryRoute ||
-                     currentView === 'history' ||
-                     isBookmarksRoute ||
-                     isAccountRoute ||
-                     isEditImageRoute ||
-                     isEditVideoRoute;
+  const shouldShow = isHomeRoute ||
+    currentView === 'home' ||
+    isGenerationRoute ||
+    currentView === 'generation' ||
+    isHistoryRoute ||
+    currentView === 'history' ||
+    isBookmarksRoute ||
+    isAccountRoute ||
+    isEditImageRoute ||
+    isEditVideoRoute;
 
   // If should show, render chrome (but hide sidebar if video editor is open)
   if (shouldShow) {
@@ -257,7 +257,7 @@ export default function ChromeMount() {
       </>
     );
   }
-  
+
   // Default: don't show (for other pages not explicitly listed)
   return null;
 }

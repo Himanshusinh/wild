@@ -157,7 +157,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
     frontendValue: 'seedream-4.5',
     creditModelName: 'Bytedance Seedream-4.5',
     generationType: 'image',
-    provider: 'replicate'
+    provider: 'fal'
   },
   {
     frontendValue: 'ideogram-ai/ideogram-v3',
@@ -1017,17 +1017,30 @@ export const buildCreditModelName = (
     // These are already specific resolution variants
     modelName = mapping.creditModelName;
   }
-  // Handle Flux 2 Pro with resolution
+  // Handle Flux 2 Pro with resolution and I2I/T2I
   else if (mapping.frontendValue === 'flux-2-pro') {
+    const hasImages = options?.frameSize !== undefined && (options as any).uploadedImages?.length > 0;
+    const isI2I = hasImages || (options as any).hasUploadedImages === true;
+    
     // Special case: 9:16 portrait defaults to 1024x2048 (costs $0.05) unless 2K is explicitly selected
     if (options?.frameSize === '9:16' && options?.resolution !== '2K') {
-      modelName = 'Flux 2 Pro 1024x2048';
+      modelName = isI2I ? 'FLUX.2 [pro] I2I 1080p' : 'Flux 2 Pro 1024x2048';
     } else if (options?.resolution) {
       const res = String(options.resolution).toUpperCase();
-      modelName = `Flux 2 Pro ${res}`;
+      if (isI2I) {
+        // I2I variants: 110 credits for 1K, 190 credits for 2K
+        if (res === '2K') {
+          modelName = 'FLUX.2 [pro] I2I 2K';
+        } else {
+          modelName = 'FLUX.2 [pro] I2I 1080p'; // 1K uses 1080p naming
+        }
+      } else {
+        // T2I variants
+        modelName = `FLUX.2 [pro] ${res === '2K' ? '2K' : '1080p'}`;
+      }
     } else {
       // Default to 1K if no resolution specified
-      modelName = 'Flux 2 Pro 1K';
+      modelName = isI2I ? 'FLUX.2 [pro] I2I 1080p' : 'FLUX.2 [pro] 1080p';
     }
   }
 

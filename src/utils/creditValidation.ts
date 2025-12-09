@@ -192,7 +192,8 @@ export const getImageGenerationCreditCost = (
   count: number = 1,
   frameSize?: string,
   style?: string,
-  resolution?: string
+  resolution?: string,
+  uploadedImages?: any[]
 ): number => {
   // Special case: z-image-turbo (new-turbo-model) is free for launch offer
   if (frontendModel === 'new-turbo-model') {
@@ -204,6 +205,22 @@ export const getImageGenerationCreditCost = (
   if (!mapping || mapping.generationType !== 'image') {
     console.warn(`Unknown or invalid image model: ${frontendModel}`);
     return 0;
+  }
+
+  // Handle Flux 2 Pro with I2I/T2I pricing
+  if (frontendModel === 'flux-2-pro') {
+    const isI2I = Array.isArray(uploadedImages) && uploadedImages.length > 0;
+    const res = resolution?.toUpperCase() || '1K';
+    let cost: number;
+    if (isI2I) {
+      // I2I pricing: 110 credits for 1K, 190 credits for 2K
+      cost = (res === '2K') ? 190 : 110;
+    } else {
+      // T2I pricing: 80 credits for 1K, 160 credits for 2K
+      cost = (res === '2K') ? 160 : 80;
+    }
+    console.log(`Flux 2 Pro ${isI2I ? 'I2I' : 'T2I'} cost: ${cost} credits for resolution: ${res}`);
+    return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
   }
 
   // Handle resolution-based pricing for nano-banana-pro
@@ -223,6 +240,15 @@ export const getImageGenerationCreditCost = (
   if (directCost !== undefined && directCost > 0) {
     console.log(`Found cost via direct mapping: ${directCost} for model: ${frontendModel}`);
     return directCost * Math.max(1, Math.min(count, 4)); // Max 4 images
+  }
+
+  // For Flux 2 Pro, use getCreditsForModel with uploadedImages
+  if (frontendModel === 'flux-2-pro') {
+    const cost = getCreditsForModel(frontendModel, undefined, resolution, undefined, uploadedImages);
+    if (cost !== null && cost > 0) {
+      console.log(`Found Flux 2 Pro cost via getCreditsForModel: ${cost}`);
+      return cost * Math.max(1, Math.min(count, 4));
+    }
   }
 
   // First try to get cost from creditDistributionData using creditModelName

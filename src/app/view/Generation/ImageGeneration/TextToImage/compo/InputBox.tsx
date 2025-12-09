@@ -48,6 +48,7 @@ import LucidOriginOptions from "./LucidOriginOptions";
 import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
+import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -529,46 +530,88 @@ const InputBox = () => {
     return "1024:1024";
   };
 
-  // Helper function to convert frameSize and resolution to z-turbo-model dimensions
-  const convertFrameSizeToZTurboDimensions = (frameSize: string, resolution: '1K' | '2K'): { width: number; height: number } => {
-    // Base resolution: 1K = 1024, 2K = 2048
-    const baseSize = resolution === '1K' ? 1024 : 2048;
+  // Calculate dimensions for z-image-turbo based on frame size, keeping under 1MP and divisible by 16
+  const convertFrameSizeToZTurboDimensions = (frameSize: string): { width: number; height: number } => {
+    const MAX_PIXELS = 1000000; // 1MP = 1,000,000 pixels (under 1MP means < 1,000,000)
+    const MIN_DIMENSION = 64;
+    const MAX_DIMENSION = 1440;
+    const MULTIPLE_OF = 16;
 
-    // Aspect ratio mappings - calculate dimensions based on base size
-    // Supports all common aspect ratios: 1:1, 3:4, 2:3, 9:16, 4:3, 3:2, 16:9, 21:9, 4:5, 5:4, 2:1, 1:2, 3:1, 1:3, 10:16, 16:10, 9:21
-    const aspectRatioMap: { [key: string]: { width: number; height: number } } = {
-      "1:1": { width: baseSize, height: baseSize },
-      "4:3": { width: baseSize, height: Math.round(baseSize * 3 / 4) },
-      "3:4": { width: Math.round(baseSize * 3 / 4), height: baseSize },
-      "16:9": { width: baseSize, height: Math.round(baseSize * 9 / 16) },
-      "9:16": { width: Math.round(baseSize * 9 / 16), height: baseSize },
-      "3:2": { width: baseSize, height: Math.round(baseSize * 2 / 3) },
-      "2:3": { width: Math.round(baseSize * 2 / 3), height: baseSize },
-      "21:9": { width: baseSize, height: Math.round(baseSize * 9 / 21) },
-      "4:5": { width: Math.round(baseSize * 4 / 5), height: baseSize },
-      "5:4": { width: baseSize, height: Math.round(baseSize * 4 / 5) },
-      "2:1": { width: baseSize, height: Math.round(baseSize * 1 / 2) },
-      "1:2": { width: Math.round(baseSize * 1 / 2), height: baseSize },
-      "3:1": { width: baseSize, height: Math.round(baseSize * 1 / 3) },
-      "1:3": { width: Math.round(baseSize * 1 / 3), height: baseSize },
-      "10:16": { width: Math.round(baseSize * 10 / 16), height: baseSize },
-      "16:10": { width: baseSize, height: Math.round(baseSize * 10 / 16) },
-      "9:21": { width: Math.round(baseSize * 9 / 21), height: baseSize },
+    // Parse aspect ratio from frameSize (e.g., "16:9" -> { widthRatio: 16, heightRatio: 9 })
+    const parseAspectRatio = (ratio: string): { widthRatio: number; heightRatio: number } => {
+      const parts = ratio.split(':');
+      if (parts.length !== 2) return { widthRatio: 1, heightRatio: 1 };
+      const w = parseFloat(parts[0]);
+      const h = parseFloat(parts[1]);
+      if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return { widthRatio: 1, heightRatio: 1 };
+      return { widthRatio: w, heightRatio: h };
     };
 
-    // Get dimensions for the aspect ratio, default to square
-    const dimensions = aspectRatioMap[frameSize] || { width: baseSize, height: baseSize };
+    const { widthRatio, heightRatio } = parseAspectRatio(frameSize);
+    const aspectRatio = widthRatio / heightRatio;
 
-    // Ensure dimensions are within API limits (64-2048) and are multiples of 8 for better compatibility
+    // Calculate maximum dimensions that stay under 1MP
+    // For landscape (width > height): start with max width, calculate height
+    // For portrait (height > width): start with max height, calculate width
+    // For square: use equal dimensions
+
+    let width: number;
+    let height: number;
+
+    if (aspectRatio > 1) {
+      // Landscape: width > height
+      // Start with max width (1440), calculate height, then scale down if needed
+      width = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS * aspectRatio)));
+      height = Math.round(width / aspectRatio);
+    } else if (aspectRatio < 1) {
+      // Portrait: height > width
+      // Start with max height (1440), calculate width, then scale down if needed
+      height = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS / aspectRatio)));
+      width = Math.round(height * aspectRatio);
+    } else {
+      // Square: 1:1
+      width = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS)));
+      height = width;
+    }
+
+    // Round to nearest multiple of 16
+    width = Math.round(width / MULTIPLE_OF) * MULTIPLE_OF;
+    height = Math.round(height / MULTIPLE_OF) * MULTIPLE_OF;
+
+    // Ensure we're still under 1MP after rounding
+    while (width * height >= MAX_PIXELS) {
+      if (aspectRatio > 1) {
+        width -= MULTIPLE_OF;
+        height = Math.round(width / aspectRatio / MULTIPLE_OF) * MULTIPLE_OF;
+      } else if (aspectRatio < 1) {
+        height -= MULTIPLE_OF;
+        width = Math.round(height * aspectRatio / MULTIPLE_OF) * MULTIPLE_OF;
+      } else {
+        width -= MULTIPLE_OF;
+        height = width;
+      }
+    }
+
+    // Clamp to valid range (64-1440) and ensure divisible by 16
     const clampToLimits = (value: number): number => {
-      const clamped = Math.max(64, Math.min(2048, Math.round(value / 8) * 8));
-      return clamped;
+      const rounded = Math.round(value / MULTIPLE_OF) * MULTIPLE_OF;
+      return Math.max(MIN_DIMENSION, Math.min(MAX_DIMENSION, rounded));
     };
 
-    return {
-      width: clampToLimits(dimensions.width),
-      height: clampToLimits(dimensions.height),
-    };
+    width = clampToLimits(width);
+    height = clampToLimits(height);
+
+    // Final check: ensure we're still under 1MP after clamping
+    if (width * height >= MAX_PIXELS) {
+      // Scale down proportionally
+      const scale = Math.sqrt(MAX_PIXELS / (width * height));
+      width = Math.round((width * scale) / MULTIPLE_OF) * MULTIPLE_OF;
+      height = Math.round((height * scale) / MULTIPLE_OF) * MULTIPLE_OF;
+      width = Math.max(MIN_DIMENSION, width);
+      height = Math.max(MIN_DIMENSION, height);
+    }
+
+    return { width, height };
   };
 
   // Helper function to convert frameSize to flux-pro-1.1 dimensions
@@ -875,10 +918,11 @@ const InputBox = () => {
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
-  // Seedream 4.5-specific UI state (2K only, limited aspect ratios)
+  // Seedream 4.5-specific UI state (FAL image_size auto_2K/auto_4K)
+  const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
-  const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
+  const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -1940,7 +1984,8 @@ const InputBox = () => {
                 setIsGeneratingLocally(false);
                 break;
               }
-              if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
+              // Check for success statuses (completed, SUCCEEDED, succeeded, etc.)
+              if ((s === 'COMPLETED' || s === 'SUCCEEDED' || s === 'SUCCEED') && Array.isArray(status?.images) && status.images.length > 0) {
                 imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                 break;
               }
@@ -2224,9 +2269,13 @@ const InputBox = () => {
 
         // Update the local loading entry with completed images
         try {
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
           const completedEntry: HistoryEntry = {
             ...(localGeneratingEntries[0] || tempEntry),
-            id: (localGeneratingEntries[0]?.id || tempEntryId),
+            // Use the backend historyId when available so the local card matches the real entry.
+            id: resultHistoryId || (localGeneratingEntries[0]?.id || tempEntryId),
+            // Also store firebaseHistoryId for duplicate-detection helpers
+            ...(resultHistoryId ? { firebaseHistoryId: resultHistoryId } : {}),
             images: result.images,
             status: 'completed',
             timestamp: new Date().toISOString(),
@@ -2241,8 +2290,9 @@ const InputBox = () => {
         clearInputs();
 
         // Refresh only the single completed generation instead of reloading all
-        if (firebaseHistoryId) {
-          await refreshSingleGeneration(firebaseHistoryId);
+        const historyIdToRefresh = (result as any)?.historyId || firebaseHistoryId;
+        if (historyIdToRefresh) {
+          await refreshSingleGeneration(historyIdToRefresh);
         } else {
           await refreshHistory();
         }
@@ -2540,35 +2590,42 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'seedream-4.5') {
-        // Replicate Seedream 4.5 (beta: 2K only, limited aspect ratios, up to 14 image_input)
+        // FAL Seedream 4.5 (v45) text-to-image - map frame size to proper enum values
         try {
-          // Build Seedream 4.5 payload per schema
-          const seedream45AllowedAspect = new Set(['match_input_image', '1:1']);
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
-          const payload: any = {
-            prompt: `${promptAdjusted} [Style: ${style}]`,
-            model: 'bytedance/seedream-4.5',
-            size: '2K', // Only 2K supported in beta
-            aspect_ratio: seedream45AllowedAspect.has(frameSize) ? frameSize : 'match_input_image',
-            sequential_image_generation: 'disabled',
-            max_images: Math.min(imageCount, 15), // Up to 15 images
-            isPublic,
+          const combinedImages = getCombinedUploadedImages();
+          
+          // Map frame size to Seedream 4.5 enum values (square_hd, portrait_4_3, landscape_16_9, etc.)
+          const frameSizeToEnum: Record<string, string> = {
+            '1:1': 'square_hd',
+            'square': 'square_hd',
+            '4:3': 'landscape_4_3',
+            '3:4': 'portrait_4_3',
+            '16:9': 'landscape_16_9',
+            '9:16': 'portrait_16_9',
           };
-          // Filter out SVG files - Seedream doesn't support SVG as input
-          if (uploadedImages && uploadedImages.length > 0) {
-            const validImages = uploadedImages
-              .slice(0, 14) // Up to 14 images for seedream-4.5
-              .map((u: string) => toAbsoluteFromProxy(u))
-              .filter((url: string) => {
-                // Exclude SVG files (vectorized images)
-                const lowerUrl = url.toLowerCase();
-                return !lowerUrl.includes('.svg') && !lowerUrl.includes('vectorized');
-              });
-            if (validImages.length > 0) {
-              payload.image_input = validImages;
-            }
-          }
-          const result = await dispatch(replicateGenerate(payload)).unwrap();
+          
+          // Always use the proper frame size enum based on selected aspect ratio
+          const imageSizeEnum = frameSizeToEnum[frameSize] || 'square_hd';
+
+          const result = await dispatch(falGenerate({
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt,
+            model: 'seedream-4.5',
+            generationType: 'text-to-image',
+            // Pass selected frame size and aspect ratio for backend reference
+            frameSize,
+            aspect_ratio: frameSize as any,
+            // Send proper frame size enum (square_hd, portrait_4_3, landscape_16_9, etc.)
+            // Backend will use this directly, respecting the selected frame size
+            image_size: imageSizeEnum,
+            resolution: seedream45Resolution, // Send resolution for backend reference (2K/4K)
+            num_images: imageCount,
+            max_images: imageCount,
+            enable_safety_checker: true,
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
+            isPublic,
+          })).unwrap();
 
           try {
             const completedEntry: HistoryEntry = {
@@ -2611,7 +2668,8 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
+          toast.error(errorMessage, { duration: 5000 });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
@@ -3055,8 +3113,8 @@ const InputBox = () => {
         try {
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
 
-          // Calculate width and height from resolution and aspect ratio
-          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1', zTurboResolution);
+          // Calculate dimensions based on frame size, keeping under 1MP and divisible by 16
+          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1');
           const width = dimensions.width;
           const height = dimensions.height;
 
@@ -3066,10 +3124,10 @@ const InputBox = () => {
             model: 'new-turbo-model',
             width: width,
             height: height,
-            num_inference_steps: 14,
-            guidance_scale: 0,
-            output_format: 'jpg',
-            output_quality: 80,
+            num_inference_steps: 8, // Schema default
+            guidance_scale: 0, // Schema default (should be 0 for Turbo models)
+            output_format: zTurboOutputFormat, // Use selected output format
+            output_quality: 80, // Schema default
             num_images: Math.min(imageCount, 4), // Cap at 4 like other models
           };
 
@@ -3162,8 +3220,11 @@ const InputBox = () => {
           }
 
           // Show error notification
-          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
-          toast.error(errorMessage);
+          const moderationCode = error?.response?.data?.code || error?.response?.data?.data?.code;
+          if (moderationCode !== 'CONTENT_BLOCKED') {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
+            toast.error(errorMessage);
+          }
           return;
         }
       } else {
@@ -4533,6 +4594,16 @@ const InputBox = () => {
                   />
                 </div>
               )}
+              {selectedModel === 'seedream-4.5' && (
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={seedream45Resolution}
+                    onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                    options={['2K', '4K']}
+                    dropdownId="seedream45Resolution"
+                  />
+                </div>
+              )}
               {selectedModel === 'seedream-v4' && (
                 <div className="flex items-center gap-2 relative">
                   <ResolutionDropdown
@@ -4567,11 +4638,10 @@ const InputBox = () => {
               )}
               {selectedModel === 'new-turbo-model' && (
                 <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={zTurboResolution}
-                    onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
-                    options={['1K', '2K']}
-                    dropdownId="zTurboResolution"
+                  <ZTurboOutputFormatDropdown
+                    outputFormat={zTurboOutputFormat}
+                    onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                    dropdownId="zTurboOutputFormat"
                   />
                 </div>
               )}
@@ -4604,6 +4674,16 @@ const InputBox = () => {
                       onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
                       options={['1K', '2K']}
                       dropdownId="flux2ProResolution"
+                    />
+                  </div>
+                )}
+                {selectedModel === 'seedream-4.5' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={seedream45Resolution}
+                      onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                      options={['2K', '4K']}
+                      dropdownId="seedream45Resolution"
                     />
                   </div>
                 )}
@@ -4641,11 +4721,10 @@ const InputBox = () => {
                 )}
                 {selectedModel === 'new-turbo-model' && (
                   <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={zTurboResolution}
-                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
-                      options={['1K', '2K']}
-                      dropdownId="zTurboResolution"
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={zTurboOutputFormat}
+                      onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                      dropdownId="zTurboOutputFormat"
                     />
                   </div>
                 )}

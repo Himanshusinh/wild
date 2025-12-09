@@ -24,30 +24,14 @@ interface SidePannelFeaturesProps {
 
 // Memoized SidebarIcon to prevent re-renders of the mask when parent state changes (e.g. hover)
 const SidebarIcon = React.memo(({ icon, label, isActive }: { icon: string, label: string, isActive: boolean }) => (
-  isActive ? (
-    <div
-      className="flex-none w-[24px] h-[24px] bg-blue-400"
-      style={{
-        maskImage: `url(${icon})`,
-        maskSize: 'contain',
-        maskRepeat: 'no-repeat',
-        maskPosition: 'center',
-        WebkitMaskImage: `url(${icon})`,
-        WebkitMaskSize: 'contain',
-        WebkitMaskRepeat: 'no-repeat',
-        WebkitMaskPosition: 'center'
-      }}
-    />
-  ) : (
-    <Image
-      src={icon}
-      alt={label}
-      width={30}
-      height={30}
-      className="flex-none w-[24px] h-[24px]"
-      unoptimized
-    />
-  )
+  <Image
+    src={icon}
+    alt={label}
+    width={30}
+    height={30}
+    className="flex-none w-[24px] h-[24px]"
+    unoptimized
+  />
 ));
 SidebarIcon.displayName = 'SidebarIcon';
 
@@ -118,7 +102,7 @@ const SidePannelFeatures = ({
   const [showProfileDropdown, setShowProfileDropdown] = React.useState(false);
   const profileDropdownRef = React.useRef<HTMLDivElement>(null);
   const portalRef = React.useRef<HTMLDivElement>(null);
-  const profileButtonRef = React.useRef<HTMLButtonElement>(null);
+  const profileButtonRef = React.useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, left: 0, bottom: 0 });
 
   // Update dropdown position when sidebar state changes
@@ -128,25 +112,25 @@ const SidePannelFeatures = ({
         if (profileButtonRef.current) {
           const rect = profileButtonRef.current.getBoundingClientRect();
           const gap = 12; // Gap between sidebar and popup
-          
+
           // Position to the right of the sidebar/button
           const left = rect.right + gap;
-          
+
           // Align bottom of popup with bottom of button
           // We use 'bottom' CSS property, so we calculate distance from bottom of viewport
           const bottom = window.innerHeight - rect.bottom;
-          
+
           setDropdownPosition({ top: 0, left, bottom });
         }
       };
-      
+
       // Small delay to ensure button position is calculated correctly
       const timeoutId = setTimeout(updatePosition, 0);
-      
+
       // Update on window resize and scroll
       window.addEventListener('resize', updatePosition);
       window.addEventListener('scroll', updatePosition, true);
-      
+
       return () => {
         clearTimeout(timeoutId);
         window.removeEventListener('resize', updatePosition);
@@ -369,10 +353,10 @@ const SidePannelFeatures = ({
       } else {
         try {
           localStorage.setItem('isPublicGenerations', 'true');
-        } catch {}
+        } catch { }
       }
       setIsPublic(next);
-    } catch {}
+    } catch { }
   }, [userData]);
 
   // Close profile dropdown on outside click
@@ -398,22 +382,22 @@ const SidePannelFeatures = ({
       localStorage.removeItem('authToken');
       try {
         localStorage.removeItem('me_cache');
-      } catch {}
+      } catch { }
       try {
         sessionStorage.removeItem('me_cache');
-      } catch {}
+      } catch { }
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       try {
         await signOut(auth);
-      } catch {}
+      } catch { }
       const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
       try {
         document.cookie = `app_session=; ${expired}; SameSite=None; Secure`;
         document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`;
         document.cookie = `app_session=; ${expired}; SameSite=Lax`;
         document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`;
-      } catch {}
-    } catch {}
+      } catch { }
+    } catch { }
     if (typeof window !== 'undefined') {
       window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS');
     }
@@ -951,9 +935,16 @@ const SidePannelFeatures = ({
             className="relative"
             ref={profileDropdownRef}
           >
-            <button
+            <div
+              role="button"
+              tabIndex={0}
               ref={profileButtonRef}
               onClick={() => {
+                // On mobile, navigate directly to account settings instead of opening dropdown
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT);
+                  return;
+                }
                 // Expand sidebar when profile is clicked (if not already expanded)
                 if (!isSidebarHovered && !isMobileSidebarOpen) {
                   setIsSidebarHovered(true);
@@ -961,12 +952,20 @@ const SidePannelFeatures = ({
                 // Position will be calculated by useEffect
                 setShowProfileDropdown((v) => !v);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  // Expand sidebar when profile is clicked (if not already expanded)
+                  if (!isSidebarHovered && !isMobileSidebarOpen) {
+                    setIsSidebarHovered(true);
+                  }
+                  setShowProfileDropdown((v) => !v);
+                }
+              }}
               onMouseEnter={() => setIsSidebarHovered(true)}
-              className={`w-full flex items-start justify-between px-1 transition-colors duration-200 ease-out ${
-                isSidebarHovered || isMobileSidebarOpen
-                  ? 'rounded-2xl'
-                  : 'rounded-full bg-transparent border-0'
-              }`}
+              className={`w-full flex items-start justify-between px-1 transition-colors duration-200 ease-out cursor-pointer ${isSidebarHovered || isMobileSidebarOpen
+                ? 'rounded-2xl'
+                : 'rounded-full bg-transparent border-0'
+                }`}
             >
               <div className="flex  gap-2">
                 {/* Profile image - always visible, fixed position and aligned with sidebar icons */}
@@ -1024,14 +1023,14 @@ const SidePannelFeatures = ({
               {(isSidebarHovered || isMobileSidebarOpen) && (
                 <span className="text-xs text-white/60 whitespace-nowrap"> &#9654; </span>
               )}
-            </button>
+            </div>
 
             {showProfileDropdown && mounted && createPortal(
               <div
                 ref={portalRef}
                 onMouseLeave={() => setShowProfileDropdown(false)}
                 className="fixed w-80 rounded-2xl backdrop-blur-3xl bg-[#05050a]/95 shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300"
-                style={{ 
+                style={{
                   zIndex: 999999,
                   position: 'fixed',
                   left: `${dropdownPosition.left}px`,
@@ -1040,7 +1039,7 @@ const SidePannelFeatures = ({
                   overflowY: 'auto'
                 }}
               >
-                <div className="p-4">
+                <div className="p-3 md:p-4">
                   {/* Header */}
                   <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
@@ -1106,23 +1105,21 @@ const SidePannelFeatures = ({
                             setIsPublic(true);
                             try {
                               localStorage.setItem('isPublicGenerations', 'true');
-                            } catch {}
+                            } catch { }
                             return;
                           }
                           const next = !isPublic;
                           setIsPublic(next);
                           try {
                             localStorage.setItem('isPublicGenerations', String(next));
-                          } catch {}
+                          } catch { }
                         }}
-                        className={`w-10 h-5 rounded-full transition-colors ${
-                          isPublic ? 'bg-blue-500' : 'bg-white/20'
-                        }`}
+                        className={`w-10 h-5 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-white/20'
+                          }`}
                       >
                         <span
-                          className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${
-                            isPublic ? 'translate-x-5' : 'translate-x-0'
-                          } relative top-0 left-0.5`}
+                          className={`block w-4 h-4 bg-white rounded-full transition-transform transform ${isPublic ? 'translate-x-5' : 'translate-x-0'
+                            } relative top-0 left-0.5`}
                         />
                       </button>
                     </div>
