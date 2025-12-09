@@ -10,6 +10,7 @@ import { Toaster } from 'react-hot-toast'
 import ToastMount from './toast-mount'
 import ConsoleSilencer from "@/components/ConsoleSilencer";
 import ChromeMount from './chrome-mount'
+import AiCompanion from "@/components/AiCompanion";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -209,6 +210,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
           <ToastMount />
+          <AiCompanion />
         </ReduxProvider>
       </body>
     </html>
