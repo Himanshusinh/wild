@@ -75,6 +75,9 @@ const EditImageInterface: React.FC = () => {
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
   const eraseCredits = useMemo(() => getCreditsForModel('google_nano_banana') ?? 98, []);
   const expandCredits = useMemo(() => getCreditsForModel('replicate/bria/expand-image') ?? 100, []);
+  const vectorizeRecraftCredits = useMemo(() => getCreditsForModel('fal-recraft-vectorize') ?? 40, []);
+  const vectorizeImage2SvgCredits = useMemo(() => getCreditsForModel('fal-image2svg') ?? 30, []);
+  const vectorizeArtExtraCredits = 80; // Additional credits when Art Vector (super mode) is selected
   const {
     deductCreditsOptimisticForGeneration,
     rollbackOptimisticDeduction,
@@ -269,6 +272,12 @@ const EditImageInterface: React.FC = () => {
   const [vSpliceThreshold, setVSpliceThreshold] = useState<number>(45);
   const [vPathPrecision, setVPathPrecision] = useState<number>(3);
   const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
+  const currentVectorizeCredits = useMemo(() => (
+    (vectorizeModel === 'fal-ai/recraft/vectorize' ? vectorizeRecraftCredits : vectorizeImage2SvgCredits)
+  ), [vectorizeModel, vectorizeRecraftCredits, vectorizeImage2SvgCredits]);
+  const effectiveVectorizeCredits = useMemo(() => (
+    currentVectorizeCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)
+  ), [currentVectorizeCredits, vectorizeSuperMode, vectorizeArtExtraCredits]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   // Live Chat feature state
   const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5'>('gemini-25-flash-image');
@@ -296,11 +305,28 @@ const EditImageInterface: React.FC = () => {
   // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
 
   const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' }> = [
-    { label: 'Google Nano Banana', value: 'gemini-25-flash-image' },
-    { label: 'Google Nano Banana Pro', value: 'google/nano-banana-pro' },
+    { label: 'Nano Banana', value: 'gemini-25-flash-image' },
+    { label: 'Nano Banana Pro', value: 'google/nano-banana-pro' },
     { label: 'Seedream v4 4k', value: 'seedream-v4' },
     { label: 'Seedream v4.5', value: 'seedream-v4.5' },
   ];
+
+  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5', resolution?: string) => {
+    const mapped = value;
+    const credits = getCreditsForModel(mapped, undefined, resolution);
+    if (credits != null) return credits;
+    // Fallback defaults
+    if (mapped === 'gemini-25-flash-image') return 98;
+    if (mapped === 'google/nano-banana-pro') {
+      if (resolution === '4K') return 620;
+      return 320;
+    }
+    if (mapped === 'seedream-v4') return 80;
+    if (mapped === 'seedream-v4.5') return 100;
+    return 0;
+  };
+
+  const liveCredits = useMemo(() => getLiveModelCredits(liveModel, liveResolution), [liveModel, liveResolution]);
 
   const liveFrameSizes = [
     { name: 'Square', value: '1:1' },
@@ -367,6 +393,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleLiveGenerate = async () => {
+    let optimisticDebit = 0;
     try {
       const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex] : null);
       if (!img) {
@@ -374,6 +401,14 @@ const EditImageInterface: React.FC = () => {
         return;
       }
       if (!livePrompt.trim()) return;
+
+      // Optimistic debit for live chat
+      if (liveCredits > 0) {
+        try {
+          deductCreditsOptimisticForGeneration(liveCredits);
+          optimisticDebit = liveCredits;
+        } catch { /* ignore optimistic errors */ }
+      }
 
       setProcessing((p) => ({ ...p, ['live-chat']: true }));
       setErrorMsg('');
@@ -429,6 +464,8 @@ const EditImageInterface: React.FC = () => {
         setInputs((prev) => ({ ...prev, ['live-chat']: out }));
       }
 
+      try { await refreshCredits(); } catch { }
+
       setLiveChatMessages((prev) => {
         const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
         if (idx >= 0) {
@@ -439,6 +476,10 @@ const EditImageInterface: React.FC = () => {
         return prev;
       });
     } catch (err: any) {
+      // Roll back optimistic debit on failure
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(liveCredits); } catch { }
+      }
       setErrorMsg(err?.response?.data?.message || err?.message || 'Generation failed');
       setLiveChatMessages((prev) => {
         const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
@@ -1951,13 +1992,26 @@ const EditImageInterface: React.FC = () => {
     try {
       const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
 
-      // Optimistic debit for expand (100 credits) as soon as user clicks generate
-      if (selectedFeature === 'expand' && expandCredits > 0 && optimisticDebit === 0) {
-        try {
-          deductCreditsOptimisticForGeneration(expandCredits);
-          optimisticDebit = expandCredits;
-        } catch {
-          // ignore optimistic debit errors
+      // Optimistic debit: expand or vectorize
+      if (optimisticDebit === 0) {
+        if (selectedFeature === 'expand' && expandCredits > 0) {
+          try {
+            deductCreditsOptimisticForGeneration(expandCredits);
+            optimisticDebit = expandCredits;
+          } catch { /* ignore */ }
+        } else if (selectedFeature === 'vectorize') {
+          const vectorizeCost = effectiveVectorizeCredits;
+          if (vectorizeCost > 0) {
+            try {
+              deductCreditsOptimisticForGeneration(vectorizeCost);
+              optimisticDebit = vectorizeCost;
+            } catch { /* ignore */ }
+          }
+        } else if ((selectedFeature === 'fill' || selectedFeature === 'erase') && eraseCredits > 0) {
+          try {
+            deductCreditsOptimisticForGeneration(eraseCredits);
+            optimisticDebit = eraseCredits;
+          } catch { /* ignore */ }
         }
       }
       const isPublic = await getIsPublic();
@@ -2017,6 +2071,7 @@ const EditImageInterface: React.FC = () => {
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          try { await refreshCredits(); } catch { }
           // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
           // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
@@ -2047,6 +2102,7 @@ const EditImageInterface: React.FC = () => {
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          try { await refreshCredits(); } catch { }
           // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
           // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
@@ -2666,6 +2722,15 @@ const EditImageInterface: React.FC = () => {
         console.log('[EditImage] Specifying timeout: 300000ms for Expand request');
         const expandStartTime = Date.now();
 
+        // Optimistic credit deduction for Bria Expand (100 credits)
+        let optimisticDeducted = false;
+        try {
+          deductCreditsOptimisticForGeneration(expandCredits);
+          optimisticDeducted = true;
+        } catch {
+          // ignore optimistic debit errors
+        }
+
         // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel 60s timeout on rewrites
         // We construct the full URL to the backend service directly
         const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
@@ -2673,13 +2738,29 @@ const EditImageInterface: React.FC = () => {
 
         console.log('[EditImage] Making DIRECT backend call to:', directUrl);
 
-        const res = await axiosInstance.post(directUrl, payload, {
-          timeout: 300000 // 300 seconds
-        });
+        let res;
+        try {
+          res = await axiosInstance.post(directUrl, payload, {
+            timeout: 300000 // 300 seconds
+          });
+        } catch (err) {
+          // Rollback optimistic deduction on error
+          if (optimisticDeducted) {
+            try {
+              rollbackOptimisticDeduction(expandCredits);
+            } catch {
+              // ignore rollback errors
+            }
+          }
+          throw err;
+        }
+
         console.log(`[EditImage] Expand request completed in ${Date.now() - expandStartTime}ms`);
         const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh credits after successful generation
+        try { await refreshCredits(); } catch { }
         // Refresh global history so the Image Generation page sees the new resize entry immediately
         try {
           await (dispatch as any)(loadHistory({
@@ -3607,21 +3688,28 @@ const EditImageInterface: React.FC = () => {
                       onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
                       className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
                     >
-                      <span className="truncate">{vectorizeModel === 'fal-ai/recraft/vectorize' ? 'Recraft Vectorize' : 'Image to SVG'}</span>
+                      <span className="truncate">
+                        {vectorizeModel === 'fal-ai/recraft/vectorize'
+                          ? 'Recraft Vectorize'
+                          : 'Image to SVG'}
+                      </span>
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'vectorizeModel' && (
                       <div className={`absolute top-full md:mt-2 mt-1 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {[
-                          { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
-                          { label: 'Image to SVG', value: 'fal-ai/image2svg' },
+                          { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize', credits: (vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
+                          { label: 'Image to SVG', value: 'fal-ai/image2svg', credits: (vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
                         ].map((opt) => (
                           <button
                             key={opt.value}
                             onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
                             className={`w-full md:px-3 px-2.5 md:py-2 py-0.5 text-left md:text-[13px] text-[12px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                           >
-                            <span className="truncate">{opt.label}</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate">{opt.label}</span>
+                              <span className="text-[11px]">{opt.credits} credits</span>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -3750,10 +3838,13 @@ const EditImageInterface: React.FC = () => {
                           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveModel' ? 'rotate-180' : ''}`} />
                         </button>
                         {liveActiveDropdown === 'liveModel' && (
-                          <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                          <div className={`absolute top-full z-30 left-0 min-w-50 md:min-w-60 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                             {liveAllowedModels.map(opt => (
                               <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                                <span className="truncate">{opt.label}</span>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate">{opt.label}</span>
+                                  <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
+                                </div>
                               </button>
                             ))}
                           </div>
