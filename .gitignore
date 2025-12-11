@@ -30,8 +30,21 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# turbopack panic logs and debug files
+next-panic-*.log
+*.panic.log
+
+# env files - ALL VERSIONS (including example)
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.example
+*.env
 
 # vercel
 .vercel
@@ -39,3 +52,31 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# documentation and markdown files
+*.md
+!README.md
+docs/
+documentation/
+
+# script files
+scripts/
+*.sh
+*.bash
+*.bat
+*.ps1
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# logs
+logs/
+*.log
