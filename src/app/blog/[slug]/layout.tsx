@@ -5,9 +5,10 @@ import { blogPosts } from '../data/blogPosts';
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const postId = parseInt(params.slug);
+  const resolvedParams = await params;
+  const postId = parseInt(resolvedParams.slug);
   const post = blogPosts.find((p: any) => p.id === postId);
 
   if (!post) {
@@ -51,6 +52,7 @@ export default function BlogPostLayout({
   children,
 }: {
   children: React.ReactNode;
+  params?: Promise<{ slug: string }>;
 }) {
   return children;
 }
