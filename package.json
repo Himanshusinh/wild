@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "node --no-warnings --max-old-space-size=8192 node_modules/next/dist/bin/next build",
+    "build": "next build",
     "postbuild": "next-sitemap",
     "ping-sitemap": "node scripts/ping-sitemap.js",
     "postdeploy": "npm run ping-sitemap",
