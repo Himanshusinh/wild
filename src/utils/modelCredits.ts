@@ -256,6 +256,11 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedvr2-10s-1080p': 6060,
   'seedvr2-10s-2k': 12060,
 
+  // Kling o1 (FAL first/last frame)
+  'kling-o1': 1180,          // Default to 5s for base lookup
+  'kling-o1-5s': 1180,
+  'kling-o1-10s': 2360,
+
   // Image Utility Models
   'fal-image2svg': 30,          // Image to SVG
   'fal-recraft-vectorize': 40,  // Recraft Vectorize
@@ -501,6 +506,13 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       const key = `sora2-${modelType}-${durForPricing}s`;
       return MODEL_CREDITS_MAPPING[key] || null;
     }
+  }
+
+  // Handle Kling o1 (duration only)
+  if (modelValue === 'kling-o1') {
+    const durNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const key = durNum >= 10 ? 'kling-o1-10s' : 'kling-o1-5s';
+    return MODEL_CREDITS_MAPPING[key] || null;
   }
 
   // Handle Flux 2 Pro with resolution and I2I/T2I

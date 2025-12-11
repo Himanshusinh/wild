@@ -3133,6 +3133,7 @@ const InputBox = () => {
             turbo: true,
             disable_safety_checker: false,
             isPublic,
+            num_images: Math.min(Math.max(imageCount, 1), 4),
           };
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
@@ -3220,6 +3221,7 @@ const InputBox = () => {
               turbo: true,
               disable_safety_checker: false,
               isPublic,
+              num_images: Math.min(Math.max(imageCount, 1), 4),
             };
 
             const result = await dispatch(replicateGenerate(payload)).unwrap();
@@ -3296,6 +3298,7 @@ const InputBox = () => {
               prompt_upsampling: false,
               disable_safety_checker: false,
               isPublic,
+              num_images: Math.min(Math.max(imageCount, 1), 4),
             };
             if (aspect === 'custom') {
               payload.width = 1440;

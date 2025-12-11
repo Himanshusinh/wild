@@ -357,6 +357,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Kling 2.1 (non-master) remains image-to-video only
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
+    } else if (model === 'kling-o1') {
+      // Kling o1 (FAL) requires first frame (last optional)
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
+      capabilities.requiresFirstFrame = true;
     } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
       // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
       capabilities.supportsImageToVideo = true;
@@ -805,7 +810,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (newModel === 'gen4_aleph' || newModel.includes('v2v') || newModel.includes('remix')) return 'video_to_video';
       // I2V / image→video candidates
       // MiniMax-Hailuo-2.3-Fast is I2V only, others can do both T2V and I2V
-      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel.includes('veo3') || newModel.includes('ltx2') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
+      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel === 'kling-o1' || newModel.includes('veo3') || newModel.includes('ltx2') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
       // Default to text→video for other models
       return 'text_to_video';
     })();
@@ -821,7 +826,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (desiredMode === "text_to_video") {
       // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
       // Note: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-2.3-Fast, and Kling 2.1/master are I2V-only and will auto-switch to image-to-video mode
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel === 'kling-o1' || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -861,6 +866,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
+        } else if (newModel === 'kling-o1') {
+          // Kling o1: duration default 5s, image-to-video only
+          setDuration(5);
+          setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
           // Seedance models: duration default 5s, resolution default 1080p, aspect ratio default 16:9
           setDuration(5);
@@ -2399,7 +2408,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     let transactionId: string;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
-        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2')) ? 'fal' :
+        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
           (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse')) ? 'replicate' : 'runway';
       const creditResult = await validateAndReserveCredits(provider);
       transactionId = creditResult.transactionId;
@@ -2854,6 +2863,26 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = "image-to-video";
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
+        } else if (selectedModel === 'kling-o1') {
+          // Kling o1 (FAL) first/last frame to video
+          if (uploadedImages.length === 0) {
+            setError("Kling o1 requires a first frame image");
+            return;
+          }
+          const firstFrame = uploadedImages[0];
+          const lastFrame = uploadedImages[1] || lastFrameImage || null;
+          const apiPrompt = getApiPrompt(prompt);
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            start_image_url: firstFrame,
+            ...(lastFrame ? { end_image_url: lastFrame } : {}),
+            duration,
+            generationType: 'image-to-video',
+            isPublic,
+          };
+          generationType = 'image-to-video';
+          apiEndpoint = '/api/fal/kling-o1/first-last-frame-to-video/submit';
         } else if (selectedModel.startsWith('kling-')) {
           // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
@@ -3426,6 +3455,47 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else {
           console.error('❌ Unexpected MiniMax status:', videoResult);
           throw new Error('Unexpected MiniMax video generation status');
+        }
+      } else if (selectedModel === 'kling-o1') {
+        // Kling o1 (FAL queue) first/last frame flow
+        console.log('🎬 Kling o1 video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        let videoResult: any;
+        for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
+          try {
+            const statusRes = await api.get('/api/fal/queue/status', {
+              params: { model: result.model, requestId: result.requestId }
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            const s = String(status?.status || '').toLowerCase();
+            if (s === 'completed' || s === 'success' || s === 'succeeded') {
+              const resultRes = await api.get('/api/fal/queue/result', {
+                params: { model: result.model, requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              break;
+            }
+            if (s === 'failed' || s === 'error') {
+              throw new Error('Kling o1 video generation failed');
+            }
+          } catch (statusError) {
+            console.error('Status check failed:', statusError);
+            if (attempts === 359) throw statusError;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ Kling o1 video completed with URL:', videoUrl);
+        } else if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log('✅ Kling o1 video completed with URL (video.url):', videoUrl);
+        } else {
+          console.error('❌ Kling o1 video generation did not complete properly');
+          throw new Error('Kling o1 video generation did not complete in time');
         }
       } else if (selectedModel.includes("veo3.1")) {
         // Veo 3.1 flow - queue-based polling
@@ -4834,7 +4904,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {/* Arrow icon between first and last frame uploads */}
                   {(((selectedModel === "MiniMax-Hailuo-02") &&
                     (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-                    selectedModel.includes("veo3.1")) &&
+                    selectedModel.includes("veo3.1") ||
+                    selectedModel === "kling-o1") &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="flex items-center justify-center">
                         <Image
@@ -4850,7 +4921,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) and Veo 3.1 (fast/standard) */}
                   {((((selectedModel === "MiniMax-Hailuo-02") &&
                     (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-                    selectedModel.includes("veo3.1"))) &&
+                    selectedModel.includes("veo3.1") ||
+                    selectedModel === "kling-o1")) &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="relative ">
                         <button
@@ -4927,9 +4999,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           <div className="px-3 md:pb-3 pb-0">
             {/* Uploaded Images */}
             {(() => {
-              const displayImages = selectedModel.includes("veo3.1") ? uploadedImages.slice(0, 2) : uploadedImages;
+              const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1") ? uploadedImages.slice(0, 2) : uploadedImages;
               const extraLastFrame =
-                !!lastFrameImage && (selectedModel.includes("veo3.1") || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
+                !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
               return (displayImages.length > 0 || extraLastFrame) ? (
                 <div className="md:mb-3 -mb-6">
                   <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
