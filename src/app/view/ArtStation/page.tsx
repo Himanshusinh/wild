@@ -140,6 +140,10 @@ export default function ArtStationPage() {
     likedByMe: boolean
     bookmarkedByMe: boolean
   }>>({})
+  // Liked-only view state
+  const [showLikedOnly, setShowLikedOnly] = useState(false)
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const [likedIdsLoading, setLikedIdsLoading] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
@@ -241,7 +245,7 @@ export default function ArtStationPage() {
     const wasLiked = !!prevState.likedByMe
     const willLike = !wasLiked
 
-    // Optimistic update
+    // Optimistic update for engagement counts
     setEngagement(prev => {
       const current = prev[generationId] || prevState
       return {
@@ -252,6 +256,17 @@ export default function ArtStationPage() {
           likesCount: Math.max(0, current.likesCount + (willLike ? 1 : -1)),
         },
       }
+    })
+
+    // Keep local likedIds set in sync so "Liked" filter works immediately
+    setLikedIds(prev => {
+      const next = new Set(prev)
+      if (willLike) {
+        next.add(generationId)
+      } else {
+        next.delete(generationId)
+      }
+      return next
     })
 
     const action = willLike ? 'like' : 'unlike'
@@ -272,6 +287,47 @@ export default function ArtStationPage() {
           },
         }
       })
+      // Also revert likedIds set
+      setLikedIds(prev => {
+        const next = new Set(prev)
+        if (wasLiked) {
+          next.add(generationId)
+        } else {
+          next.delete(generationId)
+      }
+        return next
+      })
+    }
+  }
+
+  const loadLikedIds = async () => {
+    // Avoid duplicate loads
+    if (likedIdsLoading) return
+    try {
+      setLikedIdsLoading(true)
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const url = new URL(`${baseUrl}/api/engagement/me/likes`)
+      url.searchParams.set('limit', '200')
+
+      const res = await fetch(url.toString(), { credentials: 'include' })
+      if (!res.ok) {
+        console.error('[ArtStation] Failed to load liked generations ids', res.status, res.statusText)
+        return
+      }
+      const json = await res.json()
+      const payload = json?.data || json
+      const itemsArr = Array.isArray(payload?.items) ? payload.items : []
+      const nextSet = new Set<string>()
+      for (const it of itemsArr) {
+        if (it?.generationId) {
+          nextSet.add(String(it.generationId))
+        }
+      }
+      setLikedIds(nextSet)
+    } catch (err) {
+      console.error('[ArtStation] Error loading liked generations ids', err)
+    } finally {
+      setLikedIdsLoading(false)
     }
   }
 
@@ -731,9 +787,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
       if (!media || !media.url) return
 
-      setSelectedImageIndex(0)
-      setSelectedVideoIndex(0)
-      setSelectedAudioIndex(0)
+        setSelectedImageIndex(0)
+        setSelectedVideoIndex(0)
+        setSelectedAudioIndex(0)
 
       const maybeStorage: any = (media as any).storagePath
       const normalizedUrl =
@@ -742,8 +798,8 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         media.url
 
       setPreview({ kind, url: normalizedUrl || media.url, item })
-      setDeepLinkId(null)
-    }
+        setDeepLinkId(null)
+      }
 
     // 1) Try to find the item in the already-loaded feed
     const inFeed = items.find((i) => i.id === deepLinkId)
@@ -874,10 +930,15 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
 
     
-    const sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
+    let sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
+
+    // Apply "Liked only" filter when enabled
+    if (showLikedOnly && likedIds.size > 0) {
+      sanitized = sanitized.filter(item => likedIds.has(item.id))
+    }
     
     return sanitized;
-  }, [items, activeCategory, searchQuery]);
+  }, [items, activeCategory, searchQuery, showLikedOnly, likedIds]);
 
 const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!url) return undefined
@@ -1369,8 +1430,41 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                   </button> 
                 ))}
 
-                {/* Search Input and Buttons */}
+                {/* Liked filter + Search Input */}
                 <div className="ml-auto flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-1 p-0">
+                  {/* Liked-only toggle button */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // When enabling liked-only for the first time, load IDs from backend
+                      if (!showLikedOnly && likedIds.size === 0) {
+                        await loadLikedIds()
+                      }
+                      setShowLikedOnly(prev => !prev)
+                    }}
+                    className={`md:p-2 p-1 rounded-lg border flex items-center justify-center transition-all ${
+                      showLikedOnly
+                        ? 'bg-white text-black border-white'
+                        : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+                    }`}
+                    aria-pressed={showLikedOnly}
+                    aria-label={showLikedOnly ? 'Show all creations' : 'Show liked creations'}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill={showLikedOnly ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="flex-shrink-0"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </button>
+
                   <div className="relative flex items-center">
                     <input
                       type="text"

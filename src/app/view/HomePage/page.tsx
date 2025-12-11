@@ -9,6 +9,7 @@ import '@/utils/checkSessionStatus'
 import Header from './compo/Header'
 import Image from 'next/image'
 import { getImageUrl, API_BASE, imageRoutes } from './routes'
+// import PromotionalBanner from './compo/PromotionalBanner'
 // Lazy load non-critical components for better performance
 import dynamic from 'next/dynamic'
 
@@ -35,10 +36,9 @@ const FooterNew = dynamic(() => import('../core/FooterNew'), {
 })
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
-import type { Creation } from './compo/CommunityCreations'
+
 
 import { ViewType, GenerationType } from '@/types/generation';
-import { buildFeedRequestUrl } from '@/lib/feedClient';
 
 const HomePage: React.FC = () => {
   const router = useRouter();
@@ -236,41 +236,39 @@ const HomePage: React.FC = () => {
       try {
         let nextCursor: string | undefined = undefined
         const out: Creation[] = []
-        let page = 0
-        const maxPages = 3
-        while (page < maxPages && out.length < 48) {
-          try {
-            const url = new URL(`${baseUrl}/api/feed`)
-            url.searchParams.set('limit', '24')
-            // Home page: prefer images for aesthetic layout
-            url.searchParams.set('mode', 'image')
-            if (nextCursor) url.searchParams.set('cursor', nextCursor)
-            
-            const res = await fetch(url.toString(), { 
-              credentials: 'include',
-              // Add cache headers for better performance
-              cache: 'default',
-              headers: {
-                'Accept': 'application/json',
+        const hasApiBase = !!baseUrl
+
+        // Try live feed first when API_BASE is configured
+        if (hasApiBase) {
+          let page = 0
+          const maxPages = 3
+          while (page < maxPages && out.length < 48) {
+            try {
+              const url = new URL(`${baseUrl}/api/feed`)
+              url.searchParams.set('limit', '24')
+              // Home page: prefer images for aesthetic layout
+              url.searchParams.set('mode', 'image')
+              if (nextCursor) url.searchParams.set('cursor', nextCursor)
+              
+              const res = await fetch(url.toString(), { 
+                credentials: 'include',
+                cache: 'default',
+                headers: {
+                  'Accept': 'application/json',
+                }
+              })
+              
+              if (!res.ok) {
+                const errorText = await res.text().catch(() => 'Unknown error')
+                console.error(`[HomePage] Feed API error (page ${page}):`, res.status, errorText)
+                if (out.length > 0) break
+                break
               }
-            })
-            
-            if (!res.ok) {
-              const errorText = await res.text().catch(() => 'Unknown error')
-              console.error(`[HomePage] Feed API error (page ${page}):`, res.status, errorText)
-              // If we have items already, use them; otherwise break
-              if (out.length > 0) break
-              // If first page fails, try to continue or break
-              break
-            }
-            
-            const data = await res.json()
-            // Removed verbose logging for production performance
-            
-            // Handle API response format: { responseStatus: 'success', data: { items: [], meta: {} } }
-            const payload = data?.data || data
-            const items: any[] = payload?.items || []
-            nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
+              
+              const data = await res.json()
+              const payload = data?.data || data
+              const items: any[] = payload?.items || []
+              nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
               if (items.length === 0) break
 
@@ -355,31 +353,23 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#07070B]">
-      {/* DEBUG: This is HomePage component */}
-      {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
-        🔍 DEBUG: HomePage Component is Rendering
-      </div> */}
-
-      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
-      <div className="flex md:pt-[40px] md:ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
+      <div className="flex  md:ml-[68px] pt-2">
         <div className="flex-1 min-w-0">
-          <Header />
-          <Recentcreation />
-          {/* <Second />
-          <main className="min-h-screen bg-[#07070B] text-white pt-10">
-            <div className="w-full md:pl-12 mt-10">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-0 ">Workflow</h2>
-              <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
-            </div>
-          </main> */}
+          {/* <Header /> */}
+          
+          {/* Promotional Banner */}
+          <PromotionalBanner2 />
 
-          <main className="min-h-screen bg-[#07070B] text-white md:px-4 md:px-8 pt-4 ">
+          <Recentcreation />
+
+          <AIToolsSection />
+          <main className="min-h-screen bg-[#07070B] text-white  md:px-8  ">
             <div className="w-full px-4 md:pl-4">
-              <CommunityCreations items={artItems} initialFilter="All" />
+              <CommunityCreations />
             </div>
           </main>
 
-          {/* WobbleCard Section */}
+    
           <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
             <div className="w-full px-4 md:px-8 lg:px-12">
               <div className="w-full">
@@ -391,7 +381,7 @@ const HomePage: React.FC = () => {
                     className="flex w-full md:h-full h-96 relative"
                    
                   >
-                    {/* Left side content */}
+                  
                     <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
                       <div className="w-full">
                         <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
@@ -402,13 +392,13 @@ const HomePage: React.FC = () => {
                         </p>
                       </div>
 
-                      {/* Join Community Button - Bottom Left */}
+                
                       <button className="font-poppins md:text-lg text-xs bg-white text-[#1C303D] font-semibold md:px-6 px-2 md:py-3 py-1 rounded-full transition-all duration-200 shadow-lg w-fit">
                         Pricing Plans
                       </button>
                     </div>
 
-                    {/* Right side image */}
+                 
                     <div
                       className="absolute right-0 top-0 w-1/2 h-full"
                       style={{ height: '100%', minHeight: '500px' }}

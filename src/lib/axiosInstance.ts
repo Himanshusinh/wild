@@ -575,6 +575,10 @@ axiosInstance.interceptors.response.use(
     return response
   },
   async (error) => {
+    const original = error?.config || {}
+    const status = error?.response?.status
+    const errorData = error?.response?.data
+    // Generic error toast
     try { await showFalErrorToast(error); } catch {}
     try {
       const urlStr = String(error?.config?.url || '')
@@ -588,8 +592,6 @@ axiosInstance.interceptors.response.use(
         })
       }
     } catch {}
-    const original = error?.config || {}
-    const status = error?.response?.status
 
     if (status !== 401) {
       try {

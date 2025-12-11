@@ -46,45 +46,81 @@ const initialState: CreditsState = {
 export const fetchUserCredits = createAsyncThunk(
   'credits/fetchUserCredits',
   async (_, { rejectWithValue, getState }) => {
+    const startTime = Date.now();
     try {
-      console.log('fetchUserCredits: Starting credit fetch...');
+      console.log('[CREDITS_FRONTEND] fetchUserCredits: Starting credit fetch...');
       const api = getApiClient();
       
       // Try to get credits from dedicated endpoint first
       try {
-        console.log('fetchUserCredits: Trying /api/credits/me endpoint...');
+        console.log('[CREDITS_FRONTEND] Trying /api/credits/me endpoint...');
         const creditsResponse = await api.get('/api/credits/me');
         const creditsData = creditsResponse.data?.data || creditsResponse.data;
-        console.log('fetchUserCredits: Credits endpoint response:', creditsData);
+        const creditBalance = creditsData?.creditBalance ?? 0;
+        const planCode = creditsData?.planCode || 'free';
+        
+        console.log('[CREDITS_FRONTEND] Credits endpoint response:', {
+          creditBalance,
+          planCode,
+          autoReconciled: creditsData?.autoReconciled,
+          recentLedgers: creditsData?.recentLedgers?.length || 0,
+          responseTime: Date.now() - startTime
+        });
+        
+        if (creditBalance === 0 && creditsData?.autoReconciled) {
+          console.warn('[CREDITS_FRONTEND] WARNING: Credit balance is 0 after auto-reconciliation!', {
+            autoReconciled: creditsData.autoReconciled,
+            recentLedgers: creditsData.recentLedgers
+          });
+        }
         
         return {
-          creditBalance: creditsData?.creditBalance || 0,
-          planCode: creditsData?.planCode || 'free',
+          creditBalance,
+          planCode,
           lastSync: new Date().toISOString(),
         } as UserCredits;
       } catch (creditsError: any) {
-        console.log('fetchUserCredits: Credits endpoint failed, trying auth/me:', creditsError?.response?.status);
+        console.error('[CREDITS_FRONTEND] Credits endpoint failed:', {
+          status: creditsError?.response?.status,
+          message: creditsError?.response?.data?.message || creditsError?.message,
+          responseTime: Date.now() - startTime
+        });
+        
+        console.log('[CREDITS_FRONTEND] Falling back to auth/me...');
         const state = getState() as RootState;
         const authUser = state?.auth?.user;
         if (authUser) {
+          const fallbackBalance = (authUser as any)?.creditBalance || (authUser as any)?.credits || 0;
+          console.log('[CREDITS_FRONTEND] Using auth user state:', {
+            creditBalance: fallbackBalance,
+            planCode: (authUser as any)?.planCode || 'free'
+          });
           return {
-            creditBalance: (authUser as any)?.creditBalance || (authUser as any)?.credits || 0,
+            creditBalance: fallbackBalance,
             planCode: (authUser as any)?.planCode || 'free',
             lastSync: new Date().toISOString(),
           } as UserCredits;
         }
         // Fallback to cached /me endpoint
         const userData = await getMeCached();
-        console.log('fetchUserCredits: Auth endpoint response:', userData);
+        const cachedBalance = userData?.creditBalance || userData?.credits || 0;
+        console.log('[CREDITS_FRONTEND] Using cached /me endpoint:', {
+          creditBalance: cachedBalance,
+          planCode: userData?.planCode || 'free'
+        });
         
         return {
-          creditBalance: userData?.creditBalance || userData?.credits || 0,
+          creditBalance: cachedBalance,
           planCode: userData?.planCode || 'free',
           lastSync: new Date().toISOString(),
         } as UserCredits;
       }
     } catch (error: any) {
-      console.error('fetchUserCredits: Failed to fetch credits:', error);
+      console.error('[CREDITS_FRONTEND] Failed to fetch credits:', {
+        message: error?.response?.data?.message || error?.message,
+        stack: error?.stack,
+        responseTime: Date.now() - startTime
+      });
       return rejectWithValue(error?.response?.data?.message || 'Failed to fetch credits');
     }
   }
@@ -189,17 +225,48 @@ export const confirmCreditTransaction = createAsyncThunk(
 
 export const syncCreditsWithBackend = createAsyncThunk(
   'credits/syncCreditsWithBackend',
-  async (_, { dispatch, rejectWithValue }) => {
+  async (_, { dispatch, rejectWithValue, getState }) => {
+    const startTime = Date.now();
     try {
+      const state = getState() as { credits: CreditsState };
+      const beforeBalance = state.credits.credits?.creditBalance || 0;
+      
+      console.log('[CREDITS_FRONTEND] syncCreditsWithBackend: Starting sync, current balance:', beforeBalance);
+      
       // Fetch latest credits from backend
       const result = await dispatch(fetchUserCredits());
       
       if (fetchUserCredits.fulfilled.match(result)) {
+        const afterBalance = result.payload.creditBalance;
+        const balanceChanged = beforeBalance !== afterBalance;
+        
+        console.log('[CREDITS_FRONTEND] syncCreditsWithBackend: Sync completed', {
+          beforeBalance,
+          afterBalance,
+          balanceChanged,
+          responseTime: Date.now() - startTime
+        });
+        
+        if (afterBalance === 0 && beforeBalance > 0) {
+          console.error('[CREDITS_FRONTEND] ERROR: Balance went from', beforeBalance, 'to 0!', {
+            payload: result.payload
+          });
+        }
+        
         return result.payload;
       } else {
+        console.error('[CREDITS_FRONTEND] syncCreditsWithBackend: Failed', {
+          error: result.payload,
+          responseTime: Date.now() - startTime
+        });
         return rejectWithValue('Failed to sync credits with backend');
       }
     } catch (error: any) {
+      console.error('[CREDITS_FRONTEND] syncCreditsWithBackend: Exception', {
+        error: error?.message,
+        stack: error?.stack,
+        responseTime: Date.now() - startTime
+      });
       return rejectWithValue(error?.message || 'Credit sync failed');
     }
   }

@@ -45,7 +45,7 @@ const Header = () => {
           video.preload = 'auto';
           video.muted = true;
           video.load();
-          
+
           const handleCanPlayThrough = () => {
             setPreloadedVideos(prev => {
               const next = new Set(prev);
@@ -54,7 +54,7 @@ const Header = () => {
             });
             video.removeEventListener('canplaythrough', handleCanPlayThrough);
           };
-          
+
           video.addEventListener('canplaythrough', handleCanPlayThrough);
         }
       });
@@ -69,15 +69,15 @@ const Header = () => {
     if (isTransitioningRef.current) {
       return;
     }
-    
+
     isTransitioningRef.current = true;
     setIsTransitioning(true);
-    
+
     // Clear any existing timeout
     if (transitionTimeoutRef.current) {
       clearTimeout(transitionTimeoutRef.current);
     }
-    
+
     transitionTimeoutRef.current = setTimeout(() => {
       setCurrentVideoIndex(toIndex);
       setIsTransitioning(false);
@@ -124,7 +124,7 @@ const Header = () => {
 
   const handleVideoCanPlay = useCallback(() => {
     if (videoRef.current && videoRef.current.paused) {
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch(() => { });
     }
   }, []);
 
@@ -147,7 +147,7 @@ const Header = () => {
     <div className="w-full relative">
       {/* Video wrapper with right padding */}
       <div className="px-4 md:pr-0 md:pl-0 md:mt-0 md:ml-0 md:mt-10">
-          <div className="relative overflow-hidden md:px-4 w-full rounded-2xl md:rounded-3xl md:mt-0 mt-10 min-h-[20vh] md:min-h-[50vh] max-h-[80vh]" style={{ aspectRatio: '16/9' }}>
+        <div className="relative overflow-hidden md:px-4 w-full rounded-2xl md:rounded-3xl md:mt-0 mt-10 min-h-[20vh] md:min-h-[50vh] max-h-[80vh]" style={{ aspectRatio: '16/9' }}>
           {currentVideo.videoSrc && (
             <video
               ref={videoRef}
@@ -164,9 +164,8 @@ const Header = () => {
               onCanPlay={handleVideoCanPlay}
               onPlay={handleVideoPlay}
               onEnded={handleVideoEnded}
-              className={`rounded-2xl md:rounded-3xl md:transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${
-                isTransitioning ? '-translate-x-full' : 'translate-x-0'
-              }`}
+              className={`rounded-2xl md:rounded-3xl md:transform-gpu will-change-transform transition-transform duration-2000 ease-in-out ${isTransitioning ? '-translate-x-full' : 'translate-x-0'
+                }`}
             />
           )}
 
@@ -204,11 +203,10 @@ const Header = () => {
         }`}>
           {currentVideo.description}
         </p> */}
-        <button 
+        <button
           onClick={handleTryNowClick}
-          className={`bg-white/5 backdrop-blur-xl hover:bg-blue-700 text-white md:px-6 px-2 md:py-3 py-1 rounded-full md:text-xl text-xs font-base transition-opacity duration-1000 ease-in-out delay-300 ${
-            isTransitioning ? 'opacity-0' : 'opacity-100'
-          }`}
+          className={`bg-white/5 backdrop-blur-xl hover:bg-blue-700 text-white md:px-6 px-2 md:py-3 py-1 rounded-full md:text-xl text-xs font-base transition-opacity duration-1000 ease-in-out delay-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'
+            }`}
         >
           {currentVideo.buttonText}
         </button>
@@ -220,11 +218,10 @@ const Header = () => {
           <button
             key={index}
             onClick={() => handleDotClick(index)}
-            className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full transition-all duration-300 ${
-              index === currentVideoIndex
+            className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full transition-all duration-300 ${index === currentVideoIndex
                 ? 'bg-white scale-125'
                 : 'bg-white/50 hover:bg-white/70'
-            }`}
+              }`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}

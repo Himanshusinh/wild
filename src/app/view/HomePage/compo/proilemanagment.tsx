@@ -8,6 +8,9 @@ import { getMeCached } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
 import { ArrowLeft } from 'lucide-react';
 import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import toast from 'react-hot-toast';
 
 interface UserData {
   uid: string;
@@ -275,6 +278,50 @@ const ProfileManagement = () => {
     router.back();
   };
 
+  // Handle logout (same functionality as Nav.tsx)
+  const handleLogout = async () => {
+    try {
+      // Clear local storage
+      localStorage.removeItem('user');
+      localStorage.removeItem('authToken');
+
+      // Call Next.js logout proxy to clear server and client cookies robustly
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+
+      // Also sign out from Firebase to stop background token refresh
+      try { await signOut(auth) } catch {}
+
+      // Proactively clear cookie variants on current domain and parent domain
+      const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
+      try {
+        document.cookie = `app_session=; ${expired}; SameSite=None; Secure`;
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`;
+        document.cookie = `app_session=; ${expired}; SameSite=Lax`;
+        document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`;
+      } catch {}
+
+      // Clear history stack: prevent navigating back into the app
+      if (typeof window !== 'undefined') {
+        try {
+          history.pushState(null, document.title, location.href);
+          window.addEventListener('popstate', () => {
+            history.pushState(null, document.title, location.href);
+          });
+        } catch {}
+        window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      toast.error('Failed to logout. Please try again.', { duration: 4000 });
+      if (typeof window !== 'undefined') {
+        // Still redirect even on error to prevent user from being stuck
+        setTimeout(() => {
+          window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED');
+        }, 2000);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#07070B] flex items-center justify-center">
@@ -393,14 +440,19 @@ const ProfileManagement = () => {
           </div>
          
           {/* Action Buttons */}
-          <div className="flex gap-3 mt-5">
-            
+          <div className="flex flex-col sm:flex-row gap-3 mt-5">
             <button
               onClick={() => router.push('/view/pricing')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#1C303D] hover:bg-blue-700 rounded-full transition-colors font-medium text-sm text-white"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1C303D] hover:bg-blue-700 rounded-full transition-colors font-medium text-sm text-white"
             >
               <Image src="/icons/coinswhite.svg" alt="credits" width={18} height={18} />
               Upgrade Plan
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-full transition-colors font-medium text-sm text-red-400"
+            >
+              <span>Log Out</span>
             </button>
           </div>
         </div>

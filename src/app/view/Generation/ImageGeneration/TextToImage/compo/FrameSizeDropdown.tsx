@@ -200,12 +200,18 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
   const isSeedream = selectedModel === 'seedream-v4';
+  const isSeedream45 = selectedModel === 'seedream-4.5';
   const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image';
   const isFlux2Pro = selectedModel === 'flux-2-pro';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';
 
   const frameSizes = (() => {
+    if (isSeedream45) {
+      // Seedream 4.5 on FAL: supports 1:1, 4:3, 3:4, 16:9, 9:16 via image_size enums
+      const allowed = new Set(['1:1', '4:3', '3:4', '16:9', '9:16']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isFlux2Pro) {
       // Flux 2 Pro: supported aspect ratios from schema
       // Supported: square_hd, square, portrait_4_3, portrait_16_9, landscape_4_3, landscape_16_9

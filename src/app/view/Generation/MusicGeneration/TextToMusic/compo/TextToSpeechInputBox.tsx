@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { addHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
+import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store/slices/historySlice';
 import { falElevenTts } from '@/store/slices/generationsApi';
 import { useCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
@@ -19,7 +19,8 @@ interface TextToSpeechInputBoxProps {
 const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) => {
   const dispatch = useAppDispatch();
   // Include 'text-to-music' for backward compatibility with earlier mis-labeled TTS generations
-  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: ['text-to-speech', 'text_to_speech', 'tts', 'text-to-music'] });
+  // But use only text-to-speech for new generations to avoid mixing with music entries
+  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: ['text-to-speech', 'text_to_speech', 'tts'] });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -71,14 +72,21 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
     let transactionId: string;
     try {
       // Use the model from payload for credit validation (supports elevenlabs-tts, chatterbox-multilingual, and maya-tts)
-      const musicResult = await validateMusicCredits(payload.model, 10);
+      // For Maya TTS, pass text length for per-second pricing calculation (6 credits per second)
+      const isMayaTts = payload.model === 'maya-tts';
+      const musicResult = await validateMusicCredits(
+        payload.model, 
+        isMayaTts ? undefined : 10, // Don't pass duration for Maya TTS
+        undefined, // No inputs for TTS
+        isMayaTts ? normalizedText : undefined // Pass text for Maya TTS per-second pricing
+      );
       const reservation = await reserveCreditsForGeneration(
         musicResult.requiredCredits,
         'music-generation',
         {
           model: payload.model,
           generationType: 'text-to-speech',
-          duration: 10,
+          duration: isMayaTts ? Math.max(1, Math.ceil(normalizedText.length / 15)) : 10, // Estimated duration for Maya TTS (15 chars/sec)
         }
       );
       transactionId = reservation.transaction.id;
@@ -115,7 +123,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       model: modelName, // Keep frontend model name (chatterbox-multilingual or elevenlabs-tts)
       lyrics: normalizedText,
       generationType: 'text-to-speech' as 'text-to-speech',
-      images: [],
+      images: [{ id: 'loading', url: '', originalUrl: '', type: 'audio' }], // Placeholder for generating state - ensures tile renders
+      audios: [], // Will store audio data when completed
       status: "generating" as 'generating',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -130,25 +139,12 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       prompt: normalizedText.substring(0, 50) + '...'
     });
 
+    // Add to Redux immediately to show loading animation
     dispatch(addHistoryEntry(loadingEntry));
     
-    // Refresh history immediately to show the generating entry
-    refreshMusicHistoryImmediate();
-
-    let firebaseHistoryId: string | null = null;
+    setLocalMusicPreview(loadingEntry);
 
     try {
-      try {
-        const { id, ...loadingEntryWithoutId } = loadingEntry;
-        firebaseHistoryId = await saveHistoryEntry(loadingEntryWithoutId);
-        dispatch(updateHistoryEntry({
-          id: tempId,
-          updates: { id: firebaseHistoryId }
-        }));
-      } catch (firebaseError) {
-        console.error('❌ Firebase save failed:', firebaseError);
-      }
-
       const { getIsPublic } = await import('@/lib/publicFlag');
       const isPublic = await getIsPublic();
       const requestPayload = { 
@@ -157,7 +153,8 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         prompt: payload.prompt || normalizedText,
         generationType: 'text-to-speech' // Ensure generationType is explicitly set
       };
-      const result = await dispatch(falElevenTts(requestPayload)).unwrap();
+      
+      const result: any = await dispatch(falElevenTts(requestPayload)).unwrap();
 
       console.log('[TextToSpeech] API Response received:', {
         status: result?.status,
@@ -167,7 +164,58 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         historyId: result?.historyId
       });
 
-      if (!result || result.status !== 'completed') {
+      // Check if result indicates an error
+      if (!result || (result.responseStatus === 'error' || result.status === 'error' || result.status === 'failed')) {
+        // Immediately stop generation
+        setIsGenerating(false);
+        setLocalMusicPreview((prev: any) => prev ? ({
+          ...prev,
+          status: 'failed'
+        }) : prev);
+        
+        const errorMessage = result?.message || result?.error || 'Generation failed';
+        
+        // Update history entry
+        dispatch(updateHistoryEntry({
+          id: tempId,
+          updates: {
+            status: 'failed',
+            error: errorMessage
+          }
+        }));
+        
+        // Update local preview to failed state
+        setLocalMusicPreview((prev: any) => prev ? { 
+          ...prev, 
+          status: 'failed',
+          error: errorMessage
+        } : null);
+        
+        // Refund credits
+        if (transactionId) {
+          try {
+            await confirmGenerationFailure(transactionId);
+          } catch (creditError) {
+            console.error('❌ Credit refund failed:', creditError);
+          }
+        }
+        
+        setErrorMessage(errorMessage);
+        try { 
+          const toast = (await import('react-hot-toast')).default; 
+          toast.error(errorMessage); 
+        } catch {}
+        
+        // Refresh credits
+        try {
+          const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+          requestCreditsRefresh();
+        } catch {}
+        
+        return; // Exit early
+      }
+
+      if (result.status !== 'completed') {
         throw new Error(result?.error || 'Generation failed');
       }
 
@@ -216,115 +264,88 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         type: 'audio'
       }));
 
-      const updateData = {
-        status: 'completed' as const,
-        audios: finalAudios,
-        images: imagesArray,
+      setResultUrl(audioUrl);
+      confirmGenerationSuccess(transactionId);
+      setIsGenerating(false); // Stop generating immediately after success
+
+      const firebaseHistoryId = result.historyId || tempId;
+      const finalModelName = result.model || modelName;
+      const finalAudiosFromResult = result.audios || finalAudios;
+      const imagesArrayFromResult = result.images || imagesArray;
+
+      // Update Redux entry first (update both tempId and historyId if different)
+      const updateData: any = {
+        status: 'completed',
+        audio: audioItem,
+        audios: finalAudiosFromResult.length > 0 ? finalAudiosFromResult : finalAudios,
+        images: imagesArrayFromResult.length > 0 ? imagesArrayFromResult : imagesArray,
+        model: modelName, // Use frontend model name
+        backendModel: result.model, // Store backend endpoint name separately
+        generationType: 'text-to-speech',
+        fileName: fileName,
+        prompt: normalizedText,
         lyrics: payload.lyrics || payload.text || payload.prompt,
-        // Ensure model name is preserved (use frontend model name, not backend endpoint name)
-        model: modelName,
-        generationType: 'text-to-speech' as const,
-        fileName: fileName
       };
 
-      console.log('[TextToSpeech] Updating history entry:', {
-        id: firebaseHistoryId || tempId,
-        model: modelName,
-        generationType: 'text-to-speech',
-        audiosCount: finalAudios.length,
-        imagesCount: imagesArray.length,
-        hasAudioUrl: !!audioUrl,
-        updateData: {
-          status: updateData.status,
-          audiosCount: updateData.audios.length,
-          imagesCount: updateData.images.length,
-          model: updateData.model,
-          generationType: updateData.generationType
-        }
-      });
-
-      // Update Redux store first
-      dispatch(updateHistoryEntry({
-        id: firebaseHistoryId || tempId,
-        updates: updateData
-      }));
-
-      console.log('[TextToSpeech] History entry updated in Redux:', {
-        id: firebaseHistoryId || tempId,
-        entryInStore: 'check Redux state'
-      });
-
-      // Update backend/Firebase
-      if (firebaseHistoryId) {
+      // Update the loading entry in Redux
+      // Always update the tempId entry first with completed status
+      dispatch(updateHistoryEntry({ id: tempId, updates: updateData }));
+      
+      // If we have a real historyId that's different from tempId, we need to handle the ID change
+      // The updateHistoryEntry doesn't change the entry's ID, so we need to remove the old one and add the new one
+      // This prevents duplicates
+      if (result.historyId && result.historyId !== tempId) {
+        // Remove the tempId entry and add a new one with the real historyId
+        dispatch(removeHistoryEntry(tempId));
+        dispatch(addHistoryEntry({ ...updateData, id: result.historyId }));
+        
         try {
-          await updateFirebaseHistory(firebaseHistoryId, updateData);
-          console.log('[TextToSpeech] Firebase history updated:', firebaseHistoryId);
-        } catch (firebaseError) {
-          console.error('❌ Firebase update failed:', firebaseError);
+          await updateFirebaseHistory(result.historyId, updateData);
+        } catch (firebaseErr) {
+          console.error('[TextToSpeech] Failed to update Firebase history:', firebaseErr);
         }
       }
 
-      setResultUrl(audioUrl);
-      setLocalMusicPreview((prev: any) => prev ? ({
-        ...prev,
-        status: 'completed',
-        audios: finalAudios,
-        images: imagesArray,
-        model: modelName
-      }) : prev);
+      // Clear local preview immediately since Redux entry is now updated
+      // This prevents showing duplicate entries
+      setLocalMusicPreview(null);
+
+      // Refresh history with merge mode to preserve local state
+      setTimeout(() => {
+        refreshMusicHistoryImmediate(50, false); // false = merge mode
+      }, 1000);
 
       try { const toast = (await import('react-hot-toast')).default; toast.success('Speech generated successfully!'); } catch {}
 
-      if (transactionId) {
-        await confirmGenerationSuccess(transactionId);
-      }
-
-      // Refresh history immediately to show the new entry
-      console.log('[TextToSpeech] Refreshing history to show new entry...');
-      setTimeout(() => {
-        refreshMusicHistoryImmediate();
-      }, 500);
-      
-      // Also refresh after a longer delay to ensure backend sync
-      setTimeout(() => {
-        refreshMusicHistoryImmediate();
-      }, 2000);
-
     } catch (error: any) {
-      console.error('❌ TTS generation failed:', error);
+      console.error('[TextToSpeech] Generation failed:', error);
+      setIsGenerating(false); // Stop generating immediately
+      setErrorMessage(error?.message || error?.response?.data?.message || 'Speech generation failed');
+      confirmGenerationFailure(transactionId);
       
-      if (firebaseHistoryId) {
-        try {
-          await updateFirebaseHistory(firebaseHistoryId, {
-            status: 'failed',
-            error: error.message
-          });
-        } catch (firebaseError) {
-          console.error('❌ Firebase error update failed:', firebaseError);
-        }
-      }
-
-      setLocalMusicPreview((prev: any) => prev ? ({
-        ...prev,
-        status: 'failed'
-      }) : prev);
-
-      dispatch(updateHistoryEntry({
-        id: firebaseHistoryId || tempId,
-        updates: {
+      // Update Redux entry to failed status
+      dispatch(updateHistoryEntry({ 
+        id: tempId, 
+        updates: { 
           status: 'failed',
-          error: error.message
-        }
+          error: error?.message || error?.response?.data?.message || 'Speech generation failed'
+        } 
       }));
-
-      setErrorMessage(error.message || 'Speech generation failed');
-      try { const toast = (await import('react-hot-toast')).default; toast.error('Speech generation failed'); } catch {}
       
-      if (transactionId) {
-        await confirmGenerationFailure(transactionId);
+      // Update local preview to failed status
+      setLocalMusicPreview((prev: any) => prev ? { 
+        ...prev, 
+        status: 'failed',
+        error: error?.message || error?.response?.data?.message || 'Speech generation failed'
+      } : null);
+      
+      // Request credit refresh to update UI
+      try {
+        const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+        requestCreditsRefresh();
+      } catch (e) {
+        console.error('[TextToSpeech] Failed to refresh credits:', e);
       }
-    } finally {
-      setIsGenerating(false);
     }
   };
 

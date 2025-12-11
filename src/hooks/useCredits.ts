@@ -84,10 +84,16 @@ export const useCredits = () => {
     count: number = 1,
     frameSize?: string,
     style?: string,
-    resolution?: string
+    resolution?: string,
+    uploadedImages?: any[]
   ) => {
-    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution);
-    
+    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution, uploadedImages);
+
+    // Special case: z-image-turbo (new-turbo-model) is free and should not trigger "Unknown model"
+    if (model === 'new-turbo-model') {
+      return { requiredCredits: 0, validation: null as any };
+    }
+
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
     }
@@ -106,9 +112,11 @@ export const useCredits = () => {
 
   const validateMusicCredits = async (
     model: string,
-    duration?: number
+    duration?: number,
+    inputs?: any[],
+    text?: string // Added for Maya TTS per-second pricing based on text length
   ) => {
-    const requiredCredits = getMusicGenerationCreditCost(model, duration);
+    const requiredCredits = getMusicGenerationCreditCost(model, duration, inputs, text);
     
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
@@ -243,7 +251,7 @@ export const useGenerationCredits = (
           break;
         
         case 'image':
-          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution);
+          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution, (options as any)?.uploadedImages);
           requiredCredits = imageResult.requiredCredits;
           validation = imageResult.validation;
           break;

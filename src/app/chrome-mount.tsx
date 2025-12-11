@@ -16,12 +16,35 @@ import { registerBrowserPushToken, attachForegroundMessageListener } from '@/lib
 export default function ChromeMount() {
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
+  const reduxUser = useAppSelector((state: any) => state?.auth?.user);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
 
-  // Check authentication status
+  // Check if video editor is open (via body data attribute)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const checkVideoEditor = () => {
+        setIsVideoEditorOpen(document.body.hasAttribute('data-video-editor-open'));
+      };
+      checkVideoEditor();
+      // Watch for changes
+      const observer = new MutationObserver(checkVideoEditor);
+      observer.observe(document.body, { attributes: true, attributeFilter: ['data-video-editor-open'] });
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  // Check authentication status - use both localStorage and Redux state
   useEffect(() => {
     try {
+      // Check Redux state first (more reliable)
+      if (reduxUser?.uid) {
+        setIsAuthenticated(true);
+        return;
+      }
+
+      // Fallback to localStorage
       const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       if (userStr) {
         const u = JSON.parse(userStr);
@@ -29,14 +52,14 @@ export default function ChromeMount() {
         console.log('[ChromeMount] user loaded from localStorage, uid:', u?.uid, 'isAuthenticated:', authed);
         setIsAuthenticated(authed);
       } else {
-        console.log('[ChromeMount] no user in localStorage, treating as unauthenticated');
+        console.log('[ChromeMount] no user in localStorage or Redux, treating as unauthenticated');
         setIsAuthenticated(false);
       }
     } catch (err) {
       console.error('[ChromeMount] error reading user from localStorage', err);
       setIsAuthenticated(false);
     }
-  }, [pathname]); // Re-check when pathname changes
+  }, [pathname, reduxUser]); // Re-check when pathname or Redux user changes
 
   // Once authenticated in the browser, decide whether to show the notification permission prompt.
   useEffect(() => {
@@ -49,7 +72,7 @@ export default function ChromeMount() {
     if (typeof window === 'undefined') return;
 
     // If permission already handled, don't show our custom prompt
-    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+    if (typeof Notification !== 'undefined' && (Notification.permission === 'granted' || Notification.permission === 'denied')) {
       return;
     }
 
@@ -71,7 +94,7 @@ export default function ChromeMount() {
 
       try {
         // If the user already granted permission, show a Notification while in foreground
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification(title, { body });
         }
       } catch (err) {
@@ -101,7 +124,7 @@ export default function ChromeMount() {
 
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
-  
+
   // Public routes - hide chrome on these
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
@@ -112,12 +135,12 @@ export default function ChromeMount() {
   const isLegalRoute = pathnameLower.startsWith('/legal/') || pathnameLower.startsWith('/view/legal');
   const isProductRoute = pathnameLower.startsWith('/product/');
   const isCompanyRoute = pathnameLower.startsWith('/company/');
-  
+
   // Authenticated routes - show chrome on these
   const isHistoryRoute = pathnameLower.startsWith('/history');
   const isBookmarksRoute = pathnameLower.startsWith('/bookmarks');
   const isAccountRoute = pathnameLower.startsWith('/view/account-management');
-  
+
   // Generation routes (all the generation type routes) - authenticated
   const generationRoutes = [
     'text-to-image',
@@ -134,63 +157,75 @@ export default function ChromeMount() {
     'edit-image',
     'edit-video'
   ];
-  
-  const isGenerationRoute = generationRoutes.some(route => 
-    pathnameLower === `/${route}` || 
+
+  const isGenerationRoute = generationRoutes.some(route =>
+    pathnameLower === `/${route}` ||
     pathnameLower.startsWith(`/${route}/`)
   );
-  
+
   // Home page route - authenticated (actual route is /view/HomePage with capital H and P)
   const isHomeRoute = pathnameLower.startsWith('/view/homepage');
   const isEditImageRoute = pathnameLower.startsWith('/view/editimage');
   const isEditVideoRoute = pathnameLower.startsWith('/view/editvideo');
-  
+
   // For ArtStation: hide chrome if not authenticated, show if authenticated
   if (isArtStationRoute) {
     if (isAuthenticated) {
       return (
         <>
           <Nav />
-          <SidePannelFeatures />
+          {!isVideoEditorOpen && <SidePannelFeatures />}
         </>
       );
     }
     return null; // Hide chrome when not authenticated
   }
-  
+
+  // For Pricing: hide chrome if not authenticated, show if authenticated
+  if (isPricingRoute) {
+    if (isAuthenticated) {
+      return (
+        <>
+          <Nav />
+          {!isVideoEditorOpen && <SidePannelFeatures />}
+        </>
+      );
+    }
+    return null; // Hide chrome when not authenticated
+  }
+
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
-                     isLandingRoute || 
-                     isSignupRoute ||
-                     isForgotPasswordRoute ||
-                     isPricingRoute ||
-                     isWorkflowsRoute ||
-                     isLegalRoute ||
-                     isProductRoute ||
-                     isCompanyRoute ||
-                     (isRoot && currentView === 'landing');
+    isLandingRoute ||
+    isSignupRoute ||
+    isForgotPasswordRoute ||
+    isWorkflowsRoute ||
+    isLegalRoute ||
+    isProductRoute ||
+    isCompanyRoute ||
+    (isRoot && currentView === 'landing');
 
   // If should hide, return null immediately
   if (shouldHide) return null;
-  
+
   // Show chrome only on authenticated pages
-  const shouldShow = isHomeRoute || 
-                     currentView === 'home' ||
-                     isGenerationRoute || 
-                     currentView === 'generation' || 
-                     isHistoryRoute ||
-                     currentView === 'history' ||
-                     isBookmarksRoute ||
-                     isAccountRoute ||
-                     isEditImageRoute ||
-                     isEditVideoRoute;
-  
-  // If should show, render chrome
+  const shouldShow = isHomeRoute ||
+    currentView === 'home' ||
+    isGenerationRoute ||
+    currentView === 'generation' ||
+    isHistoryRoute ||
+    currentView === 'history' ||
+    isBookmarksRoute ||
+    isAccountRoute ||
+    isEditImageRoute ||
+    isEditVideoRoute;
+
+  // If should show, render chrome (but hide sidebar if video editor is open)
   if (shouldShow) {
     return (
       <>
         <Nav />
-        <SidePannelFeatures />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
 
         {/* In-app notification permission prompt (generic activity copy) */}
         {showNotifPrompt && (
@@ -222,7 +257,7 @@ export default function ChromeMount() {
       </>
     );
   }
-  
+
   // Default: don't show (for other pages not explicitly listed)
   return null;
 }

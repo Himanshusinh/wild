@@ -187,8 +187,8 @@ export const loadHistory = createAsyncThunk(
           const normalized = canonicalAudioType(filtersForBackend.generationType as any);
           params.generationType = normalized;
         } else {
-          const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-          if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
+        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
+        if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
         }
       }
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
@@ -454,22 +454,32 @@ export const loadMoreHistory = createAsyncThunk(
       
       const filtersForBackend = backendFilters || filters;
       
-      if (filtersForBackend?.generationType) {
+      // Only include generationType if explicitly provided in backendFilters
+      // When no search, don't send generationType array - rely on mode: 'image' only
+      if (filtersForBackend?.generationType && backendFilters) {
         // Backend validation now accepts audio types, so normalize and send them
-        if (backendFilters) {
-          const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+        const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+        // Only set if it's actually an array or string (not undefined)
+        if (normalized) {
           params.generationType = normalized;
-        } else {
-          const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-          if (mapped) params.generationType = mapped;
-        }
       }
+      }
+      // Don't set generationType if not in backendFilters - let mode handle it
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
-      // Add search parameter if present
-      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
-        params.search = (filters as any).search.trim();
+      // Add search parameter if present (check both filtersForBackend and filters)
+      const searchQuery = (filtersForBackend as any)?.search || (filters as any)?.search;
+      if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+        params.search = searchQuery.trim();
       }
+      // Add sort order only if explicitly provided (when searching)
+      // Don't include sortOrder in default payload
+      if ((filtersForBackend as any)?.sortOrder) {
+        params.sortOrder = (filtersForBackend as any).sortOrder;
+      } else if ((filters as any)?.sortOrder) {
+        params.sortOrder = (filters as any).sortOrder;
+      }
+      // If sortOrder is not provided, don't set it (backend will use default)
       // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
       if (nextPageParams.cursor?.timestamp) {
         try {
@@ -483,9 +493,15 @@ export const loadMoreHistory = createAsyncThunk(
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
-  // Always request createdAt sorting explicitly
+  // Always set sortBy (use value from backendFilters if provided, otherwise default to createdAt)
+  if ((filtersForBackend as any)?.sortBy) {
+    params.sortBy = (filtersForBackend as any).sortBy;
+  } else if (!params.sortBy) {
   params.sortBy = 'createdAt';
+  }
+  // Don't set default sortOrder - only include it if explicitly provided (when searching)
+  
+  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
   
   const res = await client.get('/api/generations', { params });
   
@@ -688,12 +704,49 @@ const historySlice = createSlice({
         })));
 
         // If forceRefresh, replace entries completely (don't merge with existing)
-        // Apply a safe, synonym-aware filter when a generationType is requested
+        // Otherwise, merge entries by ID to preserve local updates
         if (forceRefresh) {
           console.log('[HistorySlice] forceRefresh=true - REPLACING all entries with fresh data');
           state.entries = action.payload.entries;
         } else {
-          state.entries = action.payload.entries;
+          // Merge mode: combine backend entries with existing entries, preferring existing if IDs match
+          // This preserves local updates (like status changes) while adding new entries from backend
+          const existingMap = new Map<string, any>(state.entries.map((e: any) => [String(e?.id || ''), e]));
+          const backendMap = new Map<string, any>(action.payload.entries.map((e: any) => [String(e?.id || ''), e]));
+          
+          // Merge: prefer existing entry if it exists and is more recent, otherwise use backend entry
+          const merged = new Map<string, any>();
+          
+          // First, add all backend entries
+          backendMap.forEach((backendEntry, id) => {
+            merged.set(id, backendEntry);
+          });
+          
+          // Then, add existing entries that aren't in backend (preserve local-only entries)
+          existingMap.forEach((existingEntry, id) => {
+            if (!merged.has(id)) {
+              merged.set(id, existingEntry);
+            } else {
+              // If both exist, prefer the one with more recent timestamp or better status
+              const backendEntry = merged.get(id);
+              const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
+              const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
+              
+              // Prefer existing if it's more recent or if backend entry is missing critical data
+              if (existingTimestamp > backendTimestamp || 
+                  (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
+                  (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))) {
+                merged.set(id, existingEntry);
+              }
+            }
+          });
+          
+          state.entries = Array.from(merged.values());
+          console.log('[HistorySlice] Merged entries:', {
+            existingCount: existingMap.size,
+            backendCount: backendMap.size,
+            mergedCount: merged.size
+          });
         }
         const usedTypeAny = (usedFilters as any)?.generationType as any;
         if (usedTypeAny) {

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Protect routes by requiring the backend session cookie (app_session) and add security headers
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const url = req.nextUrl.clone();
   const headerHost = req.headers.get('host') || url.host;
   const forwardedHost = req.headers.get('x-forwarded-host') || headerHost;
@@ -46,6 +46,23 @@ export function middleware(req: NextRequest) {
   if (!isLocalHost && forwardedProto === 'http') {
     url.protocol = 'https:';
     return NextResponse.redirect(url, { status: 308 });
+  }
+
+  // Proxy /api/canvas requests to the backend (Python Service)
+  // This resolves the issue where /api/canvas/* routes were 404ing in production
+  if (pathname.startsWith('/api/canvas')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      // Clean backend URL to remove trailing slash
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+
+      // Rewrite request to the backend
+      // NextResponse.rewrite preserves original headers
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/canvas');
+    }
   }
 
   // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
@@ -206,7 +223,7 @@ export function middleware(req: NextRequest) {
   // Do not consider Authorization header for page protection; only cookie/hint
   // Also respect a short-lived client hint cookie set right before redirect from auth
   const hasHint = Boolean(req.cookies.get('auth_hint'));
-  
+
   if (!hasSession && !hasHint) {
     const url = req.nextUrl.clone();
     url.pathname = '/view/signup'; // Redirect to signup instead of landing page
@@ -216,7 +233,7 @@ export function middleware(req: NextRequest) {
     redirect.headers.set('X-Auth-Decision', 'redirect-signup');
     return redirect;
   }
-  
+
   res.headers.set('X-Auth-Decision', 'allow');
   return res;
 }
@@ -227,3 +244,5 @@ export const config = {
 };
 
 
+
+export default proxy;

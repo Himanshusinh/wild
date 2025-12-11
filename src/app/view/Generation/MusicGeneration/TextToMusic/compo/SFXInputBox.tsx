@@ -61,14 +61,16 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     let transactionId: string;
     try {
-      const musicResult = await validateMusicCredits(payload.model, 10);
+      // Pass duration_seconds for per-second pricing (6 credits per second)
+      const sfxDuration = payload.duration_seconds || 5.0;
+      const musicResult = await validateMusicCredits(payload.model, sfxDuration);
       const reservation = await reserveCreditsForGeneration(
         musicResult.requiredCredits,
         'music-generation',
         {
           model: payload.model,
           generationType: 'sfx',
-          duration: payload.duration_seconds || 5,
+          duration: sfxDuration,
         }
       );
       transactionId = reservation.transaction.id;
@@ -85,18 +87,25 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
     const sfxText = payload.text.trim();
     const fileName = payload.fileName || '';
     
-    setLocalMusicPreview({
-      id: `sfx-loading-${Date.now()}`,
+    const tempId = `sfx-loading-${Date.now()}`;
+    const loadingEntry = {
+      id: tempId,
       prompt: sfxText,
       model: modelName,
-      generationType: 'sfx',
-      images: [{ id: 'sfx-loading', url: '', originalUrl: '' }],
+      generationType: 'sfx' as 'sfx',
+      images: [{ id: 'loading', url: '', originalUrl: '', type: 'audio' }], // Placeholder for generating state
+      audios: [],
+      status: 'generating' as 'generating',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
-      status: 'generating',
       fileName: fileName
-    });
+    };
+    
+    // Add to Redux immediately to show loading animation
+    dispatch(addHistoryEntry(loadingEntry));
+    
+    setLocalMusicPreview(loadingEntry);
 
     try {
       const result: any = await dispatch(falElevenTts(payload)).unwrap();
@@ -110,42 +119,31 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
       setResultUrl(audioUrl);
       confirmGenerationSuccess(transactionId);
+      setIsGenerating(false); // Stop generating immediately after success
 
-      // Update local preview
-      setLocalMusicPreview((prev: any) => prev ? {
-        ...prev,
+      const firebaseHistoryId = result.historyId || tempId;
+      const finalModelName = result.model || modelName;
+      const finalAudios = result.audios || [audioObj];
+      const imagesArray = result.images || [audioObj];
+
+      // Update Redux entry first (update both tempId and historyId if different)
+      const updateData: any = {
         status: 'completed',
         audio: audioObj,
-        audios: result.audios || [audioObj],
-        images: result.images || [audioObj]
-      } : null);
+        audios: finalAudios,
+        images: imagesArray,
+        model: modelName, // Use frontend model name (elevenlabs-sfx)
+        backendModel: result.model, // Store backend endpoint name separately
+        generationType: 'sfx',
+        fileName: fileName
+      };
 
-      // Update history entry if historyId exists
-      if (result.historyId) {
-        // Preserve frontend model name in 'model' field, store backend endpoint in 'backendModel'
-        const updateData: any = {
-          status: 'completed',
-          audio: audioObj,
-          audios: result.audios || [audioObj],
-          images: result.images || [audioObj],
-          model: modelName, // Use frontend model name (elevenlabs-sfx)
-          backendModel: result.model, // Store backend endpoint name separately (fal-ai/elevenlabs/sound-effects/v2)
-          generationType: 'sfx',
-          fileName: fileName
-        };
-
-        console.log('[SFXInputBox] Updating history entry:', {
-          historyId: result.historyId,
-          model: modelName,
-          backendModel: result.model,
-          generationType: 'sfx',
-          hasAudios: !!updateData.audios?.length,
-          hasImages: !!updateData.images?.length,
-          hasAudio: !!updateData.audio
-        });
-
+      // Update the loading entry in Redux (use tempId first, then historyId if different)
+      dispatch(updateHistoryEntry({ id: tempId, updates: updateData }));
+      
+      // If we have a real historyId that's different from tempId, also update that entry
+      if (result.historyId && result.historyId !== tempId) {
         dispatch(updateHistoryEntry({ id: result.historyId, updates: updateData }));
-        
         try {
           await updateFirebaseHistory(result.historyId, updateData);
         } catch (firebaseErr) {
@@ -153,15 +151,56 @@ const SFXInputBox = (props?: { showHistoryOnly?: boolean }) => {
         }
       }
 
-      // Refresh history
-      refreshMusicHistoryImmediate();
+      // Update local preview to completed state
+      setLocalMusicPreview((prev: any) => prev ? {
+        ...prev,
+        id: firebaseHistoryId,
+        status: 'completed',
+        audio: audioObj,
+        audios: finalAudios,
+        images: imagesArray,
+        model: finalModelName,
+        fileName: fileName
+      } : null);
+
+      // Clear local preview after a short delay to let Redux entry take over
+      setTimeout(() => {
+        setLocalMusicPreview(null);
+      }, 500);
+
+      // Refresh history with merge mode to preserve local state
+      setTimeout(() => {
+        refreshMusicHistoryImmediate(50, false); // false = merge mode
+      }, 1000);
     } catch (error: any) {
       console.error('[SFXInputBox] Generation failed:', error);
-      setErrorMessage(error?.message || 'SFX generation failed');
+      setIsGenerating(false); // Stop generating immediately
+      setErrorMessage(error?.message || error?.response?.data?.message || 'SFX generation failed');
       confirmGenerationFailure(transactionId);
-      setLocalMusicPreview((prev: any) => prev ? { ...prev, status: 'failed' } : null);
-    } finally {
-      setIsGenerating(false);
+      
+      // Update Redux entry to failed status
+      dispatch(updateHistoryEntry({ 
+        id: tempId, 
+        updates: { 
+          status: 'failed',
+          error: error?.message || error?.response?.data?.message || 'SFX generation failed'
+        } 
+      }));
+      
+      // Update local preview to failed status
+      setLocalMusicPreview((prev: any) => prev ? { 
+        ...prev, 
+        status: 'failed',
+        error: error?.message || error?.response?.data?.message || 'SFX generation failed'
+      } : null);
+      
+      // Request credit refresh to update UI
+      try {
+        const { requestCreditsRefresh } = await import('@/lib/creditsBus');
+        requestCreditsRefresh();
+      } catch (e) {
+        console.error('[SFXInputBox] Failed to refresh credits:', e);
+      }
     }
   };
 

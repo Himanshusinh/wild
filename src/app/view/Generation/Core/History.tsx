@@ -21,6 +21,29 @@ import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/util
 import { getCreditsForModel } from '@/utils/modelCredits';
 import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 
+// Helper to generate colorful audio tile gradients (mirrors MusicHistory colors)
+const getAudioColorTheme = (entry: any, index: number = 0): string => {
+  const seed = entry?.id || entry?.model || index || 0;
+  const hash = String(seed).split('').reduce((acc: number, char: string) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc);
+  }, 0);
+
+  const themes = [
+    'from-sky-500/60 via-blue-600/60 to-indigo-600/60',
+    'from-cyan-500/60 via-sky-600/60 to-blue-700/60',
+    'from-blue-500/60 via-indigo-600/60 to-purple-600/60',
+    'from-indigo-600/60 via-violet-600/60 to-fuchsia-600/60',
+    'from-blue-600/60 via-purple-600/60 to-sky-500/60',
+    'from-indigo-700/60 via-blue-600/60 to-cyan-600/60',
+    'from-purple-700/60 via-indigo-600/60 to-blue-600/60',
+    'from-blue-500/60 via-cyan-500/60 to-teal-500/60',
+    'from-sky-600/60 via-indigo-600/60 to-purple-700/60',
+    'from-cyan-600/60 via-blue-700/60 to-indigo-800/60',
+  ];
+
+  return themes[Math.abs(hash) % themes.length];
+};
+
 const History = () => {
   const dispatch = useAppDispatch();
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
@@ -903,7 +926,7 @@ const History = () => {
           ...(((entry as any).audios || []) as any[]),
         ];
 
-        const filteredMediaItems = mediaItems.filter((media: any) => {
+        let filteredMediaItems = mediaItems.filter((media: any) => {
           const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
           const url = media.firebaseUrl || media.url;
           const video = isVideoUrl(url);
@@ -923,6 +946,19 @@ const History = () => {
               return !isUserUpload;
           }
         });
+
+        // For music filter, deduplicate audio media items that share the same URL/id
+        if (quickFilter === 'music') {
+          const seen = new Set<string>();
+          filteredMediaItems = filteredMediaItems.filter((media: any) => {
+            const url = media.firebaseUrl || media.url || media.originalUrl || '';
+            const key = url || media.id || '';
+            if (!key) return true;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        }
 
         count += filteredMediaItems.length;
       });
@@ -1623,7 +1659,7 @@ const History = () => {
                         ];
 
                         // Filter media items based on quickFilter
-                        const filteredMediaItems = mediaItems.filter((media: any, mediaIndex: number) => {
+                        let filteredMediaItems = mediaItems.filter((media: any, mediaIndex: number) => {
                           const isUserUpload = inputImagesArr.includes(media) || inputVideosArr.includes(media);
                           const url = media.firebaseUrl || media.url;
                           const video = isVideoUrl(url);
@@ -1643,6 +1679,19 @@ const History = () => {
                               return !isUserUpload; // Exclude uploads from normal history
                           }
                         });
+
+                        // Deduplicate audio tiles for music filter (avoid duplicate items with same URL)
+                        if (quickFilter === 'music') {
+                          const seen = new Set<string>();
+                          filteredMediaItems = filteredMediaItems.filter((media: any) => {
+                            const url = media.firebaseUrl || media.url || media.originalUrl || '';
+                            const key = url || media.id || '';
+                            if (!key) return true;
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                          });
+                        }
 
                         return filteredMediaItems.map((media: any, mediaIndex: number) => {
                           const mediaUrl = media.firebaseUrl || media.url;
@@ -1811,21 +1860,37 @@ const History = () => {
                                   </div>
                                 </div>
                               ) : audio ? (
-                                <div className="w-full h-full bg-gradient-to-br from-green-900/20 to-blue-900/20 flex items-center justify-center relative">
-                                  <div className="w-full h-full bg-black/30 flex items-center justify-center">
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-white/80">
-                                      <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z" />
-                                    </svg>
+                                <div className={`w-full h-full relative rounded-2xl overflow-hidden bg-gradient-to-br ${getAudioColorTheme(entry, mediaIndex)} ring-1 ring-white/10 group`}>
+                                  {/* Soft radial highlights to match Music history tiles */}
+                                  <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none">
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.35),_transparent_65%)]" />
                                   </div>
+
+                                  <div className="relative w-full h-full flex items-center justify-center">
+                                    <div className="w-14 h-14 bg-black/40 backdrop-blur-xl rounded-2xl flex items-center justify-center ring-1 ring-white/20 shadow-[0_18px_30px_rgba(15,23,42,0.85)]">
+                                      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                        <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-white/25 backdrop-blur-sm rounded-full flex items-center justify-center">
                                       <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
                                         <path d="M8 5v14l11-7z" />
                                       </svg>
                                     </div>
                                   </div>
-                                  <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                                    <span className="text-xs text-white">Audio</span>
+
+                                  {/* File / track name label (mirrors MusicHistory) */}
+                                  {Boolean((entry as any)?.fileName) && (
+                                    <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10 max-w-[calc(100%-4rem)] truncate">
+                                      {(entry as any).fileName}
+                                    </div>
+                                  )}
+                                  <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1 border border-white/15">
+                                    <span className="text-[11px] text-white/90 font-medium">Audio</span>
                                   </div>
                                   {/* Hover prompt overlay */}
                                   <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">

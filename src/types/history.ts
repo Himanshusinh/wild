@@ -35,7 +35,7 @@ export interface HistoryEntry {
   prompt: string;
   userPrompt?: string; // Original user-entered prompt (e.g., "@buddy is dancing with @emily")
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'voicecloning' | 'voice-cloning';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'text-to-dialogue' | 'sfx' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'voicecloning' | 'voice-cloning';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -69,7 +69,7 @@ export interface HistoryEntryFirestore {
   id: string;
   prompt: string;
   model: string;
-  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'voicecloning' | 'voice-cloning';
+  generationType: 'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'text-to-dialogue' | 'sfx' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'voicecloning' | 'voice-cloning';
   images: GeneratedImage[];
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
@@ -102,48 +102,10 @@ export interface HistoryEntryFirestore {
 export interface HistoryFilters {
   model?: string;
   // Allow filtering by a single type or multiple types (e.g., ['text-to-speech','text_to_speech','tts'])
-  // Extended to support audio dialogue generations as first-class filters.
   generationType?: (
-    | 'text-to-image'
-    | 'logo'
-    | 'sticker-generation'
-    | 'text-to-video'
-    | 'text-to-music'
-    | 'text-to-speech'
-    | 'mockup-generation'
-    | 'product-generation'
-    | 'ad-generation'
-    | 'live-chat'
-    | 'text-to-character'
-    | 'text_to_image'
-    | 'image_to_video'
-    | 'video_to_video'
-    | 'text_to_speech'
-    | 'tts'
-    // NEW: dialogue/audio synonyms
-    | 'text-to-dialogue'
-    | 'text_to_dialogue'
-    | 'dialogue'
+    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts' | 'text-to-dialogue' | 'text_to_dialogue' | 'dialogue' | 'sfx' | 'sound-effects' | 'sound_effects' | 'voicecloning' | 'voice-cloning'
   ) | Array<
-    | 'text-to-image'
-    | 'logo'
-    | 'sticker-generation'
-    | 'text-to-video'
-    | 'text-to-music'
-    | 'text-to-speech'
-    | 'mockup-generation'
-    | 'product-generation'
-    | 'ad-generation'
-    | 'live-chat'
-    | 'text-to-character'
-    | 'text_to_image'
-    | 'image_to_video'
-    | 'video_to_video'
-    | 'text_to_speech'
-    | 'tts'
-    | 'text-to-dialogue'
-    | 'text_to_dialogue'
-    | 'dialogue'
+    'text-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'text-to-music' | 'text-to-speech' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'text-to-character' | 'text_to_image' | 'image_to_video' | 'video_to_video' | 'text_to_speech' | 'tts' | 'text-to-dialogue' | 'text_to_dialogue' | 'dialogue' | 'sfx' | 'sound-effects' | 'sound_effects' | 'voicecloning' | 'voice-cloning'
   >;
   mode?: 'image' | 'video' | 'music' | 'all';
   dateRange?: {

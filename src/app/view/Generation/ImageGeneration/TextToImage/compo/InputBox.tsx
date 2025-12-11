@@ -48,6 +48,7 @@ import LucidOriginOptions from "./LucidOriginOptions";
 import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
+import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -64,7 +65,7 @@ import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import Image from "next/image";
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { toResourceProxy, toZataPath } from '@/lib/thumb';
+import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 // Replaced per-page IntersectionObserver with unified bottom scroll pagination
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
@@ -136,6 +137,49 @@ const InputBox = () => {
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
 
+  // Filter states for search, sort, and date
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+  const [dateInput, setDateInput] = useState<string>("");
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
+  const calendarRef = useRef<HTMLDivElement | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
+  const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
+
+  // Handle calendar click outside
+  useEffect(() => {
+    if (!showCalendar) return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [showCalendar]);
+
+  // Handle search query changes with loading state
+  useEffect(() => {
+    if (searchQuery.trim() || dateRange.start || sortOrder !== 'desc') {
+      setIsFiltering(true);
+      const timer = setTimeout(() => {
+        setIsFiltering(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setIsFiltering(false);
+    }
+  }, [searchQuery, dateRange, sortOrder]);
+
   // Track entries that have been added to history to prevent duplicate rendering
   // This ref is updated immediately when entries are added, before React re-renders
   const historyEntryIdsRef = useRef<Set<string>>(new Set());
@@ -173,18 +217,16 @@ const InputBox = () => {
       return false;
     });
 
-    // CRITICAL: If entry exists in ref OR history, immediately clear local entry
-    // This prevents flickering - once in history, history handles all rendering
+    // CRITICAL FIX: Don't clear local entry when it's added to history
+    // The duplicate detection logic in render (line 3979) already handles hiding it
+    // Clearing it here causes the frame to disappear and then reappear
+    // Instead, let the render logic seamlessly switch from local to history entry
+    // This keeps the frame in the DOM continuously
+
+    // Just reset the generating button state when entry is in history
     if (existsInRef || existsInHistory) {
       setIsGeneratingLocally(false);
-      setLocalGeneratingEntries((prev) => {
-        const filtered = prev.filter((e) => {
-          const eId = e.id || (e as any)?.firebaseHistoryId;
-          const entryIdToMatch = entry.id || (entry as any)?.firebaseHistoryId;
-          return eId !== entryIdToMatch;
-        });
-        return filtered;
-      });
+      // DON'T clear localGeneratingEntries here - let render handle the transition
       return;
     }
 
@@ -199,25 +241,45 @@ const InputBox = () => {
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
-      const img = current.searchParams.get('image');
-      const sp = current.searchParams.get('sp');
+      // Support multiple uploads: allow repeated ?sp= and ?image= params
+      const spAll = current.searchParams.getAll('sp');
+      const imgAll = current.searchParams.getAll('image');
+      const img = current.searchParams.get('image'); // legacy single param
+      const sp = current.searchParams.get('sp');     // legacy single param
       const prm = current.searchParams.get('prompt');
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
 
-      // Handle image upload - prioritize sp (storage path) over image URL
-      if (sp) {
-        const decodedPath = decodeURIComponent(sp).replace(/^\/+/, '');
-        const zataBase = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-        const directUrl = `${zataBase}${decodedPath}`;
-        dispatch(setUploadedImages([directUrl] as any));
-      } else if (img) {
-        // Ensure the image URL is valid and not a blob/data URL
-        const imageUrl = img.trim();
-        if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
-          dispatch(setUploadedImages([imageUrl] as any));
+      // Handle image upload - prioritize sp (storage path) over image URL.
+      // Collect all URLs from sp/image params so multiple uploads are supported.
+      const collectedUrls: string[] = [];
+
+      const allSp = spAll.length ? spAll : (sp ? [sp] : []);
+      const allImg = imgAll.length ? imgAll : (img ? [img] : []);
+
+      allSp.forEach((spVal) => {
+        if (!spVal) return;
+        const decodedPath = decodeURIComponent(spVal).replace(/^\/+/, '');
+        const directUrl = toDirectUrl(decodedPath);
+        if (directUrl) {
+          collectedUrls.push(directUrl);
         }
+      });
+
+      if (!allSp.length) {
+        allImg.forEach((imgVal) => {
+          if (!imgVal) return;
+          const imageUrl = imgVal.trim();
+          if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+            collectedUrls.push(imageUrl);
+          }
+        });
+      }
+
+      if (collectedUrls.length > 0) {
+        // Cap to first 10 uploads to avoid overloading the UI
+        dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
       if (prm) dispatch(setPrompt(prm));
@@ -226,6 +288,7 @@ const InputBox = () => {
           if (!m) return m;
           // Normalize known backend → UI mappings
           if (m === 'bytedance/seedream-4') return 'seedream-v4';
+          if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
           return m;
         };
         dispatch(setSelectedModel(mapIncomingModel(mdl)));
@@ -237,10 +300,13 @@ const InputBox = () => {
         try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
       }
       // Consume params once so a refresh doesn't keep the image selected
-      if (img || prm || sp || mdl || frm || sty) {
+      if (img || prm || sp || mdl || frm || sty || spAll.length || imgAll.length) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
         current.searchParams.delete('sp');
+        // Also delete any repeated params
+        imgAll.forEach(() => current.searchParams.delete('image'));
+        spAll.forEach(() => current.searchParams.delete('sp'));
         current.searchParams.delete('model');
         current.searchParams.delete('frame');
         current.searchParams.delete('style');
@@ -273,57 +339,75 @@ const InputBox = () => {
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
 
   // Helper function for frontend proxy resource URL
+  // NOTE: For regenerate/remix flows we prefer direct Zata URLs instead of localhost paths,
+  // so callers should usually pass storagePath via `sp` and only use this for in-app proxying.
   const toFrontendProxyResourceUrl = (urlOrPath: string | undefined): string => {
     if (!urlOrPath) return '';
     return toResourceProxy(urlOrPath);
   };
 
-  // Handle recreate - navigate to text-to-image with entry parameters (same as ImagePreviewModal)
+  // Handle recreate (hover regenerate button) - navigate to text-to-image with entry parameters.
+  // Uses the same logic as the Regenerate button in ImagePreviewModal:
+  // - Prefer ALL "Your Upload" images (inputImages) as inputs
+  // - If there are no uploads, only send prompt/model/frame/style (no image)
   const handleRecreate = (e: React.MouseEvent, entry: HistoryEntry) => {
     try {
       e.stopPropagation();
       e.preventDefault();
 
-      // Get the first image from the entry
-      const entryImage = entry.images && entry.images.length > 0 ? entry.images[0] : null;
-
-      // Extract storagePath from image
-      const storagePath = (entryImage as any)?.storagePath || (() => {
-        try {
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
-          const original = entryImage?.url || '';
-          if (!original) return '';
-          if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
-        } catch { }
-        return '';
-      })();
-
-      // Get fallback HTTP URL (not blob/data URLs)
-      const fallbackHttp = entryImage?.url && !isBlobOrDataUrl(entryImage.url) ? entryImage.url : '';
-
-      // If we have storagePath, use it to create proxy URL; otherwise use fallbackHttp directly
-      const imgUrl = storagePath ? toFrontendProxyResourceUrl(storagePath) : (fallbackHttp || '');
-
       const qs = new URLSearchParams();
+
+      const entryAny: any = entry as any;
+      const inputImages: any[] = Array.isArray(entryAny?.inputImages) ? entryAny.inputImages : [];
+
+      // Collect ALL user uploads (Your Upload images)
+      const storagePaths: string[] = [];
+      const directUrls: string[] = [];
+
+      inputImages.forEach((img: any) => {
+        try {
+          let sp = img?.storagePath || '';
+          if (!sp) {
+            const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
+            const original = img?.url || img?.originalUrl || '';
+            if (original && original.startsWith(ZATA_PREFIX)) {
+              sp = original.substring(ZATA_PREFIX.length);
+            }
+          }
+          if (sp) {
+            storagePaths.push(sp);
+            return;
+          }
+          const rawUrl = img?.url || img?.originalUrl || '';
+          if (rawUrl && !isBlobOrDataUrl(rawUrl)) {
+            const direct = toDirectUrl(rawUrl);
+            if (direct) directUrls.push(direct);
+          }
+        } catch { }
+      });
 
       // Use userPrompt for remix if available, otherwise use cleanPrompt
       const cleanPrompt = getCleanPrompt(entry.prompt || '');
       const remixPrompt = (entry as any)?.userPrompt || cleanPrompt;
       if (remixPrompt) qs.set('prompt', remixPrompt);
 
-      // Always set sp if we have storagePath (InputBox prioritizes sp over image)
-      if (storagePath) {
-        qs.set('sp', storagePath);
-      } else if (imgUrl) {
-        // If no storagePath, set image URL directly
-        qs.set('image', imgUrl);
+      // Attach all uploads:
+      // - Prefer storage paths via repeated sp= params
+      // - Fallback direct URLs via repeated image= params
+      storagePaths.forEach((spVal) => {
+        if (spVal) qs.append('sp', spVal);
+      });
+      if (!storagePaths.length) {
+        directUrls.forEach((u) => {
+          if (u) qs.append('image', u);
+        });
       }
 
       // Also pass model, frameSize and style for preselection
       if (entry.model) {
         // Map backend model ids to UI dropdown ids where needed
         const m = String(entry.model);
-        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : m;
+        const mapped = m === 'bytedance/seedream-4' ? 'seedream-v4' : (m === 'bytedance/seedream-4.5' ? 'seedream-4.5' : m);
         qs.set('model', mapped);
       }
       if (entry.frameSize) qs.set('frame', String(entry.frameSize));
@@ -331,8 +415,8 @@ const InputBox = () => {
       const sty = entry.style || extractStyleFromPrompt(entry.prompt || '') || '';
       if (sty && sty.toLowerCase() !== 'none') qs.set('style', String(sty));
 
-      // Client-side navigation to avoid full page reload
-      router.push(`/text-to-image?${qs.toString()}`);
+      // Client-side navigation to avoid full page reload (and don't scroll to top)
+      router.push(`/text-to-image?${qs.toString()}`, { scroll: false });
     } catch (error) {
       console.error('Error recreating image:', error);
     }
@@ -446,46 +530,88 @@ const InputBox = () => {
     return "1024:1024";
   };
 
-  // Helper function to convert frameSize and resolution to z-turbo-model dimensions
-  const convertFrameSizeToZTurboDimensions = (frameSize: string, resolution: '1K' | '2K'): { width: number; height: number } => {
-    // Base resolution: 1K = 1024, 2K = 2048
-    const baseSize = resolution === '1K' ? 1024 : 2048;
-    
-    // Aspect ratio mappings - calculate dimensions based on base size
-    // Supports all common aspect ratios: 1:1, 3:4, 2:3, 9:16, 4:3, 3:2, 16:9, 21:9, 4:5, 5:4, 2:1, 1:2, 3:1, 1:3, 10:16, 16:10, 9:21
-    const aspectRatioMap: { [key: string]: { width: number; height: number } } = {
-      "1:1": { width: baseSize, height: baseSize },
-      "4:3": { width: baseSize, height: Math.round(baseSize * 3 / 4) },
-      "3:4": { width: Math.round(baseSize * 3 / 4), height: baseSize },
-      "16:9": { width: baseSize, height: Math.round(baseSize * 9 / 16) },
-      "9:16": { width: Math.round(baseSize * 9 / 16), height: baseSize },
-      "3:2": { width: baseSize, height: Math.round(baseSize * 2 / 3) },
-      "2:3": { width: Math.round(baseSize * 2 / 3), height: baseSize },
-      "21:9": { width: baseSize, height: Math.round(baseSize * 9 / 21) },
-      "4:5": { width: Math.round(baseSize * 4 / 5), height: baseSize },
-      "5:4": { width: baseSize, height: Math.round(baseSize * 4 / 5) },
-      "2:1": { width: baseSize, height: Math.round(baseSize * 1 / 2) },
-      "1:2": { width: Math.round(baseSize * 1 / 2), height: baseSize },
-      "3:1": { width: baseSize, height: Math.round(baseSize * 1 / 3) },
-      "1:3": { width: Math.round(baseSize * 1 / 3), height: baseSize },
-      "10:16": { width: Math.round(baseSize * 10 / 16), height: baseSize },
-      "16:10": { width: baseSize, height: Math.round(baseSize * 10 / 16) },
-      "9:21": { width: Math.round(baseSize * 9 / 21), height: baseSize },
+  // Calculate dimensions for z-image-turbo based on frame size, keeping under 1MP and divisible by 16
+  const convertFrameSizeToZTurboDimensions = (frameSize: string): { width: number; height: number } => {
+    const MAX_PIXELS = 1000000; // 1MP = 1,000,000 pixels (under 1MP means < 1,000,000)
+    const MIN_DIMENSION = 64;
+    const MAX_DIMENSION = 1440;
+    const MULTIPLE_OF = 16;
+
+    // Parse aspect ratio from frameSize (e.g., "16:9" -> { widthRatio: 16, heightRatio: 9 })
+    const parseAspectRatio = (ratio: string): { widthRatio: number; heightRatio: number } => {
+      const parts = ratio.split(':');
+      if (parts.length !== 2) return { widthRatio: 1, heightRatio: 1 };
+      const w = parseFloat(parts[0]);
+      const h = parseFloat(parts[1]);
+      if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return { widthRatio: 1, heightRatio: 1 };
+      return { widthRatio: w, heightRatio: h };
     };
 
-    // Get dimensions for the aspect ratio, default to square
-    const dimensions = aspectRatioMap[frameSize] || { width: baseSize, height: baseSize };
-    
-    // Ensure dimensions are within API limits (64-2048) and are multiples of 8 for better compatibility
+    const { widthRatio, heightRatio } = parseAspectRatio(frameSize);
+    const aspectRatio = widthRatio / heightRatio;
+
+    // Calculate maximum dimensions that stay under 1MP
+    // For landscape (width > height): start with max width, calculate height
+    // For portrait (height > width): start with max height, calculate width
+    // For square: use equal dimensions
+
+    let width: number;
+    let height: number;
+
+    if (aspectRatio > 1) {
+      // Landscape: width > height
+      // Start with max width (1440), calculate height, then scale down if needed
+      width = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS * aspectRatio)));
+      height = Math.round(width / aspectRatio);
+    } else if (aspectRatio < 1) {
+      // Portrait: height > width
+      // Start with max height (1440), calculate width, then scale down if needed
+      height = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS / aspectRatio)));
+      width = Math.round(height * aspectRatio);
+    } else {
+      // Square: 1:1
+      width = Math.min(1440, Math.floor(Math.sqrt(MAX_PIXELS)));
+      height = width;
+    }
+
+    // Round to nearest multiple of 16
+    width = Math.round(width / MULTIPLE_OF) * MULTIPLE_OF;
+    height = Math.round(height / MULTIPLE_OF) * MULTIPLE_OF;
+
+    // Ensure we're still under 1MP after rounding
+    while (width * height >= MAX_PIXELS) {
+      if (aspectRatio > 1) {
+        width -= MULTIPLE_OF;
+        height = Math.round(width / aspectRatio / MULTIPLE_OF) * MULTIPLE_OF;
+      } else if (aspectRatio < 1) {
+        height -= MULTIPLE_OF;
+        width = Math.round(height * aspectRatio / MULTIPLE_OF) * MULTIPLE_OF;
+      } else {
+        width -= MULTIPLE_OF;
+        height = width;
+      }
+    }
+
+    // Clamp to valid range (64-1440) and ensure divisible by 16
     const clampToLimits = (value: number): number => {
-      const clamped = Math.max(64, Math.min(2048, Math.round(value / 8) * 8));
-      return clamped;
+      const rounded = Math.round(value / MULTIPLE_OF) * MULTIPLE_OF;
+      return Math.max(MIN_DIMENSION, Math.min(MAX_DIMENSION, rounded));
     };
 
-    return {
-      width: clampToLimits(dimensions.width),
-      height: clampToLimits(dimensions.height),
-    };
+    width = clampToLimits(width);
+    height = clampToLimits(height);
+
+    // Final check: ensure we're still under 1MP after clamping
+    if (width * height >= MAX_PIXELS) {
+      // Scale down proportionally
+      const scale = Math.sqrt(MAX_PIXELS / (width * height));
+      width = Math.round((width * scale) / MULTIPLE_OF) * MULTIPLE_OF;
+      height = Math.round((height * scale) / MULTIPLE_OF) * MULTIPLE_OF;
+      width = Math.max(MIN_DIMENSION, width);
+      height = Math.max(MIN_DIMENSION, height);
+    }
+
+    return { width, height };
   };
 
   // Helper function to convert frameSize to flux-pro-1.1 dimensions
@@ -792,9 +918,11 @@ const InputBox = () => {
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
   const [seedreamWidth, setSeedreamWidth] = useState<number>(2048);
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
+  // Seedream 4.5-specific UI state (FAL image_size auto_2K/auto_4K)
+  const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
-  const [zTurboResolution, setZTurboResolution] = useState<'1K' | '2K'>('1K');
+  const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -816,12 +944,33 @@ const InputBox = () => {
 
       const filtered = allEntries.filter((entry: any) => {
         const normalizedType = normalize(entry.generationType);
-        const isVectorize = normalizedType === 'vectorize' || normalizedType === 'image-vectorize' || normalizedType.includes('vector');
-        return normalizedType === 'text-to-image' ||
+        const normalizedModel = normalize(entry.model);
+        const isSeedream = normalizedModel.includes('seedream');
+        const isTextToImage = normalizedType === 'text-to-image';
+
+        // Explicitly show Seedream text-to-image generations (from Image Generation page)
+        if (isSeedream && isTextToImage) {
+          return true;
+        }
+
+        // Hide Seedream generations from other features (e.g. Edit Image, upscale, etc.)
+        if (isSeedream && !isTextToImage) {
+          return false;
+        }
+
+        // For non-Seedream entries, apply normal type filtering
+        const isVectorize =
+          normalizedType === 'vectorize' ||
+          normalizedType === 'image-vectorize' ||
+          normalizedType.includes('vector');
+
+        return (
+          normalizedType === 'text-to-image' ||
           normalizedType === 'image-upscale' ||
           normalizedType === 'image-to-svg' ||
           normalizedType === 'image-edit' ||
-          isVectorize;
+          isVectorize
+        );
       });
 
       if (filtered.length === 0) {
@@ -841,12 +990,55 @@ const InputBox = () => {
     shallowEqual
   );
 
+  // Filter entries by search query, date range, and sort order
+  const filteredAndSortedEntries = useMemo(() => {
+    let filtered = [...historyEntries];
+
+    // Filter by search query (search in prompt)
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((entry: HistoryEntry) => {
+        const prompt = (entry.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }
+
+    // Filter by date range
+    if (dateRange.start && dateRange.end) {
+      filtered = filtered.filter((entry: HistoryEntry) => {
+        const entryDate = new Date(entry.timestamp);
+        const start = new Date(dateRange.start!);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(dateRange.end!);
+        end.setHours(23, 59, 59, 999);
+        return entryDate >= start && entryDate <= end;
+      });
+    }
+
+    // Sort by sort order
+    const getTs = (x: any) => {
+      const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+      if (!raw) return 0;
+      const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
+      const ms = Date.parse(t);
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+
+    if (sortOrder === 'asc') {
+      filtered.sort((a: any, b: any) => getTs(a) - getTs(b)); // Oldest first
+    } else {
+      filtered.sort((a: any, b: any) => getTs(b) - getTs(a)); // Newest first (default)
+    }
+
+    return filtered;
+  }, [historyEntries, searchQuery, dateRange, sortOrder]);
+
   // Sentinel element at bottom of list (place near end of render)
 
   // Group entries by date and sort within each group for stable ordering
   // Memoize groupedByDate to prevent unnecessary recalculations
   const groupedByDate = useMemo(() => {
-    const groups = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const groups = filteredAndSortedEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
       const date = new Date(entry.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
@@ -855,19 +1047,53 @@ const InputBox = () => {
       return groups;
     }, {});
 
-    // Sort entries within each date group by timestamp (newest first) for stable ordering
+    // Sort entries within each date group by timestamp based on sortOrder
+    const getTs = (entry: HistoryEntry) => new Date(entry.timestamp).getTime();
     Object.keys(groups).forEach(date => {
-      groups[date].sort((a: HistoryEntry, b: HistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      if (sortOrder === 'asc') {
+        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(a) - getTs(b)); // Oldest first
+      } else {
+        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(b) - getTs(a)); // Newest first
+      }
     });
 
+    // CRITICAL FIX: Merge local generating entries into today's group
+    // This ensures a SINGLE frame that transitions from loading to showing the image
+    // Instead of having TWO separate frames (one for local, one for history)
+    if (localGeneratingEntries.length > 0) {
+      const todayKey = new Date().toDateString();
+      if (!groups[todayKey]) {
+        groups[todayKey] = [];
+      }
+
+      // Add local entries at the beginning (newest first) if not already in history
+      localGeneratingEntries.forEach(localEntry => {
+        const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
+        const existsInGroup = groups[todayKey].some((e: HistoryEntry) => {
+          const eId = e.id || (e as any)?.firebaseHistoryId;
+          return eId === localId;
+        });
+
+        // Only add if not already in the group (prevents duplicates)
+        if (!existsInGroup && localId) {
+          // Add at the beginning for newest-first sort
+          if (sortOrder === 'desc') {
+            groups[todayKey].unshift(localEntry);
+          } else {
+            groups[todayKey].push(localEntry);
+          }
+        }
+      });
+    }
+
     return groups;
-  }, [historyEntries]);
+  }, [filteredAndSortedEntries, sortOrder, localGeneratingEntries]);
 
   // Calculate today key - recalculate on every render to handle day changes
   // This ensures localGeneratingEntries show correctly when generating on a new day
   const todayKey = new Date().toDateString();
 
-  // Sort dates in descending order (newest first)
+  // Sort dates based on sortOrder
   // Include today's date if we have localGeneratingEntries (for first generation of new day)
   const sortedDates = useMemo(() => {
     const dates = new Set(Object.keys(groupedByDate));
@@ -876,18 +1102,35 @@ const InputBox = () => {
     if (localGeneratingEntries.length > 0 && !dates.has(todayKey)) {
       dates.add(todayKey);
     }
-    return Array.from(dates).sort((a: string, b: string) =>
-      new Date(b).getTime() - new Date(a).getTime()
-    );
-  }, [groupedByDate, localGeneratingEntries, todayKey]);
+    const datesArray = Array.from(dates);
+    if (sortOrder === 'asc') {
+      return datesArray.sort((a: string, b: string) =>
+        new Date(a).getTime() - new Date(b).getTime() // Oldest first
+      );
+    } else {
+      return datesArray.sort((a: string, b: string) =>
+        new Date(b).getTime() - new Date(a).getTime() // Newest first
+      );
+    }
+  }, [groupedByDate, localGeneratingEntries, todayKey, sortOrder]);
 
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
   useEffect(() => {
-    const currentEntryIds = new Set<string>(historyEntries.map((e: HistoryEntry) => e.id));
+    const currentEntryIds = new Set<string>(filteredAndSortedEntries.map((e: HistoryEntry) => e.id));
+
+    // CRITICAL FIX: Also add local entry IDs to prevent animation when they transition to history
+    // This ensures the same frame doesn't animate when it moves from local to history
+    localGeneratingEntries.forEach((localEntry) => {
+      const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
+      if (localId) {
+        currentEntryIds.add(localId);
+      }
+    });
+
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
-  }, [historyEntries]);
+  }, [filteredAndSortedEntries, localGeneratingEntries]);
 
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
@@ -1307,7 +1550,7 @@ const InputBox = () => {
     // Users can continue generating with the same settings or modify them as needed
     // No clearing of prompt, uploaded images, or selected characters
     return;
-    
+
     // OLD CODE (disabled):
     // dispatch(setPrompt(""));
     // dispatch(setUploadedImages([]));
@@ -1373,6 +1616,7 @@ const InputBox = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
     // This ensures the loader shows instantly when the button is clicked
     setIsGeneratingLocally(true);
@@ -1388,7 +1632,7 @@ const InputBox = () => {
       try {
         setIsEnhancing(true);
         // Explicitly pass 'image' as media type for image generation
-        const res = await enhancePromptAPI(originalPrompt, selectedModel as any, 'image');
+        const res = await enhancePromptAPI(originalPrompt, 'openai/gpt-4o', 'image');
         if (res && res.ok && res.enhancedPrompt) {
           finalPrompt = res.enhancedPrompt;
 
@@ -1417,13 +1661,8 @@ const InputBox = () => {
           // Let updateContentEditable run after Redux state has updated to properly format
           // with character tags if needed (runs via useEffect watching prompt)
           // Also call it directly after a brief delay to ensure proper formatting
-          setTimeout(() => {
-            try {
-              updateContentEditable();
-            } catch (err) {
-              console.error('Error in updateContentEditable after enhancement:', err);
-            }
-          }, 100);
+          // updateContentEditable will be triggered by the useEffect watching 'prompt'
+          // No need to call it manually here, as it might use a stale closure of 'prompt'
         } else {
           // Non-fatal: show an error but continue with original prompt
           if (res && res.error) toast.error(res.error || 'Failed to enhance prompt');
@@ -1745,7 +1984,8 @@ const InputBox = () => {
                 setIsGeneratingLocally(false);
                 break;
               }
-              if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
+              // Check for success statuses (completed, SUCCEEDED, succeeded, etc.)
+              if ((s === 'COMPLETED' || s === 'SUCCEEDED' || s === 'SUCCEED') && Array.isArray(status?.images) && status.images.length > 0) {
                 imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
                 break;
               }
@@ -2029,9 +2269,13 @@ const InputBox = () => {
 
         // Update the local loading entry with completed images
         try {
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
           const completedEntry: HistoryEntry = {
             ...(localGeneratingEntries[0] || tempEntry),
-            id: (localGeneratingEntries[0]?.id || tempEntryId),
+            // Use the backend historyId when available so the local card matches the real entry.
+            id: resultHistoryId || (localGeneratingEntries[0]?.id || tempEntryId),
+            // Also store firebaseHistoryId for duplicate-detection helpers
+            ...(resultHistoryId ? { firebaseHistoryId: resultHistoryId } : {}),
             images: result.images,
             status: 'completed',
             timestamp: new Date().toISOString(),
@@ -2046,8 +2290,9 @@ const InputBox = () => {
         clearInputs();
 
         // Refresh only the single completed generation instead of reloading all
-        if (firebaseHistoryId) {
-          await refreshSingleGeneration(firebaseHistoryId);
+        const historyIdToRefresh = (result as any)?.historyId || firebaseHistoryId;
+        if (historyIdToRefresh) {
+          await refreshSingleGeneration(historyIdToRefresh);
         } else {
           await refreshHistory();
         }
@@ -2340,7 +2585,91 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Seedream');
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream');
+          toast.error(errorMessage, { duration: 5000 });
+          return;
+        }
+      } else if (selectedModel === 'seedream-4.5') {
+        // FAL Seedream 4.5 (v45) text-to-image - map frame size to proper enum values
+        try {
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
+          
+          // Map frame size to Seedream 4.5 enum values (square_hd, portrait_4_3, landscape_16_9, etc.)
+          const frameSizeToEnum: Record<string, string> = {
+            '1:1': 'square_hd',
+            'square': 'square_hd',
+            '4:3': 'landscape_4_3',
+            '3:4': 'portrait_4_3',
+            '16:9': 'landscape_16_9',
+            '9:16': 'portrait_16_9',
+          };
+          
+          // Always use the proper frame size enum based on selected aspect ratio
+          const imageSizeEnum = frameSizeToEnum[frameSize] || 'square_hd';
+
+          const result = await dispatch(falGenerate({
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt,
+            model: 'seedream-4.5',
+            generationType: 'text-to-image',
+            // Pass selected frame size and aspect ratio for backend reference
+            frameSize,
+            aspect_ratio: frameSize as any,
+            // Send proper frame size enum (square_hd, portrait_4_3, landscape_16_9, etc.)
+            // Backend will use this directly, respecting the selected frame size
+            image_size: imageSizeEnum,
+            resolution: seedream45Resolution, // Send resolution for backend reference (2K/4K)
+            num_images: imageCount,
+            max_images: imageCount,
+            enable_safety_checker: true,
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
+            isPublic,
+          })).unwrap();
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch { }
+
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
+          // Refresh only the single completed generation instead of reloading all
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          // Stop generation process immediately on error
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
+          toast.error(errorMessage, { duration: 5000 });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
@@ -2427,7 +2756,8 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
+          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
+          toast.error(errorMessage, { duration: 5000 });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3-quality') {
@@ -2782,30 +3112,30 @@ const InputBox = () => {
         // New Turbo Model via replicate generate endpoint - single request with num_images
         try {
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
-          
-          // Calculate width and height from resolution and aspect ratio
-          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1', zTurboResolution);
+
+          // Calculate dimensions based on frame size, keeping under 1MP and divisible by 16
+          const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1');
           const width = dimensions.width;
           const height = dimensions.height;
-          
+
           // Send single request with num_images parameter (backend handles multiple calls internally)
           const payload: any = {
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: 'new-turbo-model',
             width: width,
             height: height,
-            num_inference_steps: 14,
-            guidance_scale: 0,
-            output_format: 'jpg',
-            output_quality: 80,
+            num_inference_steps: 8, // Schema default
+            guidance_scale: 0, // Schema default (should be 0 for Turbo models)
+            output_format: zTurboOutputFormat, // Use selected output format
+            output_quality: 80, // Schema default
             num_images: Math.min(imageCount, 4), // Cap at 4 like other models
           };
-          
+
           const result = await dispatch(replicateGenerate(payload)).unwrap();
-          
+
           // All images should be in the result.images array from single request
           const allImages = result.images || [];
-          
+
           // Keep status as 'generating' until images are loaded and visible
           // This ensures the loading animation stays until images are actually displayed
           try {
@@ -2819,13 +3149,13 @@ const InputBox = () => {
               imageCount: allImages.length,
             } as any;
             setLocalGeneratingEntries([entryWithImages]);
-            
+
             // Wait for images to load before marking as completed
             // This ensures the loading animation stays visible until images are rendered
             if (allImages.length > 0) {
               // Wait a bit for React to render the images
               await new Promise(resolve => setTimeout(resolve, 500));
-              
+
               // Wait for all images to actually load in the browser
               const imageLoadPromises = allImages.map((img: any) => {
                 return new Promise<void>((resolve: () => void) => {
@@ -2834,23 +3164,23 @@ const InputBox = () => {
                     resolve();
                     return;
                   }
-                  
+
                   const imgElement = document.createElement('img');
                   imgElement.onload = () => resolve();
                   imgElement.onerror = () => resolve(); // Resolve even on error to not block
                   imgElement.src = imageUrl;
-                  
+
                   // Timeout after 5 seconds to prevent infinite waiting
                   setTimeout(() => resolve(), 5000);
                 });
               });
-              
+
               await Promise.all(imageLoadPromises);
-              
+
               // Additional small delay to ensure images are rendered in DOM
               await new Promise(resolve => setTimeout(resolve, 300));
             }
-            
+
             // Now mark as completed after images are loaded
             const completedEntry: HistoryEntry = {
               ...entryWithImages,
@@ -2858,7 +3188,7 @@ const InputBox = () => {
             } as any;
             setLocalGeneratingEntries([completedEntry]);
           } catch { }
-          
+
           toast.success(`Generated ${allImages.length || 1} image(s) successfully!`);
           clearInputs();
 
@@ -2890,8 +3220,11 @@ const InputBox = () => {
           }
 
           // Show error notification
-          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
-          toast.error(errorMessage);
+          const moderationCode = error?.response?.data?.code || error?.response?.data?.data?.code;
+          if (moderationCode !== 'CONTENT_BLOCKED') {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
+            toast.error(errorMessage);
+          }
           return;
         }
       } else {
@@ -3121,7 +3454,7 @@ const InputBox = () => {
     try {
       setIsEnhancing(true);
       // Explicitly pass 'image' as media type for image generation
-      const res = await enhancePromptAPI(prompt, selectedModel, 'image');
+      const res = await enhancePromptAPI(prompt, 'openai/gpt-4o', 'image');
       if (res.ok && res.enhancedPrompt) {
         const enhancedPrompt = res.enhancedPrompt;
 
@@ -3150,13 +3483,8 @@ const InputBox = () => {
         // Let updateContentEditable run after Redux state has updated to properly format
         // with character tags if needed (runs via useEffect watching prompt)
         // Also call it directly after a brief delay to ensure proper formatting
-        setTimeout(() => {
-          try {
-            updateContentEditable();
-          } catch (err) {
-            console.error('Error in updateContentEditable after enhancement:', err);
-          }
-        }, 100);
+        // updateContentEditable will be triggered by the useEffect watching 'prompt'
+        // No need to call it manually here, as it might use a stale closure of 'prompt'
 
         toast.success('Prompt enhanced');
       } else {
@@ -3229,15 +3557,16 @@ const InputBox = () => {
         
         /* Simple fixed-size image containers */
         .image-item {
-          min-width: 165px;
+          width: 100%;
+          aspect-ratio: 1;
           min-height: 165px;
           position: relative;
         }
         
         @media (min-width: 768px) {
           .image-item {
-            width: 272px;
-            height: 272px;
+            width: 100%;
+            aspect-ratio: 1;
           }
         }
         
@@ -3245,15 +3574,23 @@ const InputBox = () => {
         .image-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
+          gap: 4px;
           grid-auto-rows: auto;
         }
         
         @media (min-width: 768px) {
           .image-grid {
-            grid-template-columns: repeat(auto-fill, 272px);
-            grid-auto-rows: 272px;
+            grid-template-columns: repeat(5, 1fr);
+            grid-auto-rows: auto;
             gap: 12px;
+          }
+        }
+        
+        @media (min-width: 1024px) {
+          .image-grid {
+            grid-template-columns: repeat(6, 1fr);
+            grid-auto-rows: auto;
+            gap: 4px;
           }
         }
         
@@ -3270,416 +3607,536 @@ const InputBox = () => {
       `}</style>
 
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
-        <div className="md:py-6  py-0 md:pl-4  ">
+        <div className="md:py-0  py-0 md:pl-4  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-5 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
-            <h2 className="md:text-xl text-md font-semibold text-white">Image Generation</h2>
-          </div>
-          {/* Spacer to keep content below fixed header */}
-          <div className="h-0"></div>
-
-            {/* Initial loading overlay - show when loading and no entries */}
-            {loading && historyEntries.length === 0 && (
-              <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 px-4">
-                <GifLoader size={72} alt="Loading" />
-                <div className="text-white text-lg text-center">Loading generations...</div>
-              </div>
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-4 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
+            <div className="flex items-center justify-between md:mb-2 mb-0">
+              <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
             </div>
-          )}
 
-          <div>
-            {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
-            {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
+            {/* Desktop: Search, Sort, and Date controls - on same line */}
 
-            {/* History Entries - Grouped by Date */}
-            <div className=" space-y-8 md:px-0 px-2 ">
-              {sortedDates.map((date) => (
-                <div key={date} className="space-y-4">
-                  {/* Date Header */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="text-white/60"
-                      >
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {formatDate(date)}
-                    </h3>
+          </div>
+
+          {/* Mobile: Search, Sort, and Date controls */}
+          {/* <div className="flex md:hidden flex-col gap-1 mt-2">
+              First row: Sort buttons
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setSortOrder('desc')}
+                  className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                  aria-label="Newest"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+                    <span className="text-xs">Newest</span>
                   </div>
-
-                  {/* All Images for this Date - Simple Grid with stable layout */}
-                  <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
-                    {/* Prepend local preview tiles at the start of today's row to push images right */}
-                    {/* CRITICAL: Only show localGeneratingEntries if they don't already exist in historyEntries to prevent duplicates */}
-                    {date === todayKey && localGeneratingEntries.length > 0 && (() => {
-                      const localEntry = localGeneratingEntries[0];
-                      const localEntryId = localEntry.id;
-                      const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
-
-                      console.log('[DEBUG LocalEntry Render] Checking if local entry should render:', {
-                        localEntryId,
-                        localFirebaseId,
-                        localEntryStatus: localEntry.status,
-                        localEntryImageCount: localEntry.images?.length || 0,
-                        refSize: historyEntryIdsRef.current.size,
-                        refContents: Array.from(historyEntryIdsRef.current),
-                        historyEntriesCount: historyEntries.length,
-                        groupedByDateCount: groupedByDate[date]?.length || 0
-                      });
-
-                      // FIRST CHECK: Check ref (updated immediately when entry is added to history)
-                      // This catches duplicates even before Redux state propagates
-                      const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
-                        (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
-
-                      console.log('[DEBUG LocalEntry Render] Ref check result:', {
-                        existsInRef,
-                        localEntryIdInRef: localEntryId ? historyEntryIdsRef.current.has(localEntryId) : false,
-                        localFirebaseIdInRef: localFirebaseId ? historyEntryIdsRef.current.has(localFirebaseId) : false
-                      });
-
-                      // SECOND CHECK: Check historyEntries (from Redux selector)
-                      const existsInHistory = historyEntries.some((e: HistoryEntry) => {
-                        const eId = e.id;
-                        const eFirebaseId = (e as any)?.firebaseHistoryId;
-                        // Check all possible ID matches - comprehensive check
-                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                        return false;
-                      });
-
-                      const matchingHistoryEntry = historyEntries.find((e: HistoryEntry) => {
-                        const eId = e.id;
-                        const eFirebaseId = (e as any)?.firebaseHistoryId;
-                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                        return false;
-                      });
-
-                      console.log('[DEBUG LocalEntry Render] History check result:', {
-                        existsInHistory,
-                        matchingEntry: matchingHistoryEntry ? {
-                          id: matchingHistoryEntry.id,
-                          firebaseId: (matchingHistoryEntry as any)?.firebaseHistoryId,
-                          status: matchingHistoryEntry.status,
-                          imageCount: matchingHistoryEntry.images?.length || 0
-                        } : null
-                      });
-
-                      // THIRD CHECK: Check groupedByDate (might have entries not yet in historyEntries)
-                      const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
-                        const eId = e.id;
-                        const eFirebaseId = (e as any)?.firebaseHistoryId;
-                        // Check all possible ID matches
-                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                        return false;
-                      });
-
-                      const matchingGroupedEntry = groupedByDate[date]?.find((e: HistoryEntry) => {
-                        const eId = e.id;
-                        const eFirebaseId = (e as any)?.firebaseHistoryId;
-                        if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                        if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                        return false;
-                      });
-
-                      console.log('[DEBUG LocalEntry Render] Grouped check result:', {
-                        existsInGrouped,
-                        matchingEntry: matchingGroupedEntry ? {
-                          id: matchingGroupedEntry.id,
-                          firebaseId: (matchingGroupedEntry as any)?.firebaseHistoryId,
-                          status: matchingGroupedEntry.status,
-                          imageCount: matchingGroupedEntry.images?.length || 0
-                        } : null
-                      });
-
-                      // CRITICAL: If entry exists ANYWHERE (ref, history, or grouped), IMMEDIATELY don't show local entry
-                      // This is the primary duplicate prevention - once in history, history handles all rendering
-                      if (existsInRef || existsInHistory || existsInGrouped) {
-                        console.log('[DEBUG LocalEntry Render] BLOCKING local entry render (duplicate detected):', {
-                          existsInRef,
-                          existsInHistory,
-                          existsInGrouped,
-                          localEntryId,
-                          localFirebaseId
-                        });
-                        return null;
+                </button>
+                <button
+                  onClick={() => setSortOrder('asc')}
+                  className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                  aria-label="Oldest"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+                    <span className="text-xs">Oldest</span>
+                  </div>
+                </button>
+              </div>
+              
+              Second row: Search input and Date picker
+              <div className="flex items-center gap-1 w-full">
+                Search Input - placed before date picker
+                <div className="flex-1 relative flex items-center">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by prompt..."
+                    className={`w-full px-2 py-1 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 placeholder:text-xs ${searchQuery ? 'pr-10' : ''}`}
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                
+                Date picker
+                <div className="relative flex items-center gap-1">
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={dateInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setDateInput(value);
+                      if (!value) {
+                        setDateRange({ start: null, end: null });
+                        return;
                       }
+                      const d = new Date(value + 'T00:00:00');
+                      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                      setDateRange({ start, end });
+                    }}
+                    style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+                  />
+                  <button
+                    onClick={() => {
+                      const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                      setCalendarMonth(base.getMonth());
+                      setCalendarYear(base.getFullYear());
+                      setShowCalendar((v) => !v);
+                    }}
+                    className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                    aria-label="Date"
+                  >
+                    <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+                  </button>
+                  {showCalendar && (
+                    <div ref={calendarRef} className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2">
+                      <div className="flex items-center justify-between mb-0 text-white">
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                          setCalendarYear(prev.getFullYear());
+                          setCalendarMonth(prev.getMonth());
+                        }}>‹</button>
+                        <div className="text-sm font-semibold">
+                          {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                        </div>
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const next = new Date(calendarYear, calendarMonth + 1, 1);
+                          setCalendarYear(next.getFullYear());
+                          setCalendarMonth(next.getMonth());
+                        }}>›</button>
+                      </div>
+                      <div className="grid grid-cols-7 text-[11px] text-white/70 mb-0">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                          <div key={`pad-${i}`} className="h-6 text-xs" />
+                        ))}
+                        {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                          const day = i + 1;
+                          const thisDate = new Date(calendarYear, calendarMonth, day);
+                          const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                          return (
+                            <button
+                              key={day}
+                              className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                              onClick={() => {
+                                const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                                const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                                setDateInput(thisDate.toISOString().slice(0, 10));
+                                setDateRange({ start, end });
+                                setShowCalendar(false);
+                              }}
+                            >{day}</button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <button className="text-white/80 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          setDateInput('');
+                          setDateRange({ start: null, end: null });
+                          setShowCalendar(false);
+                        }}>Clear</button>
+                        <button className="text-white/90 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const now = new Date();
+                          setCalendarMonth(now.getMonth());
+                          setCalendarYear(now.getFullYear());
+                        }}>Today</button>
+                      </div>
+                    </div>
+                  )}
+                  {dateRange.start && (
+                    <button
+                      className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                      onClick={() => {
+                        setDateInput('');
+                        setDateRange({ start: null, end: null });
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div> */}
+        </div>
 
-                      // ADDITIONAL SAFETY CHECK: If local entry is completed and we have history entries,
-                      // don't show it (it should have been cleared, but if not, prevent duplicate)
-                      // Since there's only one local entry at a time, if it's completed and history exists, it's likely a duplicate
-                      if (localEntry.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
-                        console.log('[DEBUG LocalEntry Render] BLOCKING completed local entry (safety check - history exists):', {
-                          localEntryId,
-                          localFirebaseId,
-                          historyEntriesCount: historyEntries.length,
-                          groupedCount: groupedByDate[date]?.length || 0,
-                          status: localEntry.status
-                        });
-                        return null;
+        {/* <div className="hidden md:flex items-center justify-end gap-2 md:mt-5 -mb-4">
+              Search Input
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by prompt..."
+                  className={`px-4 py-2 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              Sort buttons
+              <button
+                onClick={() => setSortOrder('desc')}
+                className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Newest"
+              >
+                <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Newest</span>
+              </button>
+              <button
+                onClick={() => setSortOrder('asc')}
+                className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Oldest"
+              >
+                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Oldest</span>
+              </button>
+
+              Date picker
+              <div className="relative ml-0 flex items-center gap-2">
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={dateInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setDateInput(value);
+                      if (!value) {
+                        setDateRange({ start: null, end: null });
+                        return;
                       }
+                      const d = new Date(value + 'T00:00:00');
+                      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                      setDateRange({ start, end });
+                    }}
+                    style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+                  />
+                  <button
+                    onClick={() => {
+                      const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                      setCalendarMonth(base.getMonth());
+                      setCalendarYear(base.getFullYear());
+                      setShowCalendar((v) => !v);
+                    }}
+                    className={`relative group px-1 py-1 rounded-lg text-sm ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                    aria-label="Date"
+                  >
+                    <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-6 h-6`} />
+                    <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Date</span>
+                  </button>
 
-                      console.log('[DEBUG LocalEntry Render] ALLOWING local entry render (no duplicates found):', {
-                        localEntryId,
-                        localFirebaseId,
-                        status: localEntry.status
-                      });
+                  {showCalendar && (
+                    <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                      <div className="flex items-center justify-between mb-2 text-white">
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                          setCalendarYear(prev.getFullYear());
+                          setCalendarMonth(prev.getMonth());
+                        }}>‹</button>
+                        <div className="text-sm font-semibold">
+                          {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                        </div>
+                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const next = new Date(calendarYear, calendarMonth + 1, 1);
+                          setCalendarYear(next.getFullYear());
+                          setCalendarMonth(next.getMonth());
+                        }}>›</button>
+                      </div>
+                      <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                          <div key={`pad-${i}`} className="h-8" />
+                        ))}
+                        {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                          const day = i + 1;
+                          const thisDate = new Date(calendarYear, calendarMonth, day);
+                          const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                          return (
+                            <button
+                              key={day}
+                              className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                              onClick={() => {
+                                const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                                const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                                setDateInput(thisDate.toISOString().slice(0, 10));
+                                setDateRange({ start, end });
+                                setShowCalendar(false);
+                              }}
+                            >{day}</button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          setDateInput('');
+                          setDateRange({ start: null, end: null });
+                          setShowCalendar(false);
+                        }}>Clear</button>
+                        <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                          const now = new Date();
+                          setCalendarMonth(now.getMonth());
+                          setCalendarYear(now.getFullYear());
+                        }}>Today</button>
+                      </div>
+                    </div>
+                  )}
+                  {dateRange.start && (
+                    <button
+                      className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                      onClick={() => {
+                        setDateInput('');
+                        setDateRange({ start: null, end: null });
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div> */}
 
-                      return (
-                        <>
-                          {localEntry.images.map((image: any, idx: number) => {
-                            // Generate unique key for local entries to prevent duplicates
-                            const localEntryId = localEntry.id || (localEntry as any)?.firebaseHistoryId || `local-${Date.now()}`;
-                            const uniqueImageKey = image?.id ? `local-${localEntryId}-${image.id}` : `local-${localEntryId}-img-${idx}`;
+        {/* Spacer to keep content below fixed header */}
 
-                            return (
-                              <div
-                                key={uniqueImageKey}
-                                className="image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
-                                style={{ minHeight: localEntry.status === 'generating' ? '165px' : undefined }}
-                              >
-                                <div className="absolute inset-0 group animate-fade-in-up" style={{
-                                  animation: 'fadeInUp 0.6s ease-out forwards',
-                                  opacity: 0,
-                                }} onAnimationEnd={(e) => {
-                                  e.currentTarget.style.opacity = '1';
-                                }}>
-                                  {/* Always show loading overlay when generating, even if no image URL yet */}
-                                  {localEntry.status === 'generating' && (
-                                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 z-10">
-                                      <div className="flex flex-col items-center gap-2">
-                                        <GifLoader size={64} alt="Generating" />
-                                        <div className="text-xs text-white/60 text-center">Generating...</div>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {(image?.thumbnailUrl || image?.avifUrl || image?.url || image?.originalUrl) ? (
+        {/* Initial loading overlay - show when loading and no entries */}
+        {loading && historyEntries.length === 0 && (
+          <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 px-4">
+              <GifLoader size={72} alt="Loading" />
+              <div className="text-white text-lg text-center">Loading generations...</div>
+            </div>
+          </div>
+        )}
+
+        {/* Filtering overlay - show when filtering/searching */}
+        {isFiltering && (
+          <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 px-4">
+              <GifLoader size={72} alt="Filtering" />
+              <div className="text-white text-lg text-center">Filtering generations...</div>
+            </div>
+          </div>
+        )}
+
+        <div>
+          {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
+          {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
+
+          {/* History Entries - Grouped by Date */}
+          <div className=" space-y-4 md:px-0 px-2 md:mt-6 ">
+            {sortedDates.map((date) => (
+              <div key={date} className="space-y-2 md:-mt-2">
+                {/* Date Header */}
+                <div className="flex items-center md:mx-8  md:gap-2 gap-2">
+                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="text-white/60"
+                    >
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-medium text-white/70">
+                    {formatDate(date)}
+                  </h3>
+                </div>
+
+                {/* All Images for this Date - Simple Grid with stable layout */}
+                <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
+                  {/* Local entries are now merged into history entries below, so we don't render them separately here */}
+                  {/* This prevents the "two frames" issue where local and history entries both render */}
+
+                  {/* Render all entries for this date - includes both history and merged local entries */}
+                  {(() => {
+                    // Since local entries are now merged into groupedByDate, just render all entries
+                    const allEntries = groupedByDate[date] || [];
+
+                    return allEntries.flatMap((entry: HistoryEntry) => {
+                      // Check if entry has ready images
+                      const hasImages = entry.images && entry.images.length > 0;
+                      const hasReadyImages = hasImages && entry.images.some((img: any) =>
+                        img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
+                      );
+
+                      return entry.images.map((image: any, imgIdx: number) => {
+                        // Generate unique key: use image.id if available, otherwise use index
+                        // This prevents duplicate keys when image.id is undefined
+                        const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
+                        const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
+                        const isImageLoaded = loadedImages.has(uniqueImageKey);
+
+                        // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
+                        // This prevents the frame from disappearing during the transition
+                        // For images that have URLs, check if they're loaded
+                        const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
+                        const shouldShowLoading = entry.status === "generating" ||
+                          (entry.status === "completed" && hasImageUrl && !isImageLoaded);
+
+                        // Check if this is a newly loaded entry for animation
+                        // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
+                        // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
+                        const isNewEntry = !previousEntriesRef.current.has(entry.id);
+
+                        return (
+                          <div
+                            key={uniqueImageKey}
+                            data-image-id={uniqueImageId}
+                            onClick={() => setPreview({ entry, image })}
+                            className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
+                              }`}
+                            style={{
+                              ...(isNewEntry ? {
+                                animation: 'fadeInUp 0.6s ease-out forwards',
+                                opacity: 0,
+                              } : {}),
+                            }}
+                            onAnimationEnd={(e) => {
+                              if (isNewEntry) {
+                                e.currentTarget.style.opacity = '1';
+                              }
+                            }}
+                          >
+                            {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
+                            {entry.status === "failed" ? (
+                              // Error frame
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
+                                <div className="flex flex-col items-center gap-2">
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="text-red-400"
+                                  >
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                  </svg>
+                                  <div className="text-xs text-red-400">Failed</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {/* Image - always render so onLoad fires */}
+                                {hasImageUrl && (
+                                  <div className="absolute inset-0 group">
                                     <img
-                                      src={image.thumbnailUrl || image.avifUrl || image.url || image.originalUrl}
+                                      src={image.thumbnailUrl || image.avifUrl || image.url}
                                       alt=""
                                       loading="lazy"
                                       decoding="async"
-                                      className="absolute inset-0 w-full h-full object-contain"
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                       onLoad={() => {
                                         setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
                                       }}
                                     />
-                                  ) : localEntry.status !== 'generating' ? (
-                                    // Only show shimmer if not generating (generating shows GIF loader)
-                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                  ) : null}
-                                  {!loadedImages.has(uniqueImageKey) && localEntry.status !== 'generating' && (
-                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                  )}
-                                  {localEntry.status === 'failed' && (
-                                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20 z-10">
-                                      <div className="flex flex-col items-center gap-2">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                        </svg>
-                                        <div className="text-xs text-red-400">Failed</div>
+                                    {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                    {!isImageLoaded && (
+                                      <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                    )}
+                                    {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                                    <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                      <button
+                                        aria-label="Recreate image"
+                                        className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => handleRecreate(e, entry)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                      </button>
+
+                                    </div>
+                                    <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                      <button
+                                        aria-label="Delete image"
+                                        className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                        onClick={(e) => handleDeleteImage(e, entry)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Loading overlay - show on top of image while loading */}
+                                {shouldShowLoading && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
+                                    <div className="flex flex-col items-center gap-2">
+                                      <GifLoader size={64} alt="Generating" />
+                                      <div className="text-xs text-white/60 text-center">
+                                        {entry.status === "generating" ? "Generating..." : "Loading..."}
                                       </div>
                                     </div>
-                                  )}
-                                  {localEntry.status === 'completed' && (
-                                    <>
-                                      {/* Hover copy button overlay */}
-                                      <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                        <button
-                                          aria-label="Copy prompt"
-                                          className="pointer-events-auto p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-sm"
-                                          onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(prompt)); }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                        >
-                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                        </button>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                    {/* Render history entries - filter out any that match local entries to prevent duplicates */}
-                    {(() => {
-                      // Create a set of all local entry IDs for fast lookup
-                      const localEntryIds = new Set<string>();
-                      if (date === todayKey && localGeneratingEntries.length > 0) {
-                        localGeneratingEntries.forEach((localEntry) => {
-                          const localEntryId = localEntry.id;
-                          const localFirebaseId = (localEntry as any)?.firebaseHistoryId;
-                          if (localEntryId) localEntryIds.add(localEntryId);
-                          if (localFirebaseId) localEntryIds.add(localFirebaseId);
-                        });
-                      }
-
-                      // Filter out history entries that match local entries
-                      const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
-                        if (localEntryIds.size === 0) return true; // No local entries, show all history
-                        const entryId = entry.id;
-                        const entryFirebaseId = (entry as any)?.firebaseHistoryId;
-                        // If history entry matches any local entry ID, filter it out (local will show instead)
-                        if (entryId && localEntryIds.has(entryId)) return false;
-                        if (entryFirebaseId && localEntryIds.has(entryFirebaseId)) return false;
-                        return true;
-                      });
-
-                      return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
-                        // Check if entry has ready images
-                        const hasImages = entry.images && entry.images.length > 0;
-                        const hasReadyImages = hasImages && entry.images.some((img: any) =>
-                          img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          </div>
                         );
-                        // Show loading if generating OR if completed but no ready images yet
-                        const shouldShowLoading = entry.status === "generating" ||
-                          (entry.status === "completed" && !hasReadyImages);
-
-                        return entry.images.map((image: any, imgIdx: number) => {
-                          // Generate unique key: use image.id if available, otherwise use index
-                          // This prevents duplicate keys when image.id is undefined
-                          const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
-                          const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
-                          const isImageLoaded = loadedImages.has(uniqueImageKey);
-
-                          // Check if this is a newly loaded entry for animation
-                          // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
-                          // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
-                          const isNewEntry = !previousEntriesRef.current.has(entry.id);
-
-                          return (
-                            <div
-                              key={uniqueImageKey}
-                              data-image-id={uniqueImageId}
-                              onClick={() => setPreview({ entry, image })}
-                              className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
-                                }`}
-                              style={{
-                                ...(isNewEntry ? {
-                                  animation: 'fadeInUp 0.6s ease-out forwards',
-                                  opacity: 0,
-                                } : {}),
-                              }}
-                              onAnimationEnd={(e) => {
-                                if (isNewEntry) {
-                                  e.currentTarget.style.opacity = '1';
-                                }
-                              }}
-                            >
-                              {shouldShowLoading ? (
-                                // Loading frame - show if generating OR if completed but no images ready yet
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                  <div className="flex flex-col items-center gap-2">
-                                    <GifLoader size={64} alt="Generating" />
-
-                                    <div className="text-xs text-white/60 text-center">
-                                      {entry.status === "generating" ? "Generating..." : "Loading..."}
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : entry.status === "failed" ? (
-                                // Error frame
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                  <div className="flex flex-col items-center gap-2">
-                                    <svg
-                                      width="20"
-                                      height="20"
-                                      viewBox="0 0 24 24"
-                                      fill="currentColor"
-                                      className="text-red-400"
-                                    >
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                    </svg>
-                                    <div className="text-xs text-red-400">Failed</div>
-                                  </div>
-                                </div>
-                              ) : (
-                                // Completed image
-                                <div className="absolute inset-0 group">
-                                  <img
-                                    src={image.thumbnailUrl || image.avifUrl || image.url}
-                                    alt=""
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                    onLoad={() => {
-                                      setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                    }}
-                                  />
-                                  {/* Shimmer loading effect - only show if image hasn't loaded yet */}
-                                  {!isImageLoaded && (
-                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                  )}
-                                  {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                                  <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                    <button
-                                      aria-label="Recreate image"
-                                      className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => handleRecreate(e, entry)}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
-                                    </button>
-
-                                  </div>
-                                  <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
-                                    <button
-                                      aria-label="Delete image"
-                                      className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                      onClick={(e) => handleDeleteImage(e, entry)}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                            </div>
-                          );
-                        });
                       });
-                    })()}
-                  </div>
+                    });
+                  })()}
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {/* Scroll pagination loading indicator */}
-              {loading && historyEntries.length > 0 && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="flex flex-col items-center gap-3">
-                    <GifLoader size={48} alt="Loading more" />
-                    <div className="text-white/70 text-sm">Loading more generations...</div>
-                  </div>
+            {/* Scroll pagination loading indicator */}
+            {loading && historyEntries.length > 0 && (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex flex-col items-center gap-3">
+                  <GifLoader size={48} alt="Loading more" />
+                  <div className="text-white/70 text-sm">Loading more generations...</div>
                 </div>
-              )}
+              </div>
+            )}
 
 
-            </div>
-            {/* Infinite scroll sentinel inside scroll container */}
-            <div ref={sentinelRef} style={{ height: 24 }} />
           </div>
+          {/* Infinite scroll sentinel inside scroll container */}
+          <div ref={sentinelRef} style={{ height: 24 }} />
         </div>
       </div>
+
       {/* Mobile-only: Selected images/characters grid above input box */}
       {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
@@ -3766,8 +4223,8 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed md:bottom-6 bottom-0 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div className="rounded-lg md:rounded-b-lg rounded-b-none bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
+      <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
           {/* Top row: prompt + actions */}
           <div className="flex items-stretch md:gap-0 gap-0">
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
@@ -3889,7 +4346,7 @@ const InputBox = () => {
                   const inputEvent = new Event('input', { bubbles: true });
                   e.currentTarget.dispatchEvent(inputEvent);
                 }}
-                className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'
+                className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}
                   }`}
                 style={{
                   minHeight: '100px',
@@ -3902,15 +4359,7 @@ const InputBox = () => {
                 }}
                 data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
               />
-              {/* Enhancement overlay */}
-              {isEnhancing && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-40 rounded-lg pointer-events-none">
-                  <div className="flex items-center gap-2">
-                    <svg className="animate-spin text-white/90" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 110 16 8 8 0 010-16z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    <div className="text-white/90 text-sm">Enhancing…</div>
-                  </div>
-                </div>
-              )}
+              {/* Enhancement overlay removed - text shines instead */}
               {/* Fixed position buttons container */}
               <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
                 {/* Clear prompt button - only show when there's text */}
@@ -3951,7 +4400,7 @@ const InputBox = () => {
                   </div>
                 )}
                 {/* Desktop-only: Previews just to the left of upload */}
-                
+
                 {/* Mobile: Single column on right | Desktop: Horizontal row */}
                 <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
                   {/* Enhance prompt button (manual trigger) */}
@@ -4016,92 +4465,92 @@ const InputBox = () => {
 
           {/* Bottom row: pill options */}
           {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-                  <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[100vw] md:max-w-none pr-1 no-scrollbar mb-1">
-                    {/* Selected Characters Preview */}
-                    {selectedCharacters.map((character: any) => (
-                      <div
-                        key={character.id}
-                        className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
-                        title={`Character: ${character.name}`}
-                      >
-                        <img
-                          src={character.frontImageUrl}
-                          alt={character.name}
-                          aria-hidden="true"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                            C
-                          </div>
-                        </div>
-                        <button
-                          aria-label={`Remove character ${character.name}`}
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            dispatch(removeSelectedCharacter(character.id));
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    {/* Uploaded Images Preview */}
-                    {uploadedImages.map((u: string, i: number) => {
-                      const count = uploadedImages.length;
-                      const sizeClass = count >= 9 ? 'w-12 h-12' : count >= 6 ? 'w-12 h-12' : 'w-12 h-12';
-                      return (
-                        <div
-                          key={i}
-                          data-image-index={i}
-                          title={`Image ${i + 1} (index ${i})`}
-                          className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: u,
-                              assetType: 'image',
-                              title: `Uploaded Image ${i + 1}`
-                            });
-                          }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={u}
-                            alt=""
-                            aria-hidden="true"
-                            decoding="async"
-                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                          />
-                          {/* Number badge (1-based display, zero-based in payload order) */}
-                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                              {i + 1}
-                            </div>
-                          </div>
-                          <button
-                            aria-label="Remove reference"
-                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const next = uploadedImages.filter(
-                                (_: string, idx: number) => idx !== i
-                              );
-                              dispatch(setUploadedImages(next));
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      );
-                    })}
+            <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[100vw] md:max-w-none pr-1 no-scrollbar mb-1">
+              {/* Selected Characters Preview */}
+              {selectedCharacters.map((character: any) => (
+                <div
+                  key={character.id}
+                  className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                  title={`Character: ${character.name}`}
+                >
+                  <img
+                    src={character.frontImageUrl}
+                    alt={character.name}
+                    aria-hidden="true"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                  />
+                  <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                    <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                      C
+                    </div>
                   </div>
-                )}
+                  <button
+                    aria-label={`Remove character ${character.name}`}
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dispatch(removeSelectedCharacter(character.id));
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {/* Uploaded Images Preview */}
+              {uploadedImages.map((u: string, i: number) => {
+                const count = uploadedImages.length;
+                const sizeClass = count >= 9 ? 'w-12 h-12' : count >= 6 ? 'w-12 h-12' : 'w-12 h-12';
+                return (
+                  <div
+                    key={i}
+                    data-image-index={i}
+                    title={`Image ${i + 1} (index ${i})`}
+                    className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
+                    onClick={() => {
+                      setAssetViewer({
+                        isOpen: true,
+                        assetUrl: u,
+                        assetType: 'image',
+                        title: `Uploaded Image ${i + 1}`
+                      });
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={u}
+                      alt=""
+                      aria-hidden="true"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                    />
+                    {/* Number badge (1-based display, zero-based in payload order) */}
+                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                        {i + 1}
+                      </div>
+                    </div>
+                    <button
+                      aria-label="Remove reference"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = uploadedImages.filter(
+                          (_: string, idx: number) => idx !== i
+                        );
+                        dispatch(setUploadedImages(next));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
             {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
-            
+
             <div className="flex items-center justify-between gap-3 md:hidden w-full">
               <div className="flex-1">
                 <ModelsDropdown />
@@ -4126,67 +4575,76 @@ const InputBox = () => {
               <PhoenixOptions />
               <FileTypeDropdown />
               {selectedModel === 'google/nano-banana-pro' && (
-                  <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={nanoBananaProResolution}
-                      onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
-                      options={['1K', '2K', '4K']}
-                      dropdownId="nanoBananaProResolution"
-                    />
-                  </div>
-                )}
-                {selectedModel === 'flux-2-pro' && (
-                  <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={flux2ProResolution}
-                      onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
-                      options={['1K', '2K']}
-                      dropdownId="flux2ProResolution"
-                    />
-                  </div>
-                )}
-                {selectedModel === 'seedream-v4' && (
-                  <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={seedreamSize}
-                      onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
-                      options={['1K', '2K', '4K', 'custom']}
-                      dropdownId="seedreamSize"
-                    />
-                    {seedreamSize === 'custom' && (
-                      <>
-                        <input
-                          type="number"
-                          min={1024}
-                          max={4096}
-                          value={seedreamWidth}
-                          onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
-                          placeholder="Width"
-                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                        />
-                        <input
-                          type="number"
-                          min={1024}
-                          max={4096}
-                          value={seedreamHeight}
-                          onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
-                          placeholder="Height"
-                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-                {selectedModel === 'new-turbo-model' && (
-                  <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={zTurboResolution}
-                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
-                      options={['1K', '2K']}
-                      dropdownId="zTurboResolution"
-                    />
-                  </div>
-                )}
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={nanoBananaProResolution}
+                    onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
+                    options={['1K', '2K', '4K']}
+                    dropdownId="nanoBananaProResolution"
+                  />
+                </div>
+              )}
+              {selectedModel === 'flux-2-pro' && (
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={flux2ProResolution}
+                    onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
+                    options={['1K', '2K']}
+                    dropdownId="flux2ProResolution"
+                  />
+                </div>
+              )}
+              {selectedModel === 'seedream-4.5' && (
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={seedream45Resolution}
+                    onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                    options={['2K', '4K']}
+                    dropdownId="seedream45Resolution"
+                  />
+                </div>
+              )}
+              {selectedModel === 'seedream-v4' && (
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={seedreamSize}
+                    onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
+                    options={['1K', '2K', '4K', 'custom']}
+                    dropdownId="seedreamSize"
+                  />
+                  {seedreamSize === 'custom' && (
+                    <>
+                      <input
+                        type="number"
+                        min={1024}
+                        max={4096}
+                        value={seedreamWidth}
+                        onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
+                        placeholder="Width"
+                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                      <input
+                        type="number"
+                        min={1024}
+                        max={4096}
+                        value={seedreamHeight}
+                        onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
+                        placeholder="Height"
+                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+              {selectedModel === 'new-turbo-model' && (
+                <div className="flex items-center gap-2 relative">
+                  <ZTurboOutputFormatDropdown
+                    outputFormat={zTurboOutputFormat}
+                    onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                    dropdownId="zTurboOutputFormat"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Desktop: All dropdowns in one row */}
@@ -4219,6 +4677,16 @@ const InputBox = () => {
                     />
                   </div>
                 )}
+                {selectedModel === 'seedream-4.5' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={seedream45Resolution}
+                      onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                      options={['2K', '4K']}
+                      dropdownId="seedream45Resolution"
+                    />
+                  </div>
+                )}
                 {selectedModel === 'seedream-v4' && (
                   <div className="flex items-center gap-2 relative">
                     <ResolutionDropdown
@@ -4253,23 +4721,22 @@ const InputBox = () => {
                 )}
                 {selectedModel === 'new-turbo-model' && (
                   <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={zTurboResolution}
-                      onResolutionChange={(val) => setZTurboResolution(val as '1K' | '2K')}
-                      options={['1K', '2K']}
-                      dropdownId="zTurboResolution"
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={zTurboOutputFormat}
+                      onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                      dropdownId="zTurboOutputFormat"
                     />
                   </div>
                 )}
+              </div>
             </div>
-          </div>
           </div>
         </div>
       </div>
       {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
       {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
-      
+
       {/* Asset Viewer Modal for uploaded assets */}
       <AssetViewerModal
         isOpen={assetViewer.isOpen}

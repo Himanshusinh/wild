@@ -9,6 +9,7 @@ import { getModelDisplayName } from '@/utils/modelDisplayNames'
 
 export type PublicItem = {
   id: string;
+  aestheticScore?: number;
   prompt?: string;
   // Optional rich text fields for audio/music generations
   lyrics?: string;
@@ -24,6 +25,7 @@ export type PublicItem = {
   isDeleted?: boolean;
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
   images?: {
+    aestheticScore?: number;
     id: string;
     url: string;
     originalUrl?: string;
@@ -350,7 +352,7 @@ export default function ArtStationPreview({
             )}
 
             {/* Delete button (owner only) - on same row as Like button */}
-            {currentUid && preview.item.createdBy?.uid === currentUid ? (
+            {/* {currentUid && preview.item.createdBy?.uid === currentUid ? (
               <div className="relative group">
                 <button
                   title="Delete"
@@ -363,7 +365,7 @@ export default function ArtStationPreview({
               </div>
             ) : (
               <div className="w-10 h-10"></div>
-            )}
+            )} */}
           </div>
         </div>
 

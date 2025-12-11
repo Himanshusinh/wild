@@ -1,302 +1,140 @@
 'use client';
 
-// components/CommunityCreations.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from 'next/navigation';
-import Image from "next/image";
-import { toMediaProxy } from '@/lib/thumb'
 import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
 import { API_BASE } from '../routes'
-// Removed SmartImage to avoid blocked thumbnail (403) and delayed preview; using plain <img>
+import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 
-/* ---------- Types ---------- */
-type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | 'Products';
-
-export interface Creation {
-  id: string;
-  src: string;      // thumbnail / optimized URL to render in grid
-  fullSrc?: string; // optional full-quality URL for previews
-  prompt?: string;
-  categories: Category[];
-  width?: number;
-  height?: number;
-  createdBy?: string;
+// Helper to normalize media URL (same as ArtStation) - moved outside component for stability
+const normalizeMediaUrl = (url?: string): string | undefined => {
+  if (!url || typeof url !== 'string') return undefined
+  const trimmed = url.trim()
+  if (!trimmed) return undefined
+  // Reject replicate URLs to prevent 404s - only use Zata URLs
+  if (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com')) {
+    return undefined
+  }
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/api/')) return trimmed
+  // If it's a relative path, assume it's a Zata path and proxy it
+  if (!trimmed.startsWith('/')) return toMediaProxy(trimmed)
+  return toDirectUrl(trimmed)
 }
 
-/* ---------- Small inline icons (no extra deps) ---------- */
-const Icon = {
-  fire: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M13.5 2.6s.4 2.3-1.1 3.8c-1.6 1.6-3.7 1.6-3.7 1.6s.2-1.9-1.2-3.5C5 3 4 2.5 4 2.5s-.5 3.1 1 5.6c1.3 2.1 3.2 2.9 3.2 2.9s-3.2 1.2-3.2 4.6A6 6 0 0 0 11 22a6 6 0 0 0 6-6c0-3.9-2.6-5.9-3.5-6.8-.8-.8-0-2.6 0-5.6z" />
-    </svg>
-  ),
-  grid: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z" />
-    </svg>
-  ),
-  video: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M17 10.5V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3.5l5 3.5V7l-5 3.5z" />
-    </svg>
-  ),
-  camera: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M9 3l-2 2H4a3 3 0 0 0-3 3v9a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3h-3l-2-2H9z" />
-      <circle cx="12" cy="13" r="4" />
-    </svg>
-  ),
-  paw: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="5.5" cy="9" r="2.2" /><circle cx="9.5" cy="6" r="2.2" />
-      <circle cx="14.5" cy="6" r="2.2" /><circle cx="18.5" cy="9" r="2.2" />
-      <path d="M7 16c0-2.2 2.2-4 5-4s5 1.8 5 4-2.2 4-5 4-5-1.8-5-4z" />
-    </svg>
-  ),
-  burger: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M3 11h18v2H3zM3 7h18a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3zM3 15h18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" />
-    </svg>
-  ),
-  user: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="12" cy="8" r="4" /><path d="M4 20a8 8 0 0 1 16 0" />
-    </svg>
-  ),
-  chevronDown: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  ),
-};
-
-/* ---------- Chip meta aligned with ArtStation categories ---------- */
-const CHIPS: { key: Category; label: string; icon: React.ReactElement }[] = [
-  { key: 'All', label: 'All', icon: Icon.grid },
-  { key: 'Images', label: 'Images', icon: Icon.camera },
-  { key: 'Videos', label: 'Videos', icon: Icon.video },
-  // { key: 'Music', label: 'Music', icon: Icon.grid },
-  // { key: 'Logos', label: 'Logos', icon: Icon.grid },
-  // { key: 'Stickers', label: 'Stickers', icon: Icon.grid },
-  // { key: 'Products', label: 'Products', icon: Icon.grid },
-];
-
-/* ---------- Pill Button ---------- */
-function Chip({
-  active,
-  children,
-  onClick,
-  leftIcon,
-  rightIcon,
-}: {
-  active?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 md:px-4 px-2 md:py-2.5 py-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border ${
-        active
-          ? 'bg-white  text-black shadow-sm'
-          : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-      }`}
-    >
-      {leftIcon && <span className="text-white/90">{leftIcon}</span>}
-      {children}
-      {rightIcon && <span className="text-white/90">{rightIcon}</span>}
-    </button>
-  );
+// Resolve media URL with fallbacks (same as ArtStation) - moved outside component for stability
+const resolveMediaUrl = (m: any): string | undefined => {
+  if (!m) return undefined
+  // Try multiple URL properties in order of preference
+  const candidates = [
+    m.url,
+    m.webpUrl,
+    m.avifUrl,
+    m.thumbnailUrl,
+    m.storagePath,
+  ]
+  for (const candidate of candidates) {
+    const normalized = normalizeMediaUrl(candidate)
+    if (normalized) return normalized
+  }
+  return undefined
 }
 
-/* ---------- Card (unchanged) ---------- */
-function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible: boolean; setRef: (el: HTMLDivElement | null) => void; onClick?: () => void }) {
-  const ratio = item.width && item.height ? item.height / item.width : 4 / 5;
-  const src = item.src || ''
-  const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
-  const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
-
-  return (
-    <div ref={setRef} className={`break-inside-avoid mb-1 inline-block w-full align-top transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'}`}>
-      <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5 cursor-pointer" onClick={onClick}>
-        <div style={{ aspectRatio: `${1 / ratio}` }} className="relative w-full">
-          {isAudio ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0a0f1a] to-[#1a2a3d]">
-              <div className="flex flex-col items-center text-white/80">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                </svg>
-                <span className="text-xs mt-2">Audio</span>
-              </div>
-            </div>
-          ) : isVideo ? (
-            (() => {
-              const proxied = toMediaProxy(src)
-              const videoSrc = proxied || src
-              return (
-                <video
-                  src={videoSrc}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  muted
-                  playsInline
-                  preload="metadata"
-                />
-              );
-            })()
-          ) : (
-            (() => {
-              // For images: use the provided optimized thumbnail URL (src),
-              // and fall back to fullSrc or original src on error.
-              const { fullSrc } = item
-              return (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={src}
-                  alt={item.prompt ?? ''}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => {
-                    const img = e.currentTarget as HTMLImageElement
-                    if (fullSrc && img.src !== fullSrc) {
-                      img.src = fullSrc
-                      return
-                    }
-                  }}
-                />
-              )
-            })()
-          )}
-        </div>
-        {/* Hover overlay and hover ring removed to prevent showing prompt/credit on hover */}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Main component ---------- */
 export default function CommunityCreations({
-  items,
-  initialFilter = "All",
   className = "",
 }: {
-  items: Creation[];
-  initialFilter?: Category;
   className?: string;
 }) {
-  const [active, setActive] = useState<Category>(initialFilter);
   const router = useRouter();
-  const [loading, setLoading] = useState<boolean>(false);
-  
-  // Removed debug log for production performance
-  const [preview, setPreview] = useState<Creation | null>(null)
-  const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
-  const [currentUid, setCurrentUid] = useState<string | null>(null)
-  const [currentUser, setCurrentUser] = useState<{ uid?: string; username?: string; displayName?: string; photoURL?: string } | null>(null)
-  const [previewFullItem, setPreviewFullItem] = useState<PublicItem | null>(null)
+  const [items, setItems] = useState<PublicItem[]>([])
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PublicItem | null>(null)
 
-  const toggleLike = (cardId: string) => {
-    setLikedCards(prev => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId); else next.add(cardId)
-      return next
-    })
-  }
-
+  // Fetch from our new cached API with better error handling
   useEffect(() => {
-    try {
-      const userStr = localStorage.getItem('user')
-      if (userStr) {
-        const u = JSON.parse(userStr)
-        setCurrentUid(u?.uid || null)
-        setCurrentUser({ uid: u?.uid, username: u?.username || u?.displayName, displayName: u?.displayName || u?.username, photoURL: u?.photoURL || u?.photoUrl })
+    const fetchItems = async () => {
+      try {
+        setError(null)
+        const res = await fetch('/api/community-showcase', {
+          credentials: 'include',
+          cache: 'force-cache', // Use cached version when available
+        })
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+        }
+        
+        const json = await res.json()
+        
+        if (json.responseStatus === 'success' && Array.isArray(json.data)) {
+          // Validate and filter items to ensure they have valid image data
+          const validItems = json.data.filter((item: PublicItem) => {
+            // Must have an ID
+            if (!item?.id) return false
+            
+            // Must have at least one valid image with a resolvable URL
+            if (Array.isArray(item.images) && item.images.length > 0) {
+              const hasValidImage = item.images.some((img: any) => {
+                const url = resolveMediaUrl(img)
+                return !!url && url.length > 0
+              })
+              if (hasValidImage) return true
+            }
+            
+            // Try to resolve from root level if images array is empty
+            const rootUrl = resolveMediaUrl(item)
+            return !!rootUrl && rootUrl.length > 0
+          })
+          
+          setItems(validItems)
+        } else {
+          throw new Error('Invalid response format')
+        }
+      } catch (e: any) {
+        console.error('[CommunityCreations] Failed to load community creations', e)
+        setError(e?.message || 'Failed to load community creations')
+        setItems([]) // Set empty array on error
+      } finally {
+        setLoading(false)
       }
-    } catch {}
+    }
+    fetchItems()
   }, [])
 
-  // Enrich preview with full generation details (model, creator profile, aspect ratio)
-  useEffect(() => {
-    let cancelled = false
-    const fetchDetails = async (id: string) => {
-      try {
-        const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-        const res = await fetch(`${baseUrl}/api/generations/${id}`, { credentials: 'include' })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        const it = (data?.data || data)
-        const normalizeDate = (d: any) => typeof d === 'string' ? d : (d && typeof d === 'object' && typeof d._seconds === 'number' ? new Date(d._seconds * 1000).toISOString() : undefined)
-        const normalized: PublicItem = {
-          id: it?.id || id,
-          prompt: it?.prompt,
-          generationType: it?.generationType,
-          model: it?.model,
-          aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
-          frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
-          aspect_ratio: it?.aspect_ratio,
-          createdAt: normalizeDate(it?.createdAt) || it?.createdAt,
-          updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
-          isPublic: it?.isPublic !== false,
-          isDeleted: it?.isDeleted === true,
-          createdBy: it?.createdBy || it?.user || undefined,
-          images: Array.isArray(it?.images) ? it.images : undefined,
-          videos: Array.isArray(it?.videos) ? it.videos : undefined,
-          audios: Array.isArray(it?.audios) ? it.audios : undefined,
+  // Prepare cards for Masonry with validation
+  const cards = useMemo(() => {
+    return items
+      .map(item => {
+        // Find the best image with valid URL
+        let img = item.images?.[0]
+        let mediaUrl = resolveMediaUrl(img)
+        
+        // If no valid image in array, try root level
+        if (!mediaUrl) {
+          mediaUrl = resolveMediaUrl(item)
+          if (mediaUrl) {
+            img = { id: item.id || '0', url: mediaUrl }
+          }
         }
-        if (!cancelled) setPreviewFullItem(normalized)
-      } catch (e) {
-        if (!cancelled) setPreviewFullItem(null)
-      }
-    }
-    if (preview?.id) {
-      setPreviewFullItem(null)
-      fetchDetails(preview.id)
-    } else {
-      setPreviewFullItem(null)
-    }
-    return () => { cancelled = true }
-  }, [preview?.id])
-
-  const filtered = useMemo(() => {
-    if (active === 'All') return items;
-    return items.filter((i) => i.categories.includes(active));
-  }, [active, items]);
-
-  // Limit to ~4-5 rows (with 4 columns ≈ 16-20 items)
-  const limited = useMemo(() => filtered.slice(0, 20), [filtered]);
-  const showOverlay = useMemo(() => active === 'All' && limited.length >= 12, [active, limited]);
-
-  // Staggered reveal like ArtStation
-  const [visibleTiles, setVisibleTiles] = useState<Set<string>>(new Set());
-  const revealRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  useEffect(() => {
-    const io = new IntersectionObserver(entries => {
-      setVisibleTiles(prev => {
-        const next = new Set(prev)
-        entries.forEach(e => {
-          const id = (e.target as HTMLElement).dataset.revealId
-          if (!id) return
-          if (e.isIntersecting) next.add(id)
-        })
-        return next
+        
+        // Only include if we have a valid URL
+        if (!mediaUrl || !img) return null
+        
+        return {
+          item,
+          media: {
+            ...img,
+            url: mediaUrl, // Ensure we use the resolved URL
+          },
+          kind: 'image' as const
+        }
       })
-    }, { root: null, rootMargin: '200px 0px', threshold: 0.1 })
-    Object.entries(revealRefs.current).forEach(([id, el]) => {
-      if (el) {
-        el.dataset.revealId = id
-        io.observe(el)
-      }
-    })
-    return () => io.disconnect()
-  }, [limited])
+      .filter((card): card is NonNullable<typeof card> => card !== null) // Remove null entries
+  }, [items])
 
-  // Mimic category-wise loading like ArtStation when switching categories
-  useEffect(() => {
-    setLoading(true)
-    const id = setTimeout(() => setLoading(false), 350)
-    return () => clearTimeout(id)
-  }, [active])
+  // Limit to 20 items for the homepage
+  const limitedCards = useMemo(() => cards.slice(0, 20), [cards])
 
   return (
     <section className={`w-full ${className}`}>
@@ -304,154 +142,103 @@ export default function CommunityCreations({
         Community Creations
       </h2>
 
-      {/* Filter bar + Explore link */}
-      <div className="md:mb-6 mb-2">
-        <div className="flex items-center md:gap-3 gap-1 overflow-x-auto md:pb-2 scrollbar-none">
-          {CHIPS.map((chip, idx) => {
-            const isActive = chip.key === active;
-            return (
-              <Chip
-                key={`${chip.label}-${idx}`}
-                active={isActive}
-                onClick={() => setActive(chip.key)}
-              >
-                {chip.label}
-              </Chip>
-            );
-          })}
-          <div className="ml-auto">
-            <button
-              onClick={() => router.push('/view/ArtStation')}
-              className="shrink-0 text-white/80 w-40 hover:text-white md:text-sm text-xs font-medium transition-colors flex-nowrap"
-              title="Explore Art Station"
-            >
-              Explore Art Station →
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Masonry grid with conditional overlay */}
-      <div className="relative">
-        {limited.length === 0 && !loading ? (
-          <div className="text-center py-12">
-            <p className="text-white/60 text-lg">No community creations to display</p>
-            <p className="text-white/40 text-sm mt-2">Items received: {items.length}</p>
-          </div>
-        ) : (
-          <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-1 [overflow-anchor:none]">
-            {limited.map((item, idx) => (
-              <Card
-                key={item.id}
-                item={item}
-                isVisible={visibleTiles.has(item.id)}
-                setRef={(el) => { if (el) { el.style.transitionDelay = `${(idx % 12) * 35}ms`; el.dataset.revealId = item.id; revealRefs.current[item.id] = el } }}
-                onClick={() => setPreview(item)}
-              />
-            ))}
-          </div>
-        )}
-        {loading && (
+      {/* Masonry Grid */}
+      <div className="relative min-h-[300px]">
+        {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">{active === 'All' ? 'Loading...' : `Loading ${active}...`}</p>
+              <p className="text-white/60 mt-2">Loading creations...</p>
             </div>
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-400 text-lg mb-2">Error loading creations</p>
+            <p className="text-white/60 text-sm">{error}</p>
+          </div>
+        ) : limitedCards.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-white/60 text-lg">No community creations to display</p>
+          </div>
+        ) : (
+          <div className="columns-2 md:columns-3 lg:columns-4 gap-2 space-y-2">
+            {limitedCards.map((card, idx) => {
+              const { item, media } = card
+              // Double-check we have a valid URL before rendering
+              if (!media?.url || typeof media.url !== 'string' || media.url.length === 0) {
+                return null
+              }
+              
+              return (
+                <div
+                  key={`${item.id}-${idx}`}
+                  className="break-inside-avoid relative w-full mb-2 cursor-pointer group"
+                  onClick={() => setPreview(item)}
+                >
+                  {/* Image */}
+                  <img
+                    src={media.url}
+                    alt={item.prompt || 'Community creation'}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-auto object-contain block rounded-xl"
+                    onError={(e) => {
+                      // Hide broken images
+                      const target = e.currentTarget
+                      target.style.display = 'none'
+                      console.warn('[CommunityCreations] Image failed to load:', media.url)
+                    }}
+                  />
+                  
+                  {/* Hover Overlay (ArtStation style) */}
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none rounded-xl" />
+                </div>
+              )
+            })}
+          </div>
         )}
-        {showOverlay && (
+
+        {/* Explore Overlay */}
+        {!loading && limitedCards.length > 0 && (
           <>
-            {/* Explore Art Station Overlay - positioned over the images */}
-            <div className="absolute bottom-0 left-0 right-0 h-[28rem] md:h-[32rem] bg-gradient-to-t from-black/70 via-black/60 to-transparent z-10 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 right-0 h-64 md:h-80 bg-gradient-to-t from-black/40 via-black/60 to-transparent z-10 pointer-events-none" />
-            {/* Clickable text overlay - centered in the gradient */}
-            <div onClick={() => router.push('/view/ArtStation')} className="absolute bottom-0 left-0 right-0 h-[28rem] md:h-[32rem] flex items-center justify-center z-20 cursor-pointer group pointer-events-auto">
-              <div className="text-center">
-                <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">
-                  Explore Art Station
-                </h3>
-                <p className="text-white/80 text-lg font-medium">
-                  Discover more amazing creations
-                </p>
-              </div>
+            <div className="absolute bottom-0 left-0 right-0 h-[200px] bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-[150px] flex items-center justify-center z-20 pointer-events-auto">
+              <button
+                onClick={() => router.push('/view/ArtStation')}
+                className="bg-white text-black px-8 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors shadow-lg"
+              >
+                Explore Art Station
+              </button>
             </div>
           </>
         )}
-        {/* Preview Modal */}
-        {preview && (() => {
-          const src = preview.src || ''
-          const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(src)
-          const isAudio = /\.(mp3|wav|m4a|flac|aac|ogg|pcm)(\?|$)/i.test(src)
-          const kind: 'image' | 'video' | 'audio' = isAudio ? 'audio' : isVideo ? 'video' : 'image'
-
-          const isSelf = Boolean(preview.createdBy) && Boolean(currentUser?.username) && (preview.createdBy === currentUser?.username || preview.createdBy === currentUser?.displayName)
-
-          const bridgeItem: PublicItem = {
-            id: preview.id,
-            prompt: preview.prompt,
-            generationType: kind === 'image' ? 'text-to-image' : kind === 'video' ? 'text-to-video' : 'text-to-music',
-            model: previewFullItem?.model,
-            createdAt: previewFullItem?.createdAt,
-            updatedAt: previewFullItem?.updatedAt,
-            isPublic: true,
-            isDeleted: false,
-            createdBy: { 
-              username: previewFullItem?.createdBy?.username || preview.createdBy || currentUser?.username || 'User',
-              displayName: previewFullItem?.createdBy?.displayName || preview.createdBy || currentUser?.displayName,
-              uid: previewFullItem?.createdBy?.uid || (isSelf ? currentUid || undefined : undefined),
-              photoURL: previewFullItem?.createdBy?.photoURL || (isSelf ? currentUser?.photoURL : undefined),
-            },
-            aspectRatio: previewFullItem?.aspectRatio,
-            frameSize: previewFullItem?.frameSize,
-            aspect_ratio: previewFullItem?.aspect_ratio,
-            images: (previewFullItem?.images && previewFullItem.images.length > 0) ? previewFullItem.images : (kind === 'image' ? [{ id: '0', url: src }] : []),
-            videos: (previewFullItem?.videos && previewFullItem.videos.length > 0) ? previewFullItem.videos : (kind === 'video' ? [{ id: '0', url: src }] : []),
-            audios: (previewFullItem?.audios && previewFullItem.audios.length > 0) ? previewFullItem.audios : (kind === 'audio' ? [{ id: '0', url: src }] : []),
-          }
-
-          // Prefer type based on enriched item if available
-          const resolvedKind: 'image' | 'video' | 'audio' = (bridgeItem.videos && bridgeItem.videos.length) ? 'video' : (bridgeItem.images && bridgeItem.images.length) ? 'image' : 'audio'
-          const firstMedia = (resolvedKind === 'video') ? bridgeItem.videos?.[0] : (resolvedKind === 'image') ? bridgeItem.images?.[0] : (bridgeItem as any).audios?.[0]
-          const cards = [{ item: bridgeItem, media: firstMedia || { id: '0', url: src }, kind: resolvedKind }]
-
-          const confirmDelete = async (item: PublicItem) => {
-            try {
-              const who = item?.createdBy?.uid || ''
-              const me = currentUid
-              if (!me || who !== me) {
-                alert('You can delete only your own generation')
-                return
-              }
-              const ok = confirm('Delete this generation permanently? This cannot be undone.')
-              if (!ok) return
-              const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-              const res = await fetch(`${baseUrl}/api/generations/${item.id}`, { method: 'DELETE', credentials: 'include' })
-              if (!res.ok) {
-                const t = await res.text()
-                throw new Error(t || 'Delete failed')
-              }
-              setPreview(null)
-              alert('Deleted successfully')
-            } catch (e) {
-              console.error('Delete error', e)
-              alert('Failed to delete generation')
-            }
-          }
-
-          return (
-            <ArtStationPreview
-              preview={{ kind: resolvedKind, url: (firstMedia as any)?.url || src, item: bridgeItem }}
-              onClose={() => setPreview(null)}
-              onConfirmDelete={confirmDelete}
-              currentUid={currentUid}
-              currentUser={currentUser}
-              cards={cards}
-              likedCards={likedCards}
-              toggleLike={toggleLike}
-            />
-          )
-        })()}
       </div>
+
+      {/* Preview Modal */}
+      {preview && (() => {
+        // Resolve preview URL safely
+        const previewImage = preview.images?.[0]
+        const previewUrl = previewImage ? resolveMediaUrl(previewImage) : resolveMediaUrl(preview)
+        
+        // Only render if we have a valid URL
+        if (!previewUrl) {
+          console.warn('[CommunityCreations] Preview item has no valid image URL:', preview.id)
+          return null
+        }
+        
+        return (
+          <ArtStationPreview
+            preview={{ kind: 'image', url: previewUrl, item: preview }}
+            onClose={() => setPreview(null)}
+            onConfirmDelete={async () => {}} // Read-only view
+            currentUid={null} // Read-only view
+            currentUser={null}
+            cards={cards} // Allow navigation through the set
+            likedCards={new Set()} // No interaction in this view
+            toggleLike={() => {}}
+          />
+        )
+      })()}
     </section>
   );
 }
