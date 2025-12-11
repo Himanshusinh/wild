@@ -17,7 +17,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
   'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
-  'seedream-4.5': 100, // Bytedance Seedream-4.5
+  'seedream-v4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
@@ -31,6 +31,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'z-image-turbo': 26,         // Z Image Turbo
   'leonardoai/lucid-origin': 173,
   'leonardoai/phoenix-1.0': 170,
+  // Google Nano Banana (used by erase/replace in Edit Image)
+  'google_nano_banana': 98,
   // Z-Image Turbo: Free (0 credits) for launch offer
   'new-turbo-model': 0, // Free unlimited image generation
   // Product Generation Models
@@ -256,7 +258,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 
   // Image Utility Models
   'fal-image2svg': 30,          // Image to SVG
-  'fal-recraft-vectorize': 26,   // Recraft Vectorize
+  'fal-recraft-vectorize': 40,  // Recraft Vectorize
   'fal-outpaint': 70,            // fal-ai/outpaint
   'fal-bria-genfill': 100,       // fal-ai/bria/genfill
   'fal-topaz-upscale-24mp': 180, // fal-ai/topaz/upscale/image 24MP
@@ -265,8 +267,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'fal-topaz-upscale-512mp': 2740, // fal-ai/topaz/upscale/image 512MP
   'replicate-magic-image-refiner': 84, // replicate/fermatresearch/magic-image-refiner
   'replicate-clarity-upscaler': 62,   // replicate/philz1337x/clarity-upscaler
-  'replicate-lucataco-remove-bg': 31,  // replicate/ lucataco/remove-bg
-  'replicate-851-labs-remove-bg': 61,  // replicate/851-labs/background-remover (61.28 rounded)
+  // Background removal (Replicate) - align with creditDistribution (10 credits)
+  'replicate-lucataco-remove-bg': 10,  // Lucataco/remove-bg
+  'replicate-851-labs-remove-bg': 10,  // 851-labs/background-remover
   'replicate-bria-expand-image': 100, // replicate/bria/expand-image
   'replicate-real-esrgan': 32,         // replicate/nightmareai/real-esrgan (32.4 rounded)
   'replicate-swin2sr': 43,             // replicate/mv-lab/swin2sr

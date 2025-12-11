@@ -13,12 +13,14 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { getCreditsForModel } from '@/utils/modelCredits';
 import { toast } from 'react-hot-toast';
 import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
 import { EditImageExpandFrame } from './EditImageExpandFrame';
 import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
+import { useCredits } from '@/hooks/useCredits';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
@@ -69,7 +71,18 @@ const EditImageInterface: React.FC = () => {
   const [eraseIsPreviewing, setEraseIsPreviewing] = useState<boolean>(false);
   const [eraseModel, setEraseModel] = useState<string>('bria/eraser');
   const [erasePrompt, setErasePrompt] = useState<string>('');
+  const [eraseActionMode, setEraseActionMode] = useState<'replace' | 'erase'>('replace');
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
+  const eraseCredits = useMemo(() => getCreditsForModel('google_nano_banana') ?? 98, []);
+  const expandCredits = useMemo(() => getCreditsForModel('replicate/bria/expand-image') ?? 100, []);
+  const vectorizeRecraftCredits = useMemo(() => getCreditsForModel('fal-recraft-vectorize') ?? 40, []);
+  const vectorizeImage2SvgCredits = useMemo(() => getCreditsForModel('fal-image2svg') ?? 30, []);
+  const vectorizeArtExtraCredits = 80; // Additional credits when Art Vector (super mode) is selected
+  const {
+    deductCreditsOptimisticForGeneration,
+    rollbackOptimisticDeduction,
+    refreshCredits,
+  } = useCredits();
 
   // Live Chat state
   // ... (rest of existing state)
@@ -195,7 +208,7 @@ const EditImageInterface: React.FC = () => {
     if (m === 'google_nano_banana') return 'Google Nano Banana';
     if (m === 'seedream_4') return 'Seedream 4';
     if (m === '851-labs/background-remover') return '851 Labs Remove BG';
-    if (m === 'lucataco/remove-bg') return 'LucaTaco Remove BG';
+    if (m === 'lucataco/remove-bg') return 'Lucataco Remove BG';
     return m;
   };
   const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
@@ -259,6 +272,12 @@ const EditImageInterface: React.FC = () => {
   const [vSpliceThreshold, setVSpliceThreshold] = useState<number>(45);
   const [vPathPrecision, setVPathPrecision] = useState<number>(3);
   const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
+  const currentVectorizeCredits = useMemo(() => (
+    (vectorizeModel === 'fal-ai/recraft/vectorize' ? vectorizeRecraftCredits : vectorizeImage2SvgCredits)
+  ), [vectorizeModel, vectorizeRecraftCredits, vectorizeImage2SvgCredits]);
+  const effectiveVectorizeCredits = useMemo(() => (
+    currentVectorizeCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)
+  ), [currentVectorizeCredits, vectorizeSuperMode, vectorizeArtExtraCredits]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   // Live Chat feature state
   const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5'>('gemini-25-flash-image');
@@ -286,11 +305,28 @@ const EditImageInterface: React.FC = () => {
   // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
 
   const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' }> = [
-    { label: 'Google Nano Banana', value: 'gemini-25-flash-image' },
-    { label: 'Google Nano Banana Pro', value: 'google/nano-banana-pro' },
+    { label: 'Nano Banana', value: 'gemini-25-flash-image' },
+    { label: 'Nano Banana Pro', value: 'google/nano-banana-pro' },
     { label: 'Seedream v4 4k', value: 'seedream-v4' },
     { label: 'Seedream v4.5', value: 'seedream-v4.5' },
   ];
+
+  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5', resolution?: string) => {
+    const mapped = value;
+    const credits = getCreditsForModel(mapped, undefined, resolution);
+    if (credits != null) return credits;
+    // Fallback defaults
+    if (mapped === 'gemini-25-flash-image') return 98;
+    if (mapped === 'google/nano-banana-pro') {
+      if (resolution === '4K') return 620;
+      return 320;
+    }
+    if (mapped === 'seedream-v4') return 80;
+    if (mapped === 'seedream-v4.5') return 100;
+    return 0;
+  };
+
+  const liveCredits = useMemo(() => getLiveModelCredits(liveModel, liveResolution), [liveModel, liveResolution]);
 
   const liveFrameSizes = [
     { name: 'Square', value: '1:1' },
@@ -357,6 +393,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleLiveGenerate = async () => {
+    let optimisticDebit = 0;
     try {
       const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex] : null);
       if (!img) {
@@ -364,6 +401,14 @@ const EditImageInterface: React.FC = () => {
         return;
       }
       if (!livePrompt.trim()) return;
+
+      // Optimistic debit for live chat
+      if (liveCredits > 0) {
+        try {
+          deductCreditsOptimisticForGeneration(liveCredits);
+          optimisticDebit = liveCredits;
+        } catch { /* ignore optimistic errors */ }
+      }
 
       setProcessing((p) => ({ ...p, ['live-chat']: true }));
       setErrorMsg('');
@@ -419,6 +464,8 @@ const EditImageInterface: React.FC = () => {
         setInputs((prev) => ({ ...prev, ['live-chat']: out }));
       }
 
+      try { await refreshCredits(); } catch { }
+
       setLiveChatMessages((prev) => {
         const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
         if (idx >= 0) {
@@ -429,6 +476,10 @@ const EditImageInterface: React.FC = () => {
         return prev;
       });
     } catch (err: any) {
+      // Roll back optimistic debit on failure
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(liveCredits); } catch { }
+      }
       setErrorMsg(err?.response?.data?.message || err?.message || 'Generation failed');
       setLiveChatMessages((prev) => {
         const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
@@ -1935,8 +1986,34 @@ const EditImageInterface: React.FC = () => {
     setErrorMsg('');
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
+
+    // Track optimistic debit so we can roll back on failure
+    let optimisticDebit = 0;
     try {
       const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
+
+      // Optimistic debit: expand or vectorize
+      if (optimisticDebit === 0) {
+        if (selectedFeature === 'expand' && expandCredits > 0) {
+          try {
+            deductCreditsOptimisticForGeneration(expandCredits);
+            optimisticDebit = expandCredits;
+          } catch { /* ignore */ }
+        } else if (selectedFeature === 'vectorize') {
+          const vectorizeCost = effectiveVectorizeCredits;
+          if (vectorizeCost > 0) {
+            try {
+              deductCreditsOptimisticForGeneration(vectorizeCost);
+              optimisticDebit = vectorizeCost;
+            } catch { /* ignore */ }
+          }
+        } else if ((selectedFeature === 'fill' || selectedFeature === 'erase') && eraseCredits > 0) {
+          try {
+            deductCreditsOptimisticForGeneration(eraseCredits);
+            optimisticDebit = eraseCredits;
+          } catch { /* ignore */ }
+        }
+      }
       const isPublic = await getIsPublic();
       if (selectedFeature === 'vectorize') {
         const img = inputs[selectedFeature];
@@ -1994,6 +2071,7 @@ const EditImageInterface: React.FC = () => {
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          try { await refreshCredits(); } catch { }
           // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
           // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
@@ -2024,6 +2102,7 @@ const EditImageInterface: React.FC = () => {
           const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
           if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+          try { await refreshCredits(); } catch { }
           // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
           // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
@@ -2140,16 +2219,16 @@ const EditImageInterface: React.FC = () => {
         const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (out) setOutputs((prev) => ({ ...prev, ['expand']: out }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
+        try { await refreshCredits(); } catch { }
         return;
       }
       if (selectedFeature === 'fill' || selectedFeature === 'erase') {
         const img = inputs[selectedFeature];
         if (!img) throw new Error(`Please upload an image for ${selectedFeature === 'fill' ? 'fill' : selectedFeature === 'erase' ? 'erase' : 'reimagine'}`);
 
-        // For fill, prompt is required; for erase, we use hardcoded prompt
-        // Smart Erase/Replace: If prompt is empty, we treat it as Erase.
-        // So we do NOT block on empty prompt anymore.
-        const activePrompt = (selectedFeature === 'fill' && eraseMaskData) ? erasePrompt : prompt;
+        const hardErasePrompt = 'remove or erase the masked part of mask from the image';
+        const isEraseMode = selectedFeature === 'fill' && eraseActionMode === 'erase';
+        const activePrompt = selectedFeature === 'fill' ? (isEraseMode ? hardErasePrompt : erasePrompt) : prompt;
 
         // Only block if we are in a mode where prompt is absolutely mandatory and we have no fallback.
         // But here, empty prompt -> Erase, so we allow it.
@@ -2479,11 +2558,10 @@ const EditImageInterface: React.FC = () => {
             const userPrompt = activePrompt ? activePrompt.trim() : '';
             const isReplace = userPrompt.length > 0;
 
-            // Construct Advanced Replace Prompt
-            let finalPrompt = userPrompt;
-            if (isReplace) {
-              finalPrompt = `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be replaced in the original image. Replace the content in the white masked regions of Image 0 with the following description: ${userPrompt}. Ensure the replaced object integrates naturally with the scene, matching the lighting, shadows, and perspective of the original background. Do not alter any unmasked areas.`;
-            }
+            // Use concise prompts
+            const finalPrompt = isReplace
+              ? `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be replaced in the original image. Replace the content in the white masked regions of Image 0 with the following description: ${userPrompt}. Ensure the replaced object integrates naturally with the scene, matching the lighting, shadows, and perspective of the original background. Do not alter any unmasked areas.`
+              : `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be removed and erased from Image 0. Remove and erase the masked regions in Image 0, leaving those areas transparent/clean while keeping every unmasked area unchanged. Preserve lighting, shadows, perspective, and overall scene consistency.`;
 
             // Determine Endpoint
             // Refactored to use 'wildmind' namespace matching Upscale/RemoveBG patterns
@@ -2543,9 +2621,10 @@ const EditImageInterface: React.FC = () => {
             throw eraseErr;
           }
         }
+        const promptToSend = (activePrompt || '').trim();
         const body: any = {
           isPublic,
-          prompt: (selectedFeature === 'fill' && eraseMaskData ? erasePrompt : prompt.trim()),
+          prompt: promptToSend,
         };
         // Add image (data URI or URL)
         if (String(fillSourceImage).startsWith('data:')) {
@@ -2643,6 +2722,15 @@ const EditImageInterface: React.FC = () => {
         console.log('[EditImage] Specifying timeout: 300000ms for Expand request');
         const expandStartTime = Date.now();
 
+        // Optimistic credit deduction for Bria Expand (100 credits)
+        let optimisticDeducted = false;
+        try {
+          deductCreditsOptimisticForGeneration(expandCredits);
+          optimisticDeducted = true;
+        } catch {
+          // ignore optimistic debit errors
+        }
+
         // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel 60s timeout on rewrites
         // We construct the full URL to the backend service directly
         const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
@@ -2650,13 +2738,29 @@ const EditImageInterface: React.FC = () => {
 
         console.log('[EditImage] Making DIRECT backend call to:', directUrl);
 
-        const res = await axiosInstance.post(directUrl, payload, {
-          timeout: 300000 // 300 seconds
-        });
+        let res;
+        try {
+          res = await axiosInstance.post(directUrl, payload, {
+            timeout: 300000 // 300 seconds
+          });
+        } catch (err) {
+          // Rollback optimistic deduction on error
+          if (optimisticDeducted) {
+            try {
+              rollbackOptimisticDeduction(expandCredits);
+            } catch {
+              // ignore rollback errors
+            }
+          }
+          throw err;
+        }
+
         console.log(`[EditImage] Expand request completed in ${Date.now() - expandStartTime}ms`);
         const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
         if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        // Refresh credits after successful generation
+        try { await refreshCredits(); } catch { }
         // Refresh global history so the Image Generation page sees the new resize entry immediately
         try {
           await (dispatch as any)(loadHistory({
@@ -2730,6 +2834,8 @@ const EditImageInterface: React.FC = () => {
           console.log('[EditImage] remove-bg output URL:', { first, selectedFeature });
           // Set output directly like upscale does - no URL conversion needed since backend returns full URL
           setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
+          // Default to Zoom mode for remove-bg so transparent outputs are visible
+          setUpscaleViewMode('zoom');
           // Ensure processing is set to false
           setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
           try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
@@ -3076,6 +3182,9 @@ const EditImageInterface: React.FC = () => {
         } catch { }
       }
     } catch (e) {
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       console.error('[EditImage] run.error', e);
       const errorData = (e as any)?.response?.data;
       let msg = (errorData && (errorData.message || errorData.error)) || (e as any)?.message || 'Request failed';
@@ -3579,21 +3688,28 @@ const EditImageInterface: React.FC = () => {
                       onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
                       className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
                     >
-                      <span className="truncate">{vectorizeModel === 'fal-ai/recraft/vectorize' ? 'Recraft Vectorize' : 'Image to SVG'}</span>
+                      <span className="truncate">
+                        {vectorizeModel === 'fal-ai/recraft/vectorize'
+                          ? 'Recraft Vectorize'
+                          : 'Image to SVG'}
+                      </span>
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'vectorizeModel' && (
                       <div className={`absolute top-full md:mt-2 mt-1 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                         {[
-                          { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize' },
-                          { label: 'Image to SVG', value: 'fal-ai/image2svg' },
+                          { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize', credits: (vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
+                          { label: 'Image to SVG', value: 'fal-ai/image2svg', credits: (vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
                         ].map((opt) => (
                           <button
                             key={opt.value}
                             onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
                             className={`w-full md:px-3 px-2.5 md:py-2 py-0.5 text-left md:text-[13px] text-[12px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
                           >
-                            <span className="truncate">{opt.label}</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate">{opt.label}</span>
+                              <span className="text-[11px]">{opt.credits} credits</span>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -3722,10 +3838,13 @@ const EditImageInterface: React.FC = () => {
                           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveModel' ? 'rotate-180' : ''}`} />
                         </button>
                         {liveActiveDropdown === 'liveModel' && (
-                          <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                          <div className={`absolute top-full z-30 left-0 min-w-50 md:min-w-60 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                             {liveAllowedModels.map(opt => (
                               <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                                <span className="truncate">{opt.label}</span>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate">{opt.label}</span>
+                                  <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
+                                </div>
                               </button>
                             ))}
                           </div>
@@ -3852,8 +3971,8 @@ const EditImageInterface: React.FC = () => {
                             <div className={`absolute top-full z-100 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30  md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                               {(selectedFeature === 'remove-bg'
                                 ? [
-                                  { label: '851-labs', value: '851-labs/background-remover' },
-                                  { label: 'lucataco', value: 'lucataco/remove-bg' },
+                                  { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
+                                  { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
                                 ]
                                 : selectedFeature === 'resize'
                                   ? [
@@ -3897,6 +4016,8 @@ const EditImageInterface: React.FC = () => {
                     setBrushSize={setEraseBrushSize}
                     prompt={erasePrompt}
                     setPrompt={setErasePrompt}
+                    mode={eraseActionMode}
+                    setMode={setEraseActionMode}
                     model={eraseModel}
                     setModel={setEraseModel}
                     isProcessing={processing['fill']}
@@ -4387,6 +4508,11 @@ const EditImageInterface: React.FC = () => {
                   >
                     {processing[selectedFeature] ? 'Processing...' : 'Generate'}
                   </button>
+                  {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
+                    <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                      {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -4603,9 +4729,13 @@ const EditImageInterface: React.FC = () => {
                       )}
 
                       {selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && upscaleViewMode === 'comparison' ? (
-                        // Comparison slider mode
+                        // Comparison slider mode: Original on left, Generated on right, no overlap
                         <>
-                          <div className="absolute inset-0">
+                          {/* Original (left) */}
+                          <div
+                            className="absolute inset-0"
+                            style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                          >
                             <Image
                               src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
                               alt="Original"
@@ -4614,11 +4744,11 @@ const EditImageInterface: React.FC = () => {
                               className="object-contain object-center"
                             />
                           </div>
+
+                          {/* Generated (right) */}
                           <div
                             className="absolute inset-0"
-                            style={{
-                              clipPath: `inset(0 0 0 ${sliderPosition}%)`
-                            }}
+                            style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
                           >
                             <Image
                               src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
@@ -4642,6 +4772,8 @@ const EditImageInterface: React.FC = () => {
                               }}
                             />
                           </div>
+
+                          {/* Slider */}
                           <div className="absolute inset-0">
                             <input
                               type="range"
@@ -4655,6 +4787,10 @@ const EditImageInterface: React.FC = () => {
                               className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
                               style={{ left: `${sliderPosition}%` }}
                             />
+                          </div>
+
+                          <div className="absolute top-5 left-4 z-30 2xl:top-6 2xl:left-6">
+                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Original</span>
                           </div>
                           <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
                             <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
