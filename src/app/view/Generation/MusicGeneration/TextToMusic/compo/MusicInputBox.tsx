@@ -8,7 +8,7 @@ import { getModelCreditInfo } from '@/utils/modelCredits';
 
 // Music styles and instruments for dropdowns
 const MUSIC_STYLES = [
-  'Pop', 'Rock', 'Jazz', 'Classical', 'Electronic', 'Hip Hop', 'Country', 'Blues', 
+  'Pop', 'Rock', 'Jazz', 'Classical', 'Electronic', 'Hip Hop', 'Country', 'Blues',
   'Folk', 'R&B', 'Reggae', 'Punk', 'Metal', 'Ambient', 'Lo-fi', 'Synthwave',
   'Orchestral', 'Acoustic', 'Indie', 'Alternative', 'Experimental', 'World Music'
 ];
@@ -138,7 +138,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const [elevenlabsExaggeration, setElevenlabsExaggeration] = useState(0.5);
   const [elevenlabsTemperature, setElevenlabsTemperature] = useState(0.8);
   const [elevenlabsCfgScale, setElevenlabsCfgScale] = useState(0.5);
-  
+
   // Chatterbox-specific state
   const [chatterboxVoice, setChatterboxVoice] = useState('english');
   const [customAudioLanguage, setCustomAudioLanguage] = useState('english');
@@ -156,10 +156,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const [cfgScale, setCfgScale] = useState(0.5);
   const [seed, setSeed] = useState<string>('random');
   const [audioUrl, setAudioUrl] = useState('');
-  
+
   // File name input state
   const [fileName, setFileName] = useState('');
-  
+
   // Maya TTS-specific state
   const [mayaPrompt, setMayaPrompt] = useState('Realistic male voice in the 30s age with american accent. Normal pitch, warm timbre, conversational pacing, neutral tone delivery at med intensity.');
   const [mayaTemperature, setMayaTemperature] = useState(0.4);
@@ -167,7 +167,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const [mayaMaxTokens, setMayaMaxTokens] = useState(2000);
   const [mayaRepetitionPenalty, setMayaRepetitionPenalty] = useState(1.1);
   const [mayaOutputFormat, setMayaOutputFormat] = useState<'wav' | 'mp3'>('wav');
-  
+
   // Dialogue-specific state
   interface DialogueInput {
     text: string;
@@ -180,21 +180,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const [dialogueUseSpeakerBoost, setDialogueUseSpeakerBoost] = useState(false);
   const [dialogueSeed, setDialogueSeed] = useState<string>('random');
   const [dialoguePronunciationDicts, setDialoguePronunciationDicts] = useState<Array<{ pronunciation_dictionary_id: string; version_id?: string }>>([]);
-  
+
   // SFX-specific state
   const [sfxDuration, setSfxDuration] = useState<number>(5.0); // Default 5 seconds
   const [sfxPromptInfluence, setSfxPromptInfluence] = useState<number>(0.3);
   const [sfxOutputFormat, setSfxOutputFormat] = useState<string>('mp3_44100_128');
   const [sfxLoop, setSfxLoop] = useState<boolean>(false);
-  
+
   // Dropdown states for ElevenLabs TTS
   const [elevenlabsVoiceDropdownOpen, setElevenlabsVoiceDropdownOpen] = useState(false);
   const [elevenlabsCustomAudioLanguageDropdownOpen, setElevenlabsCustomAudioLanguageDropdownOpen] = useState(false);
-  
+
   // Dropdown states for Chatterbox
   const [voiceDropdownOpen, setVoiceDropdownOpen] = useState(false);
   const [customAudioLanguageDropdownOpen, setCustomAudioLanguageDropdownOpen] = useState(false);
-  
+
   // Dropdown states for Maya
   const [mayaOutputFormatDropdownOpen, setMayaOutputFormatDropdownOpen] = useState(false);
 
@@ -241,13 +241,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const isMayaModel = model.toLowerCase().includes('maya');
   const isDialogueModel = model.toLowerCase().includes('dialogue');
   const isSfxModel = model.toLowerCase().includes('sfx') || model.toLowerCase().includes('sound-effect');
-  
+
   // Get user from Redux for default file naming
   const user = useAppSelector((state: any) => state?.auth?.user || null);
-  
+
   // Get history entries to calculate generation count for default naming
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
-  
+
   // Calculate default file name based on feature and generation count
   const getDefaultFileName = useMemo(() => {
     // Determine feature name based on model and mode
@@ -256,10 +256,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     else if (isSfxModel) featureName = 'sfx';
     else if (isTtsModel) featureName = 'tts';
     else if (isVoiceCloning) featureName = 'voice_cloning';
-    
+
     // Get username
     const username = user?.username || user?.displayName || user?.email?.split('@')[0] || 'user';
-    
+
     // Count existing generations for this feature
     const featureEntries = historyEntries.filter((entry: any) => {
       const genType = String(entry.generationType || '').toLowerCase();
@@ -270,7 +270,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       if (featureName === 'voice_cloning') return genType === 'audio-generation' || genType === 'voice-cloning';
       return false;
     });
-    
+
     const count = featureEntries.length + 1;
     return `${username}_${featureName}_${count}`;
   }, [user, historyEntries, isDialogueModel, isSfxModel, isTtsModel, isVoiceCloning, model]);
@@ -278,12 +278,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   // Helper function to ensure audio URL is a proper Zata URL
   const ensureZataUrl = (audioFile: { url?: string; storagePath?: string }): string => {
     if (!audioFile) return '';
-    
+
     // If URL is already a full Zata URL, use it
     if (audioFile.url && (audioFile.url.startsWith('https://idr01.zata.ai') || audioFile.url.startsWith('http://idr01.zata.ai'))) {
       return audioFile.url;
     }
-    
+
     // If we have a storagePath, construct Zata URL from it
     if (audioFile.storagePath) {
       const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
@@ -291,7 +291,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       const cleanPath = audioFile.storagePath.startsWith('/') ? audioFile.storagePath.slice(1) : audioFile.storagePath;
       return `${ZATA_PREFIX.replace(/\/$/, '')}/${cleanPath}`;
     }
-    
+
     // Fallback to URL if available
     return audioFile.url || '';
   };
@@ -310,8 +310,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const isLyricsValid = (s: string) => {
     const n = s.trim().length;
     if (isDialogueModel) return true; // Dialogue uses inputs array, not single text
-    // Chatterbox Multilingual has a 300 character limit due to FAL API restrictions
-    const maxLength = isChatterboxModel ? 300 : 1000;
+    // Chatterbox Multilingual: 300 character provider limit
+    const maxLength = isChatterboxModel ? 300 : 5000;
     return n >= 10 && n <= maxLength;
   };
 
@@ -322,14 +322,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const isLyricsPromptValid = (s: string) => {
     const n = s.trim().length;
-    return n >= 10 && n <= 1000; // 10-1000 characters for lyrics_prompt
+    return n >= 10 && n <= 5000; // 10-1000 characters for lyrics_prompt
   };
 
-  const canGenerate = isDialogueModel 
+  const canGenerate = isDialogueModel
     ? dialogueInputs.some(input => input.text.trim().length > 0) && !generating
     : model === 'minimax-music-2'
-    ? isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && !generating
-    : isLyricsValid(lyrics) && !generating;
+      ? isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && !generating
+      : isLyricsValid(lyrics) && !generating;
 
   const clearVoiceLibrarySelection = useCallback(() => {
     if (!selectedUploadedAudio) return;
@@ -603,9 +603,9 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // Close dropdowns if clicking outside dropdown containers
-      if (!target.closest('.dropdown-container') && 
-          !target.closest('[class*="absolute"]') &&
-          !target.closest('button[class*="bg-black/30"]')) {
+      if (!target.closest('.dropdown-container') &&
+        !target.closest('[class*="absolute"]') &&
+        !target.closest('button[class*="bg-black/30"]')) {
         setElevenlabsVoiceDropdownOpen(false);
         setElevenlabsCustomAudioLanguageDropdownOpen(false);
         setVoiceDropdownOpen(false);
@@ -634,35 +634,35 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       // Clear prompt and lyricsPrompt for MiniMax Music 2
       setPrompt('');
       setLyricsPrompt('');
-      
+
       // Reset to default style and instruments
       setSelectedStyle('Pop');
       setSelectedInstruments(['Piano']);
-      
+
       // Reset model to default
       setModel(defaultModel);
-      
+
       if (isChatterboxModel) {
         fetchUserAudioFiles();
       }
-      
+
       // Reset audio settings to defaults
       setAudio({
         sample_rate: 44100,
         bitrate: 256000,
         format: 'mp3'
       });
-      
+
       // Reset output format
       setOutputFormat('hex');
-      
+
       // Reset ElevenLabs TTS settings
       setElevenlabsVoice(ELEVENLABS_TTS_DEFAULT_VOICE);
       setElevenlabsCustomAudioLanguage('');
       setElevenlabsExaggeration(0.5);
       setElevenlabsTemperature(0.8);
       setElevenlabsCfgScale(0.5);
-      
+
       // Reset Chatterbox settings
       setChatterboxVoice('english');
       setCustomAudioLanguage('english');
@@ -671,7 +671,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setCfgScale(0.5);
       setSeed('random');
       setAudioUrl('');
-      
+
       // Reset Maya TTS settings
       setMayaPrompt('Realistic male voice in the 30s age with american accent. Normal pitch, warm timbre, conversational pacing, neutral tone delivery at med intensity.');
       setMayaTemperature(0.4);
@@ -679,14 +679,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       setMayaMaxTokens(2000);
       setMayaRepetitionPenalty(1.1);
       setMayaOutputFormat('wav');
-      
+
       // Reset Dialogue settings
       setDialogueInputs([{ text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }]);
       setDialogueStability(0.5);
       setDialogueUseSpeakerBoost(false);
       setDialogueSeed('random');
       setDialoguePronunciationDicts([]);
-      
+
       // Reset SFX settings
       setSfxDuration(5.0);
       setSfxPromptInfluence(0.3);
@@ -721,7 +721,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     // Format prompt using only style & instruments for music; others rely on raw text
     const formattedPrompt = formatPromptWithStyleAndInstruments(selectedStyle, selectedInstruments);
     const trimmedText = lyrics.trim();
-    
+
     const payload: any = {
       model,
       prompt: trimmedText,
@@ -778,23 +778,23 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       // Chatterbox Multilingual TTS parameters
       payload.text = trimmedText;
       payload.model = 'chatterbox-multilingual';
-      
+
       // Validate: if user has uploaded a file but no name, require name
       if (uploadedVoiceFile && !audioFileNameInput.trim()) {
         dispatch(addNotification({ type: 'error', message: 'Please enter a name for the uploaded audio file before generating' }));
         return;
       }
-      
+
       // Prioritize selectedUploadedAudio if it exists, otherwise use chatterboxVoice
       const voiceValue = selectedUploadedAudio || chatterboxVoice;
-      
+
       if (voiceValue && voiceValue.trim()) {
         payload.voice = voiceValue.trim();
-        
+
         // Only set custom_audio_language and voice_file_name if voice is a URL (custom audio)
-        const isCustomVoiceUrl = voiceValue && typeof voiceValue === 'string' && 
+        const isCustomVoiceUrl = voiceValue && typeof voiceValue === 'string' &&
           (voiceValue.startsWith('http://') || voiceValue.startsWith('https://'));
-        
+
         if (isCustomVoiceUrl) {
           if (customAudioLanguage.trim()) payload.custom_audio_language = customAudioLanguage.trim();
           // Only include voice_file_name if it was set (meaning it's a new upload, not from dropdown)
@@ -837,7 +837,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     // Add file name to payload (use default if not provided)
     const finalFileName = fileName.trim() || getDefaultFileName;
     payload.fileName = finalFileName;
-    
+
     if (onGenerate) {
       onGenerate(payload);
     } else {
@@ -849,11 +849,11 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   // Format prompt with style and instruments (no base prompt needed)
   const formatPromptWithStyleAndInstruments = (style: string, instruments: string[]) => {
     let formattedPrompt = '';
-    
+
     if (style && style !== 'None') {
       formattedPrompt += `${style.toLowerCase()} style`;
     }
-    
+
     if (instruments.length > 0 && !instruments.includes('None')) {
       const instrumentList = instruments.join(', ');
       if (formattedPrompt) {
@@ -862,12 +862,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         formattedPrompt += `featuring ${instrumentList}`;
       }
     }
-    
+
     // If no style or instruments selected, provide a default
     if (!formattedPrompt) {
       formattedPrompt = 'AI-generated music';
     }
-    
+
     return formattedPrompt;
   };
 
@@ -890,7 +890,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   // Dropdown Components
   const MusicModelsDropdown = () => {
     const creditInfo = getModelCreditInfo(model);
-    
+
     // Filter models based on mode
     let filteredOptions = MODEL_OPTIONS;
     if (isSFXMode) {
@@ -904,16 +904,16 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'chatterbox-multilingual');
     } else if (isTtsMode) {
       // TTS mode: Only show TTS-capable models
-      filteredOptions = MODEL_OPTIONS.filter(opt => 
-        opt.value === 'elevenlabs-tts' || 
-        opt.value === 'chatterbox-multilingual' || 
+      filteredOptions = MODEL_OPTIONS.filter(opt =>
+        opt.value === 'elevenlabs-tts' ||
+        opt.value === 'chatterbox-multilingual' ||
         opt.value === 'maya-tts'
       );
     } else {
       // Music generation: Only show MiniMax Music 2
       filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'minimax-music-2');
     }
-    
+
     // Add credit information to each option
     const filteredOptionsWithCredits = filteredOptions.map(opt => {
       const optCreditInfo = getModelCreditInfo(opt.value);
@@ -922,16 +922,16 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         creditInfo: optCreditInfo
       };
     });
-    
+
     const activeOption = filteredOptionsWithCredits.find((opt) => opt.value === model) || filteredOptionsWithCredits[0];
-    
+
     // If current model is not in filtered options, set to first available
     useEffect(() => {
       if (filteredOptions.length > 0 && !filteredOptions.find(opt => opt.value === model)) {
         setModel(filteredOptions[0].value);
       }
     }, [isSFXMode, isDialogueMode, isVoiceCloning, isTtsMode, filteredOptions.length]);
-    
+
     if (isVoiceCloning) {
       const chatterboxOption = MODEL_OPTIONS.find(opt => opt.value === 'chatterbox-multilingual');
       const chatterboxCreditInfo = getModelCreditInfo('chatterbox-multilingual');
@@ -950,61 +950,73 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         </div>
       );
     }
-    
+
+    // If multiple options (e.g., TTS), show dropdown; otherwise static pill
+    const showDropdown = filteredOptionsWithCredits.length > 1;
+
+    if (!showDropdown) {
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black flex items-center gap-2 cursor-default select-none">
+            <Music4 className="w-4 h-4 text-black" />
+            {activeOption?.label || model}
+          </div>
+          {creditInfo.hasCredits && (
+            <div className="text-[11px] text-white/50 pl-1">
+              {creditInfo.displayText}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
-      <div className="relative dropdown-container ">
+      <div className="relative dropdown-container flex flex-col gap-1">
         <button
           onClick={() => {
-            setCloseStyleDropdown(true);
-            setTimeout(() => setCloseStyleDropdown(false), 0);
-            setCloseInstrumentsDropdown(true);
-            setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-            setCloseSrDropdown(true);
-            setTimeout(() => setCloseSrDropdown(false), 0);
-            setCloseBrDropdown(true);
-            setTimeout(() => setCloseBrDropdown(false), 0);
-            setCloseFormatDropdown(true);
-            setTimeout(() => setCloseFormatDropdown(false), 0);
-            setCloseOutputFormatDropdown(true);
-            setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+            setCloseStyleDropdown(true); setTimeout(() => setCloseStyleDropdown(false), 0);
+            setCloseInstrumentsDropdown(true); setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+            setCloseSrDropdown(true); setTimeout(() => setCloseSrDropdown(false), 0);
+            setCloseBrDropdown(true); setTimeout(() => setCloseBrDropdown(false), 0);
+            setCloseFormatDropdown(true); setTimeout(() => setCloseFormatDropdown(false), 0);
+            setCloseOutputFormatDropdown(true); setTimeout(() => setCloseOutputFormatDropdown(false), 0);
             setModelOpen(!modelOpen);
           }}
-          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
         >
-          <Music4 className="w-4 h-4" />
-          {activeOption?.label || model}
+          <div className="flex items-center gap-2">
+            <Music4 className="w-4 h-4" />
+            <span className="truncate">{activeOption?.label || model}</span>
+          </div>
           <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${modelOpen ? 'rotate-180' : ''}`} />
         </button>
         {modelOpen && (
-          <div className="absolute top-full left-0 mt-0 w-64 bg-black/85 z-[100] backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+          <div className="absolute top-9 left-0 w-64 bg-black/85 z-[100] backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
             {filteredOptionsWithCredits.map((option) => (
-            <button 
+              <button
                 key={option.value}
                 onClick={() => { setModel(option.value); setModelOpen(false); }}
                 className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex flex-col ${
-                  model === option.value ? "bg-white text-black" : "text-white/90"
+                  model === option.value ? "bg-white text-black hover:bg-white/90" : "text-white/90 hover:bg-white/10"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span>{option.label}</span>
-                  <div className="flex items-center gap-2">
-                    {option.creditInfo.hasCredits && (
-                      <span className={`text-xs font-medium ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
-                        {option.creditInfo.displayText}
-                      </span>
-                    )}
-                    {model === option.value && <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>}
-                  </div>
+                  {option.creditInfo.hasCredits && (
+                    <span className={`text-xs font-medium ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
+                      {option.creditInfo.displayText}
+                    </span>
+                  )}
                 </div>
-                <span className={`text-xs ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
+                {/* <span className={`text-xs ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
                   {option.description}
-                </span>
-            </button>
+                </span> */}
+              </button>
             ))}
           </div>
         )}
         {creditInfo.hasCredits && (
-          <div className="text-[11px] text-white/50 mt-1 pl-1">
+          <div className="text-[11px] text-white/50 pl-1">
             {creditInfo.displayText}
           </div>
         )}
@@ -1012,97 +1024,97 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     );
   };
 
-  const StyleDropdown = () => (
-    <div className="relative dropdown-container">
-      <button
-        onClick={() => {
-          // Close other dropdowns
-          setCloseInstrumentsDropdown(true);
-          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-          setCloseModelDropdown(true);
-          setTimeout(() => setCloseModelDropdown(false), 0);
-          setCloseSrDropdown(true);
-          setTimeout(() => setCloseSrDropdown(false), 0);
-          setCloseBrDropdown(true);
-          setTimeout(() => setCloseBrDropdown(false), 0);
-          setCloseFormatDropdown(true);
-          setTimeout(() => setCloseFormatDropdown(false), 0);
-          setCloseOutputFormatDropdown(true);
-          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
-          setStyleOpen(!styleOpen);
-        }}
-        className="h-[32px] -mt-5 px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
-      >
-        <Palette className="w-4 h-4" />
-        {selectedStyle}
-        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${styleOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {styleOpen && (
-        <div className="absolute top-full z-[100] left-0 mt-0 w-48 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-          {MUSIC_STYLES.map((style) => (
-            <button
-              key={style}
-              onClick={() => { setSelectedStyle(style); setStyleOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                selectedStyle === style ? "bg-white text-black" : "text-white/90"
-              }`}
-            >
-              <span>{style}</span>
-              {selectedStyle === style && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  // const StyleDropdown = () => (
+  //   <div className="relative dropdown-container">
+  //     <button
+  //       onClick={() => {
+  //         // Close other dropdowns
+  //         setCloseInstrumentsDropdown(true);
+  //         setTimeout(() => setCloseInstrumentsDropdown(false), 0);
+  //         setCloseModelDropdown(true);
+  //         setTimeout(() => setCloseModelDropdown(false), 0);
+  //         setCloseSrDropdown(true);
+  //         setTimeout(() => setCloseSrDropdown(false), 0);
+  //         setCloseBrDropdown(true);
+  //         setTimeout(() => setCloseBrDropdown(false), 0);
+  //         setCloseFormatDropdown(true);
+  //         setTimeout(() => setCloseFormatDropdown(false), 0);
+  //         setCloseOutputFormatDropdown(true);
+  //         setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+  //         setStyleOpen(!styleOpen);
+  //       }}
+  //       className="h-[32px] -mt-5 px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+  //     >
+  //       <Palette className="w-4 h-4" />
+  //       {selectedStyle}
+  //       <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${styleOpen ? 'rotate-180' : ''}`} />
+  //     </button>
+  //     {styleOpen && (
+  //       <div className="absolute top-full z-[100] left-0 mt-0 w-48 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+  //         {MUSIC_STYLES.map((style) => (
+  //           <button
+  //             key={style}
+  //             onClick={() => { setSelectedStyle(style); setStyleOpen(false); }}
+  //             className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+  //               selectedStyle === style ? "bg-white text-black" : "text-white/90"
+  //             }`}
+  //           >
+  //             <span>{style}</span>
+  //             {selectedStyle === style && (
+  //               <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+  //             )}
+  //           </button>
+  //         ))}
+  //       </div>
+  //     )}
+  //   </div>
+  // );
 
-  const InstrumentsDropdown = () => (
-    <div className="relative dropdown-container">
-      <button
-        onClick={() => {
-          // Close other dropdowns
-          setCloseStyleDropdown(true);
-          setTimeout(() => setCloseStyleDropdown(false), 0);
-          setCloseModelDropdown(true);
-          setTimeout(() => setCloseModelDropdown(false), 0);
-          setCloseSrDropdown(true);
-          setTimeout(() => setCloseSrDropdown(false), 0);
-          setCloseBrDropdown(true);
-          setTimeout(() => setCloseBrDropdown(false), 0);
-          setCloseFormatDropdown(true);
-          setTimeout(() => setCloseFormatDropdown(false), 0);
-          setCloseOutputFormatDropdown(true);
-          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
-          setInstrumentsOpen(!instrumentsOpen);
-        }}
-        className="h-[32px] -mt-5  px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
-      >
-        <Guitar className="w-4 h-4" />
-        {selectedInstruments.includes('None') ? 'None' : `${selectedInstruments.length} selected`}
-        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${instrumentsOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {instrumentsOpen && (
-        <div className="absolute top-full left-0 mt-2 w-48 z-[100] bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-          {INSTRUMENTS.map((instrument) => (
-            <button
-              key={instrument}
-              onClick={() => { toggleInstrument(instrument); setInstrumentsOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                selectedInstruments.includes(instrument) ? "bg-white text-black" : "text-white/90"
-              }`}
-            >
-              <span>{instrument}</span>
-              {selectedInstruments.includes(instrument) && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  // const InstrumentsDropdown = () => (
+  //   <div className="relative dropdown-container">
+  //     <button
+  //       onClick={() => {
+  //         // Close other dropdowns
+  //         setCloseStyleDropdown(true);
+  //         setTimeout(() => setCloseStyleDropdown(false), 0);
+  //         setCloseModelDropdown(true);
+  //         setTimeout(() => setCloseModelDropdown(false), 0);
+  //         setCloseSrDropdown(true);
+  //         setTimeout(() => setCloseSrDropdown(false), 0);
+  //         setCloseBrDropdown(true);
+  //         setTimeout(() => setCloseBrDropdown(false), 0);
+  //         setCloseFormatDropdown(true);
+  //         setTimeout(() => setCloseFormatDropdown(false), 0);
+  //         setCloseOutputFormatDropdown(true);
+  //         setTimeout(() => setCloseOutputFormatDropdown(false), 0);
+  //         setInstrumentsOpen(!instrumentsOpen);
+  //       }}
+  //       className="h-[32px] -mt-5  px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+  //     >
+  //       <Guitar className="w-4 h-4" />
+  //       {selectedInstruments.includes('None') ? 'None' : `${selectedInstruments.length} selected`}
+  //       <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${instrumentsOpen ? 'rotate-180' : ''}`} />
+  //     </button>
+  //     {instrumentsOpen && (
+  //       <div className="absolute top-full left-0 mt-2 w-48 z-[100] bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 max-h-60 overflow-y-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+  //         {INSTRUMENTS.map((instrument) => (
+  //           <button
+  //             key={instrument}
+  //             onClick={() => { toggleInstrument(instrument); setInstrumentsOpen(false); }}
+  //             className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
+  //               selectedInstruments.includes(instrument) ? "bg-white text-black" : "text-white/90"
+  //             }`}
+  //           >
+  //             <span>{instrument}</span>
+  //             {selectedInstruments.includes(instrument) && (
+  //               <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+  //             )}
+  //           </button>
+  //         ))}
+  //       </div>
+  //     )}
+  //   </div>
+  // );
 
   const SampleRateDropdown = () => (
     <div className="relative dropdown-container">
@@ -1123,21 +1135,20 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           setTimeout(() => setCloseOutputFormatDropdown(false), 0);
           setSrOpen(!srOpen);
         }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1  ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
       >
         <Volume2 className="w-4 h-4" />
         Sample Rate
         <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${srOpen ? 'rotate-180' : ''}`} />
       </button>
       {srOpen && (
-        <div className="absolute top-full left-0 mt-2 w-32 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
+        <div className="absolute top-8 left-0 mt-2 w-32 bg-black/85 backdrop-blur-xl max-h-40 overflow-y-auto rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
           {[44100, 32000, 24000, 22050, 16000, 8000].map((sr) => (
             <button
               key={sr}
               onClick={() => { setAudio({ ...audio, sample_rate: sr as any }); setSrOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                audio.sample_rate === sr ? "bg-white text-black" : "text-white/90"
-              }`}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${audio.sample_rate === sr ? "bg-white text-black" : "text-white/90"
+                }`}
             >
               <span>{sr}</span>
               {audio.sample_rate === sr && (
@@ -1181,9 +1192,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               key={br}
               onClick={() => { setAudio({ ...audio, bitrate: br as any }); setBrOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                audio.bitrate === br ? "bg-white text-black" : "text-white/90"
-              }`}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${audio.bitrate === br ? "bg-white text-black" : "text-white/90"
+                }`}
             >
               <span>{br}</span>
               {audio.bitrate === br && (
@@ -1222,14 +1232,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
         <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${formatOpen ? 'rotate-180' : ''}`} />
       </button>
       {formatOpen && (
-        <div className="absolute top-full left-0 mt-2 w-24 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
+        <div className="absolute top-full left-0 mt-2 w-24 bg-black/85 backdrop-blur-xl  rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
           {(model === 'minimax-music-2' ? ['mp3', 'pcm', 'flac'] : ['mp3', 'wav', 'pcm']).map((format) => (
             <button
               key={format}
               onClick={() => { setAudio({ ...audio, format: format as any }); setFormatOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                audio.format === format ? "bg-white text-black" : "text-white/90"
-              }`}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${audio.format === format ? "bg-white text-black" : "text-white/90"
+                }`}
             >
               <span>{format.toUpperCase()}</span>
               {audio.format === format && (
@@ -1273,9 +1282,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <button
               key={format}
               onClick={() => { setOutputFormat(format as any); setOutputFormatOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                outputFormat === format ? "bg-white text-black" : "text-white/90"
-              }`}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${outputFormat === format ? "bg-white text-black" : "text-white/90"
+                }`}
             >
               <span>{format.toUpperCase()}</span>
               {outputFormat === format && (
@@ -1324,21 +1332,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const TtsSettings = () => {
     const voiceOptions = ELEVENLABS_STANDARD_VOICES;
-    
+
     const customAudioLanguageOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish', 
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay', 
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish', 
+      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish',
+      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay',
+      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish',
       'swahili', 'turkish', 'chinese'
     ];
-    
+
     // Check if voice is a custom URL (starts with http:// or https://)
     const isCustomVoiceUrl = elevenlabsVoice && (elevenlabsVoice.startsWith('http://') || elevenlabsVoice.startsWith('https://'));
 
-  return (
-      <div className="space-y-4">
+    return (
+      <div className="space-y-0 mx-1">
         <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 relative dropdown-container">
+          <div className="flex-1 relative dropdown-container -mt-2">
             <label className="block text-white/70 text-sm mb-1">Voice (string)</label>
             <button
               onClick={() => {
@@ -1366,7 +1374,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${elevenlabsVoiceDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {elevenlabsVoiceDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="absolute z-[100] top-12 left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85  backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {voiceOptions.map((option) => (
                   <button
                     key={option}
@@ -1374,9 +1382,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       setElevenlabsVoice(option);
                       setElevenlabsVoiceDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                      elevenlabsVoice === option ? "bg-white text-black" : "text-white/90"
-                    }`}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${elevenlabsVoice === option ? "bg-white text-black" : "text-white/90"
+                      }`}
                   >
                     <span>{option}</span>
                     {elevenlabsVoice === option && (
@@ -1386,7 +1393,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 ))}
               </div>
             )}
-            <p className="text-white/50 text-xs mt-1">The voice to use for speech generation. Default value: "Rachel".</p>
+            <p className="text-white/50 text-[10px] mt-1">The voice to use for speech generation. Default value: "Rachel".</p>
           </div>
           {/* <div className="flex-1 relative">
             <label className="block text-white/70 text-sm mb-1">Custom Audio Language</label>
@@ -1443,8 +1450,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <p className="text-white/50 text-xs mt-1">Required when using custom audio URL</p>
           </div> */}
         </div>
-        <div className="space-y-3">
-          <RangeControl label="Exaggeration" value={elevenlabsExaggeration} min={0.25} max={2.0} step={0.01} onChange={setElevenlabsExaggeration} />
+        <div className="space-y-0">
+          <RangeControl  label="Exaggeration" value={elevenlabsExaggeration} min={0.25} max={2.0} step={0.01} onChange={setElevenlabsExaggeration} />
           <RangeControl label="Temperature" value={elevenlabsTemperature} min={0.05} max={5.0} step={0.01} onChange={setElevenlabsTemperature} />
           <RangeControl label="CFG Scale" value={elevenlabsCfgScale} min={0.0} max={1.0} step={0.01} onChange={setElevenlabsCfgScale} />
         </div>
@@ -1485,63 +1492,67 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const MayaSettings = () => {
     const outputFormatOptions: ('wav' | 'mp3')[] = ['wav', 'mp3'];
-    
+
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 mx-1">
         <div className="flex-1">
-          <label className="block text-white/70 text-sm mb-1">Voice Prompt</label>
+          <label className="block text-white/70 text-sm -mt-2 mb-1">Voice Prompt</label>
           <textarea
             value={mayaPrompt}
             onChange={(e) => setMayaPrompt(e.target.value)}
             placeholder="Realistic male voice in the 30s age with american accent. Normal pitch, warm timbre, conversational pacing, neutral tone delivery at med intensity."
-            className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg resize-none"
-            rows={3}
+            className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-xs outline-none text-white placeholder-white/60 placeholder:text-[10px] p-2 rounded-lg resize-none"
+            rows={1}
+            style={{
+              minHeight: '100px',
+              maxHeight: '200px'
+            }}
           />
-          <p className="text-xs text-white/50 mt-1">
+          <p className="text-[10px] text-white/50 mt-1">
             Description of the voice/character. Includes attributes like age, accent, pitch, timbre, pacing, tone, and intensity.
           </p>
         </div>
-        <div className="space-y-3">
-          <RangeControl 
-            label="Temperature" 
-            value={mayaTemperature} 
-            min={0.0} 
-            max={2.0} 
-            step={0.01} 
-            onChange={setMayaTemperature} 
+        <div className="space-y-0">
+          <RangeControl
+            label="Temperature"
+            value={mayaTemperature}
+            min={0.0}
+            max={2.0}
+            step={0.01}
+            onChange={setMayaTemperature}
           />
-          <RangeControl 
-            label="Top P" 
-            value={mayaTopP} 
-            min={0.0} 
-            max={1.0} 
-            step={0.01} 
-            onChange={setMayaTopP} 
+          <RangeControl
+            label="Top P"
+            value={mayaTopP}
+            min={0.0}
+            max={1.0}
+            step={0.01}
+            onChange={setMayaTopP}
           />
-          <RangeControl 
-            label="Max Tokens" 
-            value={mayaMaxTokens} 
-            min={100} 
-            max={5000} 
-            step={100} 
-            onChange={setMayaMaxTokens} 
+          <RangeControl
+            label="Max Tokens"
+            value={mayaMaxTokens}
+            min={100}
+            max={5000}
+            step={100}
+            onChange={setMayaMaxTokens}
           />
-          <RangeControl 
-            label="Repetition Penalty" 
-            value={mayaRepetitionPenalty} 
-            min={0.5} 
-            max={2.0} 
-            step={0.01} 
-            onChange={setMayaRepetitionPenalty} 
+          <RangeControl
+            label="Repetition Penalty"
+            value={mayaRepetitionPenalty}
+            min={0.5}
+            max={2.0}
+            step={0.01}
+            onChange={setMayaRepetitionPenalty}
           />
         </div>
         <div className="flex-1 relative">
-          <label className="block text-white/70 text-sm mb-1">Output Format</label>
+          <label className="block text-white/70 text-sm -mt-4 mb-0">Output Format</label>
           <button
             onClick={() => {
               setMayaOutputFormatDropdownOpen(!mayaOutputFormatDropdownOpen);
             }}
-            className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 transition flex items-center justify-between text-white p-2 rounded-lg text-left"
+            className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 transition flex items-center justify-between text-white p-2 rounded-lg text-left text-sm"
           >
             <span className={mayaOutputFormat ? 'text-white' : 'text-white/60'}>
               {mayaOutputFormat ? mayaOutputFormat.toUpperCase() : 'Select format...'}
@@ -1549,7 +1560,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${mayaOutputFormatDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           {mayaOutputFormatDropdownOpen && (
-            <div className="absolute z-[100] bottom-full left-0 mb-2 w-full max-h-60 overflow-y-auto bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 scrollbar-hide">
+            <div className="absolute z-[100] bottom-8 left-0 mb-2 w-full max-h-60 overflow-y-auto bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 scrollbar-hide">
               {outputFormatOptions.map((option) => (
                 <button
                   key={option}
@@ -1557,9 +1568,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     setMayaOutputFormat(option);
                     setMayaOutputFormatDropdownOpen(false);
                   }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                    mayaOutputFormat === option ? "bg-white/20 text-white" : "text-white/90"
-                  }`}
+                  className={`w-full px-3 py-2 text-left text-[10px] hover:bg-white/10 flex items-center justify-between ${mayaOutputFormat === option ? "bg-white/20 text-white" : "text-white/90"
+                    }`}
                 >
                   <span className="uppercase">{option}</span>
                   {mayaOutputFormat === option && (
@@ -1576,28 +1586,28 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const ChatterboxSettings = () => {
     const voiceOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish', 
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay', 
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish', 
+      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish',
+      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay',
+      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish',
       'swahili', 'turkish', 'chinese'
     ];
-    
+
     const customAudioLanguageOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish', 
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay', 
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish', 
+      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish',
+      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay',
+      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish',
       'swahili', 'turkish', 'chinese'
     ];
-    
+
     // Check if voice is a custom URL
-    const isCustomVoiceUrl = chatterboxVoice && typeof chatterboxVoice === 'string' && 
+    const isCustomVoiceUrl = chatterboxVoice && typeof chatterboxVoice === 'string' &&
       (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://'));
-    
+
     return (
-      <div className="space-y-4">
+      <div className="space-y-1 mx-1">
         <div className="flex flex-col gap-3">
           <div className="flex-1 relative dropdown-container">
-            <label className="block text-white/70 text-sm mb-1">Voice</label>
+            <label className="block text-white/70 text-sm mb-1 -mt-2">Voice</label>
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -1607,15 +1617,15 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 className="flex-1 h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
               >
                 <span className={chatterboxVoice ? 'text-white' : 'text-white/60'}>
-                  {chatterboxVoice && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://')) 
-                    ? 'Custom Voice URL' 
+                  {chatterboxVoice && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://'))
+                    ? 'Custom Voice URL'
                     : (chatterboxVoice ? chatterboxVoice.charAt(0).toUpperCase() + chatterboxVoice.slice(1) : 'Select voice...')}
                 </span>
                 <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
             </div>
             {voiceDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {voiceOptions.map((option) => (
                   <button
                     key={option}
@@ -1626,9 +1636,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       setCustomAudioLanguage('');
                       setUploadedVoiceFile(null);
                     }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                      chatterboxVoice === option ? "bg-white text-black" : "text-white/90"
-                    }`}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${chatterboxVoice === option ? "bg-white text-black" : "text-white/90"
+                      }`}
                   >
                     <span className="capitalize">{option}</span>
                     {chatterboxVoice === option && (
@@ -1664,12 +1673,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               </div>
             )}
           </div>
-          
+
           {/* Voice Library Dropdown */}
           <div className="flex-1 relative dropdown-container">
-            <label className="block text-white/70 text-sm mb-0">Voice Library</label>
-            <p className="text-xs text-white/50 mb-1">
-              Select a previously uploaded audio file from your library to use as a voice reference. 
+            <label className="block text-white/70 text-sm -mt-2 mb-0">Voice Library</label>
+            <p className="text-[10px] text-white/50 mb-1">
+              Select a previously uploaded audio file from your library to use as a voice reference.
             </p>
             <button
               onClick={() => {
@@ -1680,14 +1689,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
             >
               <span className={selectedUploadedAudio ? 'text-white' : 'text-white/60'}>
-                {selectedUploadedAudio 
+                {selectedUploadedAudio
                   ? userAudioFiles.find(f => ensureZataUrl(f) === selectedUploadedAudio)?.fileName || 'Selected audio'
                   : 'Select uploaded audio...'}
               </span>
               <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${uploadedAudioDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {uploadedAudioDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {isLoadingAudioFiles ? (
                   <div className="px-3 py-2 text-sm text-white/60">Loading...</div>
                 ) : userAudioFiles.length === 0 ? (
@@ -1707,9 +1716,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                           setUploadedVoiceFile(null);
                           setVoiceFileName('');
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                          selectedUploadedAudio === zataUrl ? "bg-white text-black" : "text-white/90"
-                        }`}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${selectedUploadedAudio === zataUrl ? "bg-white text-black" : "text-white/90"
+                          }`}
                       >
                         <span className="truncate flex-1" title={audioFile.fileName}>{audioFile.fileName}</span>
                         {selectedUploadedAudio === zataUrl && (
@@ -1722,15 +1730,15 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               </div>
             )}
           </div>
-          
+
           {/* Show Custom Audio Language immediately after Voice Library selection or custom voice URL */}
           {(selectedUploadedAudio || isCustomVoiceUrl) && (
             <div className="flex-1 relative">
               <label className="block text-white/70 text-sm mb-0">
                 Your Voice Language <span className="text-red-400">*</span>
               </label>
-              <p className="text-xs text-white/50 mb-1">
-                Select the language of your uploaded audio file. 
+              <p className="text-[10px] text-white/50 mb-1 ">
+                Select the language of your uploaded audio file.
               </p>
               <button
                 onClick={() => {
@@ -1746,7 +1754,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${customAudioLanguageDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {customAudioLanguageDropdownOpen && (
-                <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {customAudioLanguageOptions.map((option) => (
                     <button
                       key={option}
@@ -1754,9 +1762,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                         setCustomAudioLanguage(option);
                         setCustomAudioLanguageDropdownOpen(false);
                       }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                        customAudioLanguage === option ? "bg-white text-black" : "text-white/90"
-                      }`}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${customAudioLanguage === option ? "bg-white text-black" : "text-white/90"
+                        }`}
                     >
                       <span className="capitalize">{option}</span>
                       {customAudioLanguage === option && (
@@ -1768,10 +1775,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               )}
             </div>
           )}
-          
+
           {/* Upload Audio File Section */}
           <div className="flex flex-col gap-">
-            <label className="block text-white/70 text-sm mb-0">Upload Audio File</label>
+            <label className="block text-white/70 text-sm -mt-2 mb-0">Upload Audio File</label>
             <div className="space-y-2">
               <input
                 type="text"
@@ -1789,10 +1796,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     const hasConflict = userAudioFiles.some(f => {
                       const normalizedFileName = f.fileName.toLowerCase();
                       // Check if the value matches the file name (with or without extension)
-                      return normalizedFileName === normalizedValue || 
-                             normalizedFileName === `${normalizedValue}.wav` ||
-                             normalizedFileName === `${normalizedValue}.mp3` ||
-                             normalizedValue === normalizedFileName.replace(/\.(wav|mp3)$/i, '');
+                      return normalizedFileName === normalizedValue ||
+                        normalizedFileName === `${normalizedValue}.wav` ||
+                        normalizedFileName === `${normalizedValue}.mp3` ||
+                        normalizedValue === normalizedFileName.replace(/\.(wav|mp3)$/i, '');
                     });
                     if (hasConflict) {
                       setFileNameError('Name is already taken. Please try a different name.');
@@ -1813,14 +1820,14 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  
+
                   // Validate file name - require name before upload
                   if (!audioFileNameInput.trim()) {
                     dispatch(addNotification({ type: 'error', message: 'Please enter a name for the audio file before uploading' }));
                     e.target.value = '';
                     return;
                   }
-                  
+
                   // Validate file type
                   const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
                   const allowedExtensions = /\.(wav|mp3)$/i;
@@ -1829,7 +1836,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     e.target.value = '';
                     return;
                   }
-                  
+
                   // Extract file extension from the uploaded file
                   const fileExtension = file.name.match(/\.([^.]+)$/)?.[1]?.toLowerCase() || '';
                   if (!fileExtension || !['wav', 'mp3'].includes(fileExtension)) {
@@ -1837,7 +1844,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     e.target.value = '';
                     return;
                   }
-                  
+
                   // Get the base name from user input and remove any existing extension
                   let baseName = audioFileNameInput.trim();
                   if (!baseName) {
@@ -1845,20 +1852,20 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     e.target.value = '';
                     return;
                   }
-                  
+
                   // Remove any existing extension from the base name to avoid double extensions
                   baseName = baseName.replace(/\.(wav|mp3)$/i, '');
-                  
+
                   // Construct full file name with extension (always add the extension from the actual file)
                   const fullFileName = `${baseName}.${fileExtension}`;
-                  
+
                   // Check for duplicate name (with extension)
                   if (userAudioFiles.some(f => f.fileName.toLowerCase() === fullFileName.toLowerCase())) {
                     dispatch(addNotification({ type: 'error', message: `Name "${fullFileName}" is already taken. Please try a different name.` }));
                     e.target.value = '';
                     return;
                   }
-                  
+
                   // Validate file size (max 15MB)
                   const maxSize = 15 * 1024 * 1024;
                   if (file.size > maxSize) {
@@ -1866,10 +1873,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     e.target.value = '';
                     return;
                   }
-                  
+
                   setIsUploadingVoice(true);
                   setUploadedVoiceFile(file);
-                  
+
                   try {
                     // Convert file to data URI
                     const reader = new FileReader();
@@ -1878,7 +1885,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       reader.onerror = reject;
                       reader.readAsDataURL(file);
                     });
-                    
+
                     // Upload to backend to get URL (send full file name with extension)
                     const { getApiClient } = await import('@/lib/axiosInstance');
                     const api = getApiClient();
@@ -1886,7 +1893,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       audioData: dataUri,
                       fileName: fullFileName,
                     });
-                    
+
                     if (uploadResponse.data?.data?.url) {
                       const uploadedUrl = uploadResponse.data.data.url;
                       setChatterboxVoice(uploadedUrl);
@@ -1960,7 +1967,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <RangeControl label="Temperature" value={temperature} min={0.05} max={5.0} step={0.01} onChange={setTemperature} />
           <RangeControl label="CFG Scale" value={cfgScale} min={0.0} max={1.0} step={0.01} onChange={setCfgScale} />
         </div>
-      {/* <div className="flex flex-col md:flex-row gap-3">
+        {/* <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1">
           <label className="block text-white/70 text-sm mb-1">Seed</label>
           <div className="flex items-center gap-2">
@@ -1991,40 +1998,40 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           />
         </div>
       </div> */}
-    </div>
+      </div>
     );
   };
 
   const SFXSettings = () => {
     const outputFormatOptions = [
-      'mp3_22050_32', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96', 
-      'mp3_44100_128', 'mp3_44100_192', 'pcm_8000', 'pcm_16000', 
-      'pcm_22050', 'pcm_24000', 'pcm_44100', 'pcm_48000', 
-      'ulaw_8000', 'alaw_8000', 'opus_48000_32', 'opus_48000_64', 
+      'mp3_22050_32', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96',
+      'mp3_44100_128', 'mp3_44100_192', 'pcm_8000', 'pcm_16000',
+      'pcm_22050', 'pcm_24000', 'pcm_44100', 'pcm_48000',
+      'ulaw_8000', 'alaw_8000', 'opus_48000_32', 'opus_48000_64',
       'opus_48000_96', 'opus_48000_128', 'opus_48000_192'
     ];
-    
+
     return (
       <div className="space-y-4">
         <div className="space-y-3">
-          <RangeControl 
-            label="Duration (seconds)" 
-            value={sfxDuration} 
-            min={0.5} 
-            max={22} 
-            step={0.1} 
-            onChange={setSfxDuration} 
+          <RangeControl
+            label="Duration (seconds)"
+            value={sfxDuration}
+            min={0.5}
+            max={22}
+            step={0.1}
+            onChange={setSfxDuration}
           />
-          
-          <RangeControl 
-            label="Prompt Influence" 
-            value={sfxPromptInfluence} 
-            min={0.0} 
-            max={1.0} 
-            step={0.01} 
-            onChange={setSfxPromptInfluence} 
+
+          <RangeControl
+            label="Prompt Influence"
+            value={sfxPromptInfluence}
+            min={0.0}
+            max={1.0}
+            step={0.01}
+            onChange={setSfxPromptInfluence}
           />
-          
+
           <div className="relative dropdown-container">
             <label className="block text-white/70 text-sm mb-1">Output Format</label>
             <button
@@ -2043,7 +2050,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${sfxOutputFormatDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {sfxOutputFormatDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {outputFormatOptions.map((format) => (
                   <button
                     key={format}
@@ -2051,9 +2058,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       setSfxOutputFormat(format);
                       setSfxOutputFormatDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                      sfxOutputFormat === format ? "bg-white text-black" : "text-white/90"
-                    }`}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${sfxOutputFormat === format ? "bg-white text-black" : "text-white/90"
+                      }`}
                   >
                     <span>{format}</span>
                     {sfxOutputFormat === format && (
@@ -2064,7 +2070,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg ring-1 ring-white/10">
             <div>
               <label className="block text-white/70 text-sm mb-1">Loop</label>
@@ -2072,14 +2078,12 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             </div>
             <button
               onClick={() => setSfxLoop(!sfxLoop)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                sfxLoop ? 'bg-purple-500' : 'bg-white/20'
-              }`}
+              className={`relative w-12 h-6 rounded-full transition-colors ${sfxLoop ? 'bg-purple-500' : 'bg-white/20'
+                }`}
             >
               <div
-                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                  sfxLoop ? 'translate-x-6' : 'translate-x-0'
-                }`}
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${sfxLoop ? 'translate-x-6' : 'translate-x-0'
+                  }`}
               />
             </button>
           </div>
@@ -2090,28 +2094,28 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
   const DialogueSettings = () => {
     const voiceOptions = ELEVENLABS_STANDARD_VOICES;
-    
+
     const addDialogueInput = () => {
       setDialogueInputs([...dialogueInputs, { text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }]);
     };
-    
+
     const removeDialogueInput = (index: number) => {
       if (dialogueInputs.length > 1) {
         setDialogueInputs(dialogueInputs.filter((_, i) => i !== index));
       }
     };
-    
+
     const updateDialogueInput = (index: number, field: 'text' | 'voice', value: string) => {
       const updated = [...dialogueInputs];
       updated[index] = { ...updated[index], [field]: value };
       setDialogueInputs(updated);
     };
-    
+
     return (
-      <div className="space-y-4">
+      <div className="space-y-1">
         {/* Dialogue Inputs */}
-        <div className="space-y-3">
-          <label className="block text-white/70 text-sm mb-2">Dialogue Inputs</label>
+        <div className="space-y-1 mx-1">
+          <label className="block text-white/70 text-sm -mt-2 mb-2">Dialogue Inputs</label>
           {dialogueInputs.map((input, index) => (
             <div key={index} className="bg-black/20 rounded-lg p-3 ring-1 ring-white/10">
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -2128,21 +2132,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                   </button>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-0">
                 <div>
-                  <label className="block text-white/70 text-xs mb-1">Text</label>
+                  <label className="block text-white/70 text-xs -mt-2 mb-1">Text</label>
                   <textarea
                     value={input.text}
                     onChange={(e) => updateDialogueInput(index, 'text', e.target.value)}
                     placeholder="Enter dialogue text... You can use emotion tags like [applause], [excited], etc."
                     maxLength={1000}
-                    className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg resize-y"
+                    className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-xs text-white placeholder-white/60 placeholder:text-[10px] p-2 rounded-lg resize-y"
                     rows={2}
                     style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}
                   />
                 </div>
                 <div className="relative dropdown-container">
-                  <label className="block text-white/70 text-xs mb-1">Voice</label>
+                  <label className="block text-white/70 text-xs -mt-2 mb-1">Voice</label>
                   <button
                     onClick={() => {
                       // Close other dropdowns
@@ -2163,7 +2167,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                     <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${dialogueVoiceDropdownOpenIndex === index ? 'rotate-180' : ''}`} />
                   </button>
                   {dialogueVoiceDropdownOpenIndex === index && (
-                    <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                    <div className="absolute z-[100] top-12 left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85  backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                       {voiceOptions.map((voice) => (
                         <button
                           key={voice}
@@ -2171,9 +2175,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                             updateDialogueInput(index, 'voice', voice);
                             setDialogueVoiceDropdownOpenIndex(null);
                           }}
-                          className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                            input.voice === voice ? "bg-white text-black" : "text-white/90"
-                          }`}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${input.voice === voice ? "bg-white text-black" : "text-white/90"
+                            }`}
                         >
                           <span>{voice}</span>
                           {input.voice === voice && (
@@ -2197,18 +2200,18 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             Add Dialogue Input
           </button>
         </div>
-        
+
         {/* Additional Settings */}
         <div className="space-y-3">
-          <RangeControl 
-            label="Stability" 
-            value={dialogueStability} 
-            min={0.0} 
-            max={1.0} 
-            step={0.01} 
-            onChange={setDialogueStability} 
+          <RangeControl
+            label="Stability"
+            value={dialogueStability}
+            min={0.0}
+            max={1.0}
+            step={0.01}
+            onChange={setDialogueStability}
           />
-          
+
           <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg ring-1 ring-white/10">
             <div>
               <label className="block text-white/70 text-sm mb-1">Use Speaker Boost</label>
@@ -2216,18 +2219,16 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
             </div>
             <button
               onClick={() => setDialogueUseSpeakerBoost(!dialogueUseSpeakerBoost)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                dialogueUseSpeakerBoost ? 'bg-purple-500' : 'bg-white/20'
-              }`}
+              className={`relative w-12 h-6 rounded-full transition-colors ${dialogueUseSpeakerBoost ? 'bg-purple-500' : 'bg-white/20'
+                }`}
             >
               <div
-                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                  dialogueUseSpeakerBoost ? 'translate-x-6' : 'translate-x-0'
-                }`}
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${dialogueUseSpeakerBoost ? 'translate-x-6' : 'translate-x-0'
+                  }`}
               />
             </button>
           </div>
-          
+
           {/* <div>
             <label className="block text-white/70 text-sm mb-1">Seed</label>
             <div className="flex items-center gap-2">
@@ -2248,7 +2249,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               </button>
             </div>
           </div> */}
-    
+
           {/* Pronunciation Dictionary Locators */}
           {/* <div className="space-y-2">
             <label className="block text-white/70 text-sm mb-1">Pronunciation Dictionary Locators</label>
@@ -2360,8 +2361,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <MusicModelsDropdown />
           {!isTtsModel && !isDialogueModel && !isSfxModel && model !== 'minimax-music-2' && (
             <>
-          <StyleDropdown />
-          <InstrumentsDropdown />
+              {/* <StyleDropdown />
+          <InstrumentsDropdown /> */}
             </>
           )}
         </div>
@@ -2373,23 +2374,22 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               <>
                 {/* Prompt Input for MiniMax Music 2 */}
                 <div className="w-full">
-                  <label className="block text-white/90 text-sm font-medium mb-2 flex items-center gap-1">
+                  <label className="block text-white/90 text-sm font-thin mb-1 -mt-4 flex items-center gap-1 ml-1">
                     Prompt
                     {/* <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg> */}
                   </label>
-            <textarea
-                    placeholder=" "
+                  <textarea
+                    placeholder="Enter what kind of music you want: genre (pop, lo-fi, hip-hop, cinematic), mood (happy, sad, romantic, dark), pace (slow/fast), instruments, and the scene or situation the music should fit."
                     value={prompt}
                     onChange={(e) => {
                       setPrompt(e.target.value);
                       adjustTextareaHeight(e.target);
                     }}
                     maxLength={1000}
-                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-sm outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
-                      promptLen > 0 && !isPromptValid(prompt) ? 'ring-red-500/50' : ''
-                    }`}
+                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-xs outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${promptLen > 0 && !isPromptValid(prompt) ? 'ring-red-500/50' : ''
+                      }`}
                     rows={1}
                     style={{
                       minHeight: '100px',
@@ -2401,17 +2401,17 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       Prompt must be between 10-1000 characters
                     </p>
                   )}
-                  <div className="flex items-center justify-between gap-2 mt-2">
-                    <p className="text-white/70 text-xs pl-1">
+                  <div className="flex items-center justify-between gap-2 mt-0 ml-1">
+                    {/* <p className="text-white/70 text-xs pl-1">
                       A description of the music, specifying style, mood, and scenario.
-                    </p>
-                    <span className="text-xs text-white/60">({promptLen}/1000)</span>
+                    </p> */}
+                    <span className="text-[10px] text-white/60">({promptLen}/1000)</span>
                   </div>
                 </div>
 
                 {/* Lyrics Prompt Input for MiniMax Music 2 */}
                 <div className="w-full">
-                  <label className="block text-white/90 text-sm font-medium mb-2 flex items-center gap-1">
+                  <label className="block text-white/90 text-sm font-medium mb-1 -mt-2 ml-1 flex items-center gap-1">
                     Lyrics Prompt
                     {/* <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -2429,10 +2429,9 @@ In a familiar corner, a stranger gazes"
                       setLyricsPrompt(e.target.value);
                       adjustTextareaHeight(e.target);
                     }}
-                    maxLength={1000}
-                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-sm outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${
-                      lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) ? 'ring-red-500/50' : ''
-                    }`}
+                    maxLength={5000}
+                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-xs outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) ? 'ring-red-500/50' : ''
+                      }`}
                     rows={1}
                     style={{
                       minHeight: '150px',
@@ -2440,15 +2439,15 @@ In a familiar corner, a stranger gazes"
                     }}
                   />
                   {lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) && (
-                    <p className="text-red-400 text-xs mt-1">
-                      Lyrics prompt must be between 10-1000 characters
+                    <p className="text-red-400 text-[10px] mt-1">
+                      Lyrics prompt must be between 10-5000 characters
                     </p>
                   )}
-                  <div className="flex items-center justify-between gap-2 mt-2">
-                    <p className="text-white/70 text-xs pl-1">
+                  <div className="flex items-center justify-between gap-1 mt-0 ml-1">
+                    <p className="text-white/70 text-[10px] pl-0">
                       Lyrics of the song. Use \n to separate lines. You may add structure tags like [Intro], [Verse], [Chorus], [Bridge], [Outro] to enhance the arrangement.
                     </p>
-                    <span className="text-xs text-white/60">({lyricsPromptLen}/1000)</span>
+                    <span className="text-[10px] text-white/60">({lyricsPromptLen}/5000)</span>
                   </div>
                 </div>
               </>
@@ -2457,39 +2456,38 @@ In a familiar corner, a stranger gazes"
               <div className="w-full">
                 <textarea
                   placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (maximum 300 characters, supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
-              value={lyrics}
-              onChange={(e) => {
-                setLyrics(e.target.value);
-                adjustTextareaHeight(e.target);
-              }}
-              maxLength={isChatterboxModel ? 300 : 1000}
-                  className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/70 placeholder-t p-4 rounded-lg resize-none overflow-hidden transition-all ${
-                lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
-              }`}
-              rows={1}
-              style={{
+                  value={lyrics}
+                  onChange={(e) => {
+                    setLyrics(e.target.value);
+                    adjustTextareaHeight(e.target);
+                  }}
+                  maxLength={isChatterboxModel ? 300 : 1000}
+                  className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-xs text-white placeholder-white/70 placeholder:text-xs -mt-3 p-2 rounded-lg resize-none overflow-hidden transition-all ${lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
+                    }`}
+                  rows={1}
+                  style={{
                     minHeight: '100px',
                     maxHeight: '200px'
-              }}
-            />
-            {lyricsLen > 0 && !isLyricsValid(lyrics) && (
-              <p className="text-red-400 text-xs mt-1">
-                    Text must be between 10-{isChatterboxModel ? 300 : 1000} characters
-              </p>
-            )}
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-white/70 text-xs pl-1">
+                  }}
+                />
+                {lyricsLen > 0 && !isLyricsValid(lyrics) && (
+                  <p className="text-red-400 text-xs mt-0 ml-1">
+                    Text must be between 10-{isChatterboxModel ? 300 : 5000} characters
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-2 mt-0">
+                  <p className="text-white/70 text-xs pl-1">
                     {isTtsModel
                       ? (isMayaModel
-                          ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious. Pricing: 6 credits per second of generated audio.'
-                          : (isChatterboxModel 
-                              ? `The text to be converted to speech (maximum 300 characters). Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.`
-                              : 'The text to be converted to speech (maximum 1000 characters). '))
+                        ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious. Pricing: 6 credits per second of generated audio.'
+                        : (isChatterboxModel
+                          ? `Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.`
+                          : 'The text to be converted to speech (maximum 1000 characters). '))
                       : 'Use intro, verse, chorus, bridge, outro tags to structure your song.....'}
                   </p>
-                  <span className="text-xs text-white/60">({lyricsLen}/{isChatterboxModel ? 300 : 1000})</span>
-            </div>
-          </div>
+                  <span className="text-[10px] text-white/60">({lyricsLen}/{isChatterboxModel ? 300 : 1000})</span>
+                </div>
+              </div>
             )}
           </>
         )}

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { Cpu, ChevronUp, Infinity as InfinityIcon } from "lucide-react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { setSelectedModel } from '@/store/slices/generationSlice';
+import { setSelectedModel, setFrameSize } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
 import { getModelCreditInfo } from '@/utils/modelCredits';
 
@@ -44,6 +44,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4 Ultra", value: "imagen-4-ultra" },
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
+    { name: "P-Image", value: "prunaai/p-image" },
+    { name: "P-Image-Edit", value: "prunaai/p-image-edit" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
@@ -86,8 +88,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'google/nano-banana-pro' ||
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
-      m.value === 'flux-2-pro'
+      m.value === 'flux-2-pro' ||
+      m.value === 'prunaai/p-image-edit'
     );
+    // Only show P-Image-Edit when an image is uploaded (I2I only)
+    if (uploadedImages.length === 0) {
+      filteredModels = filteredModels.filter(m => m.value !== 'prunaai/p-image-edit');
+    }
   }
 
   // Set default model to z-image-turbo on mount if not set (only if no images uploaded)
@@ -165,6 +172,12 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
         type: 'info',
         message: 'MiniMax Image-01 uses only one reference image. The first image will be used.'
       }));
+    }
+    if (modelValue === 'prunaai/p-image') {
+      dispatch(setFrameSize('16:9')); // schema default aspect ratio
+    }
+    if (modelValue === 'prunaai/p-image-edit') {
+      dispatch(setFrameSize('1:1')); // use explicit aspect ratio, drop match_input_image
     }
     dispatch(setSelectedModel(modelValue));
     dispatch(toggleDropdown(''));

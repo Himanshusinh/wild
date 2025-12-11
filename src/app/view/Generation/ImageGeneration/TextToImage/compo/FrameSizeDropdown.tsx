@@ -190,6 +190,8 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     { name: 'Portrait 10:16', value: '10:16', icon: 'portrait', hideValue: true },
     { name: 'Landscape 16:10', value: '16:10', icon: 'landscape', hideValue: true },
     { name: 'Portrait 9:21', value: '9:21', icon: 'portrait', hideValue: true },
+    { name: 'Custom', value: 'custom', icon: 'landscape', hideValue: true },
+    { name: 'Match Input', value: 'match_input_image', icon: 'square', hideValue: true },
   ];
 
   // Some providers (MiniMax) specify an explicit allowed list; others accept broader ranges.
@@ -205,8 +207,19 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isFlux2Pro = selectedModel === 'flux-2-pro';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';
+  const isPImage = selectedModel === 'prunaai/p-image';
+  const isPImageEdit = selectedModel === 'prunaai/p-image-edit';
 
   const frameSizes = (() => {
+    if (isPImage) {
+      // P-Image: allowed ratios per schema
+      const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isPImageEdit) {
+      const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isSeedream45) {
       // Seedream 4.5 on FAL: supports 1:1, 4:3, 3:4, 16:9, 9:16 via image_size enums
       const allowed = new Set(['1:1', '4:3', '3:4', '16:9', '9:16']);

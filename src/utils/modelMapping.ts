@@ -820,8 +820,20 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'prunaai/p-image',
+    creditModelName: 'P-Image',
+    generationType: 'image',
+    provider: 'replicate',
+  },
+  {
     frontendValue: 'replicate-clarity-upscaler',
     creditModelName: 'replicate/philz1337x/clarity-upscaler',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'prunaai/p-image-edit',
+    creditModelName: 'P-Image-Edit',
     generationType: 'image',
     provider: 'replicate'
   },

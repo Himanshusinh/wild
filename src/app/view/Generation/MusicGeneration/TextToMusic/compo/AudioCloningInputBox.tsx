@@ -38,6 +38,12 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
   const [selectedAudio, setSelectedAudio] = useState<{ entry: any; audio: any } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const getDisplayAudioName = (name?: string) => {
+    if (!name) return '';
+    const base = name.split('/').pop() || name;
+    return base.replace(/\.[^/.]+$/, '');
+  };
+
   // Delete handler for user input audio files
   const handleDeleteAudioFile = async (e: React.MouseEvent, file: any) => {
     try {
@@ -148,11 +154,12 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
       return;
     }
 
-    let baseName = audioFileName.trim().replace(/\.(wav|mp3)$/i, '');
-    const fullFileName = `${baseName}.${fileExtension}`;
+    // Always store and display the name without extension (backend upload uses this as fileName)
+    const baseName = audioFileName.trim().replace(/\.(wav|mp3)$/gi, '');
+    const fullFileName = baseName; // no extension in stored name
     
-    // Check for duplicate name (frontend validation)
-    if (userAudioFiles.some(file => file.fileName?.toLowerCase() === fullFileName.toLowerCase())) {
+    // Check for duplicate name (frontend validation) using extension-less name
+    if (userAudioFiles.some(file => getDisplayAudioName(file.fileName)?.toLowerCase() === fullFileName.toLowerCase())) {
       setErrorMessage(`"${fullFileName}" already exists. Please choose a different name.`);
       return;
     }
@@ -192,7 +199,7 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
       const api = getApiClient();
       const uploadResponse = await api.post('/api/fal/upload-voice', {
         audioData: dataUri,
-        fileName: fullFileName,
+        fileName: fullFileName, // extension-less name
       });
 
       const uploadedUrl = uploadResponse.data?.data?.url;
@@ -251,11 +258,13 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
               <h3 className="text-sm font-medium text-white/70">Your Input Audio</h3>
             </div>
             <div className="flex flex-wrap gap-3 ml-9">
-              {userAudioFiles.map((file: any) => (
+              {userAudioFiles.map((file: any) => {
+                const displayName = getDisplayAudioName(file.fileName);
+                return (
                 <div key={file.id || file.storagePath || file.url} className="flex flex-col items-center">
                   <div
                     className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-600/60 via-blue-600/60 to-purple-600/60 ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] transition-all duration-500 cursor-pointer group hover:-translate-y-1 hover:scale-[1.02] opacity-60`}
-                    onClick={() => setSelectedAudio({ entry: { model: 'voicecloning', prompt: file.fileName, generationType: 'voicecloning' }, audio: { url: file.url, originalUrl: file.url, firebaseUrl: file.url, fileName: file.fileName } })}
+                    onClick={() => setSelectedAudio({ entry: { model: 'voicecloning', prompt: displayName, generationType: 'voicecloning' }, audio: { url: file.url, originalUrl: file.url, firebaseUrl: file.url, fileName: displayName } })}
                   >
                     <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
@@ -285,9 +294,9 @@ const AudioCloningInputBox = (props?: { showHistoryOnly?: boolean }) => {
                     </div>
                   </div>
                   {/* Name below tile */}
-                  <div className="mt-2 text-xs text-white/80 max-w-[12rem] truncate" title={file.fileName}>{file.fileName}</div>
+                  <div className="mt-2 text-xs text-white/80 max-w-[12rem] truncate" title={displayName}>{displayName}</div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         ) : (
