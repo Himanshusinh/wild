@@ -6,6 +6,8 @@ import { store } from '@/store';
 import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store/slices/historySlice';
 import { minimaxMusic, falElevenTts } from '@/store/slices/generationsApi';
 import { useGenerationCredits } from '@/hooks/useCredits';
+import { useCredits } from '@/hooks/useCredits';
+import { getModelCreditInfo } from '@/utils/modelCredits';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
@@ -47,6 +49,12 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     duration: 90, // Default duration for music
   });
 
+  const {
+    deductCreditsOptimisticForGeneration,
+    rollbackOptimisticDeduction,
+    refreshCredits,
+  } = useCredits();
+
   const handleGenerate = async (payload: any) => {
     const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
     const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.prompt || '';
@@ -79,13 +87,29 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     // Clear any previous credit errors
     clearCreditsError();
 
-    // Validate and reserve credits before generation
+    // Validate and reserve credits before generation (plus optimistic UI debit)
+    let optimisticDebit = 0;
+    const musicCredits = (() => {
+      const info = getModelCreditInfo(payload?.model || 'minimax-music-2');
+      return info?.credits || 0;
+    })();
+
     let transactionId: string;
     try {
+      if (musicCredits > 0) {
+        try {
+          deductCreditsOptimisticForGeneration(musicCredits);
+          optimisticDebit = musicCredits;
+        } catch { /* ignore optimistic errors */ }
+      }
+
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
       console.log('✅ Credits reserved for music generation:', creditResult);
     } catch (creditError: any) {
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       console.error('❌ Credit validation failed:', creditError);
       setErrorMessage(creditError.message || 'Insufficient credits for generation');
       return;
@@ -357,6 +381,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       if (transactionId) {
         await handleGenerationSuccess(transactionId);
       }
+      try { await refreshCredits(); } catch { }
+      try { await refreshCredits(); } catch { }
 
       // Refresh history after a short delay to ensure backend has updated
       // For MiniMax Music 2, we already added the entry, so skip refresh to avoid duplicates
@@ -374,6 +400,10 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     } catch (error: any) {
       console.error('❌ Music generation failed:', error);
+      
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       
       const historyIdToUpdate = backendHistoryId || tempId;
       

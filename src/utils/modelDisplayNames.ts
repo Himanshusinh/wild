@@ -66,6 +66,8 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'musicgen-melody': 'MusicGen Melody',
   'stable-audio-open': 'Stable Audio Open',
   'stable-audio-2': 'Stable Audio 2',
+  'prunaai/p-image': 'P-Image',
+  'prunaai/p-image-edit': 'P-Image-Edit',
   
   // Logo Generation Models
   'flux-kontext-dev': 'Flux Kontext Dev',
