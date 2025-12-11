@@ -208,16 +208,11 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';
   const isPImage = selectedModel === 'prunaai/p-image';
-  const isPImageEdit = selectedModel === 'prunaai/p-image-edit';
 
   const frameSizes = (() => {
     if (isPImage) {
       // P-Image: allowed ratios per schema
       const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom']);
-      return baseSizes.filter(s => allowed.has(s.value));
-    }
-    if (isPImageEdit) {
-      const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isSeedream45) {

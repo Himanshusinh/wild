@@ -45,7 +45,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
     { name: "P-Image", value: "prunaai/p-image" },
-    { name: "P-Image-Edit", value: "prunaai/p-image-edit" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
@@ -89,12 +88,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
-      m.value === 'prunaai/p-image-edit'
+      m.value === 'prunaai/p-image'
     );
-    // Only show P-Image-Edit when an image is uploaded (I2I only)
-    if (uploadedImages.length === 0) {
-      filteredModels = filteredModels.filter(m => m.value !== 'prunaai/p-image-edit');
-    }
   }
 
   // Set default model to z-image-turbo on mount if not set (only if no images uploaded)
@@ -176,9 +171,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     if (modelValue === 'prunaai/p-image') {
       dispatch(setFrameSize('16:9')); // schema default aspect ratio
     }
-    if (modelValue === 'prunaai/p-image-edit') {
-      dispatch(setFrameSize('1:1')); // use explicit aspect ratio, drop match_input_image
-    }
     dispatch(setSelectedModel(modelValue));
     dispatch(toggleDropdown(''));
   };
@@ -209,7 +201,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
             // Priority models moved to LEFT column and marked with crown
             // z-image-turbo is first and highlighted as special
             const leftValues = [
-              'new-turbo-model', // z-image-turbo - should be first
+              'new-turbo-model',
+              'prunaai/p-image', // z-image-turbo - should be first
               'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
               

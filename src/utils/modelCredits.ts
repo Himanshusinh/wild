@@ -273,8 +273,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate-bria-expand-image': 100, // replicate/bria/expand-image
   'replicate-real-esrgan': 32,         // replicate/nightmareai/real-esrgan (32.4 rounded)
   'replicate-swin2sr': 43,             // replicate/mv-lab/swin2sr
-  'prunaai/p-image': 20,               // P-Image (Replicate)
-  'prunaai/p-image-edit': 30,          // P-Image-Edit (I2I only, Replicate)
+  'prunaai/p-image': 25,               // P-Image (Replicate)
+  'prunaai/p-image-edit': 25,          // P-Image-Edit (I2I only, Replicate)
   // Crystal Upscaler variants
   'replicate-crystal-upscaler-1080p': 220,
   'replicate-crystal-upscaler-1440p': 420,

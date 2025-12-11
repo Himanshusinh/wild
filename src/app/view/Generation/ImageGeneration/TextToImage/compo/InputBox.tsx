@@ -3175,84 +3175,173 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'prunaai/p-image') {
-        // P-Image (Replicate) - single request capped to 1440 dims
-        try {
-          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
-          const allowedAspect = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom']);
-          const aspect = allowedAspect.has(frameSize) ? frameSize : '16:9';
-          const computePImageDims = (ratio: string) => {
-            const [wStr, hStr] = ratio.split(':');
-            const w = Number(wStr) || 1;
-            const h = Number(hStr) || 1;
-            const aspectVal = w / h;
-            const round16 = (v: number) => Math.round(v / 16) * 16;
-            const clamp = (v: number) => Math.max(256, Math.min(1440, round16(v)));
-            let width: number;
-            let height: number;
-            if (aspectVal >= 1) {
-              width = 1440;
-              height = round16(1440 / aspectVal);
-            } else {
-              height = 1440;
-              width = round16(1440 * aspectVal);
-            }
-            return { width: clamp(width), height: clamp(height) };
-          };
-          const dims = computePImageDims(aspect === 'custom' ? '1:1' : (frameSize || '16:9'));
-          const payload: any = {
-            prompt: `${promptAdjusted} [Style: ${style}]`,
-            model: 'prunaai/p-image',
-            aspect_ratio: aspect,
-            width: Math.min(1440, dims.width),
-            height: Math.min(1440, dims.height),
-            prompt_upsampling: false,
-            disable_safety_checker: false,
-            isPublic,
-          };
-          if (aspect === 'custom') {
-            payload.width = 1440;
-            payload.height = 1440;
-          }
+        // P-Image combined behavior: T2I when no uploads, I2I via p-image-edit when uploads exist
+        const combinedImages = getCombinedUploadedImages().map((u: string) => toAbsoluteFromProxy(u));
+        const hasUploads = combinedImages.length > 0;
 
-          const result = await dispatch(replicateGenerate(payload)).unwrap();
-
+        if (hasUploads) {
+          // Route to p-image-edit with tighter resolution (max 1024, ~1MP)
           try {
-            const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
-              images: (result.images || []),
-              status: 'completed',
-              timestamp: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              imageCount: (result.images?.length || imageCount),
-            } as any;
-            setLocalGeneratingEntries([completedEntry]);
-          } catch { }
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, combinedImages, selectedCharacters);
+            const allowedAspect = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3']);
+            const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+            const computeEditDims = (ratio: string) => {
+              const [wStr, hStr] = ratio.split(':');
+              const w = Number(wStr) || 1;
+              const h = Number(hStr) || 1;
+              const aspectVal = w / h;
+              const round16 = (v: number) => Math.round(v / 16) * 16;
+              const clamp = (v: number) => Math.max(256, Math.min(1024, round16(v)));
+              let width: number;
+              let height: number;
+              if (aspectVal >= 1) {
+                width = 1024;
+                height = round16(1024 / aspectVal);
+              } else {
+                height = 1024;
+                width = round16(1024 * aspectVal);
+              }
+              // ensure ~1MP cap
+              while (width * height > 1048576) {
+                width = clamp(width - 16);
+                height = clamp(Math.round(width / aspectVal));
+              }
+              return { width: clamp(width), height: clamp(height) };
+            };
+            const dims = computeEditDims(aspect);
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
-          clearInputs();
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'prunaai/p-image-edit',
+              images: combinedImages,
+              aspect_ratio: aspect,
+              width: dims.width,
+              height: dims.height,
+              turbo: true,
+              disable_safety_checker: false,
+              isPublic,
+            };
 
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
-          if (resultHistoryId) {
-            await refreshSingleGeneration(resultHistoryId);
-          } else {
-            await refreshHistory();
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+            try {
+              const completedEntry: HistoryEntry = {
+                ...(localGeneratingEntries[0] || tempEntry),
+                id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+                images: (result.images || []),
+                status: 'completed',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: (result.images?.length || imageCount),
+              } as any;
+              setLocalGeneratingEntries([completedEntry]);
+            } catch { }
+
+            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            clearInputs();
+
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+            if (resultHistoryId) {
+              await refreshSingleGeneration(resultHistoryId);
+            } else {
+              await refreshHistory();
+            }
+
+            if (transactionId) {
+              await handleGenerationSuccess(transactionId);
+            }
+          } catch (error: any) {
+            setLocalGeneratingEntries([]);
+            setIsGeneratingLocally(false);
+            postGenerationBlockRef.current = false;
+
+            if (transactionId) {
+              await handleGenerationFailure(transactionId);
+            }
+            const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image');
+            toast.error(errorMessage, { duration: 5000 });
+            return;
           }
+        } else {
+          // Standard p-image T2I flow (max edge 1440)
+          try {
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, combinedImages, selectedCharacters);
+            const allowedAspect = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom']);
+            const aspect = allowedAspect.has(frameSize) ? frameSize : '16:9';
+            const computePImageDims = (ratio: string) => {
+              const [wStr, hStr] = ratio.split(':');
+              const w = Number(wStr) || 1;
+              const h = Number(hStr) || 1;
+              const aspectVal = w / h;
+              const round16 = (v: number) => Math.round(v / 16) * 16;
+              const clamp = (v: number) => Math.max(256, Math.min(1440, round16(v)));
+              let width: number;
+              let height: number;
+              if (aspectVal >= 1) {
+                width = 1440;
+                height = round16(1440 / aspectVal);
+              } else {
+                height = 1440;
+                width = round16(1440 * aspectVal);
+              }
+              return { width: clamp(width), height: clamp(height) };
+            };
+            const dims = computePImageDims(aspect === 'custom' ? '1:1' : (frameSize || '16:9'));
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'prunaai/p-image',
+              aspect_ratio: aspect,
+              width: Math.min(1440, dims.width),
+              height: Math.min(1440, dims.height),
+              prompt_upsampling: false,
+              disable_safety_checker: false,
+              isPublic,
+            };
+            if (aspect === 'custom') {
+              payload.width = 1440;
+              payload.height = 1440;
+            }
 
-          if (transactionId) {
-            await handleGenerationSuccess(transactionId);
-          }
-        } catch (error: any) {
-          setLocalGeneratingEntries([]);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
 
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
+            try {
+              const completedEntry: HistoryEntry = {
+                ...(localGeneratingEntries[0] || tempEntry),
+                id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+                images: (result.images || []),
+                status: 'completed',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: (result.images?.length || imageCount),
+              } as any;
+              setLocalGeneratingEntries([completedEntry]);
+            } catch { }
+
+            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            clearInputs();
+
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+            if (resultHistoryId) {
+              await refreshSingleGeneration(resultHistoryId);
+            } else {
+              await refreshHistory();
+            }
+
+            if (transactionId) {
+              await handleGenerationSuccess(transactionId);
+            }
+          } catch (error: any) {
+            setLocalGeneratingEntries([]);
+            setIsGeneratingLocally(false);
+            postGenerationBlockRef.current = false;
+
+            if (transactionId) {
+              await handleGenerationFailure(transactionId);
+            }
+            const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image');
+            toast.error(errorMessage, { duration: 5000 });
+            return;
           }
-          const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image');
-          toast.error(errorMessage, { duration: 5000 });
-          return;
         }
       } else if (selectedModel === 'new-turbo-model') {
         // New Turbo Model via replicate generate endpoint - single request with num_images
