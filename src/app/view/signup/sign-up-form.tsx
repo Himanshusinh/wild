@@ -13,6 +13,7 @@ import { auth } from '../../../lib/firebase'
 import { APP_ROUTES, LEGAL_ROUTES } from '../../../routes/routes'
 import toast from 'react-hot-toast'
 import LoadingScreen from '@/components/ui/LoadingScreen'
+import TurnstileCaptcha from '@/components/TurnstileCaptcha'
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 7) => {
@@ -78,6 +79,10 @@ export default function SignInForm() {
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
   const [showPassword, setShowPassword] = useState(false) // Password visibility toggle (synced for both fields)
+
+  // Captcha states
+  const [captchaToken, setCaptchaToken] = useState<string>('')
+  const [captchaError, setCaptchaError] = useState(false)
 
   // Redeem code states
   const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
@@ -162,6 +167,7 @@ export default function SignInForm() {
   const switchToGoogleSignIn = () => {
     setShowLoginForm(false) // Ensure we're in sign-up mode for Google
     setError("")
+    // Don't reset captcha - keep token valid
     // Trigger Google sign-in
     setTimeout(() => {
       handleGoogleLogin()
@@ -171,6 +177,7 @@ export default function SignInForm() {
   const switchToEmailSignIn = () => {
     setShowLoginForm(true) // Switch to login mode
     setError("")
+    // Don't reset captcha - keep token valid across form switch
   }
 
   // Handle login form submission
@@ -182,6 +189,15 @@ export default function SignInForm() {
 
     if (!email.trim() || !password) {
       setError("Please enter both email and password")
+      return
+    }
+
+    // Verify captcha token is present
+    if (!captchaToken) {
+      setCaptchaError(true)
+      const errorMsg = "Please complete the captcha verification"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
 
@@ -357,12 +373,32 @@ export default function SignInForm() {
   }, [searchParams])
 
 
+  // Captcha handlers
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token)
+    setCaptchaError(false)
+  }
+
+  const handleCaptchaError = () => {
+    setCaptchaToken('')
+    setCaptchaError(true)
+  }
+
   // API handlers for form flow
   const handleSendOtp = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     console.log("🚀 Starting OTP send process...")
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", !!password)
+
+    // Verify captcha token is present
+    if (!captchaToken) {
+      setCaptchaError(true)
+      const errorMsg = "Please complete the captcha verification"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
+      return
+    }
 
     if (password !== confirmPassword) {
       console.log("❌ Password mismatch")
@@ -1551,6 +1587,18 @@ export default function SignInForm() {
                 </button>
               </div>
 
+              {/* Cloudflare Turnstile Captcha */}
+              <TurnstileCaptcha
+                onVerify={handleCaptchaVerify}
+                onError={handleCaptchaError}
+                theme="dark"
+              />
+
+              {/* Captcha Error */}
+              {captchaError && (
+                <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
+              )}
+
               {/* Forgot Password Link */}
               <div className="flex justify-end -mt-2">
                 <button
@@ -1565,9 +1613,9 @@ export default function SignInForm() {
               {/* Continue with Email Button (Krea Style - Dark) */}
               <button
                 type="submit"
-                disabled={processing}
+                disabled={processing || !captchaToken}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                  processing
+                  processing || !captchaToken
                     ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
@@ -1844,6 +1892,18 @@ export default function SignInForm() {
                   </Link>.
                 </div>
 
+                {/* Cloudflare Turnstile Captcha */}
+                <TurnstileCaptcha
+                  onVerify={handleCaptchaVerify}
+                  onError={handleCaptchaError}
+                  theme="dark"
+                />
+
+                {/* Captcha Error */}
+                {captchaError && (
+                  <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
+                )}
+
                 {/* Error Message (Dark) - Only show server/API errors */}
                 {error && (
                   <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
@@ -1854,9 +1914,9 @@ export default function SignInForm() {
                 {/* Continue with Email Button (Krea Style - Dark) */}
                 <button
                   type="submit"
-                  disabled={processing || !isFormValid}
+                  disabled={processing || !isFormValid || !captchaToken}
                   className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                    processing || !isFormValid
+                    processing || !isFormValid || !captchaToken
                       ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}

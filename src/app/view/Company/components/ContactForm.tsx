@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import TurnstileCaptcha from '@/components/TurnstileCaptcha';
 
 const ContactForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -10,10 +11,22 @@ const ContactForm: React.FC = () => {
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+  const [captchaError, setCaptchaError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement contact form submission
+    
+    // Verify captcha token is present
+    if (!captchaToken) {
+      setCaptchaError(true);
+      alert('Please complete the captcha verification');
+      return;
+    }
+    
+    // TODO: Send captchaToken to backend for verification
+    // TODO: Implement contact form submission to backend
+    console.log('Form submitted with captcha token:', captchaToken);
     setSubmitted(true);
   };
 
@@ -22,6 +35,16 @@ const ContactForm: React.FC = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token);
+    setCaptchaError(false);
+  };
+
+  const handleCaptchaError = () => {
+    setCaptchaToken('');
+    setCaptchaError(true);
   };
 
   if (submitted) {
@@ -101,9 +124,22 @@ const ContactForm: React.FC = () => {
           placeholder="Your message..."
         />
       </div>
+      
+      {/* Cloudflare Turnstile Captcha */}
+      <TurnstileCaptcha
+        onVerify={handleCaptchaVerify}
+        onError={handleCaptchaError}
+        theme="dark"
+      />
+      
+      {captchaError && (
+        <p className="text-sm text-red-500">Please complete the captcha verification</p>
+      )}
+      
       <button
         type="submit"
-        className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+        disabled={!captchaToken}
+        className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors font-semibold disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
       >
         Send Message
       </button>
