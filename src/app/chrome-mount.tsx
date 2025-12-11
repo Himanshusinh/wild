@@ -202,6 +202,20 @@ export default function ChromeMount() {
     return null; // Hide chrome when not authenticated
   }
 
+  // For Blog: hide chrome if not authenticated, show if authenticated
+  const isBlogRoute = pathnameLower.startsWith('/blog');
+  if (isBlogRoute) {
+    if (isAuthenticated) {
+      return (
+        <>
+          <Nav />
+          {!isVideoEditorOpen && <SidePannelFeatures />}
+        </>
+      );
+    }
+    return null; // Hide chrome when not authenticated
+  }
+
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
     isLandingRoute ||
