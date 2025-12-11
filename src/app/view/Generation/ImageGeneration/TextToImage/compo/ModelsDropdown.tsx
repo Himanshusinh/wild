@@ -196,7 +196,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
       
       {activeDropdown === 'models' && ( 
-        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}>
+        <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
             // z-image-turbo is first and highlighted as special
@@ -254,6 +254,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           {leftSet.has(model.value) && !model.isFree && (
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
+                          
                         </span>
                         {!model.isFree && (
                           <span className={`md:text-[11px] text-[9px] -mt-0.5 font-normal ${
@@ -283,24 +284,37 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                       className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                         selectedModel === model.value
                           ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
+                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white "
                             : "bg-white text-black"
                           : model.isFree
-                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border hover:border-[#60a5fa]/50"
+                          ? "text-white/90 hover:bg-[#60a5fa]/10  "
                           : "text-white/90 hover:bg-white/10"
                       }`}
                     >
                       <div className="flex flex-col mb-0">
                         <span className="flex items-center gap-2">
                           {model.isFree && (
+                            <span className="text-xs text-white/50">
                             <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
+                            </span>
                           )}
+                          
                           {model.name}
+
+                          
+                          
                           {!model.isFree && (
                             
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>
+                        {model.isFree && (
+                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
+                            selectedModel === model.value ? 'text-white/70' : 'opacity-80'
+                          }`}>
+                            {model.displayText || (model.credits != null ? `${model.credits} credits` : '0 credits ')}
+                          </span>
+                        )}
                         {!model.isFree && (
                           <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
                             selectedModel === model.value ? 'text-black/70' : 'opacity-80'
