@@ -2,39 +2,58 @@
 const isProd = process.env.NODE_ENV === 'production';
 const siteUrl = process.env.SITE_URL || 'https://wildmindai.com';
 
+// Import blog posts to generate dynamic URLs
+const { blogPosts } = require('./src/app/blog/data/blogPosts.ts');
+
 const canonicalPages = [
-  // Main pages
+  // Main pages - ALL DAILY
   { url: '/', priority: 1.0, changefreq: 'daily' },
+  { url: '/view/Landingpage', priority: 0.9, changefreq: 'daily' },
+  { url: '/view/HomePage', priority: 0.9, changefreq: 'daily' },
   
-  // Canvas and Tools
-  { url: '/canvas-projects', priority: 0.9, changefreq: 'weekly' },
-  { url: '/edit-image', priority: 0.8, changefreq: 'weekly' },
-  { url: '/edit-video', priority: 0.8, changefreq: 'weekly' },
+  // Canvas and Tools - ALL DAILY
+  { url: '/canvas-projects', priority: 0.9, changefreq: 'daily' },
+  { url: '/edit-image', priority: 0.8, changefreq: 'daily' },
+  { url: '/edit-video', priority: 0.8, changefreq: 'daily' },
   
-  // Pricing & Features  
-  { url: '/view/pricing', priority: 0.9, changefreq: 'weekly' },
+  // Pricing & Features - ALL DAILY
+  { url: '/view/pricing', priority: 0.9, changefreq: 'daily' },
   { url: '/view/ArtStation', priority: 0.7, changefreq: 'daily' },
   
-  // Active Generation Features (ONLY keep text-to-image, text-to-video, text-to-music, logo-generation)
-  { url: '/text-to-image', priority: 0.8, changefreq: 'weekly' },
-  { url: '/text-to-video', priority: 0.8, changefreq: 'weekly' },
-  { url: '/text-to-music', priority: 0.8, changefreq: 'weekly' },
-  { url: '/logo-generation', priority: 0.7, changefreq: 'weekly' },
+  // Blog main page - DAILY
+  { url: '/blog', priority: 0.9, changefreq: 'daily' },
   
-  // Legal Pages
-  { url: '/legal', priority: 0.5, changefreq: 'monthly' },
-  { url: '/legal/privacy', priority: 0.5, changefreq: 'monthly' },
-  { url: '/legal/terms', priority: 0.5, changefreq: 'monthly' },
-  { url: '/legal/cookie', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/aup', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/dmca', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/api-terms', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/terms-conditions', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/cancellation-refunds', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/shipping', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/relationship', priority: 0.4, changefreq: 'monthly' },
-  { url: '/legal/thirdparty', priority: 0.4, changefreq: 'monthly' },
+  // Active Generation Features - ALL DAILY
+  { url: '/text-to-image', priority: 0.8, changefreq: 'daily' },
+  { url: '/text-to-video', priority: 0.8, changefreq: 'daily' },
+  { url: '/text-to-music', priority: 0.8, changefreq: 'daily' },
+  { url: '/logo-generation', priority: 0.7, changefreq: 'daily' },
+  { url: '/logo', priority: 0.7, changefreq: 'daily' },
+  { url: '/sticker-generation', priority: 0.7, changefreq: 'daily' },
+  
+  // Legal Pages - ALL DAILY for consistency
+  { url: '/legal', priority: 0.5, changefreq: 'daily' },
+  { url: '/legal/privacy', priority: 0.5, changefreq: 'daily' },
+  { url: '/legal/terms', priority: 0.5, changefreq: 'daily' },
+  { url: '/legal/cookie', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/aup', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/dmca', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/api-terms', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/terms-conditions', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/cancellation-refunds', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/shipping', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/relationship', priority: 0.4, changefreq: 'daily' },
+  { url: '/legal/thirdparty', priority: 0.4, changefreq: 'daily' },
 ];
+
+// Add all blog posts dynamically - DAILY crawl
+blogPosts.forEach((post) => {
+  canonicalPages.push({
+    url: `/blog/${post.id}`,
+    priority: 0.7,
+    changefreq: 'daily',
+  });
+});
 
 // Create a map of URL to page config for quick lookup
 const canonicalMap = new Map(canonicalPages.map(page => [page.url, page]));
@@ -43,7 +62,7 @@ module.exports = {
   siteUrl,
   outDir: './public',
   generateRobotsTxt: true,
-  changefreq: 'weekly',
+  changefreq: 'daily', // Default to daily for everything
   priority: 0.7,
   sitemapSize: 5000,
   exclude: [
@@ -60,7 +79,6 @@ module.exports = {
     '/login',
     '/view/signup',
     '/view/login',
-    '/view/HomePage',
     '/favicon.ico',
     '/robots.txt',
     // Disabled feature pages (should return 404)
@@ -68,7 +86,6 @@ module.exports = {
     '/ad-generation',
     '/product-generation',
     '/mockup-generation',
-    '/sticker-generation',
     '/view/Generation/wildmindskit/*',
   ],
   robotsTxtOptions: {
@@ -83,11 +100,17 @@ module.exports = {
   transform: async (config, path) => {
     const pageConfig = canonicalMap.get(path);
     if (!pageConfig) {
-      return null;
+      // Allow other discovered pages with default daily frequency
+      return {
+        loc: path,
+        changefreq: 'daily',
+        priority: config.priority,
+        lastmod: new Date().toISOString(),
+      };
     }
     return {
       loc: path,
-      changefreq: pageConfig.changefreq || config.changefreq,
+      changefreq: pageConfig.changefreq || 'daily',
       priority: pageConfig.priority || config.priority,
       lastmod: new Date().toISOString(),
     };
