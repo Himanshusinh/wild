@@ -284,10 +284,10 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                       className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                         selectedModel === model.value
                           ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
+                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white "
                             : "bg-white text-black"
                           : model.isFree
-                          ? "text-white/90 hover:bg-[#60a5fa]/10  hover:border-[#60a5fa]/50"
+                          ? "text-white/90 hover:bg-[#60a5fa]/10  "
                           : "text-white/90 hover:bg-white/10"
                       }`}
                     >
