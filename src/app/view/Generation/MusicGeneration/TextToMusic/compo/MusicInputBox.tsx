@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addNotification } from '@/store/slices/uiSlice';
 import { Music4, ChevronDown, ChevronUp, Volume2, FileText, Palette, Guitar } from "lucide-react";
@@ -157,6 +157,9 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const [seed, setSeed] = useState<string>('random');
   const [audioUrl, setAudioUrl] = useState('');
   
+  // File name input state
+  const [fileName, setFileName] = useState('');
+  
   // Maya TTS-specific state
   const [mayaPrompt, setMayaPrompt] = useState('Realistic male voice in the 30s age with american accent. Normal pitch, warm timbre, conversational pacing, neutral tone delivery at med intensity.');
   const [mayaTemperature, setMayaTemperature] = useState(0.4);
@@ -238,6 +241,39 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const isMayaModel = model.toLowerCase().includes('maya');
   const isDialogueModel = model.toLowerCase().includes('dialogue');
   const isSfxModel = model.toLowerCase().includes('sfx') || model.toLowerCase().includes('sound-effect');
+  
+  // Get user from Redux for default file naming
+  const user = useAppSelector((state: any) => state?.auth?.user || null);
+  
+  // Get history entries to calculate generation count for default naming
+  const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
+  
+  // Calculate default file name based on feature and generation count
+  const getDefaultFileName = useMemo(() => {
+    // Determine feature name based on model and mode
+    let featureName = 'music';
+    if (isDialogueModel) featureName = 'dialogue';
+    else if (isSfxModel) featureName = 'sfx';
+    else if (isTtsModel) featureName = 'tts';
+    else if (isVoiceCloning) featureName = 'voice_cloning';
+    
+    // Get username
+    const username = user?.username || user?.displayName || user?.email?.split('@')[0] || 'user';
+    
+    // Count existing generations for this feature
+    const featureEntries = historyEntries.filter((entry: any) => {
+      const genType = String(entry.generationType || '').toLowerCase();
+      if (featureName === 'music') return genType === 'text-to-music' || genType === 'text_to_music';
+      if (featureName === 'tts') return genType === 'text-to-speech' || genType === 'text_to_speech' || genType === 'tts';
+      if (featureName === 'dialogue') return genType === 'text-to-dialogue' || genType === 'text_to_dialogue';
+      if (featureName === 'sfx') return genType === 'sfx';
+      if (featureName === 'voice_cloning') return genType === 'audio-generation' || genType === 'voice-cloning';
+      return false;
+    });
+    
+    const count = featureEntries.length + 1;
+    return `${username}_${featureName}_${count}`;
+  }, [user, historyEntries, isDialogueModel, isSfxModel, isTtsModel, isVoiceCloning, model]);
 
   // Helper function to ensure audio URL is a proper Zata URL
   const ensureZataUrl = (audioFile: { url?: string; storagePath?: string }): string => {
@@ -791,6 +827,10 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       };
     }
 
+    // Add file name to payload (use default if not provided)
+    const finalFileName = fileName.trim() || getDefaultFileName;
+    payload.fileName = finalFileName;
+    
     if (onGenerate) {
       onGenerate(payload);
     } else {
@@ -2442,25 +2482,36 @@ In a familiar corner, a stranger gazes"
           <TtsSettings />
         )}
 
-        {/* Generate Button - At the bottom */}
-        <div className="w-full flex justify-end pt-0">
-            <button
-              onClick={handleGenerate}
-              disabled={!canGenerate}
+        {/* File Name Input and Generate Button - At the bottom */}
+        <div className="w-full flex items-center gap-2 pt-0">
+          {/* File Name Input */}
+          <div className="flex-1">
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              placeholder="File name (optional)"
+              className="w-full px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20"
+            />
+          </div>
+          {/* Generate Button */}
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate}
             className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2F6BFF] text-white px-6 py-1 rounded-lg text-lg font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center gap-3 relative z-[60]"
-            >
-              {generating ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
-                  Composing...
-                </>
-              ) : (
-                <>
-                  {/* <Music4 className="w-6 h-6" /> */}
-                  Generate
-                </>
-              )}
-            </button>
+          >
+            {generating ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
+                Composing...
+              </>
+            ) : (
+              <>
+                {/* <Music4 className="w-6 h-6" /> */}
+                Generate
+              </>
+            )}
+          </button>
         </div>
       </div>
 

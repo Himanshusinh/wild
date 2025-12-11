@@ -31,7 +31,6 @@ export function middleware(req: NextRequest) {
     '/view/imagegeneration': '/text-to-image',
     '/view/templates': '/view/workflows',
     '/view/contactus': '/view/Landingpage?section=contact',
-    '/view/blogger': '/view/Landingpage',
     '/view/x': 'https://x.com/WildMind_AI',
     '/view/youtube': 'https://www.youtube.com/@Wild-Mind-2025',
     '/view/$': '/view/Landingpage',
@@ -39,7 +38,7 @@ export function middleware(req: NextRequest) {
     '/templates': '/view/workflows',
     '/contactus': '/view/Landingpage?section=contact',
     '/blogger': '/view/Landingpage',
-    '/view/blog': '/blog',
+    '/blog': '/view/Landingpage',
     '/$': '/view/Landingpage',
     '/&': '/view/Landingpage',
   };
@@ -182,6 +181,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/product/') ||
     // Company pages
     pathname.startsWith('/company/') ||
+    pathname.startsWith('/blog') ||
     // Allow static assets and Next.js internals
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||

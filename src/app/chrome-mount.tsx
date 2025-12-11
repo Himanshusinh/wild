@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import Nav from './view/Generation/Core/Nav';
 import SidePannelFeatures from './view/Generation/Core/SidePannelFeatures';
+import { registerBrowserPushToken, attachForegroundMessageListener } from '@/lib/messaging';
 
 /**
  * Conditionally renders the global chrome (navbar + side panel)
@@ -16,6 +17,7 @@ export default function ChromeMount() {
   const pathname = usePathname();
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'home');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   // Check authentication status
   useEffect(() => {
@@ -23,14 +25,79 @@ export default function ChromeMount() {
       const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       if (userStr) {
         const u = JSON.parse(userStr);
-        setIsAuthenticated(!!u?.uid);
+        const authed = !!u?.uid;
+        console.log('[ChromeMount] user loaded from localStorage, uid:', u?.uid, 'isAuthenticated:', authed);
+        setIsAuthenticated(authed);
       } else {
+        console.log('[ChromeMount] no user in localStorage, treating as unauthenticated');
         setIsAuthenticated(false);
       }
-    } catch {
+    } catch (err) {
+      console.error('[ChromeMount] error reading user from localStorage', err);
       setIsAuthenticated(false);
     }
   }, [pathname]); // Re-check when pathname changes
+
+  // Once authenticated in the browser, decide whether to show the notification permission prompt.
+  useEffect(() => {
+    console.log('[ChromeMount] isAuthenticated changed:', isAuthenticated);
+    if (!isAuthenticated) {
+      setShowNotifPrompt(false);
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+
+    // If permission already handled, don't show our custom prompt
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+      return;
+    }
+
+    const seen = window.localStorage.getItem('notif_prompt_seen');
+    if (!seen) {
+      setShowNotifPrompt(true);
+    }
+  }, [isAuthenticated]);
+
+  // Foreground FCM notifications: show a notification even when tab is active
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    attachForegroundMessageListener((payload: any) => {
+      console.log('[FCM] foreground message received', payload);
+
+      const title = payload?.notification?.title || 'WildMind';
+      const body = payload?.notification?.body || '';
+
+      try {
+        // If the user already granted permission, show a Notification while in foreground
+        if (Notification.permission === 'granted') {
+          new Notification(title, { body });
+        }
+      } catch (err) {
+        console.warn('[FCM] Failed to show foreground Notification', err);
+      }
+    });
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    try {
+      setShowNotifPrompt(false);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('notif_prompt_seen', 'true');
+      }
+      await registerBrowserPushToken();
+    } catch (err) {
+      console.error('[ChromeMount] handleEnableNotifications error', err);
+    }
+  };
+
+  const handleSkipNotifications = () => {
+    setShowNotifPrompt(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('notif_prompt_seen', 'true');
+    }
+  };
 
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
@@ -124,6 +191,34 @@ export default function ChromeMount() {
       <>
         <Nav />
         <SidePannelFeatures />
+
+        {/* In-app notification permission prompt (generic activity copy) */}
+        {showNotifPrompt && (
+          <div className="fixed bottom-4 right-4 z-[100] max-w-sm rounded-xl bg-[#05050a]/95 border border-white/15 p-4 shadow-2xl backdrop-blur-md">
+            <div className="text-sm font-semibold text-white mb-1">
+              Enable WildMind notifications?
+            </div>
+            <div className="text-xs text-white/75 mb-3">
+              Get notified instantly when there&apos;s new activity on your generations.
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleSkipNotifications}
+                className="px-3 py-1.5 rounded-full text-xs bg-white/5 hover:bg-white/10 text-white/80"
+              >
+                Maybe later
+              </button>
+              <button
+                type="button"
+                onClick={handleEnableNotifications}
+                className="px-3.5 py-1.5 rounded-full text-xs bg-white text-black hover:bg-white/90"
+              >
+                Enable
+              </button>
+            </div>
+          </div>
+        )}
       </>
     );
   }

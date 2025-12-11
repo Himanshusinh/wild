@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
-import { toThumbUrl, toMediaProxy } from '@/lib/thumb'
+import { toMediaProxy } from '@/lib/thumb'
 import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
 import { API_BASE } from '../routes'
 // Removed SmartImage to avoid blocked thumbnail (403) and delayed preview; using plain <img>
@@ -14,7 +14,8 @@ type Category = 'All' | 'Images' | 'Videos' | 'Music' | 'Logos' | 'Stickers' | '
 
 export interface Creation {
   id: string;
-  src: string;
+  src: string;      // thumbnail / optimized URL to render in grid
+  fullSrc?: string; // optional full-quality URL for previews
   prompt?: string;
   categories: Category[];
   width?: number;
@@ -141,39 +142,26 @@ function Card({ item, isVisible, setRef, onClick }: { item: Creation; isVisible:
                   muted
                   playsInline
                   preload="metadata"
-                  poster={toThumbUrl(src, { w: 640, q: 60 }) || undefined}
                 />
               );
             })()
           ) : (
             (() => {
-              // Attempt AVIF thumbnail first, then WEBP, then original
-              let avifThumb: string | undefined
-              let webpThumb: string | undefined
-              const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
-              if (src.startsWith(Z)) {
-                try { avifThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'avif' }) || undefined } catch {}
-                if (!avifThumb) { try { webpThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'webp' }) || undefined } catch {} }
-                else { try { webpThumb = toThumbUrl(src, { w: 640, q: 60, fmt: 'webp' }) || undefined } catch {} }
-              }
-              const displaySrc = avifThumb || webpThumb || src
+              // For images: use the provided optimized thumbnail URL (src),
+              // and fall back to fullSrc or original src on error.
+              const { fullSrc } = item
               return (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={displaySrc}
+                  src={src}
                   alt={item.prompt ?? ''}
                   loading="lazy"
                   decoding="async"
                   className="absolute inset-0 w-full h-full object-cover"
                   onError={(e) => {
                     const img = e.currentTarget as HTMLImageElement
-                    // Fallback chain: avif -> webp -> original
-                    if (img.src === avifThumb && webpThumb && webpThumb !== avifThumb) {
-                      img.src = webpThumb
-                      return
-                    }
-                    if (img.src === webpThumb && src !== webpThumb) {
-                      img.src = src
+                    if (fullSrc && img.src !== fullSrc) {
+                      img.src = fullSrc
                       return
                     }
                   }}

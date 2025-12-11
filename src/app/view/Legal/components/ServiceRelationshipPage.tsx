@@ -7,112 +7,121 @@ const ServiceRelationshipPage: React.FC = () => {
   return (
     <LegalLayout currentPage="relationship">
       <div className="legal-header">
-        <h1 id="relationship">Service Relationship & Terms Hierarchy Document</h1>
+        <h1 id="relationship">AI Content Ownership Policy</h1>
         <h2>Wild Mind AI by Wild Child Studios</h2>
-        <p><strong>Effective Date:</strong> October 4, 2025</p>
+        <p>
+          <strong>Last Updated:</strong> 29-12-2025
+        </p>
       </div>
 
       <div className="legal-content">
+        <h3>1. Introduction</h3>
         <p>
-          This document establishes the binding legal relationship between the user and Wild Mind AI by Wild Child Studios (the "Company," "we," "us," or "our") and defines the definitive order of precedence for all governing legal agreements.
+          This AI Content Ownership Policy (“Policy”) sets forth the rights, responsibilities, and ownership structure
+          associated with user-generated outputs, prompts, data, and other materials produced through the Wild Mind AI
+          platform. This Policy governs the relationship between Wild Mind AI, a product developed by Wild Child
+          Studios, and the user (“you,” “your,” or “the user”) with respect to all content created using the platform’s
+          artificial intelligence tools, models, and APIs. By generating content, interacting with the platform, or
+          accessing any AI functionality, you acknowledge and agree to the terms and conditions set forth in this
+          Policy.
         </p>
 
-        <h3>1. Legal Entity and Relationship</h3>
+        <h3>2. Ownership of User-Generated Outputs</h3>
         <p>
-          The user acknowledges and agrees that Wild Mind AI is a product and service offered under the corporate structure of Wild Child Studios. By agreeing to any of the Wild Mind AI Terms and Policies listed below, the user is concurrently agreeing to and bound by the foundational legal terms of Wild Child Studios, including any relevant Master Entity Agreement or General Business Terms, which are incorporated by reference. The policies listed herein are supplementary to, and governed by, the Wild Child Studios corporate structure.
+          Users retain full ownership rights over all outputs generated using Wild Mind AI, including but not limited to
+          images, audio, video, text, and any other media formats produced through the platform. This ownership extends
+          to personal use, commercial use, publication and distribution, modification and derivative works, and
+          marketing or branding usage. Users have the unrestricted right to use, license, sell, or otherwise exploit the
+          content they generate, subject to applicable law and third-party provider terms.
         </p>
 
-        <h3>2. Agreement Components and Nature</h3>
-        <p>
-          The legal relationship between the Company and the user is governed by the following documents, which are incorporated by reference. Each document applies to specific aspects of the user's interaction with the Service, and all are legally binding.
-        </p>
-
-        <div className="legal-table-container">
-          <table className="legal-table">
-            <thead>
-              <tr>
-                <th>Document Name</th>
-                <th>Purpose</th>
-                <th>Scope of Application</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Terms of Service (TOS)</strong></td>
-                <td>The Master Agreement governing general access, account creation, billing, IP assignment, and dispute resolution.</td>
-                <td>All users (B2C and B2B) accessing the web platform or general services.</td>
-              </tr>
-              <tr>
-                <td><strong>Third-Party API Terms & Compliance</strong></td>
-                <td>Governs the user's mandatory compliance obligations flowing down from the underlying third-party generative models and APIs utilized by Wild Mind AI.</td>
-                <td>All users consuming services that rely on third-party generative models.</td>
-              </tr>
-              <tr>
-                <td><strong>Acceptable Use Policy (AUP)</strong></td>
-                <td>Details specific content restrictions, behavioral guidelines, and enforcement actions (e.g., deepfakes, copyright, violence).</td>
-                <td>All user inputs, outputs, and behaviors on the Service.</td>
-              </tr>
-              <tr>
-                <td><strong>Privacy Policy (PP)</strong></td>
-                <td>Governs the collection, use, security, and storage of user personal data (including biometric identifiers).</td>
-                <td>All users providing Personal Information or sensitive data to the Service.</td>
-              </tr>
-              <tr>
-                <td><strong>DMCA Policy</strong></td>
-                <td>Outlines procedures for copyright infringement claims and safe harbor protections.</td>
-                <td>All user-generated AI content and material where copyright is asserted.</td>
-              </tr>
-              <tr>
-                <td><strong>Cookie Policy (CP)</strong></td>
-                <td>Details the use of cookies and tracking technologies, and the mechanism for consent management.</td>
-                <td>All visitors to the Wild Mind AI website interface.</td>
-              </tr>
-              <tr>
-                <td><strong>Third-Party Licenses & Attribution</strong></td>
-                <td>Specifies compliance obligations for open-source components, models, and required user attributions.</td>
-                <td>All commercial and public sharing of AI-generated output derived from the Service.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3>3. Order of Precedence (Conflict Resolution)</h3>
-        <p>
-          In the event of an irreconcilable conflict or ambiguity between any of the documents listed above, the conflict shall be resolved by applying the documents in the following strict descending order of precedence:
-        </p>
-        <ol>
-          <li>
-            <strong>Executed Enterprise Service Agreement (ESA):</strong> A negotiated and signed custom contract for B2B or high-volume enterprise clients. Only the specific, explicitly negotiated clauses in the ESA override the underlying TOS and Policies.
-          </li>
-          <li>
-            <strong>Geographic-Specific Addendum:</strong> Mandatory legal addendums (e.g., GDPR, CCPA, LGPD) override any conflicting clause in the lower-tier documents to the extent necessary to ensure compliance with mandatory local law.
-          </li>
-          <li>
-            <strong>Terms of Service (TOS):</strong> The Master Agreement for all general legal and commercial terms.
-          </li>
-          <li>
-            <strong>Third-Party API Terms & Compliance:</strong> Only for matters directly relating to flow-down obligations from underlying model providers.
-          </li>
-          <li>
-            <strong>Acceptable Use Policy (AUP):</strong> For specific matters relating to prohibited conduct, content restrictions, and enforcement.
-          </li>
-          <li>
-            <strong>All Remaining Supplementary Policies (PP, DMCA, CP, Attribution):</strong> These provide detail and context but are generally subservient to the TOS.
-          </li>
-        </ol>
-
-        <h3>4. Version Control and Updates</h3>
+        <h3>3. Ownership Rights Retained by Wild Mind AI</h3>
+        <p>In addition to the user’s ownership, Wild Mind AI retains the following rights over user-generated content:</p>
         <ul>
           <li>
-            <strong>Non-Material Changes:</strong> Changes deemed non-material (e.g., clarification or minor edits) are effective upon posting the revised version.
+            <strong>Commercial Rights:</strong> Wild Mind AI maintains the right to commercially use, display,
+            publish, market, or otherwise leverage user-generated content for business operations, demonstrations,
+            product showcases, and promotional campaigns.
           </li>
           <li>
-            <strong>Material Changes:</strong> For material changes that substantively alter the user's rights, obligations, or data handling (e.g., changes to the Limitation of Liability or data sharing practices), the Company shall provide the user with at least thirty (30) days' prior written notice (via email or in-service notification) before the changes take effect.
+            <strong>Marketing and Portfolio Use:</strong> The Company may showcase user-generated content on websites,
+            social media platforms, product materials, or public exhibitions to demonstrate platform capabilities.
           </li>
           <li>
-            <strong>Archival:</strong> The Company shall maintain a publicly accessible archive of all previous document versions.
+            <strong>Product and Feature Demonstrations:</strong> The Company may use user outputs in presentations,
+            tutorials, documentation, samples, and feature previews.
+          </li>
+          <li>
+            <strong>AI Model Improvement and Training:</strong> The Company may use, review, or analyze generated
+            outputs internally to improve AI systems, enhance safety, train models, or evaluate performance, unless an
+            opt-out mechanism becomes legally mandated and is made available to users.
           </li>
         </ul>
+        <p>
+          These rights are non-exclusive, perpetual, worldwide, and royalty-free. They are exercised in a manner
+          consistent with the Privacy Policy and applicable regulations.
+        </p>
+
+        <h3>4. User Rights to Request Removal</h3>
+        <p>
+          Users may request the removal of any showcased content that features their generated outputs. Upon
+          verification, Wild Mind AI will make reasonable efforts to remove the content from public display, subject to
+          technical feasibility, caching, archival systems, and third-party indexing limitations. Requests may be
+          submitted to
+          {' '}
+          <a href="mailto:connect@wildmindai.com">connect@wildmindai.com</a>.
+        </p>
+
+        <h3>5. Use of User Prompts, Inputs, and Metadata</h3>
+        <p>
+          Wild Mind AI may store, analyze, and use user prompts, uploaded assets, and related metadata for platform
+          improvement, safety and compliance monitoring, debugging and incident analysis, training and refining internal
+          AI systems, and enhancing model accuracy, stability, and reliability. Prompts and related data are handled in
+          accordance with the platform’s Privacy Policy and third-party provider requirements.
+        </p>
+
+        <h3>6. Subject to Third-Party Provider Agreements</h3>
+        <p>
+          Some AI output rights may be influenced by the licensing terms of third-party AI providers integrated into
+          Wild Mind AI. Accordingly, user ownership rights are subject to the output rights granted by the respective
+          third-party AI providers. This may include conditions on allowed use cases, attribution requirements,
+          commercial usage rights, and output redistribution rules. Users are responsible for reviewing and complying
+          with any additional restrictions imposed by those providers. Wild Mind AI will provide a list of provider
+          policies upon request or as required by law.
+        </p>
+
+        <h3>7. Prohibited Uses of Generated Content</h3>
+        <p>
+          Although users own the outputs they create, such content may not be used in ways that violate the AI Usage
+          Policy / Acceptable Use Policy, any applicable laws, terms of third-party API providers, intellectual
+          property rights of others, or ethical guidelines and platform safety requirements. Users remain fully
+          responsible for ensuring that their generated outputs do not infringe upon the rights or safety of any
+          individual or entity.
+        </p>
+
+        <h3>8. Limitation of Liability</h3>
+        <p>
+          Wild Mind AI shall not be held responsible for any misuse of generated content by users, legal, ethical, or
+          regulatory consequences resulting from how users publish, distribute, or commercialize their outputs, claims
+          arising from the user’s improper or unlawful use of generated content, or violations of third-party rights,
+          including copyright or privacy rights, arising from user actions. The user assumes full legal responsibility
+          for all uses and consequences of their generated outputs.
+        </p>
+
+        <h3>9. Modifications to This Policy</h3>
+        <p>
+          Wild Mind AI may revise, update, or modify this Policy at any time to reflect changes in technology, legal
+          requirements, or platform operations. Updated versions will be posted on the platform. Continued use of the
+          service constitutes acceptance of the modified Policy.
+        </p>
+
+        <h3>10. Contact Information</h3>
+        <p>
+          For questions, removal requests, or clarification regarding this Policy, users may contact the Wild Mind AI
+          Content Rights Team at
+          {' '}
+          <a href="mailto:connect@wildmindai.com">connect@wildmindai.com</a>.
+        </p>
       </div>
     </LegalLayout>
   );

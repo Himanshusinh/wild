@@ -156,7 +156,7 @@ export function Masonry<T>({
 
       {...rest}
 
-      className={cn("grid items-start", {
+      className={cn("grid items-start rounded-xl overflow-hidden", {
 
         "grid-cols-1": columns === 1,
 

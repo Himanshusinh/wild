@@ -8,7 +8,7 @@ import '@/utils/checkSessionStatus'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Image from 'next/image'
-import { getImageUrl, API_BASE } from './routes'
+import { getImageUrl, API_BASE, imageRoutes } from './routes'
 // Lazy load non-critical components for better performance
 import dynamic from 'next/dynamic'
 
@@ -240,17 +240,16 @@ const HomePage: React.FC = () => {
         const maxPages = 3
         while (page < maxPages && out.length < 48) {
           try {
-            const searchParams = new URLSearchParams()
-            searchParams.set('limit', '24')
+            const url = new URL(`${baseUrl}/api/feed`)
+            url.searchParams.set('limit', '24')
             // Home page: prefer images for aesthetic layout
-            searchParams.set('mode', 'image')
-            if (nextCursor) searchParams.set('cursor', nextCursor)
-            const feedUrl = buildFeedRequestUrl(baseUrl, searchParams)
+            url.searchParams.set('mode', 'image')
+            if (nextCursor) url.searchParams.set('cursor', nextCursor)
             
-            const res = await fetch(feedUrl, { 
+            const res = await fetch(url.toString(), { 
               credentials: 'include',
               // Add cache headers for better performance
-              cache: 'no-store',
+              cache: 'default',
               headers: {
                 'Accept': 'application/json',
               }
@@ -273,44 +272,74 @@ const HomePage: React.FC = () => {
             const items: any[] = payload?.items || []
             nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
-            // Removed verbose logging for production performance
+              if (items.length === 0) break
 
-            // If no items in this page, break to avoid infinite loop
-            if (items.length === 0) {
-              // Removed verbose logging for production performance
+              items.forEach((it: any, idx: number) => {
+                const firstImage = (it.images && Array.isArray(it.images) && it.images[0])
+                const firstVideo = (it.videos && Array.isArray(it.videos) && it.videos[0])
+                const firstAudio = (it.audios && Array.isArray(it.audios) && it.audios[0])
+                const media = firstVideo || firstImage || firstAudio
+
+                // Prefer optimized thumbnail/AVIF from API, then full URL
+                const thumbSrc =
+                  (firstImage?.thumbnailUrl as string | undefined) ||
+                  (firstImage?.avifUrl as string | undefined) ||
+                  (media?.thumbnailUrl as string | undefined) ||
+                  (media?.avifUrl as string | undefined)
+
+                const fullSrc =
+                  (media?.url as string | undefined) ||
+                  (media?.firebaseUrl as string | undefined) ||
+                  (media?.originalUrl as string | undefined) ||
+                  (firstImage?.url as string | undefined)
+
+                const src = thumbSrc || fullSrc || ''
+                if (!src) return
+                const cat = getCategory(it.generationType || '', firstAudio)
+                const dim = dims[(out.length + idx) % dims.length]
+                const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
+                out.push({
+                  id: it.id || String(out.length + idx),
+                  src,
+                  // keep reference to original/primary URL for preview fallbacks
+                  fullSrc,
+                  prompt: it.prompt,
+                  categories: [cat],
+                  width: dim.w,
+                  height: dim.h,
+                  createdBy: creator,
+                })
+              })
+
+              page += 1
+              if (!nextCursor) break
+            } catch (pageError: any) {
+              console.error(`[HomePage] Error fetching page ${page}:`, pageError?.message || pageError)
+              if (out.length > 0) break
               break
             }
+          }
+        } else {
+          console.warn('[HomePage] NEXT_PUBLIC_API_BASE_URL is not set, falling back to static community creations')
+        }
 
-            items.forEach((it: any, idx: number) => {
-              const firstImage = (it.images && Array.isArray(it.images) && it.images[0])
-              const firstVideo = (it.videos && Array.isArray(it.videos) && it.videos[0])
-              const firstAudio = (it.audios && Array.isArray(it.audios) && it.audios[0])
-              const media = firstVideo || firstImage || firstAudio
-              // Try multiple URL fields (same as ArtStation)
-              const src = media?.url || media?.firebaseUrl || media?.originalUrl || ''
-              if (!src) {
-                return // Skip items without media URL
-              }
-              const cat = getCategory(it.generationType || '', firstAudio)
-              const dim = dims[(out.length + idx) % dims.length]
-              const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
-              out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
+        // Fallback: if no live items (e.g., local dev or empty feed), use static demo images
+        if (out.length === 0) {
+          const staticImages = imageRoutes.communityCreations || {}
+          let idx = 0
+          for (const [key, url] of Object.entries(staticImages)) {
+            if (!url) continue
+            const dim = dims[idx % dims.length]
+            out.push({
+              id: `static-${key}`,
+              src: url,
+              prompt: 'Community creation',
+              categories: ['Images'],
+              width: dim.w,
+              height: dim.h,
+              createdBy: 'WildMind',
             })
-
-            page += 1
-            if (!nextCursor) {
-              // Removed verbose logging for production performance
-              break
-            }
-          } catch (pageError: any) {
-            console.error(`[HomePage] Error fetching page ${page}:`, pageError?.message || pageError)
-            // If we have items already, use them; otherwise continue to next page
-            if (out.length > 0) {
-              console.log(`[HomePage] Using ${out.length} items collected so far`)
-              break
-            }
-            // If first page fails, break to avoid infinite loop
-            break
+            idx += 1
           }
         }
 
@@ -386,13 +415,14 @@ const HomePage: React.FC = () => {
                     >
                       <Image
                         src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
-                        alt="AI Art Community"
+                        alt="Pricing plans artwork"
                         fill
                         className="object-cover rounded-r-2xl"
                         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
                         priority
                         quality={85}
                         loading="eager"
+                        unoptimized
                       />
                     </div>
                   </div>

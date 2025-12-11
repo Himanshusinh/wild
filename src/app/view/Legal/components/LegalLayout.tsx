@@ -20,7 +20,7 @@ const LegalLayout: React.FC<LegalLayoutProps> = ({ children, currentPage }) => {
     { id: 'cookie', label: 'Cookie Policy', page: 'cookie', route: '/legal/cookie' },
     { id: 'dmca', label: 'DMCA Policy', page: 'dmca', route: '/legal/dmca' },
     { id: 'privacy', label: 'Privacy Policy', page: 'privacy', route: '/legal/privacy' },
-    { id: 'relationship', label: 'Service Relationship & Terms Hierarchy Document', page: 'relationship', route: '/legal/relationship' },
+    { id: 'relationship', label: 'AI Content Ownership Policy', page: 'relationship', route: '/legal/relationship' },
     { id: 'tos', label: 'Terms of Service (TOS)', page: 'tos', route: '/legal/terms' },
     { id: 'thirdparty', label: 'Third-Party Licenses & Attribution Policy', page: 'thirdparty', route: '/legal/thirdparty' }
   ];

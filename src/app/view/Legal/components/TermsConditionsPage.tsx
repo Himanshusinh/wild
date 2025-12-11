@@ -13,7 +13,6 @@ const TermsConditionsPage: React.FC = () => {
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
         <div className="mb-12">
           <button 
             onClick={() => router.back()}
@@ -34,81 +33,266 @@ const TermsConditionsPage: React.FC = () => {
               className="h-8 w-auto"
             />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Terms and Conditions</h1>
-          <p className="text-xl text-gray-400">Terms of use for WildMind AI services</p>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Terms and Conditions of Use</h1>
+          <p className="text-xl text-gray-400">Legal terms for using Wild Mind AI</p>
         </div>
 
-        {/* Content */}
         <div className="prose prose-invert max-w-4xl space-y-8">
           <section>
-            <h2 className="text-3xl font-semibold mb-4">Agreement to Terms</h2>
+            <h2 className="text-3xl font-semibold mb-4">1. Introduction</h2>
             <p className="text-gray-300 mb-4">
-              By accessing and using WildMind AI services, you agree to be bound by these Terms and Conditions. 
-              If you do not agree to these terms, please do not use our services.
+              These Terms and Conditions (“Terms”) constitute a legally binding agreement between the user (“you,”
+              “your,” or “the user”) and Wild Mind AI, a product developed and operated by Wild Child Studios, located
+              at 511, Satyamev Eminence, Sola, Ahmedabad, Gujarat 380060 (“Company,” “we,” or “us”). These Terms govern
+              your access to and use of the Wild Mind AI platform, including all features, services, API endpoints,
+              credit systems, subscription plans, and any digital content generated through or accessed via the
+              platform.
             </p>
             <p className="text-gray-300">
-              We reserve the right to modify these terms at any time. Continued use of our services after changes 
-              constitutes acceptance of the modified terms.
+              By creating an account, accessing the website or API, purchasing credits or subscriptions, or using any
+              service provided by Wild Mind AI, you acknowledge that you have read, understood, and agreed to be bound
+              by these Terms. If you do not agree with any portion of these Terms, you must immediately discontinue the
+              use of Wild Mind AI.
             </p>
           </section>
 
           <section>
-            <h2 className="text-3xl font-semibold mb-4">Use of Service</h2>
+            <h2 className="text-3xl font-semibold mb-4">2. Description of Services</h2>
             <p className="text-gray-300 mb-4">
-              You agree to use WildMind AI services only for lawful purposes and in accordance with these Terms. 
-              You are responsible for maintaining the confidentiality of your account credentials.
+              Wild Mind AI provides advanced artificial intelligence generation systems, which include image generation
+              (text to image and image to image), audio generation (text to music, text to audio, text to speech), and
+              video generation (text to video, image to video, speech to video, and video to video). All services are
+              delivered digitally and are primarily accessed through APIs, credit-based usage models, and subscription
+              plans.
             </p>
             <p className="text-gray-300">
-              Prohibited activities include but are not limited to:
+              Access to these services becomes available instantly upon account creation, subject to platform
+              verification measures where applicable. The Company may expand, modify, restrict, or discontinue services
+              at its sole discretion in accordance with the requirements of service providers, infrastructure, safety,
+              and legal compliance.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">3. Eligibility</h2>
+            <p className="text-gray-300 mb-4">
+              Use of the platform is permitted to individuals aged eleven (11) years or older for general AI generation
+              and platform interaction. However, the ability to make financial transactions, including purchasing
+              credits or subscribing to paid plans, is restricted to individuals aged sixteen (16) years or older, or
+              younger users operating under verified legal guardian supervision.
+            </p>
+            <p className="text-gray-300">
+              By accessing the platform, you confirm that you meet the applicable age requirements and are legally
+              competent to enter into this agreement.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">4. Account Registration and User Responsibilities</h2>
+            <p className="text-gray-300 mb-4">
+              You agree to provide accurate, complete, and current information when creating an account. You are solely
+              responsible for maintaining the confidentiality of your login credentials and for all activities
+              conducted under your account.
+            </p>
+            <p className="text-gray-300">
+              You agree not to share, sell, transfer, or otherwise permit unauthorized access to your account. The
+              Company may suspend or terminate accounts involved in fraudulent activity, unauthorized sharing,
+              suspicious usage patterns, or violations of these Terms or applicable laws.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">5. Compliance with Third-Party Provider Policies</h2>
+            <p className="text-gray-300 mb-4">
+              Wild Mind AI relies on multiple third-party artificial intelligence providers. By using the platform, you
+              expressly acknowledge and agree to comply with all applicable policies, restrictions, model guidelines,
+              and usage standards established by these providers. Acceptance of these Terms constitutes acceptance of
+              all relevant provider policies.
+            </p>
+            <p className="text-gray-300">
+              Violations of such provider rules may result in restriction or permanent termination of your access to
+              the platform.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">6. Acceptable Use Policy</h2>
+            <p className="text-gray-300 mb-4">
+              You agree that the platform shall not be used for any activities or purposes that violate applicable
+              laws, ethical standards, or third-party rights. Prohibited uses include, without limitation, the
+              creation, distribution, or promotion of:
             </p>
             <ul className="list-disc list-inside space-y-2 text-gray-300 ml-4">
-              <li>Violating any applicable laws or regulations</li>
-              <li>Infringing on intellectual property rights</li>
-              <li>Creating harmful, offensive, or illegal content</li>
-              <li>Attempting to gain unauthorized access to our systems</li>
-              <li>Interfering with or disrupting the service</li>
+              <li>Illegal, harmful, exploitative, or fraudulent content</li>
+              <li>Hate-based, violent, discriminatory, or abusive material</li>
+              <li>Non-consensual deepfakes or impersonations</li>
+              <li>
+                Child sexual abuse material or any exploitation of minors (which will result in immediate and permanent
+                account termination and potential reporting to authorities)
+              </li>
+              <li>Explicit sexual content</li>
+              <li>Politically manipulative, deceptive, or election-influencing content</li>
+              <li>Malware, harmful code, or technological abuse</li>
+              <li>Misleading, deceptive, or manipulated media intended to harm individuals or organizations</li>
+              <li>Content that violates safety limitations imposed by AI providers</li>
             </ul>
+            <p className="text-gray-300 mt-4">
+              The Company reserves the right to determine whether conduct violates this Acceptable Use Policy. For the
+              full AUP, please refer to the dedicated AI Usage / Acceptable Use Policy document.
+            </p>
           </section>
 
           <section>
-            <h2 className="text-3xl font-semibold mb-4">Intellectual Property</h2>
+            <h2 className="text-3xl font-semibold mb-4">7. Ownership of Generated Content</h2>
             <p className="text-gray-300 mb-4">
-              All content generated using WildMind AI services belongs to you, subject to compliance with these Terms 
-              and our Acceptable Use Policy. You retain ownership of your generated content.
+              All content generated by you through the use of Wild Mind AI’s tools and APIs is considered user-generated
+              content, and ownership of such output is fully granted to you, subject to the restrictions of these Terms
+              and any third-party intellectual property limitations.
             </p>
             <p className="text-gray-300">
-              WildMind AI and its associated trademarks, logos, and service marks are the property of WildMind AI 
-              and may not be used without our prior written consent.
+              However, by using the platform, you grant Wild Mind AI a perpetual, non-exclusive, worldwide, royalty-free
+              license to display any user-generated content for purposes including marketing, portfolio display,
+              demonstrations, platform examples, and advertising. You further grant the Company the right to use
+              generated content for the improvement, refinement, research, and training of systems unless an opt-out
+              mechanism is legally required and provided.
+            </p>
+            <p className="text-gray-300 mt-4">
+              You may request removal of publicly showcased content through a formal written request to the support
+              email, and compliance shall be subject to verification and reasonable timeframes.
             </p>
           </section>
 
           <section>
-            <h2 className="text-3xl font-semibold mb-4">Limitation of Liability</h2>
+            <h2 className="text-3xl font-semibold mb-4">8. Payments, Credits, Billing, and Auto-Renewal</h2>
             <p className="text-gray-300 mb-4">
-              WildMind AI provides services "as is" without warranties of any kind. We are not liable for any 
-              indirect, incidental, or consequential damages arising from your use of our services.
+              Wild Mind AI offers one-time credit purchases, monthly subscription plans, annual subscription plans, and
+              usage-based API billing. All financial transactions are processed digitally through approved payment
+              gateways.
+            </p>
+            <p className="text-gray-300 mb-4">
+              All subscription plans renew automatically at the end of each billing cycle unless canceled by the user
+              prior to renewal. You authorize the Company and its payment gateway partners to charge your selected
+              payment method for recurring payments.
+            </p>
+            <p className="text-gray-300">
+              If a transaction fails or is declined, access to certain features or credits may be temporarily suspended
+              until payment issues are resolved. Applicable taxes, including GST or others as per regional laws, shall
+              be added to the final billing amount.
             </p>
           </section>
 
           <section>
-            <h2 className="text-3xl font-semibold mb-4">Related Documents</h2>
+            <h2 className="text-3xl font-semibold mb-4">9. Refund and Cancellation Terms</h2>
             <p className="text-gray-300 mb-4">
-              For more detailed information, please review our complete legal documentation:
+              Refunds are governed strictly by the Wild Mind AI Refund and Cancellation Policy. In general, refunds are
+              not issued for credits already used, subscription cycles that have already commenced, or cases where
+              services have been delivered successfully.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Link 
-                href={LEGAL_ROUTES.TERMS}
-                className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-white hover:text-white transition-colors"
-              >
-                Terms of Service
-              </Link>
-              <Link 
-                href={LEGAL_ROUTES.PRIVACY}
-                className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-white hover:text-white transition-colors"
-              >
-                Privacy Policy
-              </Link>
-            </div>
+            <p className="text-gray-300">
+              Refunds may be granted in exceptional cases such as duplicate billing, technical malfunctions, or other
+              scenarios outlined in the official policy. Cancellation of a subscription halts future billing but does
+              not entitle the user to a refund of past payments.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">10. Digital Delivery of Services</h2>
+            <p className="text-gray-300 mb-4">
+              Wild Mind AI provides exclusively digital services. No physical product or shipment is involved at any
+              stage. Delivery is defined as the successful activation of your account, the allocation of credits, the
+              activation of subscription benefits, or access to API endpoints. All services are considered delivered
+              upon system confirmation of activation.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">11. API Access and Usage Requirements</h2>
+            <p className="text-gray-300 mb-4">
+              To utilize the API services, users must obtain and maintain a valid API key. You are responsible for
+              keeping your API key confidential. Any activity conducted via your API key shall be deemed activity
+              conducted by you.
+            </p>
+            <p className="text-gray-300">
+              You agree to obey rate limits, safety restrictions, and all technical parameters specified by Wild Mind
+              AI. The Company may revoke or suspend API access in cases of unsafe usage, excessive error rates, abuse
+              of credits, or violation of provider policies.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">12. Prohibited Conduct</h2>
+            <p className="text-gray-300 mb-4">
+              You shall not attempt to reverse engineer, extract model weights, circumvent credit systems, scrape
+              platform data, or perform any form of unauthorized analysis or interference with the platform or its
+              underlying models.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">13. Disclaimer of Warranties</h2>
+            <p className="text-gray-300 mb-4">
+              The platform and all services are provided on an “as-is” and “as-available” basis. The Company does not
+              warrant that generated content will be accurate, free of bias, reliable, safe, or suitable for your
+              specific use case. You acknowledge that artificial intelligence systems may produce unexpected, erroneous,
+              or inappropriate outputs, and you assume all responsibility for reviewing, evaluating, and verifying such
+              outputs before use.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">14. Limitation of Liability</h2>
+            <p className="text-gray-300 mb-4">
+              To the maximum extent permissible under applicable law, Wild Mind AI and Wild Child Studios shall not be
+              liable for any indirect, incidental, special, consequential, or punitive damages arising from your use or
+              inability to use the platform. The Company’s cumulative liability shall not exceed the total amount paid
+              by you to the Company in the three months preceding the event giving rise to the claim.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">15. Termination of Access</h2>
+            <p className="text-gray-300 mb-4">
+              The Company reserves the right to suspend or permanently revoke access to any user account or API key
+              that violates these Terms, engages in fraudulent or harmful activity, or interferes with the safety,
+              integrity, or proper functioning of the platform.
+            </p>
+            <p className="text-gray-300">
+              You may terminate your account at any time by contacting customer support or using platform settings
+              where available.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">16. Governing Law</h2>
+            <p className="text-gray-300 mb-4">
+              These Terms shall be governed by and interpreted in accordance with the laws of India, and all disputes
+              shall be subject to the exclusive jurisdiction of the courts located in Delhi, India.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">17. Modifications to Terms</h2>
+            <p className="text-gray-300 mb-4">
+              The Company may revise or update these Terms periodically. Continued use of the platform following posted
+              revisions constitutes acceptance of the updated Terms. Significant changes may be communicated through
+              email or platform notifications.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-3xl font-semibold mb-4">18. Contact Information</h2>
+            <p className="text-gray-300 mb-4">
+              For any questions regarding these Terms or any aspect of Wild Mind AI, you may contact:
+            </p>
+            <p className="text-gray-300">
+              Wild Mind AI by Wild Child Studios
+              <br />
+              511, Satyamev Eminence, Sola, Ahmedabad, Gujarat 380060
+              <br />
+              Email:
+              {' '}
+              <a href="mailto:connect@wildmindai.com">connect@wildmindai.com</a>
+            </p>
           </section>
         </div>
       </div>

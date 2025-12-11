@@ -7,71 +7,229 @@ const TermsOfServicePage: React.FC = () => {
   return (
     <LegalLayout currentPage="tos">
       <div className="legal-header">
-        <h1 id="tos">Terms of Service (TOS)</h1>
+        <h1 id="tos">Terms and Conditions of Use</h1>
         <h2>Wild Mind AI by Wild Child Studios</h2>
-        <p><strong>Effective Date:</strong> October 4, 2025</p>
+        <p>
+          <strong>Last Updated:</strong> 29-11-2025
+        </p>
       </div>
 
       <div className="legal-content">
-        <h3>1. Acceptance of Terms</h3>
+        <h3>1. Introduction</h3>
         <p>
-          These Terms of Service (TOS) constitute a legally binding agreement between you ("User" or "you") and Wild Mind AI by Wild Child Studios (the "Company") governing your access to and use of our generative AI software and services (the "Service"). By creating an account or using the Service, you confirm that you have read, understood, and agree to be bound by these TOS and all incorporated documents.
+          These Terms and Conditions (“Terms”) constitute a legally binding agreement between the user (“you,” “your,”
+          or “the user”) and Wild Mind AI, a product developed and operated by Wild Child Studios, located at 511,
+          Satyamev Eminence, Sola, Ahmedabad, Gujarat 380060 (“Company,” “we,” or “us”). These Terms govern your access
+          to and use of the Wild Mind AI platform, including all features, services, API endpoints, credit systems,
+          subscription plans, and any digital content generated through or accessed via the platform.
+        </p>
+        <p>
+          By creating an account, accessing the website or API, purchasing credits or subscriptions, or using any
+          service provided by Wild Mind AI, you acknowledge that you have read, understood, and agreed to be bound by
+          these Terms. If you do not agree with any portion of these Terms, you must immediately discontinue the use of
+          Wild Mind AI.
         </p>
 
-        <h3>2. User Eligibility and Representations</h3>
+        <h3>2. Description of Services</h3>
         <p>
-          You represent and warrant that you are at least eighteen (18) years of age, or the age of legal majority in your jurisdiction, and have the full legal capacity to enter into this agreement. If you are accepting these terms on behalf of a company or other legal entity, you represent that you have the authority to bind that entity to these TOS.
+          Wild Mind AI provides advanced artificial intelligence generation systems, which include image generation
+          (text to image and image to image), audio generation (text to music, text to audio, text to speech), and
+          video generation (text to video, image to video, speech to video, and video to video). All services are
+          delivered digitally and are primarily accessed through APIs, credit-based usage models, and subscription
+          plans.
+        </p>
+        <p>
+          Access to these services becomes available instantly upon account creation, subject to platform verification
+          measures where applicable. The Company may expand, modify, restrict, or discontinue services at its sole
+          discretion in accordance with the requirements of service providers, infrastructure, safety, and legal
+          compliance.
         </p>
 
-        <h3>3. Platform as Intermediary Disclaimer</h3>
+        <h3>3. Eligibility</h3>
         <p>
-          You acknowledge and agree that Wild Mind AI by Wild Child Studios operates as a technology service provider and an intermediary platform (SaaS). The Service provides tools that facilitate the creation of user-generated content using third-party AI models and proprietary technology. We are not the author, creator, or publisher of the AI-generated outputs, which are solely the product of the underlying models as directed by your inputs (prompts, reference data).
+          Use of the platform is permitted to individuals aged eleven (11) years or older for general AI generation and
+          platform interaction. However, the ability to make financial transactions, including purchasing credits or
+          subscribing to paid plans, is restricted to individuals aged sixteen (16) years or older, or younger users
+          operating under verified legal guardian supervision.
         </p>
         <p>
-          The Service is provided "AS IS." The Company disclaims all warranties, express or implied, including, but not limited to, warranties of merchantability, fitness for a particular purpose, non-infringement, and quality or accuracy of any AI-generated content.
-        </p>
-
-        <h3>4. Intellectual Property Rights</h3>
-        <h4>4.1. Input Data Ownership</h4>
-        <p>
-          You retain all ownership rights to the data, content, and materials you upload, input, or provide to the Service ("Input Data"), including text prompts, reference images, and voice samples. You grant the Company a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, and process the Input Data solely for the purpose of operating, maintaining, improving, and developing the Service and underlying models, subject to the limitations set forth in the Privacy Policy.
-        </p>
-        <h4>4.2. Output Content Ownership</h4>
-        <p>
-          Subject to your full compliance with these TOS, the Acceptable Use Policy (AUP), and the payment of all applicable fees, you own the content generated for you by the Service based on your Input Data ("Output Content"). This ownership is, however, subject to any required compliance with third-party model licenses and attribution requirements detailed in the Third-Party Licenses & Attribution Policy.
+          By accessing the platform, you confirm that you meet the applicable age requirements and are legally
+          competent to enter into this agreement.
         </p>
 
-        <h3>5. Subscription Tiers, Billing, and Fees</h3>
+        <h3>4. Account Registration and User Responsibilities</h3>
         <p>
-          Access to the Service may be offered under tiered subscription plans (B2C) or custom Enterprise Service Agreements (B2B). All subscriptions are based on a recurring payment model. You are responsible for all applicable taxes and agree to the specific usage limits and credit consumption rates defined for your tier or in your ESA. All sales of digital credits or subscriptions are final, and the Company is generally not required to provide refunds.
+          You agree to provide accurate, complete, and current information when creating an account. You are solely
+          responsible for maintaining the confidentiality of your login credentials and for all activities conducted
+          under your account.
+        </p>
+        <p>
+          You agree not to share, sell, transfer, or otherwise permit unauthorized access to your account. The Company
+          may suspend or terminate accounts involved in fraudulent activity, unauthorized sharing, suspicious usage
+          patterns, or violations of these Terms or applicable laws.
         </p>
 
-        <h3>6. Indemnification</h3>
+        <h3>5. Compliance with Third-Party Provider Policies</h3>
         <p>
-          You agree to indemnify, defend, and hold harmless Wild Mind AI by Wild Child Studios, its parent entity Wild Child Studios, and their officers, directors, and employees, from and against any and all claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising out of or relating to:
+          Wild Mind AI relies on multiple third-party artificial intelligence providers. By using the platform, you
+          expressly acknowledge and agree to comply with all applicable policies, restrictions, model guidelines, and
+          usage standards established by these providers. Acceptance of these Terms constitutes acceptance of all
+          relevant provider policies.
+        </p>
+        <p>
+          Violations of such provider rules may result in restriction or permanent termination of your access to the
+          platform.
+        </p>
+
+        <h3>6. Acceptable Use Policy</h3>
+        <p>
+          You agree that the platform shall not be used for any activities or purposes that violate applicable laws,
+          ethical standards, or third-party rights. Prohibited uses include, without limitation, the creation,
+          distribution, or promotion of:
         </p>
         <ul>
-          <li>Your use of the Service in breach of these TOS or the AUP.</li>
-          <li>Any claim by a third party that your Input Data or Output Content (including deepfakes, unauthorized voice clones, or copyright infringement) violates their intellectual property, privacy, or other rights.</li>
-          <li>Any claim that you failed to obtain the legally required consent (e.g., biometric consent) for any Input Data or Output Content.</li>
+          <li>Illegal, harmful, exploitative, or fraudulent content.</li>
+          <li>Hate-based, violent, discriminatory, or abusive material.</li>
+          <li>Non-consensual deepfakes or impersonations.</li>
+          <li>
+            Child sexual abuse material or any exploitation of minors (which will result in immediate and permanent
+            account termination and potential reporting to authorities).
+          </li>
+          <li>Explicit sexual content.</li>
+          <li>Politically manipulative, deceptive, or election-influencing content.</li>
+          <li>Malware, harmful code, or technological abuse.</li>
+          <li>Misleading, deceptive, or manipulated media intended to harm individuals or organizations.</li>
+          <li>Content that violates safety limitations imposed by AI providers.</li>
         </ul>
-
-        <h3>7. Limitation of Liability</h3>
         <p>
-          TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL <strong>WILD MIND AI BY WILD CHILD STUDIOS</strong> BE LIABLE FOR ANY CONSEQUENTIAL, INCIDENTAL, INDIRECT, SPECIAL, PUNITIVE, OR EXEMPLARY DAMAGES, including lost profits or lost data.
-        </p>
-        <p>
-          THE COMPANY'S TOTAL CUMULATIVE LIABILITY TO YOU FOR ANY AND ALL CLAIMS ARISING OUT OF OR RELATING TO THE SERVICE OR THESE TOS SHALL BE LIMITED TO THE GREATER OF (A) THE AMOUNT OF FEES PAID BY YOU TO THE COMPANY IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM OR (B) FIFTY US DOLLARS ($50.00).
+          The Company reserves the right to determine whether conduct violates this Acceptable Use Policy. For the full
+          AUP, please refer to the dedicated AI Usage / Acceptable Use Policy document.
         </p>
 
-        <h3>8. Termination and Suspension</h3>
+        <h3>7. Ownership of Generated Content</h3>
         <p>
-          The Company reserves the right to suspend or terminate your account and access to the Service immediately, without prior notice, if you breach the AUP or materially breach any other provision of these TOS. Upon termination, all licenses granted to you shall immediately cease. The Company shall, in compliance with the Privacy Policy, permanently delete your Input Data and Output Content after a brief retention period (e.g., thirty (30) days) to facilitate data retrieval requests.
+          All content generated by you through the use of Wild Mind AI’s tools and APIs is considered user-generated
+          content, and ownership of such output is fully granted to you, subject to the restrictions of these Terms and
+          any third-party intellectual property limitations.
+        </p>
+        <p>
+          However, by using the platform, you grant Wild Mind AI a perpetual, non-exclusive, worldwide, royalty-free
+          license to display any user-generated content for purposes including marketing, portfolio display,
+          demonstrations, platform examples, and advertising. You further grant the Company the right to use generated
+          content for the improvement, refinement, research, and training of systems unless an opt-out mechanism is
+          legally required and provided.
+        </p>
+        <p>
+          You may request removal of publicly showcased content through a formal written request to the support email,
+          and compliance shall be subject to verification and reasonable timeframes.
         </p>
 
-        <h3>9. Governing Law and Dispute Resolution</h3>
+        <h3>8. Payments, Credits, Billing, and Auto-Renewal</h3>
         <p>
-          These TOS shall be governed by the laws of the State of Delaware, without regard to its conflict of law principles. Any dispute arising out of or relating to these TOS will be resolved exclusively through binding arbitration in Delaware, in accordance with the rules of the American Arbitration Association (AAA), unless the claim is eligible for small claims court. You waive any right to participate in a class-action lawsuit or class-wide arbitration.
+          Wild Mind AI offers one-time credit purchases, monthly subscription plans, annual subscription plans, and
+          usage-based API billing. All financial transactions are processed digitally through approved payment
+          gateways.
+        </p>
+        <p>
+          All subscription plans renew automatically at the end of each billing cycle unless canceled by the user prior
+          to renewal. You authorize the Company and its payment gateway partners to charge your selected payment method
+          for recurring payments.
+        </p>
+        <p>
+          If a transaction fails or is declined, access to certain features or credits may be temporarily suspended
+          until payment issues are resolved. Applicable taxes, including GST or others as per regional laws, shall be
+          added to the final billing amount.
+        </p>
+
+        <h3>9. Refund and Cancellation Terms</h3>
+        <p>
+          Refunds are governed strictly by the Wild Mind AI Refund and Cancellation Policy. In general, refunds are not
+          issued for credits already used, subscription cycles that have already commenced, or cases where services have
+          been delivered successfully.
+        </p>
+        <p>
+          Refunds may be granted in exceptional cases such as duplicate billing, technical malfunctions, or other
+          scenarios outlined in the official policy. Cancellation of a subscription halts future billing but does not
+          entitle the user to a refund of past payments.
+        </p>
+
+        <h3>10. Digital Delivery of Services</h3>
+        <p>
+          Wild Mind AI provides exclusively digital services. No physical product or shipment is involved at any stage.
+          Delivery is defined as the successful activation of your account, the allocation of credits, the activation of
+          subscription benefits, or access to API endpoints. All services are considered delivered upon system
+          confirmation of activation.
+        </p>
+
+        <h3>11. API Access and Usage Requirements</h3>
+        <p>
+          To utilize the API services, users must obtain and maintain a valid API key. You are responsible for keeping
+          your API key confidential. Any activity conducted via your API key shall be deemed activity conducted by you.
+        </p>
+        <p>
+          You agree to obey rate limits, safety restrictions, and all technical parameters specified by Wild Mind AI.
+          The Company may revoke or suspend API access in cases of unsafe usage, excessive error rates, abuse of
+          credits, or violation of provider policies.
+        </p>
+
+        <h3>12. Prohibited Conduct</h3>
+        <p>
+          You shall not attempt to reverse engineer, extract model weights, circumvent credit systems, scrape platform
+          data, or perform any form of unauthorized analysis or interference with the platform or its underlying
+          models.
+        </p>
+
+        <h3>13. Disclaimer of Warranties</h3>
+        <p>
+          The platform and all services are provided on an “as-is” and “as-available” basis. The Company does not
+          warrant that generated content will be accurate, free of bias, reliable, safe, or suitable for your specific
+          use case. You acknowledge that artificial intelligence systems may produce unexpected, erroneous, or
+          inappropriate outputs, and you assume all responsibility for reviewing, evaluating, and verifying such outputs
+          before use.
+        </p>
+
+        <h3>14. Limitation of Liability</h3>
+        <p>
+          To the maximum extent permissible under applicable law, Wild Mind AI and Wild Child Studios shall not be
+          liable for any indirect, incidental, special, consequential, or punitive damages arising from your use or
+          inability to use the platform. The Company’s cumulative liability shall not exceed the total amount paid by
+          you to the Company in the three months preceding the event giving rise to the claim.
+        </p>
+
+        <h3>15. Termination of Access</h3>
+        <p>
+          The Company reserves the right to suspend or permanently revoke access to any user account or API key that
+          violates these Terms, engages in fraudulent or harmful activity, or interferes with the safety, integrity, or
+          proper functioning of the platform.
+        </p>
+        <p>
+          You may terminate your account at any time by contacting customer support or using platform settings where
+          available.
+        </p>
+
+        <h3>16. Governing Law</h3>
+        <p>
+          These Terms shall be governed by and interpreted in accordance with the laws of India, and all disputes shall
+          be subject to the exclusive jurisdiction of the courts located in Delhi, India.
+        </p>
+
+        <h3>17. Modifications to Terms</h3>
+        <p>
+          The Company may revise or update these Terms periodically. Continued use of the platform following posted
+          revisions constitutes acceptance of the updated Terms. Significant changes may be communicated through email
+          or platform notifications.
+        </p>
+
+        <h3>18. Contact Information</h3>
+        <p>For any questions regarding these Terms or any aspect of Wild Mind AI, you may contact:</p>
+        <p>
+          Wild Mind AI by Wild Child Studios
+          <br />
+          511, Satyamev Eminence, Sola, Ahmedabad, Gujarat 380060
+          <br />
+          Email:
+          {' '}
+          <a href="mailto:connect@wildmindai.com">connect@wildmindai.com</a>
         </p>
       </div>
     </LegalLayout>

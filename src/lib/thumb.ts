@@ -60,7 +60,13 @@ export function toDirectUrl(urlOrPath: string): string {
     // Not our CDN; just return the original
     return urlOrPath
   } catch {
-    // It's likely a Zata-style relative path; construct a direct URL
-    return ZATA_PREFIX + urlOrPath.replace(/^\//, '')
+    // It's likely a Zata-style relative path; construct a URL that Next/Image accepts.
+    const cleanPath = urlOrPath.replace(/^\//, '')
+    if (ZATA_PREFIX) {
+      // Prefer absolute CDN URL when prefix is configured
+      return ZATA_PREFIX + cleanPath
+    }
+    // Fallback: go through our resource proxy with a leading slash so Next/Image is happy
+    return `/api/proxy/resource/${encodeURIComponent(cleanPath)}`
   }
 }

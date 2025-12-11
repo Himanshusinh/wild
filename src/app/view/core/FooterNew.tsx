@@ -195,7 +195,6 @@ const FooterNew: React.FC = () => {
                         About
                       </Link>
                     </li>
-                   
                     <li>
                       <Link href={COMPANY_ROUTES.SUPPORT} className="text-gray-400 text-sm hover:text-white transition-colors duration-200">
                         Support
