@@ -125,6 +125,14 @@ export default function ChromeMount() {
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
 
+  // Hide chrome on 404 and error pages
+  const is404 = pathname === '/not-found' || pathname?.includes('/404');
+  const isErrorPage = pathname === '/error' || pathname?.includes('/error');
+  
+  if (is404 || isErrorPage) {
+    return null;
+  }
+
   // Public routes - hide chrome on these
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');

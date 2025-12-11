@@ -3,29 +3,41 @@ const isProd = process.env.NODE_ENV === 'production';
 const siteUrl = process.env.SITE_URL || 'https://wildmindai.com';
 
 const canonicalPages = [
-  '/',
-  '/text-to-image',
-  '/text-to-video',
-  '/text-to-music',
-  '/mockup-generation',
-  '/product-generation',
-  '/ad-generation',
-  '/logo-generation',
-  '/sticker-generation',
-  '/edit-image',
-  '/edit-video',
-  '/view/Landingpage',
-  '/view/pricing',
-  '/view/workflows',
-  '/view/ArtStation',
-  '/view/Generation/MockupGeneation',
-  '/view/Generation/ProductGeneration',
-  '/view/Generation/wildmindskit/LiveChat',
-  '/view/Generation/wildmindskit/jwelary',
-  '/view/HomePage',
+  // Main pages
+  { url: '/', priority: 1.0, changefreq: 'daily' },
+  
+  // Canvas and Tools
+  { url: '/canvas-projects', priority: 0.9, changefreq: 'weekly' },
+  { url: '/edit-image', priority: 0.8, changefreq: 'weekly' },
+  { url: '/edit-video', priority: 0.8, changefreq: 'weekly' },
+  
+  // Pricing & Features  
+  { url: '/view/pricing', priority: 0.9, changefreq: 'weekly' },
+  { url: '/view/ArtStation', priority: 0.7, changefreq: 'daily' },
+  
+  // Active Generation Features (ONLY keep text-to-image, text-to-video, text-to-music, logo-generation)
+  { url: '/text-to-image', priority: 0.8, changefreq: 'weekly' },
+  { url: '/text-to-video', priority: 0.8, changefreq: 'weekly' },
+  { url: '/text-to-music', priority: 0.8, changefreq: 'weekly' },
+  { url: '/logo-generation', priority: 0.7, changefreq: 'weekly' },
+  
+  // Legal Pages
+  { url: '/legal', priority: 0.5, changefreq: 'monthly' },
+  { url: '/legal/privacy', priority: 0.5, changefreq: 'monthly' },
+  { url: '/legal/terms', priority: 0.5, changefreq: 'monthly' },
+  { url: '/legal/cookie', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/aup', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/dmca', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/api-terms', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/terms-conditions', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/cancellation-refunds', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/shipping', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/relationship', priority: 0.4, changefreq: 'monthly' },
+  { url: '/legal/thirdparty', priority: 0.4, changefreq: 'monthly' },
 ];
 
-const canonicalSet = new Set(canonicalPages);
+// Create a map of URL to page config for quick lookup
+const canonicalMap = new Map(canonicalPages.map(page => [page.url, page]));
 
 module.exports = {
   siteUrl,
@@ -40,7 +52,6 @@ module.exports = {
     '/temp/*',
     '/_next/*',
     '/404',
-    '/view/*',
     '/history',
     '/bookmarks',
     '/account-management',
@@ -49,26 +60,35 @@ module.exports = {
     '/login',
     '/view/signup',
     '/view/login',
+    '/view/HomePage',
     '/favicon.ico',
     '/robots.txt',
+    // Disabled feature pages (should return 404)
+    '/view/workflows',
+    '/ad-generation',
+    '/product-generation',
+    '/mockup-generation',
+    '/sticker-generation',
+    '/view/Generation/wildmindskit/*',
   ],
   robotsTxtOptions: {
     policies: isProd
       ? [{
           userAgent: '*',
           allow: '/',
-          disallow: ['/view/', '/history', '/bookmarks', '/account-management', '/signup', '/login', '/api/', '/_next/'],
+          disallow: ['/admin/', '/api/', '/_next/', '/history', '/bookmarks', '/account-management', '/signup', '/login'],
         }]
       : [{ userAgent: '*', disallow: '/' }],
   },
   transform: async (config, path) => {
-    if (!canonicalSet.has(path)) {
+    const pageConfig = canonicalMap.get(path);
+    if (!pageConfig) {
       return null;
     }
     return {
       loc: path,
-      changefreq: config.changefreq,
-      priority: config.priority,
+      changefreq: pageConfig.changefreq || config.changefreq,
+      priority: pageConfig.priority || config.priority,
       lastmod: new Date().toISOString(),
     };
   },
