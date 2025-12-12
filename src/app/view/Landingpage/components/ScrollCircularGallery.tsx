@@ -18,15 +18,15 @@ export default function ScrollCircularGallery({
     items,
 }: ScrollCircularGalleryProps) {
     return (
-        <div className="py-20 px-4 md:px-8">
+        <div className="py-20 px-4 sm:px-6 md:px-8 lg:px-12">
             {/* Modern Bento Grid Showcase */}
-            <div className="mx-auto max-w-[1600px]">
+            <div className="mx-auto max-w-[1600px] w-full">
                 <motion.div
                     initial={{ opacity: 0, y: 40 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, amount: 0.2 }}
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6"
+                    className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6"
                 >
                     {items.map((item, index) => (
                         <FeatureCard key={index} item={item} index={index} />
@@ -55,7 +55,7 @@ function FeatureCard({ item, index }: { item: GalleryItem; index: number }) {
                 duration: 0.1,
                 ease: "easeOut",
             }}
-            className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/5 bg-gradient-to-br from-gray-900/50 via-gray-800/30 to-black/50 backdrop-blur-xl shadow-2xl hover:shadow-purple-500/20 hover:shadow-2xl hover:border-purple-500/30 transition-all duration-100"
+            className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/5 bg-gradient-to-br from-gray-900/50 via-gray-800/30 to-black/50 backdrop-blur-xl shadow-2xl hover:shadow-purple-500/20 hover:shadow-2xl hover:border-purple-500/30 transition-all duration-100 w-full"
             style={{
                 transformStyle: "preserve-3d",
             }}

@@ -8,6 +8,7 @@ import { LandingView } from './components/views/LandingView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { TemplatesView } from './components/views/TemplatesView';
 import FooterNew from '../view/core/FooterNew';
+import SidePannelFeatures from '../view/Generation/Core/SidePannelFeatures';
 
 /**
  * WILD CANVAS - Premium AI Creative Suite
@@ -44,7 +45,7 @@ export default function App() {
             case 'templates': 
                 return <TemplatesView />;
             default: 
-                return <LandingView setActiveTab={setActiveTab} />;
+                return <LandingView setActiveTab={setActiveTab} isAuthenticated={isAuthenticated} />;
         }
     };
 
@@ -75,6 +76,8 @@ export default function App() {
 
     return (
         <div className={`min-h-screen bg-black text-white font-sans selection:bg-[#60a5fa] selection:text-white overflow-x-hidden ${isAuthenticated ? 'pl-20' : ''}`}>
+            {/* Sidebar for authenticated users */}
+            {isAuthenticated && <SidePannelFeatures />}
 
             {/* --- Ambient Background Effects (Blue Theme) --- */}
             <div className={`fixed inset-0 pointer-events-none z-0 ${isAuthenticated ? 'left-20' : ''}`}>
@@ -98,8 +101,12 @@ export default function App() {
                         label="Wild Studio"
                         icon={<img src="/core/ws_solid.svg" alt="Wild Studio" className="w-[24px] h-[24px]" />}
                     />
-                    <div className="w-px h-4 bg-white/10 mx-1"></div>
-                    <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} />
+                    {isAuthenticated && (
+                        <>
+                            <div className="w-px h-4 bg-white/10 mx-1"></div>
+                            <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} />
+                        </>
+                    )}
                     {/* <TabButton isActive={activeTab === 'templates'} onClick={() => setActiveTab('templates')} label="Templates" icon={<Box size={14} />} /> */}
                 </nav>
             </div>

@@ -198,6 +198,8 @@ export function proxy(req: NextRequest) {
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
+    // Canvas projects - public access (authentication handled client-side)
+    pathname.startsWith('/canvas-projects') ||
     // Legal pages
     pathname.startsWith('/legal/') ||
     // Product pages
