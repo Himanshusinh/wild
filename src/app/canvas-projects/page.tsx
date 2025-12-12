@@ -92,7 +92,12 @@ export default function App() {
             {/* --- Floating "Dock" Navigation --- */}
             <div className="flex justify-center pt-24 pb-10 sticky top-0 z-50">
                 <nav className="p-1.5 bg-[#0A0A0A]/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_40px_-10px_rgba(0,0,0,0.8)] flex items-center gap-1">
-                    <TabButton isActive={activeTab === 'landing'} onClick={() => setActiveTab('landing')} label="WildCanvas" icon={<Zap size={14} />} />
+                    <TabButton
+                        isActive={activeTab === 'landing'}
+                        onClick={() => setActiveTab('landing')}
+                        label="Wild Studio"
+                        icon={<img src="/core/ws_solid.svg" alt="Wild Studio" className="w-[24px] h-[24px]" />}
+                    />
                     <div className="w-px h-4 bg-white/10 mx-1"></div>
                     <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} />
                     {/* <TabButton isActive={activeTab === 'templates'} onClick={() => setActiveTab('templates')} label="Templates" icon={<Box size={14} />} /> */}

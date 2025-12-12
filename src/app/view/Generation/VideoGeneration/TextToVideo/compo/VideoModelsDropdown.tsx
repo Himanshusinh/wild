@@ -116,6 +116,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     return [
       { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
       { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
+      { value: "kling-o1", label: "Kling o1", description: "First/Last frame to video, 5s/10s, first frame required", provider: "fal" },
       { value: "sora2-t2v", label: "Sora 2", description: "OpenAI's Sora 2, 4s/8s/12s, 720p, 16:9/9:16", provider: "fal" },
       { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
       // { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
@@ -197,6 +198,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         // For v2.5, don't pass resolution as it's not needed for pricing
         r = undefined;
       }
+    } else if (model.value === 'kling-o1') {
+      // Kling o1 uses only duration (5s/10s)
+      d = normalizeDuration(selectedDuration, '5s');
+      r = undefined;
     } else if (model.value === 'MiniMax-Hailuo-02') {
       // MiniMax requires explicit resolution and duration to price
       d = normalizeDuration(selectedDuration, '6s');
@@ -323,7 +328,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         <ChevronUp className={`md:w-4 w-3 h-3 md:h-4  transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 md:max-h-150 max-h-100 overflow-y-auto dropdown-scrollbar">
+        <div className="absolute bottom-full left-0 mb-2 md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 md:max-h-120 max-h-100 overflow-y-auto dropdown-scrollbar-thin">
           {(() => {
             // Show all models regardless of mode - models that support both T2V and I2V should be visible in both modes
             // This ensures consistent model visibility (always 22 models)
