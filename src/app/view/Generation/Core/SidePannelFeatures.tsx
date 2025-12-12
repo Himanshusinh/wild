@@ -44,7 +44,8 @@ const SidebarItem = ({
   onMouseDown,
   labelClasses,
   setIsSidebarHovered,
-  className = ''
+  className = '',
+  labelColor
 }: {
   icon: string,
   label: string,
@@ -53,7 +54,8 @@ const SidebarItem = ({
   onMouseDown?: (e: React.MouseEvent) => void,
   labelClasses: string,
   setIsSidebarHovered: (value: boolean) => void,
-  className?: string
+  className?: string,
+  labelColor?: string
 }) => (
   <div
     onMouseEnter={() => setIsSidebarHovered(true)}
@@ -65,7 +67,12 @@ const SidebarItem = ({
       } ${className}`}
   >
     <SidebarIcon icon={icon} label={label} isActive={isActive} />
-    <span className={`${labelClasses} ${isActive ? 'text-blue-400' : ''}`}>{label}</span>
+    <span
+      className={`${labelClasses} ${isActive ? 'text-blue-400' : ''}`}
+      style={labelColor ? { color: labelColor } : undefined}
+    >
+      {label}
+    </span>
   </div>
 );
 
@@ -591,7 +598,7 @@ const SidePannelFeatures = ({
         <div>
           <SidebarItem
             icon={imageRoutes.icons.canvas}
-            label="WildCanvas"
+            label="Wild Studio"
             isActive={pathname?.includes('/canvas-projects') || false}
             labelClasses={labelClasses}
             setIsSidebarHovered={setIsSidebarHovered}
@@ -602,6 +609,7 @@ const SidePannelFeatures = ({
                 router.push('/canvas-projects');
               }
             }}
+          // labelColor="#34CC66"
           />
         </div>
 
