@@ -2551,12 +2551,13 @@ const EditImageInterface: React.FC = () => {
             // 1. Determine Project ID
             const projectId = searchParams.get('projectId') || user?.uid || 'standalone-edit';
 
-            // Define prompt logic
-            // If user provides a prompt, it's a "Replace" operation.
-            // If no prompt, it's an "Erase" operation.
+            // Determine operation based on selectedFeature and eraseActionMode
+            // If selectedFeature is 'erase', it's always erase
+            // If selectedFeature is 'fill', check eraseActionMode: 'replace' = replace, 'erase' = erase
+            const isReplace = selectedFeature === 'fill' ? eraseActionMode === 'replace' : false;
+            
             // USE activePrompt to respect Fill mode's input
             const userPrompt = activePrompt ? activePrompt.trim() : '';
-            const isReplace = userPrompt.length > 0;
 
             // Use concise prompts
             const finalPrompt = isReplace
