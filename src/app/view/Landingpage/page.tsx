@@ -414,8 +414,8 @@ const LandingPage: React.FC = () => {
             <WorkflowVisualizer />
           </div>
           <div className="flex justify-center items-center py-12">
-            <button onClick={() => { }} className="group relative px-8 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-              <span className="relative z-10 flex items-center gap-2">Launching Soon<ArrowUpRight size={18} /></span>
+            <button onClick={() => router.push('/canvas-projects')} className="group relative px-8 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+              <span className="relative z-10 flex items-center gap-2">Go to Canvas<ArrowUpRight size={18} /></span>
               <div className="absolute inset-0 bg-[#60a5fa] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
             </button>
           </div>

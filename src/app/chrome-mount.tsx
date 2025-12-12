@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -216,6 +217,9 @@ export default function ChromeMount() {
     return null; // Hide chrome when not authenticated
   }
 
+  // Canvas Projects route - always hide chrome (page manages own sidebar)
+  const isCanvasRoute = pathnameLower.startsWith('/canvas-projects');
+
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
     isLandingRoute ||
@@ -225,6 +229,7 @@ export default function ChromeMount() {
     isLegalRoute ||
     isProductRoute ||
     isCompanyRoute ||
+    isCanvasRoute ||
     (isRoot && currentView === 'landing');
 
   // If should hide, return null immediately

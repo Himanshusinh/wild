@@ -5,52 +5,46 @@ const siteUrl = process.env.SITE_URL || 'https://wildmindai.com';
 // Import blog posts to generate dynamic URLs
 const { blogPosts } = require('./src/app/blog/data/blogPosts.ts');
 
+// ONLY PUBLIC PAGES - Google can crawl these without authentication
+// PRIORITY ORDER: Landing → Blog → Pricing → ArtStation → Legal
 const canonicalPages = [
-  // Main pages - ALL DAILY
+  // ===== TIER 1: Main Landing (Highest Priority) =====
   { url: '/', priority: 1.0, changefreq: 'daily' },
-  { url: '/view/Landingpage', priority: 0.9, changefreq: 'daily' },
-  { url: '/view/HomePage', priority: 0.9, changefreq: 'daily' },
+  { url: '/view/Landingpage', priority: 0.95, changefreq: 'daily' },
   
-  // Canvas and Tools - ALL DAILY
+  // ===== TIER 2: Canvas Landing (High Priority) =====
   { url: '/canvas-projects', priority: 0.9, changefreq: 'daily' },
-  { url: '/edit-image', priority: 0.8, changefreq: 'daily' },
-  { url: '/edit-video', priority: 0.8, changefreq: 'daily' },
   
-  // Pricing & Features - ALL DAILY
-  { url: '/view/pricing', priority: 0.9, changefreq: 'daily' },
-  { url: '/view/ArtStation', priority: 0.7, changefreq: 'daily' },
-  
-  // Blog main page - DAILY
+  // ===== TIER 3: Blog (High Priority for SEO) =====
   { url: '/blog', priority: 0.9, changefreq: 'daily' },
+
   
-  // Active Generation Features - ALL DAILY
-  { url: '/text-to-image', priority: 0.8, changefreq: 'daily' },
-  { url: '/text-to-video', priority: 0.8, changefreq: 'daily' },
-  { url: '/text-to-music', priority: 0.8, changefreq: 'daily' },
-  { url: '/logo-generation', priority: 0.7, changefreq: 'daily' },
-  { url: '/logo', priority: 0.7, changefreq: 'daily' },
-  { url: '/sticker-generation', priority: 0.7, changefreq: 'daily' },
+  // Blog posts will be added here dynamically (priority 0.75)
   
-  // Legal Pages - ALL DAILY for consistency
-  { url: '/legal', priority: 0.5, changefreq: 'daily' },
-  { url: '/legal/privacy', priority: 0.5, changefreq: 'daily' },
-  { url: '/legal/terms', priority: 0.5, changefreq: 'daily' },
-  { url: '/legal/cookie', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/aup', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/dmca', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/api-terms', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/terms-conditions', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/cancellation-refunds', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/shipping', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/relationship', priority: 0.4, changefreq: 'daily' },
-  { url: '/legal/thirdparty', priority: 0.4, changefreq: 'daily' },
+  // ===== TIER 3: Key Public Pages =====
+  { url: '/view/pricing', priority: 0.85, changefreq: 'daily' },
+  { url: '/view/ArtStation', priority: 0.8, changefreq: 'daily' },
+  
+  // ===== TIER 4: Legal Pages (Lower Priority) =====
+  { url: '/legal', priority: 0.3, changefreq: 'daily' },
+  { url: '/legal/privacy', priority: 0.3, changefreq: 'daily' },
+  { url: '/legal/terms', priority: 0.3, changefreq: 'daily' },
+  { url: '/legal/cookie', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/aup', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/dmca', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/api-terms', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/terms-conditions', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/cancellation-refunds', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/shipping', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/relationship', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/thirdparty', priority: 0.2, changefreq: 'daily' },
 ];
 
-// Add all blog posts dynamically - DAILY crawl
+// Add all blog posts dynamically - TIER 2 priority (after /blog main page)
 blogPosts.forEach((post) => {
-  canonicalPages.push({
+  canonicalPages.splice(3, 0, { // Insert after /blog main page at index 3
     url: `/blog/${post.id}`,
-    priority: 0.7,
+    priority: 0.75,
     changefreq: 'daily',
   });
 });
@@ -66,26 +60,70 @@ module.exports = {
   priority: 0.7,
   sitemapSize: 5000,
   exclude: [
+    // AUTHENTICATED PAGES (Google can't crawl these)
+    '/edit-image',
+    '/edit-image/*',
+    '/edit-video',
+    '/edit-video/*',
+    '/text-to-image',
+    '/text-to-image/*',
+    '/text-to-video',
+    '/text-to-video/*',
+    '/image-to-video',
+    '/image-to-video/*',
+    '/text-to-music',
+    '/text-to-music/*',
+    '/logo',
+    '/logo/*',
+    '/logo-generation',
+    '/logo-generation/*',
+    '/sticker-generation',
+    '/sticker-generation/*',
+    '/mockup-generation',
+    '/mockup-generation/*',
+    '/product-generation',
+    '/product-generation/*',
+    '/ad-generation',
+    '/ad-generation/*',
+    '/live-chat',
+    '/live-chat/*',
+    
+    // USER PAGES (authenticated)
+    '/view/HomePage',
+    '/view/HomePage/*',
+    '/view/editimage',
+    '/view/editimage/*',
+    '/view/editvideo',
+    '/view/editvideo/*',
+    '/history',
+    '/history/*',
+    '/bookmarks',
+    '/bookmarks/*',
+    '/account-management',
+    '/view/account-management',
+    '/view/account-management/*',
+    
+    // AUTH PAGES
+    '/signup',
+    '/signup/*',
+    '/login',
+    '/login/*',
+    '/view/signup',
+    '/view/login',
+    '/forgot-password',
+    
+    // SYSTEM PAGES
     '/admin/*',
     '/api/*',
     '/temp/*',
     '/_next/*',
     '/404',
-    '/history',
-    '/bookmarks',
-    '/account-management',
-    '/view/account-management',
-    '/signup',
-    '/login',
-    '/view/signup',
-    '/view/login',
     '/favicon.ico',
     '/robots.txt',
-    // Disabled feature pages (should return 404)
+    
+    // DISABLED FEATURES
     '/view/workflows',
-    '/ad-generation',
-    '/product-generation',
-    '/mockup-generation',
+    '/view/workflows/*',
     '/view/Generation/wildmindskit/*',
   ],
   robotsTxtOptions: {
@@ -93,20 +131,29 @@ module.exports = {
       ? [{
           userAgent: '*',
           allow: '/',
-          disallow: ['/admin/', '/api/', '/_next/', '/history', '/bookmarks', '/account-management', '/signup', '/login'],
+          disallow: [
+            '/admin/',
+            '/api/',
+            '/_next/',
+            '/history',
+            '/bookmarks',
+            '/account-management',
+            '/signup',
+            '/login',
+            '/edit-image',
+            '/edit-video',
+            '/text-to-image',
+            '/text-to-video',
+            '/text-to-music',
+          ],
         }]
       : [{ userAgent: '*', disallow: '/' }],
   },
   transform: async (config, path) => {
     const pageConfig = canonicalMap.get(path);
     if (!pageConfig) {
-      // Allow other discovered pages with default daily frequency
-      return {
-        loc: path,
-        changefreq: 'daily',
-        priority: config.priority,
-        lastmod: new Date().toISOString(),
-      };
+      // Reject other discovered pages (they're likely authenticated)
+      return null;
     }
     return {
       loc: path,
