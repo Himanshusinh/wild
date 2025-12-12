@@ -24,6 +24,8 @@ const DurationDropdown: React.FC<DurationDropdownProps> = ({
   const getAvailableDurations = () => {
     if (selectedModel === "MiniMax-Hailuo-02") {
       return [6, 10];
+    } else if (selectedModel === "kling-o1") {
+      return [5, 10];
     } else {
       return [6];
     }
