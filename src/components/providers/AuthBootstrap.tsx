@@ -123,7 +123,12 @@ export default function AuthBootstrap() {
                 const isPublic = currentPath === '/' ||
                   currentPath.startsWith('/view/Landingpage') ||
                   currentPath.startsWith('/view/signup') ||
-                  currentPath.startsWith('/view/signin');
+                  currentPath.startsWith('/view/signin') ||
+                  currentPath.startsWith('/canvas-projects') ||
+                  currentPath.startsWith('/blog') ||
+                  currentPath.startsWith('/view/pricing') ||
+                  currentPath.startsWith('/view/ArtStation') ||
+                  currentPath.startsWith('/legal/');
 
                 if (!isPublic) {
                   console.warn('[AuthBootstrap] Redirecting to signup due to 401...');

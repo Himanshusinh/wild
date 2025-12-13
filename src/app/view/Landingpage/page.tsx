@@ -413,12 +413,6 @@ const LandingPage: React.FC = () => {
           <div className="w-full">
             <WorkflowVisualizer />
           </div>
-          <div className="flex justify-center items-center py-12">
-            <button onClick={() => { }} className="group relative px-8 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-              <span className="relative z-10 flex items-center gap-2">Launching Soon<ArrowUpRight size={18} /></span>
-              <div className="absolute inset-0 bg-[#60a5fa] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-            </button>
-          </div>
 
           {/* Scroll Circular Gallery */}
           <div className="w-full relative z-[20]">
@@ -436,8 +430,16 @@ const LandingPage: React.FC = () => {
             </React.Suspense>
           </div>
 
-          {/* Launching Soon Button */}
-
+          {/* Launch Canvas Studio Button */}
+          <div className="flex justify-center items-center py-12">
+            <button onClick={() => router.push('/canvas-projects')} className="group relative px-10 py-5 bg-gradient-to-r from-[#60a5fa] to-[#8b5cf6] text-white rounded-full text-lg font-bold overflow-hidden transition-all hover:scale-110 hover:shadow-[0_0_40px_rgba(96,165,250,0.5)] shadow-[0_0_30px_rgba(96,165,250,0.3)]">
+              <span className="relative z-10 flex items-center gap-2">
+                Launch Canvas Studio
+                <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#8b5cf6] to-[#60a5fa] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+            </button>
+          </div>
 
           {/* Additional ScrollFloat under Features section - ensure visibility even with short content */}
           <div className="relative z-[10] px-8 md:px- lg:px-8 py-4 md:py-2 lg:py-6 flex flex-col items-center text-center ">

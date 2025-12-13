@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Hexagon, Zap, Layers, Box } from 'lucide-react';
 import { TabButton } from './components/ui/TabButton';
 import { LandingView } from './components/views/LandingView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { TemplatesView } from './components/views/TemplatesView';
 import FooterNew from '../view/core/FooterNew';
+import SidePannelFeatures from '../view/Generation/Core/SidePannelFeatures';
 
 /**
  * WILD CANVAS - Premium AI Creative Suite
@@ -16,6 +18,19 @@ import FooterNew from '../view/core/FooterNew';
 export default function App() {
     const [activeTab, setActiveTab] = useState('landing');
     const [isScrolled, setIsScrolled] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const router = useRouter();
+
+    // Check authentication status
+    useEffect(() => {
+        try {
+            const hasSessionCookie = document.cookie.split(';').some(c => c.trim().startsWith('app_session='));
+            const hasLocalAuth = Boolean(localStorage.getItem('authToken') || localStorage.getItem('user'));
+            setIsAuthenticated(hasSessionCookie || hasLocalAuth);
+        } catch {
+            setIsAuthenticated(false);
+        }
+    }, []);
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -25,17 +40,47 @@ export default function App() {
 
     const renderView = () => {
         switch (activeTab) {
-            case 'projects': return <ProjectsView />;
-            case 'templates': return <TemplatesView />;
-            default: return <LandingView setActiveTab={setActiveTab} />;
+            case 'projects': 
+                return isAuthenticated ? <ProjectsView /> : renderUnauthenticatedView();
+            case 'templates': 
+                return <TemplatesView />;
+            default: 
+                return <LandingView setActiveTab={setActiveTab} isAuthenticated={isAuthenticated} />;
         }
     };
 
+    const renderUnauthenticatedView = () => (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Sign in to View Your Projects
+            </h2>
+            <p className="text-gray-400 mb-8 max-w-md">
+                Create an account or sign in to access your canvas projects and start creating.
+            </p>
+            <div className="flex gap-4">
+                <button
+                    onClick={() => router.push('/view/signup')}
+                    className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors"
+                >
+                    Get Started Free
+                </button>
+                <button
+    onClick={() => router.push('/view/login')}
+                    className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/20 text-white rounded-lg font-semibold transition-colors"
+                >
+                    Sign In
+                </button>
+            </div>
+        </div>
+    );
+
     return (
-        <div className="min-h-screen bg-black text-white font-sans selection:bg-[#60a5fa] selection:text-white overflow-x-hidden pl-20">
+        <div className={`min-h-screen bg-black text-white font-sans selection:bg-[#60a5fa] selection:text-white overflow-x-hidden ${isAuthenticated ? 'pl-20' : ''}`}>
+            {/* Sidebar for authenticated users */}
+            {isAuthenticated && <SidePannelFeatures />}
 
             {/* --- Ambient Background Effects (Blue Theme) --- */}
-            <div className="fixed inset-0 pointer-events-none z-0 left-20">
+            <div className={`fixed inset-0 pointer-events-none z-0 ${isAuthenticated ? 'left-20' : ''}`}>
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
                 {/* Abstract Grid */}
                 <div className="absolute inset-0" style={{
@@ -56,8 +101,12 @@ export default function App() {
                         label="Wild Studio"
                         icon={<img src="/core/ws_solid.svg" alt="Wild Studio" className="w-[24px] h-[24px]" />}
                     />
-                    <div className="w-px h-4 bg-white/10 mx-1"></div>
-                    <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} />
+                    {isAuthenticated && (
+                        <>
+                            <div className="w-px h-4 bg-white/10 mx-1"></div>
+                            <TabButton isActive={activeTab === 'projects'} onClick={() => setActiveTab('projects')} label="My Projects" icon={<Layers size={14} />} />
+                        </>
+                    )}
                     {/* <TabButton isActive={activeTab === 'templates'} onClick={() => setActiveTab('templates')} label="Templates" icon={<Box size={14} />} /> */}
                 </nav>
             </div>
