@@ -45,30 +45,30 @@ const VideoGenerationGuide = () => {
     ];
 
     return (
-        <div className="relative flex flex-col items-center justify-center md:h-[50vh] h-[70vh] md:max-h-[90vh]  overflow-y-auto md:px-4 px-2 md:mb-0  overflow-hidden">
+        <div className="relative flex flex-col items-center justify-center md:h-[50vh] h-full md:max-h-[90vh] z-0 overflow-y-auto md:px-4 px-0 md:pb-0 pb-40 md:mb-0">
             {/* Ambient Background Effects (Blue Theme) - matching wildcanvas */}
             <div className="absolute inset-0 pointer-events-none z-0">
                 
             </div>
 
-            <div className="relative z-10 md:max-w-7xl px-2 max-w-full w-full md:space-y-8 space-y-4">
+            <div className="relative z-10 md:max-w-7xl px-2 max-w-full w-full md:space-y-8 space-y-0">
                 {/* Header */}
                 <div className="text-center md:space-y-4 space-y-1 ">
-                    <h2 className="text-3xl md:text-4xl font-medium tracking-tight text-white">
+                    <h2 className="text-xl md:text-4xl font-medium md:tracking-tight text-white">
                         Create Your First AI Video
                     </h2>
-                    <p className="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
+                    <p className="text-slate-400 text-md md:text-xl max-w-auto md:mx-auto md:leading-relaxed">
                         Follow these simple steps to generate stunning videos with WildMind AI. 
                     </p>
                 </div>
 
                 {/* Steps Grid - 3 Steps */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-8">
                     {steps.map((step, index) => {
                         return (
                             <div
                                 key={index}
-                                className={`relative group rounded-xl md:p-8 p-6 border border-white/5 transition-all duration-300 hover:scale-105 overflow-hidden ${!step.hasBackgroundImage ? 'bg-[#0A0A0A]' : ''}`}
+                                className={`relative group rounded-xl md:p-8 p-4 border border-white/5 transition-all duration-300 hover:scale-105 overflow-hidden ${!step.hasBackgroundImage ? 'bg-[#0A0A0A]' : ''}`}
                                 style={{
                                     boxShadow: `0 0 0 0 ${step.glowColor}`,
                                     borderColor: 'rgba(255, 255, 255, 0.05)',
@@ -110,13 +110,13 @@ const VideoGenerationGuide = () => {
                                 />
 
                                 {/* Step Number */}
-                                <div className="relative -top-5 -left-5 w-10 h-10 bg-transparent backdrop-blur rounded-full flex items-center justify-center border border-white/5 ring-black z-50 group-hover:border-white/20 transition-colors">
+                                <div className="relative md:-top-5 md:-left-5 -top-3 -left-3 w-8 h-8 md:w-10 md:h-10 bg-transparent backdrop-blur rounded-full flex items-center justify-center border border-white/5 ring-black z-50 group-hover:border-white/20 transition-colors">
                                     <span className="text-white text-base font-bold">{step.stepNumber}</span>
                                 </div>
 
                                 {/* Content */}
                                 <h3
-                                    className="text-white font-medium text-xl mb-3 transition-colors relative z-10"
+                                    className="text-white font-medium md:text-xl text-md md:mb-3 mb-0 transition-colors relative z-10"
                                     style={{
                                         color: 'white',
                                     }}
@@ -131,10 +131,10 @@ const VideoGenerationGuide = () => {
                                 >
                                     {step.title}
                                 </h3>
-                                <p className="text-slate-200 text-sm font-thin leading-relaxed relative z-10">
+                                <p className="text-slate-200 md:text-sm text-xs font-thin leading-relaxed relative z-10">
                                     {step.description} <br />
                                     {step.description2 && (
-                                        <span className="text-slate-200 text-sm leading-relaxed relative z-10">
+                                        <span className="text-slate-200 md:text-sm text-xs leading-relaxed relative z-10">
                                             {step.description2} <span className="text-slate-300 text-sm leading-relaxed relative z-10 font-extrabold">Image-to-Video or Video-to-Video generation.</span>
                                         </span>
                                     )}
@@ -143,7 +143,7 @@ const VideoGenerationGuide = () => {
                                 {/* Generate Button for Step 3 */}
                                 {step.stepNumber === 3 && (
                                     <div className="mt-6 relative z-10">
-                                        <button className="w-full px-6 py-4 bg-white text-black rounded-full text-base font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)] group/btn relative">
+                                        <button className="w-full px-4 md:px-6 py-2 md:py-4 text-base md:text-base text-sm bg-white text-black rounded-full font-semibold overflow-hidden transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.1)] group/btn relative">
                                             <span className="relative z-10 flex items-center justify-center gap-2">
                                                 <Zap size={18} className="text-black" />
                                                 Generate

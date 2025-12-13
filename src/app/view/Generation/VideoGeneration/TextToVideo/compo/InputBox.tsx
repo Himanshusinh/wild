@@ -2014,6 +2014,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Standardized intersection observer for video history
   // Replace IntersectionObserver with History-style bottom scroll pagination
+  // Only enable pagination when there are entries to paginate (not when showing guide)
   useBottomScrollPagination({
     containerRef: historyScrollElement ? { current: historyScrollElement } as any : undefined,
     hasMore,
@@ -2021,6 +2022,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     requireUserScroll: true,
     bottomOffset: 800,
     throttleMs: 200,
+    enabled: historyEntries.length > 0 && sortedDates.length > 0, // Disable when showing guide (no entries to paginate)
     loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
@@ -4319,7 +4321,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
           {/* Initial loading overlay - show when loading OR before initial load attempt */}
           {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
-            <div className="fixed top-[64px] md:top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="fixed top-[64px] md:top-[0px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4 px-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
                 <div className="text-white text-lg text-center">Loading generations...</div>
