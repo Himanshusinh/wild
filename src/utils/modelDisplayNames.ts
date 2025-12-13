@@ -19,7 +19,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'replicate-lucataco-remove-bg': 'Lucataco Remove BG - 10 credits',
   'replicate-851-labs-remove-bg': '851 Labs Remove BG - 10 credits',
   'seedream-v4': 'Seedream v4 4k',
-  'seedream-4.5': 'Seedream 4.5',
+  'seedream-4.5': 'Seedream 4.5 4K',
   'ideogram-ai/ideogram-v3': 'Ideogram v3',
   'ideogram-ai/ideogram-v3-quality': 'Ideogram v3 Quality',
   'leonardoai/lucid-origin': 'Lucid Origin',

@@ -49,6 +49,7 @@ import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
+import ImageGenerationGuide from "./ImageGenerationGuide";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -122,6 +123,7 @@ const InputBox = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -315,6 +317,9 @@ const InputBox = () => {
     } catch { }
   }, [dispatch, searchParams, pathname]);
 
+  // Track if initial load has been attempted (to prevent guide flash on refresh)
+  const hasAttemptedInitialLoadRef = useRef(false);
+  
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({
     generationType: 'text-to-image',
@@ -1032,6 +1037,13 @@ const InputBox = () => {
 
     return filtered;
   }, [historyEntries, searchQuery, dateRange, sortOrder]);
+
+  // Mark that we've attempted initial load once loading starts or completes
+  useEffect(() => {
+    if (loading || historyEntries.length > 0) {
+      hasAttemptedInitialLoadRef.current = true;
+    }
+  }, [loading, historyEntries.length]);
 
   // Sentinel element at bottom of list (place near end of render)
 
@@ -3849,7 +3861,19 @@ const InputBox = () => {
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-30 md:py-4 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
             <div className="flex items-center justify-between md:mb-2 mb-0">
-              <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+                {/* Info button - only show when there are generations */}
+                {historyEntries.length > 0 && sortedDates.length > 0 && (
+                  <button
+                    onClick={() => setIsGuideModalOpen(true)}
+                    className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                    aria-label="Show guide"
+                  >
+                    <span className="text-white text-sm font-semibold">i</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Desktop: Search, Sort, and Date controls - on same line */}
@@ -4165,8 +4189,8 @@ const InputBox = () => {
 
         {/* Spacer to keep content below fixed header */}
 
-        {/* Initial loading overlay - show when loading and no entries */}
-        {loading && historyEntries.length === 0 && (
+        {/* Initial loading overlay - show when loading OR before initial load attempt */}
+        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -4186,10 +4210,16 @@ const InputBox = () => {
         )}
 
         <div>
+          {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
+          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && localGeneratingEntries.length === 0 && (
+            <ImageGenerationGuide />
+          )}
+
           {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
           {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
           {/* History Entries - Grouped by Date */}
+          {sortedDates.length > 0 && (
           <div className=" space-y-4 md:px-0 px-2 md:mt-6 ">
             {sortedDates.map((date) => (
               <div key={date} className="space-y-2 md:-mt-2">
@@ -4370,6 +4400,7 @@ const InputBox = () => {
 
 
           </div>
+          )}
           {/* Infinite scroll sentinel inside scroll container */}
           <div ref={sentinelRef} style={{ height: 24 }} />
         </div>
@@ -5032,6 +5063,33 @@ const InputBox = () => {
           selectedCharacters={selectedCharacters}
           maxCharacters={10}
         />
+      )}
+
+      {/* Guide Modal - shows when info button is clicked */}
+      {isGuideModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop with blur */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-md"
+            onClick={() => setIsGuideModalOpen(false)}
+          />
+          {/* Modal Content */}
+          <div className="relative z-10 w-full max-w-6xl  max-h-[90vh] overflow-y-auto bg-transparent rounded-xl">
+            {/* Close Button */}
+            <button
+              onClick={() => setIsGuideModalOpen(false)}
+              className="absolute md:top-4 top-0 md:right-4 right-2 z-20 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              aria-label="Close guide"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            {/* Guide Content */}
+            <ImageGenerationGuide />
+          </div>
+        </div>
       )}
     </>
   );

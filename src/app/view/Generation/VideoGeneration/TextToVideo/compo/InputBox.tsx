@@ -42,6 +42,7 @@ import VideoModelsDropdown from "./VideoModelsDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
 import VideoDurationDropdown from "./VideoDurationDropdown";
 import QualityDropdown from "./QualityDropdown";
+import VideoGenerationGuide from "./VideoGenerationGuide";
 import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
@@ -1053,6 +1054,10 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  
+  // Track if initial load has been attempted (to prevent guide flash on refresh)
+  const hasAttemptedInitialLoadRef = useRef(false);
+  
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1201,6 +1206,13 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     return sortedMergedEntries;
   }, shallowEqual);
+
+  // Mark that we've attempted initial load once loading starts or completes
+  useEffect(() => {
+    if (loading || historyEntries.length > 0) {
+      hasAttemptedInitialLoadRef.current = true;
+    }
+  }, [loading, historyEntries.length]);
 
   // Get image history entries for image upload modal
   const imageHistoryEntries = useAppSelector((state: any) => {
@@ -1918,16 +1930,64 @@ const InputBox = (props: InputBoxProps = {}) => {
     setPage(1);
   }, []);
 
+  // Get current UI generation type to detect feature switches
+  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
+  const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
+  const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
   const didInitialLoadRef = useRef(false);
   // Use mode: 'video' to load ALL video types at once (same as History.tsx)
   // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
   useEffect(() => {
-    if (didInitialLoadRef.current) return;
+    const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
+    const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
+    const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
+    const isVideoType = ['text-to-video', 'image-to-video', 'video-to-video'].includes(normalizedCurrentUI);
+    
+    // Check if user switched to video generation from another feature
+    const switchedToVideo = isVideoType && normalizedLastUI !== normalizedCurrentUI;
+    
+    // Check if filters are for a different type (e.g., image filters when we're on video page)
+    const currentFilterMode = currentFilters?.mode;
+    const filtersAreForVideo = currentFilterMode === 'video';
+    const filtersAreForDifferentType = currentFilterMode && currentFilterMode !== 'video';
+    
+    // Reset initial load flag if user switched to video generation or filters don't match
+    if (switchedToVideo || (isVideoType && filtersAreForDifferentType)) {
+      console.log('[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag', {
+        switchedToVideo,
+        filtersAreForDifferentType,
+        currentFilterMode,
+        currentUIGenerationType,
+      });
+      didInitialLoadRef.current = false;
+    }
+    
+    // Always update the last UI type ref to track changes
+    lastUIGenerationTypeRef.current = currentUIGenerationType;
+    
+    // Only load if we haven't loaded yet, or if user just switched to video, or filters don't match
+    if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType) {
+      return;
+    }
+    
+    // Only proceed if we're on a video generation page
+    if (!isVideoType) {
+      return;
+    }
+    
     // Load all video types using mode: 'video' (backend handles this correctly)
     didInitialLoadRef.current = true;
+    
     try {
+      console.log('[VideoInputBox] Loading video history', { 
+        switchedToVideo, 
+        filtersAreForDifferentType,
+        currentUIGenerationType,
+        currentFilterMode,
+      });
       // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
       // This is the same approach History.tsx uses and ensures all video types are loaded
       dispatch(loadHistory({
@@ -1935,12 +1995,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         paginationParams: { limit: 50 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
-        debugTag: `InputBox:video-mode:${Date.now()}`
+        debugTag: `InputBox:video-mode:${Date.now()}`,
+        forceRefresh: switchedToVideo || filtersAreForDifferentType, // Force refresh when switching to video or filters don't match
       } as any));
     } catch (e) {
-      // swallow
+      console.error('[VideoInputBox] Error loading history:', e);
     }
-  }, [dispatch]);
+  }, [dispatch, currentUIGenerationType, currentFilters]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -4256,6 +4317,16 @@ const InputBox = (props: InputBoxProps = {}) => {
     <React.Fragment>
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
+          {/* Initial loading overlay - show when loading OR before initial load attempt */}
+          {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
+            <div className="fixed top-[64px] md:top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 px-4">
+                <img src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
+                <div className="text-white text-lg text-center">Loading generations...</div>
+              </div>
+            </div>
+          )}
+
           <div className="md:space-y-8 space-y-2">
             {/* If there's a local preview and no row for today, render a dated block for today */}
             {localVideoPreview && !groupedByDate[todayKey] && (
@@ -4301,7 +4372,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
               </div>
             )}
-            {sortedDates.map((date) => (
+
+            {/* Show guide when no video generations exist - ONLY after initial load attempt AND loading completes */}
+            {hasAttemptedInitialLoadRef.current && !loading && historyEntries.length === 0 && sortedDates.length === 0 && !localVideoPreview && (
+              <VideoGenerationGuide />
+            )}
+
+            {sortedDates.length > 0 && sortedDates.map((date) => (
               <div key={date} className="md:space-y-4 space-y-1">
                 {/* Date Header */}
                 <div className="flex items-center md:gap-3 gap-2">

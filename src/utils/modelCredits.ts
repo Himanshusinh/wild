@@ -17,7 +17,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
   'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
-  'seedream-v4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)
+  'seedream-4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
