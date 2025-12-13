@@ -13,7 +13,7 @@ const TextToVideo: React.FC = () => {
             Video Generation
           </h1>
           <p className="text-xl text-white/80 max-w-3xl mx-auto">
-            Transform your ideas into stunning videos using advanced AI models. 
+            Transform your ideas into stunning videos using advanced AI models.
             Choose between Image-to-Video or Video-to-Video generation modes.
           </p>
         </div>
