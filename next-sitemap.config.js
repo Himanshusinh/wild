@@ -25,7 +25,13 @@ const canonicalPages = [
   { url: '/view/pricing', priority: 0.85, changefreq: 'daily' },
   { url: '/view/ArtStation', priority: 0.8, changefreq: 'daily' },
   
-  // ===== TIER 4: Legal Pages (Lower Priority) =====
+  // ===== TIER 4: Company & Product Pages =====
+  { url: '/company/about', priority: 0.6, changefreq: 'daily' },
+  { url: '/company/contact-us', priority: 0.6, changefreq: 'daily' },
+  { url: '/company/newsletter', priority: 0.5, changefreq: 'daily' },
+  { url: '/product/faqs', priority: 0.7, changefreq: 'daily' },
+  
+  // ===== TIER 5: Legal Pages (Lower Priority) =====
   { url: '/legal', priority: 0.3, changefreq: 'daily' },
   { url: '/legal/privacy', priority: 0.3, changefreq: 'daily' },
   { url: '/legal/terms', priority: 0.3, changefreq: 'daily' },
@@ -93,8 +99,13 @@ module.exports = {
     '/view/HomePage/*',
     '/view/editimage',
     '/view/editimage/*',
+    '/view/EditImage',
+    '/view/EditImage/*',
     '/view/editvideo',
     '/view/editvideo/*',
+    '/view/EditVideo',
+    '/view/EditVideo/*',
+    '/view/Generation/*',
     '/history',
     '/history/*',
     '/bookmarks',
@@ -104,6 +115,7 @@ module.exports = {
     '/view/account-management/*',
     
     // AUTH PAGES
+    '/auth/*',
     '/signup',
     '/signup/*',
     '/login',
@@ -135,6 +147,7 @@ module.exports = {
             '/admin/',
             '/api/',
             '/_next/',
+            '/auth/',
             '/history',
             '/bookmarks',
             '/account-management',
@@ -145,6 +158,11 @@ module.exports = {
             '/text-to-image',
             '/text-to-video',
             '/text-to-music',
+            '/logo-generation',
+            '/view/HomePage',
+            '/view/EditImage',
+            '/view/EditVideo',
+            '/view/Generation',
           ],
         }]
       : [{ userAgent: '*', disallow: '/' }],
