@@ -143,7 +143,7 @@ export default function VideoGenerationPage() {
                         onClick={() => setIsGuideModalOpen(false)}
                     />
                     {/* Modal Content */}
-                    <div className="relative z-10 w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-transparent rounded-xl">
+                    <div className="relative z-10 w-full max-w-[1500px] max-h-[90vh] overflow-y-auto bg-transparent rounded-xl">
                         {/* Close Button */}
                         <button
                             onClick={() => setIsGuideModalOpen(false)}
