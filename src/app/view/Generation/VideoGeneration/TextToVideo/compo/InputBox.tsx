@@ -102,6 +102,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
+  const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
 
   // Debug uploadedImages changes
   useEffect(() => {
@@ -4663,8 +4664,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            }`}
+          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+            } hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}
+          onMouseEnter={() => setIsInputBoxHovered(true)}
+          onMouseLeave={() => setIsInputBoxHovered(false)}
           onClick={(e) => {
             // Close all dropdowns when clicking on the input box container
             if (e.target === e.currentTarget) {
@@ -4677,8 +4680,15 @@ const InputBox = (props: InputBoxProps = {}) => {
             }
           }}
         >
+          {/* Outline Glow Effect - shows on hover or when typing */}
+          <div 
+            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+            style={{
+              opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0
+            }}
+          ></div>
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start md:gap-3 gap-0 md:p-3 p-2 md:pt-2 pt-0 
+          <div className="flex items-start md:gap-3 gap-0 md:p-3 p-2 md:pt-2 pt-0 relative z-10
           ">
             <div className="flex-1 flex items-start  gap-2 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
               <textarea

@@ -50,8 +50,8 @@ const ImageGenerationGuide = () => {
                         How To Use
                     </div>
                     <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-white mb-4">
-                        Visual storytelling <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-400 to-slate-600">reimagined in 3 steps.</span>
+                        Create Your First  <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-400 to-slate-600">AI Masterpiece in 3 Steps.</span>
                     </h1>
 
                     {/* <div className="inline-flex p-1 bg-[#111] border border-white/10 rounded-full gap-1 mt-4">
@@ -133,8 +133,18 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 }
 
 function StepCard({ number, title, desc, children, color }: { number: string; title: string; desc: string; children: React.ReactNode; color: string }) {
+    // Determine glow colors based on step number
+    const glowGradient = number === "01" 
+        ? "from-purple-500/20 to-blue-500/20" 
+        : number === "02" 
+        ? "from-blue-500/20 to-cyan-500/20" 
+        : "from-indigo-500/20 to-purple-500/20";
+    
     return (
-        <div className={`group relative h-[28rem] md:max-h-[28rem] rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-white/20 transition-all duration-500`}>
+        <div className={`group relative h-[28rem] md:max-h-[28rem] rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-[#60a5fa]/40 transition-all duration-500 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}>
+            {/* Outline Glow Effect */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${glowGradient} opacity-0 group-hover:opacity-20 transition-opacity duration-700 blur-xl pointer-events-none`}></div>
+            
             {children}
             <div className="absolute top-2 md:top-2 left-2 md:left-2 w-8 h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-xs font-mono font-bold text-white/70 z-20 group-hover:bg-white group-hover:text-black transition-colors">{number}</div>
             <div className="absolute bottom-0 left-0 right-0 h-[35%] p-2 pl-4 flex flex-col justify-end pointer-events-none z-20">
@@ -320,15 +330,14 @@ function Step3_GenerateProcess() {
 
     return (
         <>
-            <div className="absolute inset-0 h-[50%] md:max-h-[60%] overflow-hidden bg-[#000]">
-                {/* Result Image - Using placeholder or default image */}
+            <div className="absolute inset-0 h-[50%] md:max-h-[60%] overflow-hidden ">
+                {/* Result Image */}
                 <div className={`absolute inset-0 z-10 transition-opacity duration-1000 ${genState === 4 ? 'opacity-100' : 'opacity-0'}`}>
-                    <div className="w-full h-full bg-gradient-to-br from-blue-600/20 to-indigo-600/20 flex items-center justify-center">
-                        <div className="text-center">
-                            <ImageIcon size={48} className="text-[#60a5fa]/50 mx-auto mb-2" />
-                            <div className="text-[#60a5fa] text-xs font-bold">IMAGE GENERATED</div>
-                        </div>
-                    </div>
+                    <img 
+                        src="https://www.wildmindai.com/api/proxy/media/users%2Fwildchild%2Fimage%2F2iHcApu42QmYEftiQWyA%2F2iHcApu42QmYEftiQWyA-image-1_optimized.avif" 
+                        alt="Generated image" 
+                        className="w-full h-full object-cover"
+                    />
                     <div className="absolute top-4 right-4 px-3 py-1 bg-[#60a5fa] text-black text-[10px] font-bold rounded-full animate-in fade-in zoom-in shadow-lg">IMAGE GENERATED</div>
                 </div>
                 {genState === 3 && (

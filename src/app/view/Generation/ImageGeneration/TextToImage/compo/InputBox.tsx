@@ -146,6 +146,7 @@ const InputBox = () => {
   const [dateInput, setDateInput] = useState<string>("");
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
   const calendarRef = useRef<HTMLDivElement | null>(null);
@@ -4500,9 +4501,20 @@ const InputBox = () => {
         </div>
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
+        <div 
+          className="relative rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
+          onMouseEnter={() => setIsInputBoxHovered(true)}
+          onMouseLeave={() => setIsInputBoxHovered(false)}
+        >
+          {/* Outline Glow Effect - shows on hover or when typing */}
+          <div 
+            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+            style={{
+              opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
+            }}
+          ></div>
           {/* Top row: prompt + actions */}
-          <div className="flex items-stretch md:gap-0 gap-0">
+          <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
