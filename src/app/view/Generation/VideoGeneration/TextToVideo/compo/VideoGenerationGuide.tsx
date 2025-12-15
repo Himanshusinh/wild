@@ -30,7 +30,7 @@ const VideoGenerationGuide = () => {
     const [activeTab, setActiveTab] = useState('video');
 
     return (
-        <section className="h-auto text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-0">
+        <section className="h-auto text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-0 pb-40">
 
             {/* --- Ambient Background --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
@@ -38,7 +38,7 @@ const VideoGenerationGuide = () => {
                 <div className="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-[#60a5fa]/20 to-transparent blur-sm"></div>
             </div> */}
 
-            <div className="max-w-[1500px] mx-auto px-6 relative z-10">
+            <div className="max-w-[1500px] mx-auto px-6 relative z-0">
 
                 {/* --- Header --- */}
                 <div className="text-center mb-8">
