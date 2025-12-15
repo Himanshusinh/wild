@@ -61,7 +61,29 @@ export default function App() {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
     return <HomePage />;
   }
-
+  
+  // Root path: Publicly accessible - always render LandingPage
+  // This ensures Razorpay verification works and the site is publicly accessible
+  if (pathname === '/') {
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'WildMind AI',
+              url: 'https://wildmindai.com',
+              logo: 'https://wildmindai.com/icons/wildmind_icon_darkbg.svg',
+              description: 'AI-powered creative studio for generating images, videos, music, and designs instantly.',
+            }),
+          }}
+        />
+        <LandingPage />
+      </>
+    );
+  }
   // Render different views based on current state
   console.log('🔍 App - Rendering decision for currentView:', currentView);
   console.log('🔍 App - currentView type:', typeof currentView);

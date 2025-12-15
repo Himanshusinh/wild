@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { sendCompanionMessage, type ChatMessage } from '@/lib/aiCompanionApi';
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -11,6 +12,7 @@ const WELCOME_MESSAGE: ChatMessage = {
 };
 
 export default function AiCompanion() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [inputValue, setInputValue] = useState('');
@@ -19,6 +21,14 @@ export default function AiCompanion() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Hide on 404 and error pages
+  const is404 = pathname === '/not-found' || pathname?.includes('/404');
+  const isError = pathname === '/error' || pathname?.includes('/error');
+  
+  if (is404 || isError) {
+    return null;
+  }
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

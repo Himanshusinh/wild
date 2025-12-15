@@ -651,6 +651,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
       duration: [5, 10]
     }
   },
+  {
+    frontendValue: 'kling-o1',
+    creditModelName: 'Kling o1', // Duration-specific credits resolved in buildCreditModelName
+    generationType: 'video',
+    provider: 'fal',
+    options: {
+      duration: [5, 10]
+    }
+  },
 
   // LTX V2 (FAL)
   {
@@ -820,8 +829,20 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'prunaai/p-image',
+    creditModelName: 'P-Image',
+    generationType: 'image',
+    provider: 'replicate',
+  },
+  {
     frontendValue: 'replicate-clarity-upscaler',
     creditModelName: 'replicate/philz1337x/clarity-upscaler',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'prunaai/p-image-edit',
+    creditModelName: 'P-Image-Edit',
     generationType: 'image',
     provider: 'replicate'
   },
@@ -1011,6 +1032,11 @@ export const buildCreditModelName = (
     const res = String(options.resolution).toLowerCase();
     const resNormalized = res.includes('2k') ? '2k' : (res.includes('1080') ? '1080p' : '720p');
     modelName = `SeedVR2 ${d}s ${resNormalized}`;
+  }
+  // Handle Kling o1 (duration-based)
+  else if (mapping.frontendValue === 'kling-o1' && options?.duration) {
+    const d = options.duration;
+    modelName = d === 10 ? 'Kling o1 10s' : 'Kling o1 5s';
   }
   // Handle FLUX.2 Pro with resolution
   else if ((mapping.frontendValue === 'flux-2-pro-1080p' || mapping.frontendValue === 'flux-2-pro-2k')) {

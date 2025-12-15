@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -49,21 +50,21 @@ export default function ChromeMount() {
       if (userStr) {
         const u = JSON.parse(userStr);
         const authed = !!u?.uid;
-        console.log('[ChromeMount] user loaded from localStorage, uid:', u?.uid, 'isAuthenticated:', authed);
+        
         setIsAuthenticated(authed);
       } else {
-        console.log('[ChromeMount] no user in localStorage or Redux, treating as unauthenticated');
+        
         setIsAuthenticated(false);
       }
     } catch (err) {
-      console.error('[ChromeMount] error reading user from localStorage', err);
+      
       setIsAuthenticated(false);
     }
   }, [pathname, reduxUser]); // Re-check when pathname or Redux user changes
 
   // Once authenticated in the browser, decide whether to show the notification permission prompt.
   useEffect(() => {
-    console.log('[ChromeMount] isAuthenticated changed:', isAuthenticated);
+    
     if (!isAuthenticated) {
       setShowNotifPrompt(false);
       return;
@@ -87,7 +88,7 @@ export default function ChromeMount() {
     if (typeof window === 'undefined') return;
 
     attachForegroundMessageListener((payload: any) => {
-      console.log('[FCM] foreground message received', payload);
+      
 
       const title = payload?.notification?.title || 'WildMind';
       const body = payload?.notification?.body || '';
@@ -98,7 +99,7 @@ export default function ChromeMount() {
           new Notification(title, { body });
         }
       } catch (err) {
-        console.warn('[FCM] Failed to show foreground Notification', err);
+        
       }
     });
   }, []);
@@ -111,7 +112,7 @@ export default function ChromeMount() {
       }
       await registerBrowserPushToken();
     } catch (err) {
-      console.error('[ChromeMount] handleEnableNotifications error', err);
+      
     }
   };
 
@@ -125,6 +126,10 @@ export default function ChromeMount() {
   const pathnameLower = pathname?.toLowerCase() || '';
   const isRoot = pathname === '/' || pathname === '' || pathname == null;
 
+  // Hide chrome on 404 and error pages
+  const is404 = pathname === '/not-found' || pathname?.includes('/404');
+  const isErrorPage = pathname === '/error' || pathname?.includes('/error');
+  
   // Public routes - hide chrome on these
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
@@ -167,6 +172,42 @@ export default function ChromeMount() {
   const isHomeRoute = pathnameLower.startsWith('/view/homepage');
   const isEditImageRoute = pathnameLower.startsWith('/view/editimage');
   const isEditVideoRoute = pathnameLower.startsWith('/view/editvideo');
+  const isBlogRoute = pathnameLower.startsWith('/blog');
+  const isCanvasRoute = pathnameLower.startsWith('/canvas-projects');
+
+  // Check if pathname matches any known valid route
+  // This is used to detect 404 pages (invalid routes)
+  const isValidRoute = isRoot ||
+    isLandingRoute ||
+    isSignupRoute ||
+    isForgotPasswordRoute ||
+    isPricingRoute ||
+    isWorkflowsRoute ||
+    isArtStationRoute ||
+    isLegalRoute ||
+    isProductRoute ||
+    isCompanyRoute ||
+    isHistoryRoute ||
+    isBookmarksRoute ||
+    isAccountRoute ||
+    isGenerationRoute ||
+    isHomeRoute ||
+    isEditImageRoute ||
+    isEditVideoRoute ||
+    isBlogRoute ||
+    isCanvasRoute ||
+    currentView === 'home' ||
+    currentView === 'generation' ||
+    currentView === 'history' ||
+    currentView === 'landing' ||
+    currentView === 'pricing' ||
+    currentView === 'workflows';
+
+  // Hide chrome on 404 and error pages (check this early, before any rendering logic)
+  // If pathname doesn't match any valid route and it's not root, it's likely a 404
+  if (is404 || isErrorPage || (pathname && pathname !== '/' && !isValidRoute)) {
+    return null;
+  }
 
   // For ArtStation: hide chrome if not authenticated, show if authenticated
   if (isArtStationRoute) {
@@ -194,6 +235,21 @@ export default function ChromeMount() {
     return null; // Hide chrome when not authenticated
   }
 
+  // For Blog: hide chrome if not authenticated, show if authenticated
+  if (isBlogRoute) {
+    if (isAuthenticated) {
+      return (
+        <>
+          <Nav />
+          {!isVideoEditorOpen && <SidePannelFeatures />}
+        </>
+      );
+    }
+    return null; // Hide chrome when not authenticated
+  }
+
+  // Canvas Projects route - always hide chrome (page manages own sidebar)
+
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
     isLandingRoute ||
@@ -203,6 +259,7 @@ export default function ChromeMount() {
     isLegalRoute ||
     isProductRoute ||
     isCompanyRoute ||
+    isCanvasRoute ||
     (isRoot && currentView === 'landing');
 
   // If should hide, return null immediately

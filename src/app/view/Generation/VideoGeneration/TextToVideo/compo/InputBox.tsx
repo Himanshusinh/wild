@@ -42,6 +42,7 @@ import VideoModelsDropdown from "./VideoModelsDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
 import VideoDurationDropdown from "./VideoDurationDropdown";
 import QualityDropdown from "./QualityDropdown";
+import VideoGenerationGuide from "./VideoGenerationGuide";
 import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
@@ -101,6 +102,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
+  const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
 
   // Debug uploadedImages changes
   useEffect(() => {
@@ -357,6 +359,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Kling 2.1 (non-master) remains image-to-video only
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
+    } else if (model === 'kling-o1') {
+      // Kling o1 (FAL) requires first frame (last optional)
+      capabilities.supportsImageToVideo = true;
+      capabilities.requiresImage = true;
+      capabilities.requiresFirstFrame = true;
     } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
       // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
       capabilities.supportsImageToVideo = true;
@@ -805,7 +812,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (newModel === 'gen4_aleph' || newModel.includes('v2v') || newModel.includes('remix')) return 'video_to_video';
       // I2V / image→video candidates
       // MiniMax-Hailuo-2.3-Fast is I2V only, others can do both T2V and I2V
-      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel.includes('veo3') || newModel.includes('ltx2') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
+      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel === 'kling-o1' || newModel.includes('veo3') || newModel.includes('ltx2') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
       // Default to text→video for other models
       return 'text_to_video';
     })();
@@ -821,7 +828,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (desiredMode === "text_to_video") {
       // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
       // Note: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-2.3-Fast, and Kling 2.1/master are I2V-only and will auto-switch to image-to-video mode
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel === 'kling-o1' || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -861,6 +868,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
+        } else if (newModel === 'kling-o1') {
+          // Kling o1: duration default 5s, image-to-video only
+          setDuration(5);
+          setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
           // Seedance models: duration default 5s, resolution default 1080p, aspect ratio default 16:9
           setDuration(5);
@@ -1044,6 +1055,10 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  
+  // Track if initial load has been attempted (to prevent guide flash on refresh)
+  const hasAttemptedInitialLoadRef = useRef(false);
+  
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1192,6 +1207,13 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     return sortedMergedEntries;
   }, shallowEqual);
+
+  // Mark that we've attempted initial load once loading starts or completes
+  useEffect(() => {
+    if (loading || historyEntries.length > 0) {
+      hasAttemptedInitialLoadRef.current = true;
+    }
+  }, [loading, historyEntries.length]);
 
   // Get image history entries for image upload modal
   const imageHistoryEntries = useAppSelector((state: any) => {
@@ -1909,16 +1931,64 @@ const InputBox = (props: InputBoxProps = {}) => {
     setPage(1);
   }, []);
 
+  // Get current UI generation type to detect feature switches
+  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
+  const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
+  const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
   const didInitialLoadRef = useRef(false);
   // Use mode: 'video' to load ALL video types at once (same as History.tsx)
   // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
   useEffect(() => {
-    if (didInitialLoadRef.current) return;
+    const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
+    const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
+    const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
+    const isVideoType = ['text-to-video', 'image-to-video', 'video-to-video'].includes(normalizedCurrentUI);
+    
+    // Check if user switched to video generation from another feature
+    const switchedToVideo = isVideoType && normalizedLastUI !== normalizedCurrentUI;
+    
+    // Check if filters are for a different type (e.g., image filters when we're on video page)
+    const currentFilterMode = currentFilters?.mode;
+    const filtersAreForVideo = currentFilterMode === 'video';
+    const filtersAreForDifferentType = currentFilterMode && currentFilterMode !== 'video';
+    
+    // Reset initial load flag if user switched to video generation or filters don't match
+    if (switchedToVideo || (isVideoType && filtersAreForDifferentType)) {
+      console.log('[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag', {
+        switchedToVideo,
+        filtersAreForDifferentType,
+        currentFilterMode,
+        currentUIGenerationType,
+      });
+      didInitialLoadRef.current = false;
+    }
+    
+    // Always update the last UI type ref to track changes
+    lastUIGenerationTypeRef.current = currentUIGenerationType;
+    
+    // Only load if we haven't loaded yet, or if user just switched to video, or filters don't match
+    if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType) {
+      return;
+    }
+    
+    // Only proceed if we're on a video generation page
+    if (!isVideoType) {
+      return;
+    }
+    
     // Load all video types using mode: 'video' (backend handles this correctly)
     didInitialLoadRef.current = true;
+    
     try {
+      console.log('[VideoInputBox] Loading video history', { 
+        switchedToVideo, 
+        filtersAreForDifferentType,
+        currentUIGenerationType,
+        currentFilterMode,
+      });
       // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
       // This is the same approach History.tsx uses and ensures all video types are loaded
       dispatch(loadHistory({
@@ -1926,12 +1996,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         paginationParams: { limit: 50 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
-        debugTag: `InputBox:video-mode:${Date.now()}`
+        debugTag: `InputBox:video-mode:${Date.now()}`,
+        forceRefresh: switchedToVideo || filtersAreForDifferentType, // Force refresh when switching to video or filters don't match
       } as any));
     } catch (e) {
-      // swallow
+      console.error('[VideoInputBox] Error loading history:', e);
     }
-  }, [dispatch]);
+  }, [dispatch, currentUIGenerationType, currentFilters]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -1944,6 +2015,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Standardized intersection observer for video history
   // Replace IntersectionObserver with History-style bottom scroll pagination
+  // Only enable pagination when there are entries to paginate (not when showing guide)
   useBottomScrollPagination({
     containerRef: historyScrollElement ? { current: historyScrollElement } as any : undefined,
     hasMore,
@@ -1951,6 +2023,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     requireUserScroll: true,
     bottomOffset: 800,
     throttleMs: 200,
+    enabled: historyEntries.length > 0 && sortedDates.length > 0, // Disable when showing guide (no entries to paginate)
     loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
@@ -2399,7 +2472,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     let transactionId: string;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
-        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2')) ? 'fal' :
+        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
           (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse')) ? 'replicate' : 'runway';
       const creditResult = await validateAndReserveCredits(provider);
       transactionId = creditResult.transactionId;
@@ -2854,6 +2927,26 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = "image-to-video";
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
+        } else if (selectedModel === 'kling-o1') {
+          // Kling o1 (FAL) first/last frame to video
+          if (uploadedImages.length === 0) {
+            setError("Kling o1 requires a first frame image");
+            return;
+          }
+          const firstFrame = uploadedImages[0];
+          const lastFrame = uploadedImages[1] || lastFrameImage || null;
+          const apiPrompt = getApiPrompt(prompt);
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            start_image_url: firstFrame,
+            ...(lastFrame ? { end_image_url: lastFrame } : {}),
+            duration,
+            generationType: 'image-to-video',
+            isPublic,
+          };
+          generationType = 'image-to-video';
+          apiEndpoint = '/api/fal/kling-o1/first-last-frame-to-video/submit';
         } else if (selectedModel.startsWith('kling-')) {
           // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
@@ -3426,6 +3519,47 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else {
           console.error('❌ Unexpected MiniMax status:', videoResult);
           throw new Error('Unexpected MiniMax video generation status');
+        }
+      } else if (selectedModel === 'kling-o1') {
+        // Kling o1 (FAL queue) first/last frame flow
+        console.log('🎬 Kling o1 video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        let videoResult: any;
+        for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
+          try {
+            const statusRes = await api.get('/api/fal/queue/status', {
+              params: { model: result.model, requestId: result.requestId }
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            const s = String(status?.status || '').toLowerCase();
+            if (s === 'completed' || s === 'success' || s === 'succeeded') {
+              const resultRes = await api.get('/api/fal/queue/result', {
+                params: { model: result.model, requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              break;
+            }
+            if (s === 'failed' || s === 'error') {
+              throw new Error('Kling o1 video generation failed');
+            }
+          } catch (statusError) {
+            console.error('Status check failed:', statusError);
+            if (attempts === 359) throw statusError;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ Kling o1 video completed with URL:', videoUrl);
+        } else if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log('✅ Kling o1 video completed with URL (video.url):', videoUrl);
+        } else {
+          console.error('❌ Kling o1 video generation did not complete properly');
+          throw new Error('Kling o1 video generation did not complete in time');
         }
       } else if (selectedModel.includes("veo3.1")) {
         // Veo 3.1 flow - queue-based polling
@@ -4186,6 +4320,16 @@ const InputBox = (props: InputBoxProps = {}) => {
     <React.Fragment>
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
+          {/* Initial loading overlay - show when loading OR before initial load attempt */}
+          {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
+            <div className="fixed top-[64px] md:top-[0px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 px-4">
+                <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
+                <div className="text-white text-lg text-center">Loading generations...</div>
+              </div>
+            </div>
+          )}
+
           <div className="md:space-y-8 space-y-2">
             {/* If there's a local preview and no row for today, render a dated block for today */}
             {localVideoPreview && !groupedByDate[todayKey] && (
@@ -4231,7 +4375,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
               </div>
             )}
-            {sortedDates.map((date) => (
+
+            {/* Show guide when no video generations exist - ONLY after initial load attempt AND loading completes */}
+            {hasAttemptedInitialLoadRef.current && !loading && historyEntries.length === 0 && sortedDates.length === 0 && !localVideoPreview && (
+              <VideoGenerationGuide />
+            )}
+
+            {sortedDates.length > 0 && sortedDates.map((date) => (
               <div key={date} className="md:space-y-4 space-y-1">
                 {/* Date Header */}
                 <div className="flex items-center md:gap-3 gap-2">
@@ -4514,8 +4664,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            }`}
+          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+            } hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}
+          onMouseEnter={() => setIsInputBoxHovered(true)}
+          onMouseLeave={() => setIsInputBoxHovered(false)}
           onClick={(e) => {
             // Close all dropdowns when clicking on the input box container
             if (e.target === e.currentTarget) {
@@ -4528,8 +4680,15 @@ const InputBox = (props: InputBoxProps = {}) => {
             }
           }}
         >
+          {/* Outline Glow Effect - shows on hover or when typing */}
+          <div 
+            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+            style={{
+              opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0
+            }}
+          ></div>
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start md:gap-3 gap-0 md:p-3 p-2 md:pt-2 pt-0 
+          <div className="flex items-start md:gap-3 gap-0 md:p-3 p-2 md:pt-2 pt-0 relative z-10
           ">
             <div className="flex-1 flex items-start  gap-2 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
               <textarea
@@ -4834,7 +4993,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {/* Arrow icon between first and last frame uploads */}
                   {(((selectedModel === "MiniMax-Hailuo-02") &&
                     (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-                    selectedModel.includes("veo3.1")) &&
+                    selectedModel.includes("veo3.1") ||
+                    selectedModel === "kling-o1") &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="flex items-center justify-center">
                         <Image
@@ -4850,7 +5010,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) and Veo 3.1 (fast/standard) */}
                   {((((selectedModel === "MiniMax-Hailuo-02") &&
                     (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-                    selectedModel.includes("veo3.1"))) &&
+                    selectedModel.includes("veo3.1") ||
+                    selectedModel === "kling-o1")) &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="relative ">
                         <button
@@ -4927,9 +5088,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           <div className="px-3 md:pb-3 pb-0">
             {/* Uploaded Images */}
             {(() => {
-              const displayImages = selectedModel.includes("veo3.1") ? uploadedImages.slice(0, 2) : uploadedImages;
+              const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1") ? uploadedImages.slice(0, 2) : uploadedImages;
               const extraLastFrame =
-                !!lastFrameImage && (selectedModel.includes("veo3.1") || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
+                !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
               return (displayImages.length > 0 || extraLastFrame) ? (
                 <div className="md:mb-3 -mb-6">
                   <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>

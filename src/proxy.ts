@@ -131,29 +131,38 @@ export function proxy(req: NextRequest) {
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Allow OAuth popups to function (prevents window.closed blocking)
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  // Minimal CSP to prevent framing and restrict sources (adjust as needed)
+  
+  // Improved CSP - allows Turnstile and removes unsafe directives
   const csp = [
     "default-src 'self'",
-    // Allow inline styles (Next.js) and our own styles
+    // Allow inline styles (Next.js requires this)
     "style-src 'self' 'unsafe-inline'",
-    // Allow Google/Firebase auth scripts
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com",
-    // Some browsers use script-src-elem for external scripts
-    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com",
+    // Allow scripts from Google, Firebase, Cloudflare Turnstile
+    // Note: 'unsafe-eval' needed for Firebase/Google Auth
+    "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com",
+    // script-src-elem for external script tags - includes Turnstile
+    // Note: 'unsafe-inline' required for Next.js hydration/inline scripts
+    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com",
     // Images and media from HTTPS/data/blob
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
     // Permit API/XHR/WebSocket to Google/Firebase backends and our gateway
-    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com",
-    // Allow Google and Firebase OAuth popups/iframes
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com",
+    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com",
+    // Allow Google, Firebase OAuth popups/iframes, and Turnstile widget
+    "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com",
     // Do not allow our app to be framed by other sites
     "frame-ancestors 'none'",
     // Hardening
     "base-uri 'self'",
     "form-action 'self' https://accounts.google.com",
+    // Add object-src restriction
+    "object-src 'none'",
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
+  
+  // Add additional security headers
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('X-DNS-Prefetch-Control', 'on');
 
   // Only block indexing for internal/admin paths, not public pages
   const shouldNoIndex =
@@ -190,8 +199,8 @@ export function proxy(req: NextRequest) {
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
-    pathnameLower.startsWith('/view/blog') ||
-    pathnameLower.startsWith('/blog') ||
+    // Canvas projects - public access (authentication handled client-side)
+    pathname.startsWith('/canvas-projects') ||
     // Legal pages
     pathname.startsWith('/legal/') ||
     // Product pages

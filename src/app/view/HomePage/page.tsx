@@ -36,8 +36,6 @@ const FooterNew = dynamic(() => import('../core/FooterNew'), {
 })
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
-
-
 import { ViewType, GenerationType } from '@/types/generation';
 
 const HomePage: React.FC = () => {

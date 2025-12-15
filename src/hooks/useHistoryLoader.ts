@@ -39,13 +39,68 @@ export const useHistoryLoader = ({
   const entries = useAppSelector((s: any) => s.history?.entries || []);
   const loading = useAppSelector((s: any) => s.history?.loading || false);
   const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
+  // Get current UI generation type to detect feature switches
+  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
 
   const debounceRef = useRef<number | null>(null);
   const pendingRefreshRef = useRef(false);
   const mountedRef = useRef(false);
+  const lastGenerationTypeRef = useRef<string>(generationType);
+  const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
 
-  // Guarded initial load
+  // Guarded initial load - reload when generationType changes or when switching features
   useEffect(() => {
+    const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
+    const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
+    const normalizedHookType = norm(generationType);
+    const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
+    
+    // Check if generation type changed (either hook param or UI switch)
+    const generationTypeChanged = lastGenerationTypeRef.current !== generationType;
+    
+    // Check if UI switched to this feature (from a different feature back to this one)
+    const switchedToThisFeature = normalizedCurrentUI === normalizedHookType && normalizedLastUI !== normalizedCurrentUI;
+    
+    // Check if UI switched away from this feature
+    const switchedAwayFromThisFeature = normalizedLastUI === normalizedHookType && normalizedCurrentUI !== normalizedHookType && !generationTypes?.some(gt => norm(gt) === normalizedCurrentUI);
+    
+    // Check filters early to detect mismatches
+    const currentFilterVal = currentFilters?.generationType;
+    const currentFilterMode = currentFilters?.mode;
+    const wantedTypes = Array.isArray(generationTypes) && generationTypes.length > 0 ? generationTypes : [generationType];
+    const filtersMatch = Array.isArray(currentFilterVal)
+      ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
+      : norm(String(currentFilterVal || '')) === norm(generationType);
+    const modeMatches = mode ? norm(String(currentFilterMode || '')) === norm(mode) : true;
+    
+    // Check if filters are for a different type (e.g., video filters when we're on image page)
+    // Video uses mode: 'video', image uses mode: 'image' or generationType, so check both
+    const filtersAreForDifferentType = (currentFilterVal && !filtersMatch) || 
+      (currentFilterMode && mode && norm(String(currentFilterMode)) !== norm(mode)) ||
+      (currentFilterMode && !mode && currentFilterMode === 'video'); // If we're on image (no mode) but filters have mode: 'video'
+    
+    // If generation type changed, UI switched to/from this feature, or filters don't match, reset mounted state
+    if (generationTypeChanged || switchedToThisFeature || (switchedAwayFromThisFeature && mountedRef.current) || filtersAreForDifferentType) {
+      console.log('[useHistoryLoader] Generation type, UI, or filters changed, resetting mount state', {
+        generationTypeChanged,
+        switchedToThisFeature,
+        switchedAwayFromThisFeature,
+        filtersAreForDifferentType,
+        oldType: lastGenerationTypeRef.current,
+        newType: generationType,
+        currentUI: normalizedCurrentUI,
+        lastUI: normalizedLastUI,
+        hookType: normalizedHookType,
+        currentFilterMode,
+        expectedMode: mode,
+      });
+      mountedRef.current = false;
+      lastGenerationTypeRef.current = generationType;
+    }
+    
+    // Update last UI type ref
+    lastUIGenerationTypeRef.current = currentUIGenerationType;
+    
     console.log('[useHistoryLoader] ========== INITIAL LOAD EFFECT ==========');
     console.log('[useHistoryLoader] State check:', {
       mounted: mountedRef.current,
@@ -54,31 +109,54 @@ export const useHistoryLoader = ({
       forceInitial,
       generationType,
       generationTypes,
+      currentUIGenerationType,
+      switchedToThisFeature,
+      filtersAreForDifferentType,
       inFlightLock: inFlightTypeLocks[generationType],
     });
     
-    if (mountedRef.current) {
-      console.log('[useHistoryLoader] ⚠️ Already mounted, skipping initial load');
-      return; // only once per mount
+    // Check if we need to load (no entries or filters don't match) - if so, always load even if mounted
+    const hasTypeEntries = entries.some((e: any) => wantedTypes.some(w => norm(e.generationType || '') === norm(String(w))));
+    const mustLoadDueToNoEntries = !hasTypeEntries;
+    
+    // If mounted but we have no entries or filters don't match, reset mounted state to force load
+    if (mountedRef.current && !generationTypeChanged && !switchedToThisFeature && !filtersAreForDifferentType && !mustLoadDueToNoEntries) {
+      console.log('[useHistoryLoader] ⚠️ Already mounted and no type/filter change, skipping initial load');
+      return; // only once per mount unless type changed or filters don't match
+    }
+    
+    // If we have no entries, always reset mounted state to ensure we load
+    if (mustLoadDueToNoEntries && mountedRef.current) {
+      console.log('[useHistoryLoader] ⚠️ No entries found, resetting mounted state to force load');
+      mountedRef.current = false;
     }
     mountedRef.current = true;
+    lastGenerationTypeRef.current = generationType;
     console.log('[useHistoryLoader] ✅ Mounted, proceeding with initial load check...');
     
-    const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
-    const wantedTypes = Array.isArray(generationTypes) && generationTypes.length > 0 ? generationTypes : [generationType];
-    const hasTypeEntries = entries.some((e: any) => wantedTypes.some(w => norm(e.generationType || '') === norm(String(w))));
-    const currentFilterVal = currentFilters?.generationType;
-    const filtersMatch = Array.isArray(currentFilterVal)
-      ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
-      : norm(String(currentFilterVal || '')) === norm(generationType);
-    const modeMatches = mode ? norm(String(currentFilters?.mode || '')) === norm(mode) : true;
+    // IMPORTANT: If filters don't match or mode doesn't match, we MUST reload even if entries exist
+    // This handles the case where we switch from video (mode: 'video') to image (mode: 'image' or no mode)
+    const mustReloadDueToFilters = filtersAreForDifferentType || !filtersMatch || (mode && !modeMatches);
     
-    const shouldSkipInitial = !forceInitial && hasTypeEntries && filtersMatch && modeMatches;
+    // CRITICAL: If we have no entries for this type, we MUST load (don't skip)
+    // Also, if filters don't match, we MUST reload
+    const mustLoad = !hasTypeEntries || mustReloadDueToFilters;
+    
+    // If generation type changed, UI switched to this feature, filters don't match, or no entries exist, force reload
+    const shouldSkipInitial = !forceInitial && !generationTypeChanged && !switchedToThisFeature && !mustLoad && hasTypeEntries && filtersMatch && modeMatches;
     console.log('[useHistoryLoader] Initial load conditions:', {
       hasTypeEntries,
       filtersMatch,
+      filtersAreForDifferentType,
+      mustReloadDueToFilters,
+      mustLoad,
+      currentFilterVal,
+      currentFilterMode,
+      expectedMode: mode,
       forceInitial,
       modeMatches,
+      generationTypeChanged,
+      switchedToThisFeature,
       shouldSkip: shouldSkipInitial,
     });
     
@@ -125,6 +203,7 @@ export const useHistoryLoader = ({
       expectedType: generationType,
       debugTag: `hook:init:${generationType}:${Date.now()}`,
       skipBackendGenerationFilter,
+      forceRefresh: generationTypeChanged || switchedToThisFeature || mustReloadDueToFilters, // Force refresh when type changes, switching back, or filters/mode don't match
     }));
     
     console.log('[useHistoryLoader] Initial load dispatch promise created');
@@ -134,9 +213,9 @@ export const useHistoryLoader = ({
       inFlightTypeLocks[generationType] = false;
     }).catch((err: any) => {
       console.error('[useHistoryLoader] ❌ Initial load dispatch error:', err);
+      inFlightTypeLocks[generationType] = false;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [generationType, generationTypes, currentUIGenerationType, dispatch, initialLimit, mode, skipBackendGenerationFilter, forceInitial, entries, loading, currentFilters, entries.length]);
 
   // Debounced refresh
   const refresh = useCallback((limit: number = initialLimit) => {

@@ -40,6 +40,11 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           console.log(`Kling Lip Sync cost: ${finalCost} credits for ${durationSeconds} seconds`);
           return finalCost;
         }
+  // Kling o1 (FAL) fixed per-duration pricing
+  if (frontendModel === 'kling-o1') {
+    const dur = duration || 5;
+    return dur >= 10 ? 2300 : 1180;
+  }
         // WAN 2.2 Animate Replace uses per-second pricing (1 credit per second)
         if (frontendModel === 'wan-2.2-animate-replace') {
           // WAN 2.2 Animate Replace: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second

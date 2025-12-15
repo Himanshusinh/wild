@@ -50,7 +50,7 @@ export const fetchUserCredits = createAsyncThunk(
     try {
       console.log('[CREDITS_FRONTEND] fetchUserCredits: Starting credit fetch...');
       const api = getApiClient();
-      
+
       // Try to get credits from dedicated endpoint first
       try {
         console.log('[CREDITS_FRONTEND] Trying /api/credits/me endpoint...');
@@ -58,7 +58,7 @@ export const fetchUserCredits = createAsyncThunk(
         const creditsData = creditsResponse.data?.data || creditsResponse.data;
         const creditBalance = creditsData?.creditBalance ?? 0;
         const planCode = creditsData?.planCode || 'free';
-        
+
         console.log('[CREDITS_FRONTEND] Credits endpoint response:', {
           creditBalance,
           planCode,
@@ -66,14 +66,14 @@ export const fetchUserCredits = createAsyncThunk(
           recentLedgers: creditsData?.recentLedgers?.length || 0,
           responseTime: Date.now() - startTime
         });
-        
+
         if (creditBalance === 0 && creditsData?.autoReconciled) {
           console.warn('[CREDITS_FRONTEND] WARNING: Credit balance is 0 after auto-reconciliation!', {
             autoReconciled: creditsData.autoReconciled,
             recentLedgers: creditsData.recentLedgers
           });
         }
-        
+
         return {
           creditBalance,
           planCode,
@@ -85,7 +85,7 @@ export const fetchUserCredits = createAsyncThunk(
           message: creditsError?.response?.data?.message || creditsError?.message,
           responseTime: Date.now() - startTime
         });
-        
+
         console.log('[CREDITS_FRONTEND] Falling back to auth/me...');
         const state = getState() as RootState;
         const authUser = state?.auth?.user;
@@ -108,7 +108,7 @@ export const fetchUserCredits = createAsyncThunk(
           creditBalance: cachedBalance,
           planCode: userData?.planCode || 'free'
         });
-        
+
         return {
           creditBalance: cachedBalance,
           planCode: userData?.planCode || 'free',
@@ -135,7 +135,7 @@ export const validateCreditRequirement = createAsyncThunk(
     try {
       const state = getState() as { credits: CreditsState };
       const currentBalance = state.credits.credits?.creditBalance || 0;
-      
+
       const validation: CreditValidation = {
         hasEnoughCredits: currentBalance >= requiredCredits,
         requiredCredits,
@@ -166,7 +166,7 @@ export const reserveCredits = createAsyncThunk(
     try {
       const state = getState() as { credits: CreditsState };
       const currentBalance = state.credits.credits?.creditBalance || 0;
-      
+
       if (currentBalance < amount) {
         return rejectWithValue({
           message: `Insufficient credits. Need ${amount}, have ${currentBalance}`,
@@ -191,7 +191,7 @@ export const reserveCredits = createAsyncThunk(
 
       // Immediately deduct from frontend state (optimistic update)
       const newBalance = currentBalance - amount;
-      
+
       return {
         transaction,
         newBalance,
@@ -210,7 +210,7 @@ export const confirmCreditTransaction = createAsyncThunk(
   ) => {
     const state = getState() as { credits: CreditsState };
     const transaction = state.credits.transactions.find(t => t.id === transactionId);
-    
+
     if (!transaction) {
       throw new Error('Transaction not found');
     }
@@ -230,29 +230,29 @@ export const syncCreditsWithBackend = createAsyncThunk(
     try {
       const state = getState() as { credits: CreditsState };
       const beforeBalance = state.credits.credits?.creditBalance || 0;
-      
+
       console.log('[CREDITS_FRONTEND] syncCreditsWithBackend: Starting sync, current balance:', beforeBalance);
-      
+
       // Fetch latest credits from backend
       const result = await dispatch(fetchUserCredits());
-      
+
       if (fetchUserCredits.fulfilled.match(result)) {
         const afterBalance = result.payload.creditBalance;
         const balanceChanged = beforeBalance !== afterBalance;
-        
+
         console.log('[CREDITS_FRONTEND] syncCreditsWithBackend: Sync completed', {
           beforeBalance,
           afterBalance,
           balanceChanged,
           responseTime: Date.now() - startTime
         });
-        
+
         if (afterBalance === 0 && beforeBalance > 0) {
           console.error('[CREDITS_FRONTEND] ERROR: Balance went from', beforeBalance, 'to 0!', {
             payload: result.payload
           });
         }
-        
+
         return result.payload;
       } else {
         console.error('[CREDITS_FRONTEND] syncCreditsWithBackend: Failed', {
@@ -391,9 +391,9 @@ export const selectCreditsLoading = (state: { credits: CreditsState }) => state.
 export const selectCreditsError = (state: { credits: CreditsState }) => state.credits.error;
 export const selectLastValidation = (state: { credits: CreditsState }) => state.credits.lastValidation;
 export const selectTransactions = (state: { credits: CreditsState }) => state.credits.transactions;
-export const selectPendingTransactions = (state: { credits: CreditsState }) => 
+export const selectPendingTransactions = (state: { credits: CreditsState }) =>
   state.credits.transactions.filter(t => t.status === 'pending');
 
 // Helper selector for credit balance
-export const selectCreditBalance = (state: { credits: CreditsState }) => 
+export const selectCreditBalance = (state: { credits: CreditsState }) =>
   state.credits.credits?.creditBalance || 0;

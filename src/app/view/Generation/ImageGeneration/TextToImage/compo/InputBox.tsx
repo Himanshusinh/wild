@@ -49,6 +49,7 @@ import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
+import ImageGenerationGuide from "./ImageGenerationGuide";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -122,6 +123,7 @@ const InputBox = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -144,6 +146,7 @@ const InputBox = () => {
   const [dateInput, setDateInput] = useState<string>("");
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
   const calendarRef = useRef<HTMLDivElement | null>(null);
@@ -315,6 +318,9 @@ const InputBox = () => {
     } catch { }
   }, [dispatch, searchParams, pathname]);
 
+  // Track if initial load has been attempted (to prevent guide flash on refresh)
+  const hasAttemptedInitialLoadRef = useRef(false);
+  
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({
     generationType: 'text-to-image',
@@ -1032,6 +1038,13 @@ const InputBox = () => {
 
     return filtered;
   }, [historyEntries, searchQuery, dateRange, sortOrder]);
+
+  // Mark that we've attempted initial load once loading starts or completes
+  useEffect(() => {
+    if (loading || historyEntries.length > 0) {
+      hasAttemptedInitialLoadRef.current = true;
+    }
+  }, [loading, historyEntries.length]);
 
   // Sentinel element at bottom of list (place near end of render)
 
@@ -3108,6 +3121,244 @@ const InputBox = () => {
           toast.error(error instanceof Error ? error.message : 'Failed to generate images with Nano Banana Pro');
           return;
         }
+      } else if (selectedModel === 'prunaai/p-image-edit') {
+        // P-Image-Edit (Replicate) - requires at least one input image
+        const combinedImages = getCombinedUploadedImages().map((u: string) => toAbsoluteFromProxy(u));
+        if (combinedImages.length === 0) {
+          toast.error('Please upload at least one image for P-Image-Edit (image-to-image)');
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          return;
+        }
+
+        try {
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, combinedImages, selectedCharacters);
+          const allowedAspect = new Set(['match_input_image', '1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3']);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : 'match_input_image';
+          const payload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            model: 'prunaai/p-image-edit',
+            images: combinedImages,
+            aspect_ratio: aspect,
+            turbo: true,
+            disable_safety_checker: false,
+            isPublic,
+            num_images: Math.min(Math.max(imageCount, 1), 4),
+          };
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...(localGeneratingEntries[0] || tempEntry),
+              id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: (result.images?.length || imageCount),
+            } as any;
+            setLocalGeneratingEntries([completedEntry]);
+          } catch { }
+
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          clearInputs();
+
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error: any) {
+          setLocalGeneratingEntries([]);
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+
+          if (transactionId) {
+            await handleGenerationFailure(transactionId);
+          }
+          const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image-Edit');
+          toast.error(errorMessage, { duration: 5000 });
+          return;
+        }
+      } else if (selectedModel === 'prunaai/p-image') {
+        // P-Image combined behavior: T2I when no uploads, I2I via p-image-edit when uploads exist
+        const combinedImages = getCombinedUploadedImages().map((u: string) => toAbsoluteFromProxy(u));
+        const hasUploads = combinedImages.length > 0;
+
+        if (hasUploads) {
+          // Route to p-image-edit with tighter resolution (max 1024, ~1MP)
+          try {
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, combinedImages, selectedCharacters);
+            const allowedAspect = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3']);
+            const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+            const computeEditDims = (ratio: string) => {
+              const [wStr, hStr] = ratio.split(':');
+              const w = Number(wStr) || 1;
+              const h = Number(hStr) || 1;
+              const aspectVal = w / h;
+              const round16 = (v: number) => Math.round(v / 16) * 16;
+              const clamp = (v: number) => Math.max(256, Math.min(1024, round16(v)));
+              let width: number;
+              let height: number;
+              if (aspectVal >= 1) {
+                width = 1024;
+                height = round16(1024 / aspectVal);
+              } else {
+                height = 1024;
+                width = round16(1024 * aspectVal);
+              }
+              // ensure ~1MP cap
+              while (width * height > 1048576) {
+                width = clamp(width - 16);
+                height = clamp(Math.round(width / aspectVal));
+              }
+              return { width: clamp(width), height: clamp(height) };
+            };
+            const dims = computeEditDims(aspect);
+
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'prunaai/p-image-edit',
+              images: combinedImages,
+              aspect_ratio: aspect,
+              width: dims.width,
+              height: dims.height,
+              turbo: true,
+              disable_safety_checker: false,
+              isPublic,
+              num_images: Math.min(Math.max(imageCount, 1), 4),
+            };
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+            try {
+              const completedEntry: HistoryEntry = {
+                ...(localGeneratingEntries[0] || tempEntry),
+                id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+                images: (result.images || []),
+                status: 'completed',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: (result.images?.length || imageCount),
+              } as any;
+              setLocalGeneratingEntries([completedEntry]);
+            } catch { }
+
+            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            clearInputs();
+
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+            if (resultHistoryId) {
+              await refreshSingleGeneration(resultHistoryId);
+            } else {
+              await refreshHistory();
+            }
+
+            if (transactionId) {
+              await handleGenerationSuccess(transactionId);
+            }
+          } catch (error: any) {
+            setLocalGeneratingEntries([]);
+            setIsGeneratingLocally(false);
+            postGenerationBlockRef.current = false;
+
+            if (transactionId) {
+              await handleGenerationFailure(transactionId);
+            }
+            const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image');
+            toast.error(errorMessage, { duration: 5000 });
+            return;
+          }
+        } else {
+          // Standard p-image T2I flow (max edge 1440)
+          try {
+            const promptAdjusted = adjustPromptImageNumbers(finalPrompt, combinedImages, selectedCharacters);
+            const allowedAspect = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom']);
+            const aspect = allowedAspect.has(frameSize) ? frameSize : '16:9';
+            const computePImageDims = (ratio: string) => {
+              const [wStr, hStr] = ratio.split(':');
+              const w = Number(wStr) || 1;
+              const h = Number(hStr) || 1;
+              const aspectVal = w / h;
+              const round16 = (v: number) => Math.round(v / 16) * 16;
+              const clamp = (v: number) => Math.max(256, Math.min(1440, round16(v)));
+              let width: number;
+              let height: number;
+              if (aspectVal >= 1) {
+                width = 1440;
+                height = round16(1440 / aspectVal);
+              } else {
+                height = 1440;
+                width = round16(1440 * aspectVal);
+              }
+              return { width: clamp(width), height: clamp(height) };
+            };
+            const dims = computePImageDims(aspect === 'custom' ? '1:1' : (frameSize || '16:9'));
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'prunaai/p-image',
+              aspect_ratio: aspect,
+              width: Math.min(1440, dims.width),
+              height: Math.min(1440, dims.height),
+              prompt_upsampling: false,
+              disable_safety_checker: false,
+              isPublic,
+              num_images: Math.min(Math.max(imageCount, 1), 4),
+            };
+            if (aspect === 'custom') {
+              payload.width = 1440;
+              payload.height = 1440;
+            }
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+            try {
+              const completedEntry: HistoryEntry = {
+                ...(localGeneratingEntries[0] || tempEntry),
+                id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+                images: (result.images || []),
+                status: 'completed',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: (result.images?.length || imageCount),
+              } as any;
+              setLocalGeneratingEntries([completedEntry]);
+            } catch { }
+
+            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            clearInputs();
+
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+            if (resultHistoryId) {
+              await refreshSingleGeneration(resultHistoryId);
+            } else {
+              await refreshHistory();
+            }
+
+            if (transactionId) {
+              await handleGenerationSuccess(transactionId);
+            }
+          } catch (error: any) {
+            setLocalGeneratingEntries([]);
+            setIsGeneratingLocally(false);
+            postGenerationBlockRef.current = false;
+
+            if (transactionId) {
+              await handleGenerationFailure(transactionId);
+            }
+            const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image');
+            toast.error(errorMessage, { duration: 5000 });
+            return;
+          }
+        }
       } else if (selectedModel === 'new-turbo-model') {
         // New Turbo Model via replicate generate endpoint - single request with num_images
         try {
@@ -3611,7 +3862,26 @@ const InputBox = () => {
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-30 md:py-4 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
             <div className="flex items-center justify-between md:mb-2 mb-0">
-              <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+                {/* Info button - only show when there are generations */}
+                {historyEntries.length > 0 && sortedDates.length > 0 && (
+                  <button
+                    onClick={() => setIsGuideModalOpen(true)}
+                    className="relative group w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+                    aria-label="Show guide"
+                  >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M10.9199 10.4384C10.9199 9.84191 11.4034 9.3584 11.9999 9.3584C12.5963 9.3584 13.0798 9.84191 13.0798 10.4384C13.0798 10.804 12.8988 11.1275 12.6181 11.3241C12.3474 11.5136 12.0203 11.7667 11.757 12.0846C11.4909 12.406 11.2499 12.8431 11.2499 13.3846C11.2499 13.7988 11.5857 14.1346 11.9999 14.1346C12.4141 14.1346 12.7499 13.7988 12.7499 13.3846C12.7499 13.3096 12.7806 13.2004 12.9123 13.0413C13.047 12.8786 13.2441 12.7169 13.4784 12.5528C14.1428 12.0876 14.5798 11.3141 14.5798 10.4384C14.5798 9.01348 13.4247 7.8584 11.9999 7.8584C10.575 7.8584 9.41992 9.01348 9.41992 10.4384C9.41992 10.8526 9.75571 11.1884 10.1699 11.1884C10.5841 11.1884 10.9199 10.8526 10.9199 10.4384Z" fill="#ffffff"/>
+                          <path d="M11.9991 14.6426C11.5849 14.6426 11.2491 14.9783 11.2491 15.3926C11.2491 15.8068 11.5849 16.1426 11.9991 16.1426C12.4134 16.1426 12.7499 15.8068 12.7499 15.3926C12.7499 14.9783 12.4134 14.6426 11.9991 14.6426Z" fill="#ffffff"/>
+                          <path fillRule="evenodd" clipRule="evenodd" d="M12 4C7.58172 4 4 7.58172 4 12V20H12C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12C21.5 17.2467 17.2467 21.5 12 21.5H3.25C2.83579 21.5 2.5 21.1642 2.5 20.75V12Z" fill="#ffffff"/>
+                      </svg>
+                      <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-sm text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity z-50">
+                          How To Use
+                      </div>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Desktop: Search, Sort, and Date controls - on same line */}
@@ -3927,8 +4197,8 @@ const InputBox = () => {
 
         {/* Spacer to keep content below fixed header */}
 
-        {/* Initial loading overlay - show when loading and no entries */}
-        {loading && historyEntries.length === 0 && (
+        {/* Initial loading overlay - show when loading OR before initial load attempt */}
+        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -3948,10 +4218,16 @@ const InputBox = () => {
         )}
 
         <div>
+          {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
+          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && localGeneratingEntries.length === 0 && (
+            <ImageGenerationGuide />
+          )}
+
           {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
           {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
           {/* History Entries - Grouped by Date */}
+          {sortedDates.length > 0 && (
           <div className=" space-y-4 md:px-0 px-2 md:mt-6 ">
             {sortedDates.map((date) => (
               <div key={date} className="space-y-2 md:-mt-2">
@@ -4132,6 +4408,7 @@ const InputBox = () => {
 
 
           </div>
+          )}
           {/* Infinite scroll sentinel inside scroll container */}
           <div ref={sentinelRef} style={{ height: 24 }} />
         </div>
@@ -4224,9 +4501,20 @@ const InputBox = () => {
         </div>
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div className="rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4">
+        <div 
+          className="relative rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
+          onMouseEnter={() => setIsInputBoxHovered(true)}
+          onMouseLeave={() => setIsInputBoxHovered(false)}
+        >
+          {/* Outline Glow Effect - shows on hover or when typing */}
+          <div 
+            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+            style={{
+              opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
+            }}
+          ></div>
           {/* Top row: prompt + actions */}
-          <div className="flex items-stretch md:gap-0 gap-0">
+          <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
@@ -4794,6 +5082,33 @@ const InputBox = () => {
           selectedCharacters={selectedCharacters}
           maxCharacters={10}
         />
+      )}
+
+      {/* Guide Modal - shows when info button is clicked */}
+      {isGuideModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop with blur */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-md"
+            onClick={() => setIsGuideModalOpen(false)}
+          />
+          {/* Modal Content */}
+          <div className="relative z-10 w-full max-w-[1500px]  max-h-[90vh] overflow-y-auto bg-transparent rounded-xl">
+            {/* Close Button */}
+            <button
+              onClick={() => setIsGuideModalOpen(false)}
+              className="absolute md:top-4 top-0 md:right-4 right-2 z-20 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              aria-label="Close guide"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            {/* Guide Content */}
+            <ImageGenerationGuide />
+          </div>
+        </div>
       )}
     </>
   );

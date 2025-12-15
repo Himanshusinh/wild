@@ -17,7 +17,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
   'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
-  'seedream-v4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)
+  'seedream-4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
@@ -256,6 +256,11 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedvr2-10s-1080p': 6060,
   'seedvr2-10s-2k': 12060,
 
+  // Kling o1 (FAL first/last frame)
+  'kling-o1': 1180,          // Default to 5s for base lookup
+  'kling-o1-5s': 1180,
+  'kling-o1-10s': 2360,
+
   // Image Utility Models
   'fal-image2svg': 30,          // Image to SVG
   'fal-recraft-vectorize': 40,  // Recraft Vectorize
@@ -273,6 +278,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate-bria-expand-image': 100, // replicate/bria/expand-image
   'replicate-real-esrgan': 32,         // replicate/nightmareai/real-esrgan (32.4 rounded)
   'replicate-swin2sr': 43,             // replicate/mv-lab/swin2sr
+  'prunaai/p-image': 25,               // P-Image (Replicate)
+  'prunaai/p-image-edit': 25,          // P-Image-Edit (I2I only, Replicate)
   // Crystal Upscaler variants
   'replicate-crystal-upscaler-1080p': 220,
   'replicate-crystal-upscaler-1440p': 420,
@@ -501,6 +508,13 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     }
   }
 
+  // Handle Kling o1 (duration only)
+  if (modelValue === 'kling-o1') {
+    const durNum = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const key = durNum >= 10 ? 'kling-o1-10s' : 'kling-o1-5s';
+    return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
   // Handle Flux 2 Pro with resolution and I2I/T2I
   if (modelValue === 'flux-2-pro') {
     // Check if this is I2I (image-to-image) by checking if uploadedImages are present
@@ -591,6 +605,14 @@ export const getModelCreditInfo = (modelValue: string, duration?: string, resolu
       credits: 6, // Per second
       hasCredits: true,
       displayText: '6 credits per second'
+    };
+  }
+
+  if (modelValue === 'minimax-music-2') {
+    return {
+      credits,
+      hasCredits: credits !== null,
+      displayText: '80 credits for 5 minute music'
     };
   }
 

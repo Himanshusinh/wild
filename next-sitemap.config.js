@@ -2,73 +2,181 @@
 const isProd = process.env.NODE_ENV === 'production';
 const siteUrl = process.env.SITE_URL || 'https://wildmindai.com';
 
+// Import blog posts to generate dynamic URLs
+const { blogPosts } = require('./src/app/blog/data/blogPosts.ts');
+
+// ONLY PUBLIC PAGES - Google can crawl these without authentication
+// PRIORITY ORDER: Landing → Blog → Pricing → ArtStation → Legal
 const canonicalPages = [
-  '/',
-  '/text-to-image',
-  '/text-to-video',
-  '/text-to-music',
-  '/mockup-generation',
-  '/product-generation',
-  '/ad-generation',
-  '/logo-generation',
-  '/sticker-generation',
-  '/edit-image',
-  '/edit-video',
-  '/view/Landingpage',
-  '/view/pricing',
-  '/view/workflows',
-  '/view/ArtStation',
-  '/view/Generation/MockupGeneation',
-  '/view/Generation/ProductGeneration',
-  '/view/Generation/wildmindskit/LiveChat',
-  '/view/Generation/wildmindskit/jwelary',
-  '/view/HomePage',
+  // ===== TIER 1: Main Landing (Highest Priority) =====
+  { url: '/', priority: 1.0, changefreq: 'daily' },
+  { url: '/view/Landingpage', priority: 0.95, changefreq: 'daily' },
+  
+  // ===== TIER 2: Canvas Landing (High Priority) =====
+  { url: '/canvas-projects', priority: 0.9, changefreq: 'daily' },
+  
+  // ===== TIER 3: Blog (High Priority for SEO) =====
+  { url: '/blog', priority: 0.9, changefreq: 'daily' },
+
+  
+  // Blog posts will be added here dynamically (priority 0.75)
+  
+  // ===== TIER 3: Key Public Pages =====
+  { url: '/view/pricing', priority: 0.85, changefreq: 'daily' },
+  { url: '/view/ArtStation', priority: 0.8, changefreq: 'daily' },
+  
+  // ===== TIER 4: Company & Product Pages =====
+  { url: '/company/about', priority: 0.6, changefreq: 'daily' },
+  { url: '/company/contact-us', priority: 0.6, changefreq: 'daily' },
+  { url: '/company/newsletter', priority: 0.5, changefreq: 'daily' },
+  { url: '/product/faqs', priority: 0.7, changefreq: 'daily' },
+  
+  // ===== TIER 5: Legal Pages (Lower Priority) =====
+  { url: '/legal', priority: 0.3, changefreq: 'daily' },
+  { url: '/legal/privacy', priority: 0.3, changefreq: 'daily' },
+  { url: '/legal/terms', priority: 0.3, changefreq: 'daily' },
+  { url: '/legal/cookie', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/aup', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/dmca', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/api-terms', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/terms-conditions', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/cancellation-refunds', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/shipping', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/relationship', priority: 0.2, changefreq: 'daily' },
+  { url: '/legal/thirdparty', priority: 0.2, changefreq: 'daily' },
 ];
 
-const canonicalSet = new Set(canonicalPages);
+// Add all blog posts dynamically - TIER 2 priority (after /blog main page)
+blogPosts.forEach((post) => {
+  canonicalPages.splice(3, 0, { // Insert after /blog main page at index 3
+    url: `/blog/${post.id}`,
+    priority: 0.75,
+    changefreq: 'daily',
+  });
+});
+
+// Create a map of URL to page config for quick lookup
+const canonicalMap = new Map(canonicalPages.map(page => [page.url, page]));
 
 module.exports = {
   siteUrl,
   outDir: './public',
   generateRobotsTxt: true,
-  changefreq: 'weekly',
+  changefreq: 'daily', // Default to daily for everything
   priority: 0.7,
   sitemapSize: 5000,
   exclude: [
+    // AUTHENTICATED PAGES (Google can't crawl these)
+    '/edit-image',
+    '/edit-image/*',
+    '/edit-video',
+    '/edit-video/*',
+    '/text-to-image',
+    '/text-to-image/*',
+    '/text-to-video',
+    '/text-to-video/*',
+    '/image-to-video',
+    '/image-to-video/*',
+    '/text-to-music',
+    '/text-to-music/*',
+    '/logo',
+    '/logo/*',
+    '/logo-generation',
+    '/logo-generation/*',
+    '/sticker-generation',
+    '/sticker-generation/*',
+    '/mockup-generation',
+    '/mockup-generation/*',
+    '/product-generation',
+    '/product-generation/*',
+    '/ad-generation',
+    '/ad-generation/*',
+    '/live-chat',
+    '/live-chat/*',
+    
+    // USER PAGES (authenticated)
+    '/view/HomePage',
+    '/view/HomePage/*',
+    '/view/editimage',
+    '/view/editimage/*',
+    '/view/EditImage',
+    '/view/EditImage/*',
+    '/view/editvideo',
+    '/view/editvideo/*',
+    '/view/EditVideo',
+    '/view/EditVideo/*',
+    '/view/Generation/*',
+    '/history',
+    '/history/*',
+    '/bookmarks',
+    '/bookmarks/*',
+    '/account-management',
+    '/view/account-management',
+    '/view/account-management/*',
+    
+    // AUTH PAGES
+    '/auth/*',
+    '/signup',
+    '/signup/*',
+    '/login',
+    '/login/*',
+    '/view/signup',
+    '/view/login',
+    '/forgot-password',
+    
+    // SYSTEM PAGES
     '/admin/*',
     '/api/*',
     '/temp/*',
     '/_next/*',
     '/404',
-    '/view/*',
-    '/history',
-    '/bookmarks',
-    '/account-management',
-    '/view/account-management',
-    '/signup',
-    '/login',
-    '/view/signup',
-    '/view/login',
     '/favicon.ico',
     '/robots.txt',
+    
+    // DISABLED FEATURES
+    '/view/workflows',
+    '/view/workflows/*',
+    '/view/Generation/wildmindskit/*',
   ],
   robotsTxtOptions: {
     policies: isProd
       ? [{
           userAgent: '*',
           allow: '/',
-          disallow: ['/view/', '/history', '/bookmarks', '/account-management', '/signup', '/login', '/api/', '/_next/'],
+          disallow: [
+            '/admin/',
+            '/api/',
+            '/_next/',
+            '/auth/',
+            '/history',
+            '/bookmarks',
+            '/account-management',
+            '/signup',
+            '/login',
+            '/edit-image',
+            '/edit-video',
+            '/text-to-image',
+            '/text-to-video',
+            '/text-to-music',
+            '/logo-generation',
+            '/view/HomePage',
+            '/view/EditImage',
+            '/view/EditVideo',
+            '/view/Generation',
+          ],
         }]
       : [{ userAgent: '*', disallow: '/' }],
   },
   transform: async (config, path) => {
-    if (!canonicalSet.has(path)) {
+    const pageConfig = canonicalMap.get(path);
+    if (!pageConfig) {
+      // Reject other discovered pages (they're likely authenticated)
       return null;
     }
     return {
       loc: path,
-      changefreq: config.changefreq,
-      priority: config.priority,
+      changefreq: pageConfig.changefreq || 'daily',
+      priority: pageConfig.priority || config.priority,
       lastmod: new Date().toISOString(),
     };
   },

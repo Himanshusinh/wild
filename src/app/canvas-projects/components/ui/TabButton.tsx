@@ -17,7 +17,7 @@ export function TabButton({ isActive, onClick, label, icon }: TabButtonProps) {
       `}
         >
             {isActive && (
-                <div className="absolute inset-0 bg-[#2563eb] rounded-full shadow-[0_0_20px_rgba(37,99,235,0.6)] animate-in zoom-in-95 duration-200"></div>
+                <div className="absolute inset-0 bg-[#1d303d] rounded-full shadow-[0_0_20px_rgba(29,48,61,0.6)] animate-in zoom-in-95 duration-200"></div>
             )}
             <span className="relative z-10 flex items-center gap-2">{icon} {label}</span>
         </button>

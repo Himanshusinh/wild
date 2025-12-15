@@ -3622,8 +3622,69 @@ export const creditDistributionData: ModelCreditInfo[] = [
       planD: 19776,
       free: 412,
     },
-  }
+  },
+  {
+    srNo: 174,
+    modelName: "P-Image",
+    priceToPay: 0.005,
+    overCharge: 0.0075,
+    userCost: 0.0125,
+    creditsPerGeneration: 25,
+    plans: {
+      planA: 494.4,
+      planB: 988.8,
+      planC: 2472,
+      planD: 7910.4,
+      free: 80,
+    },
+  },
+  {
+    srNo: 175,
+    modelName: "P-Image-Edit",
+    priceToPay: 0.01,
+    overCharge: 0.0025,
+    userCost: 0.0125,
+    creditsPerGeneration: 25,
+    plans: {
+      planA: 494.4,
+      planB: 988.8,
+      planC: 2472,
+      planD: 7910.4,
+      free: 80,
+    },
+  },
 
+  {
+    srNo: 176,
+    modelName: "Kling o1 5s",
+    priceToPay: 0.56,
+    overCharge: 0.03,
+    userCost: 0.59,
+    creditsPerGeneration: 1180,
+    plans: {
+      planA: 10.1875,
+      planB: 20.94915254,
+      planC: 52.37288136,
+      planD: 167.5932203,
+      free: 1.694915254,
+    },
+  },
+
+  {
+    srNo: 176,
+    modelName: "Kling o1 10s",
+    priceToPay: 1.12,
+    overCharge: 0.03,
+    userCost: 1.15,
+    creditsPerGeneration: 2300,
+    plans: {
+      planA: 5.373913043,
+      planB: 10.74782609,
+      planC: 26.86956522,
+      planD: 85.9826087,
+      free: 0.8695652174,
+    },
+  }
 
 
 
