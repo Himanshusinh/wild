@@ -328,7 +328,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         <ChevronUp className={`md:w-4 w-3 h-3 md:h-4  transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 md:max-h-120 max-h-100 overflow-y-auto dropdown-scrollbar-thin">
+        <div className="absolute bottom-full left-0 mb-2 md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 md:max-h-100 max-h-100 overflow-y-auto dropdown-scrollbar-thin">
           {(() => {
             // Show all models regardless of mode - models that support both T2V and I2V should be visible in both modes
             // This ensures consistent model visibility (always 22 models)
