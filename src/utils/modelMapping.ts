@@ -151,7 +151,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
     frontendValue: 'seedream-v4',
     creditModelName: 'replicate/bytedance/seedream-4',
     generationType: 'image',
-    provider: 'fal'
+    provider: 'replicate'
   },
   {
     frontendValue: 'seedream-4.5',

@@ -191,7 +191,15 @@ export const replicateGenerate = createAsyncThunk(
       const res = await api.post('/api/replicate/generate', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Replicate generate failed');
+      // Preserve full error details for better debugging
+      const errorMessage = e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Replicate generate failed';
+      const errorDetails = e?.response?.data?.data || e?.response?.data?.errors || e?.response?.data;
+      return rejectWithValue({
+        message: errorMessage,
+        details: errorDetails,
+        status: e?.response?.status,
+        responseData: e?.response?.data,
+      });
     }
   }
 );

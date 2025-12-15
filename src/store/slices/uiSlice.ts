@@ -7,6 +7,7 @@ interface UIState {
   activeDropdown: string | null;
   sidebarExpanded: boolean;
   theme: 'light' | 'dark';
+  isQueueEnabled: boolean;
   notifications: Array<{
     id: string;
     type: 'success' | 'error' | 'info' | 'warning';
@@ -21,6 +22,7 @@ const initialState: UIState = {
   activeDropdown: null,
   sidebarExpanded: false,
   theme: 'dark',
+  isQueueEnabled: true, // Queue enabled by default
   notifications: [],
 };
 
@@ -67,6 +69,9 @@ const uiSlice = createSlice({
     clearNotifications: (state) => {
       state.notifications = [];
     },
+    setQueueEnabled: (state, action: PayloadAction<boolean>) => {
+      state.isQueueEnabled = action.payload;
+    },
   },
 });
 
@@ -79,6 +84,7 @@ export const {
   addNotification,
   removeNotification,
   clearNotifications,
+  setQueueEnabled,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

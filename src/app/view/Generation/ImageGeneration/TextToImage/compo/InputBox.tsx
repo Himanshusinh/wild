@@ -23,6 +23,9 @@ import {
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
+import { addGenerationToQueue } from "@/services/generationQueue";
+import { getModelMapping } from "@/utils/modelMapping";
+import { store } from "@/store";
 import {
   loadMoreHistory,
   removeHistoryEntry,
@@ -128,11 +131,18 @@ const InputBox = () => {
 
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  
+  // Track which queue items we've already refreshed to avoid duplicate calls
+  const refreshedQueueItemsRef = useRef<Set<string>>(new Set());
 
   // Track which images have loaded to hide shimmer effect
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   // Local state to track prompt enhancement (loading skeleton)
   const [isEnhancing, setIsEnhancing] = useState(false);
+  
+  // Sync queue items with localGeneratingEntries for loading display
+  const queueItems = useAppSelector((state) => state.queue.items);
+  const isQueueEnabled = useAppSelector((state) => state.ui.isQueueEnabled);
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
@@ -236,6 +246,137 @@ const InputBox = () => {
     }
     // Keep button in "Generating..." state while status is 'generating' or any other status
   }, [localGeneratingEntries, existingEntries]);
+
+  // Sync queue items to localGeneratingEntries for loading display
+  useEffect(() => {
+    if (!isQueueEnabled) return;
+    
+    // Find queue items that should be displayed as loading
+    const activeQueueItems = queueItems.filter(item => 
+      (item.status === 'queued' || item.status === 'processing' || item.status === 'completed') && 
+      item.generationType === 'text-to-image'
+    );
+    
+    // Convert queue items to localGeneratingEntries format
+    const queueEntries: HistoryEntry[] = activeQueueItems.map((queueItem) => {
+      // Check if we already have this entry
+      const existingEntry = localGeneratingEntries.find((e: HistoryEntry) => (e as any).queueId === queueItem.id);
+      
+      // If processing and has result, update with images (render one by one)
+      if (queueItem.status === 'processing' && queueItem.result?.images) {
+        return {
+          ...(existingEntry || {}),
+          id: queueItem.id,
+          prompt: queueItem.metadata?.prompt || queueItem.generationType,
+          model: queueItem.metadata?.model || queueItem.payload?.model,
+          generationType: queueItem.generationType,
+          frameSize: queueItem.metadata?.frameSize,
+          aspect_ratio: queueItem.metadata?.frameSize,
+          images: queueItem.result.images.map((img: any, idx: number) => ({
+            id: img.id || `queue-${queueItem.id}-${idx}`,
+            url: img.url || img.originalUrl || '',
+            originalUrl: img.originalUrl || img.url || '',
+          })),
+          timestamp: new Date(queueItem.createdAt).toISOString(),
+          createdAt: new Date(queueItem.createdAt).toISOString(),
+          imageCount: queueItem.metadata?.imageCount || queueItem.result.images.length,
+          status: 'generating' as const,
+          queueId: queueItem.id,
+        } as HistoryEntry;
+      }
+      
+      // If completed, update with final images
+      if (queueItem.status === 'completed' && queueItem.result?.images) {
+        return {
+          ...(existingEntry || {}),
+          id: queueItem.historyId || queueItem.id,
+          prompt: queueItem.metadata?.prompt || queueItem.generationType,
+          model: queueItem.metadata?.model || queueItem.payload?.model,
+          generationType: queueItem.generationType,
+          frameSize: queueItem.metadata?.frameSize,
+          aspect_ratio: queueItem.metadata?.frameSize,
+          images: queueItem.result.images.map((img: any, idx: number) => ({
+            id: img.id || `queue-${queueItem.id}-${idx}`,
+            url: img.url || img.originalUrl || img.thumbnailUrl || '',
+            originalUrl: img.originalUrl || img.url || '',
+            thumbnailUrl: img.thumbnailUrl,
+          })),
+          timestamp: new Date(queueItem.completedAt || queueItem.createdAt).toISOString(),
+          createdAt: new Date(queueItem.createdAt).toISOString(),
+          imageCount: queueItem.metadata?.imageCount || queueItem.result.images.length,
+          status: 'completed' as const,
+          queueId: queueItem.id,
+        } as HistoryEntry;
+      }
+      
+      // Default: queued/processing without result yet
+      return {
+        id: queueItem.id,
+        prompt: queueItem.metadata?.prompt || queueItem.generationType,
+        model: queueItem.metadata?.model || queueItem.payload?.model,
+        generationType: queueItem.generationType,
+        frameSize: queueItem.metadata?.frameSize,
+        aspect_ratio: queueItem.metadata?.frameSize,
+        images: Array.from({ length: queueItem.metadata?.imageCount || 1 }, (_, index) => ({
+          id: `loading-${index}`,
+          url: '',
+          originalUrl: ''
+        })),
+        timestamp: new Date(queueItem.createdAt).toISOString(),
+        createdAt: new Date(queueItem.createdAt).toISOString(),
+        imageCount: queueItem.metadata?.imageCount || 1,
+        status: queueItem.status === 'processing' ? 'generating' as const : 'generating' as const,
+        queueId: queueItem.id,
+      } as HistoryEntry;
+    });
+    
+    // Merge with existing local entries (keep non-queue entries)
+    const nonQueueEntries = localGeneratingEntries.filter((e: HistoryEntry) => !(e as any).queueId);
+    const mergedEntries = [...nonQueueEntries, ...queueEntries];
+    
+    // Only update if there are changes (avoid infinite loops)
+    // Check for ID changes, length changes, or image URL changes (for progressive rendering)
+    const currentIds = localGeneratingEntries.map((e: HistoryEntry) => (e as any).queueId || e.id).sort().join(',');
+    const newIds = mergedEntries.map((e: HistoryEntry) => (e as any).queueId || e.id).sort().join(',');
+    
+    // Check if any queue entry has new images (for progressive rendering)
+    const hasNewImages = queueEntries.some((newEntry: HistoryEntry) => {
+      const oldEntry = localGeneratingEntries.find((e: HistoryEntry) => (e as any).queueId === (newEntry as any).queueId);
+      if (!oldEntry) return true; // New entry
+      const oldImageUrls = (oldEntry.images || []).map((img: any) => img.url || img.originalUrl || '').filter(Boolean).join(',');
+      const newImageUrls = (newEntry.images || []).map((img: any) => img.url || img.originalUrl || '').filter(Boolean).join(',');
+      return oldImageUrls !== newImageUrls; // Images changed
+    });
+    
+    if (currentIds !== newIds || mergedEntries.length !== localGeneratingEntries.length || hasNewImages) {
+      setLocalGeneratingEntries(mergedEntries);
+    }
+    
+    // For completed queue items, refresh history to ensure they appear in main page
+    queueItems
+      .filter(item => item.status === 'completed' && item.historyId && item.result?.images)
+      .forEach(completedItem => {
+        if (!completedItem.historyId) return;
+        
+        // Check if it's already in history
+        const inHistory = existingEntries.some((e: HistoryEntry) => 
+          e.id === completedItem.historyId || (e as any).firebaseHistoryId === completedItem.historyId
+        );
+        
+        if (!inHistory && !refreshedQueueItemsRef.current.has(completedItem.id)) {
+          // Not in history yet - refresh it
+          refreshedQueueItemsRef.current.add(completedItem.id);
+          refreshSingleGeneration(completedItem.historyId).catch(err => {
+            console.error('[Queue] Failed to refresh completed generation:', err);
+            refreshedQueueItemsRef.current.delete(completedItem.id); // Retry on next render
+          });
+        }
+        
+        // Keep completed queue entries visible until they're in history
+        // Don't remove them immediately - let the history entry take over naturally
+        // The queue item will be auto-removed after 30 seconds by the queue service
+      });
+  }, [queueItems, isQueueEnabled, existingEntries, localGeneratingEntries]);
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
@@ -1613,16 +1754,52 @@ const InputBox = () => {
   // If future UX requires prefetch, implement a lightweight, single-fire prefetch with strict
   // cooldown and visibility metrics rather than looping effects.
 
+  // Helper function to determine provider from model
+  const getProviderFromModel = (model: string): string => {
+    // First check the model mapping (handles frontend model names like 'seedream-v4')
+    const mapping = getModelMapping(model);
+    if (mapping?.provider) {
+      return mapping.provider;
+    }
+    
+    // Fallback logic for models not in mapping or backend model names
+    const modelLower = model.toLowerCase();
+    
+    // Seedream models: seedream-v4 (bytedance/seedream-4) is Replicate, seedream-4.5 is FAL
+    // Check backend model name first (bytedance/seedream-4)
+    if (modelLower.includes('bytedance/seedream-4') || modelLower === 'seedream-v4') {
+      return 'replicate';
+    }
+    // Check FAL seedream (seedream-4.5)
+    if (modelLower.includes('seedream-4.5') || modelLower === 'seedream-4.5') {
+      return 'fal';
+    }
+    
+    // Other model checks
+    if (modelLower.includes('flux') || modelLower.includes('bfl')) return 'bfl';
+    if (modelLower.includes('runway') || modelLower.includes('gen4')) return 'runway';
+    if (modelLower.includes('minimax')) return 'minimax';
+    if (modelLower.includes('seedream') && modelLower.includes('4k')) return 'replicate';
+    if (modelLower.includes('imagen-4') || modelLower.includes('gemini') || modelLower.includes('nano banana')) return 'fal';
+    if (modelLower.includes('google/nano-banana-pro')) return 'replicate';
+    
+    // Default to fal for most image models
+    return 'fal';
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
+    // Check if queue is enabled
+    const isQueueEnabled = store.getState().ui.isQueueEnabled;
 
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
     // This ensures the loader shows instantly when the button is clicked
-    setIsGeneratingLocally(true);
-
-    // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
-    postGenerationBlockRef.current = true;
+    // BUT: Don't block if queue is enabled - users can add multiple items to queue
+    if (!isQueueEnabled) {
+      setIsGeneratingLocally(true);
+      postGenerationBlockRef.current = true;
+    }
 
     const originalPrompt = prompt;
     let finalPrompt = originalPrompt;
@@ -1678,17 +1855,20 @@ const InputBox = () => {
     // Clear any previous credit errors
     clearCreditsError();
 
-    // Validate and reserve credits before generation
-    let transactionId: string;
-    try {
-      const creditResult = await validateAndReserveCredits();
-      transactionId = creditResult.transactionId;
-    } catch (creditError: any) {
-      toast.error(creditError.message || 'Insufficient credits for generation');
-      setIsGeneratingLocally(false);
-      setLocalGeneratingEntries([]);
-      postGenerationBlockRef.current = false;
-      return;
+    // Validate and reserve credits before generation (only if queue is disabled)
+    // When queue is enabled, backend handles credit deduction
+    let transactionId: string | undefined;
+    if (!isQueueEnabled) {
+      try {
+        const creditResult = await validateAndReserveCredits();
+        transactionId = creditResult.transactionId;
+      } catch (creditError: any) {
+        toast.error(creditError.message || 'Insufficient credits for generation');
+        setIsGeneratingLocally(false);
+        setLocalGeneratingEntries([]);
+        postGenerationBlockRef.current = false;
+        return;
+      }
     }
 
     // Create a local history-style loading entry that mirrors the Logo flow
@@ -1745,6 +1925,207 @@ const InputBox = () => {
     const isPublic = await getIsPublic();
 
     try {
+      // If queue is enabled, add to queue instead of direct generation
+      if (isQueueEnabled) {
+        const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+        const combinedImages = getCombinedUploadedImages();
+        const provider = getProviderFromModel(selectedModel);
+        
+        // Normalize output_format: 'jpeg' -> 'jpg' for API compatibility
+        const normalizedOutputFormat = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+        
+        // Build payload based on model type - each model has specific requirements
+        let payload: any = {
+          prompt: `${promptAdjusted} [Style: ${style}]`,
+          userPrompt: prompt,
+          model: selectedModel,
+          generationType: 'text-to-image',
+          isPublic,
+        };
+
+        // Model-specific payload construction
+        if (selectedModel === 'flux-2-pro') {
+          // FAL Flux 2 Pro
+          payload.num_images = imageCount;
+          payload.aspect_ratio = frameSize as any;
+          payload.resolution = flux2ProResolution; // 1K or 2K
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          payload.output_format = normalizedOutputFormat;
+        } else if (selectedModel === 'gemini-25-flash-image') {
+          // FAL Gemini (Nano Banana)
+          payload.num_images = imageCount;
+          payload.aspect_ratio = frameSize as any;
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          payload.output_format = normalizedOutputFormat;
+        } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
+          // FAL Imagen 4 models
+          payload.num_images = imageCount;
+          payload.aspect_ratio = frameSize as any;
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          payload.output_format = normalizedOutputFormat;
+        } else if (selectedModel === 'seedream-v4') {
+          // Replicate Seedream v4
+          const seedreamAllowedAspect = new Set([
+            'match_input_image', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'
+          ]);
+          payload.model = 'bytedance/seedream-4';
+          // Ensure size is always set (default to '2K' if not set)
+          payload.size = seedreamSize || '2K';
+          payload.aspect_ratio = seedreamAllowedAspect.has(frameSize) ? frameSize : 'match_input_image';
+          payload.sequential_image_generation = 'disabled';
+          payload.max_images = Math.min(Math.max(imageCount, 1), 4); // Ensure 1-4 range
+          // Filter out SVG files
+          if (combinedImages.length > 0) {
+            const validImages = combinedImages
+              .slice(0, 10)
+              .map((u: string) => toAbsoluteFromProxy(u))
+              .filter((url: string) => {
+                const lowerUrl = url.toLowerCase();
+                return !lowerUrl.includes('.svg') && !lowerUrl.includes('vectorized');
+              });
+            if (validImages.length > 0) {
+              payload.image_input = validImages;
+            }
+          }
+          // Ensure width/height are set if size is custom
+          if (payload.size === 'custom') {
+            payload.width = Math.max(1024, Math.min(4096, Math.round(Number(seedreamWidth) || 2048)));
+            payload.height = Math.max(1024, Math.min(4096, Math.round(Number(seedreamHeight) || 2048)));
+          }
+        } else if (selectedModel === 'seedream-4.5') {
+          // FAL Seedream 4.5
+          const frameSizeToEnum: Record<string, string> = {
+            '1:1': 'square_hd',
+            'square': 'square_hd',
+            '4:3': 'landscape_4_3',
+            '3:4': 'portrait_4_3',
+            '16:9': 'landscape_16_9',
+            '9:16': 'portrait_16_9',
+          };
+          payload.num_images = imageCount;
+          payload.image_size = frameSizeToEnum[frameSize] || 'square_hd';
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          payload.output_format = normalizedOutputFormat;
+        } else if (selectedModel === 'google/nano-banana-pro') {
+          // Replicate Google Nano Banana Pro
+          const allowedAspect = new Set([
+            'match_input_image', '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'
+          ]);
+          payload.model = 'google/nano-banana-pro';
+          payload.aspect_ratio = allowedAspect.has(frameSize) ? frameSize : '1:1';
+          payload.resolution = nanoBananaProResolution;
+          payload.output_format = 'jpg'; // Nano Banana Pro uses 'jpg' not 'jpeg'
+          payload.safety_filter_level = 'block_only_high';
+          if (combinedImages.length > 0) {
+            payload.image_input = combinedImages.slice(0, 14).map((u: string) => toAbsoluteFromProxy(u));
+          }
+        } else if (selectedModel === 'z-image-turbo' || selectedModel === 'new-turbo-model') {
+          // Replicate Z Image Turbo - calculate dimensions from frame size
+          const calculateDimensionsFromFrameSize = (ratio: string) => {
+            const [wStr, hStr] = ratio.split(':');
+            const w = Number(wStr) || 1;
+            const h = Number(hStr) || 1;
+            const aspectVal = w / h;
+            const round16 = (v: number) => Math.round(v / 16) * 16;
+            const clamp = (v: number) => Math.max(64, Math.min(1440, round16(v)));
+            let width: number;
+            let height: number;
+            if (aspectVal >= 1) {
+              width = 1024;
+              height = round16(1024 / aspectVal);
+            } else {
+              height = 1024;
+              width = round16(1024 * aspectVal);
+            }
+            return { width: clamp(width), height: clamp(height) };
+          };
+          const dimensions = calculateDimensionsFromFrameSize(frameSize);
+          payload.model = 'new-turbo-model';
+          payload.width = dimensions.width;
+          payload.height = dimensions.height;
+          payload.num_inference_steps = 8;
+          payload.guidance_scale = 0;
+          payload.output_format = zTurboOutputFormat; // 'jpg', 'png', or 'webp'
+          payload.output_quality = 80;
+          payload.num_images = Math.min(imageCount, 4);
+        } else if (selectedModel.startsWith('gen4_image')) {
+          // Runway Gen4 models
+          payload.model = selectedModel;
+          payload.aspect_ratio = frameSize;
+          payload.num_images = imageCount;
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+        } else if (selectedModel === 'minimax-image-01') {
+          // MiniMax
+          payload.model = selectedModel;
+          payload.aspect_ratio = frameSize;
+          payload.imageCount = imageCount;
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          payload.style = style;
+        } else {
+          // Default FAL/BFL models
+          payload.num_images = imageCount;
+          payload.aspect_ratio = frameSize as any;
+          payload.uploadedImages = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          payload.output_format = normalizedOutputFormat;
+        }
+
+        try {
+          // Add to queue (backend handles credit deduction)
+          const queueId = await addGenerationToQueue(
+            'text-to-image',
+            provider,
+            payload,
+            {
+              model: selectedModel,
+              prompt: prompt,
+              imageCount: imageCount,
+              frameSize: frameSize,
+              style: style,
+            }
+          );
+
+          // Create local generating entry to show loading in main page
+          const queueEntry: HistoryEntry = {
+            id: queueId,
+            prompt: finalPrompt,
+            model: selectedModel,
+            generationType: 'text-to-image',
+            frameSize: frameSize || undefined,
+            aspect_ratio: frameSize || undefined,
+            images: Array.from({ length: imageCount }, (_, index) => ({
+              id: `loading-${index}`,
+              url: '',
+              originalUrl: ''
+            })),
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            imageCount: imageCount,
+            status: 'generating',
+            queueId: queueId, // Store queueId to sync with queue updates
+          } as any;
+
+          setLocalGeneratingEntries([queueEntry]);
+          setIsGeneratingLocally(true);
+          postGenerationBlockRef.current = true;
+
+          // Show success message
+          toast.success(`Generation added to queue!`);
+          
+          // Clear inputs - user can generate again immediately (adds to queue)
+          clearInputs();
+          
+          // Reset generation state so user can generate again
+          setIsGeneratingLocally(false);
+          postGenerationBlockRef.current = false;
+          
+          return; // Exit early - queue will handle the generation
+        } catch (queueError: any) {
+          console.error('[Queue] Failed to add to queue:', queueError);
+          toast.error(queueError?.response?.data?.message || queueError?.message || 'Failed to add to queue. Falling back to direct generation.');
+          // Fall through to direct generation
+        }
+      }
+
       // Check if it's a Runway model
       const isRunwayModel = selectedModel.startsWith("gen4_image");
       // Check if it's a MiniMax model

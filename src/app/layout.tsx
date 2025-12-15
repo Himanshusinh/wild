@@ -11,6 +11,7 @@ import ToastMount from './toast-mount'
 import ConsoleSilencer from "@/components/ConsoleSilencer";
 import ChromeMount from './chrome-mount'
 import AiCompanion from "@/components/AiCompanion";
+import QueueToggle from "@/components/GenerationQueue/QueueToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -211,6 +212,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
           <ToastMount />
           <AiCompanion />
+          <QueueToggle />
         </ReduxProvider>
       </body>
     </html>
