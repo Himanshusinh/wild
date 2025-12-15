@@ -330,7 +330,7 @@ function Step3_GenerateProcess() {
 
     return (
         <>
-            <div className="absolute inset-0 h-[50%] md:max-h-[60%] overflow-hidden ">
+            <div className="absolute inset-0 h-[60%] md:max-h-[60%] overflow-hidden ">
                 {/* Result Image */}
                 <div className={`absolute inset-0 z-10 transition-opacity duration-1000 ${genState === 4 ? 'opacity-100' : 'opacity-0'}`}>
                     <img 

@@ -104,6 +104,11 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
   const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
 
+  // Reset scroll to top when entering Video Generation (prevents landing mid-feed on tab switch)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
   // Debug uploadedImages changes
   useEffect(() => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
