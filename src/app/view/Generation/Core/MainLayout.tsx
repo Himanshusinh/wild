@@ -154,7 +154,7 @@ export default function MainLayout({
       {/* DEBUG: This is MainLayout component */}
       
       
-      <div className="md:ml-[68px] ml-0 pt-[62px]">
+      <div className="md:ml-[68px] ml-0 md:pt-[62px]">
         <Suspense fallback={null}>
           {/* Let PageRouter read from Redux; MainLayout already syncs UI state */}
           <PageRouter />

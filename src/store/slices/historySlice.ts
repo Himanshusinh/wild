@@ -208,6 +208,10 @@ export const loadHistory = createAsyncThunk(
       }
   // Always request createdAt sorting explicitly
   params.sortBy = 'createdAt';
+  // Always honor caller-provided sortOrder so backend returns matching order (asc/desc)
+  if ((filtersForBackend as any)?.sortOrder === 'asc' || (filtersForBackend as any)?.sortOrder === 'desc') {
+    params.sortOrder = (filtersForBackend as any).sortOrder;
+  }
   
   console.log('[HistorySlice] ========== loadHistory API CALL ==========');
   console.log('[HistorySlice] Request params:', {
@@ -472,23 +476,33 @@ export const loadMoreHistory = createAsyncThunk(
       if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
         params.search = searchQuery.trim();
       }
-      // Add sort order only if explicitly provided (when searching)
-      // Don't include sortOrder in default payload
-      if ((filtersForBackend as any)?.sortOrder) {
+      // Always honor caller-provided sortOrder so backend returns matching order (asc/desc)
+      if ((filtersForBackend as any)?.sortOrder === 'asc' || (filtersForBackend as any)?.sortOrder === 'desc') {
         params.sortOrder = (filtersForBackend as any).sortOrder;
-      } else if ((filters as any)?.sortOrder) {
+      } else if ((filters as any)?.sortOrder === 'asc' || (filters as any)?.sortOrder === 'desc') {
         params.sortOrder = (filters as any).sortOrder;
       }
-      // If sortOrder is not provided, don't set it (backend will use default)
-      // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
-      if (nextPageParams.cursor?.timestamp) {
-        try {
-          const millis = new Date(nextPageParams.cursor.timestamp).getTime();
-          if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
-        } catch {}
+
+      const wantsDateFilter = Boolean((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end);
+
+      // If date filter is active, use LEGACY cursor (document ID) because backend will route to legacy range query.
+      // nextCursor (timestamp) is for optimized path and can repeat/skip when dateStart/dateEnd are present.
+      if (wantsDateFilter) {
+        if (nextPageParams.cursor?.id) {
+          (params as any).cursor = String(nextPageParams.cursor.id);
+        }
+      } else {
+        // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
+        if (nextPageParams.cursor?.timestamp) {
+          try {
+            const millis = new Date(nextPageParams.cursor.timestamp).getTime();
+            if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
+          } catch {}
+        }
       }
-      // Do NOT set sortBy/sortOrder so backend uses optimized index (createdAt DESC)
-      if ((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end) {
+
+      // Serialize date range if present (ISO strings)
+      if (wantsDateFilter) {
         const dr = (filtersForBackend as any).dateRange as any;
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
@@ -626,6 +640,11 @@ const historySlice = createSlice({
       state.entries = [];
       state.hasMore = true;
       state.lastLoadedCount = 0;
+      // Ensure UI fully resets and pagination can start fresh
+      state.loading = false;
+      state.inFlight = false;
+      state.currentRequestKey = null;
+      state.error = null;
     },
     clearHistoryByType: (state, action) => {
       // Clear only entries for a specific generation type
@@ -704,49 +723,42 @@ const historySlice = createSlice({
         })));
 
         // If forceRefresh, replace entries completely (don't merge with existing)
-        // Otherwise, merge entries by ID to preserve local updates
+        // Otherwise, merge entries by ID while PRESERVING backend order (critical for backend-sorted pagination)
         if (forceRefresh) {
           console.log('[HistorySlice] forceRefresh=true - REPLACING all entries with fresh data');
           state.entries = action.payload.entries;
         } else {
-          // Merge mode: combine backend entries with existing entries, preferring existing if IDs match
-          // This preserves local updates (like status changes) while adding new entries from backend
           const existingMap = new Map<string, any>(state.entries.map((e: any) => [String(e?.id || ''), e]));
-          const backendMap = new Map<string, any>(action.payload.entries.map((e: any) => [String(e?.id || ''), e]));
-          
-          // Merge: prefer existing entry if it exists and is more recent, otherwise use backend entry
-          const merged = new Map<string, any>();
-          
-          // First, add all backend entries
-          backendMap.forEach((backendEntry, id) => {
-            merged.set(id, backendEntry);
-          });
-          
-          // Then, add existing entries that aren't in backend (preserve local-only entries)
-          existingMap.forEach((existingEntry, id) => {
-            if (!merged.has(id)) {
-              merged.set(id, existingEntry);
-            } else {
-              // If both exist, prefer the one with more recent timestamp or better status
-              const backendEntry = merged.get(id);
-              const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
-              const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
-              
-              // Prefer existing if it's more recent or if backend entry is missing critical data
-              if (existingTimestamp > backendTimestamp || 
-                  (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
-                  (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))) {
-                merged.set(id, existingEntry);
-              }
+          const backendEntries: any[] = Array.isArray(action.payload.entries) ? action.payload.entries : [];
+          const backendIds = new Set<string>(backendEntries.map((e: any) => String(e?.id || '')));
+
+          // Build merged list in BACKEND order
+          const mergedInOrder = backendEntries.map((backendEntry: any) => {
+            const id = String(backendEntry?.id || '');
+            const existingEntry = existingMap.get(id);
+            if (!existingEntry) return backendEntry;
+
+            // If both exist, prefer the one with more recent timestamp or better status,
+            // but keep the backend position to preserve ordering.
+            const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
+            const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
+            if (
+              existingTimestamp > backendTimestamp ||
+              (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
+              (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))
+            ) {
+              return existingEntry;
             }
+            return backendEntry;
           });
-          
-          state.entries = Array.from(merged.values());
-          console.log('[HistorySlice] Merged entries:', {
-            existingCount: existingMap.size,
-            backendCount: backendMap.size,
-            mergedCount: merged.size
+
+          // Preserve local-only entries (not returned by backend) by appending (does not disturb backend order)
+          const localOnly = state.entries.filter((e: any) => {
+            const id = String(e?.id || '');
+            return id && !backendIds.has(id);
           });
+
+          state.entries = [...mergedInOrder, ...localOnly];
         }
         const usedTypeAny = (usedFilters as any)?.generationType as any;
         if (usedTypeAny) {

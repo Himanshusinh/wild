@@ -1743,9 +1743,18 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                         });
 
                         const qs = new URLSearchParams();
-                        // Use userPrompt for remix if available, otherwise use cleanPrompt
-                        const remixPrompt = selectedEntry?.userPrompt || cleanPrompt;
-                        if (remixPrompt) qs.set('prompt', remixPrompt);
+                        // Force unique navigation even when staying on the same generator route,
+                        // so the generator page reliably re-consumes Remix/Regenerate params.
+                        qs.set('remixNonce', String(Date.now()));
+
+                        // Prompt: always include a prompt for Regenerate/Remix.
+                        // Prefer userPrompt (original user text), then cleanPrompt, then fallback to stored prompt.
+                        const remixPrompt =
+                          (selectedEntry as any)?.userPrompt ||
+                          cleanPrompt ||
+                          (selectedEntry as any)?.prompt ||
+                          '';
+                        if (remixPrompt) qs.set('prompt', String(remixPrompt));
 
                         // Attach all uploads:
                         // - Prefer storage paths via repeated sp= params

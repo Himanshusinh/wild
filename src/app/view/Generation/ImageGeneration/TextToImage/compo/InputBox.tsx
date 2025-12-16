@@ -29,6 +29,8 @@ import {
   loadHistory,
   addHistoryEntry,
   updateHistoryEntry,
+  setFilters,
+  clearHistory,
 } from "@/store/slices/historySlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
@@ -103,6 +105,13 @@ const InputBox = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // Forces the prompt editor (contentEditable) to remount when Remix is invoked,
+  // preventing stale DOM from keeping an old prompt visible.
+  const [promptEditorKey, setPromptEditorKey] = useState<number>(0);
+  // When Remix sets a prompt via URL params, we need to wait until Redux has actually updated
+  // before forcing the contentEditable DOM to sync; otherwise the renderer can write the old
+  // prompt back into the DOM.
+  const pendingRemixPromptRef = useRef<string | null>(null);
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     image: any;
@@ -140,7 +149,11 @@ const InputBox = () => {
   const loadLockRef = useRef(false);
 
   // Filter states for search, sort, and date
+  // searchInput: what user is typing; searchQuery: what is applied to backend filters
+  const [searchInput, setSearchInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const searchDebounceRef = useRef<any>(null);
+  const didInitSearchRef = useRef(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [dateInput, setDateInput] = useState<string>("");
@@ -155,11 +168,16 @@ const InputBox = () => {
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
 
   // Handle calendar click outside
+  // IMPORTANT: There are multiple calendar popups (desktop/mobile variants) that previously shared a single ref.
+  // Use a ref-free check so clicking inside the popup doesn't immediately close it before day onClick runs.
   useEffect(() => {
     if (!showCalendar) return;
     const onDocClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
+      const el = e.target as HTMLElement | null;
+      if (el && typeof (el as any).closest === 'function') {
+        if ((el as any).closest('[data-calendar-popup="true"]')) return;
+      }
+      setShowCalendar(false);
     };
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
     document.addEventListener('mousedown', onDocClick);
@@ -170,18 +188,92 @@ const InputBox = () => {
     };
   }, [showCalendar]);
 
-  // Handle search query changes with loading state
+  // Lightweight UI shimmer while date filter is active (search is applied via button)
   useEffect(() => {
-    if (searchQuery.trim() || dateRange.start || sortOrder !== 'desc') {
+    if (dateRange.start) {
       setIsFiltering(true);
-      const timer = setTimeout(() => {
-        setIsFiltering(false);
-      }, 300);
+      const timer = setTimeout(() => setIsFiltering(false), 300);
       return () => clearTimeout(timer);
-    } else {
-      setIsFiltering(false);
     }
-  }, [searchQuery, dateRange, sortOrder]);
+    setIsFiltering(false);
+  }, [dateRange]);
+  
+  // Track sort order changes separately to show loader
+  const [isSorting, setIsSorting] = useState(false);
+  const prevSortOrderRef = useRef<'desc' | 'asc' | null>(null);
+  useEffect(() => {
+    if (prevSortOrderRef.current !== null && prevSortOrderRef.current !== sortOrder) {
+      setIsSorting(true);
+      const timer = setTimeout(() => {
+        setIsSorting(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+    prevSortOrderRef.current = sortOrder;
+  }, [sortOrder]);
+
+  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null }; search?: string }) => {
+    const order = next?.sortOrder || sortOrder;
+    const dr = next?.dateRange || dateRange;
+    const search = (typeof next?.search === 'string' ? next?.search : searchQuery).trim();
+
+    // Update local UI state if caller provided overrides
+    if (next?.sortOrder) setSortOrder(next.sortOrder);
+    if (next?.dateRange) setDateRange(next.dateRange);
+    if (next?.search !== undefined) setSearchQuery(search);
+
+    setPage(1);
+
+    const filters: any = { mode: 'image', sortOrder: order };
+    if (search) filters.search = search;
+    if (dr.start && dr.end) filters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
+    dispatch(setFilters(filters));
+
+    await (dispatch as any)(loadHistory({
+      filters,
+      backendFilters: { mode: 'image', sortOrder: order, ...(search ? { search } : {}), ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}) } as any,
+      paginationParams: { limit: 60 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-image',
+      skipBackendGenerationFilter: true,
+      forceRefresh: true,
+    }));
+  }, [dispatch, searchQuery, sortOrder, dateRange]);
+
+  // Live prompt search (Freepik-style): as user types, debounce and query backend.
+  useEffect(() => {
+    // Skip first run (initial mount) to avoid an extra fetch.
+    if (!didInitSearchRef.current) {
+      didInitSearchRef.current = true;
+      return;
+    }
+
+    const next = String(searchInput || '').trim();
+    const applied = String(searchQuery || '').trim();
+    if (next === applied) return;
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    setIsFiltering(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        await refreshHistoryFromBackend({ search: next });
+      } finally {
+        setIsFiltering(false);
+      }
+    }, 350);
+
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchInput, searchQuery, refreshHistoryFromBackend]);
+
+  // Backend is the source of truth for sorting/pagination. When sort changes, clear UI and re-fetch from backend.
+  const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
+    await refreshHistoryFromBackend({ sortOrder: order });
+  }, [refreshHistoryFromBackend]);
 
   // Track entries that have been added to history to prevent duplicate rendering
   // This ref is updated immediately when entries are added, before React re-renders
@@ -253,6 +345,7 @@ const InputBox = () => {
       const mdl = current.searchParams.get('model');
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
+      const remixNonce = current.searchParams.get('remixNonce');
 
       // Handle image upload - prioritize sp (storage path) over image URL.
       // Collect all URLs from sp/image params so multiple uploads are supported.
@@ -285,7 +378,26 @@ const InputBox = () => {
         dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
-      if (prm) dispatch(setPrompt(prm));
+      if (remixNonce) {
+        const n = Number(remixNonce);
+        setPromptEditorKey(Number.isFinite(n) ? n : Date.now());
+      }
+
+      if (prm) {
+        pendingRemixPromptRef.current = prm;
+        dispatch(setPrompt(prm));
+        // Force the visible contentEditable prompt editor to reflect the new prompt immediately.
+        // This avoids cases where the editor is mid-update (isUpdatingRef=true) and would otherwise
+        // ignore the prompt change, causing Remix to keep showing the old prompt.
+        try {
+          const el = document.querySelector('[data-prompt-editor="true"]') as HTMLElement | null;
+          if (el) {
+            el.textContent = prm;
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+          }
+        } catch { }
+      }
       if (mdl) {
         const mapIncomingModel = (m: string): string => {
           if (!m) return m;
@@ -302,21 +414,25 @@ const InputBox = () => {
       if (sty) {
         try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
       }
-      // Consume params once so a refresh doesn't keep the image selected
-      if (img || prm || sp || mdl || frm || sty || spAll.length || imgAll.length) {
+      // Consume params once so a refresh doesn't keep re-applying Remix values.
+      // IMPORTANT: Use Next router.replace (not window.history.replaceState) to avoid
+      // desyncing Next.js searchParams, which can prevent subsequent Remix clicks from being detected.
+      if (img || prm || sp || mdl || frm || sty || remixNonce || spAll.length || imgAll.length) {
         current.searchParams.delete('image');
         current.searchParams.delete('prompt');
         current.searchParams.delete('sp');
+        current.searchParams.delete('remixNonce');
         // Also delete any repeated params
         imgAll.forEach(() => current.searchParams.delete('image'));
         spAll.forEach(() => current.searchParams.delete('sp'));
         current.searchParams.delete('model');
         current.searchParams.delete('frame');
         current.searchParams.delete('style');
-        window.history.replaceState({}, '', current.toString());
+        const next = current.pathname + (current.searchParams.toString() ? `?${current.searchParams.toString()}` : '');
+        router.replace(next, { scroll: false });
       }
     } catch { }
-  }, [dispatch, searchParams, pathname]);
+  }, [dispatch, searchParams, pathname, router]);
 
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
@@ -717,8 +833,9 @@ const InputBox = () => {
 
   // Fetch only first page on mount; further pages load on scroll
   // Replace legacy refresh helpers with hook-driven variants (wrapped with cooldown guard)
-  const rawRefreshHistory = () => refreshHistoryDebounced();
-  const refreshAllHistory = () => refreshHistoryImmediate();
+  // IMPORTANT: Use backend-filter-aware refresh to avoid overwriting date-filtered views.
+  const rawRefreshHistory = () => { void refreshHistoryFromBackend(); };
+  const refreshAllHistory = () => { void refreshHistoryFromBackend(); };
   const lastRefreshTimeRef = useRef(0);
   const REFRESH_COOLDOWN_MS = 2000; // suppress clustered refreshes that follow a generation completion
 
@@ -937,107 +1054,16 @@ const InputBox = () => {
   const postGenerationBlockRef = useRef(false);
   // Debug event storage removed; bottom scroll pagination doesn't emit IO events
 
-  // Memoize the filtered entries and group by date - optimized for performance
-  const historyEntries = useAppSelector(
-    (state: any) => {
-      const allEntries = state.history?.entries || [];
+  // IMPORTANT: Do not sort in frontend. Backend is the source of truth for ordering and pagination.
+  // This page requests mode:'image' from backend, so entries should already be image-only + correctly ordered.
+  const historyEntries = useAppSelector((state: any) => state.history?.entries || [], shallowEqual);
 
-      if (allEntries.length === 0) {
-        return [];
-      }
-
-      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-
-      const filtered = allEntries.filter((entry: any) => {
-        const normalizedType = normalize(entry.generationType);
-        const normalizedModel = normalize(entry.model);
-        const isSeedream = normalizedModel.includes('seedream');
-        const isTextToImage = normalizedType === 'text-to-image';
-
-        // Explicitly show Seedream text-to-image generations (from Image Generation page)
-        if (isSeedream && isTextToImage) {
-          return true;
-        }
-
-        // Hide Seedream generations from other features (e.g. Edit Image, upscale, etc.)
-        if (isSeedream && !isTextToImage) {
-          return false;
-        }
-
-        // For non-Seedream entries, apply normal type filtering
-        const isVectorize =
-          normalizedType === 'vectorize' ||
-          normalizedType === 'image-vectorize' ||
-          normalizedType.includes('vector');
-
-        return (
-          normalizedType === 'text-to-image' ||
-          normalizedType === 'image-upscale' ||
-          normalizedType === 'image-to-svg' ||
-          normalizedType === 'image-edit' ||
-          isVectorize
-        );
-      });
-
-      if (filtered.length === 0) {
-        return [];
-      }
-
-      const getTs = (x: any) => {
-        const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
-        if (!raw) return 0;
-        const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
-        const ms = Date.parse(t);
-        return Number.isNaN(ms) ? 0 : ms;
-      };
-
-      return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
-    },
-    shallowEqual
-  );
-
-  // Filter entries by search query, date range, and sort order
+  // Filter entries ONLY client-side for display concerns (no prompt search filtering; backend is source of truth).
   const filteredAndSortedEntries = useMemo(() => {
     let filtered = [...historyEntries];
 
-    // Filter by search query (search in prompt)
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter((entry: HistoryEntry) => {
-        const prompt = (entry.prompt || '').toLowerCase();
-        return prompt.includes(query);
-      });
-    }
-
-    // Filter by date range
-    if (dateRange.start && dateRange.end) {
-      filtered = filtered.filter((entry: HistoryEntry) => {
-        const entryDate = new Date(entry.timestamp);
-        const start = new Date(dateRange.start!);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(dateRange.end!);
-        end.setHours(23, 59, 59, 999);
-        return entryDate >= start && entryDate <= end;
-      });
-    }
-
-    // Sort by sort order
-    const getTs = (x: any) => {
-      const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
-      if (!raw) return 0;
-      const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
-      const ms = Date.parse(t);
-      return Number.isNaN(ms) ? 0 : ms;
-    };
-
-    if (sortOrder === 'asc') {
-      filtered.sort((a: any, b: any) => getTs(a) - getTs(b)); // Oldest first
-    } else {
-      filtered.sort((a: any, b: any) => getTs(b) - getTs(a)); // Newest first (default)
-    }
-
     return filtered;
-  }, [historyEntries, searchQuery, dateRange, sortOrder]);
+  }, [historyEntries]);
 
   // Mark that we've attempted initial load once loading starts or completes
   useEffect(() => {
@@ -1048,84 +1074,47 @@ const InputBox = () => {
 
   // Sentinel element at bottom of list (place near end of render)
 
-  // Group entries by date and sort within each group for stable ordering
-  // Memoize groupedByDate to prevent unnecessary recalculations
+  // Group entries by date while PRESERVING backend order (no client-side sorting).
   const groupedByDate = useMemo(() => {
-    const groups = filteredAndSortedEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
+    const groups: { [key: string]: HistoryEntry[] } = {};
+    const dateOrder: string[] = [];
+
+    for (const entry of filteredAndSortedEntries) {
       const date = new Date(entry.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
+        dateOrder.push(date);
       }
       groups[date].push(entry);
-      return groups;
-    }, {});
+    }
 
-    // Sort entries within each date group by timestamp based on sortOrder
-    const getTs = (entry: HistoryEntry) => new Date(entry.timestamp).getTime();
-    Object.keys(groups).forEach(date => {
-      if (sortOrder === 'asc') {
-        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(a) - getTs(b)); // Oldest first
-      } else {
-        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(b) - getTs(a)); // Newest first
-      }
-    });
-
-    // CRITICAL FIX: Merge local generating entries into today's group
-    // This ensures a SINGLE frame that transitions from loading to showing the image
-    // Instead of having TWO separate frames (one for local, one for history)
+    // Merge local generating entries into today's group without sorting existing items.
     if (localGeneratingEntries.length > 0) {
-      const todayKey = new Date().toDateString();
-      if (!groups[todayKey]) {
-        groups[todayKey] = [];
+      const todayKeyLocal = new Date().toDateString();
+      if (!groups[todayKeyLocal]) {
+        groups[todayKeyLocal] = [];
+        dateOrder.push(todayKeyLocal);
       }
 
-      // Add local entries at the beginning (newest first) if not already in history
-      localGeneratingEntries.forEach(localEntry => {
+      localGeneratingEntries.forEach((localEntry) => {
         const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
-        const existsInGroup = groups[todayKey].some((e: HistoryEntry) => {
+        if (!localId) return;
+        const existsInGroup = groups[todayKeyLocal].some((e: HistoryEntry) => {
           const eId = e.id || (e as any)?.firebaseHistoryId;
           return eId === localId;
         });
+        if (existsInGroup) return;
 
-        // Only add if not already in the group (prevents duplicates)
-        if (!existsInGroup && localId) {
-          // Add at the beginning for newest-first sort
-          if (sortOrder === 'desc') {
-            groups[todayKey].unshift(localEntry);
-          } else {
-            groups[todayKey].push(localEntry);
-          }
-        }
+        // For desc (recent first), show local previews at the top; for asc, append at end.
+        if (sortOrder === 'desc') groups[todayKeyLocal].unshift(localEntry);
+        else groups[todayKeyLocal].push(localEntry);
       });
     }
 
-    return groups;
-  }, [filteredAndSortedEntries, sortOrder, localGeneratingEntries]);
+    return { groups, dateOrder };
+  }, [filteredAndSortedEntries, localGeneratingEntries, sortOrder]);
 
-  // Calculate today key - recalculate on every render to handle day changes
-  // This ensures localGeneratingEntries show correctly when generating on a new day
-  const todayKey = new Date().toDateString();
-
-  // Sort dates based on sortOrder
-  // Include today's date if we have localGeneratingEntries (for first generation of new day)
-  const sortedDates = useMemo(() => {
-    const dates = new Set(Object.keys(groupedByDate));
-    // If we have localGeneratingEntries and today is not in the dates, add it
-    // This ensures the loading animation shows on the first generation of a new day
-    if (localGeneratingEntries.length > 0 && !dates.has(todayKey)) {
-      dates.add(todayKey);
-    }
-    const datesArray = Array.from(dates);
-    if (sortOrder === 'asc') {
-      return datesArray.sort((a: string, b: string) =>
-        new Date(a).getTime() - new Date(b).getTime() // Oldest first
-      );
-    } else {
-      return datesArray.sort((a: string, b: string) =>
-        new Date(b).getTime() - new Date(a).getTime() // Newest first
-      );
-    }
-  }, [groupedByDate, localGeneratingEntries, todayKey, sortOrder]);
+  const sortedDates = groupedByDate.dateOrder;
 
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
@@ -1323,6 +1312,31 @@ const InputBox = () => {
       }
     }, 0);
   }, [prompt, selectedCharacters, updateContentEditable]);
+
+  // Remix sync: once Redux prompt has actually updated to the Remix prompt, force the editor DOM
+  // to display it and then re-render tags. This prevents stale closures from writing the old prompt
+  // back into the contentEditable after a Remix navigation.
+  useEffect(() => {
+    const pending = pendingRemixPromptRef.current;
+    if (!pending) return;
+    if (prompt !== pending) return;
+
+    try {
+      isUpdatingRef.current = true;
+      const el = contentEditableRef.current;
+      if (el) {
+        el.textContent = pending;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+      }
+    } catch { }
+
+    setTimeout(() => {
+      try { updateContentEditable(); } catch { }
+      isUpdatingRef.current = false;
+      pendingRemixPromptRef.current = null;
+    }, 0);
+  }, [prompt, updateContentEditable]);
 
   // Helper function to convert AVIF thumbnail URLs back to original JPG/PNG format
   const convertAvifToOriginal = (url: string): string => {
@@ -1601,9 +1615,12 @@ const InputBox = () => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
+        const paginationFilters: any = { mode: 'image', sortOrder };
+        if (searchQuery.trim()) paginationFilters.search = searchQuery.trim();
+        if (dateRange.start) paginationFilters.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end?.toISOString() };
         await (dispatch as any)(loadMoreHistory({
-          filters: { generationType: ['text-to-image', 'image-to-image'], mode: 'image' } as any,
-          backendFilters: { mode: 'image' } as any,
+          filters: paginationFilters,
+          backendFilters: { mode: 'image', sortOrder, ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
           paginationParams: { limit: 10 }
         })).unwrap();
       } catch (e: any) {
@@ -3860,7 +3877,7 @@ const InputBox = () => {
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-0  py-0 md:pl-4  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-4 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-2 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
             <div className="flex items-center justify-between md:mb-2 mb-0">
               <div className="flex items-center gap-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
@@ -3882,168 +3899,327 @@ const InputBox = () => {
                   </button>
                 )}
               </div>
-            </div>
 
             {/* Desktop: Search, Sort, and Date controls - on same line */}
+            <div className="hidden md:flex items-center justify-end gap-2 mt-2 md:pr-4 ">
+              {/* Prompt search (backend-driven) */}
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search prompt..."
+                  className={`px-3 py-2 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 w-56 ${searchInput ? 'pr-9' : ''}`}
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput('');
+                      // X should behave like Clear: remove applied backend search and reload.
+                      refreshHistoryFromBackend({ search: '' });
+                    }}
+                    className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                    aria-label="Clear search input"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {/* Sort buttons */}
+              <button
+                onClick={() => onSortChange('desc')}
+                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Recent"
+              >
+                <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-5 h-5`} />
+                <span className="text-xs font-medium">Recent</span>
+              </button>
+              <button
+                onClick={() => onSortChange('asc')}
+                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Oldest"
+              >
+                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-5 h-5`} />
+                <span className="text-xs font-medium">Oldest</span>
+              </button>
+
+              {/* Date picker (calendar button) */}
+              <div className="relative flex items-center gap-1">
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  value={dateInput}
+                  onChange={async (e) => {
+                    const value = e.target.value;
+                    setDateInput(value);
+                    if (!value) {
+                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                      return;
+                    }
+                    const d = new Date(value + 'T00:00:00');
+                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                    await refreshHistoryFromBackend({ dateRange: { start, end } });
+                  }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+                />
+                <button
+                  onClick={() => {
+                    const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                    setCalendarMonth(base.getMonth());
+                    setCalendarYear(base.getFullYear());
+                    setShowCalendar((v) => !v);
+                  }}
+                  className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                  aria-label="Date"
+                >
+                  <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+                </button>
+                {showCalendar && (
+                  <div
+                    ref={calendarRef}
+                    data-calendar-popup="true"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-2 z-70 w-[280px] select-none bg-black/90 backdrop-blur-3xl shadow-xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
+                  >
+                    <div className="flex items-center justify-between mb-2 text-white">
+                      <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                        const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                        setCalendarYear(prev.getFullYear());
+                        setCalendarMonth(prev.getMonth());
+                      }}>‹</button>
+                      <div className="text-sm font-semibold">
+                        {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                      </div>
+                      <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                        const next = new Date(calendarYear, calendarMonth + 1, 1);
+                        setCalendarYear(next.getFullYear());
+                        setCalendarMonth(next.getMonth());
+                      }}>›</button>
+                    </div>
+                    <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                        <div key={`pad-${i}`} className="h-8" />
+                      ))}
+                      {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const thisDate = new Date(calendarYear, calendarMonth, day);
+                        const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                        return (
+                          <button
+                            key={day}
+                            className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                            onClick={async () => {
+                              const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                              const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                              const iso = thisDate.toISOString().slice(0, 10);
+                              setDateInput(iso);
+                              await refreshHistoryFromBackend({ dateRange: { start, end } });
+                              setShowCalendar(false);
+                            }}
+                          >{day}</button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
+                        setDateInput('');
+                        await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                        setShowCalendar(false);
+                      }}>Clear</button>
+                      <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                        const now = new Date();
+                        setCalendarMonth(now.getMonth());
+                        setCalendarYear(now.getFullYear());
+                      }}>Today</button>
+                    </div>
+                  </div>
+                )}
+                {dateRange.start && (
+                  <button
+                    className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                    onClick={async () => {
+                      setDateInput('');
+                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            </div>
 
           </div>
 
           {/* Mobile: Search, Sort, and Date controls */}
-          {/* <div className="flex md:hidden flex-col gap-1 mt-2">
-              First row: Sort buttons
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  onClick={() => setSortOrder('desc')}
-                  className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                  aria-label="Newest"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
-                    <span className="text-xs">Newest</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setSortOrder('asc')}
-                  className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                  aria-label="Oldest"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
-                    <span className="text-xs">Oldest</span>
-                  </div>
-                </button>
-              </div>
-              
-              Second row: Search input and Date picker
-              <div className="flex items-center gap-1 w-full">
-                Search Input - placed before date picker
-                <div className="flex-1 relative flex items-center">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by prompt..."
-                    className={`w-full px-2 py-1 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 placeholder:text-xs ${searchQuery ? 'pr-10' : ''}`}
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-                      aria-label="Clear search"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                
-                Date picker
-                <div className="relative flex items-center gap-1">
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    value={dateInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setDateInput(value);
-                      if (!value) {
-                        setDateRange({ start: null, end: null });
-                        return;
-                      }
-                      const d = new Date(value + 'T00:00:00');
-                      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                      setDateRange({ start, end });
-                    }}
-                    style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
-                  />
+          <div className="flex md:hidden items-center justify-start px-2 gap-2 pb-2 mt-10">
+              {/* Prompt search (backend-driven) */}
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search..."
+                  className={`px-2 py-1 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-28 ${searchInput ? 'pr-7' : ''}`}
+                />
+                {searchInput && (
                   <button
+                    type="button"
                     onClick={() => {
-                      const base = dateRange.start ? new Date(dateRange.start) : new Date();
-                      setCalendarMonth(base.getMonth());
-                      setCalendarYear(base.getFullYear());
-                      setShowCalendar((v) => !v);
+                      setSearchInput('');
+                      // X should behave like Clear: remove applied backend search and reload.
+                      refreshHistoryFromBackend({ search: '' });
                     }}
-                    className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                    aria-label="Date"
+                    className="absolute right-1 p-1 rounded bg-white/5 hover:bg-white/10 text-white/80"
+                    aria-label="Clear search input"
                   >
-                    <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                   </button>
-                  {showCalendar && (
-                    <div ref={calendarRef} className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2">
-                      <div className="flex items-center justify-between mb-0 text-white">
-                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                          setCalendarYear(prev.getFullYear());
-                          setCalendarMonth(prev.getMonth());
-                        }}>‹</button>
-                        <div className="text-sm font-semibold">
-                          {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
-                        </div>
-                        <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                          const next = new Date(calendarYear, calendarMonth + 1, 1);
-                          setCalendarYear(next.getFullYear());
-                          setCalendarMonth(next.getMonth());
-                        }}>›</button>
-                      </div>
-                      <div className="grid grid-cols-7 text-[11px] text-white/70 mb-0">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
-                      </div>
-                      <div className="grid grid-cols-7 gap-1">
-                        {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                          <div key={`pad-${i}`} className="h-6 text-xs" />
-                        ))}
-                        {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                          const day = i + 1;
-                          const thisDate = new Date(calendarYear, calendarMonth, day);
-                          const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
-                          return (
-                            <button
-                              key={day}
-                              className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                              onClick={() => {
-                                const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
-                                const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                                setDateInput(thisDate.toISOString().slice(0, 10));
-                                setDateRange({ start, end });
-                                setShowCalendar(false);
-                              }}
-                            >{day}</button>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <button className="text-white/80 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                          setDateInput('');
-                          setDateRange({ start: null, end: null });
-                          setShowCalendar(false);
-                        }}>Clear</button>
-                        <button className="text-white/90 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                          const now = new Date();
-                          setCalendarMonth(now.getMonth());
-                          setCalendarYear(now.getFullYear());
-                        }}>Today</button>
-                      </div>
-                    </div>
-                  )}
-                  {dateRange.start && (
-                    <button
-                      className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
-                      onClick={() => {
-                        setDateInput('');
-                        setDateRange({ start: null, end: null });
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-            </div> */}
+              {/* Sort buttons */}
+              <button
+                onClick={() => onSortChange('desc')}
+                className={`relative group px-2 py-1 rounded-lg text-sm flex items-center gap-1 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Recent"
+              >
+                <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
+                <span className="text-xs font-medium">Recent</span>
+              </button>
+              <button
+                onClick={() => onSortChange('asc')}
+                className={`relative group px-2 py-1 rounded-lg text-sm flex items-center gap-1 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Oldest"
+              >
+                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
+                <span className="text-xs font-medium">Oldest</span>
+              </button>
+
+              {/* Date picker (calendar button) */}
+              <div className="relative flex items-center gap-1">
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  value={dateInput}
+                  onChange={async (e) => {
+                    const value = e.target.value;
+                    setDateInput(value);
+                    if (!value) {
+                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                      return;
+                    }
+                    const d = new Date(value + 'T00:00:00');
+                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                    await refreshHistoryFromBackend({ dateRange: { start, end } });
+                  }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+                />
+                <button
+                  onClick={() => {
+                    const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                    setCalendarMonth(base.getMonth());
+                    setCalendarYear(base.getFullYear());
+                    setShowCalendar((v) => !v);
+                  }}
+                  className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                  aria-label="Date"
+                >
+                  <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+                </button>
+                {showCalendar && (
+                  <div
+                    ref={calendarRef}
+                    data-calendar-popup="true"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-2 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-1"
+                  >
+                    <div className="flex items-center justify-between mb-0 text-white">
+                      <button className="px-1 py-0 rounded hover:bg-white/10" onClick={() => {
+                        const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                        setCalendarYear(prev.getFullYear());
+                        setCalendarMonth(prev.getMonth());
+                      }}>‹</button>
+                      <div className="text-sm font-semibold">
+                        {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                      </div>
+                      <button className="px-1 py-0 rounded hover:bg-white/10" onClick={() => {
+                        const next = new Date(calendarYear, calendarMonth + 1, 1);
+                        setCalendarYear(next.getFullYear());
+                        setCalendarMonth(next.getMonth());
+                      }}>›</button>
+                    </div>
+                    <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                        <div key={`pad-${i}`} className="h-6" />
+                      ))}
+                      {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const thisDate = new Date(calendarYear, calendarMonth, day);
+                        const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                        return (
+                          <button
+                            key={day}
+                            className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                            onClick={async () => {
+                              const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                              const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                              const iso = thisDate.toISOString().slice(0, 10);
+                              setDateInput(iso);
+                              await refreshHistoryFromBackend({ dateRange: { start, end } });
+                              setShowCalendar(false);
+                            }}
+                          >{day}</button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
+                        setDateInput('');
+                        await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                        setShowCalendar(false);
+                      }}>Clear</button>
+                      <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                        const now = new Date();
+                        setCalendarMonth(now.getMonth());
+                        setCalendarYear(now.getFullYear());
+                      }}>Today</button>
+                    </div>
+                  </div>
+                )}
+                {dateRange.start && (
+                  <button
+                    className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                    onClick={async () => {
+                      setDateInput('');
+                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
         </div>
 
         {/* <div className="hidden md:flex items-center justify-end gap-2 md:mt-5 -mb-4">
@@ -4094,17 +4270,17 @@ const InputBox = () => {
                     ref={dateInputRef}
                     type="date"
                     value={dateInput}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const value = e.target.value;
                       setDateInput(value);
                       if (!value) {
-                        setDateRange({ start: null, end: null });
+                        await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
                         return;
                       }
                       const d = new Date(value + 'T00:00:00');
                       const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
                       const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                      setDateRange({ start, end });
+                      await refreshHistoryFromBackend({ dateRange: { start, end } });
                     }}
                     style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
                   />
@@ -4123,7 +4299,13 @@ const InputBox = () => {
                   </button>
 
                   {showCalendar && (
-                    <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                    <div
+                      ref={calendarRef}
+                      data-calendar-popup="true"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
+                    >
                       <div className="flex items-center justify-between mb-2 text-white">
                         <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                           const prev = new Date(calendarYear, calendarMonth - 1, 1);
@@ -4158,7 +4340,7 @@ const InputBox = () => {
                                 const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
                                 const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
                                 setDateInput(thisDate.toISOString().slice(0, 10));
-                                setDateRange({ start, end });
+                                refreshHistoryFromBackend({ dateRange: { start, end } });
                                 setShowCalendar(false);
                               }}
                             >{day}</button>
@@ -4168,7 +4350,7 @@ const InputBox = () => {
                       <div className="flex items-center justify-between mt-3">
                         <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                           setDateInput('');
-                          setDateRange({ start: null, end: null });
+                          refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
                           setShowCalendar(false);
                         }}>Clear</button>
                         <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
@@ -4217,6 +4399,16 @@ const InputBox = () => {
           </div>
         )}
 
+        {/* Sorting overlay - show when sorting changes */}
+        {isSorting && (
+          <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 px-4">
+              <GifLoader size={72} alt="Sorting" />
+              <div className="text-white text-lg text-center">Loading {sortOrder === 'asc' ? 'oldest' : 'recent'} generations...</div>
+            </div>
+          </div>
+        )}
+
         <div>
           {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
           {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && localGeneratingEntries.length === 0 && (
@@ -4257,7 +4449,7 @@ const InputBox = () => {
                   {/* Render all entries for this date - includes both history and merged local entries */}
                   {(() => {
                     // Since local entries are now merged into groupedByDate, just render all entries
-                    const allEntries = groupedByDate[date] || [];
+                    const allEntries = groupedByDate.groups[date] || [];
 
                     return allEntries.flatMap((entry: HistoryEntry) => {
                       // Check if entry has ready images
@@ -4518,9 +4710,11 @@ const InputBox = () => {
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
+                key={promptEditorKey}
                 ref={contentEditableRef}
                 contentEditable
                 suppressContentEditableWarning
+                data-prompt-editor="true"
                 onInput={(e) => {
                   if (isUpdatingRef.current) return;
 

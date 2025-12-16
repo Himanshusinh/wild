@@ -6,6 +6,7 @@ import { Trash2 } from 'lucide-react'
 import { toDirectUrl, toMediaProxy } from '@/lib/thumb'
 import { downloadFileWithNaming } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
+import { useRouter } from 'next/navigation'
 
 export type PublicItem = {
   id: string;
@@ -76,6 +77,7 @@ export default function ArtStationPreview({
   toggleBookmark,
   engagement,
 }: Props) {
+  const router = useRouter()
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
@@ -178,6 +180,12 @@ export default function ArtStationPreview({
     } catch (err) {
       console.error('Failed to copy prompt:', err)
     }
+  }
+
+  const extractStyleFromPrompt = (prompt?: string): string | undefined => {
+    if (!prompt) return undefined
+    const match = String(prompt).match(/\[\s*Style:\s*([^\]]+)\]/i)
+    return match?.[1]?.trim()
   }
 
   const cleanPromptByType = (prompt?: string, type?: string) => {
@@ -644,16 +652,40 @@ export default function ArtStationPreview({
                   <button
                     onClick={() => {
                       onClose()
-                      const images = (preview.item.images || []) as any[]
-                      const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-                      const url = img?.url || preview.url
-                      const dest = new URL(window.location.origin + '/text-to-image')
-                      dest.searchParams.set('image', url)
-                      window.location.href = dest.toString()
+                      const genType = String(preview.item.generationType || '').replace(/[_-]/g, '-').toLowerCase()
+                      const isVideo = preview.kind === 'video' || genType.includes('video')
+
+                      const rawPrompt = String(preview.item.prompt || '')
+                      const style = extractStyleFromPrompt(rawPrompt)
+                      const cleanPrompt = style ? rawPrompt.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim() : cleanPromptByType(rawPrompt, preview.item.generationType)
+                      const model = preview.item.model ? String(preview.item.model) : ''
+                      const frame = (preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio) ? String(preview.item.aspectRatio || preview.item.frameSize || preview.item.aspect_ratio) : ''
+
+                      const qs = new URLSearchParams()
+                      // Force unique navigation even when staying on the same generator route,
+                      // so the generator page reliably re-consumes Remix params on every click.
+                      qs.set('remixNonce', String(Date.now()))
+                      if (cleanPrompt) qs.set('prompt', cleanPrompt)
+                      if (model) qs.set('model', model)
+                      if (frame) qs.set('frame', frame)
+                      if (style) qs.set('style', style)
+
+                      // Also pass common video params if present
+                      const anyItem: any = preview.item as any
+                      if (isVideo) {
+                        if (anyItem?.duration) qs.set('duration', String(anyItem.duration))
+                        if (anyItem?.quality) qs.set('quality', String(anyItem.quality))
+                        if (anyItem?.resolution) qs.set('resolution', String(anyItem.resolution))
+                        // IMPORTANT: for video remix, do NOT redirect to image generation
+                        router.push(`/text-to-video?${qs.toString()}`)
+                      } else {
+                        // IMPORTANT: for image remix from ArtStation, do NOT pass generated image as input
+                        router.push(`/text-to-image?${qs.toString()}`)
+                      }
                     }}
                     className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
                   >
-                    Remix
+                    Recreate
                   </button>
                 </div>
               )

@@ -87,7 +87,7 @@ export default function VideoGenerationPage() {
                         </div>
 
                         {/* Feature Filter Bar */}
-                        <div className="mb-4">
+                        <div className="mb-2 md:mb-2">
                             <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-1 scrollbar-none">
                                 {(['Video', 'Lipsync', 'Animate'] as VideoFeature[]).map((feature) => (
                                     <button
