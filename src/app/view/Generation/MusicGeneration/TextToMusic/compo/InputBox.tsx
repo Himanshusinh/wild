@@ -25,6 +25,13 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
   const dispatch = useAppDispatch();
   // Self-manage history loads for music to avoid central duplicate requests
   const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-music' });
+  
+  // Redux selector for parallel generation support
+  const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  // Only count running generations towards the limit (limit is 4)
+  // This allows completed/failed items to be auto-replaced by new ones
+  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -357,7 +364,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
           updates: {
             status: 'completed',
             audios: finalAudios,
-            historyId: historyIdToUpdate
+            historyId: historyIdToUpdate || undefined
           }
         }));
       }
