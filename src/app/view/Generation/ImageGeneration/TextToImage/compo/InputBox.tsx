@@ -3407,7 +3407,7 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'google/nano-banana-pro') {
-        // Google Nano Banana Pro via replicate generate endpoint
+        // Google Nano Banana Pro via FAL generate endpoint
         try {
           // Map our frameSize to allowed aspect ratios for Nano Banana Pro
           const allowedAspect = new Set([
@@ -3418,60 +3418,37 @@ const InputBox = () => {
           // Use the selected resolution from state
           const resolution = nanoBananaProResolution;
 
-          // Nano Banana Pro supports up to 14 images in image_input array
-          const uploadedImages = getCombinedUploadedImages();
-          const imageInput = uploadedImages.length > 0
-            ? uploadedImages.slice(0, 14).map((img: string) => toAbsoluteFromProxy(img))
-            : [];
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
 
-          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, uploadedImages, selectedCharacters);
+          const result = await dispatch(falGenerate({
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: prompt, // Store original user-entered prompt
+            model: 'google/nano-banana-pro',
+            num_images: imageCount,
+            aspect_ratio: aspect as any,
+            resolution: resolution,
+            uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
+            output_format: 'jpeg',
+            generationType: 'text-to-image',
+            isPublic,
+          })).unwrap();
 
-          // Nano Banana Pro doesn't support multiple images in single request, so we make parallel requests
-          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
-
-          const generationPromises = Array.from({ length: totalToGenerate }, async () => {
-            const payload: any = {
-              prompt: `${promptAdjusted} [Style: ${style}]`,
-              model: 'google/nano-banana-pro',
-              aspect_ratio: aspect,
-              resolution: resolution,
-              output_format: 'jpg', // Default to jpg, can be 'jpg' or 'png'
-              safety_filter_level: 'block_only_high', // Default safety filter
-            };
-
-            // Add image_input if user provided images
-            if (imageInput.length > 0) {
-              payload.image_input = imageInput;
-            }
-
-            const result = await dispatch(replicateGenerate(payload)).unwrap();
-            return result;
-          });
-
-          // Wait for all generations to complete
-          const results = await Promise.all(generationPromises);
-
-          // Combine all images from all results
-          const allImages = results.flatMap(result => result.images || []);
-          const combinedResult = {
-            ...results[0], // Use first result as base
-            images: allImages
-          };
-
+          // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
               ...tempEntry,
               id: tempEntryId,
-              images: (combinedResult.images || []),
+              images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
-              imageCount: (combinedResult.images?.length || imageCount),
+              imageCount: (result.images?.length || imageCount),
             } as any;
             upsertLocalGeneratingEntry(completedEntry);
           } catch { }
 
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing
@@ -3480,7 +3457,7 @@ const InputBox = () => {
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
