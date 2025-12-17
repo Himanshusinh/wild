@@ -2181,31 +2181,15 @@ const InputBox = (props: InputBoxProps = {}) => {
   const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
     if (uploadModalType === 'image') {
       if (uploadModalTarget === 'last_frame') {
-        // Handle last frame image based on model (NOT for Pro Fast)
-        if (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast')) {
-          setSeedanceLastFrameImage(urls[0] || "");
-        } else {
-          setLastFrameImage(urls[0] || "");
-        }
-      } else if (uploadModalTarget === 'first_frame') {
-        // Handle first frame image for Seedance (NOT for Pro Fast)
-        if (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast')) {
-          setSeedanceFirstFrameImage(urls[0] || "");
-        } else {
-          // For WAN 2.2 Animate Replace, set character image instead of uploaded images
-          if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
-            setUploadedCharacterImage(urls[0] || "");
-          } else {
-            // Replace existing images instead of appending
-            setUploadedImages(urls);
-          }
-        }
+        // Handle last frame image
+        setLastFrameImage(urls[0] || "");
       } else {
         // For WAN 2.2 Animate Replace, set character image instead of uploaded images
         if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
           setUploadedCharacterImage(urls[0] || "");
         } else {
           // Replace existing images instead of appending
+          // Seedance I2V uses this regular uploadedImages array
           setUploadedImages(urls);
         }
       }
@@ -2795,12 +2779,16 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
-          // Seedance T2V
+          // Seedance T2V - supports first and last frame images (Pro and Lite only, not Pro Fast)
           const isLite = selectedModel.includes('lite');
           const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
-          const hasFirstFrame = !isProFast && seedanceFirstFrameImage && seedanceFirstFrameImage.trim() !== '';
-          const hasLastFrame = !isProFast && seedanceLastFrameImage && seedanceLastFrameImage.trim() !== '';
+          // First frame and last frame support (Pro and Lite only)
+          const firstFrame = !isProFast && uploadedImages.length > 0 ? uploadedImages[0] : null;
+          const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : (!isProFast && uploadedImages.length > 1 ? uploadedImages[1] : null);
+          const hasFirstFrame = Boolean(firstFrame);
+          const hasLastFrame = Boolean(lastFrame);
+          
           let modelName = 'bytedance/seedance-1-pro';
           if (isLite) {
             modelName = 'bytedance/seedance-1-lite';
@@ -2817,9 +2805,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             generationType: 'text-to-video',
             isPublic,
             // First frame image (optional, but required if last_frame_image is provided)
-            ...(hasFirstFrame ? { image: seedanceFirstFrameImage } : {}),
+            ...(hasFirstFrame ? { image: firstFrame } : {}),
             // Last frame image (optional, only works if first frame image is also provided)
-            ...(hasLastFrame ? { last_frame_image: seedanceLastFrameImage } : {}),
+            ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
             // Reference images (1-4 images) - only include if first/last frame images are NOT used
             // reference_images cannot be used with first/last frame images or 1080p resolution
             ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
@@ -3172,7 +3160,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/kling-i2v/submit';
         } else if (selectedModel.includes('seedance')) {
-          // Seedance I2V - supports both t2v and i2v variants, use I2V when image is uploaded
+          // Seedance I2V - Image-to-video mode (supports first frame image and optional last frame for Pro/Lite)
           if (uploadedImages.length === 0) {
             setError("Seedance image-to-video requires an input image");
             return;
@@ -3180,7 +3168,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           const isLite = selectedModel.includes('lite');
           const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
-          const hasLastFrame = !isProFast && seedanceLastFrameImage && seedanceLastFrameImage.trim() !== '';
+          // Last frame support (Pro and Lite only, not Pro Fast)
+          const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : null;
+          const hasLastFrame = Boolean(lastFrame);
+          
           let modelName = 'bytedance/seedance-1-pro';
           if (isLite) {
             modelName = 'bytedance/seedance-1-lite';
@@ -3191,14 +3182,14 @@ const InputBox = (props: InputBoxProps = {}) => {
             model: modelName,
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
-            image: uploadedImages[0],
+            image: uploadedImages[0], // First frame image for I2V
             duration,
             resolution: seedanceResolution,
             // aspect_ratio is ignored for I2V, but we can include it for consistency
             generationType: 'image-to-video',
             isPublic,
-            // Optional: Add last_frame_image if provided (for Seedance)
-            ...(hasLastFrame ? { last_frame_image: seedanceLastFrameImage } : {}),
+            // Optional: Add last_frame_image if provided (for Seedance Pro/Lite)
+            ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
             // Reference images (1-4 images) - only include if last_frame_image is NOT used
             // reference_images cannot be used with first/last frame images or 1080p resolution
             ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
@@ -5170,12 +5161,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                     </div>
                   )}
 
-                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01/Seedance which have separate handlers) */}
+                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01 which have separate handlers) */}
+                  {/* Seedance I2V mode can use regular image upload button */}
                   {currentModelCapabilities.supportsImageToVideo &&
                     !selectedModel.includes("MiniMax") &&
                     selectedModel !== "I2V-01-Director" &&
-                    selectedModel !== "S2V-01" &&
-                    !selectedModel.includes('seedance') && (
+                    selectedModel !== "S2V-01" && (
                       <div className="relative">
                         <button
                           className="md:p-2  pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -5231,7 +5222,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(((selectedModel === "MiniMax-Hailuo-02") &&
                     (selectedResolution === "768P" || selectedResolution === "1080P")) ||
                     selectedModel.includes("veo3.1") ||
-                    selectedModel === "kling-o1") &&
+                    selectedModel === "kling-o1" ||
+                    (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
                     currentModelCapabilities.supportsImageToVideo && (
                       <div className="flex items-center justify-center">
                         <Image
@@ -5244,12 +5236,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </div>
                     )}
 
-                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P) and Veo 3.1 (fast/standard) */}
+                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P), Veo 3.1 (fast/standard), and Seedance Pro/Lite */}
                   {((((selectedModel === "MiniMax-Hailuo-02") &&
                     (selectedResolution === "768P" || selectedResolution === "1080P")) ||
                     selectedModel.includes("veo3.1") ||
-                    selectedModel === "kling-o1")) &&
-                    currentModelCapabilities.supportsImageToVideo && (
+                    selectedModel === "kling-o1" ||
+                    (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
+                    currentModelCapabilities.supportsImageToVideo) && (
                       <div className="relative ">
                         <button
                           className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -5267,56 +5260,6 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </div>
                     )}
 
-                  {/* Seedance First/Last Frame Image Uploads (for T2V mode) - NOT for Pro Fast */}
-                  {selectedModel.includes('seedance') && !selectedModel.includes('i2v') && !selectedModel.includes('pro-fast') && (
-                    <>
-                      {/* First Frame Image Upload for Seedance */}
-                      <div className="relative">
-                        <button
-                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                          onClick={() => {
-                            setUploadModalType('image');
-                            setUploadModalTarget('first_frame');
-                            setIsUploadModalOpen(true);
-                          }}
-                        >
-                          <div className="relative">
-                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${seedanceFirstFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">First Frame (optional)</div>
-                          </div>
-                        </button>
-                      </div>
-
-                      {/* Arrow icon between first and last frame uploads for Seedance */}
-                      <div className="flex items-center justify-center">
-                        <Image
-                          src="/icons/arrow-right-left.svg"
-                          alt="Arrow"
-                          width={16}
-                          height={16}
-                          className="opacity-80 mr-1 -ml-1"
-                        />
-                      </div>
-
-                      {/* Last Frame Image Upload for Seedance */}
-                      <div className="relative">
-                        <button
-                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                          onClick={() => {
-                            setUploadModalType('image');
-                            setUploadModalTarget('last_frame');
-                            setIsUploadModalOpen(true);
-                          }}
-                          disabled={!seedanceFirstFrameImage}
-                        >
-                          <div className="relative">
-                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${seedanceLastFrameImage ? 'text-blue-300 bg-white/20' : ''} ${!seedanceFirstFrameImage ? 'opacity-50 cursor-not-allowed' : ''}`} />
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Last Frame (optional)</div>
-                          </div>
-                        </button>
-                      </div>
-                    </>
-                  )}
 
                   {/* Video Upload (for video-to-video models) */}
                   {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
@@ -5376,14 +5319,12 @@ const InputBox = (props: InputBoxProps = {}) => {
           <div className="px-3 md:pb-3 pb-0">
             {/* Uploaded Images */}
             {(() => {
-              const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1") ? uploadedImages.slice(0, 2) : uploadedImages;
+              const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) ? uploadedImages.slice(0, 2) : uploadedImages;
               const extraLastFrame =
-                !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
-              const seedanceFirstFrame = selectedModel.includes('seedance') && !selectedModel.includes('i2v') && !selectedModel.includes('pro-fast') && !!seedanceFirstFrameImage;
-              const seedanceLastFrame = selectedModel.includes('seedance') && !selectedModel.includes('i2v') && !selectedModel.includes('pro-fast') && !!seedanceLastFrameImage;
-              return (displayImages.length > 0 || extraLastFrame || seedanceFirstFrame || seedanceLastFrame) ? (
+                !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v')) || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
+              return (displayImages.length > 0 || extraLastFrame) ? (
                 <div className="md:mb-3 -mb-6">
-                  <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0) + (seedanceFirstFrame ? 1 : 0) + (seedanceLastFrame ? 1 : 0)})</div>
+                  <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
                   <div className="flex gap-2 flex-wrap">
                     {displayImages.map((image, index) => (
                       <div key={index} className="relative group">
@@ -5454,75 +5395,6 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </div>
                     )}
 
-                    {/* Seedance First Frame Image Display */}
-                    {seedanceFirstFrame && (
-                      <div className="relative group">
-                        <div
-                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: seedanceFirstFrameImage,
-                              assetType: 'image',
-                              title: 'Seedance First Frame'
-                            });
-                          }}
-                        >
-                          <img
-                            src={seedanceFirstFrameImage}
-                            alt="Seedance First Frame"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Seedance First Frame</div>
-                        </div>
-                        <button
-                          aria-label="Remove seedance first frame"
-                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          onClick={() => {
-                            setSeedanceFirstFrameImage("");
-                            // Also clear last frame if first frame is removed
-                            if (seedanceLastFrameImage) {
-                              setSeedanceLastFrameImage("");
-                            }
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Seedance Last Frame Image Display */}
-                    {seedanceLastFrame && (
-                      <div className="relative group">
-                        <div
-                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: seedanceLastFrameImage,
-                              assetType: 'image',
-                              title: 'Seedance Last Frame'
-                            });
-                          }}
-                        >
-                          <img
-                            src={seedanceLastFrameImage}
-                            alt="Seedance Last Frame"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Seedance Last Frame</div>
-                        </div>
-                        <button
-                          aria-label="Remove seedance last frame"
-                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          onClick={() => {
-                            setSeedanceLastFrameImage("");
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : null;
