@@ -130,6 +130,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video & Image→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
 
       { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video & Image→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
+      { value: "seedance-1.0-pro-fast-t2v", label: "Seedance 1.0 Pro Fast", description: "Text→Video & Image→Video (fastest), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
       { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video & Image→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
       { value: "ltx2-pro-t2v", label: "LTX V2 Pro", description: "Text→Video & Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
       { value: "ltx2-fast-t2v", label: "LTX V2 Fast", description: "Text→Video & Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },

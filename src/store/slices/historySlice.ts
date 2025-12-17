@@ -502,7 +502,7 @@ export const loadMoreHistory = createAsyncThunk(
           (params as any).cursor = String(nextPageParams.cursor.id);
         }
       } else {
-        // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
+      // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
         // First check if we have a stored nextCursor from previous API response (most reliable)
         if (storedNextCursor !== null && storedNextCursor !== undefined) {
           // Use stored cursor - can be number (timestamp millis) or numeric string (timestamp) or non-numeric string (document ID)
@@ -518,10 +518,10 @@ export const loadMoreHistory = createAsyncThunk(
           }
         } else if (nextPageParams.cursor?.timestamp) {
           // Fallback: compute from last entry's timestamp
-          try {
-            const millis = new Date(nextPageParams.cursor.timestamp).getTime();
-            if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
-          } catch {}
+        try {
+          const millis = new Date(nextPageParams.cursor.timestamp).getTime();
+          if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
+        } catch {}
         } else if (nextPageParams.cursor?.id) {
           // Last fallback: use document ID (legacy cursor)
           (params as any).cursor = String(nextPageParams.cursor.id);
@@ -759,7 +759,7 @@ const historySlice = createSlice({
           const existingMap = new Map<string, any>(state.entries.map((e: any) => [String(e?.id || ''), e]));
           const backendEntries: any[] = Array.isArray(action.payload.entries) ? action.payload.entries : [];
           const backendIds = new Set<string>(backendEntries.map((e: any) => String(e?.id || '')));
-
+          
           // Build merged list in BACKEND order
           const mergedInOrder = backendEntries.map((backendEntry: any) => {
             const id = String(backendEntry?.id || '');
@@ -768,15 +768,15 @@ const historySlice = createSlice({
 
             // If both exist, prefer the one with more recent timestamp or better status,
             // but keep the backend position to preserve ordering.
-            const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
-            const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
+              const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
+              const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
             if (
               existingTimestamp > backendTimestamp ||
-              (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
+                  (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
               (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))
             ) {
               return existingEntry;
-            }
+              }
             return backendEntry;
           });
 

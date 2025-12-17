@@ -571,6 +571,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
       duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     }
   },
+  {
+    frontendValue: 'seedance-1.0-pro-fast-t2v',
+    creditModelName: 'Seedance 1.0 Pro Fast T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-pro-fast-i2v',
+    creditModelName: 'Seedance 1.0 Pro Fast I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
 
   // PixVerse Models (Replicate)
   {
@@ -976,7 +996,8 @@ export const buildCreditModelName = (
     const resNormalized = res.includes('480') ? '480p' : res.includes('720') ? '720p' : '1080p';
     // Map duration: 2-6s -> 5s, 7-12s -> 10s for pricing
     const durForPricing = (d >= 2 && d <= 6) ? 5 : (d >= 7 && d <= 12) ? 10 : 5;
-    const tier = mapping.frontendValue.includes('lite') ? 'Lite' : 'Pro';
+    const isProFast = mapping.frontendValue.includes('pro-fast');
+    const tier = mapping.frontendValue.includes('lite') ? 'Lite' : (isProFast ? 'Pro Fast' : 'Pro');
     const mode = mapping.frontendValue.includes('i2v') ? 'I2V' : 'T2V';
     modelName = `Seedance 1.0 ${tier} ${mode} ${durForPricing}s ${resNormalized}`;
   }

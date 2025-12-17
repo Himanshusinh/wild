@@ -93,7 +93,7 @@ export const useHistoryLoader = ({
     const filtersMatch = skipBackendGenerationFilter
       ? true
       : (Array.isArray(currentFilterVal)
-        ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
+      ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
         : norm(String(currentFilterVal || '')) === norm(generationType));
     const sortOrderMatches = sortOrder ? currentFilterSortOrder === sortOrder : true;
     const modeMatches = mode ? norm(String(currentFilterMode || '')) === norm(mode) : true;
@@ -330,9 +330,9 @@ export const useHistoryLoader = ({
       const genFilter: any = skipBackendGenerationFilter
         ? {}
         : { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
-      if (mode) genFilter.mode = mode;
-      if (sortOrder) genFilter.sortOrder = sortOrder;
-      const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
+    if (mode) genFilter.mode = mode;
+    if (sortOrder) genFilter.sortOrder = sortOrder;
+    const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
     
     // Update filters first to ensure fresh state
     dispatch(setFilters(genFilter as any));

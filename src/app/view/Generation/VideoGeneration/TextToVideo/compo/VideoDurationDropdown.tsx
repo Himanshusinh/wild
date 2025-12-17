@@ -114,19 +114,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       ];
     }
     if (selectedModel?.includes("seedance")) {
-      // Seedance supports 2-12 seconds
+      // Seedance supports only 5s and 10s for all variants (Lite, Pro, Pro Fast)
       return [
-        { value: 2, label: "2 seconds", description: "Very short" },
-        { value: 3, label: "3 seconds", description: "Short" },
-        { value: 4, label: "4 seconds", description: "Short" },
         { value: 5, label: "5 seconds", description: "Standard" },
-        { value: 6, label: "6 seconds", description: "Standard" },
-        { value: 7, label: "7 seconds", description: "Medium" },
-        { value: 8, label: "8 seconds", description: "Medium" },
-        { value: 9, label: "9 seconds", description: "Long" },
-        { value: 10, label: "10 seconds", description: "Long" },
-        { value: 11, label: "11 seconds", description: "Very long" },
-        { value: 12, label: "12 seconds", description: "Maximum" }
+        { value: 10, label: "10 seconds", description: "Long" }
       ];
     }
     if (selectedModel?.includes("veo3.1")) {

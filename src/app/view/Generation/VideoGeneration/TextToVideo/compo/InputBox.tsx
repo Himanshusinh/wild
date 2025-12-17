@@ -50,6 +50,7 @@ import { toThumbUrl } from '@/lib/thumb';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
 import AssetViewerModal from '@/components/AssetViewerModal';
+import HistoryControls from './HistoryControls';
 
 
 interface InputBoxProps {
@@ -237,6 +238,8 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [klingMode, setKlingMode] = usePersistedGenerationState<'standard' | 'pro'>("klingMode", 'standard', "text-to-video");
   // Seedance specific state
   const [seedanceResolution, setSeedanceResolution] = usePersistedGenerationState("seedanceResolution", "1080p", "text-to-video"); // For Seedance resolution (480p/720p/1080p)
+  const [seedanceFirstFrameImage, setSeedanceFirstFrameImage] = usePersistedGenerationState("seedanceFirstFrameImage", "", "text-to-video"); // For Seedance first frame image
+  const [seedanceLastFrameImage, setSeedanceLastFrameImage] = usePersistedGenerationState("seedanceLastFrameImage", "", "text-to-video"); // For Seedance last frame image
   // PixVerse specific state
   const [pixverseQuality, setPixverseQuality] = usePersistedGenerationState("pixverseQuality", "720p", "text-to-video"); // For PixVerse quality (360p/540p/720p/1080p)
   // WAN 2.2 Animate Replace specific state
@@ -930,7 +933,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5);
           setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
-          // Seedance models: duration default 5s, resolution default 1080p, aspect ratio default 16:9
+          // Seedance models: duration default 5s (only 5s and 10s supported), resolution default 1080p, aspect ratio default 16:9
           setDuration(5);
           setSeedanceResolution("1080p");
           setFrameSize("16:9"); // For T2V aspect ratio
@@ -1049,7 +1052,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5);
           setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
-          // Seedance models: duration default 5s, resolution default 1080p
+          // Seedance models: duration default 5s (only 5s and 10s supported), resolution default 1080p
           setDuration(5);
           setSeedanceResolution("1080p");
           // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
@@ -1112,40 +1115,18 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  // searchInput: what user is typing; searchQuery: what is applied to backend filters
-  const [searchInput, setSearchInput] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const searchDebounceRef = useRef<any>(null);
-  const didInitSearchRef = useRef(false);
-  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
-  const [dateInput, setDateInput] = useState<string>("");
-  const dateInputRef = useRef<HTMLInputElement | null>(null);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
-  const calendarRef = useRef<HTMLDivElement | null>(null);
-  const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
-  const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
+  
+  // Read search, sort, and date filters from Redux (managed by HistoryControls)
+  const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
+  const sortOrder = currentFilters.sortOrder || 'desc';
+  const searchQuery = currentFilters.search || '';
+  const dateRange = currentFilters.dateRange ? {
+    start: currentFilters.dateRange.start ? new Date(currentFilters.dateRange.start) : null,
+    end: currentFilters.dateRange.end ? new Date(currentFilters.dateRange.end) : null,
+  } : { start: null, end: null };
   
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
-
-  // Close calendar when clicking outside / pressing Escape
-  useEffect(() => {
-    if (!showCalendar) return;
-    const onDocClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
-    };
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onEsc);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onEsc);
-    };
-  }, [showCalendar]);
   
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
@@ -2042,58 +2023,13 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Get current UI generation type to detect feature switches
   const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
-  const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
   const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
 
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
   const didInitialLoadRef = useRef(false);
 
-  // Backend-only sorting: clear UI and force a fresh backend query when sort changes
-  const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
-    setSortOrder(order);
-    setPage(1);
-    didInitialLoadRef.current = true; // prevent immediate re-trigger by initial-load effect
-    dispatch(clearHistory());
-    dispatch(setFilters({
-      mode: 'video',
-      sortOrder: order,
-      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
-      ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
-    } as any));
-    await (dispatch as any)(loadHistory({
-      filters: { mode: 'video', sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode: 'video', sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 10 },
-      requestOrigin: 'page',
-      expectedType: 'text-to-video',
-      forceRefresh: true,
-      debugTag: `InputBox:video-sort:${order}:${Date.now()}`,
-    } as any));
-  }, [dispatch, dateRange, searchQuery]);
-
-  const onDateChange = useCallback(async (next: { start: Date | null; end: Date | null }, nextInput?: string) => {
-    setDateRange(next);
-    if (typeof nextInput === 'string') setDateInput(nextInput);
-    setPage(1);
-    didInitialLoadRef.current = true;
-    dispatch(clearHistory());
-    dispatch(setFilters({
-      mode: 'video',
-      sortOrder,
-      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
-      ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {})
-    } as any));
-    await (dispatch as any)(loadHistory({
-      filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 10 },
-      requestOrigin: 'page',
-      expectedType: 'text-to-video',
-      forceRefresh: true,
-      debugTag: `InputBox:video-date:${Date.now()}`,
-    } as any));
-  }, [dispatch, sortOrder, searchQuery]);
+  // Note: onSortChange and onDateChange are now handled by HistoryControls component
   // Use mode: 'video' to load ALL video types at once (same as History.tsx)
   // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
   useEffect(() => {
@@ -2243,7 +2179,25 @@ const InputBox = (props: InputBoxProps = {}) => {
   const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
     if (uploadModalType === 'image') {
       if (uploadModalTarget === 'last_frame') {
-        setLastFrameImage(urls[0] || "");
+        // Handle last frame image based on model (NOT for Pro Fast)
+        if (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast')) {
+          setSeedanceLastFrameImage(urls[0] || "");
+        } else {
+          setLastFrameImage(urls[0] || "");
+        }
+      } else if (uploadModalTarget === 'first_frame') {
+        // Handle first frame image for Seedance (NOT for Pro Fast)
+        if (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast')) {
+          setSeedanceFirstFrameImage(urls[0] || "");
+        } else {
+          // For WAN 2.2 Animate Replace, set character image instead of uploaded images
+          if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
+            setUploadedCharacterImage(urls[0] || "");
+          } else {
+            // Replace existing images instead of appending
+            setUploadedImages(urls);
+          }
+        }
       } else {
         // For WAN 2.2 Animate Replace, set character image instead of uploaded images
         if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
@@ -2803,9 +2757,18 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
           // Seedance T2V
           const isLite = selectedModel.includes('lite');
+          const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
+          const hasFirstFrame = !isProFast && seedanceFirstFrameImage && seedanceFirstFrameImage.trim() !== '';
+          const hasLastFrame = !isProFast && seedanceLastFrameImage && seedanceLastFrameImage.trim() !== '';
+          let modelName = 'bytedance/seedance-1-pro';
+          if (isLite) {
+            modelName = 'bytedance/seedance-1-lite';
+          } else if (isProFast) {
+            modelName = 'bytedance/seedance-1-pro-fast';
+          }
           requestBody = {
-            model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
+            model: modelName,
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             duration,
@@ -2813,9 +2776,18 @@ const InputBox = (props: InputBoxProps = {}) => {
             aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
             generationType: 'text-to-video',
             isPublic,
+            // First frame image (optional, but required if last_frame_image is provided)
+            ...(hasFirstFrame ? { image: seedanceFirstFrameImage } : {}),
+            // Last frame image (optional, only works if first frame image is also provided)
+            ...(hasLastFrame ? { last_frame_image: seedanceLastFrameImage } : {}),
+            // Reference images (1-4 images) - only include if first/last frame images are NOT used
+            // reference_images cannot be used with first/last frame images or 1080p resolution
+            ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
+              reference_images: references.slice(0, 4)
+            } : {}),
           };
           generationType = 'text-to-video';
-          apiEndpoint = '/api/replicate/seedance-t2v/submit';
+          apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-t2v/submit' : '/api/replicate/seedance-t2v/submit';
         } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
           // PixVerse T2V
           const apiPrompt = getApiPrompt(prompt);
@@ -3166,9 +3138,17 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           const isLite = selectedModel.includes('lite');
+          const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
+          const hasLastFrame = !isProFast && seedanceLastFrameImage && seedanceLastFrameImage.trim() !== '';
+          let modelName = 'bytedance/seedance-1-pro';
+          if (isLite) {
+            modelName = 'bytedance/seedance-1-lite';
+          } else if (isProFast) {
+            modelName = 'bytedance/seedance-1-pro-fast';
+          }
           requestBody = {
-            model: isLite ? 'bytedance/seedance-1-lite' : 'bytedance/seedance-1-pro',
+            model: modelName,
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
@@ -3177,11 +3157,16 @@ const InputBox = (props: InputBoxProps = {}) => {
             // aspect_ratio is ignored for I2V, but we can include it for consistency
             generationType: 'image-to-video',
             isPublic,
-            // Optional: Add last_frame_image if provided (similar to MiniMax)
-            ...(lastFrameImage && lastFrameImage.trim() !== '' ? { last_frame_image: lastFrameImage } : {}),
+            // Optional: Add last_frame_image if provided (for Seedance)
+            ...(hasLastFrame ? { last_frame_image: seedanceLastFrameImage } : {}),
+            // Reference images (1-4 images) - only include if last_frame_image is NOT used
+            // reference_images cannot be used with first/last frame images or 1080p resolution
+            ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
+              reference_images: references.slice(0, 4)
+            } : {}),
           } as any;
           generationType = 'image-to-video';
-          apiEndpoint = '/api/replicate/seedance-i2v/submit';
+          apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-i2v/submit' : '/api/replicate/seedance-i2v/submit';
         } else if (selectedModel.includes('pixverse')) {
           // PixVerse I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
@@ -4482,51 +4467,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const newLocal = "pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50";
   // (Removed duplicate hook declaration; initial load handled earlier)
 
-  // Prompt search (backend-driven)
-  const applySearch = useCallback(async (nextSearch: string) => {
-    const s = String(nextSearch || '').trim();
-    setSearchQuery(s);
-    setPage(1);
-    didInitialLoadRef.current = true;
-    dispatch(clearHistory());
-    dispatch(setFilters({
-      mode: 'video',
-      sortOrder,
-      ...(s ? { search: s } : {}),
-      ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
-    } as any));
-    await (dispatch as any)(loadHistory({
-      filters: { mode: 'video', sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode: 'video', sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 10 },
-      requestOrigin: 'page',
-      expectedType: 'text-to-video',
-      forceRefresh: true,
-      debugTag: `InputBox:video-search:${Date.now()}`,
-    } as any));
-  }, [dispatch, sortOrder, dateRange]);
-
-  // Live prompt search (Freepik-style): as user types, debounce and query backend.
-  useEffect(() => {
-    // Skip first run (initial mount) to avoid an extra fetch.
-    if (!didInitSearchRef.current) {
-      didInitSearchRef.current = true;
-      return;
-    }
-
-    const next = String(searchInput || '').trim();
-    const applied = String(searchQuery || '').trim();
-    if (next === applied) return;
-
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      applySearch(next);
-    }, 350);
-
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  }, [searchInput, searchQuery, applySearch]);
+  // Note: applySearch and live search logic are now handled by HistoryControls component
 
   return (
     <React.Fragment>
@@ -4542,156 +4483,14 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
           )}
 
-          {/* Sort controls (backend-only) */}
-          <div className="flex items-center justify-end gap-2 px-2 md:px-0 mb-2 pt-14 md:pt-0 sticky">
-            {/* Prompt search (backend-driven) */}
-            <div className="relative flex items-center mr-auto">
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search prompt..."
-                className={`px-2 py-1.5 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // X behaves like clear: remove applied backend search and reload.
-                    setSearchInput('');
-                    applySearch('');
-                  }}
-                  className="absolute right-1 p-1 rounded bg-white/5 hover:bg-white/10 text-white/80"
-                  aria-label="Clear search input"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => onSortChange('desc')}
-              className={`relative group px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-              aria-label="Recent"
-            >
-              <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
-              <span className="text-xs">Recent</span>
-            </button>
-            <button
-              onClick={() => onSortChange('asc')}
-              className={`relative group px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-              aria-label="Oldest"
-            >
-              <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
-              <span className="text-xs">Oldest</span>
-            </button>
+          {/* Desktop: Search, Sort, and Date controls - on same line */}
+          <div className="hidden md:flex items-center justify-end gap-2 mt-2 md:pr-4 ">
+            <HistoryControls mode="video" />
+          </div>
 
-            {/* Date picker */}
-            <div className="relative flex items-center gap-1">
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={dateInput}
-                onChange={async (e) => {
-                  const value = e.target.value;
-                  setDateInput(value);
-                  if (!value) {
-                    await onDateChange({ start: null, end: null }, '');
-                    return;
-                  }
-                  const d = new Date(value + 'T00:00:00');
-                  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                  await onDateChange({ start, end }, value);
-                }}
-                style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
-              />
-              <button
-                onClick={() => {
-                  const base = dateRange.start ? new Date(dateRange.start) : new Date();
-                  setCalendarMonth(base.getMonth());
-                  setCalendarYear(base.getFullYear());
-                  setShowCalendar((v) => !v);
-                }}
-                className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Date"
-              >
-                <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
-              </button>
-              {showCalendar && (
-                <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
-                  <div className="flex items-center justify-between mb-2 text-white">
-                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                      const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                      setCalendarYear(prev.getFullYear());
-                      setCalendarMonth(prev.getMonth());
-                    }}>‹</button>
-                    <div className="text-sm font-semibold">
-                      {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
-                    </div>
-                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                      const next = new Date(calendarYear, calendarMonth + 1, 1);
-                      setCalendarYear(next.getFullYear());
-                      setCalendarMonth(next.getMonth());
-                    }}>›</button>
-                  </div>
-                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
-                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                      <div key={`pad-${i}`} className="h-8" />
-                    ))}
-                    {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                      const day = i + 1;
-                      const thisDate = new Date(calendarYear, calendarMonth, day);
-                      const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
-                      return (
-                        <button
-                          key={day}
-                          className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                          onClick={async () => {
-                            const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
-                            const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                            const iso = thisDate.toISOString().slice(0, 10);
-                            setDateInput(iso);
-                            await onDateChange({ start, end }, iso);
-                            setShowCalendar(false);
-                          }}
-                        >{day}</button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center justify-between mt-3">
-                    <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                      setDateInput('');
-                      await onDateChange({ start: null, end: null }, '');
-                      setShowCalendar(false);
-                    }}>Clear</button>
-                    <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                      const now = new Date();
-                      setCalendarMonth(now.getMonth());
-                      setCalendarYear(now.getFullYear());
-                    }}>Today</button>
-                  </div>
-                </div>
-              )}
-              {dateRange.start && (
-                <button
-                  className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
-                  onClick={async () => {
-                    setDateInput('');
-                    await onDateChange({ start: null, end: null }, '');
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
+          {/* Mobile: Search, Sort, and Date controls */}
+          <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
+            <HistoryControls mode="video" />
           </div>
 
           <div className="md:space-y-8 space-y-2 pb-40">
@@ -5298,11 +5097,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                     </div>
                   )}
 
-                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01 which have separate handlers) */}
+                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01/Seedance which have separate handlers) */}
                   {currentModelCapabilities.supportsImageToVideo &&
                     !selectedModel.includes("MiniMax") &&
                     selectedModel !== "I2V-01-Director" &&
-                    selectedModel !== "S2V-01" && (
+                    selectedModel !== "S2V-01" &&
+                    !selectedModel.includes('seedance') && (
                       <div className="relative">
                         <button
                           className="md:p-2  pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -5394,6 +5194,57 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </div>
                     )}
 
+                  {/* Seedance First/Last Frame Image Uploads (for T2V mode) - NOT for Pro Fast */}
+                  {selectedModel.includes('seedance') && !selectedModel.includes('i2v') && !selectedModel.includes('pro-fast') && (
+                    <>
+                      {/* First Frame Image Upload for Seedance */}
+                      <div className="relative">
+                        <button
+                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          onClick={() => {
+                            setUploadModalType('image');
+                            setUploadModalTarget('first_frame');
+                            setIsUploadModalOpen(true);
+                          }}
+                        >
+                          <div className="relative">
+                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${seedanceFirstFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">First Frame (optional)</div>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Arrow icon between first and last frame uploads for Seedance */}
+                      <div className="flex items-center justify-center">
+                        <Image
+                          src="/icons/arrow-right-left.svg"
+                          alt="Arrow"
+                          width={16}
+                          height={16}
+                          className="opacity-80 mr-1 -ml-1"
+                        />
+                      </div>
+
+                      {/* Last Frame Image Upload for Seedance */}
+                      <div className="relative">
+                        <button
+                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          onClick={() => {
+                            setUploadModalType('image');
+                            setUploadModalTarget('last_frame');
+                            setIsUploadModalOpen(true);
+                          }}
+                          disabled={!seedanceFirstFrameImage}
+                        >
+                          <div className="relative">
+                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${seedanceLastFrameImage ? 'text-blue-300 bg-white/20' : ''} ${!seedanceFirstFrameImage ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Last Frame (optional)</div>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
+
                   {/* Video Upload (for video-to-video models) */}
                   {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
                     <div className="relative">
@@ -5455,9 +5306,11 @@ const InputBox = (props: InputBoxProps = {}) => {
               const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1") ? uploadedImages.slice(0, 2) : uploadedImages;
               const extraLastFrame =
                 !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
-              return (displayImages.length > 0 || extraLastFrame) ? (
+              const seedanceFirstFrame = selectedModel.includes('seedance') && !selectedModel.includes('i2v') && !selectedModel.includes('pro-fast') && !!seedanceFirstFrameImage;
+              const seedanceLastFrame = selectedModel.includes('seedance') && !selectedModel.includes('i2v') && !selectedModel.includes('pro-fast') && !!seedanceLastFrameImage;
+              return (displayImages.length > 0 || extraLastFrame || seedanceFirstFrame || seedanceLastFrame) ? (
                 <div className="md:mb-3 -mb-6">
-                  <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
+                  <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0) + (seedanceFirstFrame ? 1 : 0) + (seedanceLastFrame ? 1 : 0)})</div>
                   <div className="flex gap-2 flex-wrap">
                     {displayImages.map((image, index) => (
                       <div key={index} className="relative group">
@@ -5521,6 +5374,76 @@ const InputBox = (props: InputBoxProps = {}) => {
                           className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
                           onClick={() => {
                             setLastFrameImage("");
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Seedance First Frame Image Display */}
+                    {seedanceFirstFrame && (
+                      <div className="relative group">
+                        <div
+                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: seedanceFirstFrameImage,
+                              assetType: 'image',
+                              title: 'Seedance First Frame'
+                            });
+                          }}
+                        >
+                          <img
+                            src={seedanceFirstFrameImage}
+                            alt="Seedance First Frame"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Seedance First Frame</div>
+                        </div>
+                        <button
+                          aria-label="Remove seedance first frame"
+                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                          onClick={() => {
+                            setSeedanceFirstFrameImage("");
+                            // Also clear last frame if first frame is removed
+                            if (seedanceLastFrameImage) {
+                              setSeedanceLastFrameImage("");
+                            }
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Seedance Last Frame Image Display */}
+                    {seedanceLastFrame && (
+                      <div className="relative group">
+                        <div
+                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: seedanceLastFrameImage,
+                              assetType: 'image',
+                              title: 'Seedance Last Frame'
+                            });
+                          }}
+                        >
+                          <img
+                            src={seedanceLastFrameImage}
+                            alt="Seedance Last Frame"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Seedance Last Frame</div>
+                        </div>
+                        <button
+                          aria-label="Remove seedance last frame"
+                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                          onClick={() => {
+                            setSeedanceLastFrameImage("");
                           }}
                         >
                           ×

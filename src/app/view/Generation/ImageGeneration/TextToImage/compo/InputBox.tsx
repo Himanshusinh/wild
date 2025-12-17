@@ -22,7 +22,7 @@ import {
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
-import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
+import { toggleDropdown, addNotification, setCurrentGenerationType } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
   removeHistoryEntry,
@@ -105,13 +105,6 @@ const InputBox = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  // Forces the prompt editor (contentEditable) to remount when Remix is invoked,
-  // preventing stale DOM from keeping an old prompt visible.
-  const [promptEditorKey, setPromptEditorKey] = useState<number>(0);
-  // When Remix sets a prompt via URL params, we need to wait until Redux has actually updated
-  // before forcing the contentEditable DOM to sync; otherwise the renderer can write the old
-  // prompt back into the DOM.
-  const pendingRemixPromptRef = useRef<string | null>(null);
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     image: any;
@@ -136,6 +129,9 @@ const InputBox = () => {
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
+  // Show loader when switching back into image tab until history is ready
+  const [showSwitchLoader, setShowSwitchLoader] = useState(false);
+  const switchLoadInFlightRef = useRef(false);
 
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
@@ -148,12 +144,13 @@ const InputBox = () => {
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
 
+  // Track UI state to keep history requests gated to the correct generation type
+  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
+  const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
+  const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+
   // Filter states for search, sort, and date
-  // searchInput: what user is typing; searchQuery: what is applied to backend filters
-  const [searchInput, setSearchInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const searchDebounceRef = useRef<any>(null);
-  const didInitSearchRef = useRef(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [dateInput, setDateInput] = useState<string>("");
@@ -164,21 +161,15 @@ const InputBox = () => {
   const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const [isFiltering, setIsFiltering] = useState(false);
-  const [isDateFiltering, setIsDateFiltering] = useState(false);
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
 
   // Handle calendar click outside
-  // IMPORTANT: There are multiple calendar popups (desktop/mobile variants) that previously shared a single ref.
-  // Use a ref-free check so clicking inside the popup doesn't immediately close it before day onClick runs.
   useEffect(() => {
     if (!showCalendar) return;
     const onDocClick = (e: MouseEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && typeof (el as any).closest === 'function') {
-        if ((el as any).closest('[data-calendar-popup="true"]')) return;
-      }
-      setShowCalendar(false);
+      const t = e.target as Node;
+      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
     };
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
     document.addEventListener('mousedown', onDocClick);
@@ -189,15 +180,19 @@ const InputBox = () => {
     };
   }, [showCalendar]);
 
-  // Lightweight UI shimmer while date filter is active (search is applied via button)
+  // Handle search query changes with loading state
   useEffect(() => {
-    if (dateRange.start) {
+    // Show loading when filtering/searching/sorting
+    if (searchQuery.trim() || dateRange.start) {
       setIsFiltering(true);
-      const timer = setTimeout(() => setIsFiltering(false), 300);
+      const timer = setTimeout(() => {
+        setIsFiltering(false);
+      }, 300);
       return () => clearTimeout(timer);
+    } else {
+      setIsFiltering(false);
     }
-    setIsFiltering(false);
-  }, [dateRange]);
+  }, [searchQuery, dateRange]);
   
   // Track sort order changes separately to show loader
   const [isSorting, setIsSorting] = useState(false);
@@ -213,90 +208,31 @@ const InputBox = () => {
     prevSortOrderRef.current = sortOrder;
   }, [sortOrder]);
 
-  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null }; search?: string }) => {
+  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null } }) => {
     const order = next?.sortOrder || sortOrder;
     const dr = next?.dateRange || dateRange;
-    const search = (typeof next?.search === 'string' ? next?.search : searchQuery).trim();
 
     // Update local UI state if caller provided overrides
     if (next?.sortOrder) setSortOrder(next.sortOrder);
     if (next?.dateRange) setDateRange(next.dateRange);
-    if (next?.search !== undefined) setSearchQuery(search);
 
     setPage(1);
 
-    // Build filters and backend filters
     const filters: any = { mode: 'image', sortOrder: order };
-    if (search) filters.search = search;
+    if (searchQuery.trim()) filters.search = searchQuery.trim();
     if (dr.start && dr.end) filters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
-    
-    const backendFilters: any = { mode: 'image', sortOrder: order };
-    if (search) backendFilters.search = search;
-    if (dr.start && dr.end) backendFilters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
-    
-    // Set date filtering state to show loading indicator
-    const isDateChange = next?.dateRange !== undefined;
-    if (isDateChange) {
-      setIsDateFiltering(true);
-    }
-    
-    // Set filters FIRST before clearing history
-    // This ensures useHistoryLoader sees the correct filters (including dateRange) and doesn't trigger a second request
     dispatch(setFilters(filters));
-    
-    // Clear history entries immediately when date range is provided (user selected a date)
-    // This ensures the loading indicator shows instead of old entries
-    // NOTE: Filters are set first so useHistoryLoader will see them and not trigger a reload
-    if (isDateChange) {
-      dispatch(clearHistory());
-    }
 
-    try {
-      await (dispatch as any)(loadHistory({
-        filters,
-        backendFilters,
-        paginationParams: { limit: 60 },
-        requestOrigin: 'page',
-        expectedType: 'text-to-image',
-        skipBackendGenerationFilter: true,
-        forceRefresh: true,
-      }));
-    } finally {
-      if (isDateChange) {
-        setIsDateFiltering(false);
-      }
-    }
+    await (dispatch as any)(loadHistory({
+      filters,
+      backendFilters: { mode: 'image', sortOrder: order, ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}) } as any,
+      paginationParams: { limit: 60 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-image',
+      skipBackendGenerationFilter: true,
+      forceRefresh: true,
+    }));
   }, [dispatch, searchQuery, sortOrder, dateRange]);
-
-  // Live prompt search (Freepik-style): as user types, debounce and query backend.
-  useEffect(() => {
-    // Skip first run (initial mount) to avoid an extra fetch.
-    if (!didInitSearchRef.current) {
-      didInitSearchRef.current = true;
-      return;
-    }
-
-    const next = String(searchInput || '').trim();
-    const applied = String(searchQuery || '').trim();
-    if (next === applied) return;
-
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
-
-    setIsFiltering(true);
-    searchDebounceRef.current = setTimeout(async () => {
-      try {
-        await refreshHistoryFromBackend({ search: next });
-      } finally {
-        setIsFiltering(false);
-      }
-    }, 350);
-
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  }, [searchInput, searchQuery, refreshHistoryFromBackend]);
 
   // Backend is the source of truth for sorting/pagination. When sort changes, clear UI and re-fetch from backend.
   const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
@@ -406,13 +342,7 @@ const InputBox = () => {
         dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
-      if (remixNonce) {
-        const n = Number(remixNonce);
-        setPromptEditorKey(Number.isFinite(n) ? n : Date.now());
-      }
-
       if (prm) {
-        pendingRemixPromptRef.current = prm;
         dispatch(setPrompt(prm));
         // Force the visible contentEditable prompt editor to reflect the new prompt immediately.
         // This avoids cases where the editor is mid-update (isUpdatingRef=true) and would otherwise
@@ -473,6 +403,11 @@ const InputBox = () => {
     mode: 'image',
     skipBackendGenerationFilter: true,
   });
+
+  // Ensure UI slice reflects we are on the image generation page (avoids expectedType gating issues)
+  useEffect(() => {
+    try { (dispatch as any)(setCurrentGenerationType('text-to-image' as any)); } catch { }
+  }, [dispatch]);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
@@ -1061,9 +996,68 @@ const InputBox = () => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+
+  // IMPORTANT: Do not sort in frontend. Backend is the source of truth for ordering and pagination.
+  // This page requests mode:'image' from backend, so entries should already be image-only + correctly ordered.
+  const historyEntries = useAppSelector((state: any) => state.history?.entries || [], shallowEqual);
+
+  // When returning from another feature (e.g., video), reset filters and reload image history
+  useEffect(() => {
+    const norm = (t?: string) => (t || '').replace(/[_-]/g, '-').toLowerCase();
+    const normalizedCurrent = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
+    const normalizedLast = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
+    const isImagePage = normalizedCurrent === 'text-to-image';
+    const switchedToImage = isImagePage && normalizedLast !== normalizedCurrent;
+    const currentFilterMode = (currentFilters as any)?.mode;
+    const currentFilterSort = (currentFilters as any)?.sortOrder;
+    const filtersAreForImage = !currentFilterMode || currentFilterMode === 'image';
+    const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
+    const hasEntries = historyEntries && historyEntries.length > 0;
+
+    const shouldReload = (switchedToImage || !filtersAreForImage || sortMismatch) && !switchLoadInFlightRef.current;
+
+    if (shouldReload && !loading) {
+      // Avoid redundant reloads when we already have fresh entries and filters are correct
+      if (switchedToImage && filtersAreForImage && !sortMismatch && hasEntries) {
+        lastUIGenerationTypeRef.current = currentUIGenerationType;
+        return;
+      }
+
+      switchLoadInFlightRef.current = true;
+      setShowSwitchLoader(true);
+
+      setPage(1);
+      const filters: any = { mode: 'image', sortOrder };
+      if (searchQuery.trim()) filters.search = searchQuery.trim();
+      if (dateRange.start && dateRange.end) filters.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() };
+
+      dispatch(setFilters(filters));
+      (dispatch as any)(loadHistory({
+        filters,
+        backendFilters: { ...filters } as any,
+        paginationParams: { limit: 60 },
+        requestOrigin: 'page',
+        expectedType: 'text-to-image',
+        skipBackendGenerationFilter: true,
+        forceRefresh: true,
+      } as any)).finally(() => {
+        switchLoadInFlightRef.current = false;
+        setShowSwitchLoader(false);
+      });
+    }
+
+    lastUIGenerationTypeRef.current = currentUIGenerationType;
+  }, [currentUIGenerationType, currentFilters, sortOrder, dateRange, searchQuery, dispatch, loading, historyEntries]);
   // Track previously loaded entries to animate new ones
   // This ref persists across renders and is updated AFTER render, so we can check against previous render's entries
   const previousEntriesRef = useRef<Set<string>>(new Set<string>());
+
+  // Hide loader when fresh entries arrive
+  useEffect(() => {
+    if (!loading && historyEntries.length > 0) {
+      setShowSwitchLoader(false);
+    }
+  }, [loading, historyEntries.length]);
 
   // Seedream-specific UI state
   const [seedreamSize, setSeedreamSize] = useState<'1K' | '2K' | '4K' | 'custom'>('2K');
@@ -1082,16 +1076,21 @@ const InputBox = () => {
   const postGenerationBlockRef = useRef(false);
   // Debug event storage removed; bottom scroll pagination doesn't emit IO events
 
-  // IMPORTANT: Do not sort in frontend. Backend is the source of truth for ordering and pagination.
-  // This page requests mode:'image' from backend, so entries should already be image-only + correctly ordered.
-  const historyEntries = useAppSelector((state: any) => state.history?.entries || [], shallowEqual);
-
-  // Filter entries ONLY client-side for display concerns (no prompt search filtering; backend is source of truth).
+  // Filter entries by search query ONLY (no sorting; date filtering is backend-driven via dateStart/dateEnd).
   const filteredAndSortedEntries = useMemo(() => {
     let filtered = [...historyEntries];
 
+    // Filter by search query (search in prompt)
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((entry: HistoryEntry) => {
+        const prompt = (entry.prompt || '').toLowerCase();
+        return prompt.includes(query);
+      });
+    }
+
     return filtered;
-  }, [historyEntries]);
+  }, [historyEntries, searchQuery]);
 
   // Mark that we've attempted initial load once loading starts or completes
   useEffect(() => {
@@ -1340,31 +1339,6 @@ const InputBox = () => {
       }
     }, 0);
   }, [prompt, selectedCharacters, updateContentEditable]);
-
-  // Remix sync: once Redux prompt has actually updated to the Remix prompt, force the editor DOM
-  // to display it and then re-render tags. This prevents stale closures from writing the old prompt
-  // back into the contentEditable after a Remix navigation.
-  useEffect(() => {
-    const pending = pendingRemixPromptRef.current;
-    if (!pending) return;
-    if (prompt !== pending) return;
-
-    try {
-      isUpdatingRef.current = true;
-      const el = contentEditableRef.current;
-      if (el) {
-        el.textContent = pending;
-        el.style.height = 'auto';
-        el.style.height = Math.min(el.scrollHeight, 96) + 'px';
-      }
-    } catch { }
-
-    setTimeout(() => {
-      try { updateContentEditable(); } catch { }
-      isUpdatingRef.current = false;
-      pendingRemixPromptRef.current = null;
-    }, 0);
-  }, [prompt, updateContentEditable]);
 
   // Helper function to convert AVIF thumbnail URLs back to original JPG/PNG format
   const convertAvifToOriginal = (url: string): string => {
@@ -3071,63 +3045,80 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'google/nano-banana-pro') {
-        // Google Nano Banana Pro via FAL generate endpoint
+        // Google Nano Banana Pro via replicate generate endpoint
         try {
           // Map our frameSize to allowed aspect ratios for Nano Banana Pro
           const allowedAspect = new Set([
-            'auto', '21:9', '16:9', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16'
+            'match_input_image', '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'
           ]);
-          const aspect = allowedAspect.has(frameSize) ? frameSize : 'auto';
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
 
           // Use the selected resolution from state
           const resolution = nanoBananaProResolution;
 
-          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
-          const combinedImages = getCombinedUploadedImages();
+          // Nano Banana Pro supports up to 14 images in image_input array
+          const uploadedImages = getCombinedUploadedImages();
+          const imageInput = uploadedImages.length > 0
+            ? uploadedImages.slice(0, 14).map((img: string) => toAbsoluteFromProxy(img))
+            : [];
 
-          // Use falGenerate for consistency with gemini-25-flash-image pattern
-          // For FAL nano-banana-pro, use image_urls when images are provided (I2I mode)
-          const imageUrls = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
-          const falPayload: any = {
-            prompt: `${promptAdjusted} [Style: ${style}]`,
-            userPrompt: finalPrompt,
-            model: 'google/nano-banana-pro',
-            num_images: imageCount,
-            aspect_ratio: aspect as any,
-            resolution: resolution,
-            output_format: 'jpeg', // FAL API expects 'jpeg', not 'jpg'
-            generationType: 'text-to-image',
-            isPublic,
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, uploadedImages, selectedCharacters);
+
+          // Nano Banana Pro doesn't support multiple images in single request, so we make parallel requests
+          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
+
+          const generationPromises = Array.from({ length: totalToGenerate }, async () => {
+            const payload: any = {
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              model: 'google/nano-banana-pro',
+              aspect_ratio: aspect,
+              resolution: resolution,
+              output_format: 'jpg', // Default to jpg, can be 'jpg' or 'png'
+              safety_filter_level: 'block_only_high', // Default safety filter
+            };
+
+            // Add image_input if user provided images
+            if (imageInput.length > 0) {
+              payload.image_input = imageInput;
+            }
+
+            const result = await dispatch(replicateGenerate(payload)).unwrap();
+            return result;
+          });
+
+          // Wait for all generations to complete
+          const results = await Promise.all(generationPromises);
+
+          // Combine all images from all results
+          const allImages = results.flatMap(result => result.images || []);
+          const combinedResult = {
+            ...results[0], // Use first result as base
+            images: allImages
           };
-          
-          // Add image_urls for I2I mode (FAL schema expects image_urls, not uploadedImages)
-          if (imageUrls.length > 0) {
-            falPayload.image_urls = imageUrls;
-          }
-          // Also include uploadedImages for backward compatibility
-          falPayload.uploadedImages = imageUrls;
 
-          const falResult = await dispatch(falGenerate(falPayload)).unwrap();
-
-          // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
               ...(localGeneratingEntries[0] || tempEntry),
               id: (localGeneratingEntries[0]?.id || tempEntryId),
-              images: (falResult.images || []),
+              images: (combinedResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
-              imageCount: (falResult.images?.length || imageCount),
+              imageCount: (combinedResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
           } catch { }
 
-          toast.success(`Generated ${falResult.images?.length || 1} image(s) successfully!`);
+          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (falResult as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -3913,33 +3904,6 @@ const InputBox = () => {
 
             {/* Desktop: Search, Sort, and Date controls - on same line */}
             <div className="hidden md:flex items-center justify-end gap-2 mt-2 md:pr-4 ">
-              {/* Prompt search (backend-driven) */}
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search prompt..."
-                  className={`px-3 py-2 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 w-56 ${searchInput ? 'pr-9' : ''}`}
-                />
-                {searchInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchInput('');
-                      // X should behave like Clear: remove applied backend search and reload.
-                      refreshHistoryFromBackend({ search: '' });
-                    }}
-                    className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-                    aria-label="Clear search input"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                )}
-              </div>
               {/* Sort buttons */}
               <button
                 onClick={() => onSortChange('desc')}
@@ -3991,13 +3955,7 @@ const InputBox = () => {
                   <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
                 </button>
                 {showCalendar && (
-                  <div
-                    ref={calendarRef}
-                    data-calendar-popup="true"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-full mt-2 z-70 w-[280px] select-none bg-black/90 backdrop-blur-3xl shadow-xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
-                  >
+                  <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
                     <div className="flex items-center justify-between mb-2 text-white">
                       <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                         const prev = new Date(calendarYear, calendarMonth - 1, 1);
@@ -4075,33 +4033,6 @@ const InputBox = () => {
 
           {/* Mobile: Search, Sort, and Date controls */}
           <div className="flex md:hidden items-center justify-start px-2 gap-2 pb-2 mt-10">
-              {/* Prompt search (backend-driven) */}
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search..."
-                  className={`px-2 py-1 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-28 ${searchInput ? 'pr-7' : ''}`}
-                />
-                {searchInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchInput('');
-                      // X should behave like Clear: remove applied backend search and reload.
-                      refreshHistoryFromBackend({ search: '' });
-                    }}
-                    className="absolute right-1 p-1 rounded bg-white/5 hover:bg-white/10 text-white/80"
-                    aria-label="Clear search input"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                )}
-              </div>
               {/* Sort buttons */}
               <button
                 onClick={() => onSortChange('desc')}
@@ -4153,13 +4084,7 @@ const InputBox = () => {
                   <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
                 </button>
                 {showCalendar && (
-                  <div
-                    ref={calendarRef}
-                    data-calendar-popup="true"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-full mt-2 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-1"
-                  >
+                  <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-1">
                     <div className="flex items-center justify-between mb-0 text-white">
                       <button className="px-1 py-0 rounded hover:bg-white/10" onClick={() => {
                         const prev = new Date(calendarYear, calendarMonth - 1, 1);
@@ -4310,13 +4235,7 @@ const InputBox = () => {
                   </button>
 
                   {showCalendar && (
-                    <div
-                      ref={calendarRef}
-                      data-calendar-popup="true"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
-                    >
+                    <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
                       <div className="flex items-center justify-between mb-2 text-white">
                         <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                           const prev = new Date(calendarYear, calendarMonth - 1, 1);
@@ -4390,8 +4309,8 @@ const InputBox = () => {
 
         {/* Spacer to keep content below fixed header */}
 
-        {/* Initial loading overlay - show when loading OR before initial load attempt OR when date filtering */}
-        {(((loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0) || isDateFiltering) && (
+        {/* Initial loading overlay - show when switching back, loading, or before initial load attempt */}
+        {(showSwitchLoader || ((loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0)) && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -4721,7 +4640,6 @@ const InputBox = () => {
             <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
               {/* ContentEditable with inline character tags - allows typing anywhere */}
               <div
-                key={promptEditorKey}
                 ref={contentEditableRef}
                 contentEditable
                 suppressContentEditableWarning

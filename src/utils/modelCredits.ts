@@ -206,6 +206,20 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedance-1.0-lite-i2v-10s-720p': 740,
   'seedance-1.0-lite-i2v-10s-1080p': 1460,
 
+  // Seedance 1.0 Pro Fast T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
+  'seedance-1.0-pro-fast-t2v-5s-480p': 180,
+  'seedance-1.0-pro-fast-t2v-5s-720p': 280,
+  'seedance-1.0-pro-fast-t2v-5s-1080p': 630,
+  'seedance-1.0-pro-fast-t2v-10s-480p': 330,
+  'seedance-1.0-pro-fast-t2v-10s-720p': 530,
+  'seedance-1.0-pro-fast-t2v-10s-1080p': 1230,
+  'seedance-1.0-pro-fast-i2v-5s-480p': 180,
+  'seedance-1.0-pro-fast-i2v-5s-720p': 280,
+  'seedance-1.0-pro-fast-i2v-5s-1080p': 630,
+  'seedance-1.0-pro-fast-i2v-10s-480p': 330,
+  'seedance-1.0-pro-fast-i2v-10s-720p': 530,
+  'seedance-1.0-pro-fast-i2v-10s-1080p': 1230,
+
   // PixVerse 5 T2V/I2V (duration: 5s or 8s)
   'pixverse-v5-t2v-5s-360p': 660,
   'pixverse-v5-t2v-5s-540p': 660,
@@ -413,7 +427,8 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   if (modelValue.includes('seedance')) {
     const isI2V = modelValue.includes('i2v');
     const modelType = isI2V ? 'i2v' : 't2v';
-    const tier = modelValue.includes('lite') ? 'lite' : 'pro';
+    const isProFast = modelValue.includes('pro-fast');
+    const tier = modelValue.includes('lite') ? 'lite' : (isProFast ? 'pro-fast' : 'pro');
 
     // Map resolution
     let resolutionKey = '';
