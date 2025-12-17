@@ -122,6 +122,7 @@ interface HistoryState {
   lastLoadedCount: number;
   inFlight: boolean;
   currentRequestKey: string | null;
+  nextCursor: string | number | null;
 }
 
 const initialState: HistoryState = {
@@ -133,6 +134,7 @@ const initialState: HistoryState = {
   lastLoadedCount: 0,
   inFlight: false,
   currentRequestKey: null,
+  nextCursor: null,
 };
 
 // Async thunk for loading history
@@ -370,9 +372,13 @@ export const loadMoreHistory = createAsyncThunk(
       
       // Debug removed to reduce noise
       
-  // Get the last entry to compute nextCursor (timestamp-based)
+  // Prefer stored nextCursor from previous API response, fallback to computing from last entry
+  const storedNextCursor = state.history.nextCursor;
   let cursor: { timestamp: string; id: string } | undefined;
-      if (currentEntries.length > 0) {
+  
+  // Fallback: compute cursor from last entry if stored cursor is not available
+  // We'll use storedNextCursor directly in params below, but still need cursor object for legacy path
+  if (!storedNextCursor && currentEntries.length > 0) {
         const normalizeGenerationType = (type?: string): string => {
           if (!type || typeof type !== 'string') return '';
           return type.replace(/[_-]/g, '-').toLowerCase();
@@ -488,16 +494,37 @@ export const loadMoreHistory = createAsyncThunk(
       // If date filter is active, use LEGACY cursor (document ID) because backend will route to legacy range query.
       // nextCursor (timestamp) is for optimized path and can repeat/skip when dateStart/dateEnd are present.
       if (wantsDateFilter) {
-        if (nextPageParams.cursor?.id) {
+        // For date filters, prefer stored cursor if it's a string (document ID), otherwise use computed cursor
+        if (storedNextCursor && typeof storedNextCursor === 'string' && !/^\d+$/.test(storedNextCursor)) {
+          // Stored cursor is a document ID (legacy path)
+          (params as any).cursor = String(storedNextCursor);
+        } else if (nextPageParams.cursor?.id) {
           (params as any).cursor = String(nextPageParams.cursor.id);
         }
       } else {
         // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
-        if (nextPageParams.cursor?.timestamp) {
+        // First check if we have a stored nextCursor from previous API response (most reliable)
+        if (storedNextCursor !== null && storedNextCursor !== undefined) {
+          // Use stored cursor - can be number (timestamp millis) or numeric string (timestamp) or non-numeric string (document ID)
+          if (typeof storedNextCursor === 'number' || (typeof storedNextCursor === 'string' && /^\d+$/.test(storedNextCursor))) {
+            // Timestamp-based cursor (optimized path)
+            const millis = typeof storedNextCursor === 'number' ? storedNextCursor : parseInt(storedNextCursor, 10);
+            if (!Number.isNaN(millis)) {
+              (params as any).nextCursor = String(millis);
+            }
+          } else {
+            // Legacy document ID cursor (fallback for optimized path if timestamp not available)
+            (params as any).cursor = String(storedNextCursor);
+          }
+        } else if (nextPageParams.cursor?.timestamp) {
+          // Fallback: compute from last entry's timestamp
           try {
             const millis = new Date(nextPageParams.cursor.timestamp).getTime();
             if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
           } catch {}
+        } else if (nextPageParams.cursor?.id) {
+          // Last fallback: use document ID (legacy cursor)
+          (params as any).cursor = String(nextPageParams.cursor.id);
         }
       }
 
@@ -645,6 +672,7 @@ const historySlice = createSlice({
       state.inFlight = false;
       state.currentRequestKey = null;
       state.error = null;
+      state.nextCursor = null; // Clear stored cursor on reset
     },
     clearHistoryByType: (state, action) => {
       // Clear only entries for a specific generation type
@@ -819,6 +847,8 @@ const historySlice = createSlice({
           } else {
             state.hasMore = Boolean(action.payload.hasMore);
           }
+        // Store nextCursor from backend response
+        state.nextCursor = action.payload.nextCursor ?? null;
         state.error = null;
         
         console.log('[HistorySlice] State updated after fulfilled (after filtering):', {
@@ -923,6 +953,8 @@ const historySlice = createSlice({
         const serverHasMore = Boolean(action.payload.hasMore);
         state.lastLoadedCount = newEntries.length;
         state.hasMore = serverHasMore;
+        // Store nextCursor from backend response
+        state.nextCursor = action.payload.nextCursor ?? null;
         
         console.log('[HistorySlice] State updated after loadMoreHistory.fulfilled:', {
           totalEntriesCount: state.entries.length,

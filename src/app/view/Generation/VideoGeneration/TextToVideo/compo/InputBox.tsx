@@ -1694,7 +1694,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 50 },
+          paginationParams: { limit: 10 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1758,7 +1758,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       dispatch(loadHistory({
         filters: { mode: 'video' } as any,
-        paginationParams: { limit: 50 },
+        paginationParams: { limit: 10 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1767,7 +1767,14 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
+  // NOTE: This auto-load effect should only trigger when entries exist but no non-text videos
+  // It should NOT trigger on initial load when there are no entries yet
   useEffect(() => {
+    // Skip if no entries yet (initial load is handled by main useEffect below)
+    if (historyEntries.length === 0) {
+      return;
+    }
+    
     let isMounted = true;
     (async () => {
       try {
@@ -1880,8 +1887,15 @@ const InputBox = (props: InputBoxProps = {}) => {
 
 
   // Auto-load more history pages until we find non-text video types (bounded attempts)
+  // IMPORTANT: Only run after initial load is complete to prevent duplicate requests
   const autoLoadAttemptsRef = useRef(0);
   useEffect(() => {
+    // Don't run autofill until initial load has completed AND we have entries
+    // This prevents duplicate requests on page load
+    if (!hasAttemptedInitialLoadRef.current || loading || historyEntries.length === 0) {
+      return;
+    }
+
     const normalizeGenerationType = (generationType: string | undefined): string => {
       if (!generationType) return '';
       return generationType.replace(/[_-]/g, '-').toLowerCase();
@@ -1896,6 +1910,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
+      // Use consistent limit of 10 for all requests
       dispatch(loadMoreHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
@@ -2049,7 +2064,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     await (dispatch as any)(loadHistory({
       filters: { mode: 'video', sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
       backendFilters: { mode: 'video', sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 50 },
+      paginationParams: { limit: 10 },
       requestOrigin: 'page',
       expectedType: 'text-to-video',
       forceRefresh: true,
@@ -2072,7 +2087,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     await (dispatch as any)(loadHistory({
       filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
       backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 50 },
+      paginationParams: { limit: 10 },
       requestOrigin: 'page',
       expectedType: 'text-to-video',
       forceRefresh: true,
@@ -2139,7 +2154,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       dispatch(loadHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        paginationParams: { limit: 50 },
+        paginationParams: { limit: 10 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:video-mode:${Date.now()}`,
@@ -2175,6 +2190,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       setPage(nextPage);
       try {
         // Use mode: 'video' which backend converts to all video types including video-to-video
+        // Use consistent limit of 10 for all requests
         await (dispatch as any)(loadMoreHistory({
           filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
           backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
@@ -4393,7 +4409,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         dispatch(clearFilters());
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 50 },
+          paginationParams: { limit: 10 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -4482,7 +4498,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     await (dispatch as any)(loadHistory({
       filters: { mode: 'video', sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
       backendFilters: { mode: 'video', sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 50 },
+      paginationParams: { limit: 10 },
       requestOrigin: 'page',
       expectedType: 'text-to-video',
       forceRefresh: true,
@@ -4518,7 +4534,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
           {/* Initial loading overlay - show when loading OR before initial load attempt */}
           {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
-            <div className="fixed top-[64px] md:top-[0px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="fixed top-[64px] md:top-[0px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4 px-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
                 <div className="text-white text-lg text-center">Loading generations...</div>
@@ -4678,7 +4694,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
           </div>
 
-          <div className="md:space-y-8 space-y-2">
+          <div className="md:space-y-8 space-y-2 pb-40">
             {/* If there's a local preview and no row for today, render a dated block for today */}
             {localVideoPreview && !groupedByDate.groups[todayKey] && (
               <div className="md:space-y-4 space-y-2">

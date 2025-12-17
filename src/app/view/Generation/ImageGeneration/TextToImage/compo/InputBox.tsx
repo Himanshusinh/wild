@@ -164,6 +164,7 @@ const InputBox = () => {
   const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [isDateFiltering, setIsDateFiltering] = useState(false);
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
 
@@ -224,20 +225,47 @@ const InputBox = () => {
 
     setPage(1);
 
+    // Build filters and backend filters
     const filters: any = { mode: 'image', sortOrder: order };
     if (search) filters.search = search;
     if (dr.start && dr.end) filters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
+    
+    const backendFilters: any = { mode: 'image', sortOrder: order };
+    if (search) backendFilters.search = search;
+    if (dr.start && dr.end) backendFilters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
+    
+    // Set date filtering state to show loading indicator
+    const isDateChange = next?.dateRange !== undefined;
+    if (isDateChange) {
+      setIsDateFiltering(true);
+    }
+    
+    // Set filters FIRST before clearing history
+    // This ensures useHistoryLoader sees the correct filters (including dateRange) and doesn't trigger a second request
     dispatch(setFilters(filters));
+    
+    // Clear history entries immediately when date range is provided (user selected a date)
+    // This ensures the loading indicator shows instead of old entries
+    // NOTE: Filters are set first so useHistoryLoader will see them and not trigger a reload
+    if (isDateChange) {
+      dispatch(clearHistory());
+    }
 
-    await (dispatch as any)(loadHistory({
-      filters,
-      backendFilters: { mode: 'image', sortOrder: order, ...(search ? { search } : {}), ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: 60 },
-      requestOrigin: 'page',
-      expectedType: 'text-to-image',
-      skipBackendGenerationFilter: true,
-      forceRefresh: true,
-    }));
+    try {
+      await (dispatch as any)(loadHistory({
+        filters,
+        backendFilters,
+        paginationParams: { limit: 60 },
+        requestOrigin: 'page',
+        expectedType: 'text-to-image',
+        skipBackendGenerationFilter: true,
+        forceRefresh: true,
+      }));
+    } finally {
+      if (isDateChange) {
+        setIsDateFiltering(false);
+      }
+    }
   }, [dispatch, searchQuery, sortOrder, dateRange]);
 
   // Live prompt search (Freepik-style): as user types, debounce and query backend.
@@ -4362,8 +4390,8 @@ const InputBox = () => {
 
         {/* Spacer to keep content below fixed header */}
 
-        {/* Initial loading overlay - show when loading OR before initial load attempt */}
-        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
+        {/* Initial loading overlay - show when loading OR before initial load attempt OR when date filtering */}
+        {(((loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0) || isDateFiltering) && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />

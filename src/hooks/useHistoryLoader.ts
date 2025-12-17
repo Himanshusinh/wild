@@ -128,6 +128,26 @@ export const useHistoryLoader = ({
     lastUIGenerationTypeRef.current = currentUIGenerationType;
     
     console.log('[useHistoryLoader] ========== INITIAL LOAD EFFECT ==========');
+    
+    // Check if date or search filters are active - if so, skip auto-reload (manual refresh is handling it)
+    const currentFilterDateRange = (currentFilters as any)?.dateRange;
+    const currentFilterSearch = (currentFilters as any)?.search;
+    const hasDateFilter = currentFilterDateRange !== undefined && currentFilterDateRange !== null;
+    const hasSearchFilter = currentFilterSearch !== undefined && currentFilterSearch !== null && String(currentFilterSearch).trim() !== '';
+    const hasActiveFilters = hasDateFilter || hasSearchFilter;
+    
+    // EARLY RETURN: If date/search filters are active, skip auto-reload to prevent duplicate requests
+    // Manual refresh (refreshHistoryFromBackend) is handling the load with correct filters
+    if (hasActiveFilters && !forceInitial) {
+      console.log('[useHistoryLoader] ⚠️ Date/search filters active, skipping auto-reload (manual refresh handling it)', {
+        hasDateFilter,
+        hasSearchFilter,
+        currentFilterDateRange,
+        currentFilterSearch,
+      });
+      return;
+    }
+    
     console.log('[useHistoryLoader] State check:', {
       mounted: mountedRef.current,
       entriesCount: entries.length,
@@ -139,6 +159,7 @@ export const useHistoryLoader = ({
       switchedToThisFeature,
       filtersAreForDifferentType,
       inFlightLock: inFlightTypeLocks[generationType],
+      hasActiveFilters,
     });
     
     // Check if we need to load (no entries or filters don't match) - if so, always load even if mounted
