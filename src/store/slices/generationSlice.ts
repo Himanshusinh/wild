@@ -4,6 +4,8 @@ import { requestCreditsRefresh } from '@/lib/creditsBus';
 import { GeneratedImage } from '@/types/history';
 import { GenerationType as SharedGenerationType } from '@/types/generation';
 import { getModelMapping } from '@/utils/modelMapping';
+import type { ActiveGeneration } from '@/lib/generationPersistence';
+import * as generationPersistence from '@/lib/generationPersistence';
 
 interface GenerationState {
   prompt: string;
@@ -11,7 +13,7 @@ interface GenerationState {
   imageCount: number;
   frameSize: string;
   style: string;
-  isGenerating: boolean;
+  isGenerating: boolean; // Computed from activeGenerations.length > 0 for backward compatibility
   error: string | null;
   lastGeneratedImages: GeneratedImage[];
   generationProgress: {
@@ -40,6 +42,9 @@ interface GenerationState {
   phoenixPromptEnhance: boolean;
   // Output format for Imagen models
   outputFormat: string;
+  // Parallel generation support
+  activeGenerations: ActiveGeneration[];
+  maxConcurrentGenerations: number;
 }
 
 const initialState: GenerationState = {
@@ -66,6 +71,9 @@ const initialState: GenerationState = {
   phoenixPromptEnhance: false,
   // Output format default
   outputFormat: 'jpeg',
+  // Parallel generation defaults
+  activeGenerations: [],
+  maxConcurrentGenerations: 4,
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -85,6 +93,7 @@ export const generateImages = createAsyncThunk(
       width?: number;
       height?: number;
       isPublic?: boolean;
+      generationId?: string; // For parallel generation tracking
     },
     { rejectWithValue }
   ) => {
@@ -476,6 +485,57 @@ const generationSlice = createSlice({
       state.generationProgress = null;
       // Keep model, imageCount, frameSize, and style as they might be user preferences
     },
+    // Parallel generation actions
+    addActiveGeneration: (state, action: PayloadAction<ActiveGeneration>) => {
+      // Check if already exists
+      const exists = state.activeGenerations.some(g => g.id === action.payload.id);
+      if (!exists) {
+        // Add to beginning (most recent first)
+        state.activeGenerations = [action.payload, ...state.activeGenerations].slice(0, state.maxConcurrentGenerations);
+        // Update isGenerating flag for backward compatibility
+        state.isGenerating = state.activeGenerations.length > 0;
+        // Sync to localStorage
+        generationPersistence.addGeneration(action.payload);
+      }
+    },
+    updateActiveGeneration: (state, action: PayloadAction<{ id: string; updates: Partial<ActiveGeneration> }>) => {
+      const index = state.activeGenerations.findIndex(g => g.id === action.payload.id);
+      if (index !== -1) {
+        state.activeGenerations[index] = {
+          ...state.activeGenerations[index],
+          ...action.payload.updates,
+          updatedAt: Date.now(),
+        };
+        // Update isGenerating flag
+        state.isGenerating = state.activeGenerations.some(
+          g => g.status === 'pending' || g.status === 'generating'
+        );
+        // Sync to localStorage
+        generationPersistence.updateGeneration(action.payload.id, action.payload.updates);
+      }
+    },
+    removeActiveGeneration: (state, action: PayloadAction<string>) => {
+      state.activeGenerations = state.activeGenerations.filter(g => g.id !== action.payload);
+      // Update isGenerating flag
+      state.isGenerating = state.activeGenerations.length > 0;
+      // Sync to localStorage
+      generationPersistence.removeGeneration(action.payload);
+    },
+    hydrateGenerations: (state, action: PayloadAction<ActiveGeneration[]>) => {
+      state.activeGenerations = action.payload.slice(0, state.maxConcurrentGenerations);
+      // Update isGenerating flag
+      state.isGenerating = state.activeGenerations.some(
+        g => g.status === 'pending' || g.status === 'generating'
+      );
+    },
+    clearOldGenerations: (state) => {
+      const cleaned = generationPersistence.clearOldGenerations();
+      state.activeGenerations = cleaned;
+      // Update isGenerating flag
+      state.isGenerating = state.activeGenerations.some(
+        g => g.status === 'pending' || g.status === 'generating'
+      );
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -492,7 +552,7 @@ const generationSlice = createSlice({
         state.isGenerating = false;
         state.error = action.payload as string;
       })
-      .addCase(generateImages.pending, (state) => {
+      .addCase(generateImages.pending, (state, action) => {
         state.isGenerating = true;
         state.error = null;
         state.generationProgress = {
@@ -500,17 +560,60 @@ const generationSlice = createSlice({
           total: state.imageCount,
           status: 'Starting generation...',
         };
+        
+        // Update active generation if ID exists
+        const genId = action.meta.arg.generationId;
+        if (genId) {
+          const index = state.activeGenerations.findIndex(g => g.id === genId);
+          if (index !== -1) {
+            state.activeGenerations[index].status = 'generating';
+            state.activeGenerations[index].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
       })
       .addCase(generateImages.fulfilled, (state, action) => {
         state.isGenerating = false;
         state.lastGeneratedImages = action.payload.images;
         state.generationProgress = null;
         state.error = null;
+        
+        // Update active generation if ID exists
+        const genId = action.meta.arg.generationId;
+        if (genId) {
+          const index = state.activeGenerations.findIndex(g => g.id === genId);
+          if (index !== -1) {
+            state.activeGenerations[index].status = 'completed';
+            state.activeGenerations[index].images = action.payload.images;
+            state.activeGenerations[index].historyId = action.payload.historyId;
+            state.activeGenerations[index].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { 
+              status: 'completed',
+              images: action.payload.images,
+              historyId: action.payload.historyId 
+            });
+          }
+        }
       })
       .addCase(generateImages.rejected, (state, action) => {
         state.isGenerating = false;
         state.error = action.payload as string;
         state.generationProgress = null;
+        
+        // Update active generation if ID exists
+        const genId = action.meta.arg.generationId;
+        if (genId) {
+          const index = state.activeGenerations.findIndex(g => g.id === genId);
+          if (index !== -1) {
+            state.activeGenerations[index].status = 'failed';
+            state.activeGenerations[index].error = action.payload as string;
+            state.activeGenerations[index].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { 
+              status: 'failed',
+              error: action.payload as string
+            });
+          }
+        }
       })
       .addCase(generateRunwayImages.pending, (state) => {
         state.isGenerating = true;
@@ -588,6 +691,12 @@ export const {
   // Output format
   setOutputFormat,
   clearGenerationState,
+  // Parallel generation actions
+  addActiveGeneration,
+  updateActiveGeneration,
+  removeActiveGeneration,
+  hydrateGenerations,
+  clearOldGenerations,
 } = generationSlice.actions;
 
 export default generationSlice.reducer;

@@ -4,10 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { store } from '@/store';
 import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store/slices/historySlice';
+import { addActiveGeneration, updateActiveGeneration, removeActiveGeneration } from '@/store/slices/generationSlice';
 import { minimaxMusic, falElevenTts } from '@/store/slices/generationsApi';
 import { useGenerationCredits } from '@/hooks/useCredits';
 import { useCredits } from '@/hooks/useCredits';
 import { getModelCreditInfo } from '@/utils/modelCredits';
+import ActiveGenerationsPanel from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
@@ -62,7 +64,33 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics');
       return;
     }
+
+    // Check parallel generation limit (only counting running ones)
+    if (runningGenerationsCount >= 4) {
+      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+      return;
+    }
+
     const normalizedText = primaryText.trim();
+
+    // Create tracking ID for queue
+    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // Add to active generations queue immediately
+    console.log('[queue] Adding new music generation to queue:', { generationId, model: payload?.model, prompt: normalizedText.slice(0, 50) });
+    dispatch(addActiveGeneration({
+      id: generationId,
+      prompt: normalizedText,
+      model: payload?.model || 'minimax-music-2',
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      params: {
+        generationType: isTtsModel ? 'text-to-speech' : 'text-to-music',
+        lyrics: normalizedText,
+        fileName: payload?.fileName,
+      }
+    }));
     if (isTtsModel) {
       payload.text = normalizedText;
       payload.prompt = payload.prompt || normalizedText;
@@ -118,6 +146,14 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     setIsGenerating(true);
     setErrorMessage(undefined);
     setResultUrl(undefined);
+
+    // Update queue status to generating
+    if (generationId) {
+      dispatch(updateActiveGeneration({
+        id: generationId,
+        updates: { status: 'generating' }
+      }));
+    }
 
       // Get file name from payload or use default
       const fileName = payload.fileName || '';
@@ -313,6 +349,19 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       console.log('🎵 History ID being updated:', historyIdToUpdate);
       console.log('🎵 Backend result:', result);
 
+      // Update queue with completed audio
+      if (generationId) {
+        console.log('[queue] Music generation completed, updating active generation:', { generationId, historyId: historyIdToUpdate, audioCount: finalAudios.length });
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: {
+            status: 'completed',
+            audios: finalAudios,
+            historyId: historyIdToUpdate
+          }
+        }));
+      }
+
       if (backendHistoryId) {
         // Backend already created the entry, so remove temp entry and add the completed entry
         if (tempId) {
@@ -401,6 +450,17 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     } catch (error: any) {
       console.error('❌ Music generation failed:', error);
       
+      // Update queue with failed status
+      if (generationId) {
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: {
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Music generation failed'
+          }
+        }));
+      }
+      
       if (optimisticDebit > 0) {
         try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
       }
@@ -476,6 +536,9 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
   return (
     <>
+      {/* Active Generations Queue Panel */}
+      <ActiveGenerationsPanel />
+      
       {showHistoryOnly ? (
         <MusicHistory
           generationType="text-to-music"
