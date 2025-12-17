@@ -203,7 +203,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
   const isSeedream = selectedModel === 'seedream-v4';
   const isSeedream45 = selectedModel === 'seedream-4.5';
-  const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image';
+  const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image' || selectedModel === 'google/nano-banana-pro' || selectedModel === 'nano-banana-pro';
   const isFlux2Pro = selectedModel === 'flux-2-pro';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';

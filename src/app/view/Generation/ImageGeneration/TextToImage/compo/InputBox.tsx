@@ -3043,80 +3043,63 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === 'google/nano-banana-pro') {
-        // Google Nano Banana Pro via replicate generate endpoint
+        // Google Nano Banana Pro via FAL generate endpoint
         try {
           // Map our frameSize to allowed aspect ratios for Nano Banana Pro
           const allowedAspect = new Set([
-            'match_input_image', '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'
+            'auto', '21:9', '16:9', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16'
           ]);
-          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+          const aspect = allowedAspect.has(frameSize) ? frameSize : 'auto';
 
           // Use the selected resolution from state
           const resolution = nanoBananaProResolution;
 
-          // Nano Banana Pro supports up to 14 images in image_input array
-          const uploadedImages = getCombinedUploadedImages();
-          const imageInput = uploadedImages.length > 0
-            ? uploadedImages.slice(0, 14).map((img: string) => toAbsoluteFromProxy(img))
-            : [];
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
 
-          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, uploadedImages, selectedCharacters);
-
-          // Nano Banana Pro doesn't support multiple images in single request, so we make parallel requests
-          const totalToGenerate = Math.min(imageCount, 4); // Cap at 4 like other models
-
-          const generationPromises = Array.from({ length: totalToGenerate }, async () => {
-            const payload: any = {
-              prompt: `${promptAdjusted} [Style: ${style}]`,
-              model: 'google/nano-banana-pro',
-              aspect_ratio: aspect,
-              resolution: resolution,
-              output_format: 'jpg', // Default to jpg, can be 'jpg' or 'png'
-              safety_filter_level: 'block_only_high', // Default safety filter
-            };
-
-            // Add image_input if user provided images
-            if (imageInput.length > 0) {
-              payload.image_input = imageInput;
-            }
-
-            const result = await dispatch(replicateGenerate(payload)).unwrap();
-            return result;
-          });
-
-          // Wait for all generations to complete
-          const results = await Promise.all(generationPromises);
-
-          // Combine all images from all results
-          const allImages = results.flatMap(result => result.images || []);
-          const combinedResult = {
-            ...results[0], // Use first result as base
-            images: allImages
+          // Use falGenerate for consistency with gemini-25-flash-image pattern
+          // For FAL nano-banana-pro, use image_urls when images are provided (I2I mode)
+          const imageUrls = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          const falPayload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            userPrompt: finalPrompt,
+            model: 'google/nano-banana-pro',
+            num_images: imageCount,
+            aspect_ratio: aspect as any,
+            resolution: resolution,
+            output_format: 'jpeg', // FAL API expects 'jpeg', not 'jpg'
+            generationType: 'text-to-image',
+            isPublic,
           };
+          
+          // Add image_urls for I2I mode (FAL schema expects image_urls, not uploadedImages)
+          if (imageUrls.length > 0) {
+            falPayload.image_urls = imageUrls;
+          }
+          // Also include uploadedImages for backward compatibility
+          falPayload.uploadedImages = imageUrls;
 
+          const falResult = await dispatch(falGenerate(falPayload)).unwrap();
+
+          // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
               ...(localGeneratingEntries[0] || tempEntry),
               id: (localGeneratingEntries[0]?.id || tempEntryId),
-              images: (combinedResult.images || []),
+              images: (falResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
-              imageCount: (combinedResult.images?.length || imageCount),
+              imageCount: (falResult.images?.length || imageCount),
             } as any;
             setLocalGeneratingEntries([completedEntry]);
           } catch { }
 
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          toast.success(`Generated ${falResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
-          // Keep local entries visible for a moment before refreshing
-          setTimeout(() => {
-            setLocalGeneratingEntries([]);
-          }, 1000);
-
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (falResult as any)?.historyId || firebaseHistoryId;
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {

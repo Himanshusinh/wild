@@ -102,6 +102,8 @@ export const generateImages = createAsyncThunk(
       const isFalModel =
         provider === 'fal' ||
         model === 'gemini-25-flash-image' ||
+        model === 'google/nano-banana-pro' ||
+        model === 'nano-banana-pro' ||
         model === 'seedream-v4' ||
         model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
@@ -182,6 +184,8 @@ export const generateLiveChatImage = createAsyncThunk(
       const isFalModel =
         provider === 'fal' ||
         model === 'gemini-25-flash-image' ||
+        model === 'google/nano-banana-pro' ||
+        model === 'nano-banana-pro' ||
         model === 'seedream-v4' ||
         model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||

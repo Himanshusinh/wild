@@ -52,7 +52,7 @@ const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,
   withCredentials: true,
-  timeout: 300000, // 5 minutes timeout for long-running requests like video generation
+  timeout: 600000, // 10 minutes timeout for long-running requests like image/video generation (increased from 5min to support 7min+ generations)
   headers: {
     'Content-Type': 'application/json',
     // Suppress ngrok browser warning HTML page so API returns JSON

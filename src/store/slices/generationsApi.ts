@@ -140,7 +140,10 @@ export const falGenerate = createAsyncThunk(
         }
       } catch {}
       const api = getApiClient();
-      const res = await api.post('/api/fal/generate', payload);
+      // FAL generate can take up to 7+ minutes for some models, so use extended timeout
+      const res = await api.post('/api/fal/generate', payload, {
+        timeout: 600000 // 10 minutes to support long-running generations
+      });
       return res.data?.data || res.data;
     } catch (e: any) {
       return rejectWithValue(e?.response?.data?.message || e?.message || 'FAL generate failed');
