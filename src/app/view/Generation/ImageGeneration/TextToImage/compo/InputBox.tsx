@@ -948,9 +948,70 @@ const InputBox = () => {
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
 
-  // IMPORTANT: Do not sort in frontend. Backend is the source of truth for ordering and pagination.
-  // This page requests mode:'image' from backend, so entries should already be image-only + correctly ordered.
-  const historyEntries = useAppSelector((state: any) => state.history?.entries || [], shallowEqual);
+  const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
+
+  // Get current UI generation type to detect feature switches
+  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
+  const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+
+  // Memoize the filtered entries and group by date - optimized for performance
+  const historyEntries = useAppSelector(
+    (state: any) => {
+      const allEntries = state.history?.entries || [];
+
+      if (allEntries.length === 0) {
+        return [];
+      }
+
+      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+
+      const filtered = allEntries.filter((entry: any) => {
+        const normalizedType = normalize(entry.generationType);
+        const normalizedModel = normalize(entry.model);
+        const isSeedream = normalizedModel.includes('seedream');
+        const isTextToImage = normalizedType === 'text-to-image';
+
+        // Explicitly show Seedream text-to-image generations (from Image Generation page)
+        if (isSeedream && isTextToImage) {
+          return true;
+        }
+
+        // Hide Seedream generations from other features (e.g. Edit Image, upscale, etc.)
+        if (isSeedream && !isTextToImage) {
+          return false;
+        }
+
+        // For non-Seedream entries, apply normal type filtering
+        const isVectorize =
+          normalizedType === 'vectorize' ||
+          normalizedType === 'image-vectorize' ||
+          normalizedType.includes('vector');
+
+        return (
+          normalizedType === 'text-to-image' ||
+          normalizedType === 'image-upscale' ||
+          normalizedType === 'image-to-svg' ||
+          normalizedType === 'image-edit' ||
+          isVectorize
+        );
+      });
+
+      if (filtered.length === 0) {
+        return [];
+      }
+
+      const getTs = (x: any) => {
+        const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+        if (!raw) return 0;
+        const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
+        const ms = Date.parse(t);
+        return Number.isNaN(ms) ? 0 : ms;
+      };
+
+      return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
+    },
+    shallowEqual
+  );
 
   // When returning from another feature (e.g., video), reset filters and reload image history
   useEffect(() => {
@@ -1026,65 +1087,6 @@ const InputBox = () => {
   // Block pagination while generation finishes & initial history refresh occurs
   const postGenerationBlockRef = useRef(false);
   // Debug event storage removed; bottom scroll pagination doesn't emit IO events
-
-  // Memoize the filtered entries and group by date - optimized for performance
-  const historyEntries = useAppSelector(
-    (state: any) => {
-      const allEntries = state.history?.entries || [];
-
-      if (allEntries.length === 0) {
-        return [];
-      }
-
-      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
-
-      const filtered = allEntries.filter((entry: any) => {
-        const normalizedType = normalize(entry.generationType);
-        const normalizedModel = normalize(entry.model);
-        const isSeedream = normalizedModel.includes('seedream');
-        const isTextToImage = normalizedType === 'text-to-image';
-
-        // Explicitly show Seedream text-to-image generations (from Image Generation page)
-        if (isSeedream && isTextToImage) {
-          return true;
-        }
-
-        // Hide Seedream generations from other features (e.g. Edit Image, upscale, etc.)
-        if (isSeedream && !isTextToImage) {
-          return false;
-        }
-
-        // For non-Seedream entries, apply normal type filtering
-        const isVectorize =
-          normalizedType === 'vectorize' ||
-          normalizedType === 'image-vectorize' ||
-          normalizedType.includes('vector');
-
-        return (
-          normalizedType === 'text-to-image' ||
-          normalizedType === 'image-upscale' ||
-          normalizedType === 'image-to-svg' ||
-          normalizedType === 'image-edit' ||
-          isVectorize
-        );
-      });
-
-      if (filtered.length === 0) {
-        return [];
-      }
-
-      const getTs = (x: any) => {
-        const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
-        if (!raw) return 0;
-        const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
-        const ms = Date.parse(t);
-        return Number.isNaN(ms) ? 0 : ms;
-      };
-
-      return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
-    },
-    shallowEqual
-  );
 
   // Keep the queue panel (activeGenerations) in sync with the real history list.
   // If a generation completes/fails and is visible in the grid, update the queue item immediately
@@ -3460,7 +3462,7 @@ const InputBox = () => {
             const completedEntry: HistoryEntry = {
               ...tempEntry,
               id: tempEntryId,
-              images: (falResult.images || []),
+              images: (combinedResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
