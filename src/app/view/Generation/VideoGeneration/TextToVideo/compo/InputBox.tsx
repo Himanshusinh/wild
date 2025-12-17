@@ -7,11 +7,13 @@ import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
 import { addHistoryEntry, loadHistory, loadMoreHistory, updateHistoryEntry, clearFilters, removeHistoryEntry, clearHistory, setFilters } from "@/store/slices/historySlice";
+import { addActiveGeneration, updateActiveGeneration, removeActiveGeneration } from "@/store/slices/generationSlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import { Trash2 } from 'lucide-react';
 import { addNotification } from "@/store/slices/uiSlice";
-import { useRouter, useSearchParams } from "next/navigation";
+import ActiveGenerationsPanel from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
+import { useSearchParams, useRouter } from "next/navigation";
 // historyService removed; backend owns history persistence
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -2444,12 +2446,42 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Handle video generation
+  // Redux selector for parallel generation support
+  const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a prompt');
       return;
     }
 
+    // Check parallel generation limit (only counting running ones)
+    if (runningGenerationsCount >= 4) {
+      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+      return;
+    }
+
+    // Create tracking ID for queue
+    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // Add to active generations queue immediately
+    console.log('[queue] Adding new video generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
+    dispatch(addActiveGeneration({
+      id: generationId,
+      prompt: prompt,
+      model: selectedModel,
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      params: {
+        generationType: 'text-to-video',
+        aspectRatio: frameSize,
+        duration: duration,
+        resolution: selectedQuality,
+        quality: selectedQuality,
+      }
+    }));
 
     console.log('🚀 Starting video generation with:');
     console.log('🚀 - Selected model:', selectedModel);
@@ -2587,6 +2619,14 @@ const InputBox = (props: InputBoxProps = {}) => {
     setIsGenerating(true);
     setError("");
     clearCreditsError();
+
+    // Update queue status to generating
+    if (generationId) {
+      dispatch(updateActiveGeneration({
+        id: generationId,
+        updates: { status: 'generating' }
+      }));
+    }
 
     // Validate and reserve credits before generation
     let transactionId: string;
@@ -4367,6 +4407,25 @@ const InputBox = (props: InputBoxProps = {}) => {
       console.log('🎬 Model:', selectedModel);
       console.log('🎬 Video data processed:', firebaseVideo);
 
+      // Update queue with completed video
+      if (generationId) {
+        const videoArray = firebaseVideo?.url ? [{
+          id: firebaseVideo.id || generationId,
+          url: firebaseVideo.url,
+          originalUrl: firebaseVideo.originalUrl || firebaseVideo.url,
+          firebaseUrl: firebaseVideo.firebaseUrl || firebaseVideo.url,
+        }] : [];
+        console.log('[queue] Video generation completed, updating active generation:', { generationId, historyId: result.historyId, videoCount: videoArray.length });
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: {
+            status: 'completed',
+            videos: videoArray,
+            historyId: result.historyId
+          }
+        }));
+      }
+
       // Update local preview to completed with a thumbnail frame if available
       try {
         const previewImageUrl = firebaseVideo?.url || firebaseVideo?.firebaseUrl || '';
@@ -4446,6 +4505,17 @@ const InputBox = (props: InputBoxProps = {}) => {
       setError(error instanceof Error ? error.message : 'Video generation failed');
       setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
 
+      // Update queue with failed status
+      if (generationId) {
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: {
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Video generation failed'
+          }
+        }));
+      }
+
       // Handle credit transaction failure
       try {
         await handleGenerationFailure(transactionId);
@@ -4471,6 +4541,9 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   return (
     <React.Fragment>
+      {/* Active Generations Queue Panel */}
+      <ActiveGenerationsPanel />
+      
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
           {/* Initial loading overlay - show when loading OR before initial load attempt */}
@@ -5636,7 +5709,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 <button
                   onClick={handleGenerate}
                   disabled={(() => {
-                    const disabled = isGenerating || !prompt.trim() ||
+                    const disabled = runningGenerationsCount >= 4 || !prompt.trim() ||
                       (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && uploadedImages.length === 0) ||
                       (generationMode === "video_to_video" && !uploadedVideo) ||
                       (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
@@ -5647,7 +5720,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   })()}
                   className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white md:px-4 px-2 md:py-2.5 py-1.5 rounded-lg md:text-sm text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 >
-                  {isGenerating ? "Generating..." : "Generate"}
+                  {runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : "Generate"}
                 </button>
               </div>
             </div>
@@ -6927,7 +7000,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               <button
                 onClick={handleGenerate}
                 disabled={(() => {
-                  const disabled = isGenerating || !prompt.trim() ||
+                  const disabled = runningGenerationsCount >= 4 || !prompt.trim() ||
                     (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && uploadedImages.length === 0) ||
                     (generationMode === "video_to_video" && !uploadedVideo) ||
                     (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
@@ -6937,7 +7010,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                   if (selectedModel === "S2V-01") {
                     console.log('🔍 S2V-01 Validation Debug:', {
-                      isGenerating,
+                      runningGenerationsCount,
                       hasPrompt: !!prompt.trim(),
                       referencesLength: references.length,
                       generationMode,
@@ -6949,7 +7022,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 })()}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                {isGenerating ? "Generating..." : "Generate Video"}
+                {runningGenerationsCount > 0 ? `Generate Video (${runningGenerationsCount}/4)` : "Generate Video"}
               </button>
             </div>
 

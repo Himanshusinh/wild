@@ -9,6 +9,8 @@ import { clearGenerationState } from '@/store/slices/generationSlice';
 import PageRouter from './PageRouter';
 import NotificationToast from '@/components/ui/NotificationToast';
 import { ViewType, GenerationType } from '@/types/generation';
+import { useGenerationHydration } from '@/hooks/useGenerationHydration';
+import ActiveGenerationsPanel from '../ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
 
 interface MainLayoutProps {
   onViewChange: (view: ViewType) => void;
@@ -30,6 +32,10 @@ export default function MainLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [showWildmindSkitPopup, setShowWildmindSkitPopup] = React.useState(false);
+  
+  // Hydrate generations from localStorage on mount
+  useGenerationHydration();
+  
   // Use props from parent component (main App)
   const currentView = propCurrentView;
   const currentGenerationType = propCurrentGenerationType;
@@ -161,6 +167,9 @@ export default function MainLayout({
         </Suspense>
       </div>
       <NotificationToast />
+      
+      {/* Active Generations Panel - Fixed position overlay */}
+      <ActiveGenerationsPanel />
       
       {/* Wildmind Skit Popup */}
       {showWildmindSkitPopup && (

@@ -19,6 +19,9 @@ import {
   removeSelectedCharacter,
   clearSelectedCharacters,
   setSelectedModel,
+  addActiveGeneration,
+  updateActiveGeneration,
+  removeActiveGeneration,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
@@ -36,9 +39,17 @@ import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance from "@/lib/axiosInstance";
 import toast from 'react-hot-toast';
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
-// Frontend history writes removed; rely on backend history service
-const updateFirebaseHistory = async (_id: string, _updates: any) => { };
-const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
+// History sync helpers (backend supports PATCH /api/generations/:historyId)
+const updateFirebaseHistory = async (id: string | undefined, updates: any) => {
+  if (!id) return;
+  try {
+    await axiosInstance.patch(`/api/generations/${encodeURIComponent(id)}`, updates);
+  } catch {
+    // best-effort; UI will refresh from backend anyway
+  }
+};
+// Backend no longer exposes POST /api/generations from the web app; providers create history records themselves.
+const saveHistoryEntry = async (_entry: any): Promise<string | undefined> => undefined;
 // Note: addHistoryEntry and updateHistoryEntry are now imported from historySlice
 
 // Import the new components
@@ -133,8 +144,37 @@ const InputBox = () => {
   const [showSwitchLoader, setShowSwitchLoader] = useState(false);
   const switchLoadInFlightRef = useRef(false);
 
-  // Local state to track generation status for button text
-  const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  // Parallel-safe helpers: keep one local card per generation, without wiping other in-flight jobs.
+  const upsertLocalGeneratingEntry = useCallback((entry: HistoryEntry) => {
+    const id = String((entry as any)?.id || (entry as any)?.firebaseHistoryId || '');
+    if (!id) return;
+    console.log('[queue] Upserting local generating entry:', { id, status: (entry as any)?.status });
+    setLocalGeneratingEntries((prev) => {
+      const filtered = prev.filter((e: any) => {
+        const eId = String(e?.id || '');
+        const eFirebaseId = String((e as any)?.firebaseHistoryId || '');
+        return eId !== id && eFirebaseId !== id;
+      });
+      return [entry, ...filtered].slice(0, 4);
+    });
+  }, []);
+
+  const removeLocalGeneratingEntry = useCallback((idOrIds?: string | string[]) => {
+    const ids = (Array.isArray(idOrIds) ? idOrIds : [idOrIds]).filter(Boolean).map(String);
+    if (ids.length === 0) return;
+    console.log('[queue] Removing local generating entries:', ids);
+    setLocalGeneratingEntries((prev) =>
+      prev.filter((e: any) => {
+        const eId = String(e?.id || '');
+        const eFirebaseId = String((e as any)?.firebaseHistoryId || '');
+        return !ids.includes(eId) && !ids.includes(eFirebaseId);
+      })
+    );
+  }, []);
+
+  // Local state setter kept for backward compatibility (parallel generation uses Redux `activeGenerations`)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [, setIsGeneratingLocally] = useState(false);
 
   // Track which images have loaded to hide shimmer effect
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
@@ -144,10 +184,11 @@ const InputBox = () => {
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
 
-  // Track UI state to keep history requests gated to the correct generation type
-  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
-  const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
-  const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+  // Redux selector for parallel generation support
+  const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  // Only count running generations towards the limit (limit is 4)
+  // This allows completed/failed items to be auto-replaced by new ones
+  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
 
   // Filter states for search, sort, and date
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -246,55 +287,8 @@ const InputBox = () => {
   // Get current entries from Redux (will be updated on each render)
   const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
 
-  // Auto-clear local preview after it has completed/failed and backend history refresh kicks in
-  // Also check if the entry already exists in Redux history to prevent duplicates
-  useEffect(() => {
-    const entry = localGeneratingEntries[0] as any;
-    if (!entry) {
-      // Don't reset button state here - only reset when entry status changes to completed/failed
-      // This ensures button stays in "Generating..." state during generation
-      return;
-    }
-
-    // Check if this entry already exists in Redux history (by id or firebaseHistoryId)
-    // Check all possible ID combinations to catch duplicates
-    const entryId = entry.id;
-    const entryFirebaseId = (entry as any)?.firebaseHistoryId;
-
-    // FIRST: Check ref (updated immediately when entry is added to history)
-    // This catches duplicates even before Redux state propagates
-    const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
-      (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
-
-    // SECOND: Check Redux state
-    const existsInHistory = existingEntries.some((e: HistoryEntry) => {
-      const eId = e.id;
-      const eFirebaseId = (e as any)?.firebaseHistoryId;
-      // Check all possible ID matches
-      if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
-      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
-      return false;
-    });
-
-    // CRITICAL FIX: Don't clear local entry when it's added to history
-    // The duplicate detection logic in render (line 3979) already handles hiding it
-    // Clearing it here causes the frame to disappear and then reappear
-    // Instead, let the render logic seamlessly switch from local to history entry
-    // This keeps the frame in the DOM continuously
-
-    // Just reset the generating button state when entry is in history
-    if (existsInRef || existsInHistory) {
-      setIsGeneratingLocally(false);
-      // DON'T clear localGeneratingEntries here - let render handle the transition
-      return;
-    }
-
-    // If entry completes/fails but not in history yet, reset button state
-    if (entry.status === 'completed' || entry.status === 'failed') {
-      setIsGeneratingLocally(false);
-    }
-    // Keep button in "Generating..." state while status is 'generating' or any other status
-  }, [localGeneratingEntries, existingEntries]);
+  // Note: localGeneratingEntries was originally single-entry; with parallel generation enabled
+  // the queue rendering relies on Redux `activeGenerations` instead for per-job placeholders.
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
   useEffect(() => {
@@ -806,7 +800,27 @@ const InputBox = () => {
   const refreshSingleGeneration = async (historyId: string) => {
     try {
       const client = axiosInstance;
-      const res = await client.get(`/api/generations/${historyId}`);
+      // Attempt fetch by provided id. If it's a client-side id (gen-...) and the backend doesn't
+      // recognize it yet, fall back to the linked backend historyId stored on the active generation.
+      let resolvedId = historyId;
+      let res: any;
+      try {
+        res = await client.get(`/api/generations/${resolvedId}`);
+      } catch (e: any) {
+        const status = e?.response?.status;
+        if (status === 404) {
+          const linked = activeGenerations.find((g: any) => String(g?.id || '') === String(historyId));
+          const fallbackId = linked && (linked as any)?.historyId ? String((linked as any).historyId) : '';
+          if (fallbackId && fallbackId !== resolvedId) {
+            resolvedId = fallbackId;
+            res = await client.get(`/api/generations/${resolvedId}`);
+          } else {
+            throw e;
+          }
+        } else {
+          throw e;
+        }
+      }
       const item = res.data?.data?.item;
       if (!item) {
         console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
@@ -819,15 +833,24 @@ const InputBox = () => {
       const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
       const normalizedEntry: HistoryEntry = {
         ...item,
-        id: item.id || historyId,
+        id: item.id || resolvedId || historyId,
         timestamp: iso,
         createdAt: iso,
       } as HistoryEntry;
 
-      // Check if entry already exists in current Redux state
-      // Note: existingEntries is from useAppSelector, so it's current at render time
-      // For async operations, we'll check again by reading from store if needed
-      const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
+      // Find an existing entry by any known identifier to avoid duplicates.
+      const idsToMatch = Array.from(
+        new Set(
+          [historyId, resolvedId, normalizedEntry.id, (normalizedEntry as any)?.firebaseHistoryId]
+            .filter(Boolean)
+            .map((x) => String(x))
+        )
+      );
+      const existing = existingEntries.find((e: any) => {
+        const eId = String(e?.id || '');
+        const eFirebaseId = String((e as any)?.firebaseHistoryId || '');
+        return idsToMatch.includes(eId) || (eFirebaseId && idsToMatch.includes(eFirebaseId));
+      }) as any;
 
       // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
       // This ensures we can check it in the same render cycle
@@ -840,6 +863,7 @@ const InputBox = () => {
       });
 
       historyEntryIdsRef.current.add(historyId);
+      if (resolvedId) historyEntryIdsRef.current.add(resolvedId);
       if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
       if ((normalizedEntry as any)?.firebaseHistoryId) {
         historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
@@ -850,11 +874,11 @@ const InputBox = () => {
         newRefContents: Array.from(historyEntryIdsRef.current)
       });
 
-      if (exists) {
+      if (existing) {
         // Update existing entry - only update changed fields to avoid overwriting
-        console.log('[DEBUG refreshSingleGeneration] Updating existing entry:', historyId);
+        console.log('[DEBUG refreshSingleGeneration] Updating existing entry:', existing.id);
         dispatch(updateHistoryEntry({
-          id: historyId,
+          id: existing.id,
           updates: {
             status: normalizedEntry.status,
             images: normalizedEntry.images,
@@ -862,95 +886,22 @@ const InputBox = () => {
             timestamp: normalizedEntry.timestamp,
           }
         }));
-        console.log('[refreshSingleGeneration] Updated existing generation:', historyId);
+        console.log('[refreshSingleGeneration] Updated existing generation:', existing.id);
       } else {
         // Add new entry at the beginning
         console.log('[DEBUG refreshSingleGeneration] Adding new entry to Redux:', {
-          historyId,
+          historyId: resolvedId || historyId,
           entryId: normalizedEntry.id,
           firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
           status: normalizedEntry.status,
           imageCount: normalizedEntry.images?.length || 0
         });
         dispatch(addHistoryEntry(normalizedEntry));
-        console.log('[refreshSingleGeneration] Added new generation:', historyId);
+        console.log('[refreshSingleGeneration] Added new generation:', resolvedId || historyId);
       }
 
-      // CRITICAL: Immediately clear local entry when history entry is added/updated
-      // Since there's only one local entry at a time (the most recent generation),
-      // and this history entry just completed, we should clear ALL local entries
-      // that are completed or match by ID
-      setLocalGeneratingEntries((prev) => {
-        console.log('[DEBUG refreshSingleGeneration] Checking local entries to clear:', {
-          localEntriesCount: prev.length,
-          localEntryIds: prev.map(e => ({
-            id: e.id,
-            firebaseId: (e as any)?.firebaseHistoryId,
-            status: e.status
-          })),
-          historyId,
-          normalizedEntryId: normalizedEntry.id,
-          normalizedFirebaseId: (normalizedEntry as any)?.firebaseHistoryId
-        });
-
-        const filtered = prev.filter((e) => {
-          const eId = e.id;
-          const eFirebaseId = (e as any)?.firebaseHistoryId;
-
-          // FIRST: Check if IDs match (exact match)
-          if (eId === historyId || eFirebaseId === historyId) {
-            console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches historyId):', { eId, eFirebaseId, historyId });
-            return false;
-          }
-          if (normalizedEntry.id && (eId === normalizedEntry.id || eFirebaseId === normalizedEntry.id)) {
-            console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches normalizedEntry.id):', { eId, eFirebaseId, normalizedEntryId: normalizedEntry.id });
-            return false;
-          }
-          const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
-          if (normalizedFirebaseId && (eId === normalizedFirebaseId || eFirebaseId === normalizedFirebaseId)) {
-            console.log('[DEBUG refreshSingleGeneration] Removing local entry (matches normalizedFirebaseId):', { eId, eFirebaseId, normalizedFirebaseId });
-            return false;
-          }
-
-          // SECOND: If local entry is completed and we just added a completed history entry,
-          // clear it (since there's only one local entry at a time, this must be the one)
-          if (e.status === 'completed' && normalizedEntry.status === 'completed') {
-            console.log('[DEBUG refreshSingleGeneration] Removing local entry (both completed - must be the same generation):', {
-              eId,
-              eFirebaseId,
-              localStatus: e.status,
-              historyStatus: normalizedEntry.status
-            });
-            return false;
-          }
-
-          // Keep other entries (they might be for different generations that are still generating)
-          return true;
-        });
-
-        if (filtered.length !== prev.length) {
-          console.log('[DEBUG refreshSingleGeneration] Cleared local entry:', {
-            before: prev.length,
-            after: filtered.length,
-            removed: prev.length - filtered.length,
-            historyId
-          });
-        } else {
-          console.log('[DEBUG refreshSingleGeneration] No local entries cleared - WARNING: Duplicate may occur!', {
-            localEntriesCount: prev.length,
-            localEntryIds: prev.map(e => ({ id: e.id, firebaseId: (e as any)?.firebaseHistoryId })),
-            historyId,
-            normalizedEntryId: normalizedEntry.id
-          });
-          // FALLBACK: If no match found but we have local entries and a completed history entry,
-          // clear all completed local entries to prevent duplicates
-          if (prev.length > 0 && normalizedEntry.status === 'completed') {
-            console.log('[DEBUG refreshSingleGeneration] FALLBACK: Clearing all completed local entries');
-            return prev.filter(e => e.status !== 'completed');
-          }
-        }
-        return filtered;
-      });
+      // Clear any local preview entries that match this generation.
+      removeLocalGeneratingEntry(idsToMatch);
     } catch (error) {
       console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       // Fallback to full refresh if single fetch fails
@@ -1076,7 +1027,244 @@ const InputBox = () => {
   const postGenerationBlockRef = useRef(false);
   // Debug event storage removed; bottom scroll pagination doesn't emit IO events
 
-  // Filter entries by search query ONLY (no sorting; date filtering is backend-driven via dateStart/dateEnd).
+  // Memoize the filtered entries and group by date - optimized for performance
+  const historyEntries = useAppSelector(
+    (state: any) => {
+      const allEntries = state.history?.entries || [];
+
+      if (allEntries.length === 0) {
+        return [];
+      }
+
+      const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+
+      const filtered = allEntries.filter((entry: any) => {
+        const normalizedType = normalize(entry.generationType);
+        const normalizedModel = normalize(entry.model);
+        const isSeedream = normalizedModel.includes('seedream');
+        const isTextToImage = normalizedType === 'text-to-image';
+
+        // Explicitly show Seedream text-to-image generations (from Image Generation page)
+        if (isSeedream && isTextToImage) {
+          return true;
+        }
+
+        // Hide Seedream generations from other features (e.g. Edit Image, upscale, etc.)
+        if (isSeedream && !isTextToImage) {
+          return false;
+        }
+
+        // For non-Seedream entries, apply normal type filtering
+        const isVectorize =
+          normalizedType === 'vectorize' ||
+          normalizedType === 'image-vectorize' ||
+          normalizedType.includes('vector');
+
+        return (
+          normalizedType === 'text-to-image' ||
+          normalizedType === 'image-upscale' ||
+          normalizedType === 'image-to-svg' ||
+          normalizedType === 'image-edit' ||
+          isVectorize
+        );
+      });
+
+      if (filtered.length === 0) {
+        return [];
+      }
+
+      const getTs = (x: any) => {
+        const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
+        if (!raw) return 0;
+        const t = typeof raw === 'string' ? raw : (raw?.toString?.() || '');
+        const ms = Date.parse(t);
+        return Number.isNaN(ms) ? 0 : ms;
+      };
+
+      return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
+    },
+    shallowEqual
+  );
+
+  // Keep the queue panel (activeGenerations) in sync with the real history list.
+  // If a generation completes/fails and is visible in the grid, update the queue item immediately
+  // (and fill in images) so loader cards don't get stuck and slots free up.
+  useEffect(() => {
+    if (!activeGenerations || activeGenerations.length === 0) {
+      console.log('[queue] Sync: No active generations to sync');
+      return;
+    }
+    if (!historyEntries || historyEntries.length === 0) {
+      console.log('[queue] Sync: No history entries loaded yet, waiting...');
+      return;
+    }
+    
+    console.log('[queue] Sync: Running with', activeGenerations.length, 'active generations and', historyEntries.length, 'history entries');
+
+    // Build a quick lookup of history items by id (including firebaseHistoryId for matching)
+    const historyMap = new Map<string, any>();
+    historyEntries.forEach((e: any) => {
+      const id = String(e?.id || '');
+      const fbId = String((e as any)?.firebaseHistoryId || '');
+      if (id) historyMap.set(id, e);
+      if (fbId) historyMap.set(fbId, e);
+    });
+
+    activeGenerations.forEach((gen: any) => {
+      const genId = String(gen?.id || '');
+      const backendId = String(gen?.historyId || '');
+      const candidateIds = [backendId, genId].filter(Boolean);
+      let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
+      
+      // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
+      if (!match && gen.prompt) {
+        console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { genId, prompt: gen.prompt.slice(0, 30), genCreatedAt: gen.createdAt });
+        
+        const genTime = typeof gen.createdAt === 'number' ? gen.createdAt : new Date(gen.createdAt).getTime();
+        const TIME_WINDOW = 120000; // 2 minute window (increased for refresh scenarios)
+        
+        if (!isNaN(genTime)) {
+          match = historyEntries.find((e: any) => {
+            const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
+            const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
+            
+            if (isNaN(eTime)) return false;
+            
+            const timeDiff = Math.abs(genTime - eTime);
+            
+            // More lenient prompt matching: normalize whitespace, remove style suffix, case insensitive
+            const normalizePrompt = (p: string) => {
+              return String(p || '')
+                .replace(/\s*\[Style:.*?\]\s*$/i, '') // Remove [Style: ...] suffix
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .trim()
+                .toLowerCase();
+            };
+            
+            const genPromptNormalized = normalizePrompt(gen.prompt);
+            const ePromptNormalized = normalizePrompt(e.prompt);
+            
+            // Check if prompts match (exact or one contains the other for truncation cases)
+            const promptMatch = genPromptNormalized === ePromptNormalized || 
+                                genPromptNormalized.startsWith(ePromptNormalized) ||
+                                ePromptNormalized.startsWith(genPromptNormalized);
+            
+            const modelMatch = String(e.model || '') === String(gen.model || '');
+            
+            // Only log close matches (within 2 minutes)
+            if (timeDiff < TIME_WINDOW) {
+              console.log('[queue] Comparing with history entry:', { 
+                historyId: e.id, 
+                timeDiff, 
+                promptMatch, 
+                modelMatch,
+                genPrompt: genPromptNormalized.slice(0, 50),
+                historyPrompt: ePromptNormalized.slice(0, 50)
+              });
+            }
+            
+            return promptMatch && modelMatch && timeDiff < TIME_WINDOW;
+          });
+          
+          if (match) {
+            console.log('[queue] ✅ Matched by prompt+timestamp fallback:', { genId, historyId: match.id, prompt: gen.prompt.slice(0, 30) });
+            // Update the active generation with the found historyId for future syncs
+            dispatch(updateActiveGeneration({
+              id: genId,
+              updates: { historyId: match.id }
+            }));
+          } else {
+            console.log('[queue] ❌ No match found via fallback for:', genId);
+          }
+        }
+      }
+      
+      console.log('[queue] Sync check for generation:', { genId, backendId, hasMatch: !!match, matchStatus: match?.status });
+      
+      if (!match) return;
+
+      const status = String(match?.status || '').toLowerCase();
+      if (status !== 'completed' && status !== 'failed') return;
+
+      // If queue item is still "pending/generating" or is missing media, bring it up to date.
+      const queueStatus = String(gen?.status || '').toLowerCase();
+      const hasImages = Array.isArray(gen?.images) && gen.images.length > 0;
+      const hasVideos = Array.isArray(gen?.videos) && gen.videos.length > 0;
+      const hasAudios = Array.isArray(gen?.audios) && gen.audios.length > 0;
+      const historyImages = Array.isArray(match?.images) ? match.images : [];
+      const historyVideos = Array.isArray(match?.videos) ? match.videos : [];
+      const historyAudios = Array.isArray(match?.audios) ? match.audios : [];
+
+      // Update if status changed or if we have new media (images/videos/audio)
+      const needsUpdate = queueStatus !== status || 
+        (!hasImages && historyImages.length > 0) ||
+        (!hasVideos && historyVideos.length > 0) ||
+        (!hasAudios && historyAudios.length > 0);
+      
+      if (needsUpdate) {
+        const mediaCount = historyImages.length + historyVideos.length + historyAudios.length;
+        console.log('[queue] Updating active generation:', { genId, oldStatus: queueStatus, newStatus: status, mediaCount });
+        dispatch(updateActiveGeneration({
+          id: genId,
+          updates: {
+            status: status as any,
+            images: historyImages.length > 0 ? historyImages : gen.images,
+            videos: historyVideos.length > 0 ? historyVideos : gen.videos,
+            audios: historyAudios.length > 0 ? historyAudios : gen.audios,
+            error: match?.error || gen?.error,
+            historyId: backendId || match?.id || gen?.historyId,
+          }
+        }));
+      }
+
+      // Clear any local preview for this generation once the history item is final.
+      removeLocalGeneratingEntry([genId, backendId, String(match?.id || '')].filter(Boolean) as any);
+
+      // IMPORTANT: Keep completed/failed items in queue for 3 seconds so user can see the final state
+      // This provides visual feedback that generation completed successfully
+      console.log('[queue] Scheduling removal of completed/failed generation in 3s:', { genId, status });
+      setTimeout(() => {
+        console.log('[queue] Removing completed/failed generation from active queue:', { genId, status });
+        dispatch(removeActiveGeneration(genId));
+      }, 3000);
+    });
+  }, [activeGenerations, historyEntries, dispatch, removeLocalGeneratingEntry]);
+
+  // Simple periodic check for in-progress generations (respects rate limits)
+  useEffect(() => {
+    if (!activeGenerations || activeGenerations.length === 0) return;
+
+    const checkGenerations = async () => {
+      const inProgressGens = activeGenerations.filter((gen: any) => {
+        const status = String(gen?.status || '').toLowerCase();
+        const backendId = String(gen?.historyId || '');
+        return (status === 'pending' || status === 'generating') && backendId;
+      });
+
+      // If we have in-progress generations with historyIds, do a single batch history refresh
+      // instead of individual API calls (avoids 429 rate limits)
+      if (inProgressGens.length > 0) {
+        console.log('[queue] Refreshing history to check', inProgressGens.length, 'in-progress generations');
+        try {
+          await dispatch(loadHistory({ 
+            paginationParams: { limit: 20 },
+            forceRefresh: true,
+            debugTag: 'queue-check'
+          })).unwrap();
+        } catch (err) {
+          console.log('[queue] History refresh failed:', err);
+        }
+      }
+    };
+
+    // Less aggressive: check every 10 seconds, and rely on sync effect to handle updates
+    const interval = setInterval(checkGenerations, 10000);
+    checkGenerations(); // Run immediately on mount
+
+    return () => clearInterval(interval);
+  }, [activeGenerations, dispatch]);
+
+  // Filter entries by search query, date range, and sort order
   const filteredAndSortedEntries = useMemo(() => {
     let filtered = [...historyEntries];
 
@@ -1115,51 +1303,115 @@ const InputBox = () => {
       groups[date].push(entry);
     }
 
-    // Merge local generating entries into today's group without sorting existing items.
-    if (localGeneratingEntries.length > 0) {
-      const todayKeyLocal = new Date().toDateString();
-      if (!groups[todayKeyLocal]) {
-        groups[todayKeyLocal] = [];
-        dateOrder.push(todayKeyLocal);
+    // Sort entries within each date group by timestamp based on sortOrder
+    const getTs = (entry: HistoryEntry) => new Date(entry.timestamp).getTime();
+    Object.keys(groups).forEach(date => {
+      if (sortOrder === 'asc') {
+        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(a) - getTs(b)); // Oldest first
+      } else {
+        groups[date].sort((a: HistoryEntry, b: HistoryEntry) => getTs(b) - getTs(a)); // Newest first
       }
+    });
 
-      localGeneratingEntries.forEach((localEntry) => {
-        const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
-        if (!localId) return;
-        const existsInGroup = groups[todayKeyLocal].some((e: HistoryEntry) => {
-          const eId = e.id || (e as any)?.firebaseHistoryId;
-          return eId === localId;
+    // NEW: Merge active generations from Redux (persistent parallel generations)
+    // NOTE: The grid UI renders `entry.images.map(...)`. For in-flight jobs, we must provide
+    // placeholder images so each concurrent generation shows its own loading tiles.
+    if (activeGenerations.length > 0) {
+      activeGenerations.forEach(gen => {
+        // Keep placeholder ids stable: always render under the client generation id ("gen-...").
+        // Use gen.historyId only for de-dupe when the real history entry arrives.
+        const displayId = String(gen.id);
+        const backendId = String((gen as any)?.historyId || '');
+        const idsToMatch = [displayId, backendId].filter(Boolean);
+
+        // If backend history already contains the *final* entry (completed/failed), prefer history and skip placeholder.
+        const historyAlreadyHasFinal = filteredAndSortedEntries.some((e: any) => {
+          const eId = String(e?.id || '');
+          if (!idsToMatch.includes(eId)) return false;
+          return e?.status === 'completed' || e?.status === 'failed';
         });
-        if (existsInGroup) return;
+        if (historyAlreadyHasFinal) return;
 
-        // For desc (recent first), show local previews at the top; for asc, append at end.
-        if (sortOrder === 'desc') groups[todayKeyLocal].unshift(localEntry);
-        else groups[todayKeyLocal].push(localEntry);
+        const genDate = new Date(gen.createdAt);
+        const genDateKey = genDate.toDateString();
+
+        if (!groups[genDateKey]) {
+          groups[genDateKey] = [];
+        }
+
+        const existsInGroup = groups[genDateKey].some((e: HistoryEntry) => {
+          const eId = String((e as any)?.id || '');
+          const eFirebaseId = String((e as any)?.firebaseHistoryId || '');
+          return idsToMatch.includes(eId) || (eFirebaseId && idsToMatch.includes(eFirebaseId));
+        });
+
+        if (!existsInGroup) {
+          const count = Math.max(1, Number(gen.params?.imageCount || 1));
+          const placeholderImages = Array.from({ length: count }, (_, idx) => ({
+            id: `placeholder-${gen.id}-${idx}`,
+            url: '',
+            originalUrl: '',
+            thumbnailUrl: '',
+            avifUrl: '',
+          }));
+
+          const placeholder: HistoryEntry = {
+            id: String(displayId),
+            status: gen.status === 'pending' ? 'generating' : gen.status,
+            prompt: gen.prompt,
+            model: gen.model,
+            generationType: 'text-to-image' as any,
+            timestamp: genDate.toISOString(),
+            createdAt: genDate.toISOString(),
+            // If we have real images, use them; otherwise, use placeholders so the loader tiles render.
+            images: (Array.isArray(gen.images) && gen.images.length > 0) ? (gen.images as any) : (placeholderImages as any),
+            imageCount: count,
+            frameSize: gen.params?.frameSize,
+            style: gen.params?.style,
+            isPublic: gen.params?.isPublic,
+            // Store the backend historyId if available for later matching
+            ...(gen.historyId ? { firebaseHistoryId: gen.historyId } : {}),
+          } as any;
+
+          if (sortOrder === 'desc') groups[genDateKey].unshift(placeholder);
+          else groups[genDateKey].push(placeholder);
+        }
       });
     }
 
-    return { groups, dateOrder };
-  }, [filteredAndSortedEntries, localGeneratingEntries, sortOrder]);
+    return groups;
+  }, [filteredAndSortedEntries, sortOrder, activeGenerations]);
 
-  const sortedDates = groupedByDate.dateOrder;
+  // Sort dates based on sortOrder
+  const sortedDates = useMemo(() => {
+    const dates = new Set(Object.keys(groupedByDate));
+    const datesArray = Array.from(dates);
+    if (sortOrder === 'asc') {
+      return datesArray.sort((a: string, b: string) =>
+        new Date(a).getTime() - new Date(b).getTime() // Oldest first
+      );
+    } else {
+      return datesArray.sort((a: string, b: string) =>
+        new Date(b).getTime() - new Date(a).getTime() // Newest first
+      );
+    }
+  }, [groupedByDate, sortOrder]);
 
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
   useEffect(() => {
     const currentEntryIds = new Set<string>(filteredAndSortedEntries.map((e: HistoryEntry) => e.id));
-
-    // CRITICAL FIX: Also add local entry IDs to prevent animation when they transition to history
-    // This ensures the same frame doesn't animate when it moves from local to history
-    localGeneratingEntries.forEach((localEntry) => {
-      const localId = localEntry.id || (localEntry as any)?.firebaseHistoryId;
-      if (localId) {
-        currentEntryIds.add(localId);
-      }
+    // Also include active generation placeholders so they don't re-animate every render.
+    activeGenerations.forEach((g: any) => {
+      const id = String(g?.id || '');
+      const hid = String(g?.historyId || '');
+      if (id) currentEntryIds.add(id);
+      if (hid) currentEntryIds.add(hid);
     });
 
     // Update ref AFTER render completes (for next render cycle comparison)
     previousEntriesRef.current = currentEntryIds;
-  }, [filteredAndSortedEntries, localGeneratingEntries]);
+  }, [filteredAndSortedEntries, activeGenerations]);
 
   // Memoize date formatter to avoid recreating on every render
   const formatDate = useCallback((date: string) => {
@@ -1645,7 +1897,7 @@ const InputBox = () => {
   // If future UX requires prefetch, implement a lightweight, single-fire prefetch with strict
   // cooldown and visibility metrics rather than looping effects.
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (generationId?: string) => {
     if (!prompt.trim()) return;
 
 
@@ -1718,13 +1970,26 @@ const InputBox = () => {
     } catch (creditError: any) {
       toast.error(creditError.message || 'Insufficient credits for generation');
       setIsGeneratingLocally(false);
-      setLocalGeneratingEntries([]);
+      // Don't wipe other in-flight jobs; only remove this generation's local entry if present
+      if (generationId) removeLocalGeneratingEntry(generationId);
       postGenerationBlockRef.current = false;
+      
+      // If we have a generation ID, marks it as failed so it doesn't get stuck in the queue
+      if (generationId) {
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: { 
+            status: 'failed', 
+            error: creditError.message || 'Insufficient credits' 
+          }
+        }));
+      }
       return;
     }
 
-    // Create a local history-style loading entry that mirrors the Logo flow
-    const tempEntryId = `loading-${Date.now()}`;
+    // Create a local history-style loading entry.
+    // Prefer the stable per-generation id (gen-...) when provided so UI updates land on the right card.
+    const tempEntryId = generationId || `loading-${Date.now()}`;
     const tempEntry: HistoryEntry = {
       id: tempEntryId,
       prompt: finalPrompt,
@@ -1757,7 +2022,11 @@ const InputBox = () => {
 
     // Set loading entry immediately to show loading GIF
     // Use flushSync to force immediate React render (if available) or use setTimeout
-    setLocalGeneratingEntries([tempEntry]);
+    // Keep multiple concurrent generations visible (cap at 4).
+    setLocalGeneratingEntries((prev) => {
+      const next = [tempEntry, ...prev.filter((e: any) => String(e?.id || (e as any)?.firebaseHistoryId) !== String(tempEntryId))];
+      return next.slice(0, 4);
+    });
 
     // Force a synchronous render cycle by using requestAnimationFrame
     // This ensures the loading GIF appears immediately before any async operations
@@ -1791,79 +2060,8 @@ const InputBox = () => {
         console.log('Style:', style);
         console.log('Uploaded images count:', uploadedImages.length);
 
-        // 🔥 FIREBASE SAVE FLOW FOR RUNWAY MODELS:
-        // 1. Create initial Firebase entry with 'generating' status
-        // 2. Update Firebase with progress as images complete
-        // 3. Update Firebase with final 'completed' or 'failed' status
-        // 4. All updates include images, metadata, and status
-        // 5. Error handling updates both Redux and Firebase
-        // 6. Firebase ID is used consistently throughout the process
-
-        try {
-          firebaseHistoryId = await saveHistoryEntry({
-            prompt: prompt,
-            model: selectedModel,
-            generationType: "text-to-image",
-            images: [],
-            timestamp: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            imageCount: imageCount,
-            status: 'generating',
-            frameSize,
-            style
-          });
-
-          // Update localGeneratingEntries with firebaseHistoryId for matching
-          if (firebaseHistoryId) {
-            console.log('[DEBUG handleGenerate] Updating local entry with firebaseHistoryId:', {
-              tempEntryId,
-              firebaseHistoryId,
-              currentLocalEntry: localGeneratingEntries[0] ? {
-                id: localGeneratingEntries[0].id,
-                firebaseHistoryId: (localGeneratingEntries[0] as any)?.firebaseHistoryId
-              } : null
-            });
-
-            setLocalGeneratingEntries((prev) => {
-              if (prev.length > 0 && prev[0].id === tempEntryId) {
-                const updated = [{
-                  ...prev[0],
-                  id: firebaseHistoryId!, // Update ID to match the real historyId
-                  firebaseHistoryId: firebaseHistoryId,
-                } as HistoryEntry];
-
-                console.log('[DEBUG handleGenerate] Updated local entry:', {
-                  oldId: prev[0].id,
-                  newId: updated[0].id,
-                  firebaseHistoryId: (updated[0] as any)?.firebaseHistoryId
-                });
-
-                return updated;
-              }
-              console.log('[DEBUG handleGenerate] No local entry found to update with firebaseHistoryId');
-              return prev;
-            });
-          }
-          console.log('✅ Firebase history entry created with ID:', firebaseHistoryId);
-          console.log('🔗 Firebase document path: generationHistory/' + firebaseHistoryId);
-
-          // Update the local entry with the Firebase ID
-          // dispatch(updateHistoryEntry({
-          //   id: loadingEntry.id,
-          //   updates: { id: firebaseHistoryId }
-          // }));
-
-          // Don't modify the loadingEntry object - use firebaseHistoryId directly
-          console.log('Using Firebase ID for all operations:', firebaseHistoryId);
-        } catch (firebaseError) {
-          console.error('❌ Failed to save to Firebase:', firebaseError);
-          console.error('Firebase error details:', {
-            message: firebaseError instanceof Error ? firebaseError.message : 'Unknown error',
-            stack: firebaseError instanceof Error ? firebaseError.stack : 'No stack trace'
-          });
-          toast.error('Failed to save generation to history');
-          return;
-        }
+        // Runway provider creates history records in the backend; we capture `historyId` from provider responses
+        // (see `runwayGenerate` response and `runwayStatus` payload).
 
         // Validate gen4_image_turbo requires at least one reference image
         console.log('🔍 ABOUT TO START VALIDATION');
@@ -1884,7 +2082,7 @@ const InputBox = () => {
 
           // Update Firebase entry to failed status
           try {
-            await updateFirebaseHistory(firebaseHistoryId!, {
+            await updateFirebaseHistory(firebaseHistoryId, {
               status: "failed",
               error: "gen4_image_turbo requires at least one reference image"
             });
@@ -1911,7 +2109,7 @@ const InputBox = () => {
             })
           );
           setIsGeneratingLocally(false);
-          setLocalGeneratingEntries([]);
+          removeLocalGeneratingEntry([generationId || tempEntryId, firebaseHistoryId].filter(Boolean) as any);
           postGenerationBlockRef.current = false;
           return;
         }
@@ -1968,8 +2166,7 @@ const InputBox = () => {
               ratio,
               generationType: "text-to-image",
               uploadedImagesCount: combinedImages.length,
-              style,
-              existingHistoryId: firebaseHistoryId
+              style
             });
             const result = await dispatch(runwayGenerate({
               promptText: `${promptAdjusted} [Style: ${style}]`,
@@ -1978,10 +2175,14 @@ const InputBox = () => {
               generationType: "text-to-image",
               uploadedImages: combinedImages,
               style,
-              existingHistoryId: firebaseHistoryId,
               isPublic
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
+
+            // Capture backend historyId immediately (Runway returns it on task creation)
+            if (!firebaseHistoryId && result?.historyId) {
+              firebaseHistoryId = result.historyId;
+            }
 
             // Poll via backend status route; stop on completion or terminal error
             let imageUrl: string | undefined;
@@ -2002,8 +2203,8 @@ const InputBox = () => {
                   runwayBaseRespToastShownRef.current = true;
                   baseRespToastShown = true;
                 }
-                // Stop loader immediately - clear entries on error
-                setLocalGeneratingEntries([]);
+                // Stop loader immediately - clear ONLY this generation's local entry on error
+                removeLocalGeneratingEntry([generationId || tempEntryId, firebaseHistoryId].filter(Boolean) as any);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -2012,7 +2213,7 @@ const InputBox = () => {
               if (s === 'FAILED' || s === 'CANCELLED' || s === 'THROTTLED') {
                 terminalError = (status?.failure as string) || 'Runway task did not complete';
                 if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
-                setLocalGeneratingEntries([]);
+                removeLocalGeneratingEntry([generationId || tempEntryId, firebaseHistoryId].filter(Boolean) as any);
                 setIsGeneratingLocally(false);
                 break;
               }
@@ -2166,11 +2367,10 @@ const InputBox = () => {
           firebaseHistoryId
         });
 
-        // 🔍 DEBUG: Check if firebaseHistoryId is valid
+        // `firebaseHistoryId` is optional in the new flow; providers create history records themselves.
+        // If it's not available, we still complete the UI flow and rely on a full history refresh.
         if (!firebaseHistoryId) {
-          console.error('❌ CRITICAL ERROR: firebaseHistoryId is undefined!!');
-          console.error('This means the Firebase save failed at the beginning');
-          return;
+          console.warn('[Runway] No historyId captured; skipping PATCH update and relying on history refresh.');
         }
 
         console.log('🔍 DEBUG: firebaseHistoryId is valid:', firebaseHistoryId);
@@ -2231,23 +2431,38 @@ const InputBox = () => {
           // Update local preview with completed images
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: currentImages.filter(img => img.url),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: successfulResults.length,
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            if (generationId) {
+              console.log('[queue] Runway generation completed, updating active generation:', { generationId, firebaseHistoryId, imageCount: completedEntry.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: completedEntry.images,
+                  historyId: firebaseHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
           clearInputs();
 
           // Refresh only the single completed generation instead of reloading all
-          if (firebaseHistoryId) {
-            await refreshSingleGeneration(firebaseHistoryId);
+          // Use backend historyId (not client gen-...) because that's what /api/generations/:id expects
+          const refreshId = firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { refreshId, firebaseHistoryId, generationId });
+          if (refreshId) {
+            await refreshSingleGeneration(refreshId);
           } else {
             await refreshHistory();
           }
@@ -2264,6 +2479,13 @@ const InputBox = () => {
             ...e,
             status: 'failed'
           })));
+
+          if (generationId) {
+             dispatch(updateActiveGeneration({
+               id: generationId,
+               updates: { status: 'failed', error: 'Runway generation failed' }
+             }));
+          }
         }
 
         console.log('=== RUNWAY GENERATION COMPLETED ===');
@@ -2301,11 +2523,11 @@ const InputBox = () => {
 
         // Update the local loading entry with completed images
         try {
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
           const completedEntry: HistoryEntry = {
-            ...(localGeneratingEntries[0] || tempEntry),
+            ...tempEntry,
             // Use the backend historyId when available so the local card matches the real entry.
-            id: resultHistoryId || (localGeneratingEntries[0]?.id || tempEntryId),
+            id: resultHistoryId || tempEntryId,
             // Also store firebaseHistoryId for duplicate-detection helpers
             ...(resultHistoryId ? { firebaseHistoryId: resultHistoryId } : {}),
             images: result.images,
@@ -2314,7 +2536,19 @@ const InputBox = () => {
             createdAt: new Date().toISOString(),
             imageCount: result.images.length,
           } as any;
-          setLocalGeneratingEntries([completedEntry]);
+          upsertLocalGeneratingEntry(completedEntry);
+
+          if (generationId) {
+            console.log('[queue] MiniMax generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
+            dispatch(updateActiveGeneration({
+              id: generationId,
+              updates: {
+                status: 'completed',
+                images: completedEntry.images,
+                historyId: (result as any)?.historyId
+              }
+            }));
+          }
         } catch { }
 
         // Show success notification
@@ -2322,7 +2556,9 @@ const InputBox = () => {
         clearInputs();
 
         // Refresh only the single completed generation instead of reloading all
-        const historyIdToRefresh = (result as any)?.historyId || firebaseHistoryId;
+        // Use backend historyId (not client gen-...) because that's what /api/generations/:id expects
+        const historyIdToRefresh = (result as any)?.historyId || firebaseHistoryId || generationId;
+        console.log('[queue] Refreshing generation:', { historyIdToRefresh, resultHistoryId: (result as any)?.historyId, generationId });
         if (historyIdToRefresh) {
           await refreshSingleGeneration(historyIdToRefresh);
         } else {
@@ -2355,22 +2591,35 @@ const InputBox = () => {
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+          if (generationId) {
+            console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
+            dispatch(updateActiveGeneration({
+              id: generationId,
+              updates: {
+                status: 'completed',
+                images: completedEntry.images,
+                historyId: (result as any)?.historyId
+              }
+            }));
+          }
           } catch { }
 
           toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2385,13 +2634,19 @@ const InputBox = () => {
           // Update loading entry to show failed state instead of clearing it
           try {
             const failedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               status: 'failed',
               timestamp: new Date().toISOString(),
               error: error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro',
             } as any;
-            setLocalGeneratingEntries([failedEntry]);
+            upsertLocalGeneratingEntry(failedEntry);
+            if (generationId) {
+             dispatch(updateActiveGeneration({
+               id: generationId,
+               updates: { status: 'failed', error: error instanceof Error ? error.message : 'Failed' }
+             }));
+            }
           } catch { }
 
           // Stop generation process
@@ -2406,9 +2661,9 @@ const InputBox = () => {
           const errorMessage = error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro';
           toast.error(errorMessage);
 
-          // Clear failed entry after a delay to allow user to see the error
+          // Clear failed entry after a delay to allow user to see the error (don't wipe other in-flight jobs)
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 3000);
           return;
         }
@@ -2433,22 +2688,35 @@ const InputBox = () => {
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+          if (generationId) {
+            console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
+            dispatch(updateActiveGeneration({
+              id: generationId,
+              updates: {
+                status: 'completed',
+                images: completedEntry.images,
+                historyId: (result as any)?.historyId
+              }
+            }));
+          }
           } catch { }
 
           toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2461,8 +2729,14 @@ const InputBox = () => {
           }
         } catch (error) {
           console.error('FAL generate failed:', error);
-          // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          // Stop generation process immediately on error (don't wipe other in-flight jobs)
+          removeLocalGeneratingEntry(generationId || tempEntryId);
+          if (generationId) {
+             dispatch(updateActiveGeneration({
+               id: generationId,
+               updates: { status: 'failed', error: error instanceof Error ? error.message : 'Failed' }
+             }));
+          }
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -2494,28 +2768,39 @@ const InputBox = () => {
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+ 
+            if (generationId) {
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: completedEntry.images,
+                  historyId: (result as any)?.historyId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
-          // Keep local entries visible for a moment before refreshing
-          // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
+          // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2528,7 +2813,7 @@ const InputBox = () => {
           }
         } catch (error) {
           // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          removeLocalGeneratingEntry(generationId || tempEntryId);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -2577,15 +2862,29 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (result as any)?.historyId;
+              console.log('[queue] Seedream v4 generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: result.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: result.images || [],
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
@@ -2594,11 +2893,12 @@ const InputBox = () => {
           // Keep local entries visible for a moment before refreshing
           // Don't reset isGeneratingLocally here - let the useEffect handle it when status changes
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2610,7 +2910,7 @@ const InputBox = () => {
           }
         } catch (error) {
           // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          removeLocalGeneratingEntry(generationId || tempEntryId);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -2661,15 +2961,29 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (result as any)?.historyId;
+              console.log('[queue] Seedream 4.5 generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: result.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: result.images || [],
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
@@ -2677,11 +2991,12 @@ const InputBox = () => {
 
           // Keep local entries visible for a moment before refreshing
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2693,7 +3008,7 @@ const InputBox = () => {
           }
         } catch (error) {
           // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          removeLocalGeneratingEntry(generationId || tempEntryId);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -2749,27 +3064,42 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (combinedResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (combinedResult as any)?.historyId;
+              console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: combinedResult.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: combinedResult.images || [],
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
-          // Keep local entries visible for a moment before refreshing
+          // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (combinedResult as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2780,8 +3110,8 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          // Stop generation process immediately on error (don't wipe other in-flight jobs)
+          removeLocalGeneratingEntry(generationId || tempEntryId);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -2837,27 +3167,42 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (combinedResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (combinedResult as any)?.historyId;
+              console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: combinedResult.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: combinedResult.images || [],
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
-          // Keep local entries visible for a moment before refreshing
+          // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (combinedResult as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2868,8 +3213,8 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          // Stop generation process immediately on error (don't wipe other in-flight jobs)
+          removeLocalGeneratingEntry(generationId || tempEntryId);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -2920,27 +3265,42 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (combinedResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (combinedResult as any)?.historyId;
+              console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: combinedResult.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: combinedResult.images || [],
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
-          // Keep local entries visible for a moment before refreshing
+          // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
           setTimeout(() => {
-            setLocalGeneratingEntries([]);
+            removeLocalGeneratingEntry(generationId || tempEntryId);
           }, 1000);
 
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (combinedResult as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (combinedResult as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -2951,8 +3311,8 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
+          // Stop generation process immediately on error (don't wipe other in-flight jobs)
+          removeLocalGeneratingEntry(generationId || tempEntryId);
           setIsGeneratingLocally(false);
           postGenerationBlockRef.current = false;
 
@@ -3002,15 +3362,15 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (combinedResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
           } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
@@ -3098,15 +3458,15 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
-              images: (combinedResult.images || []),
+              ...tempEntry,
+              id: tempEntryId,
+              images: (falResult.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (combinedResult.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
           } catch { }
 
           toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
@@ -3171,21 +3531,36 @@ const InputBox = () => {
 
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (result as any)?.historyId;
+              console.log('[queue] P-Image-Edit standalone generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: result.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: result.images || [],
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
           clearInputs();
 
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -3260,21 +3635,36 @@ const InputBox = () => {
 
             try {
               const completedEntry: HistoryEntry = {
-                ...(localGeneratingEntries[0] || tempEntry),
-                id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+                ...tempEntry,
+                id: tempEntryId,
                 images: (result.images || []),
                 status: 'completed',
                 timestamp: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
                 imageCount: (result.images?.length || imageCount),
               } as any;
-              setLocalGeneratingEntries([completedEntry]);
+              upsertLocalGeneratingEntry(completedEntry);
+
+              // Update active generation with backend historyId for proper sync
+              if (generationId) {
+                const resultHistoryId = (result as any)?.historyId;
+                console.log('[queue] P-Image-Edit generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: result.images?.length });
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'completed',
+                    images: result.images || [],
+                    historyId: resultHistoryId
+                  }
+                }));
+              }
             } catch { }
 
             toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
             clearInputs();
 
-            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+            console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
             if (resultHistoryId) {
               await refreshSingleGeneration(resultHistoryId);
             } else {
@@ -3341,21 +3731,36 @@ const InputBox = () => {
 
             try {
               const completedEntry: HistoryEntry = {
-                ...(localGeneratingEntries[0] || tempEntry),
-                id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+                ...tempEntry,
+                id: tempEntryId,
                 images: (result.images || []),
                 status: 'completed',
                 timestamp: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
                 imageCount: (result.images?.length || imageCount),
               } as any;
-              setLocalGeneratingEntries([completedEntry]);
+              upsertLocalGeneratingEntry(completedEntry);
+
+              // Update active generation with backend historyId for proper sync
+              if (generationId) {
+                const resultHistoryId = (result as any)?.historyId;
+                console.log('[queue] P-Image T2I generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: result.images?.length });
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'completed',
+                    images: result.images || [],
+                    historyId: resultHistoryId
+                  }
+                }));
+              }
             } catch { }
 
             toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
             clearInputs();
 
-            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+            console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
             if (resultHistoryId) {
               await refreshSingleGeneration(resultHistoryId);
             } else {
@@ -3410,15 +3815,15 @@ const InputBox = () => {
           // This ensures the loading animation stays until images are actually displayed
           try {
             const entryWithImages: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || (result as any)?.historyId || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: allImages,
               status: 'generating', // Keep as 'generating' to show loading animation
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: allImages.length,
             } as any;
-            setLocalGeneratingEntries([entryWithImages]);
+            upsertLocalGeneratingEntry(entryWithImages);
 
             // Wait for images to load before marking as completed
             // This ensures the loading animation stays visible until images are rendered
@@ -3456,7 +3861,21 @@ const InputBox = () => {
               ...entryWithImages,
               status: 'completed',
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
+
+            // Update active generation with backend historyId for proper sync
+            if (generationId) {
+              const resultHistoryId = (result as any)?.historyId;
+              console.log('[queue] New Turbo Model generation completed, updating active generation:', { generationId, historyId: resultHistoryId, imageCount: allImages.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: allImages,
+                  historyId: resultHistoryId
+                }
+              }));
+            }
           } catch { }
 
           toast.success(`Generated ${allImages.length || 1} image(s) successfully!`);
@@ -3464,6 +3883,7 @@ const InputBox = () => {
 
           // Refresh the history entry that contains all images
           const resultHistoryId = (result as any)?.historyId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -3547,6 +3967,17 @@ const InputBox = () => {
           })).unwrap();
 
           // History is persisted by backend; no local completed entry needed
+          // Ensure the parallel queue entry transitions to completed (this thunk doesn't touch generationSlice).
+          if (generationId) {
+            dispatch(updateActiveGeneration({
+              id: generationId,
+              updates: {
+                status: 'completed',
+                images: (result as any)?.images || [],
+                historyId: (result as any)?.historyId,
+              }
+            }));
+          }
 
           // Update the loading entry with completed data
           // dispatch(
@@ -3562,7 +3993,8 @@ const InputBox = () => {
           toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`);
           clearInputs();
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -3590,6 +4022,7 @@ const InputBox = () => {
             style,
             generationType: "text-to-image",
             uploadedImages: combinedImages,
+            generationId,
           };
 
           // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
@@ -3609,15 +4042,15 @@ const InputBox = () => {
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
-              ...(localGeneratingEntries[0] || tempEntry),
-              id: (localGeneratingEntries[0]?.id || tempEntryId),
+              ...tempEntry,
+              id: tempEntryId,
               images: (result.images || []),
               status: 'completed',
               timestamp: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               imageCount: (result.images?.length || imageCount),
             } as any;
-            setLocalGeneratingEntries([completedEntry]);
+            upsertLocalGeneratingEntry(completedEntry);
           } catch { }
 
           // History is persisted by backend; no local completed entry needed
@@ -3638,7 +4071,8 @@ const InputBox = () => {
             } successfully!`);
           clearInputs();
           // Refresh only the single completed generation instead of reloading all
-          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId;
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          console.log('[queue] Refreshing generation:', { resultHistoryId, resultHistoryIdFromAPI: (result as any)?.historyId, generationId });
           if (resultHistoryId) {
             await refreshSingleGeneration(resultHistoryId);
           } else {
@@ -3656,8 +4090,8 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
-      // Clear local generating entries on error - don't show generating logo or failed state
-      setLocalGeneratingEntries([]);
+      // Clear ONLY this generation's local entry on error (don't wipe other in-flight jobs)
+      removeLocalGeneratingEntry(generationId || tempEntryId);
       setIsGeneratingLocally(false);
       postGenerationBlockRef.current = false;
 
@@ -3699,6 +4133,17 @@ const InputBox = () => {
       // Show error notification (skip if a Runway base_resp toast already shown)
       if (!runwayBaseRespToastShownRef.current) {
         toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+      }
+      
+      // Update active generation status on failure
+      if (generationId) {
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: { 
+            status: 'failed', 
+            error: error instanceof Error ? error.message : 'Generation failed' 
+          }
+        }));
       }
 
       // Reset local generation state immediately on error
@@ -3955,7 +4400,13 @@ const InputBox = () => {
                   <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
                 </button>
                 {showCalendar && (
-                  <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                  <div
+                    ref={calendarRef}
+                    data-calendar-popup="true"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-2 z-70 w-[280px] select-none bg-black/90 backdrop-blur-3xl shadow-2xl rounded-xl ring-1 ring-white/20 p-3"
+                  >
                     <div className="flex items-center justify-between mb-2 text-white">
                       <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                         const prev = new Date(calendarYear, calendarMonth - 1, 1);
@@ -4309,8 +4760,9 @@ const InputBox = () => {
 
         {/* Spacer to keep content below fixed header */}
 
-        {/* Initial loading overlay - show when switching back, loading, or before initial load attempt */}
-        {(showSwitchLoader || ((loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0)) && (
+        {/* Initial loading overlay - show when loading OR before initial load attempt */}
+        {/* CRITICAL FIX: Don't show full screen loader if we have active generations to show */}
+        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -4341,7 +4793,7 @@ const InputBox = () => {
 
         <div>
           {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && localGeneratingEntries.length === 0 && (
+          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
             <ImageGenerationGuide />
           )}
 
@@ -4379,16 +4831,17 @@ const InputBox = () => {
                   {/* Render all entries for this date - includes both history and merged local entries */}
                   {(() => {
                     // Since local entries are now merged into groupedByDate, just render all entries
-                    const allEntries = groupedByDate.groups[date] || [];
+                    const allEntries = (groupedByDate as { [key: string]: HistoryEntry[] })[date] || [];
 
                     return allEntries.flatMap((entry: HistoryEntry) => {
+                      const entryImages: any[] = Array.isArray((entry as any)?.images) ? ((entry as any).images as any[]) : [];
                       // Check if entry has ready images
-                      const hasImages = entry.images && entry.images.length > 0;
+                      const hasImages = entryImages.length > 0;
                       const hasReadyImages = hasImages && entry.images.some((img: any) =>
                         img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
                       );
 
-                      return entry.images.map((image: any, imgIdx: number) => {
+                      return entryImages.map((image: any, imgIdx: number) => {
                         // Generate unique key: use image.id if available, otherwise use index
                         // This prevents duplicate keys when image.id is undefined
                         const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
@@ -4399,8 +4852,14 @@ const InputBox = () => {
                         // This prevents the frame from disappearing during the transition
                         // For images that have URLs, check if they're loaded
                         const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
-                        const shouldShowLoading = entry.status === "generating" ||
-                          (entry.status === "completed" && hasImageUrl && !isImageLoaded);
+                        // Show loading if:
+                        // 1. Status is generating (always show loader)
+                        // 2. Status is completed but image hasn't loaded yet (show shimmer/loader)
+                        // 3. No image URL exists (placeholder from activeGenerations - show loader)
+                        const isGeneratingStatus = (entry.status as string) === "generating" || (entry.status as string) === "pending";
+                        const shouldShowLoading = isGeneratingStatus ||
+                          (entry.status === "completed" && hasImageUrl && !isImageLoaded) ||
+                          (!hasImageUrl && isGeneratingStatus);
 
                         // Check if this is a newly loaded entry for animation
                         // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
@@ -4495,13 +4954,18 @@ const InputBox = () => {
                                   </div>
                                 )}
 
+                                {/* Shimmer background for placeholders without images (persists on refresh) */}
+                                {!hasImageUrl && isGeneratingStatus && (
+                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                )}
+
                                 {/* Loading overlay - show on top of image while loading */}
                                 {shouldShowLoading && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
                                     <div className="flex flex-col items-center gap-2">
                                       <GifLoader size={64} alt="Generating" />
                                       <div className="text-xs text-white/60 text-center">
-                                        {entry.status === "generating" ? "Generating..." : "Loading..."}
+                                        {isGeneratingStatus ? "Generating..." : "Loading..."}
                                       </div>
                                     </div>
                                   </div>
@@ -4624,7 +5088,7 @@ const InputBox = () => {
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         <div 
-          className="relative rounded-lg md:rounded-b-lg rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
+          className="relative rounded-lg md:rounded-b-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
         >
@@ -4864,12 +5328,46 @@ const InputBox = () => {
             <div className="absolute bottom-3 right-5 hidden md:flex flex-col items-end gap-3">
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
-                onClick={handleGenerate}
-                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
+                onClick={async () => {
+                  try {
+                    // Check parallel generation limit (only counting running ones)
+                    if (runningGenerationsCount >= 4) {
+                      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+                      return;
+                    }
+
+                    // Create tracking ID (visual only for now as handleGenerate manages internal state)
+                    // This allows us to show the card immediately in the panel
+                    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    
+                    // Add to active generations queue immediately
+                    console.log('[queue] Adding new generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
+                    dispatch(addActiveGeneration({
+                      id: generationId,
+                      prompt: prompt,
+                      model: selectedModel,
+                      status: 'pending',
+                      createdAt: Date.now(),
+                      updatedAt: Date.now(),
+                      params: {
+                        imageCount,
+                        frameSize,
+                        style,
+                        uploadedImages: getCombinedUploadedImages()
+                      }
+                    }));
+                    
+                    // Trigger the actual generation logic (fire and forget to not block button)
+                    handleGenerate(generationId);
+                  } catch (e) {
+                    console.error('Failed to start generation:', e);
+                  }
+                }}
+                disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 aria-busy={isEnhancing}
               >
-                {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
+                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full (4/4 active)' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4 active)` : 'Generate'}
               </button>
             </div>
           </div>
@@ -4968,12 +5466,41 @@ const InputBox = () => {
               </div>
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <button
-                onClick={handleGenerate}
-                disabled={isGeneratingLocally || isEnhancing || !prompt.trim()}
+                onClick={async () => {
+                  try {
+                    // Check parallel generation limit (only counting running ones)
+                    if (runningGenerationsCount >= 4) {
+                      toast.error('Queue full (4/4 active). Please wait.');
+                      return;
+                    }
+
+                    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    
+                    dispatch(addActiveGeneration({
+                      id: generationId,
+                      prompt: prompt,
+                      model: selectedModel,
+                      status: 'pending',
+                      createdAt: Date.now(),
+                      updatedAt: Date.now(),
+                      params: {
+                        imageCount,
+                        frameSize,
+                        style,
+                        uploadedImages: getCombinedUploadedImages()
+                      }
+                    }));
+                    
+                    handleGenerate(generationId);
+                  } catch (e) {
+                    console.error('Failed to start generation:', e);
+                  }
+                }}
+                disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
                 aria-busy={isEnhancing}
               >
-                {isGeneratingLocally ? "Generating..." : isEnhancing ? "Enhancing..." : "Generate"}
+                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
               </button>
             </div>
 

@@ -325,11 +325,15 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     return n >= 10 && n <= 5000; // 10-1000 characters for lyrics_prompt
   };
 
+  // Get active generations count for parallel generation support
+  const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+
   const canGenerate = isDialogueModel
-    ? dialogueInputs.some(input => input.text.trim().length > 0) && !generating
+    ? dialogueInputs.some(input => input.text.trim().length > 0) && runningGenerationsCount < 4
     : model === 'minimax-music-2'
-      ? isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && !generating
-      : isLyricsValid(lyrics) && !generating;
+      ? isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && runningGenerationsCount < 4
+      : isLyricsValid(lyrics) && runningGenerationsCount < 4;
 
   const clearVoiceLibrarySelection = useCallback(() => {
     if (!selectedUploadedAudio) return;
@@ -2529,10 +2533,10 @@ In a familiar corner, a stranger gazes"
             disabled={!canGenerate}
             className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2F6BFF] text-white px-6 py-1 rounded-lg text-lg font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center gap-3 relative z-[60]"
           >
-            {generating ? (
+            {generating || runningGenerationsCount > 0 ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
-                Composing...
+                {runningGenerationsCount > 0 ? `Composing (${runningGenerationsCount}/4)` : 'Composing...'}
               </>
             ) : (
               <>
