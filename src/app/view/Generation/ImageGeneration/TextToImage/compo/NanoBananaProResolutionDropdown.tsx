@@ -105,7 +105,7 @@ const NanoBananaProResolutionDropdown = ({
       window.addEventListener('resize', updateDropdownPosition);
       
       // Close dropdown when clicking outside
-      // Use bubble phase (default) so React's onClick runs first, then this handler
+      // Use mousedown in capture phase to catch the event before React's handlers
       const handleClickOutside = (event: MouseEvent) => {
         // Don't close if button was just clicked or we're in the process of closing
         if (buttonJustClickedRef.current || shouldCloseRef.current) {
@@ -126,17 +126,14 @@ const NanoBananaProResolutionDropdown = ({
         dispatch(toggleDropdown(''));
       };
       
-      // Use bubble phase (default) so React's onClick runs first, then this handler
-      // Add a small delay to ensure React's event handlers complete first
-      const timeoutId = setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
-      }, 0);
+      // Use mousedown in capture phase to handle clicks before React's onClick
+      // This ensures we can check before React's onClick handlers run
+      document.addEventListener('mousedown', handleClickOutside, true);
       
       return () => {
-        clearTimeout(timeoutId);
         window.removeEventListener('scroll', updateDropdownPosition, true);
         window.removeEventListener('resize', updateDropdownPosition);
-        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener('mousedown', handleClickOutside, true);
       };
     }
   }, [activeDropdown, openDirection, dispatch, isActiveInstance]);
@@ -148,10 +145,9 @@ const NanoBananaProResolutionDropdown = ({
     // Mark that button was just clicked - do this immediately and synchronously
     buttonJustClickedRef.current = true;
     
-    // Check current state and toggle accordingly
-    const isCurrentlyOpen = activeDropdown === 'nanoBananaProResolution' && isActiveInstance;
-    
-    if (isCurrentlyOpen) {
+    // Use isActiveInstance as the source of truth (updates synchronously)
+    // Don't rely on Redux state which might be async
+    if (isActiveInstance) {
       // Close the dropdown immediately
       setIsActiveInstance(false);
       dispatch(toggleDropdown('')); // Explicitly close by setting to empty
@@ -209,6 +205,10 @@ const NanoBananaProResolutionDropdown = ({
       <div className="relative dropdown-container">
         <button
           ref={buttonRef}
+          onMouseDown={(e) => {
+            // Set flag before click outside handler runs (capture phase)
+            buttonJustClickedRef.current = true;
+          }}
           onClick={handleDropdownClick}
           className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
         >

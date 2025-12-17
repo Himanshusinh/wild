@@ -63,6 +63,7 @@ interface InputBoxProps {
 const InputBox = (props: InputBoxProps = {}) => {
   const { placeholder = " video prompt...", activeFeature = 'Video', showHistory = true } = props;
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
@@ -130,10 +131,50 @@ const InputBox = (props: InputBoxProps = {}) => {
   useEffect(() => {
     console.log('Video generation - useEffect triggered, searchParams changed');
     const imageUrl = searchParams.get('image');
+    const promptParam = searchParams.get('prompt');
+    const modelParam = searchParams.get('model');
+    const frameParam = searchParams.get('frame') || searchParams.get('aspect') || searchParams.get('aspectRatio');
+    const durationParam = searchParams.get('duration');
+    const qualityParam = searchParams.get('quality');
+    const resolutionParam = searchParams.get('resolution');
     console.log('Video generation - checking for image parameter:', imageUrl);
     console.log('Video generation - all search params:', Object.fromEntries(searchParams.entries()));
     console.log('Video generation - current uploadedImages:', uploadedImages);
     console.log('Video generation - current generationMode:', generationMode);
+
+    // Apply remix params (prompt/model/frame/etc). IMPORTANT: this does NOT attach the generated video
+    // as input; it just pre-fills the controls.
+    if (promptParam) {
+      try { setPrompt(decodeURIComponent(promptParam)); } catch { setPrompt(promptParam); }
+    }
+    if (modelParam) {
+      try { setSelectedModel(decodeURIComponent(modelParam)); } catch { setSelectedModel(modelParam); }
+    }
+    if (frameParam) {
+      try { setFrameSize(decodeURIComponent(frameParam)); } catch { setFrameSize(frameParam); }
+    }
+    if (durationParam) {
+      const d = Number(durationParam);
+      if (Number.isFinite(d) && d > 0) setDuration(d);
+    }
+    if (qualityParam) {
+      try {
+        const q = decodeURIComponent(qualityParam).toLowerCase();
+        // Veo/Kling-style qualities: 720p / 1080p etc
+        if (q.includes('1080')) setSelectedQuality('1080p' as any);
+        else if (q.includes('720')) setSelectedQuality('720p' as any);
+        else if (q.includes('480')) setSelectedQuality('480p' as any);
+      } catch { }
+    }
+    if (resolutionParam) {
+      try {
+        const r = decodeURIComponent(resolutionParam).toLowerCase();
+        if (r.includes('1080')) setSelectedResolution('1080P' as any);
+        else if (r.includes('768')) setSelectedResolution('768P' as any);
+        else if (r.includes('720')) setSelectedResolution('720P' as any);
+        else if (r.includes('480')) setSelectedResolution('480P' as any);
+      } catch { }
+    }
 
     if (imageUrl) {
       // Decode the URL-encoded image parameter
@@ -159,6 +200,17 @@ const InputBox = (props: InputBoxProps = {}) => {
     } else {
       console.log('Video generation - no image parameter found');
     }
+
+    // Consume params once so refresh doesn't keep re-applying them.
+    try {
+      const current = new URL(window.location.href);
+      const keysToDelete = ['prompt', 'model', 'frame', 'aspect', 'aspectRatio', 'duration', 'quality', 'resolution'];
+      let changed = false;
+      keysToDelete.forEach((k) => {
+        if (current.searchParams.has(k)) { current.searchParams.delete(k); changed = true; }
+      });
+      if (changed) window.history.replaceState({}, '', current.toString());
+    } catch { }
   }, [searchParams]);
 
   // UploadModal state
@@ -1062,9 +1114,40 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  // searchInput: what user is typing; searchQuery: what is applied to backend filters
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const searchDebounceRef = useRef<any>(null);
+  const didInitSearchRef = useRef(false);
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+  const [dateInput, setDateInput] = useState<string>("");
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
+  const calendarRef = useRef<HTMLDivElement | null>(null);
+  const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
+  const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
   
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
+
+  // Close calendar when clicking outside / pressing Escape
+  useEffect(() => {
+    if (!showCalendar) return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [showCalendar]);
   
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
@@ -1111,13 +1194,20 @@ const InputBox = (props: InputBoxProps = {}) => {
       entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl))
     );
 
-    // Merge all sets, removing duplicates by ID
-    const byId: Record<string, any> = {};
-    [...declaredVideoTypes, ...urlVideoTypes, ...videosArrayTypes].forEach((e: any) => {
-      byId[e.id] = e;
-    });
-
-    const mergedEntries = Object.values(byId);
+    // IMPORTANT: Preserve backend order (do NOT sort on the frontend).
+    // Iterate in original order and include any entry that is a video type OR contains video URLs.
+    const mergedEntries: any[] = [];
+    const seen = new Set<string>();
+    for (const entry of allEntries) {
+      const id = String(entry?.id || '');
+      if (!id || seen.has(id)) continue;
+      const hasVideoInImages = Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url));
+      const hasVideoInVideos = Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl));
+      if (isVideoType(entry) || hasVideoInImages || hasVideoInVideos) {
+        mergedEntries.push(entry);
+        seen.add(id);
+      }
+    }
 
     // Debug: Log all video entries and specifically animate entries
     const animateEntries = mergedEntries.filter((e: any) => {
@@ -1194,15 +1284,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       })));*/
     }
 
-    // Sort by timestamp (newest first) to ensure consistent ordering
-    const sortedMergedEntries = mergedEntries.sort((a: any, b: any) => {
-      const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
-      const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
-      return timestampB - timestampA; // Descending order (newest first)
-    });
-
-    // Debug: Show the order of entries after sorting
-    if (sortedMergedEntries.length > 0) {
+    // Debug: Show the order of entries after backend ordering (no frontend sort)
+    if (mergedEntries.length > 0) {
       /*console.log('[VideoPage] Entry order after sorting:', sortedMergedEntries.slice(0, 3).map((entry: any, index: number) => ({
         position: index + 1,
         id: entry.id,
@@ -1212,7 +1295,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       })));*/
     }
 
-    return sortedMergedEntries;
+    return mergedEntries;
   }, shallowEqual);
 
   // Mark that we've attempted initial load once loading starts or completes
@@ -1539,20 +1622,22 @@ const InputBox = (props: InputBoxProps = {}) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUploadModalOpen, uploadModalType]);
 
-  // Group entries by date
-  const groupedByDate = historyEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
-    const date = new Date(entry.timestamp).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
+  // Group entries by date while PRESERVING backend order (do not sort dates in frontend).
+  const groupedByDate = useMemo(() => {
+    const groups: { [key: string]: HistoryEntry[] } = {};
+    const dateOrder: string[] = [];
+    for (const entry of historyEntries) {
+      const date = new Date(entry.timestamp).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+        dateOrder.push(date);
+      }
+      groups[date].push(entry);
     }
-    groups[date].push(entry);
-    return groups;
-  }, {});
+    return { groups, dateOrder };
+  }, [historyEntries]);
 
-  // Sort dates in descending order (newest first)
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) =>
-    new Date(b).getTime() - new Date(a).getTime()
-  );
+  const sortedDates = groupedByDate.dateOrder;
   // Today key for injecting local preview into today's row
   const todayKey = new Date().toDateString();
 
@@ -1611,7 +1696,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 50 },
+          paginationParams: { limit: 10 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1675,7 +1760,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       dispatch(loadHistory({
         filters: { mode: 'video' } as any,
-        paginationParams: { limit: 50 },
+        paginationParams: { limit: 10 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1684,7 +1769,14 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
+  // NOTE: This auto-load effect should only trigger when entries exist but no non-text videos
+  // It should NOT trigger on initial load when there are no entries yet
   useEffect(() => {
+    // Skip if no entries yet (initial load is handled by main useEffect below)
+    if (historyEntries.length === 0) {
+      return;
+    }
+    
     let isMounted = true;
     (async () => {
       try {
@@ -1797,8 +1889,15 @@ const InputBox = (props: InputBoxProps = {}) => {
 
 
   // Auto-load more history pages until we find non-text video types (bounded attempts)
+  // IMPORTANT: Only run after initial load is complete to prevent duplicate requests
   const autoLoadAttemptsRef = useRef(0);
   useEffect(() => {
+    // Don't run autofill until initial load has completed AND we have entries
+    // This prevents duplicate requests on page load
+    if (!hasAttemptedInitialLoadRef.current || loading || historyEntries.length === 0) {
+      return;
+    }
+
     const normalizeGenerationType = (generationType: string | undefined): string => {
       if (!generationType) return '';
       return generationType.replace(/[_-]/g, '-').toLowerCase();
@@ -1813,9 +1912,14 @@ const InputBox = (props: InputBoxProps = {}) => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
-      dispatch(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } }));
+      // Use consistent limit of 10 for all requests
+      dispatch(loadMoreHistory({
+        filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
+        backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
+        paginationParams: { limit: 10 }
+      }));
     }
-  }, [historyEntries, hasMore, loading, dispatch]);
+  }, [historyEntries, hasMore, loading, dispatch, sortOrder, searchQuery]);
 
 
   // Helper function to convert frameSize to Runway ratio format
@@ -1946,6 +2050,52 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
   const didInitialLoadRef = useRef(false);
+
+  // Backend-only sorting: clear UI and force a fresh backend query when sort changes
+  const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
+    setSortOrder(order);
+    setPage(1);
+    didInitialLoadRef.current = true; // prevent immediate re-trigger by initial-load effect
+    dispatch(clearHistory());
+    dispatch(setFilters({
+      mode: 'video',
+      sortOrder: order,
+      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+      ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
+    } as any));
+    await (dispatch as any)(loadHistory({
+      filters: { mode: 'video', sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      backendFilters: { mode: 'video', sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      paginationParams: { limit: 10 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-video',
+      forceRefresh: true,
+      debugTag: `InputBox:video-sort:${order}:${Date.now()}`,
+    } as any));
+  }, [dispatch, dateRange, searchQuery]);
+
+  const onDateChange = useCallback(async (next: { start: Date | null; end: Date | null }, nextInput?: string) => {
+    setDateRange(next);
+    if (typeof nextInput === 'string') setDateInput(nextInput);
+    setPage(1);
+    didInitialLoadRef.current = true;
+    dispatch(clearHistory());
+    dispatch(setFilters({
+      mode: 'video',
+      sortOrder,
+      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+      ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {})
+    } as any));
+    await (dispatch as any)(loadHistory({
+      filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
+      backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
+      paginationParams: { limit: 10 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-video',
+      forceRefresh: true,
+      debugTag: `InputBox:video-date:${Date.now()}`,
+    } as any));
+  }, [dispatch, sortOrder, searchQuery]);
   // Use mode: 'video' to load ALL video types at once (same as History.tsx)
   // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
   useEffect(() => {
@@ -1959,15 +2109,20 @@ const InputBox = (props: InputBoxProps = {}) => {
     
     // Check if filters are for a different type (e.g., image filters when we're on video page)
     const currentFilterMode = currentFilters?.mode;
+    const currentFilterSort = (currentFilters as any)?.sortOrder;
     const filtersAreForVideo = currentFilterMode === 'video';
     const filtersAreForDifferentType = currentFilterMode && currentFilterMode !== 'video';
+    const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
     
     // Reset initial load flag if user switched to video generation or filters don't match
-    if (switchedToVideo || (isVideoType && filtersAreForDifferentType)) {
+    if (switchedToVideo || (isVideoType && filtersAreForDifferentType) || (isVideoType && sortMismatch)) {
       console.log('[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag', {
         switchedToVideo,
         filtersAreForDifferentType,
         currentFilterMode,
+        sortMismatch,
+        currentFilterSort,
+        desiredSortOrder: sortOrder,
         currentUIGenerationType,
       });
       didInitialLoadRef.current = false;
@@ -1977,7 +2132,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     lastUIGenerationTypeRef.current = currentUIGenerationType;
     
     // Only load if we haven't loaded yet, or if user just switched to video, or filters don't match
-    if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType) {
+    if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType && !sortMismatch) {
       return;
     }
     
@@ -1999,17 +2154,18 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
       // This is the same approach History.tsx uses and ensures all video types are loaded
       dispatch(loadHistory({
-        filters: { mode: 'video' } as any,
-        paginationParams: { limit: 50 },
+        filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+        backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+        paginationParams: { limit: 10 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:video-mode:${Date.now()}`,
-        forceRefresh: switchedToVideo || filtersAreForDifferentType, // Force refresh when switching to video or filters don't match
+        forceRefresh: true, // keep backend as source of truth
       } as any));
     } catch (e) {
       console.error('[VideoInputBox] Error loading history:', e);
     }
-  }, [dispatch, currentUIGenerationType, currentFilters]);
+  }, [dispatch, currentUIGenerationType, currentFilters, sortOrder, dateRange, searchQuery]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
@@ -2036,7 +2192,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       setPage(nextPage);
       try {
         // Use mode: 'video' which backend converts to all video types including video-to-video
-        await (dispatch as any)(loadMoreHistory({ filters: { mode: 'video' } as any, paginationParams: { limit: 10 } })).unwrap();
+        // Use consistent limit of 10 for all requests
+        await (dispatch as any)(loadMoreHistory({
+          filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+          backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+          paginationParams: { limit: 10 }
+        })).unwrap();
       } catch {/* swallow */ }
     }
   });
@@ -4307,7 +4468,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         dispatch(clearFilters());
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 50 },
+          paginationParams: { limit: 10 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -4391,6 +4552,52 @@ const InputBox = (props: InputBoxProps = {}) => {
   const newLocal = "pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50";
   // (Removed duplicate hook declaration; initial load handled earlier)
 
+  // Prompt search (backend-driven)
+  const applySearch = useCallback(async (nextSearch: string) => {
+    const s = String(nextSearch || '').trim();
+    setSearchQuery(s);
+    setPage(1);
+    didInitialLoadRef.current = true;
+    dispatch(clearHistory());
+    dispatch(setFilters({
+      mode: 'video',
+      sortOrder,
+      ...(s ? { search: s } : {}),
+      ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
+    } as any));
+    await (dispatch as any)(loadHistory({
+      filters: { mode: 'video', sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      backendFilters: { mode: 'video', sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      paginationParams: { limit: 10 },
+      requestOrigin: 'page',
+      expectedType: 'text-to-video',
+      forceRefresh: true,
+      debugTag: `InputBox:video-search:${Date.now()}`,
+    } as any));
+  }, [dispatch, sortOrder, dateRange]);
+
+  // Live prompt search (Freepik-style): as user types, debounce and query backend.
+  useEffect(() => {
+    // Skip first run (initial mount) to avoid an extra fetch.
+    if (!didInitSearchRef.current) {
+      didInitSearchRef.current = true;
+      return;
+    }
+
+    const next = String(searchInput || '').trim();
+    const applied = String(searchQuery || '').trim();
+    if (next === applied) return;
+
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      applySearch(next);
+    }, 350);
+
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchInput, searchQuery, applySearch]);
+
   return (
     <React.Fragment>
       {/* Active Generations Queue Panel */}
@@ -4400,7 +4607,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
           {/* Initial loading overlay - show when loading OR before initial load attempt */}
           {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
-            <div className="fixed top-[64px] md:top-[0px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="fixed top-[64px] md:top-[0px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4 px-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
                 <div className="text-white text-lg text-center">Loading generations...</div>
@@ -4408,9 +4615,161 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
           )}
 
-          <div className="md:space-y-8 space-y-2">
+          {/* Sort controls (backend-only) */}
+          <div className="flex items-center justify-end gap-2 px-2 md:px-0 mb-2 pt-14 md:pt-0 sticky">
+            {/* Prompt search (backend-driven) */}
+            <div className="relative flex items-center mr-auto">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search prompt..."
+                className={`px-2 py-1.5 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // X behaves like clear: remove applied backend search and reload.
+                    setSearchInput('');
+                    applySearch('');
+                  }}
+                  className="absolute right-1 p-1 rounded bg-white/5 hover:bg-white/10 text-white/80"
+                  aria-label="Clear search input"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => onSortChange('desc')}
+              className={`relative group px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              aria-label="Recent"
+            >
+              <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
+              <span className="text-xs">Recent</span>
+            </button>
+            <button
+              onClick={() => onSortChange('asc')}
+              className={`relative group px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+              aria-label="Oldest"
+            >
+              <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
+              <span className="text-xs">Oldest</span>
+            </button>
+
+            {/* Date picker */}
+            <div className="relative flex items-center gap-1">
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={dateInput}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  setDateInput(value);
+                  if (!value) {
+                    await onDateChange({ start: null, end: null }, '');
+                    return;
+                  }
+                  const d = new Date(value + 'T00:00:00');
+                  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                  await onDateChange({ start, end }, value);
+                }}
+                style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+              />
+              <button
+                onClick={() => {
+                  const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                  setCalendarMonth(base.getMonth());
+                  setCalendarYear(base.getFullYear());
+                  setShowCalendar((v) => !v);
+                }}
+                className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Date"
+              >
+                <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+              </button>
+              {showCalendar && (
+                <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                  <div className="flex items-center justify-between mb-2 text-white">
+                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                      const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                      setCalendarYear(prev.getFullYear());
+                      setCalendarMonth(prev.getMonth());
+                    }}>‹</button>
+                    <div className="text-sm font-semibold">
+                      {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                    </div>
+                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                      const next = new Date(calendarYear, calendarMonth + 1, 1);
+                      setCalendarYear(next.getFullYear());
+                      setCalendarMonth(next.getMonth());
+                    }}>›</button>
+                  </div>
+                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                      <div key={`pad-${i}`} className="h-8" />
+                    ))}
+                    {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const thisDate = new Date(calendarYear, calendarMonth, day);
+                      const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                      return (
+                        <button
+                          key={day}
+                          className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                          onClick={async () => {
+                            const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                            const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                            const iso = thisDate.toISOString().slice(0, 10);
+                            setDateInput(iso);
+                            await onDateChange({ start, end }, iso);
+                            setShowCalendar(false);
+                          }}
+                        >{day}</button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between mt-3">
+                    <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
+                      setDateInput('');
+                      await onDateChange({ start: null, end: null }, '');
+                      setShowCalendar(false);
+                    }}>Clear</button>
+                    <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                      const now = new Date();
+                      setCalendarMonth(now.getMonth());
+                      setCalendarYear(now.getFullYear());
+                    }}>Today</button>
+                  </div>
+                </div>
+              )}
+              {dateRange.start && (
+                <button
+                  className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                  onClick={async () => {
+                    setDateInput('');
+                    await onDateChange({ start: null, end: null }, '');
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="md:space-y-8 space-y-2 pb-40">
             {/* If there's a local preview and no row for today, render a dated block for today */}
-            {localVideoPreview && !groupedByDate[todayKey] && (
+            {localVideoPreview && !groupedByDate.groups[todayKey] && (
               <div className="md:space-y-4 space-y-2">
                 <div className="flex items-center md:gap-3 gap-2">
                   <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -4501,7 +4860,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
                       return false;
                     });
-                    const existsInGrouped = groupedByDate[date]?.some((e: HistoryEntry) => {
+                    const existsInGrouped = groupedByDate.groups[date]?.some((e: HistoryEntry) => {
                       const eId = e.id;
                       const eFirebaseId = (e as any)?.firebaseHistoryId;
                       if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
@@ -4515,7 +4874,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }
 
                     // Safety check: if local preview is completed and history exists, don't show it
-                    if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate[date]?.length || 0) > 0)) {
+                    if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate.groups[date]?.length || 0) > 0)) {
                       return null;
                     }
 
@@ -4560,7 +4919,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }
 
                     // Filter out history entries that match local preview
-                    const filteredHistoryEntries = (groupedByDate[date] || []).filter((entry: HistoryEntry) => {
+                    const filteredHistoryEntries = (groupedByDate.groups[date] || []).filter((entry: HistoryEntry) => {
                       if (localPreviewIds.size === 0) return true;
                       const entryId = entry.id;
                       const entryFirebaseId = (entry as any)?.firebaseHistoryId;

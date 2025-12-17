@@ -51,6 +51,8 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
     const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
     const [isDragMode, setIsDragMode] = useState(false);
 
+    const hasExpandedResult = !!expandedImageUrl;
+
     // Refs for click vs drag detection
     const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
     const mouseDownTimeRef = useRef<number | null>(null);
@@ -67,16 +69,16 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
 
     const [img] = useImage(imageUrl || '', 'anonymous');
 
-    // Initialize image size when loaded
+    // Initialize / update image size whenever the underlying image changes
     useEffect(() => {
-        if (img && !imageSize) {
-            const newSize = { width: img.naturalWidth, height: img.naturalHeight };
-            setImageSize(newSize);
-            if (onImageSizeChange) {
-                onImageSizeChange(newSize);
-            }
+        if (!img) return;
+
+        const newSize = { width: img.naturalWidth, height: img.naturalHeight };
+        setImageSize(newSize);
+        if (onImageSizeChange) {
+            onImageSizeChange(newSize);
         }
-    }, [img, imageSize, onImageSizeChange]);
+    }, [img, onImageSizeChange]);
 
     // Report image size changes
     useEffect(() => {
@@ -155,20 +157,20 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
         return { x: constrainedX, y: constrainedY };
     }, [frameBounds]);
 
-    // Initialize image position centered in frame
+    // Initialize / reset image position centered in frame whenever the image changes
     useEffect(() => {
-        if (img && !imagePosition) {
-            let newX = frameBounds.x + (frameBounds.width - img.naturalWidth) / 2;
-            let newY = frameBounds.y + (frameBounds.height - img.naturalHeight) / 2;
+        if (!img || !imageSize) return;
 
-            // Constrain initial position to ensure image stays within frame
-            const constrained = constrainImagePosition(newX, newY, img.naturalWidth, img.naturalHeight);
-            newX = constrained.x;
-            newY = constrained.y;
+        let newX = frameBounds.x + (frameBounds.width - imageSize.width) / 2;
+        let newY = frameBounds.y + (frameBounds.height - imageSize.height) / 2;
 
-            setImagePosition({ x: newX, y: newY });
-        }
-    }, [img, imagePosition, frameBounds, constrainImagePosition]);
+        // Constrain initial position to ensure image stays within frame
+        const constrained = constrainImagePosition(newX, newY, imageSize.width, imageSize.height);
+        newX = constrained.x;
+        newY = constrained.y;
+
+        setImagePosition({ x: newX, y: newY });
+    }, [img, imageSize, frameBounds, constrainImagePosition]);
 
     // Reset position when aspect preset changes
     const lastAspectPresetRef = useRef<string>(aspectPreset);
@@ -492,16 +494,18 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
                         fill="#121212"
                     />
 
-                    {/* White Frame */}
-                    <Rect
-                        x={frameBounds.x}
-                        y={frameBounds.y}
-                        width={frameBounds.width}
-                        height={frameBounds.height}
-                        fill="#ffffff"
-                        stroke="#1daa63"
-                        strokeWidth={2}
-                    />
+                    {/* White Frame (only show before result is generated) */}
+                    {!hasExpandedResult && (
+                        <Rect
+                            x={frameBounds.x}
+                            y={frameBounds.y}
+                            width={frameBounds.width}
+                            height={frameBounds.height}
+                            fill="#ffffff"
+                            stroke="#1daa63"
+                            strokeWidth={2}
+                        />
+                    )}
 
                     {/* Image */}
                     {img && (

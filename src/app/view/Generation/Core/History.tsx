@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
@@ -66,6 +66,8 @@ const History = () => {
   const [productPreviewEntry, setProductPreviewEntry] = useState<HistoryEntry | null>(null);
   const didInitialLoadRef = useRef(false);
   const isFetchingMoreRef = useRef(false);
+  const autoLoadAttemptsRef = useRef(0);
+  const lastLoadMoreTriggerRef = useRef(0);
   const loadLockRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -91,8 +93,11 @@ const History = () => {
   useEffect(() => {
     if (!showCalendar) return;
     const onDocClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (calendarRef.current && !calendarRef.current.contains(t)) setShowCalendar(false);
+      const el = e.target as any;
+      // Avoid ref collisions between desktop + mobile calendar popups (both exist in DOM; one is CSS-hidden).
+      // If the click happened inside any calendar popup, do nothing.
+      if (el && typeof el.closest === 'function' && el.closest('[data-calendar-popup="true"]')) return;
+      setShowCalendar(false);
     };
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
     document.addEventListener('mousedown', onDocClick);
@@ -149,13 +154,14 @@ const History = () => {
 
   // Debug logs removed for cleaner console
 
-  // Helper: load only the first page; more pages load on scroll
+  // Helper: load only the first page; more pages load on scroll.
+  // IMPORTANT: Use forceRefresh so backend ordering is preserved and we don't merge into stale entries.
   const loadFirstPage = async (filtersObj: any) => {
     try {
       if (loadLockRef.current) return; // prevent duplicate initial loads
       loadLockRef.current = true;
       const initialLimit = computeDynamicLimit(0);
-      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, paginationParams: { limit: initialLimit } })).unwrap();
+      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, backendFilters: filtersObj, paginationParams: { limit: initialLimit }, forceRefresh: true })).unwrap();
       const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
       let nextHasMore: boolean;
       if (typeof (result && result.hasMore) !== 'undefined') {
@@ -173,6 +179,51 @@ const History = () => {
       loadLockRef.current = false;
     }
   };
+
+  // Single, backend-driven date change handler (mirrors Image/Video pages)
+  const onDateChange = useCallback(async (start: Date | null, end: Date | null, closeCalendar: boolean = false) => {
+    setDateRange({ start, end });
+    const nextFilters: any = { ...filters };
+
+    if (start && end) {
+      nextFilters.dateRange = { start: start.toISOString(), end: end.toISOString() };
+      setDateInput(start.toISOString().slice(0, 10));
+    } else {
+      delete nextFilters.dateRange;
+      setDateInput('');
+    }
+
+    if (sortOrder) nextFilters.sortOrder = sortOrder;
+    if (searchQuery.trim()) nextFilters.search = searchQuery.trim();
+
+    setLocalFilters(nextFilters);
+    dispatch(setFilters(nextFilters));
+    // Clear immediately so stale tiles don't linger while backend fetch happens
+    dispatch(clearHistory());
+    await loadFirstPage(nextFilters);
+    setPage(1);
+    if (closeCalendar) setShowCalendar(false);
+  }, [dispatch, filters, searchQuery, sortOrder]);
+
+  // Backend-only sorting: clear UI and force a fresh backend query when sort changes
+  const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
+    const newSortOrder = order;
+    setSortOrder(newSortOrder);
+    // Reset pagination guards so infinite scroll works after a filter/sort switch
+    isFetchingMoreRef.current = false;
+    hasUserScrolledRef.current = false;
+    autoLoadAttemptsRef.current = 0;
+
+    const f: any = { ...filters, sortOrder: newSortOrder };
+    if (dateRange.start && dateRange.end) f.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end?.toISOString() };
+    if (searchQuery.trim()) f.search = searchQuery.trim();
+
+    setLocalFilters(f);
+    dispatch(setFilters(f));
+    dispatch(clearHistory());
+    await loadFirstPage(f);
+    setPage(1);
+  }, [filters, dateRange, searchQuery, dispatch]);
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
   const computeDynamicLimit = (existingCount: number) => {
@@ -224,92 +275,49 @@ const History = () => {
 
   // Removed fallback loader to prevent duplicate initial requests.
 
-  // Handle sort order changes (skip on initial mount)
-  useEffect(() => {
-    if (!didInitialLoadRef.current) return;
-    (async () => {
-      const finalFilters = { ...filters } as any;
-      if (sortOrder) (finalFilters as any).sortOrder = sortOrder;
-      if ((filters as any)?.dateRange) finalFilters.dateRange = (filters as any).dateRange;
-      if (searchQuery.trim()) (finalFilters as any).search = searchQuery.trim();
-      dispatch(setFilters(finalFilters));
-      setOverlayLoading(true);
-      try {
-        const limit = computeDynamicLimit(0);
-        const res: any = await (dispatch as any)(loadHistory({
-          filters: finalFilters,
-          paginationParams: { limit }
-        })).unwrap();
-        const entries = (res && Array.isArray(res.entries)) ? res.entries : [];
-        let nextHasMore: boolean;
-        if (typeof (res && res.hasMore) !== 'undefined') {
-          nextHasMore = Boolean(res.hasMore);
-        } else {
-          nextHasMore = entries.length > 0 && entries.length >= limit;
-        }
-        if (entries.length === 0) nextHasMore = false;
-        setHasMore(nextHasMore);
-      } catch { }
-      setPage(1);
-      setOverlayLoading(false);
-    })();
-  }, [sortOrder, dispatch]);
+  // Sort changes are handled explicitly via onSortChange() to ensure we clear UI and forceRefresh.
 
   // Handle scroll to load more: attach both container and window listeners so we don't miss
   // pagination events when layout changes. Use guards to avoid duplicate requests.
+  const triggerLoadMore = useCallback((source: 'container' | 'window' | 'autofill') => {
+    try {
+      const now = Date.now();
+      // throttle brief bursts
+      if (now - lastLoadMoreTriggerRef.current < 250) return;
+      lastLoadMoreTriggerRef.current = now;
+      if (!hasMore || loading || isFetchingMoreRef.current) return;
+
+      isFetchingMoreRef.current = true;
+      const baseFilters = { ...filters } as any;
+      if (sortOrder) baseFilters.sortOrder = sortOrder;
+      if (searchQuery.trim()) baseFilters.search = searchQuery.trim();
+      const limit = sortOrder === 'asc' ? 30 : 10;
+
+      dispatch(loadMoreHistory({ filters: baseFilters, backendFilters: baseFilters, paginationParams: { limit } }))
+        .then((action: any) => {
+          // Only update paging state on fulfilled requests; rejected conditions should not kill pagination.
+          if (action?.meta?.requestStatus !== 'fulfilled') return;
+          const payload = action.payload;
+          if (payload && typeof payload.hasMore !== 'undefined') setHasMore(Boolean(payload.hasMore));
+          setPage((p) => p + 1);
+        })
+        .finally(() => {
+          isFetchingMoreRef.current = false;
+        });
+    } catch {
+      isFetchingMoreRef.current = false;
+    }
+  }, [dispatch, filters, hasMore, loading, searchQuery, sortOrder]);
+
   useEffect(() => {
     const el = scrollContainerRef.current;
-    // lastTriggerMillis prevents extremely rapid repeated calls (safety debounce)
-    const lastTriggerRef = { current: 0 } as { current: number };
-
-    const performLoadMore = (source: 'container' | 'window') => {
-      try {
-        const now = Date.now();
-        if (now - lastTriggerRef.current < 200) {
-          // throttle brief bursts
-          return;
-        }
-        lastTriggerRef.current = now;
-        if (!hasMore || loading || isFetchingMoreRef.current) {
-          return;
-        }
-        isFetchingMoreRef.current = true;
-        const nextPage = page + 1;
-        setPage(nextPage);
-        const baseFilters = { ...filters } as any;
-        if (sortOrder) baseFilters.sortOrder = sortOrder;
-        if (searchQuery.trim()) baseFilters.search = searchQuery.trim();
-        const limit = sortOrder === 'asc' ? 30 : 10;
-        dispatch(loadMoreHistory({ filters: baseFilters, paginationParams: { limit } }))
-          .then((result: any) => {
-            const payload = result && result.payload ? result.payload : result;
-            const entries = (payload && Array.isArray(payload.entries)) ? payload.entries : [];
-            let nextHasMore: boolean;
-            if (payload && typeof payload.hasMore !== 'undefined') {
-              nextHasMore = Boolean(payload.hasMore);
-            } else {
-              nextHasMore = entries.length > 0 && entries.length >= limit;
-            }
-            if (entries.length === 0) nextHasMore = false;
-            setHasMore(nextHasMore);
-          })
-          .catch((_e) => {
-            // swallow
-          })
-          .finally(() => {
-            isFetchingMoreRef.current = false;
-          });
-      } catch (_e) {
-        // silent
-      }
-    };
 
     const handleContainerScroll = () => {
       if (!el) return;
       if (!hasUserScrolledRef.current && el.scrollTop > 0) hasUserScrolledRef.current = true;
       if (!hasUserScrolledRef.current) return;
       if (el.clientHeight + el.scrollTop >= el.scrollHeight - 800) {
-        performLoadMore('container');
+        triggerLoadMore('container');
       }
     };
 
@@ -319,28 +327,34 @@ const History = () => {
       const winBottom = window.innerHeight + window.scrollY;
       const docHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
       if (winBottom >= docHeight - 800) {
-        performLoadMore('window');
+        triggerLoadMore('window');
       }
     };
 
-    // Attach listeners (both) to be robust against layout changes that move scrolling to window
     try {
       if (el) el.addEventListener('scroll', handleContainerScroll as any, { passive: true });
-    } catch (_e) {
-      // silent
-    }
+    } catch { }
     window.addEventListener('scroll', handleWindowScroll as any, { passive: true });
 
-    // Debug: log which listener is attached and basic metrics
-    // removed debug log
-
     return () => {
-      try {
-        if (el) el.removeEventListener('scroll', handleContainerScroll as any);
-      } catch { }
+      try { if (el) el.removeEventListener('scroll', handleContainerScroll as any); } catch { }
       try { window.removeEventListener('scroll', handleWindowScroll as any); } catch { }
     };
-  }, [hasMore, loading, page, dispatch, filters, sortOrder]);
+  }, [triggerLoadMore]);
+
+  // Autofill: if the first page doesn't create a scrollbar (common for Videos / Oldest),
+  // proactively fetch a couple more pages so scrolling can start.
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (loading || isFetchingMoreRef.current || !hasMore) return;
+    // If the content doesn't overflow, we can't scroll, so trigger loadMore automatically.
+    const isScrollable = el.scrollHeight > el.clientHeight + 20;
+    if (isScrollable) return;
+    if (autoLoadAttemptsRef.current >= 4) return; // safety cap
+    autoLoadAttemptsRef.current += 1;
+    triggerLoadMore('autofill');
+  }, [historyEntries.length, hasMore, loading, triggerLoadMore]);
 
   // Handle click outside to close filter popover
   useEffect(() => {
@@ -835,9 +849,7 @@ const History = () => {
     }
   };
 
-  const handleSortChange = (order: 'desc' | 'asc') => {
-    setSortOrder(order);
-  };
+  // NOTE: sort is handled via onSortChange() (backend-only) to preserve pagination correctness.
 
   const applyFilters = async () => {
     const finalFilters = { ...filters };
@@ -903,18 +915,25 @@ const History = () => {
     return historyEntries;
   }, [historyEntries]);
 
-  // Group entries by date to mirror TextToImage UI
-  const groupedByDate = filteredEntries.reduce((groups: { [key: string]: HistoryEntry[] }, entry: HistoryEntry) => {
-    const dateKey = new Date(entry.timestamp).toDateString();
-    if (!groups[dateKey]) groups[dateKey] = [];
-    groups[dateKey].push(entry);
-    return groups;
-  }, {} as { [key: string]: HistoryEntry[] });
+  // Group entries by date while PRESERVING backend order (do not sort dates or entries in frontend).
+  const groupedByDate = useMemo(() => {
+    const groups: { [key: string]: HistoryEntry[] } = {};
+    const dateOrder: string[] = [];
+    for (const entry of filteredEntries) {
+      const dateKey = new Date(entry.timestamp).toDateString();
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+        dateOrder.push(dateKey);
+      }
+      groups[dateKey].push(entry);
+    }
+    return { groups, dateOrder };
+  }, [filteredEntries]);
 
   // Calculate total filtered items count
   const getFilteredItemsCount = () => {
     let count = 0;
-    (Object.values(groupedByDate) as HistoryEntry[][]).forEach((entries: HistoryEntry[]) => {
+    (Object.values(groupedByDate.groups) as HistoryEntry[][]).forEach((entries: HistoryEntry[]) => {
       entries.forEach((entry: HistoryEntry) => {
         const inputImagesArr = (((entry as any).inputImages) || []) as any[];
         const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
@@ -966,10 +985,7 @@ const History = () => {
     return count;
   };
 
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
-    const diff = new Date(b).getTime() - new Date(a).getTime();
-    return sortOrder === 'asc' ? -diff : diff;
-  });
+  const sortedDates = groupedByDate.dateOrder;
 
   // Header title to mirror TextToImage wording
   const headerTitle = quickFilter === 'user-uploads'
@@ -1057,7 +1073,9 @@ const History = () => {
                     let f: any = {};
                     switch (key) {
                       case 'images':
-                        f = { generationType: 'text-to-image' };
+                        // Show ALL image generations (text-to-image, image-to-image, upscales, edits, etc.)
+                        // so sorting (Oldest/Recent) reflects the true image history.
+                        f = { mode: 'image' };
                         break;
                       case 'videos':
                         f = { mode: 'video' };
@@ -1142,20 +1160,20 @@ const History = () => {
             {/* Sort buttons - Desktop only */}
             <div className="hidden md:flex ml-0 items-right justify-end gap-2">
               <button
-                onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
-                className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Newest"
+                onClick={() => onSortChange('desc')}
+                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Recent"
               >
-                <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
-                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Newest</span>
+                <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-5 h-5`} />
+                <span className="text-xs font-medium">Recent</span>
               </button>
               <button
-                onClick={() => setSortOrder(prev => prev === 'asc' ? null : 'asc')}
-                className={`relative group px-1 py-1 rounded-lg text-sm ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                onClick={() => onSortChange('asc')}
+                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Oldest"
               >
-                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-6 h-6`} />
-                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Oldest</span>
+                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-5 h-5`} />
+                <span className="text-xs font-medium">Oldest</span>
               </button>
 
               {/* Date picker - Desktop only */}
@@ -1167,17 +1185,14 @@ const History = () => {
                   value={dateInput}
                   onChange={async (e) => {
                     const value = e.target.value;
-                    setDateInput(value);
-                    if (!value) return;
+                    if (!value) {
+                      await onDateChange(null, null);
+                      return;
+                    }
                     const d = new Date(value + 'T00:00:00');
                     const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
                     const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                    setDateRange({ start, end });
-                    const f = { ...filters, dateRange: { start: start.toISOString(), end: end.toISOString() }, sortOrder } as any;
-                    setLocalFilters(f);
-                    dispatch(setFilters(f));
-                    await loadFirstPage(f);
-                    setPage(1);
+                    await onDateChange(start, end);
                   }}
                   // Keep it in-viewport but invisible for reliable native picker behavior
                   style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
@@ -1198,7 +1213,12 @@ const History = () => {
                 </button>
 
                 {showCalendar && (
-                  <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3">
+                  <div
+                    ref={calendarRef}
+                    data-calendar-popup="true"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
+                  >
                     {/* Header */}
                     <div className="flex items-center justify-between mb-2 text-white">
                       <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
@@ -1235,14 +1255,7 @@ const History = () => {
                             onClick={async () => {
                               const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
                               const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                              setDateInput(thisDate.toISOString().slice(0, 10));
-                              setDateRange({ start, end });
-                              const f = { ...filters, dateRange: { start: start.toISOString(), end: end.toISOString() }, sortOrder } as any;
-                              setLocalFilters(f);
-                              dispatch(setFilters(f));
-                              await loadFirstPage(f);
-                              setPage(1);
-                              setShowCalendar(false);
+                              await onDateChange(start, end, true);
                             }}
                           >{day}</button>
                         );
@@ -1251,16 +1264,7 @@ const History = () => {
                     {/* Footer actions */}
                     <div className="flex items-center justify-between mt-3">
                       <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                        setDateInput('');
-                        setDateRange({ start: null, end: null });
-                        const f: any = { ...filters };
-                        delete (f as any).dateRange;
-                        if (sortOrder) f.sortOrder = sortOrder;
-                        setLocalFilters(f);
-                        dispatch(setFilters(f));
-                        await loadFirstPage(f);
-                        setPage(1);
-                        setShowCalendar(false);
+                        await onDateChange(null, null, true);
                       }}>Clear</button>
                       <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                         const now = new Date();
@@ -1275,15 +1279,7 @@ const History = () => {
                     <button
                       className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
                       onClick={async () => {
-                        setDateInput('');
-                        setDateRange({ start: null, end: null });
-                        const f: any = { ...filters };
-                        delete (f as any).dateRange;
-                        if (sortOrder) f.sortOrder = sortOrder;
-                        setLocalFilters(f);
-                        dispatch(setFilters(f));
-                        await loadFirstPage(f);
-                        setPage(1);
+                        await onDateChange(null, null);
                       }}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -1332,22 +1328,22 @@ const History = () => {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setSortOrder(prev => prev === 'desc' ? null : 'desc')}
-                className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'desc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Newest"
+                onClick={() => onSortChange('desc')}
+                className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                aria-label="Recent"
               >
                 <div className="flex items-center gap-1.5">
-                  <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`${(sortOrder === 'desc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
-                  <span className="text-xs">Newest</span>
+                  <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
+                  <span className="text-xs">Recent</span>
                 </div>
               </button>
               <button
-                onClick={() => setSortOrder(prev => prev === 'asc' ? null : 'asc')}
-                className={`relative group px-2 py-1.5 rounded-lg text-sm ${sortOrder === 'asc' && !dateRange.start ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                onClick={() => onSortChange('asc')}
+                className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Oldest"
               >
                 <div className="flex items-center gap-1.5">
-                  <img src="/icons/download-square-2.svg" alt="Oldest" className={`${(sortOrder === 'asc' && !dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+                  <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
                   <span className="text-xs">Oldest</span>
                 </div>
               </button>
@@ -1362,17 +1358,14 @@ const History = () => {
                 value={dateInput}
                 onChange={async (e) => {
                   const value = e.target.value;
-                  setDateInput(value);
-                  if (!value) return;
+                  if (!value) {
+                    await onDateChange(null, null);
+                    return;
+                  }
                   const d = new Date(value + 'T00:00:00');
                   const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
                   const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                  setDateRange({ start, end });
-                  const f = { ...filters, dateRange: { start: start.toISOString(), end: end.toISOString() }, sortOrder } as any;
-                  setLocalFilters(f);
-                  dispatch(setFilters(f));
-                  await loadFirstPage(f);
-                  setPage(1);
+                  await onDateChange(start, end);
                 }}
                 // Keep it in-viewport but invisible for reliable native picker behavior
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
@@ -1394,7 +1387,12 @@ const History = () => {
 
 
               {showCalendar && (
-                <div ref={calendarRef} className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2">
+                <div
+                  ref={calendarRef}
+                  data-calendar-popup="true"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2"
+                >
                   {/* Header */}
                   <div className="flex items-center justify-between mb-0 text-white">
                     <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
@@ -1431,14 +1429,7 @@ const History = () => {
                           onClick={async () => {
                             const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
                             const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                            setDateInput(thisDate.toISOString().slice(0, 10));
-                            setDateRange({ start, end });
-                            const f = { ...filters, dateRange: { start: start.toISOString(), end: end.toISOString() }, sortOrder } as any;
-                            setLocalFilters(f);
-                            dispatch(setFilters(f));
-                            await loadFirstPage(f);
-                            setPage(1);
-                            setShowCalendar(false);
+                            await onDateChange(start, end, true);
                           }}
                         >{day}</button>
                       );
@@ -1447,16 +1438,7 @@ const History = () => {
                   {/* Footer actions */}
                   <div className="flex items-center justify-between mt-1">
                     <button className="text-white/80 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                      setDateInput('');
-                      setDateRange({ start: null, end: null });
-                      const f: any = { ...filters };
-                      delete (f as any).dateRange;
-                      if (sortOrder) f.sortOrder = sortOrder;
-                      setLocalFilters(f);
-                      dispatch(setFilters(f));
-                      await loadFirstPage(f);
-                      setPage(1);
-                      setShowCalendar(false);
+                      await onDateChange(null, null, true);
                     }}>Clear</button>
                     <button className="text-white/90 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
                       const now = new Date();
@@ -1471,15 +1453,7 @@ const History = () => {
                   <button
                     className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
                     onClick={async () => {
-                      setDateInput('');
-                      setDateRange({ start: null, end: null });
-                      const f: any = { ...filters };
-                      delete (f as any).dateRange;
-                      if (sortOrder) f.sortOrder = sortOrder;
-                      setLocalFilters(f);
-                      dispatch(setFilters(f));
-                      await loadFirstPage(f);
-                      setPage(1);
+                      await onDateChange(null, null);
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -1591,7 +1565,7 @@ const History = () => {
               {/* Removed full-screen overlay - use bottom loading indicator instead */}
               {sortedDates.map((dateKey) => {
                 // Check if this date has any filtered items for the active category
-                const hasFilteredItems = groupedByDate[dateKey].some((entry: HistoryEntry) => {
+                const hasFilteredItems = groupedByDate.groups[dateKey].some((entry: HistoryEntry) => {
                   const inputImagesArr = (((entry as any).inputImages) || []) as any[];
                   const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
                   const mediaItems = [
@@ -1647,7 +1621,7 @@ const History = () => {
 
                     {/* Tiles for this date */}
                     <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-6 gap-1 mx-4 md:mx-9">
-                      {groupedByDate[dateKey].map((entry: HistoryEntry) => {
+                      {groupedByDate.groups[dateKey].map((entry: HistoryEntry) => {
                         const inputImagesArr = (((entry as any).inputImages) || []) as any[];
                         const inputVideosArr = (((entry as any).inputVideos) || []) as any[];
                         const mediaItems = [

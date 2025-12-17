@@ -97,7 +97,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
     frontendValue: 'google/nano-banana-pro',
     creditModelName: 'Nano banana Pro 2K', // Default to 2K, will be resolved based on resolution
     generationType: 'image',
-    provider: 'replicate',
+    provider: 'fal',
     options: {
       resolution: ['1K', '2K', '4K']
     }

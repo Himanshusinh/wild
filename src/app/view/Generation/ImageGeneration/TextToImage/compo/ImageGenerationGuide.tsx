@@ -26,7 +26,7 @@ const ImageGenerationGuide = () => {
     const [activeTab, setActiveTab] = useState('image');
 
     return (
-        <section className="h-auto  text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-10">
+        <section className="h-auto  text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-10 pb-40">
 
             {/* --- Ambient Background (Matches WildCanvas) --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
