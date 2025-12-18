@@ -66,7 +66,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
 
-  // Calculate calendar position on mobile when it opens
+  // Calculate calendar position when it opens (for both mobile and desktop)
   useEffect(() => {
     if (showCalendar && calendarButtonRef.current) {
       const updatePosition = () => {
@@ -85,6 +85,8 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
         window.removeEventListener('scroll', updatePosition, true);
         window.removeEventListener('resize', updatePosition);
       };
+    } else {
+      setCalendarPosition(null);
     }
   }, [showCalendar]);
 
@@ -225,7 +227,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   return (
     <div className="flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-10 md:pt-0 sticky">
       {/* Prompt search (backend-driven) */}
-      <div className="relative flex items-center mr-auto">
+      <div className="relative flex items-center md:mr-0 mr-auto">
         <input
           type="text"
           value={searchInput}
@@ -295,14 +297,6 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
             const base = dateRange.start ? new Date(dateRange.start) : new Date();
             setCalendarMonth(base.getMonth());
             setCalendarYear(base.getFullYear());
-            if (!showCalendar && calendarButtonRef.current) {
-              // Calculate position for mobile (fixed positioning)
-              const rect = calendarButtonRef.current.getBoundingClientRect();
-              setCalendarPosition({
-                top: rect.bottom + 8,
-                right: window.innerWidth - rect.right
-              });
-            }
             setShowCalendar((v) => !v);
           }}
           className={`relative group px-1 py-1 md:py-1.5 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
@@ -310,22 +304,16 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
         >
           <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
         </button>
-          {showCalendar && mounted && typeof document !== 'undefined' && createPortal(
+          {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
             <div 
               ref={calendarRef} 
               data-calendar-popup="true" 
               className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3" 
               onMouseDown={(e) => e.stopPropagation()} 
               style={{
-                top: calendarPosition?.top ? `${calendarPosition.top}px` : 'auto',
-                right: calendarPosition?.right ? `${calendarPosition.right}px` : '1rem',
+                top: `${calendarPosition.top}px`,
+                right: `${calendarPosition.right}px`,
                 zIndex: 99999,
-                ...(typeof window !== 'undefined' && window.innerWidth >= 768 ? {
-                  position: 'absolute',
-                  top: 'auto',
-                  right: '0',
-                  bottom: 'auto'
-                } : {})
               }}
             >
             <div className="flex items-center justify-between mb-2 text-white">

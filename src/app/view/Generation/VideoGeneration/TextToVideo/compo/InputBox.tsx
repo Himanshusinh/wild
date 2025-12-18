@@ -422,11 +422,13 @@ const InputBox = (props: InputBoxProps = {}) => {
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
     } else if (model === 'kling-o1') {
-      // Kling o1 (FAL standard) requires both first and last frame images
+      // Kling o1 (FAL) requires first frame, last frame is optional
+      // - If both frames: uses image-to-video model
+      // - If only first frame: uses reference-to-video model
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
       capabilities.requiresFirstFrame = true;
-      capabilities.requiresLastFrame = true;
+      capabilities.requiresLastFrame = false; // Last frame is optional
     } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
       // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
       capabilities.supportsImageToVideo = true;
@@ -3095,9 +3097,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
         } else if (selectedModel === 'kling-o1') {
-          // Kling o1 (FAL standard) - requires both first and last frame images
+          // Kling o1 conditional logic:
+          // - If only first frame: use reference-to-video model
+          // - If both first and last frame: use image-to-video model
           if (uploadedImages.length === 0 && !lastFrameImage) {
-            setError("Kling o1 requires both a first frame image and a last frame image");
+            setError("Kling o1 requires at least a first frame image");
             return;
           }
           const firstFrame = uploadedImages[0];
@@ -3107,36 +3111,68 @@ const InputBox = (props: InputBoxProps = {}) => {
             setError("Kling o1 requires a first frame image");
             return;
           }
-          if (!lastFrame) {
-            setError("Kling o1 requires a last frame image");
-            return;
-          }
-          
-          // Format prompt with @Image1 and @Image2 references as required by the model
-          const basePrompt = getApiPrompt(prompt);
-          let formattedPrompt = basePrompt;
-          // Ensure both @Image1 and @Image2 are present in the prompt
-          if (!formattedPrompt.includes('@Image1')) {
-            formattedPrompt += ' @Image1';
-          }
-          if (!formattedPrompt.includes('@Image2')) {
-            formattedPrompt += ' @Image2';
-          }
           
           // Duration must be "5" or "10" as string
           const durationStr = duration === 5 ? '5' : duration === 10 ? '10' : '5';
           
-          requestBody = {
-            prompt: formattedPrompt,
-            originalPrompt: prompt,
-            start_image_url: firstFrame,
-            end_image_url: lastFrame,
-            duration: durationStr,
-            generationType: 'image-to-video',
-            isPublic,
-          };
-          generationType = 'image-to-video';
-          apiEndpoint = '/api/fal/kling-o1/first-last-frame-to-video/submit';
+          // Check if both frames are provided
+          if (lastFrame) {
+            // Both frames provided - use image-to-video model
+            // Format prompt with @Image1 and @Image2 references as required by the model
+            const basePrompt = getApiPrompt(prompt);
+            let formattedPrompt = basePrompt;
+            // Ensure both @Image1 and @Image2 are present in the prompt
+            if (!formattedPrompt.includes('@Image1')) {
+              formattedPrompt += ' @Image1';
+            }
+            if (!formattedPrompt.includes('@Image2')) {
+              formattedPrompt += ' @Image2';
+            }
+            
+            requestBody = {
+              prompt: formattedPrompt,
+              originalPrompt: prompt,
+              start_image_url: firstFrame,
+              end_image_url: lastFrame,
+              duration: durationStr,
+              generationType: 'image-to-video',
+              isPublic,
+            };
+            generationType = 'image-to-video';
+            apiEndpoint = '/api/fal/kling-o1/first-last-frame-to-video/submit';
+          } else {
+            // Only first frame provided - use reference-to-video model
+            const basePrompt = getApiPrompt(prompt);
+            // Format prompt - user can reference @Image1, @Image2, etc. for image_urls
+            // No need to force add @Image1 since user should control the prompt
+            let formattedPrompt = basePrompt;
+            // If no image reference in prompt, add @Image1 for the single uploaded image
+            if (!formattedPrompt.includes('@Image') && !formattedPrompt.includes('@Element')) {
+              formattedPrompt += ' @Image1';
+            }
+            
+            // Map aspect ratio to valid values
+            const aspectRatioMap: Record<string, string> = {
+              '16:9': '16:9',
+              '9:16': '9:16',
+              '1:1': '1:1',
+              '4:3': '16:9', // Default to 16:9 if not supported
+              '3:4': '9:16',
+            };
+            const aspectRatio = aspectRatioMap[frameSize] || '16:9';
+            
+            requestBody = {
+              prompt: formattedPrompt,
+              originalPrompt: prompt,
+              image_urls: [firstFrame], // Single image in array
+              duration: durationStr,
+              aspect_ratio: aspectRatio,
+              generationType: 'image-to-video',
+              isPublic,
+            };
+            generationType = 'image-to-video';
+            apiEndpoint = '/api/fal/kling-o1/reference-to-video/submit';
+          }
         } else if (selectedModel.startsWith('kling-')) {
           // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
@@ -4595,11 +4631,6 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
           )}
-
-          {/* Desktop: Search, Sort, and Date controls - on same line */}
-          <div className="hidden md:flex items-center justify-end gap-2 mt-2 md:pr-4 ">
-            <HistoryControls mode="video" />
-          </div>
 
           {/* Mobile: Search, Sort, and Date controls */}
           <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
