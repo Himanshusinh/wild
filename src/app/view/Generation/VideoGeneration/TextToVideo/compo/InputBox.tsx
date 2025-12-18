@@ -4632,11 +4632,6 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
           )}
 
-          {/* Desktop: Search, Sort, and Date controls - on same line */}
-          <div className="hidden md:flex items-center justify-end gap-2 mt-2 md:pr-4 ">
-            <HistoryControls mode="video" />
-          </div>
-
           {/* Mobile: Search, Sort, and Date controls */}
           <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
             <HistoryControls mode="video" />

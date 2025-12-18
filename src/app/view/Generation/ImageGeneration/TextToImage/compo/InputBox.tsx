@@ -83,6 +83,7 @@ import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 // Replaced per-page IntersectionObserver with unified bottom scroll pagination
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
+import HistoryControls from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls';
 
 const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> = ({ size = 64, alt = 'Loading', className }) => {
   const [failed, setFailed] = useState(false);
@@ -4373,7 +4374,7 @@ const InputBox = () => {
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-0  py-0 md:pl-4  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-2 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-0 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
             <div className="flex items-center justify-between md:mb-2 mb-0">
               <div className="flex items-center gap-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
@@ -4396,320 +4397,18 @@ const InputBox = () => {
                 )}
               </div>
 
-            {/* Desktop: Search, Sort, and Date controls - on same line */}
-            <div className="hidden md:flex items-center justify-end gap-2 mt-2 md:pr-4 ">
-              {/* Sort buttons */}
-              <button
-                onClick={() => onSortChange('desc')}
-                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Recent"
-              >
-                <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-5 h-5`} />
-                <span className="text-xs font-medium">Recent</span>
-              </button>
-              <button
-                onClick={() => onSortChange('asc')}
-                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Oldest"
-              >
-                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-5 h-5`} />
-                <span className="text-xs font-medium">Oldest</span>
-              </button>
-
-              {/* Date picker (calendar button) */}
-              <div className="relative flex items-center gap-1">
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={dateInput}
-                  onChange={async (e) => {
-                    const value = e.target.value;
-                    setDateInput(value);
-                    if (!value) {
-                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
-                      return;
-                    }
-                    const d = new Date(value + 'T00:00:00');
-                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                    await refreshHistoryFromBackend({ dateRange: { start, end } });
-                  }}
-                  style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
-                />
-                <button
-                  onClick={() => {
-                    const base = dateRange.start ? new Date(dateRange.start) : new Date();
-                    setCalendarMonth(base.getMonth());
-                    setCalendarYear(base.getFullYear());
-                    setShowCalendar((v) => !v);
-                  }}
-                  className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                  aria-label="Date"
-                >
-                  <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
-                </button>
-                {showCalendar && (
-                  <div
-                    ref={calendarRef}
-                    data-calendar-popup="true"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-full mt-2 z-70 w-[280px] select-none bg-black/90 backdrop-blur-3xl shadow-2xl rounded-xl ring-1 ring-white/20 p-3"
-                  >
-                    <div className="flex items-center justify-between mb-2 text-white">
-                      <button 
-                        className="px-2 py-1 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                          setCalendarYear(prev.getFullYear());
-                          setCalendarMonth(prev.getMonth());
-                        }}
-                      >‹</button>
-                      <div className="text-sm font-semibold">
-                        {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
-                      </div>
-                      <button 
-                        className="px-2 py-1 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const next = new Date(calendarYear, calendarMonth + 1, 1);
-                          setCalendarYear(next.getFullYear());
-                          setCalendarMonth(next.getMonth());
-                        }}
-                      >›</button>
-                    </div>
-                    <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
-                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                        <div key={`pad-${i}`} className="h-8" />
-                      ))}
-                      {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const thisDate = new Date(calendarYear, calendarMonth, day);
-                        const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
-                        return (
-                          <button
-                            key={day}
-                            className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
-                              const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                              const iso = thisDate.toISOString().slice(0, 10);
-                              setDateInput(iso);
-                              await refreshHistoryFromBackend({ dateRange: { start, end } });
-                              setShowCalendar(false);
-                            }}
-                          >{day}</button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <button 
-                        className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          setDateInput('');
-                          await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
-                          setShowCalendar(false);
-                        }}
-                      >Clear</button>
-                      <button 
-                        className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const now = new Date();
-                          setCalendarMonth(now.getMonth());
-                          setCalendarYear(now.getFullYear());
-                        }}
-                      >Today</button>
-                    </div>
-                  </div>
-                )}
-                {dateRange.start && (
-                  <button
-                    className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
-                    onClick={async () => {
-                      setDateInput('');
-                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
+              {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
+              <div className="hidden md:flex items-center pt-4 pr-4">
+                <HistoryControls mode="image" />
               </div>
-            </div>
             </div>
 
           </div>
 
           {/* Mobile: Search, Sort, and Date controls */}
-          <div className="flex md:hidden items-center justify-start px-2 gap-2 pb-2 mt-10">
-              {/* Sort buttons */}
-              <button
-                onClick={() => onSortChange('desc')}
-                className={`relative group px-2 py-1 rounded-lg text-sm flex items-center gap-1 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Recent"
-              >
-                <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
-                <span className="text-xs font-medium">Recent</span>
-              </button>
-              <button
-                onClick={() => onSortChange('asc')}
-                className={`relative group px-2 py-1 rounded-lg text-sm flex items-center gap-1 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Oldest"
-              >
-                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
-                <span className="text-xs font-medium">Oldest</span>
-              </button>
-
-              {/* Date picker (calendar button) */}
-              <div className="relative flex items-center gap-1">
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={dateInput}
-                  onChange={async (e) => {
-                    const value = e.target.value;
-                    setDateInput(value);
-                    if (!value) {
-                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
-                      return;
-                    }
-                    const d = new Date(value + 'T00:00:00');
-                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                    await refreshHistoryFromBackend({ dateRange: { start, end } });
-                  }}
-                  style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
-                />
-                <button
-                  onClick={() => {
-                    const base = dateRange.start ? new Date(dateRange.start) : new Date();
-                    setCalendarMonth(base.getMonth());
-                    setCalendarYear(base.getFullYear());
-                    setShowCalendar((v) => !v);
-                  }}
-                  className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                  aria-label="Date"
-                >
-                  <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
-                </button>
-                {showCalendar && (
-                  <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-1">
-                    <div className="flex items-center justify-between mb-0 text-white">
-                      <button 
-                        className="px-1 py-0 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                          setCalendarYear(prev.getFullYear());
-                          setCalendarMonth(prev.getMonth());
-                        }}
-                      >‹</button>
-                      <div className="text-sm font-semibold">
-                        {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
-                      </div>
-                      <button 
-                        className="px-1 py-0 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const next = new Date(calendarYear, calendarMonth + 1, 1);
-                          setCalendarYear(next.getFullYear());
-                          setCalendarMonth(next.getMonth());
-                        }}
-                      >›</button>
-                    </div>
-                    <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
-                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                        <div key={`pad-${i}`} className="h-6" />
-                      ))}
-                      {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const thisDate = new Date(calendarYear, calendarMonth, day);
-                        const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
-                        return (
-                          <button
-                            key={day}
-                            className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
-                              const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                              const iso = thisDate.toISOString().slice(0, 10);
-                              setDateInput(iso);
-                              await refreshHistoryFromBackend({ dateRange: { start, end } });
-                              setShowCalendar(false);
-                            }}
-                          >{day}</button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <button 
-                        className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          setDateInput('');
-                          await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
-                          setShowCalendar(false);
-                        }}
-                      >Clear</button>
-                      <button 
-                        className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const now = new Date();
-                          setCalendarMonth(now.getMonth());
-                          setCalendarYear(now.getFullYear());
-                        }}
-                      >Today</button>
-                    </div>
-                  </div>
-                )}
-                {dateRange.start && (
-                  <button
-                    className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
-                    onClick={async () => {
-                      setDateInput('');
-                      await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
+          <div className="flex md:hidden items-center justify-start px-2 gap-2 pb-0 mt-0">
+            <HistoryControls mode="image" />
+          </div>
         </div>
 
         {/* <div className="hidden md:flex items-center justify-end gap-2 md:mt-5 -mb-4">
@@ -4920,7 +4619,7 @@ const InputBox = () => {
 
           {/* History Entries - Grouped by Date */}
           {sortedDates.length > 0 && (
-          <div className=" space-y-4 md:px-0 px-2 md:mt-6 ">
+          <div className=" space-y-4 md:px-0 px-2 md:mt-4 ">
             {sortedDates.map((date) => (
               <div key={date} className="space-y-2 md:-mt-2">
                 {/* Date Header */}
