@@ -129,23 +129,25 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
   saveTimeout = setTimeout(() => {
     if (!pendingGenerations) return;
     
+    // Store in local variable before clearing to use in error handler
+    const generationsToSave = pendingGenerations;
+    pendingGenerations = null;
+    
     try {
       // Limit to max concurrent generations
-      const toSave = pendingGenerations.slice(0, MAX_CONCURRENT_GENERATIONS);
+      const toSave = generationsToSave.slice(0, MAX_CONCURRENT_GENERATIONS);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      pendingGenerations = null;
     } catch (error) {
       console.error('[generationPersistence] Error saving generations:', error);
       
       // Handle quota exceeded
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
+      if (error instanceof Error && error.name === 'QuotaExceededError' && generationsToSave) {
         // Try to free up space by removing completed generations
-        const activeOnly = pendingGenerations.filter(
+        const activeOnly = generationsToSave.filter(
           g => g.status === 'pending' || g.status === 'generating'
         );
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(activeOnly));
-          pendingGenerations = null;
         } catch {
           console.error('[generationPersistence] Failed to save even after cleanup');
         }
