@@ -21,6 +21,45 @@ export default function AiCompanion() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const justFinishedDraggingRef = useRef(false);
+  
+  // Drag state for mobile
+  const [buttonPosition, setButtonPosition] = useState<{ bottom: number; right: number }>(() => {
+    // Load saved position from localStorage on mount
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aiCompanionButtonPosition');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return { bottom: parsed.bottom || 16, right: parsed.right || 16 };
+        } catch {
+          return { bottom: 16, right: 16 };
+        }
+      }
+    }
+    return { bottom: 16, right: 16 }; // Default: bottom-4 right-4 (1rem = 16px)
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number; startBottom: number; startRight: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      const nowMobile = window.innerWidth < 768;
+      setIsMobile((prevMobile) => {
+        // Reset to default position when switching from mobile to desktop
+        if (prevMobile && !nowMobile) {
+          setButtonPosition({ bottom: 16, right: 16 });
+        }
+        return nowMobile;
+      });
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Hide on 404 and error pages
   const is404 = pathname === '/not-found' || pathname?.includes('/404');
@@ -43,6 +82,89 @@ export default function AiCompanion() {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Save button position to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aiCompanionButtonPosition', JSON.stringify(buttonPosition));
+    }
+  }, [buttonPosition]);
+
+  // Touch handlers for mobile dragging
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Only enable dragging on mobile (screen width < 768px)
+    if (!isMobile) return;
+    
+    const touch = e.touches[0];
+    setIsDragging(false);
+    setDragStart({
+      x: touch.clientX,
+      y: touch.clientY,
+      startBottom: buttonPosition.bottom,
+      startRight: buttonPosition.right,
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!dragStart || !isMobile) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - dragStart.x;
+    const deltaY = dragStart.y - touch.clientY; // Inverted because bottom increases upward
+    
+    // If moved more than 10px, consider it dragging
+    const movedEnough = Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10;
+    
+    if (movedEnough) {
+      if (!isDragging) {
+        setIsDragging(true);
+      }
+      e.preventDefault(); // Prevent scrolling while dragging
+      
+      const buttonWidth = 48; // w-12 = 48px
+      const buttonHeight = 48;
+      const maxRight = window.innerWidth - buttonWidth - 16; // 16px padding
+      const maxBottom = window.innerHeight - buttonHeight - 16;
+      
+      let newRight = dragStart.startRight - deltaX; // Inverted because right decreases as x increases
+      let newBottom = dragStart.startBottom + deltaY;
+      
+      // Constrain to viewport bounds
+      newRight = Math.max(16, Math.min(maxRight, newRight));
+      newBottom = Math.max(16, Math.min(maxBottom, newBottom));
+      
+      setButtonPosition({ bottom: newBottom, right: newRight });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!dragStart || !isMobile) return;
+    
+    const wasDragging = isDragging;
+    setIsDragging(false);
+    setDragStart(null);
+    
+    // If we were dragging, prevent the click event
+    if (wasDragging) {
+      justFinishedDraggingRef.current = true;
+      e.preventDefault();
+      // Reset flag after a short delay to allow normal clicks later
+      setTimeout(() => {
+        justFinishedDraggingRef.current = false;
+      }, 300);
+    } else {
+      justFinishedDraggingRef.current = false;
+    }
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    // Prevent click if we just finished dragging (mobile only)
+    if (isMobile && justFinishedDraggingRef.current) {
+      e.preventDefault();
+      return;
+    }
+    setIsOpen(!isOpen);
+  };
 
   const handleSendMessage = async () => {
     const trimmedMessage = inputValue.trim();
@@ -103,15 +225,27 @@ export default function AiCompanion() {
     <>
       {/* Floating Chat Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 
+        ref={buttonRef}
+        onClick={handleButtonClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`fixed z-50 
           w-12 h-12 md:w-14 md:h-14 
           rounded-full shadow-lg 
           bg-gradient-to-br from-blue-600 to-purple-600 
           hover:from-blue-500 hover:to-purple-500 
-          transition-all duration-300 
           flex items-center justify-center
-          ${isOpen ? 'scale-0' : 'scale-100'}`}
+          ${isOpen ? 'scale-0' : 'scale-100'}
+          ${isDragging ? 'transition-none' : 'transition-all duration-300'}
+          md:bottom-6 md:right-6 md:!bottom-6 md:!right-6`}
+        style={{
+          ...(isMobile ? {
+            bottom: `${buttonPosition.bottom}px`,
+            right: `${buttonPosition.right}px`,
+          } : {}),
+          touchAction: 'none', // Prevent default touch behaviors
+        }}
         aria-label="Open AI Companion"
       >
         <svg
