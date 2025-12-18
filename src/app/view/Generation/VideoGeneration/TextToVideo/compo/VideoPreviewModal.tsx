@@ -301,16 +301,31 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const displayedAspect = entry?.frameSize || '16:9';
 
   // Extract video URL and route through proxy for cross-origin safety
+  // Prefer entry's video data (from backend) over preview.video (from Redux/active generation)
   let rawVideoUrl = '';
-  if (preview.video) {
+  let videoStoragePath: string | undefined;
+  
+  // First, try to get video from entry (most reliable, has storagePath)
+  if (entry?.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+    const entryVideo = entry.videos[0];
+    rawVideoUrl = entryVideo.url || entryVideo.firebaseUrl || entryVideo.originalUrl || '';
+    videoStoragePath = entryVideo.storagePath;
+    console.log('[VideoPreviewModal] Using video from entry:', { url: rawVideoUrl, storagePath: videoStoragePath });
+  }
+  
+  // Fallback to preview.video if entry doesn't have video data
+  if (!rawVideoUrl && preview.video) {
     if (typeof preview.video === 'string') {
       rawVideoUrl = preview.video;
     } else if (preview.video.url) {
       rawVideoUrl = preview.video.url;
+      videoStoragePath = (preview.video as any)?.storagePath;
     } else if (preview.video.firebaseUrl) {
       rawVideoUrl = preview.video.firebaseUrl;
+      videoStoragePath = (preview.video as any)?.storagePath;
     } else if (preview.video.originalUrl) {
       rawVideoUrl = preview.video.originalUrl;
+      videoStoragePath = (preview.video as any)?.storagePath;
     }
   }
   const inputVideos = ((entry as any)?.inputVideos || []) as any[];
@@ -334,8 +349,21 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       videoUrl = rawVideoUrl;
     }
   } else {
-    const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-    const proxied = toMediaProxy(videoPath) || '';
+    // Use storagePath if we have it, otherwise try to extract from URL
+    let videoPath = videoStoragePath;
+    
+    // If storagePath is missing, try to extract it from Zata URL
+    if (!videoPath && rawVideoUrl) {
+      const zataMatch = rawVideoUrl.match(/devstoragev1\/(.+)$/i);
+      if (zataMatch) {
+        videoPath = zataMatch[1];
+        console.log('[VideoPreviewModal] Extracted storagePath from URL:', videoPath);
+      }
+    }
+    
+    // Use storagePath if available, otherwise fall back to rawVideoUrl
+    const pathToUse = videoPath || rawVideoUrl;
+    const proxied = toMediaProxy(pathToUse) || '';
     videoUrl = proxied || rawVideoUrl;
   }
 
@@ -516,7 +544,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 />
               ) : videoUrl.startsWith('/api/proxy/media/') || videoUrl.startsWith('blob:') || videoUrl.startsWith('http') ? (
                 <video 
-                  key={videoUrl}
+                  key={`${entryId}-${videoUrl}-${videoStoragePath || ''}`}
                   src={videoUrl} 
                   controls 
                   className="max-w-full max-h-full object-contain"
