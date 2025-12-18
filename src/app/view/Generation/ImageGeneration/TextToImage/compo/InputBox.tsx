@@ -186,9 +186,18 @@ const InputBox = () => {
 
   // Redux selector for parallel generation support
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
-  // Only count running generations towards the limit (limit is 4)
+  // Filter out video generations - only count image generations towards the limit (limit is 4)
   // This allows completed/failed items to be auto-replaced by new ones
-  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+  const normalizeGenType = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
+  const imageOnlyActiveGenerations = activeGenerations.filter(gen => {
+    const genType = (gen as any).generationType || (gen as any).params?.generationType;
+    const normalizedType = normalizeGenType(genType);
+    const isVideoType = normalizedType === 'text-to-video' ||
+      normalizedType === 'image-to-video' ||
+      normalizedType === 'video-to-video';
+    return !isVideoType;
+  });
+  const runningGenerationsCount = imageOnlyActiveGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
 
   // Filter states for search, sort, and date
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -971,6 +980,25 @@ const InputBox = () => {
         const isSeedream = normalizedModel.includes('seedream');
         const isTextToImage = normalizedType === 'text-to-image';
 
+        // Explicitly exclude video types - video entries should NOT appear in image generation
+        const isVideoType = normalizedType === 'text-to-video' ||
+          normalizedType === 'image-to-video' ||
+          normalizedType === 'video-to-video';
+        
+        if (isVideoType) {
+          return false;
+        }
+
+        // Also check if entry has video URLs (fallback check for entries that might not have correct generationType)
+        const isVideoUrl = (url: string | undefined): boolean => {
+          return !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+        };
+        const hasVideoInImages = Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url));
+        const hasVideoInVideos = entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl));
+        if (hasVideoInImages || hasVideoInVideos) {
+          return false;
+        }
+
         // Explicitly show Seedream text-to-image generations (from Image Generation page)
         if (isSeedream && isTextToImage) {
           return true;
@@ -1318,8 +1346,11 @@ const InputBox = () => {
     // NEW: Merge active generations from Redux (persistent parallel generations)
     // NOTE: The grid UI renders `entry.images.map(...)`. For in-flight jobs, we must provide
     // placeholder images so each concurrent generation shows its own loading tiles.
-    if (activeGenerations.length > 0) {
-      activeGenerations.forEach(gen => {
+    if (imageOnlyActiveGenerations.length > 0) {
+      // Use the already-filtered image-only generations
+      const imageActiveGenerations = imageOnlyActiveGenerations;
+
+      imageActiveGenerations.forEach(gen => {
         // Keep placeholder ids stable: always render under the client generation id ("gen-...").
         // Use gen.historyId only for de-dupe when the real history entry arrives.
         const displayId = String(gen.id);
@@ -1382,7 +1413,7 @@ const InputBox = () => {
     }
 
     return groups;
-  }, [filteredAndSortedEntries, sortOrder, activeGenerations]);
+  }, [filteredAndSortedEntries, sortOrder, imageOnlyActiveGenerations]);
 
   // Sort dates based on sortOrder
   const sortedDates = useMemo(() => {
