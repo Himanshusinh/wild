@@ -271,9 +271,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'seedvr2-10s-2k': 12060,
 
   // Kling o1 (FAL first/last frame)
-  'kling-o1': 1180,          // Default to 5s for base lookup
-  'kling-o1-5s': 1180,
-  'kling-o1-10s': 2360,
+  'kling-o1': 870,          // Default to 5s for base lookup
+  'kling-o1-5s': 870,
+  'kling-o1-10s': 1710,
 
   // Image Utility Models
   'fal-image2svg': 30,          // Image to SVG

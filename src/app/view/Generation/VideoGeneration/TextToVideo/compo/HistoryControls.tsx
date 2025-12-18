@@ -329,19 +329,31 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
               }}
             >
             <div className="flex items-center justify-between mb-2 text-white">
-              <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                setCalendarYear(prev.getFullYear());
-                setCalendarMonth(prev.getMonth());
-              }}>‹</button>
+              <button 
+                className="px-2 py-1 rounded hover:bg-white/10" 
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                  setCalendarYear(prev.getFullYear());
+                  setCalendarMonth(prev.getMonth());
+                }}
+              >‹</button>
               <div className="text-sm font-semibold">
                 {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
               </div>
-              <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                const next = new Date(calendarYear, calendarMonth + 1, 1);
-                setCalendarYear(next.getFullYear());
-                setCalendarMonth(next.getMonth());
-              }}>›</button>
+              <button 
+                className="px-2 py-1 rounded hover:bg-white/10" 
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  const next = new Date(calendarYear, calendarMonth + 1, 1);
+                  setCalendarYear(next.getFullYear());
+                  setCalendarMonth(next.getMonth());
+                }}
+              >›</button>
             </div>
             <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
               {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
@@ -358,7 +370,10 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
                   <button
                     key={day}
                     className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                    onClick={async () => {
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
                       const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
                       const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
                       const iso = thisDate.toISOString().slice(0, 10);
@@ -371,16 +386,28 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
               })}
             </div>
             <div className="flex items-center justify-between mt-3">
-              <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                setDateInput('');
-                await onDateChange({ start: null, end: null }, '');
-                setShowCalendar(false);
-              }}>Clear</button>
-              <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                const now = new Date();
-                setCalendarMonth(now.getMonth());
-                setCalendarYear(now.getFullYear());
-              }}>Today</button>
+              <button 
+                className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" 
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setDateInput('');
+                  await onDateChange({ start: null, end: null }, '');
+                  setShowCalendar(false);
+                }}
+              >Clear</button>
+              <button 
+                className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" 
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  const now = new Date();
+                  setCalendarMonth(now.getMonth());
+                  setCalendarYear(now.getFullYear());
+                }}
+              >Today</button>
             </div>
           </div>,
           document.body

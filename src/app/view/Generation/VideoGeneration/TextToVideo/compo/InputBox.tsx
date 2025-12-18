@@ -422,10 +422,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
     } else if (model === 'kling-o1') {
-      // Kling o1 (FAL) requires first frame (last optional)
+      // Kling o1 (FAL standard) requires both first and last frame images
       capabilities.supportsImageToVideo = true;
       capabilities.requiresImage = true;
       capabilities.requiresFirstFrame = true;
+      capabilities.requiresLastFrame = true;
     } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
       // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
       capabilities.supportsImageToVideo = true;
@@ -3094,20 +3095,43 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
         } else if (selectedModel === 'kling-o1') {
-          // Kling o1 (FAL) first/last frame to video
-          if (uploadedImages.length === 0) {
-            setError("Kling o1 requires a first frame image");
+          // Kling o1 (FAL standard) - requires both first and last frame images
+          if (uploadedImages.length === 0 && !lastFrameImage) {
+            setError("Kling o1 requires both a first frame image and a last frame image");
             return;
           }
           const firstFrame = uploadedImages[0];
           const lastFrame = uploadedImages[1] || lastFrameImage || null;
-          const apiPrompt = getApiPrompt(prompt);
+          
+          if (!firstFrame) {
+            setError("Kling o1 requires a first frame image");
+            return;
+          }
+          if (!lastFrame) {
+            setError("Kling o1 requires a last frame image");
+            return;
+          }
+          
+          // Format prompt with @Image1 and @Image2 references as required by the model
+          const basePrompt = getApiPrompt(prompt);
+          let formattedPrompt = basePrompt;
+          // Ensure both @Image1 and @Image2 are present in the prompt
+          if (!formattedPrompt.includes('@Image1')) {
+            formattedPrompt += ' @Image1';
+          }
+          if (!formattedPrompt.includes('@Image2')) {
+            formattedPrompt += ' @Image2';
+          }
+          
+          // Duration must be "5" or "10" as string
+          const durationStr = duration === 5 ? '5' : duration === 10 ? '10' : '5';
+          
           requestBody = {
-            prompt: apiPrompt,
+            prompt: formattedPrompt,
             originalPrompt: prompt,
             start_image_url: firstFrame,
-            ...(lastFrame ? { end_image_url: lastFrame } : {}),
-            duration,
+            end_image_url: lastFrame,
+            duration: durationStr,
             generationType: 'image-to-video',
             isPublic,
           };
@@ -4537,8 +4561,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
-          {/* Initial loading overlay - show when loading OR before initial load attempt */}
-          {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && (
+          {/* Initial loading overlay - show only when actually loading and no entries exist */}
+          {loading && historyEntries.length === 0 && (
             <div className="fixed top-[64px] md:top-[0px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-4 px-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
