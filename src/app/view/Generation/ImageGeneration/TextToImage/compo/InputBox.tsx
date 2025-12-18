@@ -1119,6 +1119,7 @@ const InputBox = () => {
   // Keep the queue panel (activeGenerations) in sync with the real history list.
   // If a generation completes/fails and is visible in the grid, update the queue item immediately
   // (and fill in images) so loader cards don't get stuck and slots free up.
+  // OPTIMIZED: Debounced to prevent excessive runs on every Redux update
   useEffect(() => {
     if (!activeGenerations || activeGenerations.length === 0) {
       console.log('[queue] Sync: No active generations to sync');
@@ -1129,7 +1130,25 @@ const InputBox = () => {
       return;
     }
     
-    console.log('[queue] Sync: Running with', activeGenerations.length, 'active generations and', historyEntries.length, 'history entries');
+    // OPTIMIZED: Early exit if no in-progress generations need syncing
+    const hasInProgress = activeGenerations.some((gen: any) => {
+      const status = String(gen?.status || '').toLowerCase();
+      return status === 'pending' || status === 'generating';
+    });
+    if (!hasInProgress) {
+      // Only sync if we have completed/failed items that need cleanup
+      const hasCompleted = activeGenerations.some((gen: any) => {
+        const status = String(gen?.status || '').toLowerCase();
+        return status === 'completed' || status === 'failed';
+      });
+      if (!hasCompleted) {
+        return; // Nothing to sync
+      }
+    }
+    
+    // OPTIMIZED: Debounce sync to avoid running on every Redux update
+    const timeoutId = setTimeout(() => {
+      console.log('[queue] Sync: Running with', activeGenerations.length, 'active generations and', historyEntries.length, 'history entries');
 
     // Build a quick lookup of history items by id (including firebaseHistoryId for matching)
     const historyMap = new Map<string, any>();
@@ -1147,6 +1166,7 @@ const InputBox = () => {
       let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
       
       // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
+      // OPTIMIZED: Early exit on time check, limit search to recent entries only
       if (!match && gen.prompt) {
         console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { genId, prompt: gen.prompt.slice(0, 30), genCreatedAt: gen.createdAt });
         
@@ -1154,24 +1174,31 @@ const InputBox = () => {
         const TIME_WINDOW = 120000; // 2 minute window (increased for refresh scenarios)
         
         if (!isNaN(genTime)) {
-          match = historyEntries.find((e: any) => {
+          // OPTIMIZED: Pre-normalize prompt once instead of in loop
+          const normalizePrompt = (p: string) => {
+            return String(p || '')
+              .replace(/\s*\[Style:.*?\]\s*$/i, '') // Remove [Style: ...] suffix
+              .replace(/\s+/g, ' ') // Normalize whitespace
+              .trim()
+              .toLowerCase();
+          };
+          const genPromptNormalized = normalizePrompt(gen.prompt);
+          const genModel = String(gen.model || '');
+          
+          // OPTIMIZED: Filter by time window first to reduce iterations
+          const recentEntries = historyEntries.filter((e: any) => {
             const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
             const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
-            
             if (isNaN(eTime)) return false;
-            
+            return Math.abs(genTime - eTime) < TIME_WINDOW;
+          });
+          
+          // OPTIMIZED: Only search through recent entries (much smaller set)
+          match = recentEntries.find((e: any) => {
+            const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
+            const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
             const timeDiff = Math.abs(genTime - eTime);
             
-            // More lenient prompt matching: normalize whitespace, remove style suffix, case insensitive
-            const normalizePrompt = (p: string) => {
-              return String(p || '')
-                .replace(/\s*\[Style:.*?\]\s*$/i, '') // Remove [Style: ...] suffix
-                .replace(/\s+/g, ' ') // Normalize whitespace
-                .trim()
-                .toLowerCase();
-            };
-            
-            const genPromptNormalized = normalizePrompt(gen.prompt);
             const ePromptNormalized = normalizePrompt(e.prompt);
             
             // Check if prompts match (exact or one contains the other for truncation cases)
@@ -1179,7 +1206,7 @@ const InputBox = () => {
                                 genPromptNormalized.startsWith(ePromptNormalized) ||
                                 ePromptNormalized.startsWith(genPromptNormalized);
             
-            const modelMatch = String(e.model || '') === String(gen.model || '');
+            const modelMatch = String(e.model || '') === genModel;
             
             // Only log close matches (within 2 minutes)
             if (timeDiff < TIME_WINDOW) {
@@ -1193,7 +1220,7 @@ const InputBox = () => {
               });
             }
             
-            return promptMatch && modelMatch && timeDiff < TIME_WINDOW;
+            return promptMatch && modelMatch;
           });
           
           if (match) {
@@ -1258,9 +1285,13 @@ const InputBox = () => {
         dispatch(removeActiveGeneration(genId));
       }, 3000);
     });
+    }, 300); // OPTIMIZED: Debounce sync by 300ms to batch updates and reduce excessive runs
+    
+    return () => clearTimeout(timeoutId);
   }, [activeGenerations, historyEntries, dispatch, removeLocalGeneratingEntry]);
 
   // Simple periodic check for in-progress generations (respects rate limits)
+  // OPTIMIZED: Increased interval to 30s to reduce API load and improve performance
   useEffect(() => {
     if (!activeGenerations || activeGenerations.length === 0) return;
 
@@ -1287,9 +1318,17 @@ const InputBox = () => {
       }
     };
 
-    // Less aggressive: check every 10 seconds, and rely on sync effect to handle updates
-    const interval = setInterval(checkGenerations, 10000);
-    checkGenerations(); // Run immediately on mount
+    // OPTIMIZED: Increased from 10s to 30s to reduce API calls and improve performance
+    // This still provides timely updates while significantly reducing server load
+    const interval = setInterval(checkGenerations, 30000);
+    // Only run immediately if we have in-progress generations
+    const hasInProgress = activeGenerations.some((gen: any) => {
+      const status = String(gen?.status || '').toLowerCase();
+      return status === 'pending' || status === 'generating';
+    });
+    if (hasInProgress) {
+      checkGenerations();
+    }
 
     return () => clearInterval(interval);
   }, [activeGenerations, dispatch]);

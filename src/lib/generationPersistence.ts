@@ -103,8 +103,13 @@ export function loadGenerations(): ActiveGeneration[] {
   }
 }
 
+// OPTIMIZED: Batch localStorage writes to avoid blocking main thread
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingGenerations: ActiveGeneration[] | null = null;
+
 /**
  * Save all generations to localStorage
+ * OPTIMIZED: Batched writes to reduce blocking operations
  */
 export function saveGenerations(generations: ActiveGeneration[]): void {
   if (!isLocalStorageAvailable()) {
@@ -112,26 +117,43 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
     return;
   }
 
-  try {
-    // Limit to max concurrent generations
-    const toSave = generations.slice(0, MAX_CONCURRENT_GENERATIONS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch (error) {
-    console.error('[generationPersistence] Error saving generations:', error);
+  // OPTIMIZED: Batch writes - store pending and schedule async write
+  pendingGenerations = generations;
+  
+  // Clear existing timeout
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  
+  // Schedule write after a short delay to batch multiple rapid updates
+  saveTimeout = setTimeout(() => {
+    if (!pendingGenerations) return;
     
-    // Handle quota exceeded
-    if (error instanceof Error && error.name === 'QuotaExceededError') {
-      // Try to free up space by removing completed generations
-      const activeOnly = generations.filter(
-        g => g.status === 'pending' || g.status === 'generating'
-      );
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(activeOnly));
-      } catch {
-        console.error('[generationPersistence] Failed to save even after cleanup');
+    // Store in local variable before clearing to use in error handler
+    const generationsToSave = pendingGenerations;
+    pendingGenerations = null;
+    
+    try {
+      // Limit to max concurrent generations
+      const toSave = generationsToSave.slice(0, MAX_CONCURRENT_GENERATIONS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch (error) {
+      console.error('[generationPersistence] Error saving generations:', error);
+      
+      // Handle quota exceeded
+      if (error instanceof Error && error.name === 'QuotaExceededError' && generationsToSave) {
+        // Try to free up space by removing completed generations
+        const activeOnly = generationsToSave.filter(
+          g => g.status === 'pending' || g.status === 'generating'
+        );
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(activeOnly));
+        } catch {
+          console.error('[generationPersistence] Failed to save even after cleanup');
+        }
       }
     }
-  }
+  }, 100); // Batch writes within 100ms window
 }
 
 /**

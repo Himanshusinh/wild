@@ -4460,13 +4460,38 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       // Update queue with completed video
       if (generationId) {
+        // Try to fetch the full entry from backend to get storagePath
+        let storagePath = (firebaseVideo as any)?.storagePath;
+        if (result.historyId && !storagePath) {
+          try {
+            const entryRes = await api.get(`/api/generations/${result.historyId}`);
+            const entry = entryRes?.data?.data?.item || entryRes?.data?.item || entryRes?.data?.data || entryRes?.data;
+            if (entry?.videos && Array.isArray(entry.videos) && entry.videos[0]?.storagePath) {
+              storagePath = entry.videos[0].storagePath;
+              console.log('[queue] Fetched storagePath from backend:', storagePath);
+            }
+          } catch (e) {
+            console.warn('[queue] Failed to fetch entry for storagePath:', e);
+          }
+        }
+        
+        // Extract storagePath from Zata URL if not available
+        if (!storagePath && firebaseVideo?.url) {
+          const zataMatch = firebaseVideo.url.match(/devstoragev1\/(.+)$/i);
+          if (zataMatch) {
+            storagePath = zataMatch[1];
+            console.log('[queue] Extracted storagePath from URL:', storagePath);
+          }
+        }
+        
         const videoArray = firebaseVideo?.url ? [{
           id: firebaseVideo.id || generationId,
           url: firebaseVideo.url,
           originalUrl: firebaseVideo.originalUrl || firebaseVideo.url,
           firebaseUrl: firebaseVideo.firebaseUrl || firebaseVideo.url,
+          ...(storagePath ? { storagePath } : {}),
         }] : [];
-        console.log('[queue] Video generation completed, updating active generation:', { generationId, historyId: result.historyId, videoCount: videoArray.length });
+        console.log('[queue] Video generation completed, updating active generation:', { generationId, historyId: result.historyId, videoCount: videoArray.length, hasStoragePath: !!storagePath });
         dispatch(updateActiveGeneration({
           id: generationId,
           updates: {
