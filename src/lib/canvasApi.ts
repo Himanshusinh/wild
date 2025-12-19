@@ -7,6 +7,17 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gatewa
  */
 export async function fetchCanvasProjects(limit: number = 100): Promise<CanvasProjectsResponse> {
     try {
+        // Check if we have a session cookie before making the request
+        const hasSessionCookie = typeof document !== 'undefined' && document.cookie.includes('app_session=');
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'unknown';
+        
+        console.log('[CanvasAPI] Fetching projects', {
+            apiBaseUrl: API_BASE_URL,
+            hostname,
+            hasSessionCookie,
+            cookieDomain: typeof document !== 'undefined' ? document.cookie.split(';').find(c => c.trim().startsWith('app_session='))?.substring(0, 50) : 'N/A',
+        });
+        
         const response = await fetch(`${API_BASE_URL}/api/canvas/projects?limit=${limit}`, {
             method: 'GET',
             credentials: 'include', // Include cookies for authentication
@@ -18,23 +29,42 @@ export async function fetchCanvasProjects(limit: number = 100): Promise<CanvasPr
         if (!response.ok) {
             // Handle 401 Unauthorized specifically
             if (response.status === 401) {
-                console.error('[CanvasAPI] 401 Unauthorized - Authentication required', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    url: response.url,
-                    hostname: typeof window !== 'undefined' ? window.location.hostname : 'unknown',
-                });
-                
                 // Try to get error message from response
                 let errorMessage = 'Unauthorized';
+                let errorData: any = null;
                 try {
-                    const errorData = await response.json();
+                    errorData = await response.json();
                     errorMessage = errorData?.message || errorData?.error || 'Unauthorized';
                 } catch {
                     errorMessage = response.statusText || 'Unauthorized';
                 }
                 
-                throw new Error(`Authentication required: ${errorMessage}. Please log in again.`);
+                console.error('[CanvasAPI] 401 Unauthorized - Authentication required', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url,
+                    hostname,
+                    hasSessionCookie,
+                    errorMessage,
+                    cookieInfo: typeof document !== 'undefined' ? {
+                        allCookies: document.cookie.split(';').map(c => c.trim()),
+                        hasAppSession: document.cookie.includes('app_session='),
+                    } : 'N/A',
+                    troubleshooting: [
+                        '1. Check if you are logged in on www.wildmindai.com',
+                        '2. Check browser DevTools → Application → Cookies → www.wildmindai.com',
+                        '3. Look for app_session cookie - it should have Domain: .wildmindai.com',
+                        '4. If cookie domain is www.wildmindai.com (not .wildmindai.com), you need to log in again',
+                        '5. Backend COOKIE_DOMAIN env var should be set to .wildmindai.com',
+                    ],
+                });
+                
+                // Provide helpful error message
+                const helpfulMessage = errorMessage.includes('Cookie not sent') || errorMessage.includes('cookie domain')
+                    ? 'Authentication failed: Cookie not being sent. This is usually a cookie domain configuration issue. Please try logging out and logging in again, or contact support if the issue persists.'
+                    : `Authentication required: ${errorMessage}. Please log in again.`;
+                
+                throw new Error(helpfulMessage);
             }
             
             throw new Error(`Failed to fetch canvas projects: ${response.statusText}`);
