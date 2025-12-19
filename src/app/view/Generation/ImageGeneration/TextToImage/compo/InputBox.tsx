@@ -1167,14 +1167,34 @@ const InputBox = () => {
       let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
       
       // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
-      // OPTIMIZED: Early exit on time check, limit search to recent entries only
+      // CRITICAL: Only use fallback matching for generations that already have a historyId OR were created very recently
+      // This prevents new generations from being incorrectly matched to old completed entries
+      // Only match if:
+      // 1. Generation already has a historyId (being refreshed/synced)
+      // 2. OR generation was created within 10 seconds (likely a refresh scenario)
+      // This ensures brand new generations with the same prompt/config can still generate
       if (!match && gen.prompt) {
-        console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { genId, prompt: gen.prompt.slice(0, 30), genCreatedAt: gen.createdAt });
-        
         const genTime = typeof gen.createdAt === 'number' ? gen.createdAt : new Date(gen.createdAt).getTime();
-        const TIME_WINDOW = 120000; // 2 minute window (increased for refresh scenarios)
+        const now = Date.now();
+        const ageInSeconds = (now - genTime) / 1000;
         
-        if (!isNaN(genTime)) {
+        // Only use fallback if generation already has historyId OR is very recent (within 10 seconds)
+        // This prevents matching brand new generations to old completed ones
+        const shouldUseFallback = backendId || ageInSeconds < 10;
+        
+        if (shouldUseFallback && !isNaN(genTime)) {
+          console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { 
+            genId, 
+            prompt: gen.prompt.slice(0, 30), 
+            genCreatedAt: gen.createdAt,
+            hasHistoryId: !!backendId,
+            ageInSeconds: ageInSeconds.toFixed(1)
+          });
+          
+          // Use a much smaller time window for fallback matching (30 seconds)
+          // This is only for refresh scenarios, not for matching new generations to old ones
+          const TIME_WINDOW = 30000; // 30 second window (only for refresh scenarios)
+          
           // OPTIMIZED: Pre-normalize prompt once instead of in loop
           const normalizePrompt = (p: string) => {
             return String(p || '')
@@ -1209,7 +1229,7 @@ const InputBox = () => {
             
             const modelMatch = String(e.model || '') === genModel;
             
-            // Only log close matches (within 2 minutes)
+            // Only log close matches (within time window)
             if (timeDiff < TIME_WINDOW) {
               console.log('[queue] Comparing with history entry:', { 
                 historyId: e.id, 
@@ -1234,6 +1254,13 @@ const InputBox = () => {
           } else {
             console.log('[queue] ❌ No match found via fallback for:', genId);
           }
+        } else {
+          console.log('[queue] Skipping fallback matching for new generation:', { 
+            genId, 
+            hasHistoryId: !!backendId, 
+            ageInSeconds: ageInSeconds.toFixed(1),
+            reason: !backendId && ageInSeconds >= 10 ? 'too old for fallback' : 'other'
+          });
         }
       }
       
