@@ -534,7 +534,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         {/* Content */}
         <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[40vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {videoUrl && videoUrl.length > 0 ? (
               videoUrl.startsWith('data:image/') ? (
                 <img 
@@ -621,7 +621,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] mt-6 flex flex-col overflow-hidden ">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] mt-6 flex flex-col overflow-y-auto overflow-x-hidden">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2 flex-shrink-0">
               <div className="relative group flex-1">
@@ -678,8 +678,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             </div>
 
             {/* Main content stack */}
-            <div className="flex-1 overflow-hidden ">
-              <div className="flex flex-col gap-4 h-full overflow-hidden">
+            <div className="flex-1 min-h-0">
+              <div className="flex flex-col gap-4">
                 {/* Prompt */}
                 <div className="flex-shrink-0 -mb-4">
                   <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">

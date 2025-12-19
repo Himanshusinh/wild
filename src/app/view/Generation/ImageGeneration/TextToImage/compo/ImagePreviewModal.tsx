@@ -1488,7 +1488,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             </button>
           </div>
           {/* Sidebar */}
-          <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent max-h-[18rem] md:max-h-none md:h-[84vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
+          <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent max-h-[18rem] md:max-h-none md:min-h-[70vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <div className="relative group flex-1">

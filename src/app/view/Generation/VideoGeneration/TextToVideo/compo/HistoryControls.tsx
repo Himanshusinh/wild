@@ -57,6 +57,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   const [mounted, setMounted] = useState(false);
   
   const didInitialLoadRef = useRef(false);
+  const sortRequestInFlightRef = useRef(false);
 
   // Ensure component is mounted before rendering portal
   useEffect(() => {
@@ -119,7 +120,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     };
   }, [showCalendar]);
 
-  // Search handler
+  // Search handler - use currentFilters.sortOrder from Redux to avoid dependency on local sortOrder state
   const applySearch = useCallback(async (nextSearch: string) => {
     const s = String(nextSearch || '').trim();
     setSearchQuery(s);
@@ -127,17 +128,21 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       onSearchChange(s);
     }
     
+    // Use currentFilters.sortOrder from Redux to get the latest value, not local state
+    // This prevents applySearch from being recreated when local sortOrder state changes
+    const currentSortOrder = (currentFilters as any)?.sortOrder || 'desc';
+    
     didInitialLoadRef.current = true;
     dispatch(clearHistory());
     dispatch(setFilters({
       mode,
-      sortOrder,
+      sortOrder: currentSortOrder,
       ...(s ? { search: s } : {}),
       ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
     } as any));
     await (dispatch as any)(loadHistory({
-      filters: { mode, sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode, sortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      filters: { mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      backendFilters: { mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
       paginationParams: { limit: paginationLimit },
       requestOrigin: 'page',
       expectedType: mode === 'video' ? 'text-to-video' : 'text-to-image',
@@ -145,7 +150,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       forceRefresh: true,
       debugTag: `HistoryControls:${mode}-search:${Date.now()}`,
     } as any));
-  }, [dispatch, mode, sortOrder, dateRange, onSearchChange]);
+  }, [dispatch, mode, currentFilters, dateRange, onSearchChange, paginationLimit]);
 
   // Live prompt search (Freepik-style): as user types, debounce and query backend.
   useEffect(() => {
@@ -171,30 +176,49 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
 
   // Sort handler
   const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
-    setSortOrder(order);
-    if (onSortChangeCallback) {
-      onSortChangeCallback(order);
+    // Prevent duplicate requests: check if already set to this order or request in flight
+    if (sortOrder === order || sortRequestInFlightRef.current) {
+      return;
     }
     
-    didInitialLoadRef.current = true;
-    dispatch(clearHistory());
-    dispatch(setFilters({
-      mode,
-      sortOrder: order,
-      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
-      ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
-    } as any));
-    await (dispatch as any)(loadHistory({
-      filters: { mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: paginationLimit },
-      requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'text-to-video' : 'text-to-image',
-      skipBackendGenerationFilter: mode === 'image', // Image mode uses skipBackendGenerationFilter
-      forceRefresh: true,
-      debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
-    } as any));
-  }, [dispatch, mode, dateRange, searchQuery, onSortChangeCallback]);
+    // Set loading guard
+    sortRequestInFlightRef.current = true;
+    
+    try {
+      // Update state AFTER API call to prevent triggering other effects
+      // Use the order parameter directly in API calls, not state
+      if (onSortChangeCallback) {
+        onSortChangeCallback(order);
+      }
+      
+      didInitialLoadRef.current = true;
+      dispatch(clearHistory());
+      dispatch(setFilters({
+        mode,
+        sortOrder: order,
+        ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+        ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
+      } as any));
+      await (dispatch as any)(loadHistory({
+        filters: { mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+        backendFilters: { mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+        paginationParams: { limit: paginationLimit },
+        requestOrigin: 'page',
+        expectedType: mode === 'video' ? 'text-to-video' : 'text-to-image',
+        skipBackendGenerationFilter: mode === 'image', // Image mode uses skipBackendGenerationFilter
+        forceRefresh: true,
+        debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
+      } as any));
+      
+      // Update local state AFTER successful API call to prevent triggering applySearch recreation
+      setSortOrder(order);
+    } finally {
+      // Release loading guard after a short delay to prevent rapid clicks
+      setTimeout(() => {
+        sortRequestInFlightRef.current = false;
+      }, 500);
+    }
+  }, [dispatch, mode, dateRange, searchQuery, sortOrder, onSortChangeCallback, paginationLimit]);
 
   // Date change handler
   const onDateChange = useCallback(async (next: { start: Date | null; end: Date | null }, nextInput?: string) => {
