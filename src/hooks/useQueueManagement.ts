@@ -1,10 +1,14 @@
 /**
  * Unified Queue Management Hook
- * Handles automatic cleanup of completed/failed generations with proper timing
+ * Handles automatic cleanup of completed/failed/cancelled generations with proper timing
  * - Success: Show success message for 5 seconds, then remove
- * - Failed: Show error/warning message, then remove after display
+ * - Failed: Show mini error message, then remove after display
+ * - Cancelled: Show cancellation message, then remove
  * Works for all generation types: image, video, music
  * Works for all providers: FAL, Replicate, Runway, BFL, MiniMax
+ * 
+ * CRITICAL: This is the ONLY place that shows success toasts to avoid duplicates.
+ * All other toast.success calls for generation completion should be removed.
  */
 
 import { useEffect, useRef } from 'react';
@@ -28,13 +32,13 @@ interface QueueManagementOptions {
   
   /**
    * Whether to show success toast notifications
-   * Default: true
+   * Default: true (this is the ONLY place success toasts should appear)
    */
   showSuccessToast?: boolean;
   
   /**
-   * Whether to show error toast notifications (errors are already shown by error handlers)
-   * Default: false (errors are handled by specific error handlers)
+   * Whether to show error toast notifications
+   * Default: true (show mini error messages for failed generations)
    */
   showErrorToast?: boolean;
 }
@@ -43,7 +47,7 @@ const DEFAULT_OPTIONS: Required<QueueManagementOptions> = {
   successDisplayDuration: 5000,
   errorDisplayDuration: 3000,
   showSuccessToast: true,
-  showErrorToast: false,
+  showErrorToast: true, // Changed to true to show mini errors
 };
 
 export function useQueueManagement(options: QueueManagementOptions = {}) {
@@ -72,7 +76,7 @@ export function useQueueManagement(options: QueueManagementOptions = {}) {
         if (!processedRef.current.has(processedKey)) {
           processedRef.current.add(processedKey);
           
-          // Show success toast if enabled
+          // Show success toast if enabled (THIS IS THE ONLY PLACE FOR SUCCESS TOASTS)
           if (opts.showSuccessToast) {
             const genType = gen.params?.generationType || '';
             let successMessage = 'Generation completed successfully!';
@@ -88,7 +92,11 @@ export function useQueueManagement(options: QueueManagementOptions = {}) {
               successMessage = `Generated ${count} image${count !== 1 ? 's' : ''} successfully!`;
             }
             
-            toast.success(successMessage, { duration: 4000 });
+            // Use unique ID to prevent duplicate toasts
+            toast.success(successMessage, { 
+              duration: 4000,
+              id: `success-${genId}`,
+            });
           }
         }
 
@@ -109,16 +117,45 @@ export function useQueueManagement(options: QueueManagementOptions = {}) {
         if (!processedRef.current.has(processedKey)) {
           processedRef.current.add(processedKey);
           
-          // Error toast is already shown by specific error handlers (handleFalError, handleReplicateError, etc.)
-          // So we don't show it again here unless explicitly enabled
+          // Show mini error message
           if (opts.showErrorToast && gen.error) {
-            toast.error(gen.error, { duration: opts.errorDisplayDuration });
+            // Truncate long error messages for display
+            const errorMessage = gen.error.length > 100 
+              ? gen.error.substring(0, 100) + '...' 
+              : gen.error;
+            toast.error(errorMessage, { 
+              duration: opts.errorDisplayDuration,
+              id: `error-${genId}`, // Prevent duplicate toasts
+            });
           }
         }
 
         // Schedule removal after error display duration
         const timeout = setTimeout(() => {
           console.log('[queue] Removing failed generation:', genId);
+          dispatch(removeActiveGeneration(genId));
+          timeoutRefs.current.delete(genId);
+          processedRef.current.delete(processedKey);
+        }, opts.errorDisplayDuration);
+        
+        timeoutRefs.current.set(genId, timeout);
+      }
+      // Handle cancelled generations
+      else if (status === 'cancelled') {
+        const processedKey = `${genId}-cancelled`;
+        if (!processedRef.current.has(processedKey)) {
+          processedRef.current.add(processedKey);
+          
+          // Show cancellation toast
+          toast.error('Generation cancelled', { 
+            duration: opts.errorDisplayDuration,
+            id: `cancel-${genId}`,
+          });
+        }
+
+        // Schedule removal after error display duration
+        const timeout = setTimeout(() => {
+          console.log('[queue] Removing cancelled generation:', genId);
           dispatch(removeActiveGeneration(genId));
           timeoutRefs.current.delete(genId);
           processedRef.current.delete(processedKey);
@@ -136,6 +173,7 @@ export function useQueueManagement(options: QueueManagementOptions = {}) {
         // Clean up processed refs for removed generations
         processedRef.current.delete(`${id}-completed`);
         processedRef.current.delete(`${id}-failed`);
+        processedRef.current.delete(`${id}-cancelled`);
       }
     });
 

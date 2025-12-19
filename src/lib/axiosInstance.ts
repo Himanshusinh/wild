@@ -613,7 +613,31 @@ axiosInstance.interceptors.response.use(
     const original = error?.config || {}
     const status = error?.response?.status
     const errorData = error?.response?.data
-    // Generic error toast
+    
+    // Check if request was cancelled (user navigated away, component unmounted, etc.)
+    const isCancelled = error?.code === 'ERR_CANCELED' || 
+                       error?.name === 'CanceledError' || 
+                       error?.name === 'AbortError' ||
+                       error?.message?.includes('canceled') ||
+                       error?.message?.includes('aborted');
+    
+    if (isCancelled) {
+      // Request was cancelled - this is expected when user navigates away
+      // Don't show generic error toast, but we'll handle it in generation slice
+      if (isApiDebugEnabled()) {
+        console.log('[API][cancelled] Request was cancelled:', {
+          url: original?.url,
+          reason: 'User navigated away or component unmounted'
+        });
+      }
+      // Reject with a special cancellation marker
+      const cancelError = new Error('Request cancelled');
+      (cancelError as any).isCancelled = true;
+      (cancelError as any).code = 'ERR_CANCELED';
+      return Promise.reject(cancelError);
+    }
+    
+    // Generic error toast (only for non-cancelled errors)
     try { await showFalErrorToast(error); } catch {}
     try {
       const urlStr = String(error?.config?.url || '')

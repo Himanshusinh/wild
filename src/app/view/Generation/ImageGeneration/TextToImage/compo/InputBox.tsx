@@ -2726,7 +2726,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Runway generation completed! Generated ${successfulResults.length}/${totalToGenerate} image(s) successfully`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Refresh only the single completed generation instead of reloading all
@@ -2823,8 +2823,7 @@ const InputBox = () => {
           }
         } catch { }
 
-        // Show success notification
-        toast.success(`MiniMax generation completed! Generated ${result.images.length} image(s)`);
+        // Toast removed - useQueueManagement handles success toasts
         clearInputs();
 
         // Refresh only the single completed generation instead of reloading all
@@ -2886,7 +2885,7 @@ const InputBox = () => {
           }
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Refresh only the single completed generation instead of reloading all
@@ -2956,7 +2955,7 @@ const InputBox = () => {
           }
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Refresh only the single completed generation instead of reloading all
@@ -3025,7 +3024,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
@@ -3120,7 +3119,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing
@@ -3216,7 +3215,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing
@@ -3316,7 +3315,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
@@ -3416,7 +3415,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
@@ -3514,7 +3513,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing (don't wipe other in-flight jobs)
@@ -3595,7 +3594,7 @@ const InputBox = () => {
             upsertLocalGeneratingEntry(completedEntry);
           } catch { }
 
-          toast.success(`Generated ${combinedResult.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing
@@ -3674,7 +3673,7 @@ const InputBox = () => {
             upsertLocalGeneratingEntry(completedEntry);
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Keep local entries visible for a moment before refreshing
@@ -3759,7 +3758,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
@@ -4079,7 +4078,7 @@ const InputBox = () => {
             }
           } catch { }
 
-          toast.success(`Generated ${allImages.length || 1} image(s) successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
 
           // Refresh the history entry that contains all images
@@ -4181,8 +4180,7 @@ const InputBox = () => {
 
           // Server already finalized Firebase when historyId is provided
 
-          // Show success notification
-          toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? 's' : ''} successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
@@ -4263,9 +4261,7 @@ const InputBox = () => {
           //   })
           // );
 
-          // Show success notification
-          toast.success(`Generated ${result.images.length} image${result.images.length > 1 ? "s" : ""
-            } successfully!`);
+          // Toast removed - useQueueManagement handles success toasts
           clearInputs();
           // Refresh only the single completed generation instead of reloading all
           const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;

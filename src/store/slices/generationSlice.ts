@@ -627,13 +627,26 @@ const generationSlice = createSlice({
         if (genId) {
           const index = state.activeGenerations.findIndex(g => g.id === genId);
           if (index !== -1) {
-            state.activeGenerations[index].status = 'failed';
-            state.activeGenerations[index].error = action.payload as string;
+            // Check if error is a cancellation
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[index].status = 'cancelled';
+              state.activeGenerations[index].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[index].status = 'failed';
+              state.activeGenerations[index].error = errorMessage || 'Generation failed';
+            }
             state.activeGenerations[index].updatedAt = Date.now();
-            // Don't persist failed generations - updateGeneration will remove from persistence
+            // Don't persist failed/cancelled generations - updateGeneration will remove from persistence
             generationPersistence.updateGeneration(genId, { 
-              status: 'failed',
-              error: action.payload as string
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
             });
           }
         }
@@ -687,10 +700,25 @@ const generationSlice = createSlice({
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            state.activeGenerations[idx].status = 'failed';
-            state.activeGenerations[idx].error = action.payload as string;
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[idx].status = 'cancelled';
+              state.activeGenerations[idx].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[idx].status = 'failed';
+              state.activeGenerations[idx].error = errorMessage || 'Generation failed';
+            }
             state.activeGenerations[idx].updatedAt = Date.now();
-            generationPersistence.updateGeneration(genId, { status: 'failed', error: action.payload as string });
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
           }
         }
       })
@@ -735,10 +763,25 @@ const generationSlice = createSlice({
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            state.activeGenerations[idx].status = 'failed';
-            state.activeGenerations[idx].error = action.payload as string;
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[idx].status = 'cancelled';
+              state.activeGenerations[idx].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[idx].status = 'failed';
+              state.activeGenerations[idx].error = errorMessage || 'Generation failed';
+            }
             state.activeGenerations[idx].updatedAt = Date.now();
-            generationPersistence.updateGeneration(genId, { status: 'failed', error: action.payload as string });
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
           }
         }
       })
@@ -783,10 +826,25 @@ const generationSlice = createSlice({
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            state.activeGenerations[idx].status = 'failed';
-            state.activeGenerations[idx].error = action.payload as string;
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[idx].status = 'cancelled';
+              state.activeGenerations[idx].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[idx].status = 'failed';
+              state.activeGenerations[idx].error = errorMessage || 'Generation failed';
+            }
             state.activeGenerations[idx].updatedAt = Date.now();
-            generationPersistence.updateGeneration(genId, { status: 'failed', error: action.payload as string });
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
           }
         }
       })
