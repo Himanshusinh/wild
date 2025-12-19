@@ -2130,12 +2130,39 @@ const InputBox = (props: InputBoxProps = {}) => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
+        // Use currentFilters from Redux to get the latest values (sync with HistoryControls)
+        // This ensures consistency with search, sort, and date filters managed by HistoryControls
+        const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
+        const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
+        const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
+        
         // Use mode: 'video' which backend converts to all video types including video-to-video
         // Use consistent limit of 10 for all requests
+        const filters: any = { mode: 'video', sortOrder: currentSortOrder };
+        if (currentSearch) filters.search = currentSearch;
+        if (currentDateRange?.start && currentDateRange?.end) {
+          filters.dateRange = { 
+            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
+            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+          };
+        }
+        
+        const backendFilters: any = { 
+          mode: 'video', 
+          sortOrder: currentSortOrder,
+          ...(currentSearch ? { search: currentSearch } : {}),
+          ...(currentDateRange?.start && currentDateRange?.end ? { 
+            dateRange: { 
+              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
+              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+            } 
+          } : {})
+        };
+        
         await (dispatch as any)(loadMoreHistory({
-          filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-          backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-          paginationParams: { limit: 10 }
+          filters: filters,
+          backendFilters: backendFilters,
+          paginationParams: { limit: 30 } // Increased from 10 to 30 to load more items per page and reduce pagination gaps
         })).unwrap();
       } catch {/* swallow */ }
     }
