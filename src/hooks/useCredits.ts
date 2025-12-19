@@ -223,6 +223,8 @@ export const useGenerationCredits = (
     duration?: number;
     frameSize?: string;
     style?: string;
+    quality?: string;
+    uploadedImages?: any[];
   }
 ) => {
   const {

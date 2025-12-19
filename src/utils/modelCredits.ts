@@ -301,10 +301,16 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate-crystal-upscaler-6k': 1620,
   'replicate-crystal-upscaler-8k': 3220,
   'replicate-crystal-upscaler-12k': 6420,
+  
+  // GPT Image 1.5 quality variants
+  'gpt-image-1.5-auto': 292,
+  'gpt-image-1.5-low': 46,
+  'gpt-image-1.5-medium': 120,
+  'gpt-image-1.5-high': 292,
 };
 
 // Function to get credit cost for a model
-export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean, uploadedImages?: any[]): number | null => {
+export const getCreditsForModel = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean, uploadedImages?: any[], quality?: string): number | null => {
   // Handle special cases for video models with duration and resolution
   if (modelValue === 'MiniMax-Hailuo-02' && duration && resolution) {
     const durationNum = parseInt(duration.replace('s', ''));
@@ -598,13 +604,19 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     return MODEL_CREDITS_MAPPING[key] || null;
   }
 
+  // Handle GPT Image 1.5 with quality
+  if (modelValue === 'openai/gpt-image-1.5' && quality) {
+    const qualityKey = `gpt-image-1.5-${quality.toLowerCase()}`;
+    return MODEL_CREDITS_MAPPING[qualityKey] || MODEL_CREDITS_MAPPING['gpt-image-1.5-auto']; // Default to auto if quality not found
+  }
+
   // Default lookup
   return MODEL_CREDITS_MAPPING[modelValue] || null;
 };
 
 // Function to get model info for display
-export const getModelCreditInfo = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean) => {
-  const credits = getCreditsForModel(modelValue, duration, resolution, generateAudio);
+export const getModelCreditInfo = (modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean, quality?: string) => {
+  const credits = getCreditsForModel(modelValue, duration, resolution, generateAudio, undefined, quality);
 
   // Special handling for Maya TTS and ElevenLabs SFX - show per-second pricing
   if (modelValue === 'maya-tts') {
@@ -639,8 +651,8 @@ export const getModelCreditInfo = (modelValue: string, duration?: string, resolu
 };
 
 // Helper function to format model name with credits
-export const formatModelWithCredits = (modelName: string, modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean): string => {
-  const creditInfo = getModelCreditInfo(modelValue, duration, resolution, generateAudio);
+export const formatModelWithCredits = (modelName: string, modelValue: string, duration?: string, resolution?: string, generateAudio?: boolean, quality?: string): string => {
+  const creditInfo = getModelCreditInfo(modelValue, duration, resolution, generateAudio, quality);
 
   if (creditInfo.hasCredits) {
     return `${modelName} - ${creditInfo.displayText}`;

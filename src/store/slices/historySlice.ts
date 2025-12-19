@@ -210,10 +210,15 @@ export const loadHistory = createAsyncThunk(
       }
   // Always request createdAt sorting explicitly
   params.sortBy = 'createdAt';
-  // Always honor caller-provided sortOrder so backend returns matching order (asc/desc)
-  if ((filtersForBackend as any)?.sortOrder === 'asc' || (filtersForBackend as any)?.sortOrder === 'desc') {
-    params.sortOrder = (filtersForBackend as any).sortOrder;
-  }
+  // Always send an effective sortOrder so concurrent requests can't mix results.
+  // Preference: explicit args -> existing slice filters -> default 'desc'
+  const effectiveSortOrder =
+    ((filtersForBackend as any)?.sortOrder === 'asc' || (filtersForBackend as any)?.sortOrder === 'desc')
+      ? (filtersForBackend as any).sortOrder
+      : (((state as any)?.history?.filters as any)?.sortOrder === 'asc' || ((state as any)?.history?.filters as any)?.sortOrder === 'desc')
+        ? ((state as any).history.filters as any).sortOrder
+        : 'desc';
+  params.sortOrder = effectiveSortOrder;
   
   console.log('[HistorySlice] ========== loadHistory API CALL ==========');
   console.log('[HistorySlice] Request params:', {
@@ -491,10 +496,8 @@ export const loadMoreHistory = createAsyncThunk(
 
       const wantsDateFilter = Boolean((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end);
 
-      // Always paginate with LEGACY cursor (document ID) for stability.
-      // This avoids missing-day gaps caused by timestamp cursor semantics.
-      // Prefer stored cursor if it's a non-numeric string (document ID); otherwise use computed last-entry id.
-      if (storedNextCursor && typeof storedNextCursor === 'string' && !/^\d+$/.test(storedNextCursor)) {
+      // Prefer backend-provided cursor (works for both asc/desc). Fallback to last-entry id only if missing.
+      if (storedNextCursor !== undefined && storedNextCursor !== null) {
         (params as any).cursor = String(storedNextCursor);
       } else if (nextPageParams.cursor?.id) {
         (params as any).cursor = String(nextPageParams.cursor.id);
@@ -700,9 +703,18 @@ const historySlice = createSlice({
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+
+        // Drop stale responses that don't match the currently selected sortOrder.
+        // This prevents a "newest" response finishing late and overwriting an "oldest" feed.
+        const incomingFilters: any = (action.meta as any)?.arg?.filters || (action.meta as any)?.arg?.backendFilters || {};
+        const incomingSort = incomingFilters?.sortOrder;
+        const currentSort = (state.filters as any)?.sortOrder;
+        if ((incomingSort === 'asc' || incomingSort === 'desc') && (currentSort === 'asc' || currentSort === 'desc') && incomingSort !== currentSort) {
+          return;
+        }
         
         // Always sync slice filters with the filters used for this load
-        const usedFilters = (action.meta && action.meta.arg && action.meta.arg.filters) || {};
+        const usedFilters = (action.meta && action.meta.arg && (action.meta.arg.filters || action.meta.arg.backendFilters)) || {};
         const forceRefresh = (action.meta && action.meta.arg && action.meta.arg.forceRefresh) || false;
         const requestedLimit = (action.meta && action.meta.arg && action.meta.arg.paginationParams && action.meta.arg.paginationParams.limit) || 10;
         const payloadEntries = action.payload?.entries || [];
@@ -872,6 +884,14 @@ const historySlice = createSlice({
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+
+        // Drop stale pagination responses that don't match current sortOrder.
+        const incomingFilters: any = (action.meta as any)?.arg?.filters || (action.meta as any)?.arg?.backendFilters || {};
+        const incomingSort = incomingFilters?.sortOrder;
+        const currentSort = (state.filters as any)?.sortOrder;
+        if ((incomingSort === 'asc' || incomingSort === 'desc') && (currentSort === 'asc' || currentSort === 'desc') && incomingSort !== currentSort) {
+          return;
+        }
         
         // Filter out duplicate entries before adding
         let newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
@@ -945,15 +965,30 @@ const historySlice = createSlice({
         const serverHasMore = Boolean(action.payload.hasMore);
         const hasNextCursor = action.payload.nextCursor !== undefined && action.payload.nextCursor !== null;
         const payloadEntries = action.payload.entries || [];
-        const syntheticNextCursor = !hasNextCursor && payloadEntries.length > 0
+        
+        // Calculate synthetic cursor from entries that were actually added (after filtering/deduplication)
+        // This ensures cursor points to the correct position for next page
+        // Use the last item from NEW entries added (not original payload) to maintain pagination accuracy
+        const syntheticNextCursor = !hasNextCursor && newEntries.length > 0
           ? (() => {
               try {
-                const last = payloadEntries[payloadEntries.length - 1];
+                // When sortOrder is 'asc', entries are oldest to newest, so use last item
+                // When sortOrder is 'desc', entries are newest to oldest, so also use last item
+                const last = newEntries[newEntries.length - 1];
                 const ts = Date.parse(String(last?.timestamp || last?.createdAt || ''));
                 return Number.isNaN(ts) ? null : String(ts);
               } catch { return null; }
             })()
-          : null;
+          : (!hasNextCursor && payloadEntries.length > 0
+            ? (() => {
+                // Fallback: if all entries were filtered but payload had items, use original payload's last item
+                try {
+                  const last = payloadEntries[payloadEntries.length - 1];
+                  const ts = Date.parse(String(last?.timestamp || last?.createdAt || ''));
+                  return Number.isNaN(ts) ? null : String(ts);
+                } catch { return null; }
+              })()
+            : null);
         const optimisticHasMore = serverHasMore || hasNextCursor || Boolean(syntheticNextCursor) || payloadEntries.length >= requestedLimit;
         state.lastLoadedCount = newEntries.length;
         state.hasMore = optimisticHasMore;
@@ -964,6 +999,12 @@ const historySlice = createSlice({
           totalEntriesCount: state.entries.length,
           hasMore: state.hasMore,
           lastLoadedCount: state.lastLoadedCount,
+          nextCursor: state.nextCursor,
+          syntheticCursor: syntheticNextCursor,
+          backendCursor: action.payload.nextCursor,
+          newEntriesAdded: newEntries.length,
+          originalPayloadCount: payloadEntries.length,
+          incomingSortOrder: incomingSort,
         });
       })
       .addCase(loadMoreHistory.rejected, (state, action) => {
