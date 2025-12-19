@@ -1305,13 +1305,11 @@ const InputBox = () => {
       // Clear any local preview for this generation once the history item is final.
       removeLocalGeneratingEntry([genId, backendId, String(match?.id || '')].filter(Boolean) as any);
 
-      // IMPORTANT: Keep completed/failed items in queue for 3 seconds so user can see the final state
-      // This provides visual feedback that generation completed successfully
-      console.log('[queue] Scheduling removal of completed/failed generation in 3s:', { genId, status });
-      setTimeout(() => {
-        console.log('[queue] Removing completed/failed generation from active queue:', { genId, status });
-        dispatch(removeActiveGeneration(genId));
-      }, 3000);
+      // IMPORTANT: Don't remove from queue here - let useQueueManagement hook handle it
+      // The hook will:
+      // - Show success toast and remove after 5 seconds for completed
+      // - Show error (already shown by error handlers) and remove after 3 seconds for failed
+      console.log('[queue] Generation status synced, queue management hook will handle removal:', { genId, status });
     });
     }, 300); // OPTIMIZED: Debounce sync by 300ms to batch updates and reduce excessive runs
     
@@ -2021,6 +2019,126 @@ const InputBox = () => {
   // If future UX requires prefetch, implement a lightweight, single-fire prefetch with strict
   // cooldown and visibility metrics rather than looping effects.
 
+  // Helper function to handle FAL errors with structured error messages
+  const handleFalError = async (error: any, context: { generationId?: string; tempEntryId: string; tempEntry?: HistoryEntry; transactionId?: string; modelName?: string }) => {
+    const { extractFalErrorDetails, showFalErrorToast } = await import('@/lib/falToast');
+    const errorDetails = extractFalErrorDetails(error);
+    
+    // Get user-friendly error message
+    const errorMessage = errorDetails?.message || 
+                        (typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
+                        'Failed to generate images';
+    
+    // Update loading entry to show failed state
+    try {
+      const baseEntry = context.tempEntry || {
+        id: context.tempEntryId,
+        prompt: '',
+        model: '',
+        generationType: 'text-to-image' as const,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 0,
+        status: 'generating' as const,
+      };
+      const failedEntry: HistoryEntry = {
+        ...baseEntry,
+        id: context.tempEntryId,
+        status: 'failed',
+        timestamp: new Date().toISOString(),
+        error: errorMessage,
+      } as any;
+      upsertLocalGeneratingEntry(failedEntry);
+      
+      if (context.generationId) {
+        dispatch(updateActiveGeneration({
+          id: context.generationId,
+          updates: { 
+            status: 'failed', 
+            error: errorMessage,
+          }
+        }));
+      }
+    } catch { }
+
+    // Stop generation process
+    setIsGeneratingLocally(false);
+    postGenerationBlockRef.current = false;
+
+    // Handle credit failure
+    if (context.transactionId) {
+      await handleGenerationFailure(context.transactionId);
+    }
+
+    // Show structured error toast with user-friendly message
+    await showFalErrorToast(error, errorMessage);
+
+    // Clear failed entry after a delay to allow user to see the error
+    setTimeout(() => {
+      removeLocalGeneratingEntry(context.generationId || context.tempEntryId);
+    }, errorDetails?.retryable ? 5000 : 3000);
+  };
+
+  // Helper function to handle Replicate errors with structured error messages
+  const handleReplicateError = async (error: any, context: { generationId?: string; tempEntryId: string; tempEntry?: HistoryEntry; transactionId?: string; modelName?: string }) => {
+    const { extractReplicateErrorDetails, showReplicateErrorToast } = await import('@/lib/replicateToast');
+    const errorDetails = extractReplicateErrorDetails(error);
+    
+    // Get user-friendly error message
+    const errorMessage = errorDetails?.message || 
+                        (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
+                        'Failed to generate images';
+    
+    // Update loading entry to show failed state
+    try {
+      const baseEntry = context.tempEntry || {
+        id: context.tempEntryId,
+        prompt: '',
+        model: '',
+        generationType: 'text-to-image' as const,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 0,
+        status: 'generating' as const,
+      };
+      const failedEntry: HistoryEntry = {
+        ...baseEntry,
+        id: context.tempEntryId,
+        status: 'failed',
+        timestamp: new Date().toISOString(),
+        error: errorMessage,
+      } as any;
+      upsertLocalGeneratingEntry(failedEntry);
+      
+      if (context.generationId) {
+        dispatch(updateActiveGeneration({
+          id: context.generationId,
+          updates: { 
+            status: 'failed', 
+            error: errorMessage,
+          }
+        }));
+      }
+    } catch { }
+
+    // Stop generation process
+    setIsGeneratingLocally(false);
+    postGenerationBlockRef.current = false;
+
+    // Handle credit failure
+    if (context.transactionId) {
+      await handleGenerationFailure(context.transactionId);
+    }
+
+    // Show structured error toast with user-friendly message
+    await showReplicateErrorToast(error, errorMessage);
+
+    // Clear failed entry after a delay to allow user to see the error
+    setTimeout(() => {
+      removeLocalGeneratingEntry(context.generationId || context.tempEntryId);
+    }, errorDetails?.retryable ? 5000 : 3000);
+  };
+
   const handleGenerate = async (generationId?: string) => {
     if (!prompt.trim()) return;
 
@@ -2305,7 +2423,7 @@ const InputBox = () => {
               uploadedImages: combinedImages,
               style,
               isPublic,
-+             generationId
+              generationId
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
@@ -2769,40 +2887,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Update loading entry to show failed state instead of clearing it
-          try {
-            const failedEntry: HistoryEntry = {
-              ...tempEntry,
-              id: tempEntryId,
-              status: 'failed',
-              timestamp: new Date().toISOString(),
-              error: error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro',
-            } as any;
-            upsertLocalGeneratingEntry(failedEntry);
-            if (generationId) {
-             dispatch(updateActiveGeneration({
-               id: generationId,
-               updates: { status: 'failed', error: error instanceof Error ? error.message : 'Failed' }
-             }));
-            }
-          } catch { }
-
-          // Stop generation process
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-
-          // Show error toast with more specific message
-          const errorMessage = error instanceof Error ? error.message : 'Failed to generate images with Flux 2 Pro';
-          toast.error(errorMessage);
-
-          // Clear failed entry after a delay to allow user to see the error (don't wipe other in-flight jobs)
-          setTimeout(() => {
-            removeLocalGeneratingEntry(generationId || tempEntryId);
-          }, 3000);
+          await handleFalError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Flux 2 Pro',
+          });
           return;
         }
       } else if (selectedModel === 'gemini-25-flash-image') {
@@ -2867,23 +2958,13 @@ const InputBox = () => {
           }
         } catch (error) {
           console.error('FAL generate failed:', error);
-          // Stop generation process immediately on error (don't wipe other in-flight jobs)
-          removeLocalGeneratingEntry(generationId || tempEntryId);
-          if (generationId) {
-             dispatch(updateActiveGeneration({
-               id: generationId,
-               updates: { status: 'failed', error: error instanceof Error ? error.message : 'Failed' }
-             }));
-          }
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          // Handle credit failure
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Google Nano Banana');
+          await handleFalError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Google Nano Banana',
+          });
           return;
         }
       } else if (selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast') {
@@ -2950,15 +3031,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          removeLocalGeneratingEntry(generationId || tempEntryId);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Imagen 4');
+          await handleFalError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Imagen 4',
+          });
           return;
         }
       } else if (selectedModel === 'seedream-v4') {
@@ -3047,16 +3126,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          removeLocalGeneratingEntry(generationId || tempEntryId);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream');
-          toast.error(errorMessage, { duration: 5000 });
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Seedream v4',
+          });
           return;
         }
       } else if (selectedModel === 'seedream-4.5') {
@@ -3145,16 +3221,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          removeLocalGeneratingEntry(generationId || tempEntryId);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Seedream 4.5');
-          toast.error(errorMessage, { duration: 5000 });
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Seedream 4.5',
+          });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3') {
@@ -3248,16 +3321,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error (don't wipe other in-flight jobs)
-          removeLocalGeneratingEntry(generationId || tempEntryId);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Failed to generate images with Ideogram v3');
-          toast.error(errorMessage, { duration: 5000 });
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Ideogram v3',
+          });
           return;
         }
       } else if (selectedModel === 'ideogram-ai/ideogram-v3-quality') {
@@ -3449,15 +3519,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error (don't wipe other in-flight jobs)
-          removeLocalGeneratingEntry(generationId || tempEntryId);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Lucid Origin');
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Lucid Origin',
+          });
           return;
         }
       } else if (selectedModel === 'leonardoai/phoenix-1.0') {
@@ -3539,7 +3607,13 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationFailure(transactionId);
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Phoenix 1.0');
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Phoenix 1.0',
+          });
           return;
         }
       } else if (selectedModel === 'google/nano-banana-pro') {
@@ -3604,15 +3678,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error) {
-          // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          toast.error(error instanceof Error ? error.message : 'Failed to generate images with Nano Banana Pro');
+          await handleFalError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Nano Banana Pro',
+          });
           return;
         }
       } else if (selectedModel === 'prunaai/p-image-edit') {
@@ -3686,15 +3758,13 @@ const InputBox = () => {
             await handleGenerationSuccess(transactionId);
           }
         } catch (error: any) {
-          setLocalGeneratingEntries([]);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-          const errorMessage = error?.response?.data?.message || (error instanceof Error ? error.message : 'Failed to generate images with P-Image-Edit');
-          toast.error(errorMessage, { duration: 5000 });
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'P-Image-Edit',
+          });
           return;
         }
       } else if (selectedModel === 'prunaai/p-image') {
@@ -4014,22 +4084,13 @@ const InputBox = () => {
           setIsGeneratingLocally(false);
         } catch (error: any) {
           console.error('New Turbo Model generation error:', error);
-          // Stop generation process immediately on error
-          setLocalGeneratingEntries([]);
-          setIsGeneratingLocally(false);
-          postGenerationBlockRef.current = false;
-
-          // Handle credit failure
-          if (transactionId) {
-            await handleGenerationFailure(transactionId);
-          }
-
-          // Show error notification
-          const moderationCode = error?.response?.data?.code || error?.response?.data?.data?.code;
-          if (moderationCode !== 'CONTENT_BLOCKED') {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate images with New Turbo Model';
-            toast.error(errorMessage);
-          }
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'New Turbo Model',
+          });
           return;
         }
       } else {
@@ -4205,34 +4266,32 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
+      
+      // Check if this is a FAL or Replicate error (has structured error details)
+      const { extractFalErrorDetails } = await import('@/lib/falToast');
+      const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
+      const falErrorDetails = extractFalErrorDetails(error);
+      const replicateErrorDetails = extractReplicateErrorDetails(error);
+      const isFalError = falErrorDetails !== null;
+      const isReplicateError = replicateErrorDetails !== null;
+      
+      // Get error message
+      const errorMessage = falErrorDetails?.message || 
+                          replicateErrorDetails?.message ||
+                          (error && typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
+                          (error instanceof Error ? error.message : 'Failed to generate images');
+      
       // Clear ONLY this generation's local entry on error (don't wipe other in-flight jobs)
       removeLocalGeneratingEntry(generationId || tempEntryId);
       setIsGeneratingLocally(false);
       postGenerationBlockRef.current = false;
-
-      // Update loading entry to failed status
-      // Use firebaseHistoryId if available, otherwise fall back to loadingEntry.id
-      // const entryIdToUpdate = firebaseHistoryId || loadingEntry.id;
-
-      // dispatch(
-      //   updateHistoryEntry({
-      //     id: entryIdToUpdate,
-      //     updates: {
-      //         status: "failed",
-      //         error:
-      //           error instanceof Error
-      //             ? error.message
-      //             : "Failed to generate images",
-      //       },
-      //     })
-      // );
 
       // If we have a Firebase ID, also update it there
       if (firebaseHistoryId) {
         try {
           await updateFirebaseHistory(firebaseHistoryId, {
             status: "failed",
-            error: error instanceof Error ? error.message : "Failed to generate images",
+            error: errorMessage,
           });
           console.log('✅ Firebase entry updated to failed status due to error');
         } catch (firebaseError) {
@@ -4247,7 +4306,18 @@ const InputBox = () => {
 
       // Show error notification (skip if a Runway base_resp toast already shown)
       if (!runwayBaseRespToastShownRef.current) {
-        toast.error(error instanceof Error ? error.message : 'Failed to generate images');
+        if (isFalError) {
+          // Use structured FAL error toast
+          const { showFalErrorToast } = await import('@/lib/falToast');
+          await showFalErrorToast(error, errorMessage);
+        } else if (isReplicateError) {
+          // Use structured Replicate error toast
+          const { showReplicateErrorToast } = await import('@/lib/replicateToast');
+          await showReplicateErrorToast(error, errorMessage);
+        } else {
+          // Use simple error toast for other errors
+          toast.error(errorMessage);
+        }
       }
       
       // Update active generation status on failure
@@ -4256,7 +4326,7 @@ const InputBox = () => {
           id: generationId,
           updates: { 
             status: 'failed', 
-            error: error instanceof Error ? error.message : 'Generation failed' 
+            error: errorMessage,
           }
         }));
       }

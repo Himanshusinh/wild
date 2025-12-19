@@ -146,7 +146,22 @@ export const falGenerate = createAsyncThunk(
       });
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'FAL generate failed');
+      // Extract structured error information
+      const { extractFalErrorDetails } = await import('@/lib/falToast');
+      const errorDetails = extractFalErrorDetails(e);
+      
+      // Return structured error with all details
+      const errorPayload: any = {
+        message: errorDetails?.message || e?.response?.data?.message || e?.message || 'FAL generate failed',
+        type: errorDetails?.type,
+        detail: errorDetails?.detail,
+        retryable: errorDetails?.retryable,
+        status: errorDetails?.status || e?.response?.status,
+        url: errorDetails?.detail?.[0]?.url,
+        raw: e,
+      };
+      
+      return rejectWithValue(errorPayload);
     }
   }
 );
@@ -194,7 +209,20 @@ export const replicateGenerate = createAsyncThunk(
       const res = await api.post('/api/replicate/generate', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Replicate generate failed');
+      // Extract structured error information
+      const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
+      const errorDetails = extractReplicateErrorDetails(e);
+      
+      // Return structured error with all details
+      const errorPayload: any = {
+        message: errorDetails?.message || e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Replicate generate failed',
+        detail: errorDetails?.detail,
+        status: errorDetails?.status || e?.response?.status,
+        retryable: errorDetails?.retryable,
+        raw: e,
+      };
+      
+      return rejectWithValue(errorPayload);
     }
   }
 );

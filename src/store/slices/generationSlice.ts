@@ -499,24 +499,33 @@ const generationSlice = createSlice({
         // Add to beginning (most recent first)
         state.activeGenerations = [action.payload, ...state.activeGenerations].slice(0, state.maxConcurrentGenerations);
         // Update isGenerating flag for backward compatibility
-        state.isGenerating = state.activeGenerations.length > 0;
-        // Sync to localStorage
-        generationPersistence.addGeneration(action.payload);
+        state.isGenerating = state.activeGenerations.some(
+          g => g.status === 'pending' || g.status === 'generating'
+        );
+        // Sync to localStorage - only if status is pending/generating
+        // addGeneration will check and skip if status is completed/failed
+        if (action.payload.status === 'pending' || action.payload.status === 'generating') {
+          generationPersistence.addGeneration(action.payload);
+        }
       }
     },
     updateActiveGeneration: (state, action: PayloadAction<{ id: string; updates: Partial<ActiveGeneration> }>) => {
       const index = state.activeGenerations.findIndex(g => g.id === action.payload.id);
       if (index !== -1) {
-        state.activeGenerations[index] = {
+        const updatedGen = {
           ...state.activeGenerations[index],
           ...action.payload.updates,
           updatedAt: Date.now(),
         };
+        state.activeGenerations[index] = updatedGen;
+        
         // Update isGenerating flag
         state.isGenerating = state.activeGenerations.some(
           g => g.status === 'pending' || g.status === 'generating'
         );
+        
         // Sync to localStorage
+        // updateGeneration will automatically remove from persistence if status becomes completed/failed
         generationPersistence.updateGeneration(action.payload.id, action.payload.updates);
       }
     },
@@ -593,6 +602,7 @@ const generationSlice = createSlice({
             state.activeGenerations[index].images = action.payload.images;
             state.activeGenerations[index].historyId = action.payload.historyId;
             state.activeGenerations[index].updatedAt = Date.now();
+            // Don't persist completed generations - updateGeneration will remove from persistence
             generationPersistence.updateGeneration(genId, { 
               status: 'completed',
               images: action.payload.images,
@@ -614,6 +624,7 @@ const generationSlice = createSlice({
             state.activeGenerations[index].status = 'failed';
             state.activeGenerations[index].error = action.payload as string;
             state.activeGenerations[index].updatedAt = Date.now();
+            // Don't persist failed generations - updateGeneration will remove from persistence
             generationPersistence.updateGeneration(genId, { 
               status: 'failed',
               error: action.payload as string
