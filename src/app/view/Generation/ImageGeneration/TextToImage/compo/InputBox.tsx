@@ -1969,13 +1969,37 @@ const InputBox = () => {
       const nextPage = page + 1;
       setPage(nextPage);
       try {
-        const paginationFilters: any = { mode: 'image', sortOrder };
-        if (searchQuery.trim()) paginationFilters.search = searchQuery.trim();
-        if (dateRange.start) paginationFilters.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end?.toISOString() };
+        // Use currentFilters from Redux to get the latest values (sync with HistoryControls)
+        // This ensures consistency with search, sort, and date filters managed by HistoryControls
+        const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
+        const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
+        const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
+        
+        const paginationFilters: any = { mode: 'image', sortOrder: currentSortOrder };
+        if (currentSearch) paginationFilters.search = currentSearch;
+        if (currentDateRange?.start && currentDateRange?.end) {
+          paginationFilters.dateRange = { 
+            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
+            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+          };
+        }
+        
+        const backendFilters: any = { 
+          mode: 'image', 
+          sortOrder: currentSortOrder,
+          ...(currentSearch ? { search: currentSearch } : {}),
+          ...(currentDateRange?.start && currentDateRange?.end ? { 
+            dateRange: { 
+              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
+              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+            } 
+          } : {})
+        };
+        
         await (dispatch as any)(loadMoreHistory({
           filters: paginationFilters,
-          backendFilters: { mode: 'image', sortOrder, ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-          paginationParams: { limit: 10 }
+          backendFilters: backendFilters,
+          paginationParams: { limit: 20 } // Balanced page size: faster requests while still reducing pagination gaps
         })).unwrap();
       } catch (e: any) {
         // swallow non-critical errors; backend handles end-of-pagination
@@ -4828,10 +4852,10 @@ const InputBox = () => {
 
             {/* Scroll pagination loading indicator */}
             {loading && historyEntries.length > 0 && (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex flex-col items-center gap-3">
-                  <GifLoader size={48} alt="Loading more" />
-                  <div className="text-white/70 text-sm">Loading more generations...</div>
+              <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
+                <div className="flex flex-col items-center md:gap-3 gap-2">
+                  <GifLoader size={80} alt="Loading more" />
+                  <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
                 </div>
               </div>
             )}

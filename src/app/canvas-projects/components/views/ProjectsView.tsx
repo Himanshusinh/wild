@@ -26,11 +26,26 @@ export function ProjectsView() {
         setLoading(true);
         setError(null);
         try {
+            // Check if user is authenticated first
+            const { getMeCached } = await import('@/lib/me');
+            try {
+                await getMeCached();
+            } catch (authError) {
+                console.warn('[ProjectsView] User not authenticated, projects may not load', authError);
+                // Continue anyway - the API call will fail with 401 if not authenticated
+            }
+            
             const response = await fetchCanvasProjects();
             setProjects(response.projects || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
-            setError('Failed to load projects. Please try again.');
+            
+            // Provide specific error message for authentication issues
+            if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
+                setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
+            } else {
+                setError('Failed to load projects. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -40,8 +55,24 @@ export function ProjectsView() {
         window.open(`${canvasUrl}?projectId=new`, '_blank', 'noopener,noreferrer');
     };
 
-    const handleOpenProject = (projectId: string) => {
-        window.open(`${canvasUrl}?projectId=${projectId}`, '_blank', 'noopener,noreferrer');
+    const handleOpenProject = async (projectId: string) => {
+        // Try to get auth token to pass along (helps with cross-subdomain auth)
+        // Since localStorage isn't shared across subdomains, we pass the token via URL hash
+        // The hash is not sent to the server, so it's relatively safe
+        let authHint = '';
+        try {
+            const authToken = localStorage.getItem('authToken') || localStorage.getItem('idToken');
+            if (authToken && authToken.startsWith('eyJ')) {
+                // Pass full token as URL hash (not sent to server, only accessible via JavaScript)
+                // The studio app will extract it and store it in localStorage
+                authHint = `#authToken=${encodeURIComponent(authToken)}`;
+                console.log('[ProjectsView] Passing auth token via URL hash for cross-subdomain auth');
+            }
+        } catch (e) {
+            console.warn('[ProjectsView] Failed to get auth token for cross-subdomain auth', e);
+        }
+        
+        window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
     };
 
     const formatDate = (dateString: string) => {
