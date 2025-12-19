@@ -196,6 +196,17 @@ module.exports = {
         }]
       : [{ userAgent: '*', disallow: '/' }],
   },
+  additionalPaths: async (config) => {
+    // Explicitly add blog post URLs since next-sitemap doesn't auto-discover dynamic routes
+    const blogPostPaths = blogPosts.map((post) => ({
+      loc: `/blog/${post.id}`,
+      changefreq: 'weekly',
+      priority: 0.75,
+      lastmod: post.publishedAt || post.updatedAt || post.createdAt || new Date().toISOString(),
+    }));
+    
+    return blogPostPaths;
+  },
   transform: async (config, path) => {
     const pageConfig = canonicalMap.get(path);
     if (!pageConfig) {
