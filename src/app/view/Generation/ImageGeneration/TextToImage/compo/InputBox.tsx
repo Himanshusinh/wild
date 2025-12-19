@@ -2261,6 +2261,11 @@ const InputBox = () => {
         console.log('Total images to generate:', totalToGenerate);
         console.log('Initial currentImages array:', currentImages);
 
+        // Mark the active generation as 'generating' in the shared queue so the UI loader updates immediately
+        if (generationId) {
+          dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'generating' } }));
+        }
+
         // Update initial progress
         // dispatch(
         //   updateHistoryEntry({
@@ -2299,7 +2304,8 @@ const InputBox = () => {
               generationType: "text-to-image",
               uploadedImages: combinedImages,
               style,
-              isPublic
+              isPublic,
++             generationId
             })).unwrap();
             console.log(`Runway API call completed for image ${index + 1}, taskId:`, result.taskId);
 
@@ -2330,6 +2336,10 @@ const InputBox = () => {
                 // Stop loader immediately - clear ONLY this generation's local entry on error
                 removeLocalGeneratingEntry([generationId || tempEntryId, firebaseHistoryId].filter(Boolean) as any);
                 setIsGeneratingLocally(false);
+                // Ensure shared active generation reflects the failure so UI loaders stop
+                if (generationId) {
+                  dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: mapped.message } }));
+                }
                 break;
               }
               // Also stop on explicit failure/cancelled statuses from backend/provider
@@ -2339,6 +2349,10 @@ const InputBox = () => {
                 if (!runwayBaseRespToastShownRef.current) toast.error(terminalError);
                 removeLocalGeneratingEntry([generationId || tempEntryId, firebaseHistoryId].filter(Boolean) as any);
                 setIsGeneratingLocally(false);
+                // Mirror failure into activeGenerations so the shared UI reflects the error
+                if (generationId) {
+                  dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: terminalError } }));
+                }
                 break;
               }
               // Check for success statuses (completed, SUCCEEDED, succeeded, etc.)

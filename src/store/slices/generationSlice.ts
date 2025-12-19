@@ -6,6 +6,8 @@ import { GenerationType as SharedGenerationType } from '@/types/generation';
 import { getModelMapping } from '@/utils/modelMapping';
 import type { ActiveGeneration } from '@/lib/generationPersistence';
 import * as generationPersistence from '@/lib/generationPersistence';
+// Import Runway thunks from generationsApi to synchronize active generation lifecycle for Runway flows
+import { runwayGenerate, runwayVideo } from '@/store/slices/generationsApi';
 
 interface GenerationState {
   prompt: string;
@@ -619,7 +621,7 @@ const generationSlice = createSlice({
           }
         }
       })
-      .addCase(generateRunwayImages.pending, (state) => {
+      .addCase(generateRunwayImages.pending, (state, action) => {
         state.isGenerating = true;
         state.error = null;
         state.generationProgress = {
@@ -627,6 +629,16 @@ const generationSlice = createSlice({
           total: 1,
           status: 'Starting Runway generation...',
         };
+        // If a generationId was provided, mark the matching active generation as generating
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
       })
       .addCase(generateRunwayImages.fulfilled, (state, action) => {
         state.isGenerating = false;
@@ -638,11 +650,128 @@ const generationSlice = createSlice({
           total: 1,
           status: `Task created: ${action.payload.taskId}`,
         };
+        // Persist history/task info to the active generation if we have an ID
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].updatedAt = Date.now();
+            // Store taskId/historyId for future reference
+            state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
+            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+          }
+        }
       })
       .addCase(generateRunwayImages.rejected, (state, action) => {
         state.isGenerating = false;
         state.error = action.payload as string;
         state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = action.payload as string;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: action.payload as string });
+          }
+        }
+      })
+      // Runway API helpers (per-image create task) - ensure generationId sync when callers pass one
+      .addCase(runwayGenerate.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        // If generationId present in payload, mark active generation as generating
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(runwayGenerate.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        state.generationProgress = {
+          current: 0,
+          total: 1,
+          status: `Task created: ${action.payload.taskId}`,
+        };
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].updatedAt = Date.now();
+            state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
+            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(runwayGenerate.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = action.payload as string;
+        state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = action.payload as string;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: action.payload as string });
+          }
+        }
+      })
+      // Runway Video lifecycle: accept optional generationId so UI can track the video task
+      .addCase(runwayVideo.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        state.generationProgress = {
+          current: 0,
+          total: 100,
+          status: 'Starting Runway video generation...',
+        };
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(runwayVideo.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].updatedAt = Date.now();
+            state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
+            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(runwayVideo.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = action.payload as string;
+        state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = action.payload as string;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: action.payload as string });
+          }
+        }
       })
       .addCase(generateMiniMaxImages.pending, (state) => {
         state.isGenerating = true;

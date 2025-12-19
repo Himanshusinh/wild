@@ -282,6 +282,7 @@ const VideoGenerationInputBox: React.FC = () => {
         imageToVideo: state.imageToVideo,
         videoToVideo: state.videoToVideo,
         isPublic,
++       generationId,
       })).unwrap();
       
       // Wait for completion
@@ -309,6 +310,20 @@ const VideoGenerationInputBox: React.FC = () => {
         });
       }
 
+      // Update shared queue entry as completed so UI loader stops and preview is shown
+      if (generationId) {
+        try {
+          dispatch(updateActiveGeneration({
+            id: generationId,
+            updates: {
+              status: 'completed',
+              videos: (finalStatus.output || []).map((url: string, index: number) => ({ id: `${result.taskId}-${index}`, url, originalUrl: url })),
+              historyId: firebaseHistoryId
+            }
+          }));
+        } catch (e) { /* non-fatal */ }
+      }
+
       toast.success('Video generation completed successfully!');
       clearInputs();
 
@@ -322,6 +337,13 @@ const VideoGenerationInputBox: React.FC = () => {
           status: 'failed',
           generationProgress: { current: 0, total: 100, status: 'Failed' }
         });
+      }
+
+      // Reflect failure in the shared queue so the loader stops
+      if (generationId) {
+        try {
+          dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: error?.message || 'Video generation failed' } }));
+        } catch (e) { /* non-fatal */ }
       }
     } finally {
       setIsGenerating(false);

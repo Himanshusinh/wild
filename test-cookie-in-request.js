@@ -101,7 +101,7 @@ async function testCookieInRequest() {
   // 4. Check debug session endpoint
   console.log('\n4️⃣ CHECKING DEBUG SESSION ENDPOINT:');
   try {
-    const debugUrl = 'https://api-gateway-services-wildmind.onrender.com/api/auth/debug-session';
+    const debugUrl = 'https://api-gateway-services-wildmind.onrender.com/api/auth/me';
     const debugResponse = await fetch(debugUrl, {
       method: 'GET',
       credentials: 'include'
