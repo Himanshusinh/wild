@@ -510,7 +510,10 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
       { idToken: freshIdToken },
       { 
         withCredentials: true, 
-        headers: { 'Content-Type': 'application/json' } 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${freshIdToken}`
+        } 
       }
     );
 

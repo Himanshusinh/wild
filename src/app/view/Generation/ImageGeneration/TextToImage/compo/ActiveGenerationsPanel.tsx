@@ -6,59 +6,26 @@
 
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { removeActiveGeneration, updateActiveGeneration } from '@/store/slices/generationSlice';
+import { removeActiveGeneration } from '@/store/slices/generationSlice';
+import { useQueueManagement } from '@/hooks/useQueueManagement';
 import { X, Loader2, CheckCircle, XCircle, Image as ImageIcon, Video, Music } from 'lucide-react';
 import type { ActiveGeneration } from '@/lib/generationPersistence';
 
 export default function ActiveGenerationsPanel() {
   const dispatch = useAppDispatch();
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
-  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  // Auto-remove completed generations after 5 seconds
-  // Auto-remove failed generations immediately
-  useEffect(() => {
-    activeGenerations.forEach((gen) => {
-      // Clear any existing timeout for this generation
-      const existingTimeout = timeoutRefs.current.get(gen.id);
-      if (existingTimeout) {
-        clearTimeout(existingTimeout);
-        timeoutRefs.current.delete(gen.id);
-      }
-
-      if (gen.status === 'completed') {
-        // Remove completed after 5 seconds
-        const timeout = setTimeout(() => {
-          dispatch(removeActiveGeneration(gen.id));
-          timeoutRefs.current.delete(gen.id);
-        }, 5000);
-        timeoutRefs.current.set(gen.id, timeout);
-      } else if (gen.status === 'failed') {
-        // Remove failed immediately (but with a small delay to show the error briefly)
-        const timeout = setTimeout(() => {
-          dispatch(removeActiveGeneration(gen.id));
-          timeoutRefs.current.delete(gen.id);
-        }, 2000); // Show error for 2 seconds then remove
-        timeoutRefs.current.set(gen.id, timeout);
-      }
-    });
-
-    // Cleanup: clear timeouts for generations that are no longer in the list
-    timeoutRefs.current.forEach((timeout, id) => {
-      if (!activeGenerations.find(g => g.id === id)) {
-        clearTimeout(timeout);
-        timeoutRefs.current.delete(id);
-      }
-    });
-
-    // Cleanup on unmount
-    return () => {
-      timeoutRefs.current.forEach((timeout) => clearTimeout(timeout));
-      timeoutRefs.current.clear();
-    };
-  }, [activeGenerations, dispatch]);
+  // Use unified queue management hook
+  // - Success: Show success message for 5 seconds, then remove
+  // - Failed: Show error message for 3 seconds, then remove
+  useQueueManagement({
+    successDisplayDuration: 5000,
+    errorDisplayDuration: 3000,
+    showSuccessToast: true,
+    showErrorToast: false, // Errors are already shown by specific error handlers
+  });
 
   // Don't render if no active generations
   if (activeGenerations.length === 0) {
