@@ -35,11 +35,26 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
         setLoading(true);
         setError(null);
         try {
+            // Check if user is authenticated first
+            const { getMeCached } = await import('@/lib/me');
+            try {
+                await getMeCached();
+            } catch (authError) {
+                console.warn('[WildCanvasProjectsModal] User not authenticated, projects may not load', authError);
+                // Continue anyway - the API call will fail with 401 if not authenticated
+            }
+            
             const response = await fetchCanvasProjects();
             setProjects(response.projects || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
-            setError('Failed to load projects. Please try again.');
+            
+            // Provide specific error message for authentication issues
+            if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
+                setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
+            } else {
+                setError('Failed to load projects. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
