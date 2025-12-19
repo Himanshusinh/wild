@@ -55,8 +55,24 @@ export function ProjectsView() {
         window.open(`${canvasUrl}?projectId=new`, '_blank', 'noopener,noreferrer');
     };
 
-    const handleOpenProject = (projectId: string) => {
-        window.open(`${canvasUrl}?projectId=${projectId}`, '_blank', 'noopener,noreferrer');
+    const handleOpenProject = async (projectId: string) => {
+        // Try to get auth token to pass along (helps with cross-subdomain auth)
+        // Since localStorage isn't shared across subdomains, we pass the token via URL hash
+        // The hash is not sent to the server, so it's relatively safe
+        let authHint = '';
+        try {
+            const authToken = localStorage.getItem('authToken') || localStorage.getItem('idToken');
+            if (authToken && authToken.startsWith('eyJ')) {
+                // Pass full token as URL hash (not sent to server, only accessible via JavaScript)
+                // The studio app will extract it and store it in localStorage
+                authHint = `#authToken=${encodeURIComponent(authToken)}`;
+                console.log('[ProjectsView] Passing auth token via URL hash for cross-subdomain auth');
+            }
+        } catch (e) {
+            console.warn('[ProjectsView] Failed to get auth token for cross-subdomain auth', e);
+        }
+        
+        window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
     };
 
     const formatDate = (dateString: string) => {
