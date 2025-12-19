@@ -1167,14 +1167,34 @@ const InputBox = () => {
       let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
       
       // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
-      // OPTIMIZED: Early exit on time check, limit search to recent entries only
+      // CRITICAL: Only use fallback matching for generations that already have a historyId OR were created very recently
+      // This prevents new generations from being incorrectly matched to old completed entries
+      // Only match if:
+      // 1. Generation already has a historyId (being refreshed/synced)
+      // 2. OR generation was created within 10 seconds (likely a refresh scenario)
+      // This ensures brand new generations with the same prompt/config can still generate
       if (!match && gen.prompt) {
-        console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { genId, prompt: gen.prompt.slice(0, 30), genCreatedAt: gen.createdAt });
-        
         const genTime = typeof gen.createdAt === 'number' ? gen.createdAt : new Date(gen.createdAt).getTime();
-        const TIME_WINDOW = 120000; // 2 minute window (increased for refresh scenarios)
+        const now = Date.now();
+        const ageInSeconds = (now - genTime) / 1000;
         
-        if (!isNaN(genTime)) {
+        // Only use fallback if generation already has historyId OR is very recent (within 10 seconds)
+        // This prevents matching brand new generations to old completed ones
+        const shouldUseFallback = backendId || ageInSeconds < 10;
+        
+        if (shouldUseFallback && !isNaN(genTime)) {
+          console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { 
+            genId, 
+            prompt: gen.prompt.slice(0, 30), 
+            genCreatedAt: gen.createdAt,
+            hasHistoryId: !!backendId,
+            ageInSeconds: ageInSeconds.toFixed(1)
+          });
+          
+          // Use a much smaller time window for fallback matching (30 seconds)
+          // This is only for refresh scenarios, not for matching new generations to old ones
+          const TIME_WINDOW = 30000; // 30 second window (only for refresh scenarios)
+          
           // OPTIMIZED: Pre-normalize prompt once instead of in loop
           const normalizePrompt = (p: string) => {
             return String(p || '')
@@ -1209,7 +1229,7 @@ const InputBox = () => {
             
             const modelMatch = String(e.model || '') === genModel;
             
-            // Only log close matches (within 2 minutes)
+            // Only log close matches (within time window)
             if (timeDiff < TIME_WINDOW) {
               console.log('[queue] Comparing with history entry:', { 
                 historyId: e.id, 
@@ -1234,6 +1254,13 @@ const InputBox = () => {
           } else {
             console.log('[queue] ❌ No match found via fallback for:', genId);
           }
+        } else {
+          console.log('[queue] Skipping fallback matching for new generation:', { 
+            genId, 
+            hasHistoryId: !!backendId, 
+            ageInSeconds: ageInSeconds.toFixed(1),
+            reason: !backendId && ageInSeconds >= 10 ? 'too old for fallback' : 'other'
+          });
         }
       }
       
@@ -5142,8 +5169,8 @@ const InputBox = () => {
             </div>
 
             {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-3 right-5 hidden md:flex flex-col items-end gap-3">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
+              {error && <div className="text-red-500 text-xs">{error}</div>}
               <button
                 onClick={async () => {
                   try {
@@ -5184,7 +5211,7 @@ const InputBox = () => {
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 aria-busy={isEnhancing}
               >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full (4/4 active)' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4 active)` : 'Generate'}
+                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
               </button>
             </div>
           </div>

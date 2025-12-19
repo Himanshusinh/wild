@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "node scripts/generateBlogSitemapData.js",
     "build": "next build --webpack",
     "postbuild": "next-sitemap",
     "ping-sitemap": "node scripts/ping-sitemap.js",

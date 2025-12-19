@@ -82,7 +82,7 @@ const PricingPage: React.FC = () => {
   useEffect(() => {
     if (!trialStartDate) return;
 
-    const cutoffDate = new Date('2025-12-18T23:59:59.999Z');
+    const cutoffDate = new Date('2025-12-25T23:59:59.999Z');
     const trialEndDate15Days = new Date(trialStartDate);
     trialEndDate15Days.setDate(trialEndDate15Days.getDate() + 15);
 

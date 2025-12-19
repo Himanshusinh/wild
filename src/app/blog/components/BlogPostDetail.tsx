@@ -1,7 +1,9 @@
 // @ts-nocheck - This file was converted from JavaScript and contains complex nested structures
 import { useEffect } from 'react'
+import Link from 'next/link'
 import './styles.css'
 import FooterNew from '../../view/core/FooterNew'
+import RelatedPosts from './RelatedPosts'
 
 interface BlogPostDetailProps {
   post: any;
@@ -5261,6 +5263,26 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
             </button>
           </div>
         </article>
+
+        {/* Breadcrumbs for SEO */}
+        <nav className="blog-breadcrumbs" aria-label="Breadcrumb">
+          <ol className="breadcrumb-list">
+            <li className="breadcrumb-item">
+              <Link href="/" className="breadcrumb-link">Home</Link>
+            </li>
+            <li className="breadcrumb-separator">/</li>
+            <li className="breadcrumb-item">
+              <Link href="/blog" className="breadcrumb-link">Blog</Link>
+            </li>
+            <li className="breadcrumb-separator">/</li>
+            <li className="breadcrumb-item breadcrumb-current" aria-current="page">
+              {post.title}
+            </li>
+          </ol>
+        </nav>
+
+        {/* Related Posts for Internal Linking & SEO */}
+        <RelatedPosts currentPostId={post.id} maxPosts={3} />
       </div>
       <FooterNew />
     </div>

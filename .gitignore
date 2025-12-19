@@ -60,11 +60,12 @@ docs/
 documentation/
 
 # script files
-scripts/
 *.sh
 *.bash
 *.bat
 *.ps1
+# Generated sitemap data (build artifact)
+src/app/blog/data/blogPosts.sitemap.json
 
 # IDE and editor files
 .vscode/
