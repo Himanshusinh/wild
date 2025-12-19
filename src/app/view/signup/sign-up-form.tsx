@@ -229,7 +229,7 @@ export default function SignInForm() {
         console.log("🔑 customToken type:", typeof customToken)
         console.log("🔑 customToken length:", customToken?.length)
 
-        // Store user profile first
+            // Store user profile first
         try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
 
         // Track that email/password was used (for "Last Used" tag)
@@ -244,6 +244,10 @@ export default function SignInForm() {
         if (customToken && typeof customToken === 'string') {
           try {
             console.log("🔄 Signing into Firebase with customToken...")
+            
+            // CRITICAL: Store token in a way that can be accessed across subdomains
+            // We'll store it in localStorage on www, and also try to set a non-httpOnly cookie
+            // as a fallback for cross-subdomain access (though httpOnly cookie is primary)
             const userCredential = await signInWithCustomToken(auth, customToken)
             const idToken = await userCredential.user.getIdToken()
             
@@ -254,6 +258,18 @@ export default function SignInForm() {
             try {
               localStorage.setItem("authToken", idToken)
               console.log("💾 ID token stored in localStorage")
+              
+              // CRITICAL: Also store in a way that can be accessed across subdomains
+              // Store in user object for easier access
+              try {
+                const userWithToken = { ...user, idToken };
+                localStorage.setItem("user", JSON.stringify(userWithToken));
+              } catch {}
+              
+              // Also store as idToken directly for wildmindcanvas to find
+              try {
+                localStorage.setItem("idToken", idToken);
+              } catch {}
             } catch (err) {
               console.error("❌ Failed to store token:", err)
             }
