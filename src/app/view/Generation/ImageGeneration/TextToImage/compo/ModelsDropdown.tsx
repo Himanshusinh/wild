@@ -92,7 +92,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
-      m.value === 'prunaai/p-image'
+      m.value === 'prunaai/p-image' ||
+      m.value === 'openai/gpt-image-1.5'
     );
   }
 

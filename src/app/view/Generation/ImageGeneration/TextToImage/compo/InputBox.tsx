@@ -1122,7 +1122,8 @@ const InputBox = () => {
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
   const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
-  const [gptImage15Quality, setGptImage15Quality] = useState<'low' | 'medium' | 'high' | 'auto'>('auto');
+  const [gptImage15Quality, setGptImage15Quality] = useState<'low' | 'medium' | 'high' | 'auto'>('low');
+  const [gptImage15OutputFormat, setGptImage15OutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -4217,9 +4218,11 @@ const InputBox = () => {
             generationId,
           };
 
-          // For GPT Image 1.5, add quality parameter
+          // For GPT Image 1.5, add quality and output_format parameters
           if (selectedModel === 'openai/gpt-image-1.5') {
             generationPayload.quality = gptImage15Quality;
+            // Map 'jpg' to 'jpeg' for API (GPT Image 1.5 uses 'jpeg' in schema)
+            generationPayload.output_format = gptImage15OutputFormat === 'jpg' ? 'jpeg' : gptImage15OutputFormat;
           }
 
           // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
@@ -5557,13 +5560,22 @@ const InputBox = () => {
                 </div>
               )}
               {selectedModel === 'openai/gpt-image-1.5' && (
-                <div className="flex items-center gap-2 relative">
-                  <QualityDropdown
-                    quality={gptImage15Quality}
-                    onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
-                    dropdownId="gptImage15Quality"
-                  />
-                </div>
+                <>
+                  <div className="flex items-center gap-2 relative">
+                    <QualityDropdown
+                      quality={gptImage15Quality}
+                      onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
+                      dropdownId="gptImage15Quality"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 relative">
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={gptImage15OutputFormat}
+                      onOutputFormatChange={(val) => setGptImage15OutputFormat(val)}
+                      dropdownId="gptImage15OutputFormat"
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -5649,13 +5661,22 @@ const InputBox = () => {
                   </div>
                 )}
                 {selectedModel === 'openai/gpt-image-1.5' && (
-                  <div className="flex items-center gap-2 relative">
-                    <QualityDropdown
-                      quality={gptImage15Quality}
-                      onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
-                      dropdownId="gptImage15Quality"
-                    />
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2 relative">
+                      <QualityDropdown
+                        quality={gptImage15Quality}
+                        onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
+                        dropdownId="gptImage15Quality"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 relative">
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={gptImage15OutputFormat}
+                        onOutputFormatChange={(val) => setGptImage15OutputFormat(val)}
+                        dropdownId="gptImage15OutputFormat"
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
