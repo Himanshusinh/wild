@@ -4852,10 +4852,10 @@ const InputBox = () => {
 
             {/* Scroll pagination loading indicator */}
             {loading && historyEntries.length > 0 && (
-              <div className="flex items-center justify-center pt-8 pb-32 md:pb-48">
-                <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
+                <div className="flex flex-col items-center md:gap-3 gap-2">
                   <GifLoader size={80} alt="Loading more" />
-                  <div className="text-white/70 text-lg">Loading more generations...</div>
+                  <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
                 </div>
               </div>
             )}

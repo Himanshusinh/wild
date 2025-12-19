@@ -3927,7 +3927,7 @@ const EditImageInterface: React.FC = () => {
                             value={livePrompt}
                             onChange={(e) => setLivePrompt(e.target.value)}
                             placeholder="Tell me your edit request"
-                            className="w-full md:h-[36px] h-[30px] md:px-3 px-2 pr-14 bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
+                            className="w-full md:h-[36px] h-[30px] md:px-3 px-2 md:pr-[40px] pr-[32px] bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLiveGenerate(); } }}
                           />
                           <button
