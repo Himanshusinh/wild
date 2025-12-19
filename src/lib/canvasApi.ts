@@ -25,12 +25,17 @@ async function getFirebaseIdToken(): Promise<string | null> {
             } catch {}
         }
 
-        // Try to get fresh token from Firebase Auth
+        // Try to get fresh token from Firebase Auth (most reliable)
         const { auth } = await import('./firebase');
         if (auth?.currentUser) {
             try {
-                const token = await auth.currentUser.getIdToken();
+                // Force refresh to ensure token is valid
+                const token = await auth.currentUser.getIdToken(true);
                 if (token && token.startsWith('eyJ')) {
+                    // Cache it for next time
+                    try {
+                        localStorage.setItem('authToken', token);
+                    } catch {}
                     return token;
                 }
             } catch (error) {
@@ -42,6 +47,40 @@ async function getFirebaseIdToken(): Promise<string | null> {
     } catch (error) {
         console.warn('[CanvasAPI] Error getting Firebase token:', error);
         return null;
+    }
+}
+
+/**
+ * Clear old cookies that might have wrong domain (set before backend fix)
+ */
+function clearOldCookiesIfNeeded(): void {
+    if (typeof document === 'undefined') return;
+    
+    try {
+        // Check if we have cookies but they're not working
+        const hasAppSession = document.cookie.includes('app_session=');
+        if (!hasAppSession) return; // No cookies to clear
+        
+        // Clear cookies with all possible domain variants
+        const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
+        const variants = [
+            `app_session=; ${expired}; SameSite=None; Secure`,
+            `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`,
+            `app_session=; Domain=www.wildmindai.com; ${expired}; SameSite=None; Secure`,
+            `app_session=; ${expired}; SameSite=Lax`,
+            `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`,
+            `app_session=; Domain=www.wildmindai.com; ${expired}; SameSite=Lax`,
+        ];
+        
+        variants.forEach(variant => {
+            try {
+                document.cookie = variant;
+            } catch {}
+        });
+        
+        console.log('[CanvasAPI] Cleared old cookies - user should log in again to get new cookies with correct domain');
+    } catch (error) {
+        console.warn('[CanvasAPI] Failed to clear old cookies:', error);
     }
 }
 
@@ -117,12 +156,38 @@ export async function fetchCanvasProjects(limit: number = 100): Promise<CanvasPr
                     ],
                 });
                 
-                // Provide helpful error message
-                const helpfulMessage = errorMessage.includes('Cookie not sent') || errorMessage.includes('cookie domain')
-                    ? 'Authentication failed: Cookie not being sent. This is usually a cookie domain configuration issue. Please try logging out and logging in again, or contact support if the issue persists.'
-                    : `Authentication required: ${errorMessage}. Please log in again.`;
+                // If cookie domain issue, try to clear old cookies
+                if (errorMessage.includes('Cookie not sent') || errorMessage.includes('cookie domain')) {
+                    console.warn('[CanvasAPI] Cookie domain issue detected - clearing old cookies');
+                    clearOldCookiesIfNeeded();
+                    
+                    // If we have Bearer token, retry the request
+                    if (bearerToken) {
+                        console.log('[CanvasAPI] Retrying with Bearer token only...');
+                        const retryResponse = await fetch(`${API_BASE_URL}/api/canvas/projects?limit=${limit}`, {
+                            method: 'GET',
+                            credentials: 'omit', // Don't send cookies on retry
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${bearerToken}`,
+                            },
+                        });
+                        
+                        if (retryResponse.ok) {
+                            const retryResult = await retryResponse.json();
+                            const retryProjects = retryResult.data?.projects || [];
+                            console.log('[CanvasAPI] ✅ Retry with Bearer token succeeded!');
+                            return {
+                                projects: retryProjects,
+                                total: retryProjects.length,
+                            };
+                        }
+                    }
+                    
+                    throw new Error('Authentication failed: Cookie not being sent. Please try logging out and logging in again to refresh your session cookies.');
+                }
                 
-                throw new Error(helpfulMessage);
+                throw new Error(`Authentication required: ${errorMessage}. Please log in again.`);
             }
             
             throw new Error(`Failed to fetch canvas projects: ${response.statusText}`);
