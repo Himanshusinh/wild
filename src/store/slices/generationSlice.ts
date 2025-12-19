@@ -84,7 +84,7 @@ type GenerationTypeLocal = SharedGenerationType;
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic, quality }: {
+    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic, quality, output_format }: {
       prompt: string;
       model: string;
       imageCount: number;
@@ -97,6 +97,7 @@ export const generateImages = createAsyncThunk(
       isPublic?: boolean;
       generationId?: string; // For parallel generation tracking
       quality?: string; // For models that support quality parameter (e.g., GPT Image 1.5)
+      output_format?: string; // For models that support output_format parameter (e.g., GPT Image 1.5)
     },
     { rejectWithValue }
   ) => {
@@ -153,7 +154,8 @@ export const generateImages = createAsyncThunk(
         clientRequestId,
         ...(width && height ? { width, height } : {}),
         ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {}),
-        ...(quality ? { quality } : {}) // Add quality parameter if provided
+        ...(quality ? { quality } : {}), // Add quality parameter if provided
+        ...(output_format ? { output_format } : {}) // Add output_format parameter if provided
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
       if (isFalModel) {

@@ -22,6 +22,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   let models = [
+    { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     { name: 'Flux 2 Pro', value: 'flux-2-pro' },
     { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Seedream 4.5 4K', value: 'seedream-4.5' },
@@ -45,7 +46,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
     { name: "P-Image", value: "prunaai/p-image" },
-    { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
@@ -92,7 +92,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
-      m.value === 'prunaai/p-image'
+      m.value === 'prunaai/p-image' ||
+      m.value === 'openai/gpt-image-1.5'
     );
   }
 
