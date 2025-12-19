@@ -16,6 +16,27 @@ export async function fetchCanvasProjects(limit: number = 100): Promise<CanvasPr
         });
 
         if (!response.ok) {
+            // Handle 401 Unauthorized specifically
+            if (response.status === 401) {
+                console.error('[CanvasAPI] 401 Unauthorized - Authentication required', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url,
+                    hostname: typeof window !== 'undefined' ? window.location.hostname : 'unknown',
+                });
+                
+                // Try to get error message from response
+                let errorMessage = 'Unauthorized';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData?.message || errorData?.error || 'Unauthorized';
+                } catch {
+                    errorMessage = response.statusText || 'Unauthorized';
+                }
+                
+                throw new Error(`Authentication required: ${errorMessage}. Please log in again.`);
+            }
+            
             throw new Error(`Failed to fetch canvas projects: ${response.statusText}`);
         }
 
