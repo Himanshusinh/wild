@@ -14,7 +14,7 @@ export interface ActiveGeneration {
   id: string;
   prompt: string;
   model: string;
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  status: 'pending' | 'generating' | 'completed' | 'failed' | 'cancelled';
   progress?: number;
   error?: string;
   // Support all media types
@@ -86,9 +86,9 @@ export function loadGenerations(): ActiveGeneration[] {
     // CRITICAL: Persist only active items: pending or generating. Completed/failed are not stored.
     const cleaned = generations.filter(gen => gen.status === 'pending' || gen.status === 'generating');
 
-    // If we cleaned any, save back (this ensures old completed/failed items are removed)
+    // If we cleaned any, save back (this ensures old completed/failed/cancelled items are removed)
     if (cleaned.length !== generations.length) {
-      console.log(`[generationPersistence] Cleaned ${generations.length - cleaned.length} completed/failed items from storage`);
+      console.log(`[generationPersistence] Cleaned ${generations.length - cleaned.length} completed/failed/cancelled items from storage`);
       saveGenerations(cleaned);
     }
 
@@ -120,7 +120,7 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
     return;
   }
 
-  // CRITICAL: Filter out completed/failed BEFORE batching to reduce data size
+  // CRITICAL: Filter out completed/failed/cancelled BEFORE batching to reduce data size
   const activeOnly = generations.filter(g => g.status === 'pending' || g.status === 'generating');
   
   // If no active generations, clear storage and return early
@@ -248,9 +248,9 @@ export function updateGeneration(
   id: string,
   updates: Partial<ActiveGeneration>
 ): void {
-  // If status is being updated to completed or failed, remove from persistence
-  if (updates.status === 'completed' || updates.status === 'failed') {
-    console.log('[generationPersistence] Removing completed/failed generation from persistence:', id, updates.status);
+  // If status is being updated to completed, failed, or cancelled, remove from persistence
+  if (updates.status === 'completed' || updates.status === 'failed' || updates.status === 'cancelled') {
+    console.log('[generationPersistence] Removing completed/failed/cancelled generation from persistence:', id, updates.status);
     removeGeneration(id);
     return;
   }
@@ -260,9 +260,9 @@ export function updateGeneration(
 
   if (index === -1) {
     // Generation not in persistence - this is fine if it was never persisted or was already removed
-    // Only log if we're trying to update a non-completed/failed status
+    // Only log if we're trying to update a non-completed/failed/cancelled status
     const updateStatus = updates.status as ActiveGeneration['status'] | undefined;
-    if (updateStatus && updateStatus !== 'completed' && updateStatus !== 'failed') {
+    if (updateStatus && updateStatus !== 'completed' && updateStatus !== 'failed' && updateStatus !== 'cancelled') {
       console.log('[generationPersistence] Generation not found in persistence (may have been removed):', id);
     }
     return;
@@ -270,7 +270,7 @@ export function updateGeneration(
 
   // Check if the updated status would make it non-persistable
   const newStatus = updates.status || current[index].status;
-  if (newStatus === 'completed' || newStatus === 'failed') {
+  if (newStatus === 'completed' || newStatus === 'failed' || newStatus === 'cancelled') {
     console.log('[generationPersistence] Removing generation from persistence due to status change:', id, newStatus);
     removeGeneration(id);
     return;
@@ -348,11 +348,11 @@ export function cleanupCompletedGenerations(): void {
       return;
     }
 
-    // Filter out completed/failed
+    // Filter out completed/failed/cancelled
     const activeOnly = generations.filter((gen: ActiveGeneration) => gen.status === 'pending' || gen.status === 'generating');
     
     if (activeOnly.length !== generations.length) {
-      console.log(`[generationPersistence] Cleanup: Removed ${generations.length - activeOnly.length} completed/failed items`);
+      console.log(`[generationPersistence] Cleanup: Removed ${generations.length - activeOnly.length} completed/failed/cancelled items`);
       if (activeOnly.length === 0) {
         localStorage.removeItem(STORAGE_KEY);
       } else {

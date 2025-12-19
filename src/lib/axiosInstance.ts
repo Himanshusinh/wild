@@ -92,7 +92,44 @@ axiosInstance.interceptors.request.use(async (config) => {
           await new Promise((r) => setTimeout(r, 100))
         }
       } catch {}
-      const token = getStoredIdToken()
+      
+      // CRITICAL FIX: Try to get fresh token from Firebase first, fallback to stored token
+      // This prevents using expired tokens from localStorage
+      let token: string | null = null;
+      try {
+        // Try to get fresh token from Firebase (non-blocking, don't force refresh to avoid delays)
+        if (auth?.currentUser) {
+          try {
+            // Get token without forcing refresh (Firebase SDK automatically refreshes if needed)
+            token = await auth.currentUser.getIdToken(false);
+            if (isApiDebugEnabled()) {
+              console.log('[API][request] Got fresh token from Firebase', { 
+                hasToken: !!token,
+                tokenPrefix: token ? token.substring(0, 20) : 'N/A'
+              });
+            }
+          } catch (tokenError: any) {
+            // If getting fresh token fails, fall back to stored token
+            if (isApiDebugEnabled()) {
+              console.warn('[API][request] Failed to get fresh token, using stored token:', tokenError?.message);
+            }
+            token = getStoredIdToken();
+          }
+        } else {
+          // No Firebase user, use stored token as fallback
+          token = getStoredIdToken();
+          if (isApiDebugEnabled()) {
+            console.log('[API][request] No Firebase user, using stored token', { hasToken: !!token });
+          }
+        }
+      } catch (error: any) {
+        // Fallback to stored token if anything fails
+        token = getStoredIdToken();
+        if (isApiDebugEnabled()) {
+          console.warn('[API][request] Error getting token, using stored token:', error?.message);
+        }
+      }
+      
       if (token) {
         const headers: any = config.headers || {}
         headers['Authorization'] = `Bearer ${token}`
@@ -576,7 +613,31 @@ axiosInstance.interceptors.response.use(
     const original = error?.config || {}
     const status = error?.response?.status
     const errorData = error?.response?.data
-    // Generic error toast
+    
+    // Check if request was cancelled (user navigated away, component unmounted, etc.)
+    const isCancelled = error?.code === 'ERR_CANCELED' || 
+                       error?.name === 'CanceledError' || 
+                       error?.name === 'AbortError' ||
+                       error?.message?.includes('canceled') ||
+                       error?.message?.includes('aborted');
+    
+    if (isCancelled) {
+      // Request was cancelled - this is expected when user navigates away
+      // Don't show generic error toast, but we'll handle it in generation slice
+      if (isApiDebugEnabled()) {
+        console.log('[API][cancelled] Request was cancelled:', {
+          url: original?.url,
+          reason: 'User navigated away or component unmounted'
+        });
+      }
+      // Reject with a special cancellation marker
+      const cancelError = new Error('Request cancelled');
+      (cancelError as any).isCancelled = true;
+      (cancelError as any).code = 'ERR_CANCELED';
+      return Promise.reject(cancelError);
+    }
+    
+    // Generic error toast (only for non-cancelled errors)
     try { await showFalErrorToast(error); } catch {}
     try {
       const urlStr = String(error?.config?.url || '')
