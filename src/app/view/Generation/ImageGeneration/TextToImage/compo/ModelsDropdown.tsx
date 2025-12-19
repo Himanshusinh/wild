@@ -45,6 +45,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
     { name: "P-Image", value: "prunaai/p-image" },
+    { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
@@ -60,7 +61,10 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
   // Add credits information to models from distribution data
   const modelsWithCredits = models.map((model) => {
-    const creditInfo = getModelCreditInfo(model.value);
+    // For GPT Image 1.5, show minimum cost (low quality: 46 credits) in model dropdown
+    // User can see actual credits per quality in the quality dropdown
+    const quality = model.value === 'openai/gpt-image-1.5' ? 'low' : undefined;
+    const creditInfo = getModelCreditInfo(model.value, undefined, undefined, undefined, quality);
     const isFree = model.value === "new-turbo-model";
     const creditLabel = isFree
       ? 'Free (0 credits)'

@@ -62,6 +62,7 @@ import PhoenixOptions from "./PhoenixOptions";
 import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
+import QualityDropdown from "./QualityDropdown";
 import ImageGenerationGuide from "./ImageGenerationGuide";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
@@ -406,6 +407,7 @@ const InputBox = () => {
     initialLimit: 60,
     mode: 'image',
     skipBackendGenerationFilter: true,
+    sortOrder,
   });
 
   // Ensure UI slice reflects we are on the image generation page (avoids expectedType gating issues)
@@ -1055,7 +1057,18 @@ const InputBox = () => {
     const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
     const hasEntries = historyEntries && historyEntries.length > 0;
 
-    const shouldReload = (switchedToImage || !filtersAreForImage || sortMismatch) && !switchLoadInFlightRef.current;
+    // HistoryControls dispatches `setFilters` + `loadHistory` on sort changes.
+    // During that in-flight window, Redux sortOrder updates before this component's local
+    // `sortOrder` state, causing a transient mismatch and an extra duplicate request.
+    // Fix: if we're already on the image page and filters are for image, just sync local
+    // sort state and let HistoryControls own the request.
+    if (!switchedToImage && filtersAreForImage && sortMismatch) {
+      setSortOrder(currentFilterSort);
+      lastUIGenerationTypeRef.current = currentUIGenerationType;
+      return;
+    }
+
+    const shouldReload = (switchedToImage || !filtersAreForImage) && !switchLoadInFlightRef.current;
 
     if (shouldReload && !loading) {
       // Avoid redundant reloads when we already have fresh entries and filters are correct
@@ -1109,6 +1122,7 @@ const InputBox = () => {
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
   const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
+  const [gptImage15Quality, setGptImage15Quality] = useState<'low' | 'medium' | 'high' | 'auto'>('auto');
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null); // retained for optional debug overlay
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -1918,7 +1932,8 @@ const InputBox = () => {
     frameSize,
     count: imageCount,
     style,
-    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined)
+    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined),
+    quality: selectedModel === 'openai/gpt-image-1.5' ? gptImage15Quality : undefined
   });
 
   // Function to clear input after successful generation
@@ -1963,6 +1978,7 @@ const InputBox = () => {
     containerRef: scrollRootRef,
     hasMore,
     loading,
+    enabled: historyEntries.length > 0 && sortedDates.length > 0,
     loadMore: async () => {
       const nextPage = page + 1;
       setPage(nextPage);
@@ -1997,7 +2013,7 @@ const InputBox = () => {
         await (dispatch as any)(loadMoreHistory({
           filters: paginationFilters,
           backendFilters: backendFilters,
-          paginationParams: { limit: 20 } // Balanced page size: faster requests while still reducing pagination gaps
+          paginationParams: { limit: 50 } // Increased to 50 for better pagination coverage
         })).unwrap();
       } catch (e: any) {
         // swallow non-critical errors; backend handles end-of-pagination
@@ -2005,8 +2021,8 @@ const InputBox = () => {
     },
     bottomOffset: 800,
     throttleMs: 250, // slightly higher throttle for heavier image grid
-    requireUserScroll: false, // Allow automatic loading of new generations
-    requireScrollAfterLoad: false, // Allow continuous auto-loading
+    requireUserScroll: true, // Match video behavior; prevents extra requests on sort/reset
+    requireScrollAfterLoad: true,
     postLoadCooldownMs: 500, // Reduced cooldown for smoother loading
     blockLoadRef: postGenerationBlockRef, // hard block during generation completion window
   });
@@ -4201,6 +4217,11 @@ const InputBox = () => {
             generationId,
           };
 
+          // For GPT Image 1.5, add quality parameter
+          if (selectedModel === 'openai/gpt-image-1.5') {
+            generationPayload.quality = gptImage15Quality;
+          }
+
           // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
           if (isFluxProModel) {
             const dimensions = convertFrameSizeToFluxProDimensions(frameSize);
@@ -5535,6 +5556,15 @@ const InputBox = () => {
                   />
                 </div>
               )}
+              {selectedModel === 'openai/gpt-image-1.5' && (
+                <div className="flex items-center gap-2 relative">
+                  <QualityDropdown
+                    quality={gptImage15Quality}
+                    onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
+                    dropdownId="gptImage15Quality"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Desktop: All dropdowns in one row */}
@@ -5615,6 +5645,15 @@ const InputBox = () => {
                       outputFormat={zTurboOutputFormat}
                       onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
                       dropdownId="zTurboOutputFormat"
+                    />
+                  </div>
+                )}
+                {selectedModel === 'openai/gpt-image-1.5' && (
+                  <div className="flex items-center gap-2 relative">
+                    <QualityDropdown
+                      quality={gptImage15Quality}
+                      onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
+                      dropdownId="gptImage15Quality"
                     />
                   </div>
                 )}

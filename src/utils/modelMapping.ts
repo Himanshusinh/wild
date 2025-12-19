@@ -13,6 +13,7 @@ export interface ModelMapping {
     duration?: number[];
     frameSize?: string[];
     frames_per_second?: number[];
+    quality?: string[];
   };
 }
 
@@ -195,6 +196,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'New Turbo Model', // TODO: Update with actual credit model name from creditDistribution.ts
     generationType: 'image',
     provider: 'replicate'
+  },
+  {
+    frontendValue: 'openai/gpt-image-1.5',
+    creditModelName: 'gpt-image-1.5 auto', // Base name, quality appended dynamically
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      quality: ['low', 'medium', 'high', 'auto']
+    }
   },
 
   // VIDEO GENERATION MODELS
@@ -938,6 +948,7 @@ export const buildCreditModelName = (
     resolution?: string;
     duration?: number;
     frameSize?: string;
+    quality?: string;
   }
 ): string | null => {
   const mapping = getModelMapping(frontendValue);
@@ -1058,6 +1069,11 @@ export const buildCreditModelName = (
   else if (mapping.frontendValue === 'kling-o1' && options?.duration) {
     const d = options.duration;
     modelName = d === 10 ? 'Kling o1 10s' : 'Kling o1 5s';
+  }
+  // Handle GPT Image 1.5 with quality
+  else if (mapping.frontendValue === 'openai/gpt-image-1.5' && options?.quality) {
+    const quality = String(options.quality).toLowerCase();
+    modelName = `gpt-image-1.5 ${quality}`;
   }
   // Handle FLUX.2 Pro with resolution
   else if ((mapping.frontendValue === 'flux-2-pro-1080p' || mapping.frontendValue === 'flux-2-pro-2k')) {
