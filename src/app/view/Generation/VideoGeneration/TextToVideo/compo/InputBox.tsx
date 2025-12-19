@@ -5672,7 +5672,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   })()}
                   className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white md:px-4 px-2 md:py-2.5 py-1.5 rounded-lg md:text-sm text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 >
-                  {runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : "Generate"}
+                  Generate
                 </button>
               </div>
             </div>
@@ -6942,11 +6942,11 @@ const InputBox = (props: InputBoxProps = {}) => {
               })()}
             </div>
 
-            {/* Desktop: Generate button section */}
-            <div className="hidden md:flex flex-col items-end gap-2 mt-2">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
+            {/* Desktop: Generate button section - positioned at bottom right */}
+            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
+              {error && <div className="text-red-500 text-xs">{error}</div>}
 
-              <div className="text-white/80 text-sm pr-1">
+              <div className="text-white/80 text-xs pr-1">
                 Total credits: <span className="font-semibold">{liveCreditCost}</span>
               </div>
               <button
@@ -6972,9 +6972,9 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                {runningGenerationsCount > 0 ? `Generate Video (${runningGenerationsCount}/4)` : "Generate Video"}
+                Generate Video
               </button>
             </div>
 

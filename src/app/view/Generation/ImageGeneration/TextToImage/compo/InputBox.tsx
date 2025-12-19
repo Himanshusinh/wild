@@ -5142,8 +5142,8 @@ const InputBox = () => {
             </div>
 
             {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-3 right-5 hidden md:flex flex-col items-end gap-3">
-              {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
+              {error && <div className="text-red-500 text-xs">{error}</div>}
               <button
                 onClick={async () => {
                   try {
@@ -5184,7 +5184,7 @@ const InputBox = () => {
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 aria-busy={isEnhancing}
               >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full (4/4 active)' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4 active)` : 'Generate'}
+                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
               </button>
             </div>
           </div>
