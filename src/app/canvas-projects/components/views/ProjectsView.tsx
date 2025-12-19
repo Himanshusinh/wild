@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, ArrowUpRight, Loader2, FolderOpen } from 'lucide-react';
-import { fetchCanvasProjects } from '@/lib/canvasApi';
+import { Plus, ArrowUpRight, Loader2, FolderOpen, Trash2 } from 'lucide-react';
+import { fetchCanvasProjects, deleteProject } from '@/lib/canvasApi';
 import { CanvasProject } from '@/types/canvasTypes';
 import Image from 'next/image';
 
@@ -75,6 +75,23 @@ export function ProjectsView() {
         window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
     };
 
+    const handleDeleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
+        e.stopPropagation(); // Prevent opening the project when clicking delete
+        
+        if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await deleteProject(projectId);
+            // Remove the project from the list
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+        } catch (error: any) {
+            console.error('Failed to delete project:', error);
+            alert(error.message || 'Failed to delete project. Please try again.');
+        }
+    };
+
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -135,7 +152,18 @@ export function ProjectsView() {
                                         <h3 className="text-xl font-medium text-white truncate max-w-[200px]">{p.name}</h3>
                                         <span className="text-sm text-slate-400">{formatDate(p.updatedAt)}</span>
                                     </div>
-                                    <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white hover:text-black"><ArrowUpRight size={18} /></button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => handleDeleteProject(e, p.id, p.name)}
+                                            className="w-10 h-10 rounded-full bg-red-500/20 backdrop-blur flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                                            title="Delete project"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                        <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white hover:text-black" title="Open project">
+                                            <ArrowUpRight size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
