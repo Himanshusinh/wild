@@ -8,7 +8,6 @@ import { GeneratedImage, GeneratedVideo, GeneratedAudio } from '@/types/history'
 
 // Storage configuration
 const STORAGE_KEY = 'wildmind_active_generations';
-const CLEANUP_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 const MAX_CONCURRENT_GENERATIONS = 4;
 
 export interface ActiveGeneration {
@@ -83,11 +82,8 @@ export function loadGenerations(): ActiveGeneration[] {
       return [];
     }
 
-    // Auto-cleanup old generations
-    const cleaned = generations.filter(gen => {
-      const age = Date.now() - gen.updatedAt;
-      return age < CLEANUP_THRESHOLD_MS;
-    });
+    // Persist only active items: pending or generating. Completed/failed are not stored.
+    const cleaned = generations.filter(gen => gen.status === 'pending' || gen.status === 'generating');
 
     // If we cleaned any, save back
     if (cleaned.length !== generations.length) {
@@ -134,20 +130,30 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
     pendingGenerations = null;
     
     try {
-      // Limit to max concurrent generations
-      const toSave = generationsToSave.slice(0, MAX_CONCURRENT_GENERATIONS);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      // Persist only pending or generating items; do not keep completed/failed in storage
+      const allowed = generationsToSave.filter(g => g.status === 'pending' || g.status === 'generating');
+      const toSave = allowed.slice(0, MAX_CONCURRENT_GENERATIONS);
+
+      if (toSave.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      }
     } catch (error) {
       console.error('[generationPersistence] Error saving generations:', error);
       
       // Handle quota exceeded
       if (error instanceof Error && error.name === 'QuotaExceededError' && generationsToSave) {
-        // Try to free up space by removing completed generations
+        // Try to free up space by removing completed generations and keeping pending/generating only
         const activeOnly = generationsToSave.filter(
           g => g.status === 'pending' || g.status === 'generating'
         );
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(activeOnly));
+          if (activeOnly.length === 0) {
+            localStorage.removeItem(STORAGE_KEY);
+          } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(activeOnly.slice(0, MAX_CONCURRENT_GENERATIONS)));
+          }
         } catch {
           console.error('[generationPersistence] Failed to save even after cleanup');
         }
@@ -221,10 +227,7 @@ export function clearOldGenerations(): ActiveGeneration[] {
   const current = loadGenerations();
   const now = Date.now();
   
-  const active = current.filter(gen => {
-    const age = now - gen.updatedAt;
-    return age < CLEANUP_THRESHOLD_MS;
-  });
+  const active = current.filter(gen => gen.status === 'pending' || gen.status === 'generating');
 
   if (active.length !== current.length) {
     saveGenerations(active);
