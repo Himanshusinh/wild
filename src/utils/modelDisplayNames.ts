@@ -166,6 +166,8 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
   // Heuristic remapping for Kling models (remove vendor misspellings like Kwai/Kwaivgi)
   if (lower.includes('kling')) {
     const isMaster = /master/i.test(normalized);
+    if (lower.includes('o1') || lower.includes('o-1')) return 'Kling o1';
+    if (lower.includes('2.6')) return 'Kling 2.6 Pro';
     if (lower.includes('2.5')) return `Kling 2.5${isMaster ? ' Master' : ''}`;
     if (lower.includes('2.1')) return `Kling 2.1${isMaster ? ' Master' : ''}`;
     return `Kling${isMaster ? ' Master' : ''}`;
