@@ -21,7 +21,7 @@ export const getCreditCostForModel = (modelName: string): number => {
 /**
  * Get credit cost for video models using the new mapping system
  */
-export const getVideoCreditCost = (frontendModel: string, resolution?: string, duration?: number): number => {
+export const getVideoCreditCost = (frontendModel: string, resolution?: string, duration?: number, generateAudio?: boolean): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== 'video') {
     console.warn(`Unknown or invalid video model: ${frontendModel}`);
@@ -77,7 +77,9 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           // Use default values if not provided for WAN models to avoid "Unknown model" error
           const defaultDuration = duration || 5;
           const defaultResolution = resolution || '720p';
-          const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution);
+          // For Kling 2.6 Pro, pass generateAudio parameter
+          const audioParam = frontendModel === 'kling-2.6-pro' ? generateAudio : undefined;
+          const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution, audioParam);
           if (cost !== null && cost > 0) {
             console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
             return cost;
@@ -94,7 +96,12 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
         }
 
   // Build the complete model name with options
-  const creditModelName = buildCreditModelName(frontendModel, { resolution, duration });
+  // For Kling 2.6 Pro, include generateAudio in options
+  const buildOptions: any = { resolution, duration };
+  if (frontendModel === 'kling-2.6-pro') {
+    buildOptions.generateAudio = generateAudio;
+  }
+  const creditModelName = buildCreditModelName(frontendModel, buildOptions);
   if (!creditModelName) {
     console.warn(`Failed to build credit model name for: ${frontendModel}`);
     return 0;

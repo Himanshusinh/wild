@@ -121,6 +121,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
       // { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
       
+      { value: "kling-2.6-pro", label: "Kling 2.6 Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1, Audio On/Off", provider: "fal" },
       { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
       { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video & Image→Video, 5s/10s, 720p/1080p", provider: "replicate" },
       { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Text→Video & Image→Video, 5s/10s, 1080p", provider: "replicate" },
