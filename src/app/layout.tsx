@@ -7,10 +7,12 @@ import ReduxProvider from "@/components/providers/ReduxProvider";
 import AuthBootstrap from "@/components/providers/AuthBootstrap";
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
+import { Toaster as SonnerToaster } from 'sonner'
 import ToastMount from './toast-mount'
 import ConsoleSilencer from "@/components/ConsoleSilencer";
 import ChromeMount from './chrome-mount'
 import AiCompanion from "@/components/AiCompanion";
+import DownloadStatusIndicator from "@/components/DownloadStatusIndicator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -209,7 +211,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               error: { duration: 4000 },
             }}
           />
+          <SonnerToaster 
+            position="bottom-right"
+            richColors
+            closeButton
+            toastOptions={{
+              style: {
+                background: '#0B0B0B',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.1)',
+              },
+            }}
+          />
           <ToastMount />
+          <DownloadStatusIndicator />
           <AiCompanion />
         </ReduxProvider>
       </body>

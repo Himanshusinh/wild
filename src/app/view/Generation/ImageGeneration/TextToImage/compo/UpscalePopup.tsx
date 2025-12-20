@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X, Upload, Maximize2, Download } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 interface UpscalePopupProps {
   isOpen: boolean;
@@ -166,13 +167,13 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
     }
   };
 
-  const handleDownload = (imageUrl: string, filename: string) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (imageUrl: string, filename?: string) => {
+    try {
+      // Use downloadFileWithNaming for proper tracking and naming
+      await downloadFileWithNaming(imageUrl, null, 'image', 'upscaled');
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
   };
 
   const openFullscreen = (imageUrl: string, title: string) => {
@@ -306,7 +307,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         <img src={upscaledImage} alt="Upscaled" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleDownload(upscaledImage, 'upscaled-image.jpg')} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors">Download Upscaled</button>
+                        <button onClick={() => handleDownload(upscaledImage)} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors">Download Upscaled</button>
                       </div>
                     </div>
                   )}
@@ -780,7 +781,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleDownload(upscaledImage, 'upscaled-image.jpg')}
+                            onClick={() => handleDownload(upscaledImage)}
                             className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                           >
                             <Download className="w-4 h-4" />
@@ -821,7 +822,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
             </button>
             {/* Download Button */}
             <button
-              onClick={() => handleDownload(fullscreenImage, `${fullscreenTitle.toLowerCase().replace(' ', '-')}.jpg`)}
+              onClick={() => handleDownload(fullscreenImage || '')}
               className="absolute top-4 left-4 p-3 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
             >
               <Download className="w-6 h-6 text-white" />
