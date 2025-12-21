@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 import { getCreditsForModel } from '@/utils/modelCredits';
 import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
+import JSZip from 'jszip';
 
 // Helper to generate colorful audio tile gradients (mirrors MusicHistory colors)
 const getAudioColorTheme = (entry: any, index: number = 0): string => {
@@ -770,9 +771,13 @@ const History = () => {
 
   const downloadSelectedImages = async () => {
     try {
-      const downloadPromises: Promise<void>[] = [];
-      let downloadCount = 0;
-      const failedDownloads: string[] = [];
+      const selectedItems: Array<{
+        key: string;
+        entryId: string;
+        mediaId: string;
+        url: string;
+        fileType: 'image' | 'video' | 'audio';
+      }> = [];
 
       historyEntries.forEach((entry: HistoryEntry) => {
         const mediaItems = [
@@ -780,40 +785,93 @@ const History = () => {
           ...(((entry as any).videos || []) as any[]),
           ...(((entry as any).audios || []) as any[]),
         ];
+
         mediaItems.forEach((media: any, index: number) => {
-          const key = `${entry.id}-${media.id || index}`;
-          if (selectedImages.has(key)) {
-            const url = media.url || media.originalUrl || media.firebaseUrl;
+          const mediaId = String(media.id ?? index);
+          const key = `${entry.id}-${mediaId}`;
+          if (!selectedImages.has(key)) return;
 
-            if (url) {
-              downloadCount++;
-              const fileType = getFileType(media, url);
+          const url = media.url || media.originalUrl || media.firebaseUrl;
+          if (!url) return;
 
-              downloadPromises.push(
-                downloadFileWithNaming(url, null, fileType)
-                  .then(success => {
-                    if (!success) {
-                      failedDownloads.push(key);
-                    } else {
-                      // success
-                    }
-                  })
-                  .catch(() => {
-                    failedDownloads.push(key);
-                  })
-              );
-            } else {
-              failedDownloads.push(key);
-            }
-          }
+          selectedItems.push({
+            key,
+            entryId: String(entry.id),
+            mediaId,
+            url,
+            fileType: getFileType(media, url),
+          });
         });
       });
-      await Promise.all(downloadPromises);
 
-      if (failedDownloads.length > 0) {
-        alert(`${failedDownloads.length} files couldn't be downloaded. Please try downloading them individually.`);
-      } else {
-        // success
+      if (selectedItems.length === 0) {
+        return;
+      }
+
+      // Preserve existing single-item behavior
+      if (selectedItems.length === 1) {
+        const item = selectedItems[0];
+        const ok = await downloadFileWithNaming(item.url, null, item.fileType);
+        if (!ok) {
+          alert(`1 file couldn't be downloaded. Please try again.`);
+        }
+        clearSelection();
+        return;
+      }
+
+      // Multi-select: download as a single ZIP
+      const sanitize = (name: string) => name.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+      const now = new Date();
+      const date = now.toISOString().split('T')[0].replace(/-/g, '_');
+      const time = now.toTimeString().split(' ')[0].replace(/:/g, '_');
+      const zipBaseName = sanitize(`wildmind_history_${date}_${time}`);
+
+      const zip = new JSZip();
+      const folder = zip.folder(zipBaseName) ?? zip;
+
+      const failedKeys: string[] = [];
+
+      for (let i = 0; i < selectedItems.length; i++) {
+        const item = selectedItems[i];
+        try {
+          const proxyUrl = toProxyDownloadUrl(item.url) || item.url;
+          const response = await fetch(proxyUrl, { credentials: 'include' });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const contentType = response.headers.get('content-type') || '';
+          const blob = await response.blob();
+
+          // Determine extension
+          let ext = getExtensionFromMime(contentType) || getExtensionFromUrl(item.url) || null;
+          if (!ext) {
+            if (item.fileType === 'video') ext = 'mp4';
+            else if (item.fileType === 'audio') ext = 'mp3';
+            else ext = 'png';
+          }
+
+          const innerName = sanitize(`${String(i + 1).padStart(3, '0')}_${item.fileType}_${item.entryId}_${item.mediaId}.${ext}`);
+          folder.file(innerName, blob);
+        } catch (_e) {
+          failedKeys.push(item.key);
+        }
+      }
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const objectUrl = window.URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${zipBaseName}.zip`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
+
+      if (failedKeys.length > 0) {
+        alert(`${failedKeys.length} files couldn't be added to the ZIP. You can try downloading those individually.`);
       }
 
       clearSelection();
