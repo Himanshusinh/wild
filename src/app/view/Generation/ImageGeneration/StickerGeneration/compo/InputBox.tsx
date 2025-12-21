@@ -81,6 +81,7 @@ const InputBox = () => {
   
   // Local state to track generation status for button text
   const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
@@ -146,7 +147,7 @@ const InputBox = () => {
 
   // Bottom scroll pagination replacing IntersectionObserver to mirror History page
   useBottomScrollPagination({
-    containerRef: undefined,
+    containerRef: scrollRootRef,
     hasMore,
     loading,
     requireUserScroll: true,
@@ -409,7 +410,7 @@ const InputBox = () => {
 
   return (
     <>
-      <div className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
+      <div ref={scrollRootRef} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
         <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
             <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
