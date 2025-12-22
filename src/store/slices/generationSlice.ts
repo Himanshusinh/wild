@@ -3,6 +3,11 @@ import { getApiClient } from '@/lib/axiosInstance';
 import { requestCreditsRefresh } from '@/lib/creditsBus';
 import { GeneratedImage } from '@/types/history';
 import { GenerationType as SharedGenerationType } from '@/types/generation';
+import { getModelMapping } from '@/utils/modelMapping';
+import type { ActiveGeneration } from '@/lib/generationPersistence';
+import * as generationPersistence from '@/lib/generationPersistence';
+// Import Runway thunks from generationsApi to synchronize active generation lifecycle for Runway flows
+import { runwayGenerate, runwayVideo } from '@/store/slices/generationsApi';
 
 interface GenerationState {
   prompt: string;
@@ -10,7 +15,7 @@ interface GenerationState {
   imageCount: number;
   frameSize: string;
   style: string;
-  isGenerating: boolean;
+  isGenerating: boolean; // Computed from activeGenerations.length > 0 for backward compatibility
   error: string | null;
   lastGeneratedImages: GeneratedImage[];
   generationProgress: {
@@ -39,11 +44,14 @@ interface GenerationState {
   phoenixPromptEnhance: boolean;
   // Output format for Imagen models
   outputFormat: string;
+  // Parallel generation support
+  activeGenerations: ActiveGeneration[];
+  maxConcurrentGenerations: number;
 }
 
 const initialState: GenerationState = {
   prompt: '',
-  selectedModel: 'gemini-25-flash-image',
+  selectedModel: 'new-turbo-model', // Default to Infinite (z-image-turbo) - free unlimited
   imageCount: 1,
   frameSize: '1:1',
   style: 'none',
@@ -65,6 +73,9 @@ const initialState: GenerationState = {
   phoenixPromptEnhance: false,
   // Output format default
   outputFormat: 'jpeg',
+  // Parallel generation defaults
+  activeGenerations: [],
+  maxConcurrentGenerations: 4,
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -73,7 +84,7 @@ type GenerationTypeLocal = SharedGenerationType;
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic }: {
+    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic, quality, output_format }: {
       prompt: string;
       model: string;
       imageCount: number;
@@ -84,6 +95,9 @@ export const generateImages = createAsyncThunk(
       width?: number;
       height?: number;
       isPublic?: boolean;
+      generationId?: string; // For parallel generation tracking
+      quality?: string; // For models that support quality parameter (e.g., GPT Image 1.5)
+      output_format?: string; // For models that support output_format parameter (e.g., GPT Image 1.5)
     },
     { rejectWithValue }
   ) => {
@@ -93,9 +107,31 @@ export const generateImages = createAsyncThunk(
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const api = getApiClient();
 
-      // Decide provider based on model
-  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
-      const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
+      // Decide provider based on model mapping (fal | bfl | replicate | runway)
+      const mapping = getModelMapping(model);
+      const provider = mapping?.provider;
+
+      // Backward-compatible fal detection for older models without mapping
+      const isFalModel =
+        provider === 'fal' ||
+        model === 'gemini-25-flash-image' ||
+        model === 'google/nano-banana-pro' ||
+        model === 'nano-banana-pro' ||
+        model === 'seedream-v4' ||
+        model === 'seedream-4.5' ||
+        model === 'imagen-4-ultra' ||
+        model === 'imagen-4' ||
+        model === 'imagen-4-fast';
+
+      let endpoint: string;
+      if (provider === 'replicate') {
+        endpoint = '/api/replicate/generate';
+      } else if (isFalModel) {
+        endpoint = '/api/fal/generate';
+      } else {
+        // Default to BFL for Flux and other canvas-style models
+        endpoint = '/api/bfl/generate';
+      }
 
       // Resolve isPublic from backend policy when not explicitly provided
       let resolvedIsPublic: boolean | undefined = isPublic;
@@ -117,11 +153,21 @@ export const generateImages = createAsyncThunk(
         uploadedImages,
         clientRequestId,
         ...(width && height ? { width, height } : {}),
-        ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {})
+        ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {}),
+        ...(quality ? { quality } : {}), // Add quality parameter if provided
+        ...(output_format ? { output_format } : {}) // Add output_format parameter if provided
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
       if (isFalModel) {
         if (frameSize) body.aspect_ratio = frameSize;
+      }
+      // For GPT Image 1.5 (Replicate), use aspect_ratio from frameSize
+      if (model === 'openai/gpt-image-1.5' && frameSize) {
+        body.aspect_ratio = frameSize;
+      }
+      // For GPT Image 1.5 (Replicate), schema uses `number_of_images`.
+      if (model === 'openai/gpt-image-1.5') {
+        body.number_of_images = requestedCount;
       }
 
       console.log('[generateImages] POST', endpoint, { body, isPublic: body.isPublic });
@@ -155,9 +201,28 @@ export const generateLiveChatImage = createAsyncThunk(
   ) => {
     try {
       const api = getApiClient();
-      // Use different endpoints based on model
-  const isFalModel = model === 'gemini-25-flash-image' || model === 'seedream-v4' || model === 'imagen-4-ultra' || model === 'imagen-4' || model === 'imagen-4-fast';
-      const endpoint = isFalModel ? '/api/fal/generate' : '/api/bfl/generate';
+      // Use different endpoints based on model/provider
+      const mapping = getModelMapping(model);
+      const provider = mapping?.provider;
+      const isFalModel =
+        provider === 'fal' ||
+        model === 'gemini-25-flash-image' ||
+        model === 'google/nano-banana-pro' ||
+        model === 'nano-banana-pro' ||
+        model === 'seedream-v4' ||
+        model === 'seedream-4.5' ||
+        model === 'imagen-4-ultra' ||
+        model === 'imagen-4' ||
+        model === 'imagen-4-fast';
+
+      let endpoint: string;
+      if (provider === 'replicate') {
+        endpoint = '/api/replicate/generate';
+      } else if (isFalModel) {
+        endpoint = '/api/fal/generate';
+      } else {
+        endpoint = '/api/bfl/generate';
+      }
       
       // Resolve isPublic if absent
       let resolvedIsPublic: boolean | undefined = isPublic;
@@ -438,6 +503,66 @@ const generationSlice = createSlice({
       state.generationProgress = null;
       // Keep model, imageCount, frameSize, and style as they might be user preferences
     },
+    // Parallel generation actions
+    addActiveGeneration: (state, action: PayloadAction<ActiveGeneration>) => {
+      // Check if already exists
+      const exists = state.activeGenerations.some(g => g.id === action.payload.id);
+      if (!exists) {
+        // Add to beginning (most recent first)
+        state.activeGenerations = [action.payload, ...state.activeGenerations].slice(0, state.maxConcurrentGenerations);
+        // Update isGenerating flag for backward compatibility
+        state.isGenerating = state.activeGenerations.some(
+          g => g.status === 'pending' || g.status === 'generating'
+        );
+        // Sync to localStorage - only if status is pending/generating
+        // addGeneration will check and skip if status is completed/failed
+        if (action.payload.status === 'pending' || action.payload.status === 'generating') {
+          generationPersistence.addGeneration(action.payload);
+        }
+      }
+    },
+    updateActiveGeneration: (state, action: PayloadAction<{ id: string; updates: Partial<ActiveGeneration> }>) => {
+      const index = state.activeGenerations.findIndex(g => g.id === action.payload.id);
+      if (index !== -1) {
+        const updatedGen = {
+          ...state.activeGenerations[index],
+          ...action.payload.updates,
+          updatedAt: Date.now(),
+        };
+        state.activeGenerations[index] = updatedGen;
+        
+        // Update isGenerating flag
+        state.isGenerating = state.activeGenerations.some(
+          g => g.status === 'pending' || g.status === 'generating'
+        );
+        
+        // Sync to localStorage
+        // updateGeneration will automatically remove from persistence if status becomes completed/failed
+        generationPersistence.updateGeneration(action.payload.id, action.payload.updates);
+      }
+    },
+    removeActiveGeneration: (state, action: PayloadAction<string>) => {
+      state.activeGenerations = state.activeGenerations.filter(g => g.id !== action.payload);
+      // Update isGenerating flag
+      state.isGenerating = state.activeGenerations.length > 0;
+      // Sync to localStorage
+      generationPersistence.removeGeneration(action.payload);
+    },
+    hydrateGenerations: (state, action: PayloadAction<ActiveGeneration[]>) => {
+      state.activeGenerations = action.payload.slice(0, state.maxConcurrentGenerations);
+      // Update isGenerating flag
+      state.isGenerating = state.activeGenerations.some(
+        g => g.status === 'pending' || g.status === 'generating'
+      );
+    },
+    clearOldGenerations: (state) => {
+      const cleaned = generationPersistence.clearOldGenerations();
+      state.activeGenerations = cleaned;
+      // Update isGenerating flag
+      state.isGenerating = state.activeGenerations.some(
+        g => g.status === 'pending' || g.status === 'generating'
+      );
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -454,7 +579,7 @@ const generationSlice = createSlice({
         state.isGenerating = false;
         state.error = action.payload as string;
       })
-      .addCase(generateImages.pending, (state) => {
+      .addCase(generateImages.pending, (state, action) => {
         state.isGenerating = true;
         state.error = null;
         state.generationProgress = {
@@ -462,19 +587,77 @@ const generationSlice = createSlice({
           total: state.imageCount,
           status: 'Starting generation...',
         };
+        
+        // Update active generation if ID exists
+        const genId = action.meta.arg.generationId;
+        if (genId) {
+          const index = state.activeGenerations.findIndex(g => g.id === genId);
+          if (index !== -1) {
+            state.activeGenerations[index].status = 'generating';
+            state.activeGenerations[index].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
       })
       .addCase(generateImages.fulfilled, (state, action) => {
         state.isGenerating = false;
         state.lastGeneratedImages = action.payload.images;
         state.generationProgress = null;
         state.error = null;
+        
+        // Update active generation if ID exists
+        const genId = action.meta.arg.generationId;
+        if (genId) {
+          const index = state.activeGenerations.findIndex(g => g.id === genId);
+          if (index !== -1) {
+            state.activeGenerations[index].status = 'completed';
+            state.activeGenerations[index].images = action.payload.images;
+            state.activeGenerations[index].historyId = action.payload.historyId;
+            state.activeGenerations[index].updatedAt = Date.now();
+            // Don't persist completed generations - updateGeneration will remove from persistence
+            generationPersistence.updateGeneration(genId, { 
+              status: 'completed',
+              images: action.payload.images,
+              historyId: action.payload.historyId 
+            });
+          }
+        }
       })
       .addCase(generateImages.rejected, (state, action) => {
         state.isGenerating = false;
         state.error = action.payload as string;
         state.generationProgress = null;
+        
+        // Update active generation if ID exists
+        const genId = action.meta.arg.generationId;
+        if (genId) {
+          const index = state.activeGenerations.findIndex(g => g.id === genId);
+          if (index !== -1) {
+            // Check if error is a cancellation
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[index].status = 'cancelled';
+              state.activeGenerations[index].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[index].status = 'failed';
+              state.activeGenerations[index].error = errorMessage || 'Generation failed';
+            }
+            state.activeGenerations[index].updatedAt = Date.now();
+            // Don't persist failed/cancelled generations - updateGeneration will remove from persistence
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
+          }
+        }
       })
-      .addCase(generateRunwayImages.pending, (state) => {
+      .addCase(generateRunwayImages.pending, (state, action) => {
         state.isGenerating = true;
         state.error = null;
         state.generationProgress = {
@@ -482,6 +665,16 @@ const generationSlice = createSlice({
           total: 1,
           status: 'Starting Runway generation...',
         };
+        // If a generationId was provided, mark the matching active generation as generating
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
       })
       .addCase(generateRunwayImages.fulfilled, (state, action) => {
         state.isGenerating = false;
@@ -493,11 +686,173 @@ const generationSlice = createSlice({
           total: 1,
           status: `Task created: ${action.payload.taskId}`,
         };
+        // Persist history/task info to the active generation if we have an ID
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].updatedAt = Date.now();
+            // Store taskId/historyId for future reference
+            state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
+            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+          }
+        }
       })
       .addCase(generateRunwayImages.rejected, (state, action) => {
         state.isGenerating = false;
         state.error = action.payload as string;
         state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[idx].status = 'cancelled';
+              state.activeGenerations[idx].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[idx].status = 'failed';
+              state.activeGenerations[idx].error = errorMessage || 'Generation failed';
+            }
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
+          }
+        }
+      })
+      // Runway API helpers (per-image create task) - ensure generationId sync when callers pass one
+      .addCase(runwayGenerate.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        // If generationId present in payload, mark active generation as generating
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(runwayGenerate.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        state.generationProgress = {
+          current: 0,
+          total: 1,
+          status: `Task created: ${action.payload.taskId}`,
+        };
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].updatedAt = Date.now();
+            state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
+            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(runwayGenerate.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = action.payload as string;
+        state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[idx].status = 'cancelled';
+              state.activeGenerations[idx].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[idx].status = 'failed';
+              state.activeGenerations[idx].error = errorMessage || 'Generation failed';
+            }
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
+          }
+        }
+      })
+      // Runway Video lifecycle: accept optional generationId so UI can track the video task
+      .addCase(runwayVideo.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        state.generationProgress = {
+          current: 0,
+          total: 100,
+          status: 'Starting Runway video generation...',
+        };
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(runwayVideo.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].updatedAt = Date.now();
+            state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
+            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(runwayVideo.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = action.payload as string;
+        state.generationProgress = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            const errorMessage = action.payload as string;
+            const isCancelled = errorMessage?.includes('cancelled') || 
+                               errorMessage?.includes('canceled') ||
+                               errorMessage?.includes('aborted') ||
+                               (action.error as any)?.code === 'ERR_CANCELED' ||
+                               (action.error as any)?.isCancelled === true;
+            
+            if (isCancelled) {
+              state.activeGenerations[idx].status = 'cancelled';
+              state.activeGenerations[idx].error = 'Generation was cancelled';
+            } else {
+              state.activeGenerations[idx].status = 'failed';
+              state.activeGenerations[idx].error = errorMessage || 'Generation failed';
+            }
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { 
+              status: isCancelled ? 'cancelled' : 'failed',
+              error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
+            });
+          }
+        }
       })
       .addCase(generateMiniMaxImages.pending, (state) => {
         state.isGenerating = true;
@@ -550,6 +905,12 @@ export const {
   // Output format
   setOutputFormat,
   clearGenerationState,
+  // Parallel generation actions
+  addActiveGeneration,
+  updateActiveGeneration,
+  removeActiveGeneration,
+  hydrateGenerations,
+  clearOldGenerations,
 } = generationSlice.actions;
 
 export default generationSlice.reducer;

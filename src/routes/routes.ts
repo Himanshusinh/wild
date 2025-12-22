@@ -1,3 +1,4 @@
+
 // Authentication Routes
 export const AUTH_ROUTES = {
   SIGN_IN: '/view/signin',
@@ -56,7 +57,7 @@ export const NAV_ROUTES = {
   TEMPLATES: '/view/workflows',
   ART_STATION: '/view/ArtStation',
   PRICING: '/view/pricing',
-  BLOG: '/view/Landingpage',
+  BLOG: '/blog',
   CONTACT: '/view/Landingpage?section=contact',
   SUPPORT: '/view/Landingpage?section=support',
   ABOUT: '/view/Landingpage?section=about',
@@ -69,11 +70,36 @@ export const NAV_ROUTES = {
 
 // Legal Routes
 export const LEGAL_ROUTES = {
-  TERMS: '/terms',
-  PRIVACY: '/privacy',
-  COOKIES: '/cookies',
+  TERMS: '/legal/terms',
+  PRIVACY: '/legal/privacy',
+  COOKIES: '/legal/cookie',
   LEGAL_NOTICE: '/legal',
-  DMCA: '/dmca',
+  DMCA: '/legal/dmca',
+  AUP: '/legal/aup',
+  API_TERMS: '/legal/api-terms',
+  RELATIONSHIP: '/legal/relationship',
+  THIRD_PARTY: '/legal/thirdparty',
+  CANCELLATION_REFUNDS: '/legal/cancellation-refunds',
+  TERMS_CONDITIONS: '/legal/terms-conditions',
+  SHIPPING: '/legal/shipping',
+  PRIVACY_PAGE: '/legal/privacy-page',
+} as const;
+
+// Product Routes
+export const PRODUCT_ROUTES = {
+  PRICING: '/view/pricing',
+  FAQS: '/product/faqs',
+  DOCUMENTATION: '/view/Landingpage?section=support', // Using support section as documentation
+} as const;
+
+// Company Routes
+export const COMPANY_ROUTES = {
+  ABOUT: '/company/about',
+  BLOG: '/blog',
+  CONTACT: '/company/contact-us',
+  SUPPORT: '/view/Landingpage?section=support',
+  NEWSLETTER: '/company/newsletter',
+  CAREERS: '/company/careers', // Careers page route
 } as const;
 
 // Footer Navigation Links
@@ -91,10 +117,15 @@ export const FOOTER_NAV_LINKS = {
     REAL_TIME_GENERATION: FEATURE_ROUTES.REAL_TIME_GENERATION,
   },
   COMPANY: {
-    BLOG: NAV_ROUTES.BLOG,
-    CONTACT: NAV_ROUTES.CONTACT,
-    SUPPORT: NAV_ROUTES.SUPPORT,
-    ABOUT: NAV_ROUTES.ABOUT,
+    ABOUT: COMPANY_ROUTES.ABOUT,
+    BLOG: COMPANY_ROUTES.BLOG,
+    CONTACT: COMPANY_ROUTES.CONTACT,
+    SUPPORT: COMPANY_ROUTES.SUPPORT,
+    NEWSLETTER: COMPANY_ROUTES.NEWSLETTER,
+  },
+  PRODUCT: {
+    PRICING: PRODUCT_ROUTES.PRICING,
+    FAQS: PRODUCT_ROUTES.FAQS,
   },
 } as const;
 
@@ -132,6 +163,8 @@ export const ROUTES = {
   ...FEATURE_ROUTES,
   ...NAV_ROUTES,
   ...LEGAL_ROUTES,
+  ...PRODUCT_ROUTES,
+  ...COMPANY_ROUTES,
   ...IMAGEGENERATION,
   ...BRANDINGKIT,
   ...VIDEOGENERATION,

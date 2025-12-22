@@ -71,7 +71,7 @@ const defaultFaqs: FaqItem[] = [
 ]
 
 const FAQ: React.FC<FAQProps> = ({ faqs = defaultFaqs, maxVisible = 6, viewMoreDisabled = true }) => {
-  const [openSet, setOpenSet] = React.useState<Set<number>>(new Set())
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null)
   const visibleFaqs = faqs.slice(0, Math.max(0, maxVisible))
 
   const headerRef = React.useRef<HTMLDivElement | null>(null)
@@ -99,16 +99,9 @@ const FAQ: React.FC<FAQProps> = ({ faqs = defaultFaqs, maxVisible = 6, viewMoreD
           <FaqRow
             key={item.question}
             question={item.question}
-            isOpen={openSet.has(idx)}
-            disableHover={openSet.has(idx)}
-            onToggle={() =>
-              setOpenSet(prev => {
-                const next = new Set(prev)
-                if (next.has(idx)) next.delete(idx)
-                else next.add(idx)
-                return next
-              })
-            }
+            isOpen={openIndex === idx}
+            disableHover={openIndex === idx}
+            onToggle={() => setOpenIndex(prev => (prev === idx ? null : idx))}
           >
             {item.answer}
           </FaqRow>
@@ -142,79 +135,7 @@ interface FaqRowProps {
 
 const FaqRow: React.FC<FaqRowProps> = ({ question, isOpen, disableHover = false, onToggle, children }) => {
   const itemRef = React.useRef<HTMLDivElement | null>(null)
-  const overlayRef = React.useRef<HTMLDivElement | null>(null)
-  const overlayInnerRef = React.useRef<HTMLDivElement | null>(null)
-  const marqueeTweenRef = React.useRef<gsap.core.Tween | null>(null)
   const contentRef = React.useRef<HTMLDivElement | null>(null)
-
-  const animationDefaults = { duration: 0.6, ease: 'expo' as any }
-
-  const findClosestEdge = (
-    mouseX: number,
-    mouseY: number,
-    width: number,
-    height: number
-  ): 'top' | 'bottom' => {
-    const topEdgeDist = Math.pow(mouseX - width / 2, 2) + Math.pow(mouseY, 2)
-    const bottomEdgeDist = Math.pow(mouseX - width / 2, 2) + Math.pow(mouseY - height, 2)
-    return topEdgeDist < bottomEdgeDist ? 'top' : 'bottom'
-  }
-
-  const onEnter = (ev: React.MouseEvent<HTMLButtonElement>) => {
-    if (disableHover || isOpen) return
-    if (!itemRef.current || !overlayRef.current || !overlayInnerRef.current) return
-    const rect = itemRef.current.getBoundingClientRect()
-    const edge = findClosestEdge(ev.clientX - rect.left, ev.clientY - rect.top, rect.width, rect.height)
-    const tl = gsap.timeline({ defaults: animationDefaults })
-    tl.set(overlayRef.current, { y: edge === 'top' ? '-101%' : '101%' })
-      .set(overlayInnerRef.current, { y: edge === 'top' ? '101%' : '-101%', xPercent: 0 })
-      .to([overlayRef.current, overlayInnerRef.current], { y: '0%' })
-
-    // start horizontal flowing text (seamless with 200% width content)
-    marqueeTweenRef.current?.kill()
-    marqueeTweenRef.current = gsap.to(overlayInnerRef.current, {
-      xPercent: -50,
-      duration: 15,
-      ease: 'none',
-      repeat: -1,
-    })
-  }
-
-  const onLeave = (ev: React.MouseEvent<HTMLButtonElement>) => {
-    if (!itemRef.current || !overlayRef.current || !overlayInnerRef.current) return
-    const rect = itemRef.current.getBoundingClientRect()
-    const edge = findClosestEdge(ev.clientX - rect.left, ev.clientY - rect.top, rect.width, rect.height)
-    const tl = gsap.timeline({ defaults: animationDefaults })
-    tl.to(overlayRef.current, { y: edge === 'top' ? '-101%' : '101%' })
-      .to(overlayInnerRef.current, { y: edge === 'top' ? '101%' : '-101%' }, '<')
-
-    // stop marquee and reset position for next hover
-    marqueeTweenRef.current?.kill()
-    marqueeTweenRef.current = null
-    gsap.set(overlayInnerRef.current, { xPercent: 0 })
-  }
-
-  // Instantly hide hover overlay when user initiates click so it doesn't show during expand
-  const onPress = () => {
-    if (!overlayRef.current || !overlayInnerRef.current) return
-    marqueeTweenRef.current?.kill()
-    marqueeTweenRef.current = null
-    gsap.set(overlayRef.current, { y: '101%' })
-    gsap.set(overlayInnerRef.current, { y: '-101%', xPercent: 0 })
-  }
-
-  // When row is opened, hide overlay and stop marquee; re-enable after closed
-  React.useEffect(() => {
-    if (isOpen) {
-      marqueeTweenRef.current?.kill()
-      marqueeTweenRef.current = null
-      if (overlayRef.current && overlayInnerRef.current) {
-        gsap.set(overlayRef.current, { y: '101%' })
-        gsap.set(overlayInnerRef.current, { y: '-101%', xPercent: 0 })
-      }
-    }
-  }, [isOpen])
-
   // Smooth expand/collapse for the answer area (auto height animation)
   React.useEffect(() => {
     if (!contentRef.current) return
@@ -238,31 +159,8 @@ const FaqRow: React.FC<FaqRowProps> = ({ question, isOpen, disableHover = false,
 
   return (
     <div ref={itemRef} className="relative overflow-hidden">
-      {/* Hover overlay with repeating FAQ text */}
-      <div
-        ref={overlayRef}
-        className={`absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none bg-white translate-y-[101%] ${isOpen ? 'hidden' : ''}`}
-      >
-        <div ref={overlayInnerRef} className="h-full w-[200%] flex will-change-transform">
-          {/* two identical strips so the loop is seamless at 50% shift */}
-          <div className="flex items-center h-full w-1/2 shrink-0">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <span key={`a-${i}`} className="text-[#060010] uppercase font-semibold text-base md:text-lg px-8">FAQ</span>
-            ))}
-          </div>
-          <div className="flex items-center h-full w-1/2 shrink-0">
-            {Array.from({ length: 13 }).map((_, i) => (
-              <span key={`b-${i}`} className="text-[#060010] uppercase font-semibold text-base md:text-lg px-8">FAQ</span>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <button
         type="button"
-        onMouseDown={onPress}
-        onMouseEnter={onEnter}
-        onMouseLeave={onLeave}
         onClick={onToggle}
         aria-expanded={isOpen}
         className="w-full flex items-center justify-between text-left py-5"

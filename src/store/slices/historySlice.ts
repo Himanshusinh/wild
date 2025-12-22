@@ -122,6 +122,7 @@ interface HistoryState {
   lastLoadedCount: number;
   inFlight: boolean;
   currentRequestKey: string | null;
+  nextCursor: string | number | null;
 }
 
 const initialState: HistoryState = {
@@ -133,6 +134,7 @@ const initialState: HistoryState = {
   lastLoadedCount: 0,
   inFlight: false,
   currentRequestKey: null,
+  nextCursor: null,
 };
 
 // Async thunk for loading history
@@ -166,13 +168,30 @@ export const loadHistory = createAsyncThunk(
         if (!incoming) return incoming;
         const arr = Array.isArray(incoming) ? incoming : [incoming];
         const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
-        // Backend does NOT accept these audio feature generationType filters yet; skip sending and filter client-side.
-        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
-        return mapGenerationTypeForBackend(incoming as any);
+        // Backend now accepts audio generationType values, so we can send them directly
+        // But still normalize them to canonical forms
+        const normalized = arr.map(t => {
+          const n = norm(t);
+          // Map common variations to canonical forms
+          if (n === 'tts' || n === 'text_to_speech') return 'text-to-speech';
+          if (n === 'sound_effect' || n === 'sound-effects' || n === 'sound_effects') return 'sfx';
+          if (n === 'dialogue' || n === 'text_to_dialogue') return 'text-to-dialogue';
+          if (n === 'voice-cloning') return 'voicecloning';
+          return t;
+        });
+        return normalized.length === 1 ? normalized[0] : normalized;
       };
       if (filtersForBackend?.generationType) {
+        // If backendFilters is explicitly provided, send generationType directly to backend
+        // Backend validation now accepts audio types, so we can send them
+        if (backendFilters && !skipBackendGenerationFilter) {
+          // Normalize audio types to canonical forms before sending
+          const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+          params.generationType = normalized;
+        } else {
         const mapped = canonicalAudioType(filtersForBackend.generationType as any);
         if (mapped && !skipBackendGenerationFilter) params.generationType = mapped;
+        }
       }
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
@@ -191,6 +210,15 @@ export const loadHistory = createAsyncThunk(
       }
   // Always request createdAt sorting explicitly
   params.sortBy = 'createdAt';
+  // Always send an effective sortOrder so concurrent requests can't mix results.
+  // Preference: explicit args -> existing slice filters -> default 'desc'
+  const effectiveSortOrder =
+    ((filtersForBackend as any)?.sortOrder === 'asc' || (filtersForBackend as any)?.sortOrder === 'desc')
+      ? (filtersForBackend as any).sortOrder
+      : (((state as any)?.history?.filters as any)?.sortOrder === 'asc' || ((state as any)?.history?.filters as any)?.sortOrder === 'desc')
+        ? ((state as any).history.filters as any).sortOrder
+        : 'desc';
+  params.sortOrder = effectiveSortOrder;
   
   console.log('[HistorySlice] ========== loadHistory API CALL ==========');
   console.log('[HistorySlice] Request params:', {
@@ -349,9 +377,13 @@ export const loadMoreHistory = createAsyncThunk(
       
       // Debug removed to reduce noise
       
-  // Get the last entry to compute nextCursor (timestamp-based)
+  // Stored cursor from previous API response (can be timestamp or legacy doc id)
+  const storedNextCursor = state.history.nextCursor;
   let cursor: { timestamp: string; id: string } | undefined;
-      if (currentEntries.length > 0) {
+  
+  // Always compute a legacy cursor from the last entry so we can paginate reliably.
+  // Timestamp-based cursors can skip ranges depending on backend semantics; doc-id cursors are stable.
+  if (currentEntries.length > 0) {
         const normalizeGenerationType = (type?: string): string => {
           if (!type || typeof type !== 'string') return '';
           return type.replace(/[_-]/g, '-').toLowerCase();
@@ -417,40 +449,75 @@ export const loadMoreHistory = createAsyncThunk(
       const client = axiosInstance;
   const params: any = { limit: nextPageParams.limit };
       if (filters?.status) params.status = filters.status;
+      
+      // Normalize audio types to canonical forms
       const canonicalAudioType = (incoming: string | string[] | undefined): string | string[] | undefined => {
         if (!incoming) return incoming;
         const arr = Array.isArray(incoming) ? incoming : [incoming];
         const norm = (v: string) => v.replace(/[_-]/g,'-').toLowerCase();
-        if (arr.some(t => ['text-to-speech','tts','text_to_speech','sfx','sound-effect','sound_effect','sound-effects','sound_effects','text-to-dialogue','dialogue','text_to_dialogue'].includes(norm(t)))) return undefined;
-        return mapGenerationTypeForBackend(incoming as any);
+        // Map common variations to canonical forms
+        const normalized = arr.map(t => {
+          const n = norm(t);
+          if (n === 'tts' || n === 'text_to_speech') return 'text-to-speech';
+          if (n === 'sound_effect' || n === 'sound-effects' || n === 'sound_effects') return 'sfx';
+          if (n === 'dialogue' || n === 'text_to_dialogue') return 'text-to-dialogue';
+          if (n === 'voice-cloning') return 'voicecloning';
+          return t;
+        });
+        return normalized.length === 1 ? normalized[0] : normalized;
       };
+      
       const filtersForBackend = backendFilters || filters;
-      if (filtersForBackend?.generationType) {
-        const mapped = canonicalAudioType(filtersForBackend.generationType as any);
-        if (mapped) params.generationType = mapped;
+      
+      // Only include generationType if explicitly provided in backendFilters
+      // When no search, don't send generationType array - rely on mode: 'image' only
+      if (filtersForBackend?.generationType && backendFilters) {
+        // Backend validation now accepts audio types, so normalize and send them
+        const normalized = canonicalAudioType(filtersForBackend.generationType as any);
+        // Only set if it's actually an array or string (not undefined)
+        if (normalized) {
+          params.generationType = normalized;
       }
+      }
+      // Don't set generationType if not in backendFilters - let mode handle it
       if ((filtersForBackend as any)?.mode && typeof (filtersForBackend as any).mode === 'string') (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model) params.model = mapModelSkuForBackend(filtersForBackend.model);
-      // Add search parameter if present
-      if ((filters as any)?.search && typeof (filters as any).search === 'string' && (filters as any).search.trim()) {
-        params.search = (filters as any).search.trim();
+      // Add search parameter if present (check both filtersForBackend and filters)
+      const searchQuery = (filtersForBackend as any)?.search || (filters as any)?.search;
+      if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+        params.search = searchQuery.trim();
       }
-      // Prefer optimized pagination: send nextCursor (timestamp millis) instead of legacy document id cursor
-      if (nextPageParams.cursor?.timestamp) {
-        try {
-          const millis = new Date(nextPageParams.cursor.timestamp).getTime();
-          if (!Number.isNaN(millis)) (params as any).nextCursor = String(millis);
-        } catch {}
+      // Always honor caller-provided sortOrder so backend returns matching order (asc/desc)
+      if ((filtersForBackend as any)?.sortOrder === 'asc' || (filtersForBackend as any)?.sortOrder === 'desc') {
+        params.sortOrder = (filtersForBackend as any).sortOrder;
+      } else if ((filters as any)?.sortOrder === 'asc' || (filters as any)?.sortOrder === 'desc') {
+        params.sortOrder = (filters as any).sortOrder;
       }
-      // Do NOT set sortBy/sortOrder so backend uses optimized index (createdAt DESC)
-      if ((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end) {
+
+      const wantsDateFilter = Boolean((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end);
+
+      // Prefer backend-provided cursor (works for both asc/desc). Fallback to last-entry id only if missing.
+      if (storedNextCursor !== undefined && storedNextCursor !== null) {
+        (params as any).cursor = String(storedNextCursor);
+      } else if (nextPageParams.cursor?.id) {
+        (params as any).cursor = String(nextPageParams.cursor.id);
+      }
+
+      // Serialize date range if present (ISO strings)
+      if (wantsDateFilter) {
         const dr = (filtersForBackend as any).dateRange as any;
         (params as any).dateStart = typeof dr.start === 'string' ? dr.start : new Date(dr.start).toISOString();
         (params as any).dateEnd = typeof dr.end === 'string' ? dr.end : new Date(dr.end).toISOString();
       }
-  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
-  // Always request createdAt sorting explicitly
+  // Always set sortBy (use value from backendFilters if provided, otherwise default to createdAt)
+  if ((filtersForBackend as any)?.sortBy) {
+    params.sortBy = (filtersForBackend as any).sortBy;
+  } else if (!params.sortBy) {
   params.sortBy = 'createdAt';
+  }
+  // Don't set default sortOrder - only include it if explicitly provided (when searching)
+  
+  console.log('[HistorySlice] Making loadMoreHistory API call with params:', params);
   
   const res = await client.get('/api/generations', { params });
   
@@ -575,6 +642,12 @@ const historySlice = createSlice({
       state.entries = [];
       state.hasMore = true;
       state.lastLoadedCount = 0;
+      // Ensure UI fully resets and pagination can start fresh
+      state.loading = false;
+      state.inFlight = false;
+      state.currentRequestKey = null;
+      state.error = null;
+      state.nextCursor = null; // Clear stored cursor on reset
     },
     clearHistoryByType: (state, action) => {
       // Clear only entries for a specific generation type
@@ -630,10 +703,33 @@ const historySlice = createSlice({
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+
+        // Drop stale responses that don't match the currently selected sortOrder.
+        // This prevents a "newest" response finishing late and overwriting an "oldest" feed.
+        const incomingFilters: any = (action.meta as any)?.arg?.filters || (action.meta as any)?.arg?.backendFilters || {};
+        const incomingSort = incomingFilters?.sortOrder;
+        const currentSort = (state.filters as any)?.sortOrder;
+        if ((incomingSort === 'asc' || incomingSort === 'desc') && (currentSort === 'asc' || currentSort === 'desc') && incomingSort !== currentSort) {
+          return;
+        }
         
         // Always sync slice filters with the filters used for this load
-        const usedFilters = (action.meta && action.meta.arg && action.meta.arg.filters) || {};
+        const usedFilters = (action.meta && action.meta.arg && (action.meta.arg.filters || action.meta.arg.backendFilters)) || {};
         const forceRefresh = (action.meta && action.meta.arg && action.meta.arg.forceRefresh) || false;
+        const requestedLimit = (action.meta && action.meta.arg && action.meta.arg.paginationParams && action.meta.arg.paginationParams.limit) || 10;
+        const payloadEntries = action.payload?.entries || [];
+        const serverHasMore = Boolean(action.payload?.hasMore);
+        const hasNextCursor = action.payload?.nextCursor !== undefined && action.payload?.nextCursor !== null;
+        const syntheticNextCursor = !hasNextCursor && payloadEntries.length > 0
+          ? (() => {
+              try {
+                const last = payloadEntries[payloadEntries.length - 1];
+                const ts = Date.parse(String(last?.timestamp || last?.createdAt || ''));
+                return Number.isNaN(ts) ? null : String(ts);
+              } catch { return null; }
+            })()
+          : null;
+        const optimisticHasMore = serverHasMore || hasNextCursor || Boolean(syntheticNextCursor) || payloadEntries.length >= requestedLimit;
         state.filters = usedFilters;
 
         console.log('[HistorySlice] ========== loadHistory.fulfilled ==========');
@@ -653,12 +749,42 @@ const historySlice = createSlice({
         })));
 
         // If forceRefresh, replace entries completely (don't merge with existing)
-        // Apply a safe, synonym-aware filter when a generationType is requested
+        // Otherwise, merge entries by ID while PRESERVING backend order (critical for backend-sorted pagination)
         if (forceRefresh) {
           console.log('[HistorySlice] forceRefresh=true - REPLACING all entries with fresh data');
           state.entries = action.payload.entries;
         } else {
-          state.entries = action.payload.entries;
+          const existingMap = new Map<string, any>(state.entries.map((e: any) => [String(e?.id || ''), e]));
+          const backendEntries: any[] = Array.isArray(action.payload.entries) ? action.payload.entries : [];
+          const backendIds = new Set<string>(backendEntries.map((e: any) => String(e?.id || '')));
+          
+          // Build merged list in BACKEND order
+          const mergedInOrder = backendEntries.map((backendEntry: any) => {
+            const id = String(backendEntry?.id || '');
+            const existingEntry = existingMap.get(id);
+            if (!existingEntry) return backendEntry;
+
+            // If both exist, prefer the one with more recent timestamp or better status,
+            // but keep the backend position to preserve ordering.
+              const existingTimestamp = new Date(existingEntry.timestamp || existingEntry.createdAt || 0).getTime();
+              const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
+            if (
+              existingTimestamp > backendTimestamp ||
+                  (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
+              (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))
+            ) {
+              return existingEntry;
+              }
+            return backendEntry;
+          });
+
+          // Preserve local-only entries (not returned by backend) by appending (does not disturb backend order)
+          const localOnly = state.entries.filter((e: any) => {
+            const id = String(e?.id || '');
+            return id && !backendIds.has(id);
+          });
+
+          state.entries = [...mergedInOrder, ...localOnly];
         }
         const usedTypeAny = (usedFilters as any)?.generationType as any;
         if (usedTypeAny) {
@@ -712,13 +838,10 @@ const historySlice = createSlice({
         }
         
           state.lastLoadedCount = action.payload.entries.length;
-          // Trust server hasMore when provided; if entries empty but server reports hasMore
-          // keep hasMore true to allow a user-triggered retry (prevents false terminal state).
-          if (action.payload.entries.length === 0) {
-            state.hasMore = Boolean(action.payload.hasMore);
-          } else {
-            state.hasMore = Boolean(action.payload.hasMore);
-          }
+          // Keep pagination optimistic: trust server flag, nextCursor, synthetic cursor, or a full page of items
+          state.hasMore = optimisticHasMore;
+        // Store nextCursor from backend response or synthesize from last item to enable deeper paging when server omits cursor
+        state.nextCursor = action.payload.nextCursor ?? syntheticNextCursor ?? null;
         state.error = null;
         
         console.log('[HistorySlice] State updated after fulfilled (after filtering):', {
@@ -761,6 +884,14 @@ const historySlice = createSlice({
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+
+        // Drop stale pagination responses that don't match current sortOrder.
+        const incomingFilters: any = (action.meta as any)?.arg?.filters || (action.meta as any)?.arg?.backendFilters || {};
+        const incomingSort = incomingFilters?.sortOrder;
+        const currentSort = (state.filters as any)?.sortOrder;
+        if ((incomingSort === 'asc' || incomingSort === 'desc') && (currentSort === 'asc' || currentSort === 'desc') && incomingSort !== currentSort) {
+          return;
+        }
         
         // Filter out duplicate entries before adding
         let newEntries = action.payload.entries.filter((newEntry: HistoryEntry) => 
@@ -772,9 +903,19 @@ const historySlice = createSlice({
           duplicatesFiltered: action.payload.entries.length - newEntries.length,
         });
 
-        // Enforce requested generationType for pagination as well
-        const usedTypeAny = ((action.meta as any)?.arg?.filters?.generationType || state.filters?.generationType) as any;
-        if (usedTypeAny) {
+        // When using mode filters (mode: 'image' or mode: 'video'), the backend is the source of truth
+        // and already filters correctly. Do NOT apply any frontend filtering in this case.
+        // Trust the backend completely and maintain everything it returns.
+        const requestFilters = (action.meta as any)?.arg?.filters || {};
+        const requestBackendFilters = (action.meta as any)?.arg?.backendFilters || {};
+        const requestedLimit = (action.meta as any)?.arg?.paginationParams?.limit || 10;
+        const hasModeFilter = !!(requestFilters?.mode || requestBackendFilters?.mode);
+        
+        // Only apply generationType filtering if we're NOT using mode filters
+        // When mode filters are used, accept all items from backend without additional filtering
+        if (!hasModeFilter) {
+          const usedTypeAny = (requestFilters?.generationType || requestBackendFilters?.generationType || state.filters?.generationType) as any;
+          if (usedTypeAny) {
           const normalize = (t?: string): string => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
           const typeMatches = (eType?: string, fType?: string): boolean => {
             const e = normalize(eType);
@@ -812,22 +953,58 @@ const historySlice = createSlice({
             }
             return false;
           });
+          }
         }
+        // If hasModeFilter is true, we skip all filtering and accept all items from backend
         
         // Append only genuinely new entries
         state.entries.push(...newEntries);
 
-        // Respect server-declared hasMore. Do NOT force-stop on zero net-new entries.
-        // Zero-new can happen due to de-duplication or server-side filtering while still
-        // having additional pages available. We'll trust the backend signal here.
+        // Respect server-declared hasMore but stay optimistic when we have cursors or full pages.
+        // Zero-new can happen due to de-duplication while more pages still exist.
         const serverHasMore = Boolean(action.payload.hasMore);
+        const hasNextCursor = action.payload.nextCursor !== undefined && action.payload.nextCursor !== null;
+        const payloadEntries = action.payload.entries || [];
+        
+        // Calculate synthetic cursor from entries that were actually added (after filtering/deduplication)
+        // This ensures cursor points to the correct position for next page
+        // Use the last item from NEW entries added (not original payload) to maintain pagination accuracy
+        const syntheticNextCursor = !hasNextCursor && newEntries.length > 0
+          ? (() => {
+              try {
+                // When sortOrder is 'asc', entries are oldest to newest, so use last item
+                // When sortOrder is 'desc', entries are newest to oldest, so also use last item
+                const last = newEntries[newEntries.length - 1];
+                const ts = Date.parse(String(last?.timestamp || last?.createdAt || ''));
+                return Number.isNaN(ts) ? null : String(ts);
+              } catch { return null; }
+            })()
+          : (!hasNextCursor && payloadEntries.length > 0
+            ? (() => {
+                // Fallback: if all entries were filtered but payload had items, use original payload's last item
+                try {
+                  const last = payloadEntries[payloadEntries.length - 1];
+                  const ts = Date.parse(String(last?.timestamp || last?.createdAt || ''));
+                  return Number.isNaN(ts) ? null : String(ts);
+                } catch { return null; }
+              })()
+            : null);
+        const optimisticHasMore = serverHasMore || hasNextCursor || Boolean(syntheticNextCursor) || payloadEntries.length >= requestedLimit;
         state.lastLoadedCount = newEntries.length;
-        state.hasMore = serverHasMore;
+        state.hasMore = optimisticHasMore;
+        // Store nextCursor from backend response or synthesize from last item to enable deeper paging when server omits cursor
+        state.nextCursor = action.payload.nextCursor ?? syntheticNextCursor ?? null;
         
         console.log('[HistorySlice] State updated after loadMoreHistory.fulfilled:', {
           totalEntriesCount: state.entries.length,
           hasMore: state.hasMore,
           lastLoadedCount: state.lastLoadedCount,
+          nextCursor: state.nextCursor,
+          syntheticCursor: syntheticNextCursor,
+          backendCursor: action.payload.nextCursor,
+          newEntriesAdded: newEntries.length,
+          originalPayloadCount: payloadEntries.length,
+          incomingSortOrder: incomingSort,
         });
       })
       .addCase(loadMoreHistory.rejected, (state, action) => {
@@ -870,6 +1047,7 @@ export const {
 
 // Export the async thunk
 export { addAndSaveHistoryEntry };
+
 
 
 

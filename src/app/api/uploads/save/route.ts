@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const apiBase =
       process.env.API_BASE_URL ||
       process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://api-gateway-services-wildmind.onrender.com';
+      '';
 
     const bodyText = await req.text();
 

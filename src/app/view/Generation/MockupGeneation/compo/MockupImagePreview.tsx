@@ -4,6 +4,8 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { X, Download, Copy, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { useAppSelector } from '@/store/hooks';
 
 interface MockupImagePreviewProps {
   isOpen: boolean;
@@ -18,6 +20,7 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
   const getUserPrompt = (raw: string | undefined) => (raw || '').replace(/^Mockup:\s*/i, '').trim();
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const isLongPrompt = (getUserPrompt(entry.prompt) || '').length > 200;
+  const user = useAppSelector((state: any) => state.auth?.user);
   
   if (!isOpen) return null;
 
@@ -33,17 +36,11 @@ const MockupImagePreview: React.FC<MockupImagePreviewProps> = ({ isOpen, onClose
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(selected.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mockup-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch {}
+      const username = user?.username || user?.displayName || null;
+      await downloadFileWithNaming(selected.url, username, 'image', 'mockup');
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
   };
 
   const scrollToTop = () => {

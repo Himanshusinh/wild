@@ -67,7 +67,8 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     let transactionId: string;
     try {
-      const musicResult = await validateMusicCredits(payload.model, 10);
+      // Pass inputs array for character-based credit calculation (same as TTS)
+      const musicResult = await validateMusicCredits(payload.model, 10, validInputs);
       const reservation = await reserveCreditsForGeneration(
         musicResult.requiredCredits,
         'music-generation',
@@ -89,18 +90,27 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     const modelName = payload.model || 'elevenlabs-dialogue';
     const dialogueText = validInputs.map((input: any) => input.text).join(' | ');
+    const fileName = payload.fileName || '';
     
-    setLocalMusicPreview({
-      id: `dialogue-loading-${Date.now()}`,
+    const tempId = `dialogue-loading-${Date.now()}`;
+    const loadingEntry = {
+      id: tempId,
       prompt: dialogueText,
       model: modelName,
-      generationType: 'text-to-dialogue',
-      images: [{ id: 'dialogue-loading', url: '', originalUrl: '' }],
+      generationType: 'text-to-dialogue' as 'text-to-dialogue',
+      images: [{ id: 'loading', url: '', originalUrl: '', type: 'audio' }], // Placeholder for generating state
+      audios: [],
+      status: 'generating' as 'generating',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       imageCount: 1,
-      status: 'generating'
-    });
+      fileName: fileName
+    };
+    
+    // Add to Redux immediately to show loading animation
+    dispatch(addHistoryEntry(loadingEntry));
+    
+    setLocalMusicPreview(loadingEntry);
 
     try {
       const result: any = await dispatch(falElevenTts(payload)).unwrap();
@@ -115,41 +125,29 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
       setResultUrl(audioUrl);
       confirmGenerationSuccess(transactionId);
 
-      // Update local preview
-      setLocalMusicPreview((prev: any) => prev ? {
-        ...prev,
+      const firebaseHistoryId = result.historyId || tempId;
+      const finalModelName = result.model || modelName;
+      const finalAudios = result.audios || [audioObj];
+      const imagesArray = result.images || [audioObj];
+
+      // Update Redux entry first (update both tempId and historyId if different)
+      const updateData: any = {
         status: 'completed',
         audio: audioObj,
-        audios: result.audios || [audioObj],
-        images: result.images || [audioObj]
-      } : null);
+        audios: finalAudios,
+        images: imagesArray,
+        model: finalModelName,
+        backendModel: result.model,
+        generationType: 'text-to-dialogue',
+        fileName: fileName
+      };
 
-      // Update history entry if historyId exists
-      if (result.historyId) {
-        // Preserve the backend model name if available, otherwise use frontend model name
-        const finalModelName = result.model || modelName;
-        const updateData: any = {
-          status: 'completed',
-          audio: audioObj,
-          audios: result.audios || [audioObj],
-          images: result.images || [audioObj],
-          model: finalModelName,
-          backendModel: result.model, // Store backend endpoint name separately
-          generationType: 'text-to-dialogue'
-        };
-
-        console.log('[DialogueInputBox] Updating history entry:', {
-          historyId: result.historyId,
-          model: finalModelName,
-          backendModel: result.model,
-          generationType: 'text-to-dialogue',
-          hasAudios: !!updateData.audios?.length,
-          hasImages: !!updateData.images?.length,
-          hasAudio: !!updateData.audio
-        });
-
+      // Update the loading entry in Redux (use tempId first, then historyId if different)
+      dispatch(updateHistoryEntry({ id: tempId, updates: updateData }));
+      
+      // If we have a real historyId that's different from tempId, also update that entry
+      if (result.historyId && result.historyId !== tempId) {
         dispatch(updateHistoryEntry({ id: result.historyId, updates: updateData }));
-        
         try {
           await updateFirebaseHistory(result.historyId, updateData);
         } catch (firebaseErr) {
@@ -157,8 +155,27 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
         }
       }
 
-      // Refresh history
-      refreshMusicHistoryImmediate();
+      // Update local preview to completed state
+      setLocalMusicPreview((prev: any) => prev ? {
+        ...prev,
+        id: firebaseHistoryId,
+        status: 'completed',
+        audio: audioObj,
+        audios: finalAudios,
+        images: imagesArray,
+        model: finalModelName,
+        fileName: fileName
+      } : null);
+
+      // Clear local preview after a short delay to let Redux entry take over
+      setTimeout(() => {
+        setLocalMusicPreview(null);
+      }, 500);
+
+      // Refresh history with merge mode to preserve local state
+      setTimeout(() => {
+        refreshMusicHistoryImmediate(50, false); // false = merge mode
+      }, 1000);
     } catch (error: any) {
       console.error('[DialogueInputBox] Generation failed:', error);
       setErrorMessage(error?.message || 'Dialogue generation failed');
@@ -196,7 +213,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
           )}
 
           {/* Dialogue Input Box */}
-          <div className="w-full -mt-6 bg-white/5 backdrop-blur-3xl  rounded-2xl">
+          <div className="w-full -mt-6 bg-[#1f1f23]  rounded-2xl">
             <MusicInputBox
               onGenerate={handleGenerate}
               isGenerating={isGenerating}
@@ -229,6 +246,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType}
               autoPlay={true}
             />
           </div>

@@ -23,6 +23,7 @@ import {
   fileToDataURI
 } from '@/lib/runwayVideoService';
 import { runwayVideo } from '@/store/slices/generationsApi';
+import { addActiveGeneration, updateActiveGeneration } from '@/store/slices/generationSlice';
 // historyService removed; backend will handle history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateHistoryEntry = async (_id: string, _updates: any) => {};
@@ -41,7 +42,7 @@ import {
 } from 'lucide-react';
 import { getModelCreditInfo } from '@/utils/modelCredits';
 
-const VideoGenerationInputBox: React.FC = () => {
+const VideoGenerationInputBox = () => {
   const dispatch = useAppDispatch();
   const [state, setState] = useState<VideoGenerationState>(defaultVideoGenerationState);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -241,11 +242,34 @@ const VideoGenerationInputBox: React.FC = () => {
     setIsGenerating(true);
     setGenerationProgress({ current: 0, total: 100, status: 'Starting generation...' });
 
+    // Create generation ID for queue tracking
+    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // Get current prompt and model
+    const currentPrompt = state.mode === 'image_to_video' ? state.imageToVideo.promptText || '' : state.videoToVideo.promptText;
+    const currentModel = state.mode === 'image_to_video' ? state.imageToVideo.model : state.videoToVideo.model;
+    const currentRatio = state.mode === 'image_to_video' ? state.imageToVideo.ratio : state.videoToVideo.ratio;
+
+    // Add to active generations queue immediately
+    dispatch(addActiveGeneration({
+      id: generationId,
+      prompt: currentPrompt,
+      model: currentModel,
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      params: {
+        generationType: 'text-to-video',
+        aspectRatio: currentRatio,
+        duration: state.mode === 'image_to_video' ? state.imageToVideo.duration : undefined,
+      },
+    }));
+
     // Create initial history entry
     const historyData = {
-      prompt: state.mode === 'image_to_video' ? state.imageToVideo.promptText || '' : state.videoToVideo.promptText,
-      model: state.mode === 'image_to_video' ? state.imageToVideo.model : state.videoToVideo.model,
-      frameSize: state.mode === 'image_to_video' ? state.imageToVideo.ratio : state.videoToVideo.ratio,
+      prompt: currentPrompt,
+      model: currentModel,
+      frameSize: currentRatio,
       style: 'video',
       generationType: 'text-to-video' as const,
       imageCount: 1,
@@ -273,6 +297,12 @@ const VideoGenerationInputBox: React.FC = () => {
         return '';
       })();
 
+      // Update status to generating when API call starts
+      dispatch(updateActiveGeneration({
+        id: generationId,
+        updates: { status: 'generating' }
+      }));
+
       // Call video generation API with isPublic from backend policy
       const { getIsPublic } = await import('@/lib/publicFlag');
       const isPublic = await getIsPublic();
@@ -282,6 +312,7 @@ const VideoGenerationInputBox: React.FC = () => {
         imageToVideo: state.imageToVideo,
         videoToVideo: state.videoToVideo,
         isPublic,
+        generationId,
       })).unwrap();
       
       // Wait for completion
@@ -309,6 +340,20 @@ const VideoGenerationInputBox: React.FC = () => {
         });
       }
 
+      // Update shared queue entry as completed so UI loader stops and preview is shown
+      if (generationId) {
+        try {
+          dispatch(updateActiveGeneration({
+            id: generationId,
+            updates: {
+              status: 'completed',
+              videos: (finalStatus.output || []).map((url: string, index: number) => ({ id: `${result.taskId}-${index}`, url, originalUrl: url })),
+              historyId: firebaseHistoryId
+            }
+          }));
+        } catch (e) { /* non-fatal */ }
+      }
+
       toast.success('Video generation completed successfully!');
       clearInputs();
 
@@ -322,6 +367,13 @@ const VideoGenerationInputBox: React.FC = () => {
           status: 'failed',
           generationProgress: { current: 0, total: 100, status: 'Failed' }
         });
+      }
+
+      // Reflect failure in the shared queue so the loader stops
+      if (generationId) {
+        try {
+          dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: error?.message || 'Video generation failed' } }));
+        } catch (e) { /* non-fatal */ }
       }
     } finally {
       setIsGenerating(false);

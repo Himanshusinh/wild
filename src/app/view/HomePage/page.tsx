@@ -8,7 +8,8 @@ import '@/utils/checkSessionStatus'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Image from 'next/image'
-import { getImageUrl, API_BASE } from './routes'
+import { getImageUrl, API_BASE, imageRoutes } from './routes'
+// import PromotionalBanner from './compo/PromotionalBanner'
 // Lazy load non-critical components for better performance
 import dynamic from 'next/dynamic'
 
@@ -35,9 +36,9 @@ const FooterNew = dynamic(() => import('../core/FooterNew'), {
 })
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
-import type { Creation } from './compo/CommunityCreations'
-
 import { ViewType, GenerationType } from '@/types/generation';
+import PromotionalBanner2 from './compo/PromotionalBanner2';
+import AIToolsSection from './compo/AIToolsSection';
 
 const HomePage: React.FC = () => {
   const router = useRouter();
@@ -193,204 +194,68 @@ const HomePage: React.FC = () => {
   ];
 
 
-  // Removed static ITEMS fallback; homepage will use live Art Station feed only
-
-  const [artItems, setArtItems] = useState<Creation[]>([])
-
-  const didInitArtRef = React.useRef(false)
-  
-  // Memoize dimensions array to prevent recreation
-  const dims = useMemo(() => [
-    { w: 900, h: 1400 },
-    { w: 1200, h: 1150 },
-    { w: 1000, h: 1000 },
-    { w: 1200, h: 1810 },
-    { w: 1600, h: 1400 },
-    { w: 1100, h: 1800 },
-    { w: 1500, h: 1000 },
-    { w: 1400, h: 1200 },
-    { w: 1200, h: 1200 },
-  ], []);
-
-  // Memoize base URL processing
-  const baseUrl = useMemo(() => API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE, []);
-
-  // Optimized category mapping function
-  const getCategory = useCallback((generationType: string, firstAudio: any) => {
-    if (firstAudio) return 'Music';
-    const t = generationType.toLowerCase();
-    if (t.includes('music') || t.includes('audio')) return 'Music';
-    if (t === 'text-to-image') return 'Images';
-    if (t === 'text-to-video') return 'Videos';
-    if (t === 'logo' || t === 'logo-generation') return 'Logos';
-    if (t === 'sticker-generation' || t === 'sticker') return 'Stickers';
-    if (t === 'product-generation' || t === 'product') return 'Products';
-    return 'All';
-  }, []);
-
-  useEffect(() => {
-    if (didInitArtRef.current) return; // Prevent React StrictMode double-invoke in dev
-    didInitArtRef.current = true;
-    const fetchHomeArt = async () => {
-      try {
-        let nextCursor: string | undefined = undefined
-        const out: Creation[] = []
-        let page = 0
-        const maxPages = 3
-        while (page < maxPages && out.length < 48) {
-          try {
-            const url = new URL(`${baseUrl}/api/feed`)
-            url.searchParams.set('limit', '24')
-            // Home page: prefer images for aesthetic layout
-            url.searchParams.set('mode', 'image')
-            if (nextCursor) url.searchParams.set('cursor', nextCursor)
-            
-            const res = await fetch(url.toString(), { 
-              credentials: 'include',
-              // Add cache headers for better performance
-              cache: 'default',
-              headers: {
-                'Accept': 'application/json',
-              }
-            })
-            
-            if (!res.ok) {
-              const errorText = await res.text().catch(() => 'Unknown error')
-              console.error(`[HomePage] Feed API error (page ${page}):`, res.status, errorText)
-              // If we have items already, use them; otherwise break
-              if (out.length > 0) break
-              // If first page fails, try to continue or break
-              break
-            }
-            
-            const data = await res.json()
-            // Removed verbose logging for production performance
-            
-            // Handle API response format: { responseStatus: 'success', data: { items: [], meta: {} } }
-            const payload = data?.data || data
-            const items: any[] = payload?.items || []
-            nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
-
-            // Removed verbose logging for production performance
-
-            // If no items in this page, break to avoid infinite loop
-            if (items.length === 0) {
-              // Removed verbose logging for production performance
-              break
-            }
-
-            items.forEach((it: any, idx: number) => {
-              const firstImage = (it.images && Array.isArray(it.images) && it.images[0])
-              const firstVideo = (it.videos && Array.isArray(it.videos) && it.videos[0])
-              const firstAudio = (it.audios && Array.isArray(it.audios) && it.audios[0])
-              const media = firstVideo || firstImage || firstAudio
-              // Try multiple URL fields (same as ArtStation)
-              const src = media?.url || media?.firebaseUrl || media?.originalUrl || ''
-              if (!src) {
-                return // Skip items without media URL
-              }
-              const cat = getCategory(it.generationType || '', firstAudio)
-              const dim = dims[(out.length + idx) % dims.length]
-              const creator = (it.createdBy?.displayName || it.createdBy?.username || 'User') as string
-              out.push({ id: it.id || String(out.length + idx), src, prompt: it.prompt, categories: [cat], width: dim.w, height: dim.h, createdBy: creator })
-            })
-
-            page += 1
-            if (!nextCursor) {
-              // Removed verbose logging for production performance
-              break
-            }
-          } catch (pageError: any) {
-            console.error(`[HomePage] Error fetching page ${page}:`, pageError?.message || pageError)
-            // If we have items already, use them; otherwise continue to next page
-            if (out.length > 0) {
-              console.log(`[HomePage] Using ${out.length} items collected so far`)
-              break
-            }
-            // If first page fails, break to avoid infinite loop
-            break
-          }
-        }
-
-        setArtItems(out)
-      } catch (e: any) {
-        console.error('[HomePage] Fatal error fetching art:', e?.message || e)
-        // fallback to static
-        setArtItems([])
-      }
-    }
-    fetchHomeArt()
-  }, [baseUrl, dims, getCategory])
-
   return (
     <div className="min-h-screen bg-[#07070B]">
-      {/* DEBUG: This is HomePage component */}
-      {/* <div className="fixed top-0 left-0 right-0 z-50 bg-red-500 text-white p-2 text-center">
-        🔍 DEBUG: HomePage Component is Rendering
-      </div> */}
-
-      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
-      <div className="flex pt-[80px] ml-[68px]"> {/* top padding + left margin to account for persistent Nav + SidePanel */}
+      <div className="flex  md:ml-[68px] pt-2">
         <div className="flex-1 min-w-0">
-          <Header />
+          {/* <Header /> */}
+          
+          {/* Promotional Banner */}
+          <PromotionalBanner2 />
+
           <Recentcreation />
-          <Second />
-          <main className="min-h-screen bg-[#07070B] text-white pt-10">
-            <div className="w-full md:pl-12 mt-10">
-              <h2 className="text-white text-4xl md:text-4xl font-medium ml-0 ">Workflow</h2>
-              <WorkflowCarousel items={CARDS} autoPlay={true} intervalMs={30000} />
+
+          <AIToolsSection />
+          <main className="min-h-screen bg-[#07070B] text-white  md:px-8  ">
+            <div className="w-full px-4 md:pl-4">
+              <CommunityCreations />
             </div>
           </main>
 
-          <main className="min-h-screen bg-[#07070B] text-white px-4 md:px-8 pt-0 -mt-14">
-            <div className="w-full px-4 pl-4">
-              <CommunityCreations items={artItems} initialFilter="All" />
-            </div>
-          </main>
-
-          {/* WobbleCard Section */}
-          <main className="bg-[#07070B] text-white px-4 md:px-8 py-6 mb-32 mt-32">
+    
+          <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
             <div className="w-full px-4 md:px-8 lg:px-12">
               <div className="w-full">
                 <WobbleCard
-                  containerClassName="w-full bg-[#002933] min-h-[500px] md:min-h-[400px] lg:min-h-[500px]"
+                  containerClassName="w-full bg-[#002933] md:min-h-[400px] h-96 lg:min-h-[500px]"
                   className="!p-0 !py-0 !h-full !min-h-full"
                 >
                   <div
-                    className="flex w-full h-full min-h-full relative"
-                    style={{ height: '100%', minHeight: '500px' }}
+                    className="flex w-full md:h-full h-96 relative"
+                   
                   >
-                    {/* Left side content */}
+                  
                     <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
                       <div className="w-full">
-                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
                           Plans That Grow With You
                         </h2>
-                        <p className="mt-4 md:mt-3 lg:mt-4 max-w-[40rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-base/6 md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
+                        <p className="mt-2 md:mt-3 lg:mt-4 max-w-[20rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-xs md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
                           Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
                         </p>
                       </div>
 
-                      {/* Join Community Button - Bottom Left */}
-                      <button className="font-poppins text-lg bg-white text-[#1C303D] font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg w-fit">
+                
+                      <button className="font-poppins md:text-lg text-xs bg-white text-[#1C303D] font-semibold md:px-6 px-2 md:py-3 py-1 rounded-full transition-all duration-200 shadow-lg w-fit">
                         Pricing Plans
                       </button>
                     </div>
 
-                    {/* Right side image */}
+                 
                     <div
                       className="absolute right-0 top-0 w-1/2 h-full"
                       style={{ height: '100%', minHeight: '500px' }}
                     >
                       <Image
                         src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
-                        alt="AI Art Community"
+                        alt="Pricing plans artwork"
                         fill
                         className="object-cover rounded-r-2xl"
                         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
                         priority
                         quality={85}
                         loading="eager"
+                        unoptimized
                       />
                     </div>
                   </div>

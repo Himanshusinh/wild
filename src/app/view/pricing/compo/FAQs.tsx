@@ -25,21 +25,21 @@
   return (
     <div className="w-full">
       <div className="w-full">
-        <h1 className="text-white text-4xl font-semibold text-left mb-7 mt-5">FAQs</h1>
+        <h1 className="text-white md:text-4xl text-2xl font-semibold text-left md:mb-7 mb-0 md:mt-5 mt-0">FAQs</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {faqData.map((faq) => (
             <div 
               key={faq.id}
               className="relative text-white rounded-lg
-              p-4 py-6 w-full min-h-[160px] isolate border border-white/10 ring-1 ring-white/10
+              md:p-4 p-2 md:py-6 py-3 w-full md:min-h-[160px] min-h-[120px] isolate border border-white/10 ring-1 ring-white/10
                bg-white/10 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
             >
               {/* Subtle glass highlight for consistency */}
               <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/5 via-transparent to-transparent opacity-20" aria-hidden />
               <div className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" aria-hidden />
-              <h3 className="text-lg font-semibold text-white mb-2 relative z-10 mx-1">{faq.question}</h3>
-              <p className="text-white/70 leading-snug text-sm relative z-10 mx-1">{faq.answer}</p>
+              <h3 className="md:text-lg text-sm font-semibold text-white md:mb-2 mb-1 relative z-10 mx-1">{faq.question}</h3>
+              <p className="md:text-sm text-[10px] text-white/70 leading-snug relative z-10 mx-1">{faq.answer}</p>
             </div>
           ))}
         </div>

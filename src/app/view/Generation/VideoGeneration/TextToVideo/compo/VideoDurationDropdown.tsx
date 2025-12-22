@@ -114,19 +114,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       ];
     }
     if (selectedModel?.includes("seedance")) {
-      // Seedance supports 2-12 seconds
+      // Seedance supports only 5s and 10s for all variants (Lite, Pro, Pro Fast)
       return [
-        { value: 2, label: "2 seconds", description: "Very short" },
-        { value: 3, label: "3 seconds", description: "Short" },
-        { value: 4, label: "4 seconds", description: "Short" },
         { value: 5, label: "5 seconds", description: "Standard" },
-        { value: 6, label: "6 seconds", description: "Standard" },
-        { value: 7, label: "7 seconds", description: "Medium" },
-        { value: 8, label: "8 seconds", description: "Medium" },
-        { value: 9, label: "9 seconds", description: "Long" },
-        { value: 10, label: "10 seconds", description: "Long" },
-        { value: 11, label: "11 seconds", description: "Very long" },
-        { value: 12, label: "12 seconds", description: "Maximum" }
+        { value: 10, label: "10 seconds", description: "Long" }
       ];
     }
     if (selectedModel?.includes("veo3.1")) {
@@ -224,14 +215,14 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
       >
-        <Clock className="w-4 h-4 mr-1" />
+        <Clock className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedDurationInfo?.label || `${selectedDuration}s`}
         <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-32 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
           {availableDurations.map((duration) => (
             <button
               key={duration.value}
@@ -239,13 +230,13 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
                 onDurationChange(duration.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
+              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                 selectedDuration === duration.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
               }`}
             >
-              <span>{duration.label}</span>
+              <span className="md:text-sm text-xs">{duration.label}</span>
               {selectedDuration === duration.value && (
                 <div className="w-2 h-2 bg-black rounded-full"></div>
               )}

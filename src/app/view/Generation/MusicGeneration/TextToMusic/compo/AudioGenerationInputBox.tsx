@@ -83,6 +83,7 @@ const AudioGenerationInputBox = () => {
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType}
               autoPlay={true}
             />
           </div>

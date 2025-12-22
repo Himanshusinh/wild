@@ -94,6 +94,10 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn']
     }
   },
+  // Explicitly set Turbopack root to avoid incorrect inference when multiple lockfiles exist
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default nextConfig;

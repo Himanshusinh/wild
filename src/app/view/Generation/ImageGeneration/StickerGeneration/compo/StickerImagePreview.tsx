@@ -83,7 +83,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
     };
   }, [isOpen]);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
   // Use centralized helpers
 
@@ -109,7 +109,7 @@ const StickerImagePreview: React.FC<StickerImagePreviewProps> = ({
   const isUserUploadSelected = selectedImageIndex < inputImages.length;
   const selectedImagePath = (selectedImage as any)?.storagePath || (() => {
     try {
-      const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/');
+      const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
       const original = selectedImage?.url || '';
       if (original.startsWith(ZATA_PREFIX)) return original.substring(ZATA_PREFIX.length);
     } catch {}

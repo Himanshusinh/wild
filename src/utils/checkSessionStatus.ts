@@ -90,7 +90,7 @@ export async function checkSessionStatus(): Promise<SessionStatus> {
 
   // Check backend verification
   try {
-    const response = await fetch('/api/auth/debug-session', {
+    const response = await fetch('/api/auth/me', {
       method: 'GET',
       credentials: 'include',
     });

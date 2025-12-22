@@ -1,9 +1,10 @@
 "use client";
 import React, { useState } from 'react';
 import { HistoryEntry } from '@/types/history';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
 import { removeHistoryEntry } from '@/store/slices/historySlice';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 interface AdImagePreviewProps {
   entry: HistoryEntry;
@@ -16,21 +17,18 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const isLongPrompt = userPrompt.length > 280;
   const dispatch = useAppDispatch();
+  const user = useAppSelector((state: any) => state.auth?.user);
 
-  const handleDownload = async (imageUrl: string, filename: string) => {
+  const handleDownload = async () => {
     try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const imageUrl = entry.images[selectedImageIndex]?.url;
+      if (!imageUrl) return;
+      const username = user?.username || user?.displayName || null;
+      // Determine file type - Ad generation can be video or image
+      const fileType = imageUrl.includes('video') || imageUrl.includes('.mp4') || imageUrl.includes('.webm') ? 'video' : 'image';
+      await downloadFileWithNaming(imageUrl, username, fileType, 'ad');
     } catch (error) {
-      console.error('Error downloading image:', error);
+      console.error('Error downloading:', error);
     }
   };
 
@@ -104,7 +102,7 @@ const AdImagePreview: React.FC<AdImagePreviewProps> = ({ entry, onClose }) => {
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2">
               <button
-                onClick={() => handleOpenInNewTab(entry.images[selectedImageIndex]?.url)}
+                onClick={handleDownload}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 text-sm"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">

@@ -46,15 +46,13 @@ const getStoredIdToken = (): string | null => {
 }
 
 // Centralized axios instance configured to send cookies and optional Authorization header
-const resolvedBaseUrl = (() => {
-  const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
-  return raw.length > 0 ? raw : 'https://api-gateway-services-wildmind.onrender.com'
-})()
+// Uses NEXT_PUBLIC_API_BASE_URL (must be set in environment variables)
+const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
 
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,
   withCredentials: true,
-  timeout: 300000, // 5 minutes timeout for long-running requests like video generation
+  timeout: 600000, // 10 minutes timeout for long-running requests like image/video generation (increased from 5min to support 7min+ generations)
   headers: {
     'Content-Type': 'application/json',
     // Suppress ngrok browser warning HTML page so API returns JSON
@@ -78,8 +76,13 @@ axiosInstance.interceptors.request.use(async (config) => {
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
-    // For backend data endpoints (credits, generations, auth/me), attach Bearer id token so backend accepts without cookies
-    if (url.startsWith('/api/credits/') || url.startsWith('/api/generations') || url === '/api/auth/me') {
+    // For backend data endpoints (credits, generations, engagement, auth/me), attach Bearer id token so backend accepts without cookies
+    if (
+      url.startsWith('/api/credits/') ||
+      url.startsWith('/api/generations') ||
+      url.startsWith('/api/engagement') ||
+      url === '/api/auth/me'
+    ) {
       // Gentle delay if session cookie is racing to be set after auth
       try {
         const hasHint = document.cookie.includes('auth_hint=')
@@ -89,7 +92,44 @@ axiosInstance.interceptors.request.use(async (config) => {
           await new Promise((r) => setTimeout(r, 100))
         }
       } catch { }
-      const token = getStoredIdToken()
+
+      // CRITICAL FIX: Try to get fresh token from Firebase first, fallback to stored token
+      // This prevents using expired tokens from localStorage
+      let token: string | null = null;
+      try {
+        // Try to get fresh token from Firebase (non-blocking, don't force refresh to avoid delays)
+        if (auth?.currentUser) {
+          try {
+            // Get token without forcing refresh (Firebase SDK automatically refreshes if needed)
+            token = await auth.currentUser.getIdToken(false);
+            if (isApiDebugEnabled()) {
+              console.log('[API][request] Got fresh token from Firebase', {
+                hasToken: !!token,
+                tokenPrefix: token ? token.substring(0, 20) : 'N/A'
+              });
+            }
+          } catch (tokenError: any) {
+            // If getting fresh token fails, fall back to stored token
+            if (isApiDebugEnabled()) {
+              console.warn('[API][request] Failed to get fresh token, using stored token:', tokenError?.message);
+            }
+            token = getStoredIdToken();
+          }
+        } else {
+          // No Firebase user, use stored token as fallback
+          token = getStoredIdToken();
+          if (isApiDebugEnabled()) {
+            console.log('[API][request] No Firebase user, using stored token', { hasToken: !!token });
+          }
+        }
+      } catch (error: any) {
+        // Fallback to stored token if anything fails
+        token = getStoredIdToken();
+        if (isApiDebugEnabled()) {
+          console.warn('[API][request] Error getting token, using stored token:', error?.message);
+        }
+      }
+
       if (token) {
         const headers: any = config.headers || {}
         headers['Authorization'] = `Bearer ${token}`
@@ -419,17 +459,84 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
 
     if (isApiDebugEnabled()) console.log('[API][session-refresh] Starting automatic session refresh');
 
-    // Get current Firebase user
-    const currentUser = auth.currentUser;
+    // CRITICAL FIX: Wait for Firebase auth state to initialize
+    // Firebase auth state might not be ready immediately after page load
+    // Wait up to 2 seconds for auth state to restore from persistence
+    let currentUser = auth.currentUser;
     if (!currentUser) {
-      if (isApiDebugEnabled()) console.warn('[API][session-refresh] No current user, cannot refresh');
-      return;
+      // Wait for auth state to restore (Firebase persists auth state)
+      const authStateReady = new Promise<void>((resolve) => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          unsubscribe();
+          resolve();
+        });
+        // Timeout after 2 seconds
+        setTimeout(() => {
+          unsubscribe();
+          resolve();
+        }, 2000);
+      });
+      await authStateReady;
+      currentUser = auth.currentUser;
+    }
+
+    // CRITICAL FIX: If Firebase user is still null, try to recover from stored token
+    // This handles cases where Firebase auth state is lost but session cookie exists
+    if (!currentUser) {
+      const storedToken = getStoredIdToken();
+      if (storedToken) {
+        // We have a stored token but no Firebase user
+        // This means Firebase auth state was lost but we have a valid session cookie
+        // Don't fail - the session cookie should still work
+        console.warn('[API][session-refresh] Firebase user is null but stored token exists. Session cookie should still be valid.');
+        if (isApiDebugEnabled()) {
+          console.log('[API][session-refresh] Skipping refresh - session cookie should still work without Firebase user');
+        }
+        return;
+      } else {
+        // No Firebase user and no stored token - user is truly logged out
+        if (isApiDebugEnabled()) {
+          console.warn('[API][session-refresh] No current user and no stored token, cannot refresh');
+        }
+        return;
+      }
     }
 
     // Get fresh ID token
-    const freshIdToken = await currentUser.getIdToken(true);
+    let freshIdToken: string | null = null;
+    try {
+      freshIdToken = await currentUser.getIdToken(true);
+    } catch (tokenError: any) {
+      // CRITICAL FIX: If getting ID token fails, don't fail the refresh
+      // The session cookie might still be valid
+      console.warn('[API][session-refresh] Failed to get fresh ID token, but session cookie may still be valid:', {
+        error: tokenError?.message,
+        uid: currentUser?.uid
+      });
+
+      // Try to use stored token as fallback
+      const storedToken = getStoredIdToken();
+      if (storedToken) {
+        freshIdToken = storedToken;
+        console.log('[API][session-refresh] Using stored token as fallback');
+      } else {
+        // No fallback available
+        if (isApiDebugEnabled()) {
+          console.warn('[API][session-refresh] No ID token and no stored token, cannot refresh');
+        }
+        return;
+      }
+    }
+
     if (!freshIdToken) {
       if (isApiDebugEnabled()) console.warn('[API][session-refresh] Failed to get fresh ID token');
+
+      // CRITICAL FIX: If we can't get a fresh token, it might be a temporary network issue
+      // or the user's refresh token is revoked.
+      // We should NOT logout immediately. The session cookie might still be valid.
+      // We just stop the *refresh* attempt. The next request will try to use the cookie.
+      // If the cookie is valid, it will work. If not, it will 401 again, and we might loop.
+      // To prevent looping, we rely on the `isRefreshing` flag and the cooldown.
       return;
     }
 
@@ -440,7 +547,10 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
       { idToken: freshIdToken },
       {
         withCredentials: true,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${freshIdToken}`
+        }
       }
     );
 
@@ -454,16 +564,23 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
   } catch (error: any) {
     // CRITICAL FIX: Log refresh failures for debugging random logouts
     // Don't silently fail - this could be causing the logout issue
-    console.warn('[API][session-refresh] Failed to refresh session:', {
+    console.warn('[API][session-refresh] Failed to refresh session (CRITICAL - potential logout cause):', {
       message: error?.message,
       status: error?.response?.status,
+      data: error?.response?.data,
       hasCurrentUser: !!auth.currentUser,
       errorCode: error?.code,
-      timestamp: new Date().toISOString()
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      note: 'Session cookie may still be valid even if refresh fails'
     });
 
-    // If refresh fails, don't clear the session - let the user continue with existing session
+    // CRITICAL FIX: If refresh fails, don't clear the session - let the user continue with existing session
     // The session cookie should still be valid even if refresh fails
+    // Only clear session if we get a 401 from the refresh endpoint itself
+    if (error?.response?.status === 401) {
+      console.error('[API][session-refresh] CRITICAL: Refresh endpoint returned 401 - session may be invalid');
+    }
   } finally {
     isRefreshingSession = false;
   }
@@ -493,6 +610,34 @@ axiosInstance.interceptors.response.use(
     return response
   },
   async (error) => {
+    const original = error?.config || {}
+    const status = error?.response?.status
+    const errorData = error?.response?.data
+
+    // Check if request was cancelled (user navigated away, component unmounted, etc.)
+    const isCancelled = error?.code === 'ERR_CANCELED' ||
+      error?.name === 'CanceledError' ||
+      error?.name === 'AbortError' ||
+      error?.message?.includes('canceled') ||
+      error?.message?.includes('aborted');
+
+    if (isCancelled) {
+      // Request was cancelled - this is expected when user navigates away
+      // Don't show generic error toast, but we'll handle it in generation slice
+      if (isApiDebugEnabled()) {
+        console.log('[API][cancelled] Request was cancelled:', {
+          url: original?.url,
+          reason: 'User navigated away or component unmounted'
+        });
+      }
+      // Reject with a special cancellation marker
+      const cancelError = new Error('Request cancelled');
+      (cancelError as any).isCancelled = true;
+      (cancelError as any).code = 'ERR_CANCELED';
+      return Promise.reject(cancelError);
+    }
+
+    // Generic error toast (only for non-cancelled errors)
     try { await showFalErrorToast(error); } catch { }
     try {
       const urlStr = String(error?.config?.url || '')
@@ -506,8 +651,6 @@ axiosInstance.interceptors.response.use(
         })
       }
     } catch { }
-    const original = error?.config || {}
-    const status = error?.response?.status
 
     if (status !== 401) {
       try {
@@ -535,14 +678,73 @@ axiosInstance.interceptors.response.use(
     try {
       isRefreshing = true
       if (isApiDebugEnabled()) console.log('[API][401][refresh] starting')
-      const currentUser = auth.currentUser
+
+      // CRITICAL FIX: Wait for Firebase auth state to initialize
+      // Firebase auth state might not be ready immediately after page load
+      let currentUser = auth.currentUser
       if (!currentUser) {
-        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser - retry once without session create')
+        // Wait for auth state to restore (Firebase persists auth state)
+        const authStateReady = new Promise<void>((resolve) => {
+          const unsubscribe = auth.onAuthStateChanged((user) => {
+            unsubscribe();
+            resolve();
+          });
+          // Timeout after 1 second
+          setTimeout(() => {
+            unsubscribe();
+            resolve();
+          }, 1000);
+        });
+        await authStateReady;
+        currentUser = auth.currentUser;
+      }
+
+      if (!currentUser) {
+        // CRITICAL FIX: If Firebase user is null, try stored token as fallback
+        const storedToken = getStoredIdToken();
+        if (storedToken) {
+          console.log('[API][401][refresh] No Firebase user, but stored token exists - using stored token');
+          original.headers = original.headers || {}
+          original.headers['Authorization'] = `Bearer ${storedToken}`
+          try {
+            const retryResp = await axiosInstance(original)
+            pendingRequests.forEach((resolve) => resolve())
+            pendingRequests = []
+            return retryResp
+          } catch (retryErr: any) {
+            // Fall through to session creation
+          }
+        }
+
+        // If no stored token either, try retry once (session cookie might still work)
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser and no stored token - retry once without session create')
         await new Promise((r) => setTimeout(r, 200))
         return axiosInstance(original)
       }
+
       // Refresh ID token and retry WITHOUT creating a session
-      const freshIdToken = await currentUser.getIdToken(true)
+      let freshIdToken: string | null = null;
+      try {
+        freshIdToken = await currentUser.getIdToken(true);
+      } catch (tokenError: any) {
+        // CRITICAL FIX: If getting ID token fails, try stored token
+        console.warn('[API][401][refresh] Failed to get fresh ID token, trying stored token:', tokenError?.message);
+        const storedToken = getStoredIdToken();
+        if (storedToken) {
+          freshIdToken = storedToken;
+        } else {
+          // No token available, retry once
+          await new Promise((r) => setTimeout(r, 200));
+          return axiosInstance(original);
+        }
+      }
+
+      if (!freshIdToken) {
+        if (isApiDebugEnabled()) console.warn('[API][401][refresh] No ID token available - retry once');
+        await new Promise((r) => setTimeout(r, 200));
+        return axiosInstance(original);
+      }
+
       original.headers = original.headers || {}
       original.headers['Authorization'] = `Bearer ${freshIdToken}`
       try {

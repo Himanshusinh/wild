@@ -63,7 +63,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
   // Use shared helpers `toMediaProxy` and `toResourceProxy` from '@/lib/thumb' for proxying
 
@@ -301,16 +301,31 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const displayedAspect = entry?.frameSize || '16:9';
 
   // Extract video URL and route through proxy for cross-origin safety
+  // Prefer entry's video data (from backend) over preview.video (from Redux/active generation)
   let rawVideoUrl = '';
-  if (preview.video) {
+  let videoStoragePath: string | undefined;
+  
+  // First, try to get video from entry (most reliable, has storagePath)
+  if (entry?.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
+    const entryVideo = entry.videos[0];
+    rawVideoUrl = entryVideo.url || entryVideo.firebaseUrl || entryVideo.originalUrl || '';
+    videoStoragePath = entryVideo.storagePath;
+    console.log('[VideoPreviewModal] Using video from entry:', { url: rawVideoUrl, storagePath: videoStoragePath });
+  }
+  
+  // Fallback to preview.video if entry doesn't have video data
+  if (!rawVideoUrl && preview.video) {
     if (typeof preview.video === 'string') {
       rawVideoUrl = preview.video;
     } else if (preview.video.url) {
       rawVideoUrl = preview.video.url;
+      videoStoragePath = (preview.video as any)?.storagePath;
     } else if (preview.video.firebaseUrl) {
       rawVideoUrl = preview.video.firebaseUrl;
+      videoStoragePath = (preview.video as any)?.storagePath;
     } else if (preview.video.originalUrl) {
       rawVideoUrl = preview.video.originalUrl;
+      videoStoragePath = (preview.video as any)?.storagePath;
     }
   }
   const inputVideos = ((entry as any)?.inputVideos || []) as any[];
@@ -334,8 +349,21 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       videoUrl = rawVideoUrl;
     }
   } else {
-    const videoPath = (preview.video as any)?.storagePath || rawVideoUrl;
-    const proxied = toMediaProxy(videoPath) || '';
+    // Use storagePath if we have it, otherwise try to extract from URL
+    let videoPath = videoStoragePath;
+    
+    // If storagePath is missing, try to extract it from Zata URL
+    if (!videoPath && rawVideoUrl) {
+      const zataMatch = rawVideoUrl.match(/devstoragev1\/(.+)$/i);
+      if (zataMatch) {
+        videoPath = zataMatch[1];
+        console.log('[VideoPreviewModal] Extracted storagePath from URL:', videoPath);
+      }
+    }
+    
+    // Use storagePath if available, otherwise fall back to rawVideoUrl
+    const pathToUse = videoPath || rawVideoUrl;
+    const proxied = toMediaProxy(pathToUse) || '';
     videoUrl = proxied || rawVideoUrl;
   }
 
@@ -478,7 +506,23 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
-      <button aria-label="Close" className="text-white/100 hover:text-white text-lg absolute top-8 right-10 " onClick={onClose}>✕</button>
+      <button 
+        aria-label="Close" 
+        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-4 md:right-10 right-10 z-[100] hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          console.log('[VideoPreviewModal] Close button clicked')
+          onClose()
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation()
+        }}
+      >✕</button>
       <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
@@ -490,7 +534,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         {/* Content */}
         <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[50vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[40vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
             {videoUrl && videoUrl.length > 0 ? (
               videoUrl.startsWith('data:image/') ? (
                 <img 
@@ -500,7 +544,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 />
               ) : videoUrl.startsWith('/api/proxy/media/') || videoUrl.startsWith('blob:') || videoUrl.startsWith('http') ? (
                 <video 
-                  key={videoUrl}
+                  key={`${entryId}-${videoUrl}-${videoStoragePath || ''}`}
                   src={videoUrl} 
                   controls 
                   className="max-w-full max-h-full object-contain"
@@ -577,7 +621,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           </div>
 
           {/* Sidebar */}
-          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] mt-6 flex flex-col overflow-hidden ">
+          <div className="p-4 md:p-5 text-white white/10 bg-transparent h-[50vh] md:h-[84vh] md:w-[34%] mt-6 flex flex-col overflow-y-auto overflow-x-hidden">
             {/* Action Buttons */}
             <div className="mb-4 flex gap-2 flex-shrink-0">
               <div className="relative group flex-1">
@@ -634,8 +678,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
             </div>
 
             {/* Main content stack */}
-            <div className="flex-1 overflow-hidden ">
-              <div className="flex flex-col gap-4 h-full overflow-hidden">
+            <div className="flex-1 min-h-0">
+              <div className="flex flex-col gap-4">
                 {/* Prompt */}
                 <div className="flex-shrink-0 -mb-4">
                   <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-2">
@@ -759,9 +803,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       </div>
       {isFsOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <div className="absolute top-3 right-4 z-[90]">
-            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">✕</button>
-          </div>
+          {/* <div className="absolute top-3 right-4 z-[90]">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg hover:bg-white/20 text-white text-sm ">✕</button>
+          </div> */}
           <div
             ref={fsContainerRef}
             className="relative w-full h-full cursor-zoom-in"

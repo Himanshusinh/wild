@@ -112,7 +112,7 @@ const Nav = () => {
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
         </div>
 
-        <div className='flex items-center md:gap-3 gap-1 '>
+        <div className='hidden'>
           {/* <Image className='cursor-pointer border rounded-full p-2 border-white/15' src="/icons/searchwhite.svg" alt='logo' width={45} height={45} /> */}
           <button
             onClick={() => refreshCredits()}
@@ -125,7 +125,14 @@ const Nav = () => {
 
           {/* Profile trigger + dropdown (same behavior as homepage) */}
           <div className='relative' ref={dropdownRef}>
-            <button onClick={() => setShowDropdown(v => !v)} className='flex items-center gap-2 border border-white/15 rounded-full  cursor-pointer'>
+            <button onClick={() => {
+              // On mobile, navigate directly to account settings instead of opening dropdown
+              if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                router.push(NAV_ROUTES.ACCOUNT_MANAGEMENT)
+                return
+              }
+              setShowDropdown(v => !v)
+            }} className='flex items-center gap-2 border border-white/15 rounded-full  cursor-pointer'>
               {(userData?.photoURL && !avatarFailed) ? (
                 <img
                   src={userData.photoURL}
@@ -140,8 +147,8 @@ const Nav = () => {
             </button>
 
             {showDropdown && (
-              <div className='absolute right-0 top-full mt-2 w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden'>
-                <div className='p-4'>
+              <div className='absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-80 md:w-80 rounded-2xl backdrop-blur-3xl bg-white/10 shadow-xl border border-white/10 overflow-hidden z-[9999] max-h-[calc(100vh-8rem)] overflow-y-auto'>
+                <div className='p-3 md:p-4'>
                   {/* Header */}
                   <div className='flex items-center gap-3 mb-4 pb-4 border-b border-white/10'>
                     <div className='w-12 h-12  rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden'>

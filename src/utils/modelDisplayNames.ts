@@ -15,7 +15,11 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'gen4_image': 'Runway Gen4 Image',
   'gen4_image_turbo': 'Runway Gen4 Image Turbo',
   'minimax-image-01': 'MiniMax Image-01',
+  // Background removal (show credits inline)
+  'replicate-lucataco-remove-bg': 'Lucataco Remove BG - 10 credits',
+  'replicate-851-labs-remove-bg': '851 Labs Remove BG - 10 credits',
   'seedream-v4': 'Seedream v4 4k',
+  'seedream-4.5': 'Seedream 4.5 4K',
   'ideogram-ai/ideogram-v3': 'Ideogram v3',
   'ideogram-ai/ideogram-v3-quality': 'Ideogram v3 Quality',
   'leonardoai/lucid-origin': 'Lucid Origin',
@@ -23,6 +27,8 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'imagen-4-ultra': 'Imagen 4 Ultra',
   'imagen-4': 'Imagen 4',
   'imagen-4-fast': 'Imagen 4 Fast',
+  'new-turbo-model': 'Z-Turbo Model',
+  'openai/gpt-image-1.5': 'GPT Image 1.5',
   
   // Video Generation Models
   'veo3-t2v-8s': 'Veo3',
@@ -44,11 +50,22 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'sora2-v2v-remix': 'Sora 2 Remix',
   'kling-v2.5-turbo-pro-t2v': 'Kling 2.5 Turbo Pro',
   'kling-v2.1-t2v': 'Kling 2.1',
+  'kling-2.6-pro': 'Kling 2.6 Pro',
+  'fal-ai/kling-video/v2.6/pro/text-to-video': 'Kling 2.6 Pro',
+  'fal-ai/kling-video/v2.6/pro/image-to-video': 'Kling 2.6 Pro',
   'wan-2.5-t2v': 'WAN 2.5 T2V',
   'wan-2.5-t2v-fast': 'WAN 2.5 T2V Fast',
   'MiniMax-Hailuo-2.3': 'MiniMax-Hailuo-2.3',
   'MiniMax-Hailuo-2.3-Fast': 'MiniMax-Hailuo-2.3 Fast',
   'MiniMax-Hailuo-02': 'MiniMax-Hailuo-02',
+  'kling-o1': 'Kling o1',
+  'kling-o1-5s': 'Kling o1',
+  'kling-o1-10s': 'Kling o1',
+  'fal-ai/kling-video/o1/image-to-video': 'Kling o1',
+  'kling o1 5s': 'Kling o1',
+  'kling o1 10s': 'Kling o1',
+  'Kling o1 5s': 'Kling o1',
+  'Kling o1 10s': 'Kling o1',
   'T2V-01-Director': 'T2V-01-Director',
   'kling-v2.5-turbo-pro-i2v': 'Kling 2.5 Turbo Pro',
   'kling-v2.1-i2v': 'Kling 2.1',
@@ -61,6 +78,8 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'musicgen-melody': 'MusicGen Melody',
   'stable-audio-open': 'Stable Audio Open',
   'stable-audio-2': 'Stable Audio 2',
+  'prunaai/p-image': 'P-Image',
+  'prunaai/p-image-edit': 'P-Image-Edit',
   
   // Logo Generation Models
   'flux-kontext-dev': 'Flux Kontext Dev',
@@ -147,6 +166,8 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
   // Heuristic remapping for Kling models (remove vendor misspellings like Kwai/Kwaivgi)
   if (lower.includes('kling')) {
     const isMaster = /master/i.test(normalized);
+    if (lower.includes('o1') || lower.includes('o-1')) return 'Kling o1';
+    if (lower.includes('2.6')) return 'Kling 2.6 Pro';
     if (lower.includes('2.5')) return `Kling 2.5${isMaster ? ' Master' : ''}`;
     if (lower.includes('2.1')) return `Kling 2.1${isMaster ? ' Master' : ''}`;
     return `Kling${isMaster ? ' Master' : ''}`;

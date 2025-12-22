@@ -21,7 +21,7 @@ export const getCreditCostForModel = (modelName: string): number => {
 /**
  * Get credit cost for video models using the new mapping system
  */
-export const getVideoCreditCost = (frontendModel: string, resolution?: string, duration?: number): number => {
+export const getVideoCreditCost = (frontendModel: string, resolution?: string, duration?: number, generateAudio?: boolean): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== 'video') {
     console.warn(`Unknown or invalid video model: ${frontendModel}`);
@@ -40,6 +40,11 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           console.log(`Kling Lip Sync cost: ${finalCost} credits for ${durationSeconds} seconds`);
           return finalCost;
         }
+  // Kling o1 (FAL) fixed per-duration pricing
+  if (frontendModel === 'kling-o1') {
+    const dur = duration || 5;
+    return dur >= 10 ? 2300 : 1180;
+  }
         // WAN 2.2 Animate Replace uses per-second pricing (1 credit per second)
         if (frontendModel === 'wan-2.2-animate-replace') {
           // WAN 2.2 Animate Replace: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second
@@ -72,7 +77,9 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           // Use default values if not provided for WAN models to avoid "Unknown model" error
           const defaultDuration = duration || 5;
           const defaultResolution = resolution || '720p';
-          const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution);
+          // For Kling 2.6 Pro, pass generateAudio parameter
+          const audioParam = frontendModel === 'kling-2.6-pro' ? generateAudio : undefined;
+          const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution, audioParam);
           if (cost !== null && cost > 0) {
             console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
             return cost;
@@ -89,7 +96,12 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
         }
 
   // Build the complete model name with options
-  const creditModelName = buildCreditModelName(frontendModel, { resolution, duration });
+  // For Kling 2.6 Pro, include generateAudio in options
+  const buildOptions: any = { resolution, duration };
+  if (frontendModel === 'kling-2.6-pro') {
+    buildOptions.generateAudio = generateAudio;
+  }
+  const creditModelName = buildCreditModelName(frontendModel, buildOptions);
   if (!creditModelName) {
     console.warn(`Failed to build credit model name for: ${frontendModel}`);
     return 0;
@@ -118,12 +130,50 @@ export const getRunwayVideoCreditCost = (model: string, duration?: number): numb
 /**
  * Get credit cost for music generation
  */
-export const getMusicCreditCost = (frontendModel: string, duration?: number): number => {
+export const getMusicCreditCost = (frontendModel: string, duration?: number, inputs?: any[], text?: string): number => {
   const mapping = getModelMapping(frontendModel);
-  // Accept both 'music' and 'sfx' generation types for audio-related models
-  if (!mapping || (mapping.generationType !== 'music' && mapping.generationType !== 'sfx')) {
+  // Accept 'music', 'sfx', 'text-to-dialogue', and 'text-to-speech' generation types for audio-related models
+  const validGenerationTypes = ['music', 'sfx', 'text-to-dialogue', 'text-to-speech'];
+  if (!mapping || !validGenerationTypes.includes(mapping.generationType as string)) {
     console.warn(`Unknown or invalid music model: ${frontendModel}`);
     return 0;
+  }
+
+  // Handle Maya TTS with per-second pricing (6 credits per second) based on text length
+  // Same logic as backend: estimate duration from text length (~15 characters per second)
+  if (frontendModel === 'maya-tts' && text != null && typeof text === 'string') {
+    // Estimate duration: ~15 characters per second (matches backend for accurate estimation)
+    // Minimum 1 second
+    const estimatedDuration = Math.max(1, Math.ceil(text.length / 15));
+    const creditsPerSecond = 6;
+    return estimatedDuration * creditsPerSecond;
+  }
+  
+  // Handle ElevenLabs Dialogue with character-based pricing (same as TTS)
+  if (frontendModel === 'elevenlabs-dialogue' && Array.isArray(inputs) && inputs.length > 0) {
+    // Calculate total character count across all inputs
+    const totalCharCount = inputs.reduce((sum, input) => {
+      const text = input?.text || '';
+      return sum + (typeof text === 'string' ? text.length : 0);
+    }, 0);
+    
+    // Use same pricing as TTS: 220 for <=1000, 420 for 1001-2000
+    if (totalCharCount <= 1000) {
+      return 220;
+    } else if (totalCharCount <= 2000) {
+      return 420;
+    } else {
+      // For >2000, use 2000 pricing (shouldn't happen with validation, but handle gracefully)
+      return 420;
+    }
+  }
+  
+  // Handle ElevenLabs SFX with per-second pricing (6 credits per second)
+  if (frontendModel === 'elevenlabs-sfx' && duration != null) {
+    // Round up to nearest second for pricing
+    const durationSeconds = Math.ceil(duration);
+    const creditsPerSecond = 6;
+    return durationSeconds * creditsPerSecond;
   }
 
   // First try to get cost from creditDistributionData using creditModelName
@@ -154,12 +204,35 @@ export const getImageGenerationCreditCost = (
   count: number = 1,
   frameSize?: string,
   style?: string,
-  resolution?: string
+  resolution?: string,
+  uploadedImages?: any[]
 ): number => {
+  // Special case: z-image-turbo (new-turbo-model) is free for launch offer
+  if (frontendModel === 'new-turbo-model') {
+    console.log('getImageGenerationCreditCost: new-turbo-model is free (0 credits)');
+    return 0;
+  }
+
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== 'image') {
     console.warn(`Unknown or invalid image model: ${frontendModel}`);
     return 0;
+  }
+
+  // Handle Flux 2 Pro with I2I/T2I pricing
+  if (frontendModel === 'flux-2-pro') {
+    const isI2I = Array.isArray(uploadedImages) && uploadedImages.length > 0;
+    const res = resolution?.toUpperCase() || '1K';
+    let cost: number;
+    if (isI2I) {
+      // I2I pricing: 110 credits for 1K, 190 credits for 2K
+      cost = (res === '2K') ? 190 : 110;
+    } else {
+      // T2I pricing: 80 credits for 1K, 160 credits for 2K
+      cost = (res === '2K') ? 160 : 80;
+    }
+    console.log(`Flux 2 Pro ${isI2I ? 'I2I' : 'T2I'} cost: ${cost} credits for resolution: ${res}`);
+    return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
   }
 
   // Handle resolution-based pricing for nano-banana-pro
@@ -179,6 +252,15 @@ export const getImageGenerationCreditCost = (
   if (directCost !== undefined && directCost > 0) {
     console.log(`Found cost via direct mapping: ${directCost} for model: ${frontendModel}`);
     return directCost * Math.max(1, Math.min(count, 4)); // Max 4 images
+  }
+
+  // For Flux 2 Pro, use getCreditsForModel with uploadedImages
+  if (frontendModel === 'flux-2-pro') {
+    const cost = getCreditsForModel(frontendModel, undefined, resolution, undefined, uploadedImages);
+    if (cost !== null && cost > 0) {
+      console.log(`Found Flux 2 Pro cost via getCreditsForModel: ${cost}`);
+      return cost * Math.max(1, Math.min(count, 4));
+    }
   }
 
   // First try to get cost from creditDistributionData using creditModelName
@@ -224,9 +306,11 @@ export const getVideoGenerationCreditCost = (
  */
 export const getMusicGenerationCreditCost = (
   frontendModel: string,
-  duration?: number
+  duration?: number,
+  inputs?: any[],
+  text?: string // Added for Maya TTS per-second pricing based on text length
 ): number => {
-  return getMusicCreditCost(frontendModel, duration);
+  return getMusicCreditCost(frontendModel, duration, inputs, text);
 };
 
 /**

@@ -13,6 +13,7 @@ export interface ModelMapping {
     duration?: number[];
     frameSize?: string[];
     frames_per_second?: number[];
+    quality?: string[];
   };
 }
 
@@ -88,13 +89,37 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
-    frontendValue: 'google/nano-banana-pro',
-    creditModelName: 'Google nano banana pro 2K', // Default to 2K, will be resolved based on resolution
+    frontendValue: 'gemini-25-flash-image-i2i',
+    creditModelName: 'Google nano banana (I2I)',
     generationType: 'image',
-    provider: 'replicate',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'google/nano-banana-pro',
+    creditModelName: 'Nano banana Pro 2K', // Default to 2K, will be resolved based on resolution
+    generationType: 'image',
+    provider: 'fal',
     options: {
       resolution: ['1K', '2K', '4K']
     }
+  },
+  {
+    frontendValue: 'z-image-turbo',
+    creditModelName: 'Z Image Turbo',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'flux-2-pro-1080p',
+    creditModelName: 'FLUX.2 [pro] 1080p',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'flux-2-pro-2k',
+    creditModelName: 'FLUX.2 [pro] 2K',
+    generationType: 'image',
+    provider: 'fal'
   },
   {
     frontendValue: 'imagen-4-ultra',
@@ -130,6 +155,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'seedream-4.5',
+    creditModelName: 'Bytedance Seedream-4.5',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
     frontendValue: 'ideogram-ai/ideogram-v3',
     creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
     generationType: 'image',
@@ -142,8 +173,14 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'ideogram-3-turbo',
+    creditModelName: 'Ideogram 3 Turbo',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
     frontendValue: 'leonardoai/lucid-origin',
-    creditModelName: 'replicate/leonardoai/lucid-origin',
+    creditModelName: 'Lucid Origin',
     generationType: 'image',
     provider: 'replicate'
   },
@@ -152,6 +189,22 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'Phoenix 1.0',
     generationType: 'image',
     provider: 'replicate'
+  },
+  // TODO: Update model identifier and credit model name with actual values
+  {
+    frontendValue: 'new-turbo-model',
+    creditModelName: 'New Turbo Model', // TODO: Update with actual credit model name from creditDistribution.ts
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'openai/gpt-image-1.5',
+    creditModelName: 'gpt-image-1.5 auto', // Base name, quality appended dynamically
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      quality: ['low', 'medium', 'high', 'auto']
+    }
   },
 
   // VIDEO GENERATION MODELS
@@ -223,9 +276,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'gen4_aleph',
-    creditModelName: 'Gen-4 Aleph 10s',
+    creditModelName: 'Gen-4 Aleph 1s', // Note: creditDistribution has 1s variant
     generationType: 'video',
     provider: 'runway'
+  },
+  {
+    frontendValue: 'minimax-hailuo-01',
+    creditModelName: 'Minimax-Hailuo-01 512P 6s',
+    generationType: 'video',
+    provider: 'minimax'
   },
   {
     frontendValue: 'runway-act-two',
@@ -310,8 +369,32 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'veo3.1-i2v-4s',
+    creditModelName: 'Veo 3.1 I2V 4s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-i2v-6s',
+    creditModelName: 'Veo 3.1 I2V 6s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
     frontendValue: 'veo3.1-i2v-8s',
     creditModelName: 'Veo 3.1 I2V 8s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-i2v-4s',
+    creditModelName: 'Veo 3.1 Fast I2V 4s',
+    generationType: 'video',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'veo3.1-fast-i2v-6s',
+    creditModelName: 'Veo 3.1 Fast I2V 6s',
     generationType: 'video',
     provider: 'fal'
   },
@@ -364,6 +447,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
   
   // Kling Models (Replicate)
   {
+    frontendValue: 'kling-2.6-pro',
+    creditModelName: 'Kling 2.6 Pro T2V', // Base name, audio and duration appended dynamically
+    generationType: 'video',
+    provider: 'fal',
+    options: { duration: [5, 10] }
+  },
+  {
     frontendValue: 'kling-v2.5-turbo-pro-t2v',
     creditModelName: 'Kling 2.5 Turbo Pro T2V',
     generationType: 'video',
@@ -387,6 +477,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
   {
     frontendValue: 'kling-v2.1-i2v',
     creditModelName: 'Kling 2.1 I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { duration: [5, 10] }
+  },
+  {
+    frontendValue: 'kling-v2.1-master-t2v',
+    creditModelName: 'Kling 2.1 Master T2V',
     generationType: 'video',
     provider: 'replicate',
     options: { duration: [5, 10] }
@@ -491,6 +588,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
       duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     }
   },
+  {
+    frontendValue: 'seedance-1.0-pro-fast-t2v',
+    creditModelName: 'Seedance 1.0 Pro Fast T2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
+  {
+    frontendValue: 'seedance-1.0-pro-fast-i2v',
+    creditModelName: 'Seedance 1.0 Pro Fast I2V', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['480p', '720p', '1080p'],
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
 
   // PixVerse Models (Replicate)
   {
@@ -561,6 +678,25 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'video',
     provider: 'fal'
   },
+  {
+    frontendValue: 'seedvr2',
+    creditModelName: 'SeedVR2', // Base name, duration and resolution appended dynamically
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      resolution: ['720p', '1080p', '2k'],
+      duration: [5, 10]
+    }
+  },
+  {
+    frontendValue: 'kling-o1',
+    creditModelName: 'Kling o1', // Duration-specific credits resolved in buildCreditModelName
+    generationType: 'video',
+    provider: 'fal',
+    options: {
+      duration: [5, 10]
+    }
+  },
 
   // LTX V2 (FAL)
   {
@@ -601,13 +737,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'elevenlabs-tts',
-    creditModelName: 'ElevenLabs TTS v3',
+    creditModelName: 'Elevenlabs Eleven v3 TTS 1000 Characters', // Default to 1000 characters variant
     generationType: 'music',
     provider: 'fal'
   },
   {
     frontendValue: 'chatterbox-multilingual',
-    creditModelName: 'Chatterbox Multilingual TTS',
+    creditModelName: 'Chatter Box Multilingual 1000 Characters',
     generationType: 'music',
     provider: 'fal'
   },
@@ -619,14 +755,50 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   {
     frontendValue: 'elevenlabs-dialogue',
-    creditModelName: 'ElevenLabs Dialogue',
-    generationType: 'music',
+    creditModelName: 'Elevenlabs Eleven v3 TTD 1000 Characters', // Default to 1000 characters variant
+    generationType: 'text-to-dialogue',
     provider: 'fal'
   },
   {
     frontendValue: 'elevenlabs-sfx',
-    creditModelName: 'ElevenLabs Sound Effects',
+    creditModelName: 'Elevenlabs Sound-Effects v2 1s',
     generationType: 'sfx',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-tts-1000',
+    creditModelName: 'Elevenlabs Eleven v3 TTS 1000 Characters',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-tts-2000',
+    creditModelName: 'Elevenlabs Eleven v3 TTS 2000 Characters',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue-1000',
+    creditModelName: 'Elevenlabs Eleven v3 TTD 1000 Characters',
+    generationType: 'text-to-dialogue',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'elevenlabs-dialogue-2000',
+    creditModelName: 'Elevenlabs Eleven v3 TTD 2000 Characters',
+    generationType: 'text-to-dialogue',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'chatterbox-multilingual-1000',
+    creditModelName: 'Chatter Box Multilingual 1000 Characters',
+    generationType: 'music',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'minimax-music-2-5min',
+    creditModelName: 'MinMax Music 2.0 5minutes',
+    generationType: 'music',
     provider: 'fal'
   },
 
@@ -641,17 +813,115 @@ export const MODEL_MAPPING: ModelMapping[] = [
   // IMAGE UTILITIES (FAL)
   {
     frontendValue: 'fal-image2svg',
-    creditModelName: 'fal-ai/image2svg',
+    creditModelName: 'Image to SVG',
     generationType: 'image',
     provider: 'fal'
   },
   {
     frontendValue: 'fal-recraft-vectorize',
-    creditModelName: 'fal-ai/recraft/vectorize',
+    creditModelName: 'Recraft Vectorize',
     generationType: 'image',
     provider: 'fal'
-  }
-  ,
+  },
+  {
+    frontendValue: 'fal-outpaint',
+    creditModelName: 'fal-ai/outpaint',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-bria-genfill',
+    creditModelName: 'fal-ai/bria/genfill',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-24mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 24MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-48mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 48MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-96mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 96MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'fal-topaz-upscale-512mp',
+    creditModelName: 'fal-ai/topaz/upscale/image 512MP',
+    generationType: 'image',
+    provider: 'fal'
+  },
+  {
+    frontendValue: 'replicate-magic-image-refiner',
+    creditModelName: 'replicate/fermatresearch/magic-image-refiner',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'prunaai/p-image',
+    creditModelName: 'P-Image',
+    generationType: 'image',
+    provider: 'replicate',
+  },
+  {
+    frontendValue: 'replicate-clarity-upscaler',
+    creditModelName: 'replicate/philz1337x/clarity-upscaler',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'prunaai/p-image-edit',
+    creditModelName: 'P-Image-Edit',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-lucataco-remove-bg',
+    creditModelName: 'Lucataco/remove-bg',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-851-labs-remove-bg',
+    creditModelName: '851-labs/background-remover',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-bria-expand-image',
+    creditModelName: 'replicate/bria/expand-image',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-real-esrgan',
+    creditModelName: 'replicate/nightmareai/real-esrgan',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-swin2sr',
+    creditModelName: 'replicate/mv-lab/swin2sr',
+    generationType: 'image',
+    provider: 'replicate'
+  },
+  {
+    frontendValue: 'replicate-crystal-upscaler',
+    creditModelName: 'replicate/crystal-upscaler', // Base name, resolution appended dynamically
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      resolution: ['1080p', '1440p', '2160p', '6K', '8K', '12K']
+    }
+  },
   // Topaz Image Upscaler (dynamic per-MP pricing; display handled as dynamic)
   {
     frontendValue: 'fal-topaz-upscale-image',
@@ -685,6 +955,7 @@ export const buildCreditModelName = (
     resolution?: string;
     duration?: number;
     frameSize?: string;
+    quality?: string;
   }
 ): string | null => {
   const mapping = getModelMapping(frontendValue);
@@ -719,7 +990,13 @@ export const buildCreditModelName = (
   // Handle Kling models
   else if (mapping.frontendValue.startsWith('kling') && options?.duration) {
     const d = options.duration;
-    if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('t2v')) {
+    if (mapping.frontendValue === 'kling-2.6-pro') {
+      // Kling 2.6 Pro: duration and audio-based
+      const hasAudio = (options as any)?.generateAudio !== false; // Default to true
+      const audioSuffix = hasAudio ? '' : ' Audio Off';
+      const mode = (options as any)?.generationMode === 'image-to-video' ? 'I2V' : 'T2V';
+      modelName = `Kling 2.6 Pro ${mode} ${d}s${audioSuffix}`;
+    } else if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('t2v')) {
       modelName = `Kling 2.5 Turbo Pro T2V ${d}s`;
     } else if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('i2v')) {
       modelName = `Kling 2.5 Turbo Pro I2V ${d}s`;
@@ -743,7 +1020,8 @@ export const buildCreditModelName = (
     const resNormalized = res.includes('480') ? '480p' : res.includes('720') ? '720p' : '1080p';
     // Map duration: 2-6s -> 5s, 7-12s -> 10s for pricing
     const durForPricing = (d >= 2 && d <= 6) ? 5 : (d >= 7 && d <= 12) ? 10 : 5;
-    const tier = mapping.frontendValue.includes('lite') ? 'Lite' : 'Pro';
+    const isProFast = mapping.frontendValue.includes('pro-fast');
+    const tier = mapping.frontendValue.includes('lite') ? 'Lite' : (isProFast ? 'Pro Fast' : 'Pro');
     const mode = mapping.frontendValue.includes('i2v') ? 'I2V' : 'T2V';
     modelName = `Seedance 1.0 ${tier} ${mode} ${durForPricing}s ${resNormalized}`;
   }
@@ -786,19 +1064,67 @@ export const buildCreditModelName = (
   // Handle Google nano banana pro with resolution
   else if (mapping.frontendValue === 'google/nano-banana-pro' && options?.resolution) {
     const res = String(options.resolution).toUpperCase();
-    modelName = `Google nano banana pro ${res}`;
+    modelName = `Nano banana Pro ${res}`;
   }
-  // Handle Flux 2 Pro with resolution
+  // Handle Crystal Upscaler with resolution
+  else if (mapping.frontendValue === 'replicate-crystal-upscaler' && options?.resolution) {
+    const res = String(options.resolution).toUpperCase();
+    modelName = `replicate/crystal-upscaler ${res}`;
+  }
+  // Handle SeedVR2 with duration and resolution
+  else if (mapping.frontendValue === 'seedvr2' && options?.duration && options?.resolution) {
+    const d = options.duration;
+    const res = String(options.resolution).toLowerCase();
+    const resNormalized = res.includes('2k') ? '2k' : (res.includes('1080') ? '1080p' : '720p');
+    modelName = `SeedVR2 ${d}s ${resNormalized}`;
+  }
+  // Handle Kling 2.6 Pro (duration and audio-based) - matches creditDistribution.ts format
+  else if (mapping.frontendValue === 'kling-2.6-pro' && options?.duration) {
+    const d = options.duration;
+    const hasAudio = (options as any)?.generateAudio !== false; // Default to true if not specified
+    const audioSuffix = hasAudio ? ' Audio On' : ' Audio Off';
+    // Use unified T2V/I2V format to match creditDistribution.ts
+    modelName = `Kling 2.6 Pro T2V/I2V ${d}s${audioSuffix}`;
+  }
+  // Handle Kling o1 (duration-based)
+  else if (mapping.frontendValue === 'kling-o1' && options?.duration) {
+    const d = options.duration;
+    modelName = d === 10 ? 'Kling o1 10s' : 'Kling o1 5s';
+  }
+  // Handle GPT Image 1.5 with quality
+  else if (mapping.frontendValue === 'openai/gpt-image-1.5' && options?.quality) {
+    const quality = String(options.quality).toLowerCase();
+    modelName = `gpt-image-1.5 ${quality}`;
+  }
+  // Handle FLUX.2 Pro with resolution
+  else if ((mapping.frontendValue === 'flux-2-pro-1080p' || mapping.frontendValue === 'flux-2-pro-2k')) {
+    // These are already specific resolution variants
+    modelName = mapping.creditModelName;
+  }
+  // Handle Flux 2 Pro with resolution and I2I/T2I
   else if (mapping.frontendValue === 'flux-2-pro') {
+    const hasImages = options?.frameSize !== undefined && (options as any).uploadedImages?.length > 0;
+    const isI2I = hasImages || (options as any).hasUploadedImages === true;
+    
     // Special case: 9:16 portrait defaults to 1024x2048 (costs $0.05) unless 2K is explicitly selected
     if (options?.frameSize === '9:16' && options?.resolution !== '2K') {
-      modelName = 'Flux 2 Pro 1024x2048';
+      modelName = isI2I ? 'FLUX.2 [pro] I2I 1080p' : 'Flux 2 Pro 1024x2048';
     } else if (options?.resolution) {
       const res = String(options.resolution).toUpperCase();
-      modelName = `Flux 2 Pro ${res}`;
+      if (isI2I) {
+        // I2I variants: 110 credits for 1K, 190 credits for 2K
+        if (res === '2K') {
+          modelName = 'FLUX.2 [pro] I2I 2K';
+        } else {
+          modelName = 'FLUX.2 [pro] I2I 1080p'; // 1K uses 1080p naming
+        }
+      } else {
+        // T2I variants
+        modelName = `FLUX.2 [pro] ${res === '2K' ? '2K' : '1080p'}`;
+      }
     } else {
       // Default to 1K if no resolution specified
-      modelName = 'Flux 2 Pro 1K';
+      modelName = isI2I ? 'FLUX.2 [pro] I2I 1080p' : 'FLUX.2 [pro] 1080p';
     }
   }
 

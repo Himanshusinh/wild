@@ -21,7 +21,7 @@
   let hasValidSession = false;
   
   try {
-    const response = await fetch('/api/auth/debug-session', {
+    const response = await fetch('/api/auth/me', {
       method: 'GET',
       credentials: 'include',
     });

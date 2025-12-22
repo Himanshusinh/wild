@@ -21,7 +21,7 @@ export default function SignUp() {
     if (!url) return undefined
     // If it's a Google profile image, use proxy
     if (url.includes('googleusercontent.com') || url.includes('googleapis.com')) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || ''
       return `${apiBase.replace(/\/$/, '')}/api/proxy/external?url=${encodeURIComponent(url)}`
     }
     return url
@@ -119,7 +119,7 @@ export default function SignUp() {
         // Fallback: Try direct backend call if Next.js route fails
         try {
           console.log('[Signup] 🔄 Trying direct backend call as fallback...')
-          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000'
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || ''
           const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored`
           
           const fallbackResponse = await fetch(apiUrl, {

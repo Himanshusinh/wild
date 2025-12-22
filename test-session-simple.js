@@ -14,7 +14,7 @@
   
   // Check backend
   try {
-    const res = await fetch('/api/auth/debug-session', { credentials: 'include' });
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
     const data = await res.json();
     
     if (data?.data?.verification?.status?.includes('verified')) {

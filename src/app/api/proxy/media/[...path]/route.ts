@@ -12,7 +12,15 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
     }
 
     // Decode the path to get the actual storage path
-    const decodedPath = decodeURIComponent(encodedPath);
+    let decodedPath = decodeURIComponent(encodedPath);
+    
+    // Handle edge case: if decoded path still contains proxy URL pattern, extract the actual path
+    // This can happen if the path was double-encoded
+    if (decodedPath.startsWith('/api/proxy/resource/')) {
+      decodedPath = decodeURIComponent(decodedPath.substring('/api/proxy/resource/'.length));
+    } else if (decodedPath.startsWith('/api/proxy/media/')) {
+      decodedPath = decodeURIComponent(decodedPath.substring('/api/proxy/media/'.length));
+    }
     
     // Check if the path is already a full external URL (provider URL like fal.media, replicate.delivery, etc.)
     const isExternalUrl = /^https?:\/\//i.test(decodedPath);

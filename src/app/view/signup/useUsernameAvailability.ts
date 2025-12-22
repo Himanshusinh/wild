@@ -8,7 +8,7 @@ export type UsernameCheckResult = {
   suggestions?: string[]
 }
 
-export const DEFAULT_API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : (process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api'))
+export const DEFAULT_API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : (process.env.NEXT_PUBLIC_API_BASE ? `${process.env.NEXT_PUBLIC_API_BASE}/api` : ''))
 
 export function useUsernameAvailability(apiBase = '') {
   const [username, setUsername] = useState<string>('')

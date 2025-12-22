@@ -27,7 +27,7 @@
   // httpOnly cookies won't appear in document.cookie, so we check via backend
   let cookieExistsViaBackend = false;
   try {
-    const cookieCheck = await fetch('/api/auth/debug-session', { credentials: 'include' });
+    const cookieCheck = await fetch('/api/auth/me', { credentials: 'include' });
     const cookieData = await cookieCheck.json();
     cookieExistsViaBackend = cookieData?.data?.hasToken === true || 
                             cookieData?.data?.verification?.status?.includes('verified');

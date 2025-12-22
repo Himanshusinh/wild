@@ -26,6 +26,7 @@
   from {
     transform: translateX(100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -43,7 +44,12 @@ body {
 }
 
 /* Apply Satoshi to all headings - body text remains Poppins */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-satoshi, "Satoshi"), sans-serif;
 }
 
@@ -57,11 +63,15 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Hide scrollbars utility */
 .no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
+
 .no-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
+  /* Chrome, Safari and Opera */
 }
 
 /* Custom scrollbar styles for mockup preview */
@@ -113,8 +123,10 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Unified custom scrollbar - Modern thin with gradient */
 .custom-scrollbar {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  /* Firefox */
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -126,20 +138,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.6), rgba(147, 51, 234, 0.6));
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(147, 51, 234, 0.9));
 }
 
 /* Legacy scrollbar classes - keeping for backward compatibility */
 .artstation-scrollbar {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  /* Firefox */
 }
 
 .artstation-scrollbar::-webkit-scrollbar {
@@ -151,20 +165,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .artstation-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.6), rgba(147, 51, 234, 0.6));
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .artstation-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(147, 51, 234, 0.9));
 }
 
 /* Scrollbar with arrows for dropdowns */
 .dropdown-scrollbar {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255,255,255,0.35) transparent; /* Firefox */
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  /* Firefox */
 }
 
 .dropdown-scrollbar::-webkit-scrollbar {
@@ -176,14 +192,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dropdown-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(59,130,246,0.6), rgba(147,51,234,0.6));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.6), rgba(147, 51, 234, 0.6));
   border-radius: 6px;
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 
 .dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(59,130,246,0.9), rgba(147,51,234,0.9));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(147, 51, 234, 0.9));
 }
 
 .dropdown-scrollbar::-webkit-scrollbar-button {
@@ -210,6 +226,7 @@ h1, h2, h3, h4, h5, h6 {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -217,7 +234,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .shimmer {
   animation: shimmer 1.5s infinite;
-  background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 100%);
   background-size: 200% 100%;
 }
 
@@ -319,4 +336,53 @@ body::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
- 
+
+/* Text Shine Animation */
+@keyframes text-shine {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-text-shine {
+  background: linear-gradient(to right,
+      #ffffff 20%,
+      #fbbf24 30%,
+      #f59e0b 70%,
+      #ffffff 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-fill-color: transparent;
+  background-size: 500% auto;
+  animation: text-shine 2s ease-in-out infinite alternate;
+}
+
+/* Silver/White Shine Animation */
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.animate-shine {
+  background: linear-gradient(to right,
+      #999999 20%,
+      #ffffff 50%,
+      #999999 80%);
+  background-size: 200% auto;
+  color: #000;
+  background-clip: text;
+  text-fill-color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 3s linear infinite;
+}
+
+.font-satoshi {
+  font-family: var(--font-satoshi), sans-serif;
+}

@@ -27,6 +27,7 @@ const AdGenerationInputBox: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
 
   const history = useAppSelector((state) => state.history.entries);
   const hasMore = useAppSelector((state) => state.history.hasMore);
@@ -71,7 +72,7 @@ const AdGenerationInputBox: React.FC = () => {
 
   // Standardized infinite scroll using shared hook
   useBottomScrollPagination({
-    containerRef: undefined, // window scroll context
+    containerRef: scrollRootRef,
     hasMore,
     loading,
     requireUserScroll: true,
@@ -264,7 +265,7 @@ const AdGenerationInputBox: React.FC = () => {
     <>
       {/* History Section - Fixed overlay like video generation */}
       {adGenerationHistory.length > 0 && (
-        <div className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
+        <div ref={scrollRootRef} className="fixed inset-0 pt-[62px] pl-[68px] pr-6 pb-6 overflow-y-auto z-30">
           <div className="p-6">
             {/* History Header - Fixed during scroll */}
             <div className="sticky top-0 z-10 mb-6 bg-black/80 backdrop-blur-sm py-4 -mx-6 px-6 border-b border-white/10">

@@ -7,13 +7,18 @@ import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/C
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
 import ArtStationPreview from '@/components/ArtStationPreview'
+import axiosInstance from '@/lib/axiosInstance'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
+import { Masonry } from '@/components/masonry'
 
 type PublicItem = {
   id: string;
   prompt?: string;
+  // Optional rich text fields for audio/music generations
+  lyrics?: string;
+  fileName?: string;
   generationType?: string;
   model?: string;
   aspectRatio?: string;
@@ -23,6 +28,7 @@ type PublicItem = {
   updatedAt?: string;
   isPublic?: boolean;
   isDeleted?: boolean;
+  aestheticScore?: number; // Added: aesthetic score field
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
   images?: { 
     id: string; 
@@ -34,8 +40,9 @@ type PublicItem = {
     avifUrl?: string;
     blurDataUrl?: string;
     optimized?: boolean;
+    aestheticScore?: number; // Added: image-level score
   }[];
-  videos?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
+  videos?: { id: string; url: string; originalUrl?: string; storagePath?: string; aestheticScore?: number }[];
   audios?: { id: string; url: string; originalUrl?: string; storagePath?: string }[];
 };
 
@@ -124,7 +131,17 @@ export default function ArtStationPage() {
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
-  const [likedCards, setLikedCards] = useState<Set<string>>(new Set())
+  // Per-generation engagement state: likes/bookmarks + current user flags
+  const [engagement, setEngagement] = useState<Record<string, {
+    likesCount: number
+    bookmarksCount: number
+    likedByMe: boolean
+    bookmarkedByMe: boolean
+  }>>({})
+  // Liked-only view state
+  const [showLikedOnly, setShowLikedOnly] = useState(false)
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const [likedIdsLoading, setLikedIdsLoading] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
@@ -215,16 +232,143 @@ export default function ArtStationPage() {
     }
   }
 
-  const toggleLike = (cardId: string) => {
-    setLikedCards(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(cardId)) {
-        newSet.delete(cardId)
-      } else {
-        newSet.add(cardId)
+  const toggleLike = async (generationId: string) => {
+    // Determine previous state once so we can use it for optimistic update + API action
+    const prevState = engagement[generationId] || {
+      likesCount: 0,
+      bookmarksCount: 0,
+      likedByMe: false,
+      bookmarkedByMe: false,
+    }
+    const wasLiked = !!prevState.likedByMe
+    const willLike = !wasLiked
+
+    // Optimistic update for engagement counts
+    setEngagement(prev => {
+      const current = prev[generationId] || prevState
+      return {
+        ...prev,
+        [generationId]: {
+          ...current,
+          likedByMe: willLike,
+          likesCount: Math.max(0, current.likesCount + (willLike ? 1 : -1)),
+        },
       }
-      return newSet
     })
+
+    // Keep local likedIds set in sync so "Liked" filter works immediately
+    setLikedIds(prev => {
+      const next = new Set(prev)
+      if (willLike) {
+        next.add(generationId)
+      } else {
+        next.delete(generationId)
+      }
+      return next
+    })
+
+    const action = willLike ? 'like' : 'unlike'
+
+    try {
+      await axiosInstance.post('/api/engagement/like', { generationId, action })
+    } catch (error) {
+      console.error('[ArtStation] toggleLike failed, reverting', error)
+      // Revert on failure
+      setEngagement(prev => {
+        const current = prev[generationId] || prevState
+        return {
+          ...prev,
+          [generationId]: {
+            ...current,
+            likedByMe: wasLiked,
+            likesCount: Math.max(0, current.likesCount + (wasLiked ? 1 : -1) - (willLike ? 1 : -1)),
+          },
+        }
+      })
+      // Also revert likedIds set
+      setLikedIds(prev => {
+        const next = new Set(prev)
+        if (wasLiked) {
+          next.add(generationId)
+        } else {
+          next.delete(generationId)
+      }
+        return next
+      })
+    }
+  }
+
+  const loadLikedIds = async () => {
+    // Avoid duplicate loads
+    if (likedIdsLoading) return
+    try {
+      setLikedIdsLoading(true)
+      const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const url = new URL(`${baseUrl}/api/engagement/me/likes`)
+      url.searchParams.set('limit', '200')
+
+      const res = await fetch(url.toString(), { credentials: 'include' })
+      if (!res.ok) {
+        console.error('[ArtStation] Failed to load liked generations ids', res.status, res.statusText)
+        return
+      }
+      const json = await res.json()
+      const payload = json?.data || json
+      const itemsArr = Array.isArray(payload?.items) ? payload.items : []
+      const nextSet = new Set<string>()
+      for (const it of itemsArr) {
+        if (it?.generationId) {
+          nextSet.add(String(it.generationId))
+        }
+      }
+      setLikedIds(nextSet)
+    } catch (err) {
+      console.error('[ArtStation] Error loading liked generations ids', err)
+    } finally {
+      setLikedIdsLoading(false)
+    }
+  }
+
+  const toggleBookmark = async (generationId: string) => {
+    const prevState = engagement[generationId] || {
+      likesCount: 0,
+      bookmarksCount: 0,
+      likedByMe: false,
+      bookmarkedByMe: false,
+    }
+    const wasBookmarked = !!prevState.bookmarkedByMe
+    const willBookmark = !wasBookmarked
+
+    setEngagement(prev => {
+      const current = prev[generationId] || prevState
+      return {
+        ...prev,
+        [generationId]: {
+          ...current,
+          bookmarkedByMe: willBookmark,
+          bookmarksCount: Math.max(0, current.bookmarksCount + (willBookmark ? 1 : -1)),
+        },
+      }
+    })
+
+    const action = willBookmark ? 'save' : 'unsave'
+
+    try {
+      await axiosInstance.post('/api/engagement/bookmark', { generationId, action })
+    } catch (error) {
+      console.error('[ArtStation] toggleBookmark failed, reverting', error)
+      setEngagement(prev => {
+        const current = prev[generationId] || prevState
+        return {
+          ...prev,
+          [generationId]: {
+            ...current,
+            bookmarkedByMe: wasBookmarked,
+            bookmarksCount: Math.max(0, current.bookmarksCount + (wasBookmarked ? 1 : -1) - (willBookmark ? 1 : -1)),
+          },
+        }
+      })
+    }
   }
 
 
@@ -351,7 +495,17 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         updatedAt: normalizeDate(it?.updatedAt) || it?.updatedAt,
         aspectRatio: it?.aspect_ratio || it?.aspectRatio || it?.frameSize,
         frameSize: it?.frameSize || it?.aspect_ratio || it?.aspectRatio,
+        aestheticScore: typeof it?.aestheticScore === 'number' ? it.aestheticScore : undefined, // Preserve aestheticScore
       }))
+
+      // Shuffle only the newly fetched page so overall order feels organic,
+      // without reordering items that were already rendered.
+      for (let i = newItems.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const tmp = newItems[i]
+        newItems[i] = newItems[j]!
+        newItems[j] = tmp!
+      }
 
       const newCursor = meta?.nextCursor || payload?.nextCursor
       console.log('[ArtStation] Parsed feed response:', {
@@ -514,24 +668,138 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     }
   )
 
+  // OPTIMIZATION: Prefetch next page when user scrolls past 50% of the page
+  useEffect(() => {
+    const handleScroll = () => {
+      // Don't prefetch if already loading, no more items, or initial load not done
+      if (loading || !hasMore || !initialLoadDoneRef.current || inFlightRef.current) return
+
+      const scrollY = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+
+      // Calculate scroll percentage
+      const scrollPercentage = (scrollY + windowHeight) / documentHeight
+
+      // Trigger fetch if scrolled past 25%
+      if (scrollPercentage > 0.25) {
+        // Debounce/Throttle check is implicitly handled by `loading` state in fetchFeed
+        // but we add a small check here to avoid spamming the function call
+        if (!loadingMoreRef.current) {
+          console.log('[ArtStation] Prefetching next page at 25% scroll')
+          fetchFeed(false)
+        }
+      }
+    }
+
+    // Throttled scroll listener
+    let ticking = false
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll()
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [loading, hasMore])
+
   // Removed auto-fill loop to avoid duplicate overlapping fetches; rely on infinite scroll only
 
-  // Resolve deep link after data loads; do not recursively fetch
+  // Resolve deep link: try current feed items first, then fall back to direct fetch by id
   useEffect(() => {
     if (!deepLinkId) return
-    // try to find in current items
-    const found = items.find(i => i.id === deepLinkId)
-    if (found) {
-      const media = (found.videos && found.videos[0]) || (found.images && found.images[0]) || (found.audios && found.audios[0])
-      const kind: any = (found.videos && found.videos[0]) ? 'video' : (found.images && found.images[0]) ? 'image' : 'audio'
-      if (media?.url) {
+
+    const openPreviewForItem = (item: PublicItem) => {
+      const media =
+        (item.videos && item.videos[0]) ||
+        (item.images && item.images[0]) ||
+        (item.audios && item.audios[0])
+      const kind: any =
+        (item.videos && item.videos[0])
+          ? 'video'
+          : (item.images && item.images[0])
+            ? 'image'
+            : 'audio'
+
+      if (!media || !media.url) return
+
         setSelectedImageIndex(0)
         setSelectedVideoIndex(0)
         setSelectedAudioIndex(0)
-        setPreview({ kind, url: media.url, item: found })
+
+      const maybeStorage: any = (media as any).storagePath
+      const normalizedUrl =
+        normalizeMediaUrl(media.url) ||
+        (maybeStorage ? normalizeMediaUrl(maybeStorage) : null) ||
+        media.url
+
+      setPreview({ kind, url: normalizedUrl || media.url, item })
         setDeepLinkId(null)
       }
+
+    // 1) Try to find the item in the already-loaded feed
+    const inFeed = items.find((i) => i.id === deepLinkId)
+    if (inFeed) {
+      openPreviewForItem(inFeed)
+      return
     }
+
+    // 2) Fallback: fetch that single public generation by id so deep links
+    // from Bookmarks / Likes always work even if it's not on the first page
+    ;(async () => {
+      try {
+        const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '')
+        if (!apiBase) {
+          console.warn('[ArtStation] Missing NEXT_PUBLIC_API_BASE_URL; cannot resolve deep link by id')
+          return
+        }
+
+        const res = await fetch(`${apiBase}/api/feed/${encodeURIComponent(deepLinkId)}`)
+        if (!res.ok) {
+          console.warn('[ArtStation] Failed to fetch deep-linked generation by id', deepLinkId, res.status)
+          return
+        }
+
+        const json = await res.json()
+        const payload = json?.data || json || {}
+        const rawItem = payload.item || payload
+        if (!rawItem) {
+          console.warn('[ArtStation] Deep link fetch returned no item for id', deepLinkId)
+          return
+        }
+
+        const normalizeDate = (d: any) =>
+          typeof d === 'string'
+            ? d
+            : d && typeof d === 'object' && typeof d._seconds === 'number'
+              ? new Date(d._seconds * 1000).toISOString()
+              : undefined
+
+        const normalizedItem: PublicItem = {
+          ...rawItem,
+          id: String(rawItem.id || deepLinkId),
+          createdAt: normalizeDate(rawItem.createdAt) || rawItem.createdAt,
+          updatedAt: normalizeDate(rawItem.updatedAt) || rawItem.updatedAt,
+          aspectRatio: rawItem.aspect_ratio || rawItem.aspectRatio || rawItem.frameSize,
+          frameSize: rawItem.frameSize || rawItem.aspect_ratio || rawItem.aspectRatio,
+        }
+
+        // Optionally merge into items so navigation still works
+        setItems((prev) => {
+          if (prev.some((it) => it.id === normalizedItem.id)) return prev
+          return [normalizedItem, ...prev]
+        })
+
+        openPreviewForItem(normalizedItem)
+      } catch (err) {
+        console.error('[ArtStation] Error resolving deep link by id', deepLinkId, err)
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, deepLinkId])
 
@@ -601,26 +869,38 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       });
     }
 
-    const sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
+
+    
+    let sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
+
+    // Apply "Liked only" filter when enabled
+    if (showLikedOnly && likedIds.size > 0) {
+      sanitized = sanitized.filter(item => likedIds.has(item.id))
+    }
     
     return sanitized;
-  }, [items, activeCategory, searchQuery]);
+  }, [items, activeCategory, searchQuery, showLikedOnly, likedIds]);
 
 const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!url) return undefined
     const trimmed = url.trim()
     if (!trimmed) return undefined
+    // Reject replicate URLs to prevent 404s - only use Zata URLs
+    if (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com')) {
+      return undefined
+    }
     if (/^https?:\/\//i.test(trimmed)) return trimmed
     if (trimmed.startsWith('/api/')) return trimmed
+    // If it's a relative path (not starting with / or http), assume it's a Zata path and proxy it
+    if (!trimmed.startsWith('/')) return toMediaProxy(trimmed)
     return toDirectUrl(trimmed)
   }
 
   const resolveMediaUrl = (m: any): string | undefined => {
     if (!m) return undefined
-    // Try multiple URL properties in order of preference
+    // Try multiple URL properties in order of preference (NO originalUrl to avoid 404s)
     const candidates = [
       m.url,
-      m.originalUrl,
       m.webpUrl,
       m.avifUrl,
       (m.firebaseUrl as string | undefined),
@@ -635,30 +915,31 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     return undefined
   }
 
-  // Resolve image URL with fallback chain: avif → optimized → direct Zata/original
-  const resolveImageUrl = (m: any): { url: string; fallbacks: string[] } => {
+  // Resolve thumbnail URL with fallback: thumbnailUrl -> optimized formats -> proxied/original (never raw original first)
+  const resolveThumbnailUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
     
-    const thumbAvif =
-      normalizeMediaUrl(
-        typeof m.thumbnailUrl === 'string' && m.thumbnailUrl.endsWith('.avif')
-          ? m.thumbnailUrl
-          : undefined
-      ) || normalizeMediaUrl(
-        typeof m.thumbUrl === 'string' && m.thumbUrl.endsWith('.avif')
-          ? m.thumbUrl
-          : undefined
-      )
+    const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl)
+    const webpUrl = normalizeMediaUrl(m.webpUrl)
     const avifUrl = normalizeMediaUrl(m.avifUrl)
-    const optimizedUrl =
-      normalizeMediaUrl(m.optimizedUrl) ||
-      normalizeMediaUrl(m.optimized?.url) ||
-      normalizeMediaUrl(m.webpUrl)
-    const storageUrl = m.storagePath ? toDirectUrl(m.storagePath) : undefined
-    const directUrl = normalizeMediaUrl(m.url) || storageUrl
-    const originalUrl = normalizeMediaUrl(m.originalUrl) || storageUrl
+    const firebaseUrl = normalizeMediaUrl((m.firebaseUrl as string | undefined))
+    const directUrl = normalizeMediaUrl(m.url)
+    const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
 
-    const ordered = [thumbAvif, avifUrl, optimizedUrl, directUrl, originalUrl].filter(
+    // For thumbnails, prefer optimized/thumbnail URLs. If we only have a directUrl,
+    // try to route it through our proxy; as a last resort, keep the direct URL so
+    // the tile still renders (avoids blank/black gaps in masonry).
+    let safeDirect: string | undefined
+    if (directUrl) {
+      if (directUrl.startsWith('/api/')) {
+        safeDirect = directUrl
+      } else {
+        safeDirect = toMediaProxy(directUrl) || directUrl
+      }
+    }
+
+    // Fallback chain: avifUrl -> webpUrl -> thumbnailUrl -> firebaseUrl -> safeDirect -> storagePath
+    const ordered = [avifUrl, webpUrl, thumbnailUrl, firebaseUrl, safeDirect, storageUrl].filter(
       (u, idx, arr) => !!u && arr.indexOf(u) === idx
     ) as string[]
 
@@ -668,97 +949,38 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     }
   }
 
-  // Component to handle image fallback chain: thumbnail → optimized → original
-  const ImageWithFallback = ({ 
-    media, 
-    alt, 
-    fill, 
-    sizes, 
-    blurDataURL, 
-    className, 
-    priority, 
-    fetchPriority, 
-    onLoadingComplete 
-  }: {
-    media: any;
-    alt: string;
-    fill: boolean;
-    sizes: string;
-    blurDataURL?: string;
-    className: string;
-    priority: boolean;
-    fetchPriority: 'high' | 'low' | 'auto';
-    onLoadingComplete: (img: any) => void;
-  }) => {
-    const { url: primaryUrl, fallbacks } = resolveImageUrl(media);
-    const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
-    const allUrls = [primaryUrl, ...fallbacks].filter(
+  // Resolve full image URL for popup: url -> storagePath (NO originalUrl to avoid 404s)
+  const resolveFullImageUrl = (m: any): { url: string; fallbacks: string[] } => {
+    if (!m) return { url: '', fallbacks: [] }
+    
+    const directUrl = normalizeMediaUrl(m.url)
+    const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
+
+    // Fallback chain: url -> storagePath (removed originalUrl to prevent 404 errors)
+    const ordered = [directUrl, storageUrl].filter(
       (u, idx, arr) => !!u && arr.indexOf(u) === idx
-    );
-    const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
+    ) as string[]
 
-    const markCompleteFallback = () => {
-      try {
-        onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
-      } catch {}
+    return {
+      url: ordered[0] || '',
+      fallbacks: ordered.slice(1)
     }
-
-    const handleError = () => {
-      if (currentUrlIndex < allUrls.length - 1) {
-        // Try next fallback URL
-        setCurrentUrlIndex(prev => prev + 1);
-      } else {
-        markCompleteFallback()
-      }
-    };
-
-    useEffect(() => {
-      if (!currentUrl) {
-        markCompleteFallback()
-      }
-    }, [currentUrl])
-
-    if (!currentUrl) {
-      return (
-        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
-          No preview
-        </div>
-      )
-    }
-
-    // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
-    return (
-      <img
-        key={`${currentUrl}-${currentUrlIndex}`}
-        src={currentUrl}
-        alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        fetchPriority={fetchPriority}
-        className={className}
-        style={fill ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } : {}}
-        onError={handleError}
-        onLoad={(e) => {
-          try {
-            onLoadingComplete?.(e.currentTarget as HTMLImageElement);
-          } catch {}
-        }}
-      />
-    );
   }
 
 
 
+
+
+  // Stabilize cards array to prevent glitches
   const cards = useMemo(() => {
     // Show a single representative media per generation item to avoid multiple tiles
     const seenItem = new Set<string>()
     const seenMediaUrls = new Set<string>()
     const out: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }[] = []
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[ArtStation] Building cards from filteredItems:', filteredItems.length)
-    }
-
+    // Use a stable reference - only recalculate if filteredItems actually changed
+    const itemsKey = filteredItems.map(i => i.id).join(',')
+    
     for (const it of filteredItems) {
       // Only skip if we've already processed this exact item ID
       if (seenItem.has(it.id)) {
@@ -787,9 +1009,9 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         const primaryImage = it.images?.[0]
         const primaryAudio = (it as any).audios?.[0]
         const fallbackUrl = 
-          primaryVideo?.url || primaryVideo?.originalUrl || primaryVideo?.storagePath ||
-          primaryImage?.url || primaryImage?.originalUrl || primaryImage?.storagePath ||
-          primaryAudio?.url || primaryAudio?.originalUrl || primaryAudio?.storagePath
+          primaryVideo?.url || primaryVideo?.storagePath ||
+          primaryImage?.url || primaryImage?.storagePath ||
+          primaryAudio?.url || primaryAudio?.storagePath
         const fallbackKey = canonicalMediaKey(fallbackUrl)
         
         if (fallbackKey && seenMediaUrls.has(fallbackKey)) {
@@ -814,10 +1036,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         const fallbackCandidate = candidate || (it.videos && it.videos[0]) || (it.images && it.images[0]) || (it.audios && it.audios[0])
         seenItem.add(it.id)
         if (fallbackKey) seenMediaUrls.add(fallbackKey)
+        // Remove originalUrl to prevent 404s - only use Zata URLs
+        const { originalUrl, ...mediaWithoutOriginal } = fallbackCandidate || {}
         out.push({ 
           item: it, 
           media: { 
-            ...fallbackCandidate, 
+            ...mediaWithoutOriginal, 
             url: fallbackUrl,
             blurDataUrl: (fallbackCandidate as any)?.blurDataUrl,
           }, 
@@ -829,10 +1053,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       // Add item to seen set and include in output
       seenItem.add(it.id)
       if (candidateKey) seenMediaUrls.add(candidateKey)
+      // Remove originalUrl to prevent 404s - only use Zata URLs
+      const { originalUrl, ...mediaWithoutOriginal } = candidate || {}
       out.push({ 
         item: it, 
         media: { 
-          ...candidate, 
+          ...mediaWithoutOriginal, 
           url: candidateUrl,
           blurDataUrl: (candidate as any)?.blurDataUrl,
         }, 
@@ -840,11 +1066,40 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       })
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[ArtStation] Final cards count:', out.length, 'from', filteredItems.length, 'filtered items')
-    }
     return out
   }, [filteredItems])
+
+  // Fetch engagement status for the current cards (batched, after cards change)
+  useEffect(() => {
+    const fetchEngagement = async () => {
+      try {
+        if (!currentUid || cards.length === 0) return
+        const generationIds = Array.from(new Set(cards.map(c => c.item.id))).slice(0, 100)
+        const res = await axiosInstance.post('/api/engagement/bulk-status', { generationIds })
+        const data = res.data
+        const items = data?.data?.items || data?.items || []
+        setEngagement(prev => {
+          const next = { ...prev }
+          for (const it of items) {
+            if (!it?.id) continue
+            const genId = String(it.id)
+            const current = next[genId] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
+            next[genId] = {
+              likesCount: typeof it.likesCount === 'number' ? it.likesCount : current.likesCount,
+              bookmarksCount: typeof it.bookmarksCount === 'number' ? it.bookmarksCount : current.bookmarksCount,
+              likedByMe: !!it.likedByCurrentUser,
+              bookmarkedByMe: !!it.bookmarkedByCurrentUser,
+            }
+          }
+          return next
+        })
+      } catch (e) {
+        // Non-fatal
+        console.warn('[ArtStation] Failed to fetch engagement status', e)
+      }
+    }
+    fetchEngagement()
+  }, [cards, currentUid])
 
   const markTileLoaded = (tileId: string) => {
     setLoadedTiles(prev => {
@@ -855,6 +1110,103 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     })
     // Recompute span on load complete for accurate height
     requestAnimationFrame(() => measureTileSpan(tileId))
+  }
+
+  // Track tiles that failed to load media so we can hide them to prevent gaps
+  const [failedTiles, setFailedTiles] = useState<Set<string>>(new Set())
+
+  // Component to handle image fallback chain: thumbnail → optimized → original
+  const ImageWithFallback = ({ 
+    media, 
+    alt, 
+    fill, 
+    sizes, 
+    blurDataURL, 
+    className, 
+    priority, 
+    fetchPriority, 
+    onLoadingComplete,
+    useThumbnail = false,
+    onFailure
+  }: {
+    media: any;
+    alt: string;
+    fill: boolean;
+    sizes: string;
+    blurDataURL?: string;
+    className: string;
+    priority: boolean;
+    fetchPriority: 'high' | 'low' | 'auto';
+    onLoadingComplete: (img: any) => void;
+    useThumbnail?: boolean;
+    onFailure?: () => void;
+  }) => {
+    const { url: primaryUrl, fallbacks } = useThumbnail 
+      ? resolveThumbnailUrl(media)
+      : resolveFullImageUrl(media);
+    const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
+    const allUrls = [primaryUrl, ...fallbacks].filter(
+      (u, idx, arr) => !!u && arr.indexOf(u) === idx
+    );
+    const currentUrl = allUrls[currentUrlIndex] || allUrls[0] || '';
+
+    const markCompleteFallback = () => {
+      try {
+        onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
+      } catch {}
+    }
+
+    const handleError = () => {
+      if (currentUrlIndex < allUrls.length - 1) {
+        // Try next fallback URL
+        setCurrentUrlIndex(prev => prev + 1);
+      } else {
+        markCompleteFallback()
+        onFailure?.()
+      }
+    };
+
+    useEffect(() => {
+      if (!currentUrl) {
+        markCompleteFallback()
+        onFailure?.()
+      }
+    }, [currentUrl])
+
+    if (!currentUrl) {
+      // If we couldn't resolve a valid URL (e.g. only replicate URLs), don't render anything
+      return null
+    }
+
+    // Use direct img tag for Zata URLs (bypass Next.js Image optimization)
+    return (
+      <div className="relative w-full" style={{ backgroundImage: blurDataURL ? `url(${blurDataURL})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: 'auto' }}>
+        <img
+          key={`${currentUrl}-${currentUrlIndex}`}
+          src={currentUrl}
+          alt={alt}
+          loading="eager"
+          decoding="sync"
+          fetchPriority="high"
+          className={className}
+          style={{
+            width: '100%',
+            height: 'auto',
+            position: 'relative',
+            zIndex: 1,
+            outline: 'none',
+            border: 'none',
+            display: 'block',
+          }}
+          onError={handleError}
+          onLoad={(e) => {
+            try {
+              onLoadingComplete?.(e.currentTarget as HTMLImageElement);
+            } catch {}
+          }}
+        />
+      </div>
+    );
   }
 
   const noteMeasuredRatio = (key: string, width: number, height: number) => {
@@ -893,8 +1245,8 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   useEffect(() => {
     try {
       const head = document.head
-      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '')
-      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || 'https://idr01.zata.ai/devstoragev1/').replace(/\/$/, '/')
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '')
+      const zata = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
       const hosts = [apiBase, new URL(zata).origin]
       hosts.forEach(href => {
         if (!head.querySelector(`link[data-preconnect='${href}']`)) {
@@ -983,30 +1335,34 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
   // duplicate removed
 
+  // Determine if user is authenticated to adjust layout
+  const isAuth = !!currentUid
+
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-      <div className="flex ml-[68px]">
+      {/* When authenticated: add margin for sidepanel, when not: full width */}
+      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
         <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
-            <div className=" mb-2 md:mb-3">
-              <h3 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold mb-2 sm:mb-3">
+            <div className=" mb-0 md:mb-3">
+              <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
                 Art Station
               </h3>
-              <p className="text-white/80 text-base sm:text-lg md:text-xl">
+              <p className="text-white/80 text-xs sm:text-lg md:text-xl">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
 
             {/* Category Filter Bar */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+            <div className="md:mb-4 md:pb-0 pb-2 md:mt-0 mt-2">
+              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-0 scrollbar-none">
                 {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border ${activeCategory === category
+                    className={`inline-flex items-center md:gap-2  md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
                         ? 'bg-white border-white/5 text-black shadow-sm'
                         : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                       }`}
@@ -1015,8 +1371,41 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                   </button> 
                 ))}
 
-                {/* Search Input and Buttons */}
-                <div className="ml-auto flex items-center gap-2 flex-shrink-0 p-1">
+                {/* Liked filter + Search Input */}
+                <div className="ml-auto flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-1 p-0">
+                  {/* Liked-only toggle button */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // When enabling liked-only for the first time, load IDs from backend
+                      if (!showLikedOnly && likedIds.size === 0) {
+                        await loadLikedIds()
+                      }
+                      setShowLikedOnly(prev => !prev)
+                    }}
+                    className={`md:p-2 p-1 rounded-lg border flex items-center justify-center transition-all ${
+                      showLikedOnly
+                        ? 'bg-white text-black border-white'
+                        : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+                    }`}
+                    aria-pressed={showLikedOnly}
+                    aria-label={showLikedOnly ? 'Show all creations' : 'Show liked creations'}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill={showLikedOnly ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="flex-shrink-0"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </button>
+
                   <div className="relative flex items-center">
                     <input
                       type="text"
@@ -1029,12 +1418,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                         }
                       }}
                       placeholder="Search by prompt..."
-                      className={`px-4 py-2 rounded-lg text-sm bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
+                      className={`md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg  hover:bg-white/20 text-white/80 hover:text-white transition-colors"
                         aria-label="Clear search"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1053,48 +1442,75 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
-          {/* Masonry grid with preserved order */}
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 [overflow-anchor:none]"
-            style={{ gridAutoRows: '2px' }}
-          >
-            {cards.map(({ item, media, kind }, idx) => {
-              // Prefer server-provided aspect ratio; otherwise cycle through a set for visual variety
+          {/* Masonry grid */}
+          <Masonry
+            items={cards}
+            config={useMemo(() => ({
+              columns: [2, 3, 4, 5] as const,
+              gap: [2, 2, 2, 2] as const, // uniform 2px spacing
+              media: [640, 768, 1024, 1280] as const,
+            }), [])}
+            className="[overflow-anchor:none]"
+            placeholder={undefined}
+            render={(card: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }, idx: number) => {
+              const { item, media, kind } = card
+              const cardId = `${item.id}-${media.id}-${idx}`
+              
+              // Skip rendering if this tile has failed to load media
+              if (failedTiles.has(cardId)) return null
+
+              const isHovered = hoveredCard === cardId
+              const engagementState = engagement[item.id] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
+              const isLiked = engagementState.likedByMe
+
+              // Use stable keys to prevent re-renders
+              const ratioKey = `${item.id}-${media.id || media.url || idx}`
+              
+              // Calculate aspect ratio: prefer measured, then item aspect ratio
               const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
               const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
-              const fallbackRatios = ['1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3']
-              const ratioKey = (media && (media.storagePath || media.url)) || `${item.id}-${idx}`
-              const tileRatio = m ? `${m[1]}/${m[2]}` : (measuredRatios[ratioKey] || fallbackRatios[idx % fallbackRatios.length])
-
-              const cardId = `${item.id}-${media.id}-${idx}`
-              const isHovered = hoveredCard === cardId
-              const isLiked = likedCards.has(cardId)
-
+              const measuredRatio = measuredRatios[ratioKey]
+              // REMOVED: fallbackRatios - do not force arbitrary shapes
+              const aspectRatio = measuredRatio || (m ? `${m[1]}/${m[2]}` : undefined)
+              
               return (
                 <div
                   key={cardId}
-                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full ${visibleTiles.has(cardId) ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-2 blur-[2px]'} transition-all duration-700 ease-out`}
+                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none opacity-100 translate-y-0 blur-0`}
                   onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
                   onMouseLeave={() => setHoveredCard(null)}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
                     setSelectedImageIndex(0)
                     setSelectedVideoIndex(0)
                     setSelectedAudioIndex(0)
-                    setPreview({ kind, url: media.url, item })
+                    // Normalize the URL before setting preview to ensure it uses proxy endpoint
+                    const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
+                    setPreview({ kind, url: normalizedUrl || media.url, item })
                   }}
-                  ref={(el) => { revealRefs.current[cardId] = el; tileRefs.current[cardId] = el }}
+                  ref={(el) => { 
+                    if (el) {
+                      revealRefs.current[cardId] = el
+                      tileRefs.current[cardId] = el
+                    }
+                  }}
                   style={{
                     transitionDelay: `${(idx % 12) * 35}ms`,
-                    gridRowEnd: `span ${tileSpans[cardId] || 30}`,
+                    // REMOVED: aspectRatio style to allow natural height
                   }}
+                  tabIndex={-1}
                 >
-                  <div className="masonry-item-inner relative w-full rounded-lg overflow-hidden bg-transparent group" style={{ contain: 'paint' }}>
-                    <div
-                      style={{ aspectRatio: tileRatio, minHeight: 160 }}
-                      className={`relative transition-opacity duration-300 ease-out will-change-[opacity] opacity-100`}
+                  <div className="relative w-full bg-transparent group" style={{ contain: 'layout style paint' }}>
+                    <div 
+                      className="relative w-full bg-gray-900/20 overflow-hidden flex items-center justify-center"
                     >
-                      {kind !== 'audio' && !loadedTiles.has(cardId) && (
-                        <div className="absolute inset-0 bg-white/5" />
+                      {kind !== 'audio' && (
+                        <div
+                          className={`absolute inset-0 z-0 bg-white/5 transition-opacity duration-500 ease-out pointer-events-none ${
+                            loadedTiles.has(cardId) ? 'opacity-0' : 'opacity-100'
+                          }`}
+                        />
                       )}
                       {(() => {
                         const isPriority = idx < 4
@@ -1107,8 +1523,9 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                             
                             return (
                               <video
+                                key={`video-${cardId}`}
                                 src={proxied}
-                                className="absolute inset-0 w-full h-full object-cover"
+                                className="w-full h-auto object-contain"
                                 muted
                                 playsInline
                                 preload="metadata"
@@ -1146,6 +1563,12 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                                     v.load()
                                   } else {
                                     markTileLoaded(cardId)
+                                    // Hide video tile on error if fallback also fails
+                                    setFailedTiles(prev => {
+                                      const next = new Set(prev)
+                                      next.add(cardId)
+                                      return next
+                                    })
                                   }
                                 }}
                               />
@@ -1155,30 +1578,47 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                           <>
                             {/* Use a simple music logo image to avoid prompt alt text showing */}
                             <img
+                              key={`audio-${cardId}`}
                               src="/icons/musicgenerationwhite.svg"
                               alt=""
                               loading={isPriority ? 'eager' : 'lazy'}
                               fetchPriority={isPriority ? 'high' : 'auto'}
-                              className="absolute inset-0 w-full h-full object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                              className="w-full h-auto object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                               onLoad={() => { markTileLoaded(cardId) }}
+                              onError={() => {
+                                setFailedTiles(prev => {
+                                  const next = new Set(prev)
+                                  next.add(cardId)
+                                  return next
+                                })
+                              }}
                             />
                           </>
                         ) : (
                           <ImageWithFallback
+                            key={`image-${cardId}`}
                             media={media}
                             alt={item.prompt || ''}
-                            fill={true}
+                            fill={false}
                             sizes={sizes}
-                            blurDataURL={media.blurDataUrl || blur}
-                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                            blurDataURL={media.blurDataUrl}
+                            className="w-full h-auto object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
                             priority={isPriority}
                             fetchPriority={isPriority ? 'high' : 'auto'}
+                            useThumbnail={true}
                             onLoadingComplete={(img) => {
                               try {
                                 const el = img as unknown as HTMLImageElement
                                 if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
                               } catch { }
                               markTileLoaded(cardId)
+                            }}
+                            onFailure={() => {
+                              setFailedTiles(prev => {
+                                const next = new Set(prev)
+                                next.add(cardId)
+                                return next
+                              })
                             }}
                           />
                         )
@@ -1204,63 +1644,92 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                         </div>
                       )}
                     </div>
+                    {/* Dark gradient overlay from bottom */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[5]" />
+                    
                     {/* Hover overlay: user profile + actions */}
-                    <div className="absolute inset-x-0 bottom-0 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                      <div className="rounded-lg px-2 py-2 md:px-3 md:py-2 flex items-center justify-between gap-2 pointer-events-auto">
-                        {/* User */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          {(() => {
-                            const cb = item.createdBy || ({} as any)
-                            console.log('cb', cb)
-                            const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
-                            if (photo) {
-                              const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
-                              return <img src={proxied} alt={cb.username || cb.displayName || ''} className="w-7 h-7 rounded-full object-cover" />
-                            }
-                            return (
-                              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-[11px] text-white/90">
-                                {(cb.username || cb.displayName || 'U').slice(0,1).toUpperCase()}
+                    <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[6]">
+                      <div className="px-2.5 py-2.5 md:px-3 md:py-3">
+                        <div className="rounded-lg px-3 py-2.5 md:px-4 md:py-3 flex items-center justify-between gap-3 pointer-events-auto">
+                          {/* User Section */}
+                          <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+                            {(() => {
+                              const cb = item.createdBy || ({} as any)
+                              const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
+                              if (photo) {
+                                const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
+                                return (
+                                  <div className="flex-shrink-0">
+                                    <img 
+                                      src={proxied} 
+                                      alt={cb.username || cb.displayName || ''} 
+                                      className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover border border-white/10" 
+                                    />
+                                  </div>
+                                )
+                              }
+                              return (
+                                <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 flex items-center justify-center text-xs md:text-sm font-medium text-white/90 flex-shrink-0 border border-white/10">
+                                  {(cb.username || cb.displayName || 'U').slice(0,1).toUpperCase()}
+                                </div>
+                              )
+                            })()}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-white text-sm md:text-base font-medium truncate leading-tight">
+                                {item.createdBy?.username || item.createdBy?.displayName || 'User'}
                               </div>
-                            )
-                          })()}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-white/90 text-[12px] truncate">
-                              {item.createdBy?.username || item.createdBy?.displayName || 'User'}
                             </div>
                           </div>
-                        </div>
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleLike(cardId) }}
-                            className={`p-1.5 rounded-md transition-colors ${isLiked ? 'bg-white text-black' : 'bg-white/5 backdrop-blur-3xl hover:bg-white/20 text-white'}`}
-                            aria-label={isLiked ? 'Unlike' : 'Like'}
-                            title={isLiked ? 'Unlike' : 'Like'}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isLiked ? 'red' : 'none'} stroke={ isLiked ?"red":"currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
-                            </svg>
-                          </button>
-                          {currentUid && item.createdBy?.uid === currentUid && (
+                          {/* Actions Section */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <button
-                              onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
-                              className="p-1.5 rounded-md bg-white/5 backdrop-blur-3xl hover:bg-white/20 text-red transition-colors"
-                              aria-label="Delete"
-                              title="Delete"
+                              onClick={(e) => { e.stopPropagation(); toggleLike(item.id) }}
+                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${isLiked ? 'text-red-500' : 'text-white'}`}
+                              aria-label={isLiked ? 'Unlike' : 'Like'}
+                              title={isLiked ? 'Unlike' : 'Like'}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                              </svg>
+                              {engagementState.likesCount > 0 && (
+                                <span className="ml-1 text-xs font-medium">{engagementState.likesCount}</span>
+                              )}
                             </button>
-                          )}
+                            {/* Bookmark button */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleBookmark(item.id) }}
+                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${engagementState.bookmarkedByMe ? 'text-blue-500' : 'text-white'}`}
+                              aria-label={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
+                              title={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill={engagementState.bookmarkedByMe ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                                <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                              </svg>
+                              {engagementState.bookmarksCount > 0 && (
+                                <span className="ml-1 text-xs font-medium">{engagementState.bookmarksCount}</span>
+                              )}
+                            </button>
+                            {currentUid && item.createdBy?.uid === currentUid && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
+                                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all duration-200 flex-shrink-0 flex items-center justify-center focus:outline-none"
+                                aria-label="Delete"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5 flex-shrink-0" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 rounded-xl pointer-events-none transition" />
+                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 pointer-events-none transition focus:outline-none z-[4]" />
                   </div>
                 </div>
               )
-            })}
-          </div>
+            }}
+          />
 
           {/* Loading indicator for pagination */}
           {loading && items.length > 0 && (
@@ -1304,16 +1773,24 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           </div>
 
           {/* Preview Modal */}
-          <ArtStationPreview
-            preview={preview}
-            onClose={() => setPreview(null)}
-            onConfirmDelete={confirmDelete}
-            currentUid={currentUid}
-            currentUser={currentUser}
-            cards={cards}
-            likedCards={likedCards}
-            toggleLike={toggleLike}
-          />
+          {preview && (
+            <ArtStationPreview
+              preview={preview}
+              onClose={() => {
+                setPreview(null)
+                setSelectedImageIndex(0)
+                setSelectedVideoIndex(0)
+                setSelectedAudioIndex(0)
+              }}
+              onConfirmDelete={confirmDelete}
+              currentUid={currentUid}
+              currentUser={currentUser}
+              cards={cards}
+              toggleLike={toggleLike}
+              toggleBookmark={toggleBookmark}
+              engagement={engagement}
+            />
+          )}
         </div>
       </div>
 

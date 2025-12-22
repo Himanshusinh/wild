@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import axios from "axios"
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
@@ -9,9 +10,10 @@ import { useUsernameAvailability } from "./useUsernameAvailability"
 import { getImageUrl } from "@/routes/imageroute"
 import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
-import { APP_ROUTES } from '../../../routes/routes'
+import { APP_ROUTES, LEGAL_ROUTES } from '../../../routes/routes'
 import toast from 'react-hot-toast'
 import LoadingScreen from '@/components/ui/LoadingScreen'
+import TurnstileCaptcha from '@/components/TurnstileCaptcha'
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 7) => {
@@ -53,6 +55,7 @@ const clearCookie = (name: string) => {
 export default function SignInForm() {
   const searchParams = useSearchParams()
   const returnUrl = searchParams?.get('returnUrl') || null
+  const showLoginParam = searchParams?.get('showLogin')
   
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -70,9 +73,16 @@ export default function SignInForm() {
   const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false) // Forgot password modal
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("") // Email for forgot password
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false) // Track if email was sent
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
   const [showPassword, setShowPassword] = useState(false) // Password visibility toggle (synced for both fields)
+
+  // Captcha states
+  const [captchaToken, setCaptchaToken] = useState<string>('')
+  const [captchaError, setCaptchaError] = useState(false)
 
   // Redeem code states
   const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
@@ -157,6 +167,7 @@ export default function SignInForm() {
   const switchToGoogleSignIn = () => {
     setShowLoginForm(false) // Ensure we're in sign-up mode for Google
     setError("")
+    // Don't reset captcha - keep token valid
     // Trigger Google sign-in
     setTimeout(() => {
       handleGoogleLogin()
@@ -166,6 +177,7 @@ export default function SignInForm() {
   const switchToEmailSignIn = () => {
     setShowLoginForm(true) // Switch to login mode
     setError("")
+    // Don't reset captcha - keep token valid across form switch
   }
 
   // Handle login form submission
@@ -177,6 +189,15 @@ export default function SignInForm() {
 
     if (!email.trim() || !password) {
       setError("Please enter both email and password")
+      return
+    }
+
+    // Verify captcha token is present
+    if (!captchaToken) {
+      setCaptchaError(true)
+      const errorMsg = "Please complete the captcha verification"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
 
@@ -208,7 +229,7 @@ export default function SignInForm() {
         console.log("🔑 customToken type:", typeof customToken)
         console.log("🔑 customToken length:", customToken?.length)
 
-        // Store user profile first
+            // Store user profile first
         try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
 
         // Track that email/password was used (for "Last Used" tag)
@@ -223,6 +244,10 @@ export default function SignInForm() {
         if (customToken && typeof customToken === 'string') {
           try {
             console.log("🔄 Signing into Firebase with customToken...")
+            
+            // CRITICAL: Store token in a way that can be accessed across subdomains
+            // We'll store it in localStorage on www, and also try to set a non-httpOnly cookie
+            // as a fallback for cross-subdomain access (though httpOnly cookie is primary)
             const userCredential = await signInWithCustomToken(auth, customToken)
             const idToken = await userCredential.user.getIdToken()
             
@@ -233,6 +258,18 @@ export default function SignInForm() {
             try {
               localStorage.setItem("authToken", idToken)
               console.log("💾 ID token stored in localStorage")
+              
+              // CRITICAL: Also store in a way that can be accessed across subdomains
+              // Store in user object for easier access
+              try {
+                const userWithToken = { ...user, idToken };
+                localStorage.setItem("user", JSON.stringify(userWithToken));
+              } catch {}
+              
+              // Also store as idToken directly for wildmindcanvas to find
+              try {
+                localStorage.setItem("idToken", idToken);
+              } catch {}
             } catch (err) {
               console.error("❌ Failed to store token:", err)
             }
@@ -345,8 +382,23 @@ export default function SignInForm() {
     console.log("🎯 SignUp Form Component Mounted") 
     console.log("🌐 Current URL:", window.location.href)
     console.log("🔧 Axios configured:", !!axios)
-  }, [])
 
+    console.log("🔧 Axios configured:", !!axios)
+
+    // Toast logic moved to global ToastMount.tsx
+  }, [searchParams])
+
+
+  // Captcha handlers
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token)
+    setCaptchaError(false)
+  }
+
+  const handleCaptchaError = () => {
+    setCaptchaToken('')
+    setCaptchaError(true)
+  }
 
   // API handlers for form flow
   const handleSendOtp = async (e: FormEvent<HTMLFormElement>) => {
@@ -354,6 +406,15 @@ export default function SignInForm() {
     console.log("🚀 Starting OTP send process...")
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", !!password)
+
+    // Verify captcha token is present
+    if (!captchaToken) {
+      setCaptchaError(true)
+      const errorMsg = "Please complete the captcha verification"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
+      return
+    }
 
     if (password !== confirmPassword) {
       console.log("❌ Password mismatch")
@@ -514,7 +575,7 @@ export default function SignInForm() {
 
             // Create session with the REAL ID token
             console.log("🔄 Creating session with backend using ID token...")
-            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+            const backendBaseForSession = process.env.NEXT_PUBLIC_API_BASE_URL || ''
             // Create session directly with backend
             const sessionResponse = await fetch(`${backendBaseForSession}/api/auth/session`, {
               method: 'POST',
@@ -645,6 +706,64 @@ export default function SignInForm() {
       toast.error(errorMessage, { duration: 4000 })
     } finally {
       console.log("🏁 OTP resend process completed")
+      setProcessing(false)
+    }
+  }
+
+  // Handle forgot password
+  const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    console.log("🔐 Starting forgot password process...")
+    console.log("📧 Email:", forgotPasswordEmail.trim())
+
+    if (!forgotPasswordEmail.trim() || !isValidEmail(forgotPasswordEmail.trim())) {
+      toast.error("Please enter a valid email address", { duration: 3000 })
+      return
+    }
+
+    setProcessing(true)
+    setError("")
+
+    try {
+      const response = await axiosInstance.post("/api/auth/forgot-password", {
+        email: forgotPasswordEmail.trim()
+      })
+
+      console.log("📥 Forgot password response:", response.data)
+
+      if (response.data?.responseStatus === 'success') {
+        // Success - email sent
+        setForgotPasswordSent(true)
+        toast.success(response.data?.message || "Password reset link has been sent to your email.", { duration: 5000 })
+      } else {
+        // Handle error cases
+        const errorMessage = response.data?.message || "Failed to send password reset email. Please try again."
+        const reason = response.data?.data?.reason
+        
+        if (reason === 'GOOGLE_ONLY_USER') {
+          toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
+        } else if (reason === 'USER_NOT_FOUND') {
+          toast.error("No account found with this email address.", { duration: 4000 })
+        } else {
+          toast.error(errorMessage, { duration: 4000 })
+        }
+        setError(errorMessage)
+      }
+    } catch (error: any) {
+      console.error("❌ Forgot password error:", error)
+      const errorMessage = error.response?.data?.message || "Failed to send password reset email. Please try again."
+      const reason = error.response?.data?.data?.reason
+      
+      // Handle specific error cases
+      if (reason === 'GOOGLE_ONLY_USER') {
+        toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
+      } else if (reason === 'USER_NOT_FOUND') {
+        toast.error("No account found with this email address.", { duration: 4000 })
+      } else {
+        toast.error(errorMessage, { duration: 4000 })
+      }
+      setError(errorMessage)
+    } finally {
       setProcessing(false)
     }
   }
@@ -1114,6 +1233,13 @@ export default function SignInForm() {
     }
   }, [])
 
+  // Handle showLogin query parameter
+  useEffect(() => {
+    if (showLoginParam === 'true') {
+      setShowLoginForm(true)
+    }
+  }, [showLoginParam])
+
   return (
     <div className="w-full h-full flex flex-col bg-gray-900 relative overflow-x-hidden">
       {(authLoading || isRedirecting) && (
@@ -1477,13 +1603,35 @@ export default function SignInForm() {
                 </button>
               </div>
 
+              {/* Cloudflare Turnstile Captcha */}
+              <TurnstileCaptcha
+                onVerify={handleCaptchaVerify}
+                onError={handleCaptchaError}
+                theme="dark"
+              />
+
+              {/* Captcha Error */}
+              {captchaError && (
+                <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
+              )}
+
+              {/* Forgot Password Link */}
+              <div className="flex justify-end -mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              </div>
 
               {/* Continue with Email Button (Krea Style - Dark) */}
               <button
                 type="submit"
-                disabled={processing}
+                disabled={processing || !captchaToken}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                  processing
+                  processing || !captchaToken
                     ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
@@ -1741,9 +1889,36 @@ export default function SignInForm() {
                 {/* Terms Text (Dark) - Checkbox removed, text only */}
                 <div className="text-xs text-center text-gray-400 leading-relaxed">
                   By signing up, you agree to our{" "}
-                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
-                  <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
+                  <Link 
+                    href={LEGAL_ROUTES.TERMS_CONDITIONS}
+                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Terms and Conditions
+                  </Link>{" "}
+                  &{" "}
+                  <Link 
+                    href={LEGAL_ROUTES.PRIVACY_PAGE}
+                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Privacy Policy
+                  </Link>.
                 </div>
+
+                {/* Cloudflare Turnstile Captcha */}
+                <TurnstileCaptcha
+                  onVerify={handleCaptchaVerify}
+                  onError={handleCaptchaError}
+                  theme="dark"
+                />
+
+                {/* Captcha Error */}
+                {captchaError && (
+                  <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
+                )}
 
                 {/* Error Message (Dark) - Only show server/API errors */}
                 {error && (
@@ -1755,9 +1930,9 @@ export default function SignInForm() {
                 {/* Continue with Email Button (Krea Style - Dark) */}
                 <button
                   type="submit"
-                  disabled={processing || !isFormValid}
+                  disabled={processing || !isFormValid || !captchaToken}
                   className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                    processing || !isFormValid
+                    processing || !isFormValid || !captchaToken
                       ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
@@ -1818,6 +1993,95 @@ export default function SignInForm() {
           <span className="text-[#4285F4] text-xs">Cookies Settings</span>
         </div>
       )} */}
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md p-6 space-y-6">
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-white">Reset Password</h2>
+              <p className="text-gray-400 text-sm">
+                {forgotPasswordSent 
+                  ? "Check your email for password reset instructions."
+                  : "Enter your email address and we'll send you a link to reset your password."}
+              </p>
+            </div>
+
+            {/* Success Message */}
+            {forgotPasswordSent ? (
+              <div className="space-y-4">
+                <div className="rounded-lg p-4 bg-green-900/30 border border-green-800">
+                  <p className="text-green-300 text-sm">
+                    If an account exists with this email, a password reset link has been sent to <strong>{forgotPasswordEmail}</strong>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false)
+                    setForgotPasswordSent(false)
+                    setForgotPasswordEmail("")
+                  }}
+                  className="w-full py-3 px-4 rounded-lg font-medium text-base bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                {/* Error Message */}
+                {error && (
+                  <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
+                    <p className="text-red-300 text-sm">{error}</p>
+                  </div>
+                )}
+
+                {/* Email Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setForgotPasswordEmail("")
+                      setError("")
+                    }}
+                    className="flex-1 py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={processing || !forgotPasswordEmail.trim()}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${
+                      processing || !forgotPasswordEmail.trim()
+                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                    }`}
+                  >
+                    {processing ? "Sending..." : "Send Reset Link"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

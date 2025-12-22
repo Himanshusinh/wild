@@ -4,8 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { store } from '@/store';
 import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store/slices/historySlice';
+import { addActiveGeneration, updateActiveGeneration, removeActiveGeneration } from '@/store/slices/generationSlice';
 import { minimaxMusic, falElevenTts } from '@/store/slices/generationsApi';
 import { useGenerationCredits } from '@/hooks/useCredits';
+import { useCredits } from '@/hooks/useCredits';
+import { getModelCreditInfo } from '@/utils/modelCredits';
+import ActiveGenerationsPanel from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => {};
@@ -21,6 +25,13 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
   const dispatch = useAppDispatch();
   // Self-manage history loads for music to avoid central duplicate requests
   const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-music' });
+  
+  // Redux selector for parallel generation support
+  const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  // Only count running generations towards the limit (limit is 4)
+  // This allows completed/failed items to be auto-replaced by new ones
+  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -47,6 +58,12 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     duration: 90, // Default duration for music
   });
 
+  const {
+    deductCreditsOptimisticForGeneration,
+    rollbackOptimisticDeduction,
+    refreshCredits,
+  } = useCredits();
+
   const handleGenerate = async (payload: any) => {
     const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
     const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.prompt || '';
@@ -54,7 +71,33 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics');
       return;
     }
+
+    // Check parallel generation limit (only counting running ones)
+    if (runningGenerationsCount >= 4) {
+      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+      return;
+    }
+
     const normalizedText = primaryText.trim();
+
+    // Create tracking ID for queue
+    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // Add to active generations queue immediately
+    console.log('[queue] Adding new music generation to queue:', { generationId, model: payload?.model, prompt: normalizedText.slice(0, 50) });
+    dispatch(addActiveGeneration({
+      id: generationId,
+      prompt: normalizedText,
+      model: payload?.model || 'minimax-music-2',
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      params: {
+        generationType: isTtsModel ? 'text-to-speech' : 'text-to-music',
+        lyrics: normalizedText,
+        fileName: payload?.fileName,
+      }
+    }));
     if (isTtsModel) {
       payload.text = normalizedText;
       payload.prompt = payload.prompt || normalizedText;
@@ -79,13 +122,29 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     // Clear any previous credit errors
     clearCreditsError();
 
-    // Validate and reserve credits before generation
+    // Validate and reserve credits before generation (plus optimistic UI debit)
+    let optimisticDebit = 0;
+    const musicCredits = (() => {
+      const info = getModelCreditInfo(payload?.model || 'minimax-music-2');
+      return info?.credits || 0;
+    })();
+
     let transactionId: string;
     try {
+      if (musicCredits > 0) {
+        try {
+          deductCreditsOptimisticForGeneration(musicCredits);
+          optimisticDebit = musicCredits;
+        } catch { /* ignore optimistic errors */ }
+      }
+
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
       console.log('✅ Credits reserved for music generation:', creditResult);
     } catch (creditError: any) {
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       console.error('❌ Credit validation failed:', creditError);
       setErrorMessage(creditError.message || 'Insufficient credits for generation');
       return;
@@ -95,18 +154,30 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     setErrorMessage(undefined);
     setResultUrl(undefined);
 
-    // Create local preview immediately for UI feedback
-    setLocalMusicPreview({
-      id: `music-loading-${Date.now()}`,
-      prompt: normalizedText,
-      model: payload.model,
-      generationType: 'text-to-music',
-      images: [{ id: 'music-loading', url: '', originalUrl: '' }],
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      imageCount: 1,
-      status: 'generating'
-    });
+    // Update queue status to generating
+    if (generationId) {
+      dispatch(updateActiveGeneration({
+        id: generationId,
+        updates: { status: 'generating' }
+      }));
+    }
+
+      // Get file name from payload or use default
+      const fileName = payload.fileName || '';
+      
+      // Create local preview immediately for UI feedback
+      setLocalMusicPreview({
+        id: `music-loading-${Date.now()}`,
+        prompt: normalizedText,
+        model: payload.model,
+        generationType: 'text-to-music',
+        images: [{ id: 'music-loading', url: '', originalUrl: '' }],
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 1,
+        status: 'generating',
+        fileName: fileName
+      });
 
     // For MiniMax Music 2, the backend creates the history entry, so we'll use that historyId
     // For other models, we create a loading entry first
@@ -114,9 +185,10 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     let tempId: string | null = null;
     let backendHistoryId: string | null = null;
 
-    if (!isMiniMaxMusic2) {
+      if (!isMiniMaxMusic2) {
       // Create loading history entry for Redux (with temporary ID) - only for non-MiniMax Music 2
       tempId = Date.now().toString();
+      const fileName = payload.fileName || '';
       const loadingEntry = {
         id: tempId,
         prompt: normalizedText,
@@ -128,7 +200,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         status: "generating" as const,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        imageCount: 1 // For music, this represents audio count
+        imageCount: 1, // For music, this represents audio count
+        fileName: fileName
       };
       
       // Force immediate refresh to show loading animation
@@ -163,6 +236,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       // For MiniMax Music 2, create a temporary loading entry that will be replaced by backend entry
       // DO NOT refresh here - it will load backend entries and cause duplicates
       tempId = `loading-${Date.now()}`;
+      const fileName = payload.fileName || '';
       const loadingEntry = {
         id: tempId,
         prompt: normalizedText,
@@ -174,7 +248,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         status: "generating" as const,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        imageCount: 1
+        imageCount: 1,
+        fileName: fileName
       };
       
       console.log('🎵 Adding loading entry for MiniMax Music 2:', loadingEntry);
@@ -267,17 +342,32 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       
       // Update the history entry with the audio URL from backend
       // Store in both audios and images fields for compatibility
+      const fileName = payload.fileName || '';
       const updateData = {
         status: 'completed' as const,
         audios: finalAudios,
         images: finalAudios.map(a => ({ ...a, type: 'audio' })),
-        lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt
+        lyrics: payload.lyrics_prompt || payload.lyrics || payload.text || payload.prompt,
+        fileName: fileName
       };
 
       console.log('🎵 Final audio data for history:', updateData);
       console.log('🎵 Audio URL:', audioUrl);
       console.log('🎵 History ID being updated:', historyIdToUpdate);
       console.log('🎵 Backend result:', result);
+
+      // Update queue with completed audio
+      if (generationId) {
+        console.log('[queue] Music generation completed, updating active generation:', { generationId, historyId: historyIdToUpdate, audioCount: finalAudios.length });
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: {
+            status: 'completed',
+            audios: finalAudios,
+            historyId: historyIdToUpdate || undefined
+          }
+        }));
+      }
 
       if (backendHistoryId) {
         // Backend already created the entry, so remove temp entry and add the completed entry
@@ -297,7 +387,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             prompt: normalizedText,
             model: payload.model,
             generationType: 'text-to-music' as const,
-            ...updateData, // updateData already contains lyrics
+            ...updateData, // updateData already contains lyrics and fileName
             timestamp: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             imageCount: 1
@@ -347,6 +437,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       if (transactionId) {
         await handleGenerationSuccess(transactionId);
       }
+      try { await refreshCredits(); } catch { }
+      try { await refreshCredits(); } catch { }
 
       // Refresh history after a short delay to ensure backend has updated
       // For MiniMax Music 2, we already added the entry, so skip refresh to avoid duplicates
@@ -364,6 +456,21 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     } catch (error: any) {
       console.error('❌ Music generation failed:', error);
+      
+      // Update queue with failed status
+      if (generationId) {
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: {
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Music generation failed'
+          }
+        }));
+      }
+      
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       
       const historyIdToUpdate = backendHistoryId || tempId;
       
@@ -436,6 +543,9 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
   return (
     <>
+      {/* Active Generations Queue Panel */}
+      <ActiveGenerationsPanel />
+      
       {showHistoryOnly ? (
         <MusicHistory
           generationType="text-to-music"
@@ -456,7 +566,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
           )}
 
           {/* Music Input Box */}
-          <div className="w-full -mt-6 bg-white/5 backdrop-blur-3xl  rounded-2xl">
+          <div className="w-full -mt-6 bg-[#1f1f23]  rounded-2xl">
             <MusicInputBox
               onGenerate={handleGenerate}
               isGenerating={isGenerating}
@@ -470,7 +580,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       {/* Audio Player Modal - Rendered for both history and input views */}
       {selectedAudio && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
+          <div className="bg-white/5 backdrop-blur-3xl rounded-2xl p-6 max-w-4xl w-full ring-1 ring-white/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white text-lg font-semibold">Music Track</h3>
               <button
@@ -484,9 +594,10 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             </div>
             <CustomAudioPlayer 
               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-              prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
+              prompt={selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
               lyrics={selectedAudio.entry.lyrics}
+              generationType={selectedAudio.entry.generationType || 'text-to-music'}
               autoPlay={true}
             />
           </div>
