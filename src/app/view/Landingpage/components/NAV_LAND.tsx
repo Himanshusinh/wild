@@ -70,6 +70,7 @@ const ImageEdit: FeatureItem[] = [
   { title: "Resize", href: '/view/EditImage?feature=resize', },
   { title: "Vectorize", href: '/view/EditImage?feature=vectorize', },
   { title: "Chat to Edit", href: '/view/EditImage?feature=chat-to-edit', },
+  { title: "Editor", href: 'http://localhost:3005' },
 ]
 
 const VideoEdit: FeatureItem[] = [
@@ -180,16 +181,21 @@ const ImageEditSection = () => (
     </h3>
     <div className="max-h-0 overflow-hidden group-hover:max-h-96 transition-all duration-300 ease-in-out">
       <div className="flex flex-col gap-2 pt-1">
-        {ImageEdit.map((feature, index) => (
-          <Link
-            key={index}
-            href={feature.href}
-            className="text-white/80 hover:text-blue-400 transition-all duration-200 text-sm py-1 px-2 rounded hover:bg-white/5"
-          >
-            {feature.title}
-            {feature.coming && <span className="text-xs text-yellow-400 ml-2">(Soon)</span>}
-          </Link>
-        ))}
+        {ImageEdit.map((feature, index) => {
+          const className = "text-white/80 hover:text-blue-400 transition-all duration-200 text-sm py-1 px-2 rounded hover:bg-white/5";
+          const isExternal = /^https?:\/\//.test(feature.href);
+          return isExternal ? (
+            <a key={index} href={feature.href} target="_blank" rel="noopener noreferrer" className={className}>
+              {feature.title}
+              {feature.coming && <span className="text-xs text-yellow-400 ml-2">(Soon)</span>}
+            </a>
+          ) : (
+            <Link key={index} href={feature.href} className={className}>
+              {feature.title}
+              {feature.coming && <span className="text-xs text-yellow-400 ml-2">(Soon)</span>}
+            </Link>
+          );
+        })}
       </div>
     </div>
   </div>
