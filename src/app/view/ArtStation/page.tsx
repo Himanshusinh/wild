@@ -208,7 +208,7 @@ export default function ArtStationPage() {
     }
   }
 
-  const confirmDelete = async (item: PublicItem) => {
+  const confirmDelete = async (item: PublicItem, imageId?: string) => {
     try {
       const who = item?.createdBy?.uid || ''
       const currentUid = (typeof window !== 'undefined' && (localStorage.getItem('user') && (() => { try { return JSON.parse(localStorage.getItem('user') as string)?.uid } catch { return null } })())) as string | null
@@ -216,16 +216,51 @@ export default function ArtStationPage() {
         alert('You can delete only your own generation')
         return
       }
-      const ok = confirm('Delete this generation permanently? This cannot be undone.')
+      
+      const isSingleImage = imageId && item.images && item.images.length > 0;
+      const confirmMessage = isSingleImage 
+        ? 'Delete this image permanently? This cannot be undone.'
+        : 'Delete this generation permanently? This cannot be undone.';
+        
+      const ok = confirm(confirmMessage)
       if (!ok) return
+      
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-      const res = await fetch(`${baseUrl}/api/generations/${item.id}`, { method: 'DELETE', credentials: 'include' })
+      const url = new URL(`${baseUrl}/api/generations/${item.id}`);
+      if (imageId) {
+        url.searchParams.set('imageId', imageId);
+      }
+      
+      const res = await fetch(url.toString(), { method: 'DELETE', credentials: 'include' })
       if (!res.ok) {
         const t = await res.text();
         throw new Error(t || 'Delete failed')
       }
-      setItems(prev => prev.filter(i => i.id !== item.id))
-      if (preview?.item?.id === item.id) setPreview(null)
+      
+      const json = await res.json();
+      const updatedItem = json?.data?.item;
+      
+      if (updatedItem && !updatedItem.isDeleted) {
+        // Partial deletion - update item in list
+        setItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
+        
+        // Update preview if open
+        if (preview?.item?.id === item.id) {
+          // If the deleted image was the currently viewed one, we might need to adjust view or close.
+          // However, ArtStationPreview handles index updates via props if we passed them,
+          // but here we are just updating the 'item'.
+          // We should update the preview item reference.
+          // If the currently viewed image was the one deleted, we rely on the fact that
+          // the item's images array is now shorter.
+          // We'll update the preview object.
+          setPreview(prev => prev ? { ...prev, item: updatedItem } : null);
+        }
+      } else {
+        // Full deletion
+        setItems(prev => prev.filter(i => i.id !== item.id))
+        // Close preview if it was this item
+        if (preview?.item?.id === item.id) setPreview(null)
+      }
     } catch (e) {
       console.error('Delete error', e)
       alert('Failed to delete generation')

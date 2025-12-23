@@ -770,18 +770,38 @@ const InputBox = () => {
   };
 
   // Delete handler - same logic as ImagePreviewModal
-  const handleDeleteImage = async (e: React.MouseEvent, entry: HistoryEntry) => {
+  const handleDeleteImage = async (e: React.MouseEvent, entry: HistoryEntry, imageId?: string) => {
     try {
       e.stopPropagation();
       e.preventDefault();
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch { }
-      // Clear/reset document title when image is deleted
+      
+      const isSingleImage = imageId && entry.images && entry.images.length > 0;
+      const confirmMessage = isSingleImage 
+        ? 'Delete this image permanently? This cannot be undone.'
+        : 'Delete this generation permanently? This cannot be undone.';
+
+      if (!window.confirm(confirmMessage)) return;
+
+      const response = await axiosInstance.delete(`/api/generations/${entry.id}`, {
+        params: imageId ? { imageId } : undefined
+      });
+      
+      const updatedItem = response.data?.data?.item;
+
+      if (updatedItem && !updatedItem.isDeleted) {
+        // Partial deletion - update entry with new images
+        dispatch(updateHistoryEntry({ id: entry.id, updates: { images: updatedItem.images } as any }));
+        toast.success('Image deleted');
+      } else {
+        // Full deletion
+        try { dispatch(removeHistoryEntry(entry.id)); } catch { }
+        toast.success('Generation deleted');
+      }
+
+      // Clear/reset document title when image/generation is deleted
       if (typeof document !== 'undefined') {
         document.title = 'WildMind';
       }
-      toast.success('Image deleted');
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error('Failed to delete generation');
@@ -5706,7 +5726,7 @@ const InputBox = () => {
                                       <button
                                         aria-label="Delete image"
                                         className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                        onClick={(e) => handleDeleteImage(e, entry)}
+                                        onClick={(e) => handleDeleteImage(e, entry, image.id)}
                                         onMouseDown={(e) => e.stopPropagation()}
                                       >
                                         <Trash2 size={16} />

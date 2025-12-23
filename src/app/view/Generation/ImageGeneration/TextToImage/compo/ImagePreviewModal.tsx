@@ -1154,45 +1154,46 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
       if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
 
-      // Get the current entry to check how many images it has
-      const currentImages = Array.isArray((entry as any)?.images) ? (entry as any).images : [];
-      const remainingImages = currentImages.filter((img: any) => {
-        // Match by id, url, or storagePath
-        const matchesId = imageToDelete?.id && img.id === imageToDelete.id;
-        const matchesUrl = imageToDelete?.url && img.url === imageToDelete.url;
-        const matchesStoragePath = (imageToDelete as any)?.storagePath && img.storagePath === (imageToDelete as any).storagePath;
-        return !(matchesId || matchesUrl || matchesStoragePath);
+      // Use the backend's single image deletion endpoint
+      // If the backend determines it's the last image, it will perform a full delete
+      const response = await axiosInstance.delete(`/api/generations/${entry.id}`, {
+        params: { imageId: imageToDelete.id }
       });
 
-      // If this is the last image, delete the entire entry
-      if (remainingImages.length === 0) {
-        await axiosInstance.delete(`/api/generations/${entry.id}`);
+      const updatedItem = response.data?.data?.item;
+
+      if (updatedItem && updatedItem.isDeleted) {
+        // Full generation was deleted
         try { dispatch(removeHistoryEntry(entry.id)); } catch { }
-        // Clear/reset document title when image is deleted
         if (typeof document !== 'undefined') {
           document.title = 'WildMind';
         }
         onClose();
-      } else {
-        // Otherwise, update the entry to remove just this image
-        await axiosInstance.patch(`/api/generations/${entry.id}`, {
-          images: remainingImages
-        });
-        // Update Redux store with the new images array
+      } else if (updatedItem) {
+        // Partial deletion - update entry with new images
+        const newImages = updatedItem.images || [];
+        
+        // Update Redux store
         try {
-          dispatch(updateHistoryEntry({ id: entry.id, updates: { images: remainingImages } as any }));
+          dispatch(updateHistoryEntry({ id: entry.id, updates: { images: newImages } as any }));
         } catch { }
+
         // Update local entry state so the gallery updates immediately
-        setCurrentEntry({ ...entry, images: remainingImages } as any);
-        // Adjust the selected index - if we deleted the last image, go to the previous one
-        // If we deleted a middle image, stay at the same index (which will now show the next image)
-        const newIndex = Math.min(selectedIndex, remainingImages.length - 1);
-        if (newIndex >= 0 && newIndex < remainingImages.length) {
+        setCurrentEntry(updatedItem as HistoryEntry);
+        
+        // Adjust the selected index
+        // If we deleted the last image (and there are still images), go to the previous one
+        // If we deleted a middle image, stay at the same index (which now shows the next image)
+        const newIndex = Math.min(selectedIndex, newImages.length - 1);
+        if (newIndex >= 0) {
           setSelectedIndex(newIndex);
         } else {
-          // Shouldn't happen, but close if somehow no valid index
+          // Should have been isDeleted=true if empty, but just in case
           onClose();
         }
+      } else {
+        // Fallback if no item returned (shouldn't happen)
+        onClose();
       }
     } catch (e) {
       console.error('Delete failed:', e);

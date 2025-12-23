@@ -55,7 +55,7 @@ type EngagementState = {
 type Props = {
   preview: PreviewState
   onClose: () => void
-  onConfirmDelete: (item: PublicItem) => void | Promise<void>
+  onConfirmDelete: (item: PublicItem, imageId?: string) => void | Promise<void>
   currentUid: string | null
   currentUser: { uid?: string; username?: string; displayName?: string; photoURL?: string } | null
   cards: CardEntry[]
@@ -736,12 +736,24 @@ export default function ArtStationPreview({
             )}
 
             {/* Delete button (owner only) - on same row as Like button */}
-            {/* {currentUid && preview.item.createdBy?.uid === currentUid ? (
+            {/* Delete button (owner only) - on same row as Like button */}
+            {currentUid && preview.item.createdBy?.uid === currentUid ? (
               <div className="relative group">
                 <button
                   title="Delete"
                   className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
-                  onClick={() => onConfirmDelete(preview.item)}
+                  onClick={() => {
+                    // Determine which image is currently selected
+                    const images = (preview.item.images || []) as any[];
+                    const currentImg = images[selectedImageIndex] || images[0];
+                    const imageId = currentImg?.id;
+                    
+                    // Pass imageId to parent (if multiple images exist, otherwise it might be undefined or just delete the item)
+                    // If we have multiple images, we want to delete just the current one.
+                    // If we have just one image, the backend will treat it as a full delete anyway if we pass the ID.
+                    // So always passing the ID is safe and correct for "single image deletion".
+                    onConfirmDelete(preview.item, imageId);
+                  }}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -749,7 +761,7 @@ export default function ArtStationPreview({
               </div>
             ) : (
               <div className="w-10 h-10"></div>
-            )} */}
+            )}
           </div>
         </div>
 
