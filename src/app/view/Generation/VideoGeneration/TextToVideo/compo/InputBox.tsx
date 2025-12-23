@@ -3796,26 +3796,58 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+        
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000 // 15 second timeout
             });
             const status = statusRes.data?.data || statusRes.data;
             const s = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0; // Reset on success
+            
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
-              const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
-              });
-              videoResult = resultRes.data?.data || resultRes.data;
+              try {
+                const resultRes = await api.get('/api/fal/queue/result', {
+                  params: { model: result.model, requestId: result.requestId },
+                  timeout: 15000
+                });
+                videoResult = resultRes.data?.data || resultRes.data;
+                // CRITICAL: Update queue status immediately to mark as completed
+                if (generationId) {
+                  dispatch(updateActiveGeneration({
+                    id: generationId,
+                    updates: { status: 'completed', historyId: result.historyId }
+                  }));
+                  console.log('[queue] Kling o1 marked as completed in queue');
+                }
+              } catch (resultErr: any) {
+                console.error('[queue] Kling o1 - Failed to fetch result:', resultErr?.message);
+                throw resultErr;
+              }
               break;
             }
             if (s === 'failed' || s === 'error') {
               throw new Error('Kling o1 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Kling o1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Kling o1 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Kling o1: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Kling o1: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3838,27 +3870,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Veo 3.1 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Veo 3.1 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Veo 3.1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Veo 3.1 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Veo 3.1: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Veo 3.1: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3877,26 +3935,53 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
+
             const s = String(status?.status || '').toLowerCase();
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] LTX V2 marked as completed in queue');
+              }
               break;
             }
             if (s === 'failed' || s === 'error') {
               throw new Error('LTX V2 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] LTX V2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] LTX V2 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`LTX V2: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`LTX V2: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3927,27 +4012,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Veo3 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Veo3 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Veo3 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Veo3 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Veo3: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Veo3: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3967,27 +4078,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Sora2 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Sora 2 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Sora2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Sora2 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Sora2: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Sora2: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4007,6 +4144,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models (they can take longer)
         console.log(`🎬 Starting WAN 2.5 polling with ${maxAttempts} attempts (15 minutes max)`);
 
@@ -4015,10 +4154,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 WAN 2.5 polling attempt ${attempts + 1}/${maxAttempts}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             console.log(`🎬 WAN 2.5 status check result:`, status);
             // Normalize status for robust comparisons
@@ -4027,10 +4168,19 @@ const InputBox = (props: InputBoxProps = {}) => {
               console.log('✅ WAN 2.5 generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ WAN 2.5 result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] WAN 2.5 marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4055,7 +4205,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               if (attempts >= 120 && result.historyId) {
                 try {
                   console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
+                    timeout: 20000
+                  });
                   const historyData = historyRes.data?.data || historyRes.data;
 
                   if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
@@ -4071,11 +4223,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
               }
             }
-          } catch (statusError) {
-            console.error('❌ WAN 2.5 status check failed:', statusError);
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            // Log less frequently for long-polling (every 10 attempts)
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] WAN 2.5 - Network error (${attempts + 1}/${maxAttempts}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] WAN 2.5 - Error (${attempts + 1}/${maxAttempts}):`, errorMsg);
+              }
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`WAN 2.5: Too many network errors. ${errorMsg}`);
+            }
             if (attempts === maxAttempts - 1) {
-              console.error('❌ WAN 2.5 polling exhausted all attempts');
-              throw statusError;
+              throw new Error(`WAN 2.5: Timeout after ${maxAttempts} attempts. ${errorMsg}`);
             }
           }
           await new Promise(res => setTimeout(res, 1000));
@@ -4110,6 +4276,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models
         console.log(`🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`);
 
@@ -4118,10 +4286,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             console.log(`🎬 WAN 2.2 Animate Replace status check result:`, status);
             // Normalize status for robust comparisons
@@ -4130,10 +4300,19 @@ const InputBox = (props: InputBoxProps = {}) => {
               console.log('✅ WAN 2.2 Animate Replace generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ WAN 2.2 Animate Replace result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] WAN 2.2 marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4158,7 +4337,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               if (attempts >= 120 && result.historyId) {
                 try {
                   console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
+                    timeout: 20000
+                  });
                   const historyData = historyRes.data?.data || historyRes.data;
 
                   if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
@@ -4213,25 +4394,52 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         let videoResult: any;
         const maxAttemptsK = 900; // up to 15 minutes
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < maxAttemptsK; attempts++) {
           try {
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
+
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Kling marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
               throw new Error('Kling video generation failed');
             }
-          } catch (e) {
-            if (attempts === maxAttemptsK - 1) throw e;
+          } catch (e: any) {
+            consecutiveErrors++;
+            const errorMsg = e?.message || String(e);
+            const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            if (isNetwork) {
+              console.warn(`[queue] Kling - Network error (${attempts + 1}/${maxAttemptsK}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Kling - Error (${attempts + 1}/${maxAttemptsK}):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Kling: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsK - 1) throw new Error(`Kling: Timeout after ${maxAttemptsK} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4260,6 +4468,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsSeedance = 900; // up to 15 minutes (same as WAN/Kling)
         console.log(`🎬 Starting Seedance polling with ${maxAttemptsSeedance} attempts (15 minutes max)`);
 
@@ -4268,21 +4478,32 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 Seedance polling attempt ${attempts + 1}/${maxAttemptsSeedance}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             console.log(`🎬 Seedance status check result:`, status);
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ Seedance generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ Seedance result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Seedance marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4294,9 +4515,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(`🎬 Seedance still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
             }
-          } catch (e) {
-            console.error('❌ Seedance status check failed:', e);
-            if (attempts === maxAttemptsSeedance - 1) throw e;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] Seedance - Network error (${attempts + 1}/${maxAttemptsSeedance}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] Seedance - Error (${attempts + 1}/${maxAttemptsSeedance}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Seedance: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsSeedance - 1) throw new Error(`Seedance: Timeout after ${maxAttemptsSeedance} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4325,6 +4560,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsPixverse = 900; // up to 15 minutes (same as WAN/Kling/Seedance)
         console.log(`🎬 Starting PixVerse polling with ${maxAttemptsPixverse} attempts (15 minutes max)`);
 
@@ -4333,21 +4570,32 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 PixVerse polling attempt ${attempts + 1}/${maxAttemptsPixverse}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             console.log(`🎬 PixVerse status check result:`, status);
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ PixVerse generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ PixVerse result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] PixVerse marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4359,9 +4607,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(`🎬 PixVerse still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
             }
-          } catch (e) {
-            console.error('❌ PixVerse status check failed:', e);
-            if (attempts === maxAttemptsPixverse - 1) throw e;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] PixVerse - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] PixVerse - Error (${attempts + 1}/${maxAttemptsPixverse}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`PixVerse: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsPixverse - 1) throw new Error(`PixVerse: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }

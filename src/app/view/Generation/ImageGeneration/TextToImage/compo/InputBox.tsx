@@ -36,7 +36,8 @@ import {
   clearHistory,
 } from "@/store/slices/historySlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
-import axiosInstance from "@/lib/axiosInstance";
+import axiosInstance, { getApiClient } from "@/lib/axiosInstance";
+import { qlog, qwarn, qerr } from '@/lib/queueDebug';
 import toast from 'react-hot-toast';
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
 // History sync helpers (backend supports PATCH /api/generations/:historyId)
@@ -150,7 +151,7 @@ const InputBox = () => {
   const upsertLocalGeneratingEntry = useCallback((entry: HistoryEntry) => {
     const id = String((entry as any)?.id || (entry as any)?.firebaseHistoryId || '');
     if (!id) return;
-    console.log('[queue] Upserting local generating entry:', { id, status: (entry as any)?.status });
+    qlog('Upserting local generating entry', { id, status: (entry as any)?.status });
     setLocalGeneratingEntries((prev) => {
       const filtered = prev.filter((e: any) => {
         const eId = String(e?.id || '');
@@ -164,7 +165,7 @@ const InputBox = () => {
   const removeLocalGeneratingEntry = useCallback((idOrIds?: string | string[]) => {
     const ids = (Array.isArray(idOrIds) ? idOrIds : [idOrIds]).filter(Boolean).map(String);
     if (ids.length === 0) return;
-    console.log('[queue] Removing local generating entries:', ids);
+    qlog('Removing local generating entries', { ids });
     setLocalGeneratingEntries((prev) =>
       prev.filter((e: any) => {
         const eId = String(e?.id || '');
@@ -188,6 +189,15 @@ const InputBox = () => {
 
   // Redux selector for parallel generation support
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  // Ensure active generations have startedAt set promptly so watchdog & persistence work
+  useEffect(() => {
+    activeGenerations.forEach((g: any) => {
+      if ((g.status === 'pending' || g.status === 'generating') && !g.startedAt) {
+        dispatch(updateActiveGeneration({ id: g.id, updates: { startedAt: Date.now() } }));
+      }
+    });
+  }, [activeGenerations, dispatch]);
+
   // Filter out video generations - only count image generations towards the limit (limit is 4)
   // This allows completed/failed items to be auto-replaced by new ones
   const normalizeGenType = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
@@ -866,7 +876,7 @@ const InputBox = () => {
 
       // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
       // This ensures we can check it in the same render cycle
-      console.log('[DEBUG refreshSingleGeneration] Tracking entry IDs:', {
+      qlog('[DEBUG refreshSingleGeneration] Tracking entry IDs:', {
         historyId,
         normalizedEntryId: normalizedEntry.id,
         firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
@@ -881,14 +891,14 @@ const InputBox = () => {
         historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
       }
 
-      console.log('[DEBUG refreshSingleGeneration] After adding to ref:', {
+      qlog('[DEBUG refreshSingleGeneration] After adding to ref:', {
         newRefSize: historyEntryIdsRef.current.size,
         newRefContents: Array.from(historyEntryIdsRef.current)
       });
 
       if (existing) {
         // Update existing entry - only update changed fields to avoid overwriting
-        console.log('[DEBUG refreshSingleGeneration] Updating existing entry:', existing.id);
+        qlog('[DEBUG refreshSingleGeneration] Updating existing entry:', existing.id);
         dispatch(updateHistoryEntry({
           id: existing.id,
           updates: {
@@ -898,27 +908,167 @@ const InputBox = () => {
             timestamp: normalizedEntry.timestamp,
           }
         }));
-        console.log('[refreshSingleGeneration] Updated existing generation:', existing.id);
+        qlog('[refreshSingleGeneration] Updated existing generation:', existing.id);
       } else {
         // Add new entry at the beginning
-        console.log('[DEBUG refreshSingleGeneration] Adding new entry to Redux:', {
+        qlog('[DEBUG refreshSingleGeneration] Adding new entry to Redux:', {
           historyId: resolvedId || historyId,
           entryId: normalizedEntry.id,
           firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
           status: normalizedEntry.status,
-          imageCount: normalizedEntry.images?.length || 0
+          imageCount: normalizedEntry.images?.length || 0,
+          params: (normalizedEntry as any)?.params || {}
         });
         dispatch(addHistoryEntry(normalizedEntry));
-        console.log('[refreshSingleGeneration] Added new generation:', resolvedId || historyId);
+        qlog('[refreshSingleGeneration] Added new generation:', resolvedId || historyId);
+
+        // Attempt to correlate newly added history with any active generation that has a matching provider requestId
+        try {
+          const candidateReqIds = new Set<string>();
+          const pushIf = (v: any) => { if (v) candidateReqIds.add(String(v)); };
+          const ne = normalizedEntry as any;
+          pushIf(ne?.params?.requestId);
+          pushIf(ne?.requestId);
+          pushIf(ne?.request_id);
+          pushIf(ne?.idempotencyKey);
+          pushIf(ne?.providerRequestId);
+          pushIf((ne?.provider || {})?.requestId);
+
+          if (candidateReqIds.size > 0) {
+            activeGenerations.forEach((g: any) => {
+              const gReq = String((g?.params || {})?.requestId || '');
+              if (!gReq) return;
+              if (candidateReqIds.has(gReq)) {
+                console.log('[queue] Correlating active generation by requestId', { generationId: g.id, historyId: normalizedEntry.id, requestId: gReq });
+                // Attach canonical historyId to the active generation so future syncs match by id
+                dispatch(updateActiveGeneration({ id: g.id, updates: { historyId: normalizedEntry.id } }));
+                // Also remove local preview entries associated with this generation
+                removeLocalGeneratingEntry([g.id, normalizedEntry.id]);
+              }
+            });
+          }
+
+        // If we didn't find a requestId-based match, try a safe prompt+timestamp correlation
+        try {
+          const nePrompt = String((normalizedEntry as any)?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+          const neModel = String((normalizedEntry as any)?.model || '');
+          const createdRaw = (normalizedEntry as any)?.createdAt || (normalizedEntry as any)?.timestamp || (normalizedEntry as any)?.updatedAt;
+          const neTime = typeof createdRaw === 'number' ? createdRaw : Date.parse(String(createdRaw || '')) || Date.now();
+          const MAX_TIME_DIFF = 120000; // 2 minutes
+
+          activeGenerations.forEach((g: any) => {
+            try {
+              const gPrompt = String(g?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+              const gModel = String(g?.model || '');
+              const gTimeRaw = g?.startedAt || g?.createdAt || 0;
+              const gTime = typeof gTimeRaw === 'number' ? gTimeRaw : Date.parse(String(gTimeRaw || '')) || 0;
+              const timeDiff = Math.abs(neTime - gTime);
+              const promptMatch = gPrompt && nePrompt && (gPrompt === nePrompt || gPrompt.startsWith(nePrompt) || nePrompt.startsWith(gPrompt));
+              const modelMatch = gModel && neModel && gModel === neModel;
+
+              if ((promptMatch && timeDiff < MAX_TIME_DIFF) || (promptMatch && modelMatch && timeDiff < MAX_TIME_DIFF)) {
+                console.log('[queue] Correlating active generation by prompt+time', { generationId: g.id, historyId: normalizedEntry.id, promptMatch: gPrompt.slice(0,50), timeDiff });
+                dispatch(updateActiveGeneration({ id: g.id, updates: { historyId: normalizedEntry.id } }));
+                removeLocalGeneratingEntry([g.id, normalizedEntry.id]);
+              }
+            } catch (e) {
+              // continue
+            }
+          });
+        } catch (e) {
+          // ignore
+        }
+        } catch (e) {
+          qerr('Failed to correlate new history entry with active generations by requestId:', e);
+        }
       }
 
       // Clear any local preview entries that match this generation.
       removeLocalGeneratingEntry(idsToMatch);
     } catch (error) {
-      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
+      qerr('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       // Fallback to full refresh if single fetch fails
       refreshHistory();
     }
+  };
+
+  // Poll for a new history entry matching this generation's prompt/requestId and attach it to the active generation
+  const pollForMatchingHistory = async (opts: {
+    generationId?: string;
+    tempEntryId?: string;
+    model?: string;
+    prompt?: string;
+    requestId?: string;
+    startedAt?: number;
+    timeoutMs?: number;
+  }) => {
+    const { generationId } = opts;
+    // Ensure generation has a startedAt so adaptive watchdog and persistence work
+    const ensureStartedAt = (id?: string) => {
+      if (!id) return;
+      const g = activeGenerations.find((x: any) => x.id === id);
+      if (g && !g.startedAt) {
+        dispatch(updateActiveGeneration({ id, updates: { startedAt: Date.now() } }));
+      }
+    };
+    ensureStartedAt(generationId);
+
+    const { generationId: _gid, tempEntryId, model, prompt, requestId, startedAt = Date.now(), timeoutMs = 120000 } = opts;
+    const api = axiosInstance;
+    const normalize = (s = '') => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const target = normalize((prompt || '').slice(0, 100));
+    const deadline = Date.now() + timeoutMs;
+    let attempt = 0;
+
+    qlog('Starting pollForMatchingHistory', { generationId: _gid, tempEntryId, model, requestId, startedAt, timeoutMs });
+
+    while (Date.now() < deadline) {
+      attempt++;
+      try {
+        const res = await api.get('/api/generations', { params: { limit: 20, sortBy: 'createdAt', generationType: 'text-to-image' }, timeout: 10000 });
+        const items: any[] = res.data?.data?.items || res.data?.items || [];
+        qlog('pollForMatchingHistory: fetched items', { attempt, itemsFound: items.length });
+
+        // Try to find exact historyId match first (if requestId looks like a history id)
+        for (const it of items) {
+          if (!it) continue;
+          // If requestId shows up anywhere in the raw item, treat as match
+          const raw = JSON.stringify(it || '');
+          if (requestId && String(raw || '').includes(String(requestId))) {
+            qlog('pollForMatchingHistory: matched via requestId in item', { matchedId: it.id, requestId });
+            await refreshSingleGeneration(it.id);
+            if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { historyId: it.id } }));
+            return it.id;
+          }
+        }
+
+        // Otherwise, attempt fuzzy prompt + timestamp match
+        for (const it of items) {
+          try {
+            if (!it || !it.prompt) continue;
+            const p = normalize((it.prompt || '').slice(0, 100));
+            const t = Date.parse(String(it.createdAt || it.timestamp || it.updatedAt || 0)) || 0;
+            const age = Math.abs(t - (startedAt || Date.now()));
+            // Accept matches created within +/- 90s and with prompt substring match
+            if (target && p.includes(target) && age < 90000) {
+              qlog('pollForMatchingHistory: fuzzy matched item', { matchedId: it.id, promptMatch: p.slice(0, 100), age });
+              await refreshSingleGeneration(it.id);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { historyId: it.id } }));
+              return it.id;
+            }
+          } catch (e) { /* continue */ }
+        }
+      } catch (err: any) {
+        qwarn('pollForMatchingHistory: fetch failed', { attempt, err: err?.message || err });
+      }
+
+      // Backoff: 1s -> 2s -> 3s -> 4s up to 5s
+      const delay = Math.min(5000, 500 + attempt * 500);
+      await new Promise(res => setTimeout(res, delay));
+    }
+
+    qwarn('pollForMatchingHistory: timeout, no matching history found', { generationId, tempEntryId, model, requestId });
+    return undefined;
   };
 
   const refreshHistory = () => {
@@ -1166,20 +1316,51 @@ const InputBox = () => {
     const timeoutId = setTimeout(() => {
       console.log('[queue] Sync: Running with', activeGenerations.length, 'active generations and', historyEntries.length, 'history entries');
 
-    // Build a quick lookup of history items by id (including firebaseHistoryId for matching)
+    // Build a quick lookup of history items by id (including firebaseHistoryId and requestId for matching)
     const historyMap = new Map<string, any>();
     historyEntries.forEach((e: any) => {
       const id = String(e?.id || '');
       const fbId = String((e as any)?.firebaseHistoryId || '');
+      const reqCandidates = new Set<string>();
+      const pushIf = (v: any) => { if (v) reqCandidates.add(String(v)); };
+
+      // Common locations for provider request ids
+      pushIf((e as any)?.params?.requestId);
+      pushIf((e as any)?.requestId);
+      pushIf((e as any)?.request_id);
+      pushIf((e as any)?.idempotencyKey);
+      pushIf((e as any)?.providerRequestId);
+      pushIf(((e as any)?.provider || {})?.requestId);
+      pushIf(((e as any)?.metadata || {})?.requestId);
+      pushIf(((e as any)?.inputs || {})?.requestId);
+      pushIf(((e as any)?.inputs || {})?.request_id);
+      pushIf(((e as any)?.context || {})?.requestId);
+      pushIf(((e as any)?.mirror || {})?.requestId);
+
       if (id) historyMap.set(id, e);
       if (fbId) historyMap.set(fbId, e);
+
+      // Map by all discovered requestId candidates
+      reqCandidates.forEach((r) => {
+        if (r) {
+          historyMap.set(r, e);
+          console.log('[queue] Indexed history entry by requestId candidate', { historyId: id, requestId: r });
+        }
+      });
     });
 
     activeGenerations.forEach((gen: any) => {
       const genId = String(gen?.id || '');
       const backendId = String(gen?.historyId || '');
-      const candidateIds = [backendId, genId].filter(Boolean);
+      const reqId = String((gen?.params || {})?.requestId || '');
+      const candidateIds = [backendId, genId, reqId].filter(Boolean);
       let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
+
+      // If we got a match via requestId, log it for debugging
+      if (!match && reqId && historyMap.has(reqId)) {
+        match = historyMap.get(reqId);
+        console.log('[queue] Matched generation to history via requestId', { genId, requestId: reqId, historyId: match?.id });
+      }
       
       // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
       // CRITICAL: Only use fallback matching for generations that already have a historyId OR were created very recently
@@ -2860,6 +3041,147 @@ const InputBox = () => {
             isPublic,
           })).unwrap();
 
+          // Handle queued submission fallback (FAL may return requestId + submitted)
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result as any)?.requestId)) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('FAL queued submission detected', { model: result.model, reqId, generationId });
+
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+
+                // Start polling for server history to attach canonical historyId
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            // Poll FAL queue for completion
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/fal/queue/status', {
+                    params: { model: result.model, requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  qlog('FAL poll status (flux-2-pro)', { model: result.model, requestId: reqId, attempt: attempts + 1, status: status?.status, statusObj: status });
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/fal/queue/result', {
+                      params: { model: result.model, requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Flux 2 Pro generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    qwarn(`Flux 2 Pro - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS})`, errorMsg);
+                  } else {
+                    qerr(`Flux 2 Pro - Error (${attempts + 1}/360)`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Flux 2 Pro queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Flux 2 Pro: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Flux 2 Pro: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return;
+            } catch (queueErr) {
+              qerr('Flux 2 Pro queue polling failed', queueErr);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Flux 2 Pro generation failed' } }));
+              await handleFalError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Flux 2 Pro',
+              });
+              return;
+            }
+          }
+
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
@@ -2929,6 +3251,144 @@ const InputBox = () => {
             generationType: 'text-to-image',
             isPublic,
           })).unwrap();
+
+          // If server returned a queued submission (requestId) instead of images, poll the FAL queue
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result as any)?.requestId)) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('FAL queued submission detected (Gemini/Nano Banana)', { model: result.model, reqId, generationId });
+
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/fal/queue/status', {
+                    params: { model: result.model, requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/fal/queue/result', {
+                      params: { model: result.model, requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Gemini generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    console.warn(`[queue] Gemini/Nano Banana - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                  } else {
+                    console.error(`[queue] Gemini/Nano Banana - Error (${attempts + 1}/360):`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Gemini queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Gemini: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Gemini: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return;
+            } catch (queueErr) {
+              console.error('[queue] Gemini queue polling failed:', queueErr);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Gemini generation failed' } }));
+              await handleFalError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Google Nano Banana',
+              });
+              return;
+            }
+          }
 
           // Update the local loading entry with completed images
           try {
@@ -3093,6 +3553,152 @@ const InputBox = () => {
           }
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
+          // If provider returned a queued submission (requestId) instead of immediate images,
+          // fall back to queue polling behavior used by video flows.
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result.requestId || (result as any)?.requestId))) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('Seedream v4 queued submission detected', { model: result.model, reqId, generationId });
+
+            // Keep local card visible as a 'generating' entry
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    // store requestId on params for diagnostics
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+
+                // Start history matching poll
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            // Poll for completion using Replicate queue endpoints
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
+                try {
+                  const statusRes = await api.get('/api/replicate/queue/status', {
+                    params: { requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/replicate/queue/result', {
+                      params: { requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    // Refresh and handle credits/transaction if present
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Seedream generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    console.warn(`[queue] Seedream v4 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                  } else {
+                    console.error(`[queue] Seedream v4 - Error (${attempts + 1}/360):`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    // Mark generation as failed in UI
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Seedream queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Seedream v4: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Seedream v4: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return; // Exit the normal flow since queue result handled
+            } catch (queueErr) {
+              console.error('[queue] Seedream v4 queue polling failed:', queueErr);
+              // Mirror failure into activeGenerations so the shared UI reflects the error
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Seedream generation failed' } }));
+              await handleReplicateError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Seedream v4',
+              });
+              return;
+            }
+          }
+
           try {
             const completedEntry: HistoryEntry = {
               ...tempEntry,
@@ -3188,6 +3794,148 @@ const InputBox = () => {
             uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
             isPublic,
           })).unwrap();
+
+          // Fallback: if backend returned a queued submission instead of images
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result as any)?.requestId)) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('Seedream 4.5 queued submission detected', { model: result.model, reqId, generationId });
+
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'generating', startedAt, historyId: (result as any)?.historyId || generationId, params: { ...(activeGenerations.find(g => g.id === generationId)?.params || {}), requestId: reqId } } }));
+
+                // Begin matching server history for canonical attach
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+              }
+            } catch { }
+
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/fal/queue/status', {
+                    params: { model: 'seedream-4.5', requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/fal/queue/result', {
+                      params: { model: 'seedream-4.5', requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Seedream 4.5 generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    console.warn(`[queue] Seedream 4.5 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                  } else {
+                    console.error(`[queue] Seedream 4.5 - Error (${attempts + 1}/360):`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Seedream 4.5 queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Seedream 4.5: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Seedream 4.5: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return;
+            } catch (queueErr) {
+              console.error('[queue] Seedream 4.5 queue polling failed:', queueErr);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Seedream 4.5 generation failed' } }));
+              await handleReplicateError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Seedream 4.5',
+              });
+              return;
+            }
+          }
 
           try {
             const completedEntry: HistoryEntry = {
@@ -3672,6 +4420,18 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             upsertLocalGeneratingEntry(completedEntry);
+
+            // CRITICAL: Update active generation with backend historyId for queue sync
+            if (generationId) {
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: result.images || [],
+                  historyId: (result as any)?.historyId || firebaseHistoryId
+                }
+              }));
+            }
           } catch { }
 
           // Toast removed - useQueueManagement handles success toasts
@@ -3861,7 +4621,8 @@ const InputBox = () => {
               }
             } catch { }
 
-            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            // Suppress explicit success toast here — centralized queue manager will show a single success toast
+            console.log('[image] Generation completed; success toast suppressed (queue will show a single toast)');
             clearInputs();
 
             const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
@@ -3957,7 +4718,8 @@ const InputBox = () => {
               }
             } catch { }
 
-            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            // Suppress explicit success toast here — centralized queue manager will show a single success toast
+            console.log('[image] Generation completed; success toast suppressed (queue will show a single toast)');
             clearInputs();
 
             const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
