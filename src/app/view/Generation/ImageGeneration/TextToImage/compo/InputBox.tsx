@@ -5604,6 +5604,32 @@ const InputBox = () => {
                           <div
                             key={uniqueImageKey}
                             data-image-id={uniqueImageId}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              const mediaUrl = image.thumbnailUrl || image.avifUrl || image.url;
+                              if (mediaUrl) {
+                                e.dataTransfer.setData('text/plain', mediaUrl);
+                                e.dataTransfer.setData('text/uri-list', mediaUrl);
+                                e.dataTransfer.effectAllowed = 'copy';
+
+                                // Custom "minimal" drag ghost
+                                const ghost = document.createElement('div');
+                                ghost.style.width = '96px';
+                                ghost.style.height = '96px';
+                                ghost.style.borderRadius = '12px';
+                                ghost.style.backgroundImage = `url(${mediaUrl})`;
+                                ghost.style.backgroundSize = 'cover';
+                                ghost.style.backgroundPosition = 'center';
+                                ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+                                ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                                ghost.style.zIndex = '-1000';
+                                ghost.style.position = 'absolute';
+                                ghost.style.top = '-9999px';
+                                document.body.appendChild(ghost);
+                                e.dataTransfer.setDragImage(ghost, 48, 48);
+                                setTimeout(() => document.body.removeChild(ghost), 0);
+                              }
+                            }}
                             onClick={() => setPreview({ entry, image })}
                             className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
                               }`}
@@ -5645,6 +5671,7 @@ const InputBox = () => {
                                       src={image.thumbnailUrl || image.avifUrl || image.url}
                                       alt=""
                                       loading="lazy"
+                                      draggable={false}
                                       decoding="async"
                                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                       onLoad={() => {
@@ -5822,9 +5849,57 @@ const InputBox = () => {
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         <div 
-          className="relative rounded-lg md:rounded-b-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
+          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
+            ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
+            : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+            }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+            
+            // Handle Files (dragged from desktop/OS)
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+              if (files.length === 0) return;
+              
+              const newUrls: string[] = [];
+              for (const file of files) {
+                const reader = new FileReader();
+                const dataUrl: string = await new Promise((resolve) => {
+                  reader.onload = () => resolve(reader.result as string);
+                  reader.readAsDataURL(file);
+                });
+                newUrls.push(dataUrl);
+              }
+              
+              if (newUrls.length > 0) {
+                dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 4)));
+                // Open assets viewer if needed or just show toast
+                toast.success(`added ${newUrls.length} image(s)`);
+              }
+              return;
+            }
+
+            // Handle dragged logical items (URLs from within the app)
+            const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            if (url && (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/'))) {
+               dispatch(setUploadedImages([...uploadedImages, url].slice(0, 4)));
+               toast.success('Image added');
+            }
+          }}
         >
           {/* Outline Glow Effect - shows on hover or when typing */}
           <div 
@@ -5937,7 +6012,29 @@ const InputBox = () => {
                     }
                   }
                 }}
-                onPaste={(e) => {
+                onPaste={async (e) => {
+                  // Check for files first
+                  if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    const files = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length > 0) {
+                      e.preventDefault();
+                      const newUrls: string[] = [];
+                      for (const file of files) {
+                        const reader = new FileReader();
+                        const dataUrl: string = await new Promise((resolve) => {
+                          reader.onload = () => resolve(reader.result as string);
+                          reader.readAsDataURL(file);
+                        });
+                        newUrls.push(dataUrl);
+                      }
+                      if (newUrls.length > 0) {
+                        dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 4)));
+                        toast.success(`Pasted ${newUrls.length} image(s)`);
+                      }
+                      return;
+                    }
+                  }
+
                   e.preventDefault();
                   const text = e.clipboardData.getData('text/plain');
                   const selection = window.getSelection();

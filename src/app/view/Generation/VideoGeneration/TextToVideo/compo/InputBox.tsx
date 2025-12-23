@@ -5131,7 +5131,46 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }
 
                     return (
-                      <div className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                      <div
+                        draggable={true}
+                        onDragStart={(e) => {
+                          const mediaUrl = (localVideoPreview as any)?.images?.[0]?.url || (localVideoPreview as any)?.video?.url;
+                          if (mediaUrl) {
+                             e.dataTransfer.setData('text/plain', mediaUrl);
+                             e.dataTransfer.setData('text/uri-list', mediaUrl);
+                             e.dataTransfer.effectAllowed = 'copy';
+
+                             // Custom "minimal" drag ghost for local preview
+                             const ghostUrl = (localVideoPreview as any)?.images?.[0]?.url;
+                             const ghost = document.createElement('div');
+                             ghost.style.width = '96px';
+                             ghost.style.height = '96px';
+                             ghost.style.borderRadius = '12px';
+                             if (ghostUrl) {
+                               ghost.style.backgroundImage = `url(${ghostUrl})`;
+                               ghost.style.backgroundSize = 'cover';
+                               ghost.style.backgroundPosition = 'center';
+                             } else {
+                               ghost.style.backgroundColor = '#1a1a1a';
+                               ghost.textContent = 'Video';
+                               ghost.style.display = 'flex';
+                               ghost.style.alignItems = 'center';
+                               ghost.style.justifyContent = 'center';
+                               ghost.style.color = 'white';
+                               ghost.style.fontSize = '12px';
+                             }
+                             ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+                             ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                             ghost.style.zIndex = '-1000';
+                             ghost.style.position = 'absolute';
+                             ghost.style.top = '-9999px';
+                             document.body.appendChild(ghost);
+                             e.dataTransfer.setDragImage(ghost, 48, 48);
+                             setTimeout(() => document.body.removeChild(ghost), 0);
+                          }
+                        }}
+                        className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                      >
                         {localVideoPreview.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
@@ -5197,6 +5236,49 @@ const InputBox = (props: InputBoxProps = {}) => {
                           <div
                             key={uniqueVideoKey}
                             data-video-id={uniqueVideoKey}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              const mediaUrl = video.firebaseUrl || video.url;
+                              if (mediaUrl) {
+                                e.dataTransfer.setData('text/plain', mediaUrl);
+                                e.dataTransfer.setData('text/uri-list', mediaUrl);
+                                e.dataTransfer.effectAllowed = 'copy';
+
+                                // Custom "minimal" drag ghost for video
+                                const ghostUrl = video.thumbnailUrl || video.avifUrl || mediaUrl;
+                                // If no thumbnail, we might be dragging a video URL directly. 
+                                // Since we can't easily snapshot a video frame synchronously, we might use a default icon or the video element itself if we clone it.
+                                // But here we try to use a thumbnail if possible.
+                                
+                                const ghost = document.createElement('div');
+                                ghost.style.width = '96px';
+                                ghost.style.height = '96px';
+                                ghost.style.borderRadius = '12px';
+                                if (ghostUrl) {
+                                  ghost.style.backgroundImage = `url(${ghostUrl})`;
+                                  ghost.style.backgroundSize = 'cover';
+                                  ghost.style.backgroundPosition = 'center';
+                                } else {
+                                  ghost.style.backgroundColor = '#1a1a1a';
+                                  // Add a video icon? 
+                                  ghost.textContent = 'Video';
+                                  ghost.style.display = 'flex';
+                                  ghost.style.alignItems = 'center';
+                                  ghost.style.justifyContent = 'center';
+                                  ghost.style.color = 'white';
+                                  ghost.style.fontSize = '12px';
+                                }
+                                
+                                ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+                                ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                                ghost.style.zIndex = '-1000';
+                                ghost.style.position = 'absolute';
+                                ghost.style.top = '-9999px';
+                                document.body.appendChild(ghost);
+                                e.dataTransfer.setDragImage(ghost, 48, 48);
+                                setTimeout(() => document.body.removeChild(ghost), 0);
+                              }
+                            }}
                             onClick={(e) => {
                               // Don't open preview if clicking on copy button
                               if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
@@ -5244,6 +5326,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                                       <video
                                         src={vsrc}
                                         className="w-full h-full object-cover transition-opacity duration-200"
+                                        draggable={false}
                                         muted
                                         playsInline
                                         loop
@@ -5353,8 +5436,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            } hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}
+          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1  shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+            } ${isInputBoxHovered 
+              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]' 
+              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+            }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
           onClick={(e) => {
@@ -5366,6 +5452,90 @@ const InputBox = (props: InputBoxProps = {}) => {
               setTimeout(() => setCloseFrameSizeDropdown(false), 0);
               setCloseDurationDropdown(true);
               setTimeout(() => setCloseDurationDropdown(false), 0);
+            }
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+
+            // 1. Handle Files (dragged from desktop/OS)
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const files = Array.from(e.dataTransfer.files);
+              
+              // Separate images and videos
+              const imageFiles = files.filter(f => f.type.startsWith('image/'));
+              const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+              // Process Images
+              if (imageFiles.length > 0) {
+                const newUrls: string[] = [];
+                for (const file of imageFiles) {
+                  const reader = new FileReader();
+                  const dataUrl: string = await new Promise((resolve) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                  });
+                  newUrls.push(dataUrl);
+                }
+                
+                if (newUrls.length > 0) {
+                   setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                   toast.success(`Added ${newUrls.length} image(s)`);
+                }
+              }
+
+              // Process Videos (Take the first valid video)
+              if (videoFiles.length > 0) {
+                const file = videoFiles[0];
+                const maxBytes = 14 * 1024 * 1024; // 14MB limit
+                const allowedMimes = new Set([
+                  'video/mp4', 'video/webm', 'video/ogg', 
+                  'video/quicktime', 'video/mov', 'video/h264'
+                ]);
+
+                if (!allowedMimes.has(file.type)) {
+                  toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
+                } else if (file.size > maxBytes) {
+                  toast.error('Video too large. Please upload a video ≤ 14MB');
+                } else {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const result = ev.target?.result as string;
+                    if (result) {
+                      setUploadedVideo(result);
+                      toast.success('Video added');
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }
+              return;
+            }
+
+            // 2. Handle Dragged URLs (e.g. from History)
+            const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            if (url) {
+              // Check if Video
+              if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.startsWith('data:video/')) {
+                 setUploadedVideo(url);
+                 toast.success('Video added from URL');
+              } 
+              // Check if Image
+              else if (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/')) {
+                 setUploadedImages(prev => [...prev, url].slice(0, 4));
+                 toast.success('Image added from URL');
+              }
             }
           }}
         >
@@ -5402,6 +5572,59 @@ const InputBox = (props: InputBoxProps = {}) => {
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+                }}
+                onPaste={async (e) => {
+                  // Check for files in clipboard
+                  if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    const files = Array.from(e.clipboardData.files);
+                    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+                    const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+                    // Process Images
+                    if (imageFiles.length > 0) {
+                      e.preventDefault(); // Prevent default if we handle it
+                      const newUrls: string[] = [];
+                      for (const file of imageFiles) {
+                        const reader = new FileReader();
+                        const dataUrl: string = await new Promise((resolve) => {
+                          reader.onload = () => resolve(reader.result as string);
+                          reader.readAsDataURL(file);
+                        });
+                        newUrls.push(dataUrl);
+                      }
+                      if (newUrls.length > 0) {
+                        setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                        toast.success(`Pasted ${newUrls.length} image(s)`);
+                      }
+                    }
+
+                    // Process Video
+                    if (videoFiles.length > 0) {
+                      e.preventDefault();
+                      const file = videoFiles[0];
+                      const maxBytes = 14 * 1024 * 1024;
+                      const allowedMimes = new Set([
+                        'video/mp4', 'video/webm', 'video/ogg', 
+                        'video/quicktime', 'video/mov', 'video/h264'
+                      ]);
+
+                      if (!allowedMimes.has(file.type)) {
+                        toast.error('Unsupported video type');
+                      } else if (file.size > maxBytes) {
+                        toast.error('Video too large (≤ 14MB)');
+                      } else {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const result = ev.target?.result as string;
+                          if (result) {
+                            setUploadedVideo(result);
+                            toast.success('Pasted video');
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }
+                  }
                 }}
               />
               {/* Fixed position buttons container */}
