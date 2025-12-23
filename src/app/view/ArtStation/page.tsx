@@ -1815,6 +1815,11 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
               toggleBookmark={toggleBookmark}
               engagement={engagement}
               onNavigate={handleNavigate}
+              selectedIndex={
+                preview.kind === 'image' ? selectedImageIndex :
+                preview.kind === 'video' ? selectedVideoIndex :
+                selectedAudioIndex
+              }
             />
           )}
         </div>

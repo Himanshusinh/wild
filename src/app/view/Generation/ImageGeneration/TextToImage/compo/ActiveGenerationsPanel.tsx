@@ -67,7 +67,7 @@ export default function ActiveGenerationsPanel() {
     switch (status) {
       case 'pending':
       case 'generating':
-        return <Loader2 className="w-4 h-4 animatespin text-blue-400" />;
+        return <Loader2 className="w-4 h-4 animate-spin text-blue-400" />;
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-400" />;
       case 'failed':

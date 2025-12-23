@@ -64,7 +64,8 @@ type Props = {
   toggleBookmark?: (generationId: string) => void
   engagement?: Record<string, EngagementState>
   // NEW: Callback for cross-item navigation
-  onNavigate?: (preview: PreviewState, mediaIndex: number) => void
+  onNavigate?: (preview: PublicItem | any, mediaIndex: number) => void
+  selectedIndex?: number // Added prop to control index from parent
 }
 
 export default function ArtStationPreview({
@@ -74,16 +75,25 @@ export default function ArtStationPreview({
   currentUid,
   currentUser,
   cards,
-  likedCards,
   toggleLike,
   toggleBookmark,
   engagement,
-  onNavigate, // NEW
+  onNavigate,
+  selectedIndex = 0
 }: Props) {
   const router = useRouter()
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
-  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
-  const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
+  // Local state for tracking current media index within the current item
+  const [selectedImageIndex, setSelectedImageIndex] = useState(selectedIndex)
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(selectedIndex)
+  const [selectedAudioIndex, setSelectedAudioIndex] = useState(selectedIndex)
+
+  // Sync with parent selectedIndex prop changes
+  useEffect(() => {
+    if (preview?.kind === 'image') setSelectedImageIndex(selectedIndex)
+    else if (preview?.kind === 'video') setSelectedVideoIndex(selectedIndex)
+    else if (preview?.kind === 'audio') setSelectedAudioIndex(selectedIndex)
+  }, [selectedIndex, preview?.kind])
+
   const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null)
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
@@ -559,7 +569,7 @@ export default function ArtStationPreview({
     return engagement[preview.item.id] || null
   }, [preview, engagement])
 
-  const isLiked = engagementState?.likedByMe ?? (previewCardId ? likedCards?.has(previewCardId) ?? false : false)
+  const isLiked = engagementState?.likedByMe ?? false
   const likesCount = engagementState?.likesCount ?? 0
   const isBookmarked = engagementState?.bookmarkedByMe ?? false
   const bookmarksCount = engagementState?.bookmarksCount ?? 0
