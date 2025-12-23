@@ -154,6 +154,38 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     return ordered;
   }, [historyEntries, preview?.entry, currentEntry]);
 
+  // CONTINUOUS NAVIGATION: Flatten ALL images from ALL generations into one sequence
+  const flattenedImageSequence = React.useMemo(() => {
+    const flattened: Array<{ entry: HistoryEntry; image: any; generationIndex: number; imageIndex: number }> = [];
+    
+    generationSequence.forEach((entry, genIdx) => {
+      const images = (entry as any)?.images || [];
+      images.forEach((img: any, imgIdx: number) => {
+        flattened.push({
+          entry,
+          image: img,
+          generationIndex: genIdx,
+          imageIndex: imgIdx
+        });
+      });
+    });
+    
+    return flattened;
+  }, [generationSequence]);
+
+  // Find current position in flattened sequence
+  const currentFlatIndex = React.useMemo(() => {
+    if (!activeEntryId) return 0;
+    
+    const idx = flattenedImageSequence.findIndex(item => {
+      const entryMatch = item.entry.id === activeEntryId;
+      const imgMatch = item.imageIndex === selectedIndex;
+      return entryMatch && imgMatch;
+    });
+    
+    return idx >= 0 ? idx : 0;
+  }, [flattenedImageSequence, activeEntryId, selectedIndex]);
+
   const activeEntryIndex = React.useMemo(() => {
     if (!activeEntryId) return generationSequence.length ? 0 : -1;
     const idx = generationSequence.findIndex((entry) => entry.id === activeEntryId);
@@ -209,25 +241,44 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     loadMoreIfNeededRef.current(targetIndex, generationSequence.length);
   }, [generationSequence, entryDetails]);
 
-  const goPrevGeneration = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
+  // CONTINUOUS NAVIGATION: Navigate through flattened image sequence
+  const goPrevImage = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
     if (e && 'preventDefault' in e) e.preventDefault();
-    if (!showGenerationNav || generationSequence.length === 0) return;
-    const baseIndex = activeEntryIndex >= 0 ? activeEntryIndex : 0;
-    if (baseIndex <= 0) return; // Already at first, don't go back
-    selectGenerationByIndex(baseIndex - 1);
-  }, [showGenerationNav, generationSequence.length, activeEntryIndex, selectGenerationByIndex]);
+    
+    const prevIndex = currentFlatIndex - 1;
+    if (prevIndex < 0) return; // At first image
+    
+    const prevItem = flattenedImageSequence[prevIndex];
+    if (!prevItem) return;
+    
+    // Update entry and selected index
+    setCurrentEntry(prevItem.entry);
+    setSelectedIndex(prevItem.imageIndex);
+    setObjectUrl('');
+    setImageDimensions(null);
+  }, [currentFlatIndex, flattenedImageSequence]);
 
-  const goNextGeneration = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
+  const goNextImage = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
     if (e && 'preventDefault' in e) e.preventDefault();
-    if (!showGenerationNav || generationSequence.length === 0) return;
-    const baseIndex = activeEntryIndex >= 0 ? activeEntryIndex : 0;
-    if (baseIndex >= generationSequence.length - 1) {
-      // At last, try to load more
-      loadMoreIfNeededRef.current(baseIndex, generationSequence.length);
+    
+    const nextIndex = currentFlatIndex + 1;
+    if (nextIndex >= flattenedImageSequence.length) {
+      // At last image, try to load more
+      if (hasMoreHistory) {
+        loadMoreIfNeededRef.current(activeEntryIndex, generationSequence.length);
+      }
       return;
     }
-    selectGenerationByIndex(baseIndex + 1);
-  }, [showGenerationNav, generationSequence.length, activeEntryIndex, selectGenerationByIndex]);
+    
+    const nextItem = flattenedImageSequence[nextIndex];
+    if (!nextItem) return;
+    
+    // Update entry and selected index
+    setCurrentEntry(nextItem.entry);
+    setSelectedIndex(nextItem.imageIndex);
+    setObjectUrl('');
+    setImageDimensions(null);
+  }, [currentFlatIndex, flattenedImageSequence, hasMoreHistory, activeEntryIndex, generationSequence.length]);
 
   // Update currentEntry and reset selected state immediately when preview changes
   React.useEffect(() => {
@@ -360,17 +411,36 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     };
   }, [fsNaturalSize]);
 
-  const fsZoomToPoint = React.useCallback((point: { x: number; y: number }, newScale: number) => {
+  const fsZoomToPoint = React.useCallback((cursorPos: { x: number; y: number }, newScale: number) => {
     if (!fsContainerRef.current) return;
-    const rect = fsContainerRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const newOffsetX = centerX - (point.x * newScale);
-    const newOffsetY = centerY - (point.y * newScale);
+    
+    // CRITICAL: Proper zoom-at-cursor implementation
+    // cursorPos is in viewport coordinates (relative to container)
+    // We need to:
+    // 1. Find which point in the IMAGE is currently under the cursor
+    // 2. Keep that exact point under the cursor after scaling
+    
+    const currentScale = fsScale;
+    const currentOffset = fsOffset;
+    
+    // Convert cursor position from viewport space to image space
+    // The image is displayed with: position = offset + (imageCoord * scale)
+    // So: imageCoord = (position - offset) / scale
+    const imageX = (cursorPos.x - currentOffset.x) / currentScale;
+    const imageY = (cursorPos.y - currentOffset.y) / currentScale;
+    
+    // Now calculate new offset to keep same image point under cursor
+    // We want: cursorPos = newOffset + (imagePoint * newScale)
+    // So: newOffset = cursorPos - (imagePoint * newScale)
+    const newOffsetX = cursorPos.x - (imageX * newScale);
+    const newOffsetY = cursorPos.y - (imageY * newScale);
+    
+    // Clamp to prevent panning out of bounds
     const clamped = fsClampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
+    
     setFsScale(newScale);
     setFsOffset(clamped);
-  }, [fsClampOffset]);
+  }, [fsScale, fsOffset, fsClampOffset]);
 
   const openFullscreen = React.useCallback(() => {
     setIsFsOpen(true);
@@ -381,14 +451,20 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     setFsIsPanning(false);
   }, []);
 
-  // Compute fit scale on open/resize
+  // Compute fit scale on open/resize - FIT TO HEIGHT with upscaling allowed
   React.useEffect(() => {
     if (!isFsOpen) return;
     const computeFit = () => {
       if (!fsContainerRef.current || !fsNaturalSize.width || !fsNaturalSize.height) return;
       const rect = fsContainerRef.current.getBoundingClientRect();
-      const fit = Math.min(rect.width / fsNaturalSize.width, rect.height / fsNaturalSize.height) || 1;
-      const base = Math.min(1, fit); // do not upscale by default
+      
+      // FIT TO HEIGHT: Scale image to fit screen height, maintaining aspect ratio
+      // Allow upscaling if image is smaller than screen
+      const heightFit = rect.height / fsNaturalSize.height;
+      const fit = heightFit || 1;
+      
+      // Remove Math.min(1, fit) to allow upscaling for small images
+      const base = fit;
       setFsFitScale(base);
       setFsScale(base);
       setFsOffset({ x: 0, y: 0 });
@@ -455,7 +531,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (!fsContainerRef.current) return;
 
     const atFit = fsScale <= fsFitScale + 0.001;
-    if (e.shiftKey && atFit && (sameDateGallery.length > 1 || showGenerationNav)) {
+    if (e.shiftKey && atFit && sameDateGallery.length > 1) {
       if (wheelNavCooldown.current) return;
       const dy = e.deltaY || 0;
       const dx = e.deltaX || 0;
@@ -465,12 +541,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           goNext(e as any);
         } else if (delta < -20) {
           goPrev(e as any);
-        }
-      } else if (showGenerationNav) {
-        if (delta > 20) {
-          goNextGeneration(e as any);
-        } else if (delta < -20) {
-          goPrevGeneration(e as any);
         }
       }
       wheelNavCooldown.current = true;
@@ -485,7 +555,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     const next = Math.max(0.4, Math.min(6, fsScale * zoomFactor));
     if (Math.abs(next - fsScale) < 0.001) return;
     fsZoomToPoint({ x: mx, y: my }, next);
-  }, [fsScale, fsFitScale, sameDateGallery, goNext, goPrev, fsZoomToPoint, showGenerationNav, goNextGeneration, goPrevGeneration]);
+  }, [fsScale, fsFitScale, sameDateGallery, goNext, goPrev, fsZoomToPoint]);
 
   // Add non-passive wheel event listener directly to DOM element
   React.useEffect(() => {
@@ -558,7 +628,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
 
-  // Keyboard navigation in fullscreen
+  // Keyboard navigation in fullscreen - Navigate through ALL images sequentially
   React.useEffect(() => {
     if (!isFsOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -567,27 +637,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         closeFullscreen();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        if (e.shiftKey && showGenerationNav) {
-          goPrevGeneration(e);
-        } else if (sameDateGallery.length > 1) {
-          goPrev(e);
-        } else if (showGenerationNav) {
-          goPrevGeneration(e);
-        }
+        goPrevImage(e);
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if (e.shiftKey && showGenerationNav) {
-          goNextGeneration(e);
-        } else if (sameDateGallery.length > 1) {
-          goNext(e);
-        } else if (showGenerationNav) {
-          goNextGeneration(e);
-        }
+        goNextImage(e);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFsOpen, goPrev, goNext, closeFullscreen, goPrevGeneration, goNextGeneration, sameDateGallery, showGenerationNav]);
+  }, [isFsOpen, closeFullscreen, goPrevImage, goNextImage]);
 
   // (moved above for navigation callbacks)
 
@@ -606,52 +664,36 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
 
   // Use refs to avoid dependency issues with keyboard handlers
-  const goPrevRef = React.useRef(goPrev);
-  const goNextRef = React.useRef(goNext);
-  const goPrevGenerationRef = React.useRef(goPrevGeneration);
-  const goNextGenerationRef = React.useRef(goNextGeneration);
+  const goPrevImageRef = React.useRef(goPrevImage);
+  const goNextImageRef = React.useRef(goNextImage);
   const sameDateGalleryRef = React.useRef(sameDateGallery);
   const showGenerationNavRef = React.useRef(showGenerationNav);
 
   React.useEffect(() => {
-    goPrevRef.current = goPrev;
-    goNextRef.current = goNext;
-    goPrevGenerationRef.current = goPrevGeneration;
-    goNextGenerationRef.current = goNextGeneration;
+    goPrevImageRef.current = goPrevImage;
+    goNextImageRef.current = goNextImage;
     sameDateGalleryRef.current = sameDateGallery;
     showGenerationNavRef.current = showGenerationNav;
-  }, [goPrev, goNext, goPrevGeneration, goNextGeneration, sameDateGallery, showGenerationNav]);
+  }, [goPrevImage, goNextImage, sameDateGallery, showGenerationNav]);
 
-  // Keyboard shortcuts for modal: Escape to close, Arrow keys for navigation
+  // Keyboard shortcuts for modal - Navigate through ALL images sequentially
   React.useEffect(() => {
-    if (!preview || isFsOpen) return; // Only handle modal shortcuts when modal is open and not fullscreen
+    if (!preview || isFsOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        if ((e.metaKey || e.ctrlKey) && showGenerationNavRef.current) {
-          goPrevGenerationRef.current(e);
-        } else if (sameDateGalleryRef.current.length > 1) {
-          goPrevRef.current(e);
-        } else if (showGenerationNavRef.current) {
-          goPrevGenerationRef.current(e);
-        }
+        goPrevImage(e);
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if ((e.metaKey || e.ctrlKey) && showGenerationNavRef.current) {
-          goNextGenerationRef.current(e);
-        } else if (sameDateGalleryRef.current.length > 1) {
-          goNextRef.current(e);
-        } else if (showGenerationNavRef.current) {
-          goNextGenerationRef.current(e);
-        }
+        goNextImage(e);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [preview, isFsOpen, onClose]);
+  }, [preview, isFsOpen, onClose, goPrevImage, goNextImage]);
 
   // Keep visibility toggle in sync when user switches images in same run
   // Prefer per-image visibility if present, otherwise fall back to entry-level isPublic.
@@ -722,6 +764,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     : 0;
 
   // Preload adjacent images for instant navigation (within same generation)
+  // ENHANCED: Preload ±3 images instead of ±1 for instant rapid navigation
   React.useEffect(() => {
     if (!preview) return;
     const entryToUse = currentEntry || preview.entry;
@@ -729,21 +772,25 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     const total = images.length;
     if (total <= 1) return;
 
-    // Preload previous and next images
-    const prevIdx = (selectedIndex - 1 + total) % total;
-    const nextIdx = (selectedIndex + 1) % total;
-    const imagesToPreload = [
-      images[prevIdx],
-      images[nextIdx],
-    ].filter(Boolean);
+    // Preload ±3 images for instant navigation (handles up to 6 rapid arrow presses)
+    const imagesToPreload: any[] = [];
+    for (let offset of [-3, -2, -1, 1, 2, 3]) {
+      const idx = selectedIndex + offset;
+      // Only add if within bounds (don't wrap, just skip out of bounds)
+      if (idx >= 0 && idx < total) {
+        const img = images[idx];
+        if (img) imagesToPreload.push(img);
+      }
+    }
 
+    // Preload all images using browser Image() constructor
     imagesToPreload.forEach((img: any) => {
       const imgUrl = img?.avifUrl || img?.url;
       if (!imgUrl) return;
       const proxyUrl = toMediaProxy(imgUrl) || imgUrl;
       if (typeof window !== 'undefined' && window.Image) {
         const preloadImg = new window.Image();
-        preloadImg.src = proxyUrl;
+        preloadImg.src = proxyUrl; // Browser dedupes automatically
       }
     });
 
@@ -754,30 +801,55 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     }
   }, [selectedIndex, currentEntry, preview, showGenerationNav, activeEntryIndex, generationSequence.length]);
 
-  // Preload images from adjacent generations for instant generation navigation
+  // Preload images AND entry data from adjacent generations for instant generation navigation
+  // ENHANCED: Fetch full entry data proactively to eliminate API delay
   React.useEffect(() => {
     if (!preview || !showGenerationNav || generationSequence.length <= 1) return;
 
     const currentIdx = generationSequence.findIndex((entry: HistoryEntry) => entry.id === activeEntryId);
     if (currentIdx < 0) return;
 
-    // Preload first image from previous and next generations
-    const prevGenIdx = (currentIdx - 1 + generationSequence.length) % generationSequence.length;
-    const nextGenIdx = (currentIdx + 1) % generationSequence.length;
-    const prevGen = generationSequence[prevGenIdx];
-    const nextGen = generationSequence[nextGenIdx];
+    // Preload previous and next generations
+    const prevGenIdx = currentIdx - 1;
+    const nextGenIdx = currentIdx + 1;
+    const prevGen = prevGenIdx >= 0 ? generationSequence[prevGenIdx] : undefined;
+    const nextGen = nextGenIdx < generationSequence.length ? generationSequence[nextGenIdx] : undefined;
 
     [prevGen, nextGen].forEach((gen: HistoryEntry | undefined) => {
-      if (!gen) return;
+      if (!gen || !gen.id) return;
+
+      // Preload first image
       const images = (gen as any)?.images || [];
       const firstImg = images[0];
-      if (!firstImg) return;
-      const imgUrl = (firstImg as any)?.avifUrl || firstImg?.url;
-      if (!imgUrl) return;
-      const proxyUrl = toMediaProxy(imgUrl) || imgUrl;
-      if (typeof window !== 'undefined' && window.Image) {
-        const preloadImg = new window.Image();
-        preloadImg.src = proxyUrl;
+      if (firstImg) {
+        const imgUrl = (firstImg as any)?.avifUrl || firstImg?.url;
+        if (imgUrl) {
+          const proxyUrl = toMediaProxy(imgUrl) || imgUrl;
+          if (typeof window !== 'undefined' && window.Image) {
+            const preloadImg = new window.Image();
+            preloadImg.src = proxyUrl;
+          }
+        }
+      }
+
+      // ENHANCED: Preload full entry data if not cached
+      if (!entryDetailsRef.current[gen.id]) {
+        // Fire and forget - cache for instant navigation later
+        axiosInstance.get(`/api/generations/${gen.id}`)
+          .then((res) => {
+            const detailedEntry = res?.data?.data?.item || res?.data?.item || res?.data?.data || res?.data;
+            if (detailedEntry) {
+              setEntryDetails((prev) => {
+                if (prev[gen.id!]) return prev; // Already cached
+                const updated = { ...prev, [gen.id!]: detailedEntry };
+                entryDetailsRef.current = updated;
+                return updated;
+              });
+            }
+          })
+          .catch(() => {
+            // Silently fail - will fetch on demand if needed
+          });
       }
     });
 
@@ -818,8 +890,23 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // Compute button visibility
   const isFirstImage = selectedIndex === 0;
   const isLastImage = selectedIndex >= sameDateGallery.length - 1;
-  const isFirstGeneration = activeEntryIndex <= 0;
-  const isLastGeneration = activeEntryIndex >= generationSequence.length - 1;
+  
+  // Generation navigation: Index 0 = Latest/Newest, Last = Oldest
+  const isFirstGeneration = activeEntryIndex <= 0; // Latest/newest generation
+  const isLastGeneration = activeEntryIndex >= generationSequence.length - 1; // Oldest generation
+  const hasSingleGeneration = generationSequence.length <= 1;
+  
+  // Debug logging for navigation button visibility
+  if (isFsOpen) {
+    console.log('[Navigation Debug]', {
+      activeEntryIndex,
+      generationSequenceLength: generationSequence.length,
+      isFirstGeneration,
+      isLastGeneration,
+      hasSingleGeneration,
+      showGenerationNav
+    });
+  }
 
   // Measure the actual resolution from the highest-quality source (storagePath or original URL)
   React.useEffect(() => {
@@ -1392,26 +1479,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         {/* Header */}
 
 
-        {/* Navigation Buttons - Fixed position at viewport edges (same as fullscreen) */}
-        {/* Generation Navigation (Left side) - Only show if not at first generation */}
-        {showGenerationNav && !isFirstGeneration && (
-          <button
-            aria-label="Previous generation"
-            onClick={(e) => { e.stopPropagation(); goPrevGeneration(e); }}
-            className="fixed left-0 md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10 rounded-r-full   hover:bg-black/95 text-white transition-all backdrop-blur-sm border-r border-y border-white/30 hover:border-white/50 flex items-center justify-center"
-            title="Previous generation (Ctrl/Cmd + ←)"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 18l-6-6 6-6" />
-              <path d="M18 18l-6-6 6-6" />
-            </svg>
-          </button>
-        )}
+        {/* Navigation removed - using continuous image nav only */}
         {/* Image Navigation (Left side, or left if no generation nav) - Only show if not at first image */}
         {sameDateGallery.length > 1 && !isFirstImage && (
           <button
             aria-label="Previous image"
-            onClick={(e) => { e.stopPropagation(); goPrev(e); }}
+            onClick={(e) => { e.stopPropagation(); goPrevImage(e); }}
             className={`fixed ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10  hover:bg-black/95 text-white transition-all backdrop-blur-sm ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 flex items-center justify-center`}
             title="Previous image (←)"
           >
@@ -1420,20 +1493,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             </svg>
           </button>
         )}
-        {/* Generation Navigation (Right side) - Only show if not at last generation or if more can be loaded */}
-        {showGenerationNav && (!isLastGeneration || hasMoreHistory) && (
-          <button
-            aria-label="Next generation"
-            onClick={(e) => { e.stopPropagation(); goNextGeneration(e); }}
-            className="fixed right-0 md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10 rounded-l-full   hover:bg-black/95 text-white transition-all backdrop-blur-sm border-l border-y border-white/30 hover:border-white/50 flex items-center justify-center"
-            title="Next generation (Ctrl/Cmd + →)"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M13 18l6-6-6-6" />
-              <path d="M6 18l6-6-6-6" />
-            </svg>
-          </button>
-        )}
+        {/* Generation navigation removed - continuous image nav only */}
         {/* Image Navigation (Right side, or right if no generation nav) - Only show if not at last image */}
         {/* {sameDateGallery.length > 1 && !isLastImage && (
           <button
@@ -1821,15 +1881,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               ✕
             </button> */}
           </div>
-          {/* Generation Navigation Buttons (Left side - outside image) - Only show if not at first generation */}
-          {showGenerationNav && !isFirstGeneration && (
+          {/* Generation Navigation Buttons (Left side) */}
+          {/* Show ONLY if: multiple generations exist AND not at latest/newest (index 0) */}
+          {showGenerationNav && !hasSingleGeneration && !isFirstGeneration && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); goPrevGeneration(e); }}
+              onClick={(e) => { e.stopPropagation(); goPrevImage(e); }}
               onMouseDown={(e) => e.stopPropagation()}
-              aria-label="Previous generation"
+              aria-label="Previous generation (newer)"
               className="absolute left-0 top-1/2 -translate-y-1/2 z-[90] w-16 h-16 rounded-r-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center border-r border-y border-white/30 hover:border-white/50 pointer-events-auto transition-all"
-              title="Previous generation (Shift + ←)"
+              title="Previous generation - Newer (Shift + ←)"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M11 18l-6-6 6-6" />
@@ -1837,30 +1898,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               </svg>
             </button>
           )}
-          {/* Image Navigation Buttons (Left side, or left if no generation nav) - Only show if not at first image */}
-          {(sameDateGallery.length > 1) && !isFirstImage && (
-            <button
-              aria-label="Previous image"
-              onClick={(e) => { e.stopPropagation(); goPrev(e); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              type="button"
-              className={`absolute ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} top-1/2 -translate-y-1/2 z-[90] w-16 h-16 bg-black/80 hover:bg-black/95 text-white flex items-center justify-center ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 pointer-events-auto transition-all`}
-              title="Previous image (←)"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-          )}
-          {/* Generation Navigation Buttons (Right side - outside image) - Only show if not at last generation or if more can be loaded */}
-          {showGenerationNav && (!isLastGeneration || hasMoreHistory) && (
+          {/* Per-Image Navigation REMOVED - arrows now navigate generations only */}
+          {/* Generation Navigation Buttons (Right side) */}
+          {/* Show if: (multiple generations AND not at oldest) OR more history can be loaded */}
+          {showGenerationNav && ((!hasSingleGeneration && !isLastGeneration) || hasMoreHistory) && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); goNextGeneration(e); }}
+              onClick={(e) => { e.stopPropagation(); goNextImage(e); }}
               onMouseDown={(e) => e.stopPropagation()}
-              aria-label="Next generation"
+              aria-label="Next generation (older)"
               className="absolute right-0 top-1/2 -translate-y-1/2 z-[90] w-16 h-16 rounded-l-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center border-l border-y border-white/30 hover:border-white/50 pointer-events-auto transition-all"
-              title="Next generation (Shift + →)"
+              title="Next generation - Older (Shift + →)"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M13 18l6-6-6-6" />
@@ -1868,21 +1916,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
               </svg>
             </button>
           )}
-          {/* Image Navigation Buttons (Right side, or right if no generation nav) - Only show if not at last image */}
-          {(sameDateGallery.length > 1) && !isLastImage && (
-            <button
-              aria-label="Next image"
-              onClick={(e) => { e.stopPropagation(); goNext(e); }}
-              onMouseDown={(e) => e.stopPropagation()}
-              type="button"
-              className={`absolute ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'right-16 rounded-none' : 'right-0 rounded-l-full'} top-1/2 -translate-y-1/2 z-[90] w-16 h-16 bg-black/80 hover:bg-black/95 text-white flex items-center justify-center ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'border-y border-l' : 'border-l border-y'} border-white/30 hover:border-white/50 pointer-events-auto transition-all`}
-              title="Next image (→)"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          )}
+          {/* Per-Image Right Navigation also REMOVED */}
           <div
             ref={fsContainerRef}
             className="relative w-full h-full cursor-zoom-in"
@@ -1911,7 +1945,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   const img = e.currentTarget as HTMLImageElement;
                   setFsNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
                 }}
-                className="max-w-full max-h-full object-contain select-none"
+                style={{
+                  width: `${fsNaturalSize.width}px`,
+                  height: `${fsNaturalSize.height}px`,
+                  display: fsNaturalSize.width ? 'block' : 'none'
+                }}
+                className="object-contain select-none"
                 draggable={false}
               />
             </div>
@@ -1929,5 +1968,3 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 };
 
 export default ImagePreviewModal;
-
-
