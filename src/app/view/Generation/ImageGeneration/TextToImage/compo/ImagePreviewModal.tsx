@@ -289,16 +289,21 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       const imgs = (preview?.entry as any)?.images || [];
       const mId = (preview?.image as any)?.id;
       const mUrl = (preview?.image as any)?.url;
+      const mPath = (preview?.image as any)?.storagePath;
       let idx = 0;
       if (imgs && imgs.length > 0) {
-        const found = imgs.findIndex((im: any) => (mId && im.id === mId) || (mUrl && im.url === mUrl));
+        const found = imgs.findIndex((im: any) => 
+          (mId && im.id === mId) || 
+          (mUrl && im.url === mUrl) || 
+          (mPath && im.storagePath === mPath)
+        );
         if (found >= 0) idx = found;
       }
       setSelectedIndex(idx);
     } catch { }
     setObjectUrl('');
     setImageDimensions(null);
-  }, [preview?.entry?.id, preview?.image?.id]);
+  }, [preview?.entry?.id, preview?.image?.id, preview?.image?.url]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -654,9 +659,14 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (!preview) return 0;
     const mUrl = (preview.image as any)?.url;
     const mId = (preview.image as any)?.id;
+    const mPath = (preview.image as any)?.storagePath;
     const mEntryId = (preview.entry as any)?.id;
     const idx = sameDateGallery.findIndex((pair: any) => {
-      return (pair?.entry?.id === mEntryId) && ((mId && pair?.image?.id === mId) || (mUrl && pair?.image?.url === mUrl));
+      return (pair?.entry?.id === mEntryId) && (
+        (mId && pair?.image?.id === mId) || 
+        (mUrl && pair?.image?.url === mUrl) ||
+        (mPath && pair?.image?.storagePath === mPath)
+      );
     });
     return idx >= 0 ? idx : 0;
   }, [sameDateGallery, preview]);
