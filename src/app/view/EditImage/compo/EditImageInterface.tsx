@@ -3509,6 +3509,31 @@ const EditImageInterface: React.FC = () => {
 
                   </button>
                 ))}
+                {/* Editor external link button */}
+                <button
+                  key="editor-external"
+                  onClick={() => {
+                    try {
+                      if (typeof window !== 'undefined') {
+                        window.open('http://localhost:3005', '_blank', 'noopener');
+                      }
+                    } catch (e) { }
+                  }}
+                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition border-white/10 hover:bg-white/10`}
+                  title="Open Editor"
+                >
+                  <div className="flex items-center gap-0 justify-center">
+                    <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center`}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/90">
+                        <path d="M3 21v-3a4 4 0 0 1 4-4h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M17.5 6.5l0 0a2.12 2.12 0 0 1 3 3L12 18l-4 1 1-4 8.5-8.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center pt-1">
+                    <span className="text-white text-[10px] md:text-sm text-center">Editor</span>
+                  </div>
+                </button>
               </div>
             </div>
 

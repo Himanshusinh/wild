@@ -377,11 +377,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         return selectedModel;
       })();
 
-      return Math.max(0, Number(getVideoCreditCost(normalizedModelForCredits, res, dur)) || 0);
+      // For Kling 2.6 Pro, pass generateAudio parameter
+      const audioParam = normalizedModelForCredits === 'kling-2.6-pro' ? generateAudio : undefined;
+      return Math.max(0, Number(getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam)) || 0);
     } catch {
       return 0;
     }
-  }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration, generationMode]);
+  }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration, generationMode, generateAudio]);
 
   // Helper function to determine model capabilities
   const getModelCapabilities = (model: string) => {
@@ -407,6 +409,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       capabilities.supportsImageToVideo = true;
     } else if (model.includes("wan-2.5") && !model.includes("i2v")) {
       // WAN 2.5 supports both T2V and I2V
+      capabilities.supportsTextToVideo = true;
+      capabilities.supportsImageToVideo = true;
+    } else if (model === 'kling-2.6-pro') {
+      // Kling 2.6 Pro supports both T2V and I2V
       capabilities.supportsTextToVideo = true;
       capabilities.supportsImageToVideo = true;
     } else if (model.startsWith('kling-') && model.includes('v2.5')) {
@@ -2782,8 +2788,26 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = "text-to-video";
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
-        } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v')) {
-          // Kling T2V
+        } else if (selectedModel === 'kling-2.6-pro' && !hasImage) {
+          // Kling 2.6 Pro text-to-video (FAL)
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = duration === 5 ? '5' : '10';
+          requestBody = {
+            model: 'fal-ai/kling-video/v2.6/pro/text-to-video',
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
+            duration: modelDuration,
+            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+            negative_prompt: 'blur, distort, and low quality',
+            cfg_scale: 0.5,
+            generate_audio: generateAudio, // Explicitly pass true or false
+            generationType: 'text-to-video',
+            isPublic
+          };
+          generationType = 'text-to-video';
+          apiEndpoint = '/api/fal/kling-2.6-pro/text-to-video/submit';
+        } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v') && selectedModel !== 'kling-2.6-pro') {
+          // Kling T2V (other models)
           const isV25 = selectedModel.includes('v2.5');
           const isV21Master = selectedModel.includes('v2.1-master');
           const isV21 = selectedModel.includes('v2.1') && !isV21Master;
@@ -3200,7 +3224,30 @@ const InputBox = (props: InputBoxProps = {}) => {
             generationType = 'image-to-video';
             apiEndpoint = '/api/fal/kling-o1/reference-to-video/submit';
           }
-        } else if (selectedModel.startsWith('kling-')) {
+        } else if (selectedModel === 'kling-2.6-pro' && hasImage) {
+          // Kling 2.6 Pro image-to-video (FAL)
+          if (uploadedImages.length === 0) {
+            toast.error('Kling 2.6 Pro image-to-video requires an input image. Please upload an image.');
+            setIsGenerating(false);
+            return;
+          }
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = duration === 5 ? '5' : '10';
+          requestBody = {
+            model: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+            prompt: apiPrompt,
+            originalPrompt: prompt, // Store original prompt for display
+            image_url: uploadedImages[0],
+            duration: modelDuration,
+            negative_prompt: 'blur, distort, and low quality',
+            cfg_scale: 0.5,
+            generate_audio: generateAudio, // Explicitly pass true or false
+            generationType: 'image-to-video',
+            isPublic
+          };
+          generationType = 'image-to-video';
+          apiEndpoint = '/api/fal/kling-2.6-pro/image-to-video/submit';
+        } else if (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro') {
           // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
           if (uploadedImages.length === 0) {
@@ -4136,6 +4183,52 @@ const InputBox = (props: InputBoxProps = {}) => {
           console.error('❌ Sora 2 video generation did not complete properly');
           throw new Error('Sora 2 video generation did not complete in time');
         }
+      } else if (selectedModel === 'kling-2.6-pro') {
+        // Kling 2.6 Pro flow - queue-based polling (FAL)
+        console.log('🎬 Kling 2.6 Pro video generation started, request ID:', result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        // Poll for completion using FAL queue status
+        let videoResult: any;
+        for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
+          try {
+            const statusRes = await api.get('/api/fal/queue/status', {
+              params: { model: result.model, requestId: result.requestId }
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            const s = String(status?.status || '').toLowerCase();
+
+            if (s === 'completed' || s === 'success' || s === 'succeeded') {
+              // Get the result
+              const resultRes = await api.get('/api/fal/queue/result', {
+                params: { model: result.model, requestId: result.requestId }
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              break;
+            }
+            if (s === 'failed' || s === 'error') {
+              throw new Error('Kling 2.6 Pro video generation failed');
+            }
+          } catch (statusError) {
+            console.error('Status check failed:', statusError);
+            if (attempts === 359) throw statusError;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        // Parse Kling 2.6 Pro result: { video: { url } } format
+        if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log('✅ Kling 2.6 Pro video completed with URL (video.url):', videoUrl);
+        } else if (Array.isArray(videoResult?.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log('✅ Kling 2.6 Pro video completed with URL (videos[0].url):', videoUrl);
+        } else {
+          console.error('❌ Kling 2.6 Pro video generation did not complete properly');
+          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
+          throw new Error('Kling 2.6 Pro video generation did not complete in time');
+        }
       } else if (selectedModel.includes("wan-2.5")) {
         // WAN 2.5 flow - queue-based polling
         console.log('🎬 WAN 2.5 video generation started, request ID:', result.requestId);
@@ -4386,8 +4479,8 @@ const InputBox = (props: InputBoxProps = {}) => {
           console.error('❌ Expected videos array or video object with URL');
           throw new Error('WAN 2.2 Animate Replace video generation did not complete in time');
         }
-      } else if (selectedModel.startsWith('kling-')) {
-        // Kling flow - queue-based polling via replicate queue endpoints
+      } else if (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro') {
+        // Kling flow - queue-based polling via replicate queue endpoints (excludes Kling 2.6 Pro which uses FAL)
         console.log('🎬 Kling video generation started, request ID:', result.requestId);
         console.log('🎬 Model:', result.model);
         console.log('🎬 History ID:', result.historyId);
@@ -5891,7 +5984,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
                 />
                 {/* Audio toggle button for models that support it (mobile only) */}
-                {((selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
+                {(selectedModel === 'kling-2.6-pro' ||
+                  (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
                   selectedModel.includes('ltx2') ||
                   (selectedModel.includes("veo3.1") && !(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1"))) ||
                   (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1"))) && (
@@ -6317,6 +6411,53 @@ const InputBox = (props: InputBoxProps = {}) => {
                           </div>
                         </button>
                       )}
+                    </div>
+                  );
+                }
+
+                // Kling 2.6 Pro Models: Aspect ratio, duration, and audio
+                if (selectedModel === 'kling-2.6-pro') {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={setFrameSize}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Duration - 5s or 10s */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* Audio toggle for Kling 2.6 Pro */}
+                      <button
+                        onClick={() => setGenerateAudio(v => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
+                      >
+                        <div className="relative">
+                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          </div>
+                        </div>
+                      </button>
                     </div>
                   );
                 }

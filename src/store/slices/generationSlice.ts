@@ -165,6 +165,10 @@ export const generateImages = createAsyncThunk(
       if (model === 'openai/gpt-image-1.5' && frameSize) {
         body.aspect_ratio = frameSize;
       }
+      // For GPT Image 1.5 (Replicate), schema uses `number_of_images`.
+      if (model === 'openai/gpt-image-1.5') {
+        body.number_of_images = requestedCount;
+      }
 
       console.log('[generateImages] POST', endpoint, { body, isPublic: body.isPublic });
       const { data } = await api.post(endpoint, body);

@@ -159,6 +159,11 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'wan-2.5-fast-i2v-10s-720p': 1420,
   'wan-2.5-fast-i2v-10s-1080p': 2100,
 
+  // Kling 2.6 Pro credit SKUs (FAL, audio on/off variants) - matches creditDistribution.ts format
+  'kling-2.6-pro-t2v-i2v-5s-audio-off': 740, // From creditDistribution: Kling 2.6 Pro T2V/I2V 5s Audio Off (740 credits)
+  'kling-2.6-pro-t2v-i2v-5s-audio-on': 1440, // From creditDistribution: Kling 2.6 Pro T2V/I2V 5s Audio On (1440 credits)
+  'kling-2.6-pro-t2v-i2v-10s-audio-off': 1440, // From creditDistribution: Kling 2.6 Pro T2V/I2V 10s Audio Off (1440 credits)
+  'kling-2.6-pro-t2v-i2v-10s-audio-on': 2840, // From creditDistribution: Kling 2.6 Pro T2V/I2V 10s Audio On (2840 credits)
   // Kling credit SKUs (map to distribution names)
   'kling-v2.5-turbo-pro-t2v-5s': 760,
   'kling-v2.5-turbo-pro-t2v-10s': 1460,
@@ -407,6 +412,15 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Kling models
   if (modelValue.startsWith('kling')) {
+    // Kling 2.6 Pro: duration and audio-based
+    if (modelValue === 'kling-2.6-pro') {
+      const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const hasAudio = generateAudio !== false; // Default to true
+      const audioSuffix = hasAudio ? '-audio-on' : '-audio-off';
+      // Use unified T2V/I2V key format to match creditDistribution.ts
+      const key = `kling-2.6-pro-t2v-i2v-${d}s${audioSuffix}`;
+      return MODEL_CREDITS_MAPPING[key] || null;
+    }
     // v2.5 Turbo Pro: only duration matters
     if (modelValue.includes('v2.5')) {
       const isI2V = modelValue.includes('i2v');
