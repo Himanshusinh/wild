@@ -77,7 +77,8 @@ export function generateDownloadFilename(
   // Ensure extension starts with a dot
   const cleanExtension = extension.startsWith('.') ? extension : `.${extension}`;
   
-  return `${prefix}${cleanUsername}_${date}_${time}${cleanExtension}`;
+  // Always prefix with wildmind_ as requested
+  return `wildmind_${prefix}${cleanUsername}_${date}_${time}${cleanExtension}`;
 }
 
 /**
