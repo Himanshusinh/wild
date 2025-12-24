@@ -190,7 +190,7 @@ export default function MusicGenerationPage() {
                         {/* Left Column: Input Box (sticky) */}
                         <div
                             className="w-full lg:w-[30%] flex-shrink-0"
-                            style={{ position: 'sticky', top: '6.5rem', left: 0, alignSelf: 'flex-start', zIndex: 30, height: 'calc(100vh - 6.5rem)' }}
+                            style={{ position: 'sticky', top: '6.5rem', left: 0, alignSelf: 'flex-start', zIndex: 30, height: 'calc(120vh - 6.5rem)' }}
                         >
                             <div
                                 style={{

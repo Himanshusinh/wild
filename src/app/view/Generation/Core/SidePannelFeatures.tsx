@@ -110,7 +110,7 @@ const SidePannelFeatures = () => {
       {/* Main Sidebar Container */}
       <div
         onMouseLeave={() => setIsSidebarHovered(false)}
-        className={`fixed top-0 bottom-0 left-0 flex flex-col transition-all duration-500 ease-in-out border-r border-white/5 bg-[#050505]/95 backdrop-blur-2xl
+        className={`fixed top-0 bottom-0 left-0 flex flex-col transition-all duration-500 ease-in-out  bg-[#050505]/95 backdrop-blur-2xl
           ${isMobileSidebarOpen ? 'w-56 translate-x-0 z-[56]' : '-translate-x-full md:translate-x-0 z-[50] md:w-20'}`}
       >
         {/* Mobile Close Button */}
@@ -127,7 +127,7 @@ const SidePannelFeatures = () => {
         <div className="flex flex-col gap-0.5 flex-1 overflow-y-auto no-scrollbar mx-1 md:pt-3 pt-1">
           {/* WildMind Logo as first item */}
           <div
-            onClick={() => nav(APP_ROUTES.HOME)}
+            onClick={() => nav(APP_ROUTES.LANDING)}
             className="group relative flex items-center justify-start md:flex-col md:items-center md:justify-center py-0 md:pl-3 pl-2 pr-3 transition-all duration-300 cursor-pointer opacity-100"
           >
             <div className="relative w-[40px] h-[40px] md:w-[40px] md:h-[40px] flex items-center justify-center">
@@ -140,9 +140,22 @@ const SidePannelFeatures = () => {
                 unoptimized
               />
             </div>
-            <span className="ml-2 md:ml-0 md:mt-1.5 mt-0 md:text-[10px] text-[16px] uppercase font-black tracking-[0.12em] transition-all duration-300 text-slate-100 md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0">
+
+            {/* Text label (kept for small screens) */}
+            {/* <span className="ml-2 md:ml-0 md:mt-1.5 mt-0 md:text-[10px] text-[16px] uppercase font-black tracking-[0.12em] transition-all duration-300 text-slate-100 md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0">
               wildmindai
-            </span>
+            </span> */}
+
+            {/* Hover SVG: appears when the user hovers the logo group (better visual identity) */}
+            {/* <Image
+              src="/core/wildmind_text.svg"
+              alt="WildMind Text Logo"
+              className="hidden md:block ml-2 max-w-[120px] opacity-0 group-hover:opacity-100 transition-all duration-300"
+              width={60}
+              height={22}
+              style={{ height: 22 }}
+              unoptimized
+            /> */}
           </div>
 
           <SidebarItem
@@ -176,7 +189,7 @@ const SidePannelFeatures = () => {
           />
           <SidebarItem
             icon={<Music />}
-            label="Music"
+            label="Audio"
             isActive={pathname?.includes('/text-to-music')}
             setIsSidebarHovered={setIsSidebarHovered}
             onClick={() => nav('/text-to-music')}
