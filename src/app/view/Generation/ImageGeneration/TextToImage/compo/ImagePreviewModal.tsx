@@ -151,7 +151,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       }
     }
 
-    return ordered;
+    // CRITICAL: Explicitly sort by createdAt descending to match UI order (Newest = First)
+    // This ensures that the "Latest" generation is always at index 0.
+    return ordered.sort((a, b) => {
+      const ta = new Date(a.createdAt || 0).getTime();
+      const tb = new Date(b.createdAt || 0).getTime();
+      return tb - ta; // Descending (Newest first)
+    });
   }, [historyEntries, preview?.entry, currentEntry]);
 
   // CONTINUOUS NAVIGATION: Flatten ALL images from ALL generations into one sequence
@@ -1480,34 +1486,34 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         {/* Header */}
 
 
-        {/* Navigation removed - using continuous image nav only */}
-        {/* Image Navigation (Left side, or left if no generation nav) - Only show if not at first image */}
-        {sameDateGallery.length > 1 && !isFirstImage && (
+        {/* Continuous Navigation Arrows */}
+        {/* Previous Image - Show if not at the very first image of all history */}
+        {(currentFlatIndex > 0) && (
           <button
             aria-label="Previous image"
             onClick={(e) => { e.stopPropagation(); goPrevImage(e); }}
-            className={`fixed ${showGenerationNav && !isFirstGeneration ? 'left-16 rounded-none' : 'left-0 rounded-r-full'} md:top-1/2 top-1/3 -translate-y-1/2 z-[75] md:w-16 nd:h-16 w-10 h-10  hover:bg-black/95 text-white transition-all backdrop-blur-sm ${showGenerationNav && !isFirstGeneration ? 'border-y border-r' : 'border-r border-y'} border-white/30 hover:border-white/50 flex items-center justify-center`}
+            className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
             title="Previous image (←)"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
         )}
-        {/* Generation navigation removed - continuous image nav only */}
-        {/* Image Navigation (Right side, or right if no generation nav) - Only show if not at last image */}
-        {/* {sameDateGallery.length > 1 && !isLastImage && (
+
+        {/* Next Image - Show if not at the very last image (or if we can load more) */}
+        {(currentFlatIndex < flattenedImageSequence.length - 1 || hasMoreHistory) && (
           <button
             aria-label="Next image"
-            onClick={(e) => { e.stopPropagation(); goNext(e); }}
-            className={`fixed ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'right-16 rounded-none' : 'right-0 rounded-l-full'} top-1/2 -translate-y-1/2 z-[75] w-16 h-16 bg-black/80 hover:bg-black/95 text-white transition-all backdrop-blur-sm ${showGenerationNav && (!isLastGeneration || hasMoreHistory) ? 'border-y border-l' : 'border-l border-y'} border-white/30 hover:border-white/50 flex items-center justify-center`}
+            onClick={(e) => { e.stopPropagation(); goNextImage(e); }}
+            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
             title="Next image (→)"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
-        )} */}
+        )}
 
         {/* Content */}
         <div className="flex flex-col md:flex md:flex-row h-[90vh] md:h-full   md:gap-0">
