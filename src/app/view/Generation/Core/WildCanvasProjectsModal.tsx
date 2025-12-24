@@ -28,6 +28,9 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
     useEffect(() => {
         if (isOpen) {
             loadProjects();
+            // Reload when window gets focus (e.g. user comes back from canvas tab)
+            window.addEventListener('focus', loadProjects);
+            return () => window.removeEventListener('focus', loadProjects);
         }
     }, [isOpen]);
 
@@ -43,12 +46,12 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
                 console.warn('[WildCanvasProjectsModal] User not authenticated, projects may not load', authError);
                 // Continue anyway - the API call will fail with 401 if not authenticated
             }
-            
+
             const response = await fetchCanvasProjects();
             setProjects(response.projects || []);
         } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
-            
+
             // Provide specific error message for authentication issues
             if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
                 setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
@@ -81,14 +84,14 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
         } catch (e) {
             console.warn('[WildCanvasProjectsModal] Failed to get auth token for cross-subdomain auth', e);
         }
-        
+
         window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
         onClose();
     };
 
     const handleDeleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
         e.stopPropagation(); // Prevent opening the project when clicking delete
-        
+
         if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
             return;
         }
