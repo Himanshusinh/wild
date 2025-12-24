@@ -187,13 +187,7 @@ const SidePannelFeatures = () => {
             setIsSidebarHovered={setIsSidebarHovered}
             onClick={() => nav('/text-to-image')}
           />
-          <SidebarItem
-            icon={<Music />}
-            label="Audio"
-            isActive={pathname?.includes('/text-to-music')}
-            setIsSidebarHovered={setIsSidebarHovered}
-            onClick={() => nav('/text-to-music')}
-          />
+
           <SidebarItem
             icon={<Film />}
             label="Video"
@@ -201,6 +195,15 @@ const SidePannelFeatures = () => {
             setIsSidebarHovered={setIsSidebarHovered}
             onClick={() => nav('/text-to-video')}
           />
+          
+          <SidebarItem
+            icon={<Music />}
+            label="Audio"
+            isActive={pathname?.includes('/text-to-music')}
+            setIsSidebarHovered={setIsSidebarHovered}
+            onClick={() => nav('/text-to-music')}
+          />
+          
 
           <SidebarItem
             icon={<CreditCard />}
