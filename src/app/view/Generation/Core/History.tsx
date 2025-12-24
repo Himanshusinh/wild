@@ -1833,10 +1833,10 @@ const History = () => {
               })}
               {/* Loader for scroll loading */}
               {hasMore && loading && (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-8 pb-24">
                   <div className="flex flex-col items-center gap-3">
-                    <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                    <div className="text-sm text-white/60">Loading more generations...</div>
+                    <Image src="/styles/Logo.gif" alt="Generating" width={68} height={68} className="mx-auto" />
+                    <div className="text-sm md:text-lg text-white/60">Loading more generations...</div>
                   </div>
                 </div>
               )}
