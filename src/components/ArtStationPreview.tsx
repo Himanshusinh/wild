@@ -312,11 +312,18 @@ export default function ArtStationPreview({
     return () => window.removeEventListener('resize', onResize)
   }, [isFullscreen, fsNaturalSize])
 
-  // Keyboard navigation
+  // Use refs to access latest state in stable event listener
+  // Fix: use onClose directly instead of handleClose which is defined later
+  const stateRef = useRef({ preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose });
   useEffect(() => {
-    if (!preview) return
+    stateRef.current = { preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose };
+  }, [preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose]);
 
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const { preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose } = stateRef.current;
+      if (!preview) return;
+
       console.log('[ArtStation] Key pressed:', e.key, 'isFullscreen:', isFullscreen)
       
       // In fullscreen mode
@@ -339,7 +346,7 @@ export default function ArtStationPreview({
       // In modal (not fullscreen)
       if (e.key === 'Escape') {
         e.preventDefault()
-        handleClose()
+        onClose()
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault()
         openFullscreen()
@@ -356,7 +363,7 @@ export default function ArtStationPreview({
 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen])
+  }, []) // Empty dependency array for stable listener
 
   // Mouse handlers for fullscreen zoom and pan
   const fsOnWheel = useCallback((e: React.WheelEvent) => {
@@ -1248,7 +1255,7 @@ export default function ArtStationPreview({
             {/* Instructions - only for images */}
             {isImage && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[110] bg-black/80 text-white/80 text-sm px-4 py-2 rounded-lg backdrop-blur-sm pointer-events-none">
-                <span className="opacity-0 hover:opacity-100 transition-opacity">
+                <span className="">
                   Scroll to zoom • Drag to pan • ← → to navigate • ESC to exit
                 </span>
               </div>

@@ -289,21 +289,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       const imgs = (preview?.entry as any)?.images || [];
       const mId = (preview?.image as any)?.id;
       const mUrl = (preview?.image as any)?.url;
-      const mPath = (preview?.image as any)?.storagePath;
       let idx = 0;
       if (imgs && imgs.length > 0) {
-        const found = imgs.findIndex((im: any) => 
-          (mId && im.id === mId) || 
-          (mUrl && im.url === mUrl) || 
-          (mPath && im.storagePath === mPath)
-        );
+        const found = imgs.findIndex((im: any) => (mId && im.id === mId) || (mUrl && im.url === mUrl));
         if (found >= 0) idx = found;
       }
       setSelectedIndex(idx);
     } catch { }
     setObjectUrl('');
     setImageDimensions(null);
-  }, [preview?.entry?.id, preview?.image?.id, preview?.image?.url]);
+  }, [preview?.entry?.id, preview?.image?.id]);
   // Popups removed in favor of redirecting to Edit Image page
   const router = useRouter();
 
@@ -659,14 +654,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (!preview) return 0;
     const mUrl = (preview.image as any)?.url;
     const mId = (preview.image as any)?.id;
-    const mPath = (preview.image as any)?.storagePath;
     const mEntryId = (preview.entry as any)?.id;
     const idx = sameDateGallery.findIndex((pair: any) => {
-      return (pair?.entry?.id === mEntryId) && (
-        (mId && pair?.image?.id === mId) || 
-        (mUrl && pair?.image?.url === mUrl) ||
-        (mPath && pair?.image?.storagePath === mPath)
-      );
+      return (pair?.entry?.id === mEntryId) && ((mId && pair?.image?.id === mId) || (mUrl && pair?.image?.url === mUrl));
     });
     return idx >= 0 ? idx : 0;
   }, [sameDateGallery, preview]);
@@ -1967,10 +1957,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
             </div>
           </div>
           {/* Instructions */}
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 md:text-xs text-xs bg-white/10 md:px-3 px-2 md:py-1.5 py-1 rounded-md ring-1 ring-white/20 text-center space-y-0.5">
-            <div>Scroll to zoom (hold Shift to cycle images; if only one image, Shift scroll jumps between generations).</div>
-            {showGenerationNav && <div>Use Shift + Arrow keys for next/prev generation. Ctrl/Cmd + Arrow works in the modal view.</div>}
-            <div>Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.</div>
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/80 px-4 py-2 rounded-lg backdrop-blur-sm text-center">
+            Scroll to zoom • Drag to pan • ← → to navigate • ESC to exit
           </div>
         </div>
       )}
