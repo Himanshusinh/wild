@@ -22,6 +22,7 @@ export interface ActiveGeneration {
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
   historyId?: string;
+  startedAt?: number;
   createdAt: number;
   updatedAt: number;
   params: {
@@ -32,6 +33,9 @@ export interface ActiveGeneration {
     width?: number;
     height?: number;
     generationType?: string; // 'text-to-image' | 'text-to-video' | 'text-to-music' | etc.
+    model?: string;
+    provider?: string;
+    requestId?: string;
     isPublic?: boolean;
     // Video-specific params
     aspectRatio?: string;

@@ -316,7 +316,8 @@ const History = () => {
     const handleContainerScroll = () => {
       if (!el) return;
       if (!hasUserScrolledRef.current && el.scrollTop > 0) hasUserScrolledRef.current = true;
-      if (!hasUserScrolledRef.current) return;
+      // Removed strict guard: if (!hasUserScrolledRef.current) return;
+      // Allow loading if we are near bottom regardless of explicit scroll event history
       if (el.clientHeight + el.scrollTop >= el.scrollHeight - 800) {
         triggerLoadMore('container');
       }
@@ -324,7 +325,7 @@ const History = () => {
 
     const handleWindowScroll = () => {
       if (!hasUserScrolledRef.current && window.scrollY > 0) hasUserScrolledRef.current = true;
-      if (!hasUserScrolledRef.current) return;
+      // Removed strict guard: if (!hasUserScrolledRef.current) return;
       const winBottom = window.innerHeight + window.scrollY;
       const docHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
       if (winBottom >= docHeight - 800) {

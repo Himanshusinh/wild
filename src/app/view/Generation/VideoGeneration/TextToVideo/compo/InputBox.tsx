@@ -3843,26 +3843,58 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+        
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000 // 15 second timeout
             });
             const status = statusRes.data?.data || statusRes.data;
             const s = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0; // Reset on success
+            
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
-              const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
-              });
-              videoResult = resultRes.data?.data || resultRes.data;
+              try {
+                const resultRes = await api.get('/api/fal/queue/result', {
+                  params: { model: result.model, requestId: result.requestId },
+                  timeout: 15000
+                });
+                videoResult = resultRes.data?.data || resultRes.data;
+                // CRITICAL: Update queue status immediately to mark as completed
+                if (generationId) {
+                  dispatch(updateActiveGeneration({
+                    id: generationId,
+                    updates: { status: 'completed', historyId: result.historyId }
+                  }));
+                  console.log('[queue] Kling o1 marked as completed in queue');
+                }
+              } catch (resultErr: any) {
+                console.error('[queue] Kling o1 - Failed to fetch result:', resultErr?.message);
+                throw resultErr;
+              }
               break;
             }
             if (s === 'failed' || s === 'error') {
               throw new Error('Kling o1 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Kling o1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Kling o1 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Kling o1: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Kling o1: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3885,27 +3917,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Veo 3.1 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Veo 3.1 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Veo 3.1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Veo 3.1 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Veo 3.1: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Veo 3.1: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3924,26 +3982,53 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
+
             const s = String(status?.status || '').toLowerCase();
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] LTX V2 marked as completed in queue');
+              }
               break;
             }
             if (s === 'failed' || s === 'error') {
               throw new Error('LTX V2 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] LTX V2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] LTX V2 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`LTX V2: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`LTX V2: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3974,27 +4059,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Veo3 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Veo3 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Veo3 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Veo3 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Veo3: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Veo3: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4014,27 +4125,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 15000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Sora2 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Sora 2 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            if (isNetworkError) {
+              console.warn(`[queue] Sora2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Sora2 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Sora2: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Sora2: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4100,6 +4237,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models (they can take longer)
         console.log(`🎬 Starting WAN 2.5 polling with ${maxAttempts} attempts (15 minutes max)`);
 
@@ -4108,10 +4247,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 WAN 2.5 polling attempt ${attempts + 1}/${maxAttempts}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             console.log(`🎬 WAN 2.5 status check result:`, status);
             // Normalize status for robust comparisons
@@ -4120,10 +4261,19 @@ const InputBox = (props: InputBoxProps = {}) => {
               console.log('✅ WAN 2.5 generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ WAN 2.5 result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] WAN 2.5 marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4148,7 +4298,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               if (attempts >= 120 && result.historyId) {
                 try {
                   console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
+                    timeout: 20000
+                  });
                   const historyData = historyRes.data?.data || historyRes.data;
 
                   if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
@@ -4164,11 +4316,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
               }
             }
-          } catch (statusError) {
-            console.error('❌ WAN 2.5 status check failed:', statusError);
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            
+            // Log less frequently for long-polling (every 10 attempts)
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] WAN 2.5 - Network error (${attempts + 1}/${maxAttempts}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] WAN 2.5 - Error (${attempts + 1}/${maxAttempts}):`, errorMsg);
+              }
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`WAN 2.5: Too many network errors. ${errorMsg}`);
+            }
             if (attempts === maxAttempts - 1) {
-              console.error('❌ WAN 2.5 polling exhausted all attempts');
-              throw statusError;
+              throw new Error(`WAN 2.5: Timeout after ${maxAttempts} attempts. ${errorMsg}`);
             }
           }
           await new Promise(res => setTimeout(res, 1000));
@@ -4203,6 +4369,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models
         console.log(`🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`);
 
@@ -4211,10 +4379,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             console.log(`🎬 WAN 2.2 Animate Replace status check result:`, status);
             // Normalize status for robust comparisons
@@ -4223,10 +4393,19 @@ const InputBox = (props: InputBoxProps = {}) => {
               console.log('✅ WAN 2.2 Animate Replace generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ WAN 2.2 Animate Replace result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] WAN 2.2 marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4251,7 +4430,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               if (attempts >= 120 && result.historyId) {
                 try {
                   console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
+                    timeout: 20000
+                  });
                   const historyData = historyRes.data?.data || historyRes.data;
 
                   if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
@@ -4306,25 +4487,52 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         let videoResult: any;
         const maxAttemptsK = 900; // up to 15 minutes
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < maxAttemptsK; attempts++) {
           try {
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
+
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Kling marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
               throw new Error('Kling video generation failed');
             }
-          } catch (e) {
-            if (attempts === maxAttemptsK - 1) throw e;
+          } catch (e: any) {
+            consecutiveErrors++;
+            const errorMsg = e?.message || String(e);
+            const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            if (isNetwork) {
+              console.warn(`[queue] Kling - Network error (${attempts + 1}/${maxAttemptsK}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Kling - Error (${attempts + 1}/${maxAttemptsK}):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Kling: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsK - 1) throw new Error(`Kling: Timeout after ${maxAttemptsK} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4353,6 +4561,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsSeedance = 900; // up to 15 minutes (same as WAN/Kling)
         console.log(`🎬 Starting Seedance polling with ${maxAttemptsSeedance} attempts (15 minutes max)`);
 
@@ -4361,21 +4571,32 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 Seedance polling attempt ${attempts + 1}/${maxAttemptsSeedance}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             console.log(`🎬 Seedance status check result:`, status);
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ Seedance generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ Seedance result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Seedance marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4387,9 +4608,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(`🎬 Seedance still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
             }
-          } catch (e) {
-            console.error('❌ Seedance status check failed:', e);
-            if (attempts === maxAttemptsSeedance - 1) throw e;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] Seedance - Network error (${attempts + 1}/${maxAttemptsSeedance}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] Seedance - Error (${attempts + 1}/${maxAttemptsSeedance}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Seedance: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsSeedance - 1) throw new Error(`Seedance: Timeout after ${maxAttemptsSeedance} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4418,6 +4653,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsPixverse = 900; // up to 15 minutes (same as WAN/Kling/Seedance)
         console.log(`🎬 Starting PixVerse polling with ${maxAttemptsPixverse} attempts (15 minutes max)`);
 
@@ -4426,21 +4663,32 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 PixVerse polling attempt ${attempts + 1}/${maxAttemptsPixverse}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             console.log(`🎬 PixVerse status check result:`, status);
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ PixVerse generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ PixVerse result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] PixVerse marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4452,9 +4700,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(`🎬 PixVerse still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
             }
-          } catch (e) {
-            console.error('❌ PixVerse status check failed:', e);
-            if (attempts === maxAttemptsPixverse - 1) throw e;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] PixVerse - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] PixVerse - Error (${attempts + 1}/${maxAttemptsPixverse}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`PixVerse: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsPixverse - 1) throw new Error(`PixVerse: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4869,7 +5131,46 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }
 
                     return (
-                      <div className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                      <div
+                        draggable={true}
+                        onDragStart={(e) => {
+                          const mediaUrl = (localVideoPreview as any)?.images?.[0]?.url || (localVideoPreview as any)?.video?.url;
+                          if (mediaUrl) {
+                             e.dataTransfer.setData('text/plain', mediaUrl);
+                             e.dataTransfer.setData('text/uri-list', mediaUrl);
+                             e.dataTransfer.effectAllowed = 'copy';
+
+                             // Custom "minimal" drag ghost for local preview
+                             const ghostUrl = (localVideoPreview as any)?.images?.[0]?.url;
+                             const ghost = document.createElement('div');
+                             ghost.style.width = '96px';
+                             ghost.style.height = '96px';
+                             ghost.style.borderRadius = '12px';
+                             if (ghostUrl) {
+                               ghost.style.backgroundImage = `url(${ghostUrl})`;
+                               ghost.style.backgroundSize = 'cover';
+                               ghost.style.backgroundPosition = 'center';
+                             } else {
+                               ghost.style.backgroundColor = '#1a1a1a';
+                               ghost.textContent = 'Video';
+                               ghost.style.display = 'flex';
+                               ghost.style.alignItems = 'center';
+                               ghost.style.justifyContent = 'center';
+                               ghost.style.color = 'white';
+                               ghost.style.fontSize = '12px';
+                             }
+                             ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+                             ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                             ghost.style.zIndex = '-1000';
+                             ghost.style.position = 'absolute';
+                             ghost.style.top = '-9999px';
+                             document.body.appendChild(ghost);
+                             e.dataTransfer.setDragImage(ghost, 48, 48);
+                             setTimeout(() => document.body.removeChild(ghost), 0);
+                          }
+                        }}
+                        className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
+                      >
                         {localVideoPreview.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
@@ -4935,6 +5236,49 @@ const InputBox = (props: InputBoxProps = {}) => {
                           <div
                             key={uniqueVideoKey}
                             data-video-id={uniqueVideoKey}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              const mediaUrl = video.firebaseUrl || video.url;
+                              if (mediaUrl) {
+                                e.dataTransfer.setData('text/plain', mediaUrl);
+                                e.dataTransfer.setData('text/uri-list', mediaUrl);
+                                e.dataTransfer.effectAllowed = 'copy';
+
+                                // Custom "minimal" drag ghost for video
+                                const ghostUrl = video.thumbnailUrl || video.avifUrl || mediaUrl;
+                                // If no thumbnail, we might be dragging a video URL directly. 
+                                // Since we can't easily snapshot a video frame synchronously, we might use a default icon or the video element itself if we clone it.
+                                // But here we try to use a thumbnail if possible.
+                                
+                                const ghost = document.createElement('div');
+                                ghost.style.width = '96px';
+                                ghost.style.height = '96px';
+                                ghost.style.borderRadius = '12px';
+                                if (ghostUrl) {
+                                  ghost.style.backgroundImage = `url(${ghostUrl})`;
+                                  ghost.style.backgroundSize = 'cover';
+                                  ghost.style.backgroundPosition = 'center';
+                                } else {
+                                  ghost.style.backgroundColor = '#1a1a1a';
+                                  // Add a video icon? 
+                                  ghost.textContent = 'Video';
+                                  ghost.style.display = 'flex';
+                                  ghost.style.alignItems = 'center';
+                                  ghost.style.justifyContent = 'center';
+                                  ghost.style.color = 'white';
+                                  ghost.style.fontSize = '12px';
+                                }
+                                
+                                ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+                                ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                                ghost.style.zIndex = '-1000';
+                                ghost.style.position = 'absolute';
+                                ghost.style.top = '-9999px';
+                                document.body.appendChild(ghost);
+                                e.dataTransfer.setDragImage(ghost, 48, 48);
+                                setTimeout(() => document.body.removeChild(ghost), 0);
+                              }
+                            }}
                             onClick={(e) => {
                               // Don't open preview if clicking on copy button
                               if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
@@ -4982,6 +5326,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                                       <video
                                         src={vsrc}
                                         className="w-full h-full object-cover transition-opacity duration-200"
+                                        draggable={false}
                                         muted
                                         playsInline
                                         loop
@@ -5091,8 +5436,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            } hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}
+          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1  shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+            } ${isInputBoxHovered 
+              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]' 
+              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+            }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
           onClick={(e) => {
@@ -5104,6 +5452,90 @@ const InputBox = (props: InputBoxProps = {}) => {
               setTimeout(() => setCloseFrameSizeDropdown(false), 0);
               setCloseDurationDropdown(true);
               setTimeout(() => setCloseDurationDropdown(false), 0);
+            }
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+
+            // 1. Handle Files (dragged from desktop/OS)
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const files = Array.from(e.dataTransfer.files);
+              
+              // Separate images and videos
+              const imageFiles = files.filter(f => f.type.startsWith('image/'));
+              const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+              // Process Images
+              if (imageFiles.length > 0) {
+                const newUrls: string[] = [];
+                for (const file of imageFiles) {
+                  const reader = new FileReader();
+                  const dataUrl: string = await new Promise((resolve) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                  });
+                  newUrls.push(dataUrl);
+                }
+                
+                if (newUrls.length > 0) {
+                   setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                   toast.success(`Added ${newUrls.length} image(s)`);
+                }
+              }
+
+              // Process Videos (Take the first valid video)
+              if (videoFiles.length > 0) {
+                const file = videoFiles[0];
+                const maxBytes = 14 * 1024 * 1024; // 14MB limit
+                const allowedMimes = new Set([
+                  'video/mp4', 'video/webm', 'video/ogg', 
+                  'video/quicktime', 'video/mov', 'video/h264'
+                ]);
+
+                if (!allowedMimes.has(file.type)) {
+                  toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
+                } else if (file.size > maxBytes) {
+                  toast.error('Video too large. Please upload a video ≤ 14MB');
+                } else {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const result = ev.target?.result as string;
+                    if (result) {
+                      setUploadedVideo(result);
+                      toast.success('Video added');
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }
+              return;
+            }
+
+            // 2. Handle Dragged URLs (e.g. from History)
+            const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            if (url) {
+              // Check if Video
+              if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.startsWith('data:video/')) {
+                 setUploadedVideo(url);
+                 toast.success('Video added from URL');
+              } 
+              // Check if Image
+              else if (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/')) {
+                 setUploadedImages(prev => [...prev, url].slice(0, 4));
+                 toast.success('Image added from URL');
+              }
             }
           }}
         >
@@ -5140,6 +5572,59 @@ const InputBox = (props: InputBoxProps = {}) => {
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+                }}
+                onPaste={async (e) => {
+                  // Check for files in clipboard
+                  if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    const files = Array.from(e.clipboardData.files);
+                    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+                    const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+                    // Process Images
+                    if (imageFiles.length > 0) {
+                      e.preventDefault(); // Prevent default if we handle it
+                      const newUrls: string[] = [];
+                      for (const file of imageFiles) {
+                        const reader = new FileReader();
+                        const dataUrl: string = await new Promise((resolve) => {
+                          reader.onload = () => resolve(reader.result as string);
+                          reader.readAsDataURL(file);
+                        });
+                        newUrls.push(dataUrl);
+                      }
+                      if (newUrls.length > 0) {
+                        setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                        toast.success(`Pasted ${newUrls.length} image(s)`);
+                      }
+                    }
+
+                    // Process Video
+                    if (videoFiles.length > 0) {
+                      e.preventDefault();
+                      const file = videoFiles[0];
+                      const maxBytes = 14 * 1024 * 1024;
+                      const allowedMimes = new Set([
+                        'video/mp4', 'video/webm', 'video/ogg', 
+                        'video/quicktime', 'video/mov', 'video/h264'
+                      ]);
+
+                      if (!allowedMimes.has(file.type)) {
+                        toast.error('Unsupported video type');
+                      } else if (file.size > maxBytes) {
+                        toast.error('Video too large (≤ 14MB)');
+                      } else {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const result = ev.target?.result as string;
+                          if (result) {
+                            setUploadedVideo(result);
+                            toast.success('Pasted video');
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }
+                  }
                 }}
               />
               {/* Fixed position buttons container */}

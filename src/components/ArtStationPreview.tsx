@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
 import { Trash2 } from 'lucide-react'
@@ -55,7 +55,7 @@ type EngagementState = {
 type Props = {
   preview: PreviewState
   onClose: () => void
-  onConfirmDelete: (item: PublicItem) => void | Promise<void>
+  onConfirmDelete: (item: PublicItem, imageId?: string) => void | Promise<void>
   currentUid: string | null
   currentUser: { uid?: string; username?: string; displayName?: string; photoURL?: string } | null
   cards: CardEntry[]
@@ -63,6 +63,9 @@ type Props = {
   toggleLike: (generationId: string) => void
   toggleBookmark?: (generationId: string) => void
   engagement?: Record<string, EngagementState>
+  // NEW: Callback for cross-item navigation
+  onNavigate?: (preview: PublicItem | any, mediaIndex: number) => void
+  selectedIndex?: number // Added prop to control index from parent
 }
 
 export default function ArtStationPreview({
@@ -72,20 +75,369 @@ export default function ArtStationPreview({
   currentUid,
   currentUser,
   cards,
-  likedCards,
   toggleLike,
   toggleBookmark,
   engagement,
+  onNavigate,
+  selectedIndex = 0
 }: Props) {
   const router = useRouter()
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
-  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0)
-  const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0)
+  // Local state for tracking current media index within the current item
+  const [selectedImageIndex, setSelectedImageIndex] = useState(selectedIndex)
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(selectedIndex)
+  const [selectedAudioIndex, setSelectedAudioIndex] = useState(selectedIndex)
+
+  // Sync with parent selectedIndex prop changes
+  useEffect(() => {
+    if (preview?.kind === 'image') setSelectedImageIndex(selectedIndex)
+    else if (preview?.kind === 'video') setSelectedVideoIndex(selectedIndex)
+    else if (preview?.kind === 'audio') setSelectedAudioIndex(selectedIndex)
+  }, [selectedIndex, preview?.kind])
+
   const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null)
   const [isPromptExpanded, setIsPromptExpanded] = useState(false)
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
   const [showRemoveBg, setShowRemoveBg] = useState(false)
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fsScale, setFsScale] = useState(1)
+  const [fsFitScale, setFsFitScale] = useState(1)
+  const [fsOffset, setFsOffset] = useState({ x: 0, y: 0 })
+  const [fsIsPanning, setFsIsPanning] = useState(false)
+  const [fsLastPoint, setFsLastPoint] = useState({ x: 0, y: 0 })
+  const [fsNaturalSize, setFsNaturalSize] = useState({ width: 0, height: 0 })
+  const fsContainerRef = useRef<HTMLDivElement>(null)
+
+  // CONTINUOUS NAVIGATION: Build flattened sequence of ALL media from ALL cards
+  type FlatMedia = {
+    itemId: string
+    item: PublicItem
+    mediaType: 'image' | 'video' | 'audio'
+    mediaIndex: number
+    media: any
+    url: string
+  }
+
+  const flattenedMediaSequence = useMemo(() => {
+    const flattened: FlatMedia[] = []
+
+    cards.forEach((card) => {
+      const item = card.item
+
+      // Add all images from this item
+      if (card.kind === 'image' && item.images) {
+        item.images.forEach((img, imgIdx) => {
+          flattened.push({
+            itemId: item.id,
+            item,
+            mediaType: 'image',
+            mediaIndex: imgIdx,
+            media: img,
+            url: img.url
+          })
+        })
+      }
+
+      // Add all videos from this item
+      if (card.kind === 'video' && item.videos) {
+        item.videos.forEach((vid, vidIdx) => {
+          flattened.push({
+            itemId: item.id,
+            item,
+            mediaType: 'video',
+            mediaIndex: vidIdx,
+            media: vid,
+            url: vid.url
+          })
+        })
+      }
+
+      // Add all audios from this item
+      if (card.kind === 'audio' && (item as any).audios) {
+        ((item as any).audios || []).forEach((aud: any, audIdx: number) => {
+          flattened.push({
+            itemId: item.id,
+            item,
+            mediaType: 'audio',
+            mediaIndex: audIdx,
+            media: aud,
+            url: aud.url
+          })
+        })
+      }
+    })
+
+    return flattened
+  }, [cards])
+
+  // Find current position in flattened sequence
+  const currentFlatIndex = useMemo(() => {
+    if (!preview) return 0
+
+    const currentMediaIndex = preview.kind === 'image' ? selectedImageIndex 
+      : preview.kind === 'video' ? selectedVideoIndex 
+      : selectedAudioIndex
+
+    const idx = flattenedMediaSequence.findIndex((media) => {
+      return media.itemId === preview.item.id &&
+             media.mediaType === preview.kind &&
+             media.mediaIndex === currentMediaIndex
+    })
+
+    return idx >= 0 ? idx : 0
+  }, [flattenedMediaSequence, preview, selectedImageIndex, selectedVideoIndex, selectedAudioIndex])
+
+  // CROSS-ITEM NAVIGATION: Navigate through global flattened sequence
+  const goPrevMedia = useCallback(() => {
+    console.log('[ArtStation] goPrevMedia called', { currentFlatIndex, sequenceLength: flattenedMediaSequence.length })
+    
+    if (currentFlatIndex <= 0) {
+      console.log('[ArtStation] At first media, cannot go prev')
+      return // At first media
+    }
+
+    const prevMedia = flattenedMediaSequence[currentFlatIndex - 1]
+    if (!prevMedia) return
+
+    console.log('[ArtStation] Navigating to previous media:', prevMedia)
+    
+    // Call parent callback to update preview
+    if (onNavigate) {
+      onNavigate({
+        kind: prevMedia.mediaType,
+        url: prevMedia.url,
+        item: prevMedia.item
+      }, prevMedia.mediaIndex)
+    }
+  }, [currentFlatIndex, flattenedMediaSequence, onNavigate])
+
+  const goNextMedia = useCallback(() => {
+    console.log('[ArtStation] goNextMedia called', { currentFlatIndex, sequenceLength: flattenedMediaSequence.length })
+    
+    if (currentFlatIndex >= flattenedMediaSequence.length - 1) {
+      console.log('[ArtStation] At last media, cannot go next')
+      return // At last media
+    }
+
+    const nextMedia = flattenedMediaSequence[currentFlatIndex + 1]
+    if (!nextMedia) return
+
+    console.log('[ArtStation] Navigating to next media:', nextMedia)
+    console.log('[ArtStation] onNavigate exists?', !!onNavigate)
+    
+    // Call parent callback to update preview
+    if (onNavigate) {
+      console.log('[ArtStation] Calling onNavigate callback...')
+      onNavigate({
+        kind: nextMedia.mediaType,
+        url: nextMedia.url,
+        item: nextMedia.item
+      }, nextMedia.mediaIndex)
+    } else {
+      console.warn('[ArtStation] No onNavigate callback provided! Using fallback...')
+      // Fallback: directly update local indices (won't change item)
+      if (nextMedia.mediaType === 'image') {
+        setSelectedImageIndex(nextMedia.mediaIndex)
+      } else if (nextMedia.mediaType === 'video') {
+        setSelectedVideoIndex(nextMedia.mediaIndex)
+      } else {
+        setSelectedAudioIndex(nextMedia.mediaIndex)
+      }
+    }
+  }, [currentFlatIndex, flattenedMediaSequence, onNavigate])
+
+  // Fullscreen zoom helpers
+  const fsClampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
+    if (!fsContainerRef.current) return newOffset
+    const rect = fsContainerRef.current.getBoundingClientRect()
+    const imgW = fsNaturalSize.width * currentScale
+    const imgH = fsNaturalSize.height * currentScale
+    const maxX = Math.max(0, (imgW - rect.width) / 2)
+    const maxY = Math.max(0, (imgH - rect.height) / 2)
+    return {
+      x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
+      y: Math.max(-maxY, Math.min(maxY, newOffset.y))
+    }
+  }, [fsNaturalSize])
+
+  const fsZoomToPoint = useCallback((cursorPos: { x: number; y: number }, newScale: number) => {
+    if (!fsContainerRef.current) return
+
+    const currentScale = fsScale
+    const currentOffset = fsOffset
+
+    // Convert cursor from viewport to image space
+    const imageX = (cursorPos.x - currentOffset.x) / currentScale
+    const imageY = (cursorPos.y - currentOffset.y) / currentScale
+
+    // Keep same image point under cursor at new scale
+    const newOffsetX = cursorPos.x - (imageX * newScale)
+    const newOffsetY = cursorPos.y - (imageY * newScale)
+
+    const clamped = fsClampOffset({ x: newOffsetX, y: newOffsetY }, newScale)
+    setFsScale(newScale)
+    setFsOffset(clamped)
+  }, [fsScale, fsOffset, fsClampOffset])
+
+  const openFullscreen = useCallback(() => {
+    setIsFullscreen(true)
+  }, [])
+
+  const closeFullscreen = useCallback(() => {
+    setIsFullscreen(false)
+    setFsIsPanning(false)
+  }, [])
+
+  // Compute fit scale on fullscreen open - FIT TO HEIGHT
+  useEffect(() => {
+    if (!isFullscreen) return
+    const computeFit = () => {
+      if (!fsContainerRef.current || !fsNaturalSize.width || !fsNaturalSize.height) return
+      const rect = fsContainerRef.current.getBoundingClientRect()
+
+      // Fit to height - allows wide images to extend beyond width
+      const heightFit = rect.height / fsNaturalSize.height
+      const fit = heightFit || 1
+
+      const base = fit // Allow upscaling to fit height
+      setFsFitScale(base)
+      setFsScale(base)
+      setFsOffset({ x: 0, y: 0 })
+    }
+    computeFit()
+    const onResize = () => computeFit()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [isFullscreen, fsNaturalSize])
+
+  // Use refs to access latest state in stable event listener
+  // Fix: use onClose directly instead of handleClose which is defined later
+  const stateRef = useRef({ preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose });
+  useEffect(() => {
+    stateRef.current = { preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose };
+  }, [preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const { preview, isFullscreen, goPrevMedia, goNextMedia, closeFullscreen, openFullscreen, onClose } = stateRef.current;
+      if (!preview) return;
+
+      console.log('[ArtStation] Key pressed:', e.key, 'isFullscreen:', isFullscreen)
+      
+      // In fullscreen mode
+      if (isFullscreen) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          closeFullscreen()
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          console.log('[ArtStation] Left arrow in fullscreen')
+          goPrevMedia()
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          console.log('[ArtStation] Right arrow in fullscreen')
+          goNextMedia()
+        }
+        return
+      }
+
+      // In modal (not fullscreen)
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        openFullscreen()
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        console.log('[ArtStation] Left arrow in modal')
+        goPrevMedia()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        console.log('[ArtStation] Right arrow in modal')
+        goNextMedia()
+      }
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, []) // Empty dependency array for stable listener
+
+  // Mouse handlers for fullscreen zoom and pan
+  const fsOnWheel = useCallback((e: React.WheelEvent) => {
+    if (!fsContainerRef.current) return
+    e.preventDefault()
+
+    const rect = fsContainerRef.current.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    const zoomFactor = e.deltaY > 0 ? 1 / 1.15 : 1.15
+    const next = Math.max(0.4, Math.min(6, fsScale * zoomFactor))
+    if (Math.abs(next - fsScale) < 0.001) return
+    fsZoomToPoint({ x: mx, y: my }, next)
+  }, [fsScale, fsZoomToPoint])
+
+  const fsOnMouseDown = useCallback((e: React.MouseEvent) => {
+    if (fsScale <= fsFitScale) return // Only pan when zoomed
+    e.preventDefault()
+    setFsIsPanning(true)
+    setFsLastPoint({ x: e.clientX, y: e.clientY })
+  }, [fsScale, fsFitScale])
+
+  const fsOnMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!fsIsPanning) return
+    e.preventDefault()
+
+    const dx = e.clientX - fsLastPoint.x
+    const dy = e.clientY - fsLastPoint.y
+    const newOffset = {
+      x: fsOffset.x + dx,
+      y: fsOffset.y + dy
+    }
+
+    const clamped = fsClampOffset(newOffset, fsScale)
+    setFsOffset(clamped)
+    setFsLastPoint({ x: e.clientX, y: e.clientY })
+  }, [fsIsPanning, fsLastPoint, fsOffset, fsScale, fsClampOffset])
+
+  const fsOnMouseUp = useCallback(() => {
+    setFsIsPanning(false)
+  }, [])
+
+  // Update fsNaturalSize when image loads in fullscreen
+  useEffect(() => {
+    if (!isFullscreen || !preview || preview.kind !== 'image') return
+    const images = (preview.item.images || []) as any[]
+    const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+    const imgUrl = img?.url || preview.url
+
+    if (!imgUrl) return
+    if (typeof window === 'undefined' || typeof window.Image === 'undefined') return
+
+    let cancelled = false
+    const imgEl = new window.Image()
+    imgEl.decoding = 'async'
+    imgEl.onload = () => {
+      if (cancelled) return
+      if (imgEl.naturalWidth && imgEl.naturalHeight) {
+        setFsNaturalSize({ width: imgEl.naturalWidth, height: imgEl.naturalHeight })
+      }
+    }
+    imgEl.onerror = () => {
+      if (!cancelled) {
+        console.warn('[ArtStationPreview] Failed to load image for fullscreen')
+      }
+    }
+    imgEl.src = toMediaProxy(imgUrl) || toDirectUrl(imgUrl) || imgUrl
+
+    return () => {
+      cancelled = true
+      imgEl.onload = null
+      imgEl.onerror = null
+    }
+  }, [isFullscreen, preview, selectedImageIndex])
 
   useEffect(() => {
     setMediaDimensions(null)
@@ -224,7 +576,7 @@ export default function ArtStationPreview({
     return engagement[preview.item.id] || null
   }, [preview, engagement])
 
-  const isLiked = engagementState?.likedByMe ?? (previewCardId ? likedCards?.has(previewCardId) ?? false : false)
+  const isLiked = engagementState?.likedByMe ?? false
   const likesCount = engagementState?.likesCount ?? 0
   const isBookmarked = engagementState?.bookmarkedByMe ?? false
   const bookmarksCount = engagementState?.bookmarksCount ?? 0
@@ -254,6 +606,37 @@ export default function ArtStationPreview({
           e.stopPropagation()
         }}
       >✕</button>
+      
+      {/* Navigation Arrows at Screen Edges */}
+      {flattenedMediaSequence.length > 1 && currentFlatIndex > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            goPrevMedia()
+          }}
+          className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 pointer-events-auto"
+          aria-label="Previous media"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="md:w-8 md:h-8">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
+      
+      {flattenedMediaSequence.length > 1 && currentFlatIndex < flattenedMediaSequence.length - 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            goNextMedia()
+          }}
+          className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 pointer-events-auto"
+          aria-label="Next media"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="md:w-8 md:h-8">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+      )}
 
       <div className="relative  md:h-full h-full  md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  border border-white/10 md:rounded-lg rounded-3xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}>
@@ -360,12 +743,24 @@ export default function ArtStationPreview({
             )}
 
             {/* Delete button (owner only) - on same row as Like button */}
-            {/* {currentUid && preview.item.createdBy?.uid === currentUid ? (
+            {/* Delete button (owner only) - on same row as Like button */}
+            {currentUid && preview.item.createdBy?.uid === currentUid ? (
               <div className="relative group">
                 <button
                   title="Delete"
                   className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
-                  onClick={() => onConfirmDelete(preview.item)}
+                  onClick={() => {
+                    // Determine which image is currently selected
+                    const images = (preview.item.images || []) as any[];
+                    const currentImg = images[selectedImageIndex] || images[0];
+                    const imageId = currentImg?.id;
+                    
+                    // Pass imageId to parent (if multiple images exist, otherwise it might be undefined or just delete the item)
+                    // If we have multiple images, we want to delete just the current one.
+                    // If we have just one image, the backend will treat it as a full delete anyway if we pass the ID.
+                    // So always passing the ID is safe and correct for "single image deletion".
+                    onConfirmDelete(preview.item, imageId);
+                  }}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -373,7 +768,7 @@ export default function ArtStationPreview({
               </div>
             ) : (
               <div className="w-10 h-10"></div>
-            )} */}
+            )}
           </div>
         </div>
 
@@ -412,6 +807,19 @@ export default function ArtStationPreview({
                         }
                       }}
                     />
+                    {/* Fullscreen button overlay - TOP LEFT */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openFullscreen()
+                      }}
+                      className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40"
+                      title="Fullscreen (F)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 md:h-5 md:w-5">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                      </svg>
+                    </button>
                   </div>
                 )
               }
@@ -434,6 +842,19 @@ export default function ArtStationPreview({
                         if (v.videoWidth && v.videoHeight) setMediaDimensions({ width: v.videoWidth, height: v.videoHeight })
                       }}
                     />
+                    {/* Fullscreen button overlay - TOP LEFT */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openFullscreen()
+                      }}
+                      className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40"
+                      title="Fullscreen (F)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 md:h-5 md:w-5">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                      </svg>
+                    </button>
                   </div>
                 )
               }
@@ -694,7 +1115,7 @@ export default function ArtStationPreview({
         </div>
 
       </div>
-      {preview.kind === 'image' && preview.item.generationType === 'text-to-image' && showRemoveBg && (
+      {preview && preview.kind === 'image' && preview.item.generationType === 'text-to-image' && showRemoveBg && (
         <RemoveBgPopup
           isOpen={showRemoveBg}
           onClose={() => setShowRemoveBg(false)}
@@ -705,6 +1126,143 @@ export default function ArtStationPreview({
           })()}
         />
       )}
+
+
+      {/* Fullscreen Mode Overlay */}
+      {isFullscreen && preview && (() => {
+        const isImage = preview.kind === 'image'
+        const isVideo = preview.kind === 'video'
+        
+        // For images
+        const images = (preview.item.images || []) as any[]
+        const img = images[selectedImageIndex] || images[0] || { url: preview.url }
+        
+        // For videos
+        const videos = (preview.item.videos || []) as any[]
+        const vid = videos[selectedVideoIndex] || videos[0]
+       
+        let src = preview.url
+        if (isImage) {
+          const fullImageUrl = img?.url || (img?.storagePath ? toMediaProxy(img.storagePath) : null) || preview.url
+          src = fullImageUrl
+            ? (fullImageUrl.startsWith('http')
+                ? fullImageUrl
+                : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
+            : preview.url
+        } else if (isVideo && vid) {
+          src = toDirectUrl(vid.url) || vid.url
+        }
+
+        // Use GLOBAL sequence for boundaries (cross-item navigation)
+        const isFirstMedia = currentFlatIndex <= 0
+        const isLastMedia = currentFlatIndex >= flattenedMediaSequence.length - 1
+        const hasMultipleMedia = flattenedMediaSequence.length > 1
+
+        return (
+          <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+            {/* Close button */}
+            <button
+              onClick={closeFullscreen}
+              className="absolute top-4 right-4 z-[110] w-12 h-12 rounded-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center transition-colors"
+              aria-label="Close fullscreen"
+            >
+              ✕
+            </button>
+
+            {/* Navigation arrows - only for images with multiple items */}
+            {isImage && hasMultipleMedia && !isFirstMedia && (
+              <button
+                onClick={() => goPrevMedia()}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-[110] w-16 h-16 rounded-r-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center transition-all border-r border-y border-white/30 hover:border-white/50"
+                aria-label="Previous image"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+            )}
+
+            {isImage && hasMultipleMedia && !isLastMedia && (
+              <button
+                onClick={() => goNextMedia()}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-[110] w-16 h-16 rounded-l-full bg-black/80 hover:bg-black/95 text-white flex items-center justify-center transition-all border-l border-y border-white/30 hover:border-white/50"
+                aria-label="Next image"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            )}
+
+            {/* Media container */}
+            {isImage ? (
+              // Image with zoom/pan
+              <div
+                ref={fsContainerRef}
+                className="relative w-full h-full cursor-zoom-in"
+                onMouseDown={fsOnMouseDown}
+                onMouseMove={fsOnMouseMove}
+                onMouseUp={fsOnMouseUp}
+                onMouseLeave={fsOnMouseUp}
+                onWheel={fsOnWheel}
+                style={{ cursor: fsScale > fsFitScale ? (fsIsPanning ? 'grabbing' : 'grab') : 'zoom-in' }}
+              >
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{
+                    transform: `translate3d(${fsOffset.x}px, ${fsOffset.y}px, 0) scale(${fsScale})`,
+                    transformOrigin: 'center center',
+                    transition: fsIsPanning ? 'none' : 'transform 0.15s ease-out'
+                  }}
+                >
+                  <img
+                    src={src}
+                    alt={preview.item.prompt || ''}
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
+                    onLoad={(e) => {
+                      const el = e.currentTarget
+                      if (el.naturalWidth && el.naturalHeight) {
+                        setFsNaturalSize({ width: el.naturalWidth, height: el.naturalHeight })
+                      }
+                    }}
+                    style={{
+                      width: `${fsNaturalSize.width}px`,
+                      height: `${fsNaturalSize.height}px`,
+                      display: fsNaturalSize.width ? 'block' : 'none'
+                    }}
+                    className="object-contain select-none"
+                    draggable={false}
+                  />
+                </div>
+              </div>
+            ) : isVideo ? (
+              // Video player
+              <div className="relative w-full h-full flex items-center justify-center p-8">
+                <video
+                  src={src}
+                  className="max-w-full max-h-full"
+                  controls
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  poster={(vid as any)?.thumbnailUrl || (vid as any)?.avifUrl || undefined}
+                />
+              </div>
+            ) : null}
+
+            {/* Instructions - only for images */}
+            {isImage && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[110] bg-black/80 text-white/80 text-sm px-4 py-2 rounded-lg backdrop-blur-sm pointer-events-none">
+                <span className="">
+                  Scroll to zoom • Drag to pan • ← → to navigate • ESC to exit
+                </span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

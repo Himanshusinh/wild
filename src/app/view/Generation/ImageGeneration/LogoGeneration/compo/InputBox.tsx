@@ -424,8 +424,8 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
       dispatch(setSelectedModel("gemini-25-flash-image"));
       dispatch(setImageCount(1));
 
-      // Show success notification
-      try { const toast = (await import('react-hot-toast')).default; toast.success(`Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''}!`); } catch {}
+      // Suppress explicit success toast: queue management will show a single, centralized success toast
+      console.log(`[logo] Successfully generated ${imageCount} logo${imageCount > 1 ? 's' : ''} - success toast suppressed`);
 
       // Handle credit success
       if (transactionId) {
