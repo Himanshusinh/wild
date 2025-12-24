@@ -3380,11 +3380,11 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-30 px-4 md:px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-10">
+      <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0  sm:ml-8 md:ml-7 lg:ml-7 ">
-            <h1 className="text-white text-xl sm:text-4xl md:text-4xl lg:text-4xl font-semibold">Edit Images</h1>
-            <p className="text-white/80 text-xs sm:text-lg md:text-xl">Transform your images with AI</p>
+            <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Images</h1>
+            <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your images with AI</p>
           </div>
           {/* feature tabs moved to left sidebar */}
         </div>
@@ -3438,9 +3438,9 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-8 md:pt-14 flex-col md:flex-row">
+      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-8 md:pt-18 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-8 md:mx-0 mx-4">
+        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-4">
           {/* Error Message */}
           {errorMsg && (
             <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">

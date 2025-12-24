@@ -201,7 +201,7 @@ export default function CommunityCreations({
         {/* Explore Overlay */}
         {!loading && limitedCards.length > 0 && (
           <>
-            <div className="absolute bottom-0 left-0 right-0 h-[200px] bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-[200px] z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-0 right-0 h-[150px] flex items-center justify-center z-20 pointer-events-auto">
               <button
                 onClick={() => router.push('/view/ArtStation')}

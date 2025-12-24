@@ -57,7 +57,7 @@ import HistoryControls from './HistoryControls';
 
 interface InputBoxProps {
   placeholder?: string;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit';
   showHistory?: boolean; // Control whether to show the history section
 }
 
@@ -1126,7 +1126,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
-  
+
   // Read search, sort, and date filters from Redux (managed by HistoryControls)
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
   const sortOrder = currentFilters.sortOrder || 'desc';
@@ -1135,10 +1135,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     start: currentFilters.dateRange.start ? new Date(currentFilters.dateRange.start) : null,
     end: currentFilters.dateRange.end ? new Date(currentFilters.dateRange.end) : null,
   } : { start: null, end: null };
-  
+
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
-  
+
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1686,7 +1686,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 10 },
+          paginationParams: { limit: 20 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1750,7 +1750,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       dispatch(loadHistory({
         filters: { mode: 'video' } as any,
-        paginationParams: { limit: 10 },
+        paginationParams: { limit: 20 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1766,7 +1766,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (historyEntries.length === 0) {
       return;
     }
-    
+
     let isMounted = true;
     (async () => {
       try {
@@ -1902,11 +1902,11 @@ const InputBox = (props: InputBoxProps = {}) => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
-      // Use consistent limit of 10 for all requests
+      // Use consistent limit of 20 for all requests
       dispatch(loadMoreHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
-        paginationParams: { limit: 10 }
+        paginationParams: { limit: 20 }
       }));
     }
   }, [historyEntries, hasMore, loading, dispatch, sortOrder, searchQuery]);
@@ -2048,17 +2048,17 @@ const InputBox = (props: InputBoxProps = {}) => {
     const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
     const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
     const isVideoType = ['text-to-video', 'image-to-video', 'video-to-video'].includes(normalizedCurrentUI);
-    
+
     // Check if user switched to video generation from another feature
     const switchedToVideo = isVideoType && normalizedLastUI !== normalizedCurrentUI;
-    
+
     // Check if filters are for a different type (e.g., image filters when we're on video page)
     const currentFilterMode = currentFilters?.mode;
     const currentFilterSort = (currentFilters as any)?.sortOrder;
     const filtersAreForVideo = currentFilterMode === 'video';
     const filtersAreForDifferentType = currentFilterMode && currentFilterMode !== 'video';
     const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
-    
+
     // Reset initial load flag if user switched to video generation or filters don't match
     if (switchedToVideo || (isVideoType && filtersAreForDifferentType) || (isVideoType && sortMismatch)) {
       console.log('[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag', {
@@ -2072,26 +2072,26 @@ const InputBox = (props: InputBoxProps = {}) => {
       });
       didInitialLoadRef.current = false;
     }
-    
+
     // Always update the last UI type ref to track changes
     lastUIGenerationTypeRef.current = currentUIGenerationType;
-    
+
     // Only load if we haven't loaded yet, or if user just switched to video, or filters don't match
     if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType && !sortMismatch) {
       return;
     }
-    
+
     // Only proceed if we're on a video generation page
     if (!isVideoType) {
       return;
     }
-    
+
     // Load all video types using mode: 'video' (backend handles this correctly)
     didInitialLoadRef.current = true;
-    
+
     try {
-      console.log('[VideoInputBox] Loading video history', { 
-        switchedToVideo, 
+      console.log('[VideoInputBox] Loading video history', {
+        switchedToVideo,
         filtersAreForDifferentType,
         currentUIGenerationType,
         currentFilterMode,
@@ -2101,7 +2101,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       dispatch(loadHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        paginationParams: { limit: 10 },
+        paginationParams: { limit: 20 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:video-mode:${Date.now()}`,
@@ -2141,30 +2141,30 @@ const InputBox = (props: InputBoxProps = {}) => {
         const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
         const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
         const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
-        
+
         // Use mode: 'video' which backend converts to all video types including video-to-video
         // Use consistent limit of 10 for all requests
         const filters: any = { mode: 'video', sortOrder: currentSortOrder };
         if (currentSearch) filters.search = currentSearch;
         if (currentDateRange?.start && currentDateRange?.end) {
-          filters.dateRange = { 
-            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
-            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+          filters.dateRange = {
+            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
           };
         }
-        
-        const backendFilters: any = { 
-          mode: 'video', 
+
+        const backendFilters: any = {
+          mode: 'video',
           sortOrder: currentSortOrder,
           ...(currentSearch ? { search: currentSearch } : {}),
-          ...(currentDateRange?.start && currentDateRange?.end ? { 
-            dateRange: { 
-              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
-              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
-            } 
+          ...(currentDateRange?.start && currentDateRange?.end ? {
+            dateRange: {
+              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
+            }
           } : {})
         };
-        
+
         await (dispatch as any)(loadMoreHistory({
           filters: filters,
           backendFilters: backendFilters,
@@ -2484,7 +2484,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Create tracking ID for queue
     const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    
+
     // Add to active generations queue immediately
     console.log('[queue] Adding new video generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
     dispatch(addActiveGeneration({
@@ -2842,7 +2842,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : (!isProFast && uploadedImages.length > 1 ? uploadedImages[1] : null);
           const hasFirstFrame = Boolean(firstFrame);
           const hasLastFrame = Boolean(lastFrame);
-          
+
           let modelName = 'bytedance/seedance-1-pro';
           if (isLite) {
             modelName = 'bytedance/seedance-1-lite';
@@ -3157,15 +3157,15 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           const firstFrame = uploadedImages[0];
           const lastFrame = uploadedImages[1] || lastFrameImage || null;
-          
+
           if (!firstFrame) {
             setError("Kling o1 requires a first frame image");
             return;
           }
-          
+
           // Duration must be "5" or "10" as string
           const durationStr = duration === 5 ? '5' : duration === 10 ? '10' : '5';
-          
+
           // Check if both frames are provided
           if (lastFrame) {
             // Both frames provided - use image-to-video model
@@ -3179,7 +3179,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (!formattedPrompt.includes('@Image2')) {
               formattedPrompt += ' @Image2';
             }
-            
+
             requestBody = {
               prompt: formattedPrompt,
               originalPrompt: prompt,
@@ -3201,7 +3201,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (!formattedPrompt.includes('@Image') && !formattedPrompt.includes('@Element')) {
               formattedPrompt += ' @Image1';
             }
-            
+
             // Map aspect ratio to valid values
             const aspectRatioMap: Record<string, string> = {
               '16:9': '16:9',
@@ -3211,7 +3211,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               '3:4': '9:16',
             };
             const aspectRatio = aspectRatioMap[frameSize] || '16:9';
-            
+
             requestBody = {
               prompt: formattedPrompt,
               originalPrompt: prompt,
@@ -3305,7 +3305,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Last frame support (Pro and Lite only, not Pro Fast)
           const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : null;
           const hasLastFrame = Boolean(lastFrame);
-          
+
           let modelName = 'bytedance/seedance-1-pro';
           if (isLite) {
             modelName = 'bytedance/seedance-1-lite';
@@ -4856,7 +4856,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.warn('[queue] Failed to fetch entry for storagePath:', e);
           }
         }
-        
+
         // Extract storagePath from Zata URL if not available
         if (!storagePath && firebaseVideo?.url) {
           const zataMatch = firebaseVideo.url.match(/devstoragev1\/(.+)$/i);
@@ -4865,7 +4865,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log('[queue] Extracted storagePath from URL:', storagePath);
           }
         }
-        
+
         const videoArray = firebaseVideo?.url ? [{
           id: firebaseVideo.id || generationId,
           url: firebaseVideo.url,
@@ -4911,7 +4911,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         dispatch(clearFilters());
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 10 },
+          paginationParams: { limit: 20 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -5001,7 +5001,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     <React.Fragment>
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
-      
+
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
           {/* Initial loading overlay - show only when actually loading and no entries exist */}
@@ -5096,7 +5096,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
 
                 {/* All Videos for this Date - Grid Layout (2 columns on mobile, flex on desktop) */}
-                <div className="grid grid-cols-2 gap-2 md:gap-3 md:ml-1 ml-0 md:mb-0 mb-4 md:flex md:flex-wrap">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-1 md:mb-0 mb-4 pl-1">
                   {/* Prepend local video preview to today's row to push existing items right */}
                   {date === todayKey && localVideoPreview && (() => {
                     const localEntryId = localVideoPreview.id;
@@ -5131,49 +5131,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }
 
                     return (
-                      <div
-                        draggable={true}
-                        onDragStart={(e) => {
-                          const mediaUrl = (localVideoPreview as any)?.images?.[0]?.url || (localVideoPreview as any)?.video?.url;
-                          if (mediaUrl) {
-                             e.dataTransfer.setData('text/plain', mediaUrl);
-                             e.dataTransfer.setData('text/uri-list', mediaUrl);
-                             e.dataTransfer.effectAllowed = 'copy';
-
-                             // Custom "minimal" drag ghost for local preview
-                             const ghostUrl = (localVideoPreview as any)?.images?.[0]?.url;
-                             const ghost = document.createElement('div');
-                             ghost.style.width = '96px';
-                             ghost.style.height = '96px';
-                             ghost.style.borderRadius = '12px';
-                             if (ghostUrl) {
-                               ghost.style.backgroundImage = `url(${ghostUrl})`;
-                               ghost.style.backgroundSize = 'cover';
-                               ghost.style.backgroundPosition = 'center';
-                             } else {
-                               ghost.style.backgroundColor = '#1a1a1a';
-                               ghost.textContent = 'Video';
-                               ghost.style.display = 'flex';
-                               ghost.style.alignItems = 'center';
-                               ghost.style.justifyContent = 'center';
-                               ghost.style.color = 'white';
-                               ghost.style.fontSize = '12px';
-                             }
-                             ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
-                             ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
-                             ghost.style.zIndex = '-1000';
-                             ghost.style.position = 'absolute';
-                             ghost.style.top = '-9999px';
-                             document.body.appendChild(ghost);
-                             e.dataTransfer.setDragImage(ghost, 48, 48);
-                             setTimeout(() => document.body.removeChild(ghost), 0);
-                          }
-                        }}
-                        className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10"
-                      >
+                      <div className="relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 aspect-square">
                         {localVideoPreview.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
-                            <div className="flex flex-col items-center gap-2">
+                            <div className="flex flex-col items-center gap-1">
                               <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
@@ -5286,7 +5247,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                               }
                               setPreview({ entry, video });
                             }}
-                            className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64 md:max-h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                            className="relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group aspect-square"
                           >
                             {entry.status === "generating" ? (
                               // Loading frame
@@ -5540,7 +5501,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           }}
         >
           {/* Outline Glow Effect - shows on hover or when typing */}
-          <div 
+          <div
             className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
             style={{
               opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0

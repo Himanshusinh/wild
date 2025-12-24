@@ -83,7 +83,9 @@ const SidePannelFeatures = ({ onViewChange, onGenerationTypeChange }: SidePannel
                 className={`flex items-center gap-4 p-2 transition-all duration-200 cursor-pointer text-white hover:bg-[#1C303D] rounded-xl group/item`}
             >
                 <div className="w-[30px] h-[30px] bg-white/20 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xs">🏠</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white" aria-hidden="true">
+                    <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z" />
+                  </svg>
                 </div>
                 <span className='text-white overflow-hidden w-0 group-hover:w-auto transition-all duration-200 whitespace-nowrap group-hover/item:translate-x-2'>Home</span>
             </div>
