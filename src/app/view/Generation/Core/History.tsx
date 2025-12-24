@@ -16,6 +16,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { setCurrentView } from '@/store/slices/uiSlice';
 import { Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import HistoryControls from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls';
 // Replaced custom loader with Logo.gif
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 import { getCreditsForModel } from '@/utils/modelCredits';
@@ -1078,48 +1079,21 @@ const History = () => {
   return (
     <div className="min-h-full bg-[#07070B] text-white md:p-2 select-none">
       {/* Fixed Header with title and controls */}
-      <div className="fixed top-0 left-0 right-0 z-30 bg-[#07070B] backdrop-blur-xl shadow-xl">
-        <div className="pt-10 md:pt-5 md:ml-18 mr-1 md:pl-6 pl-4">
-          <h2 className="text-xl md:text-3xl font-semibold text-white md:mb-4 mb-0">{headerTitle}</h2>
-        </div>
-        {/* Controls section */}
-        <div className="bg-[#07070B] md:pb-4 pb-0 md:px-6 px-4 md:ml-18 mr-1">
-          <div className="flex items-center justify-between md:mb-2 mb-1">
-            <div className="flex items-center gap-2">
-              {/* Drag Selection Hint */}
-              {selectedImages.size === 0 && historyEntries.length > 0 && (
-                <div className="md:pr-3 pr-2 text-xs md:text-sm rounded text-white/80  ">
-                  Drag to select multiple images, Scroll to load more
-
-                  {/* {hasMore && <span className="mltext-sm text-white/60">•  </span>} */}
-                </div>
-              )}
-
-              {/* <button
-              onClick={handleBackToGeneration}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors"
-              title="Back to generation"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z" />
-              </svg>
-            </button> */}
-
-              <span className="hidden md:block md:text-md text-xs text-white/80">• {getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
+      <div className="fixed top-0 left-0 right-0 z-30 bg-[#07070B] backdrop-blur-xl shadow-xl px-3">
+        <div className="pt-10 md:pt-4  md:px-8">
+          <div className="flex  md:items-center gap-4 md:pl-14 pb-2">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold text-white pb-2 ">{headerTitle}</h2>
+              <div className="hidden md:block text-white/80 text-sm mt-0">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</div>
             </div>
-          </div>
-          <span className="block md:hidden md:text-md text-xs text-white mb-1">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</span>
 
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 pr-auto md:mb-2 mb-1">
-            <div className="flex justify-start gap-2 w-full md:w-auto">
+            {/* Filter pills (left) - keep visible near title */}
+            <div className="flex flex-wrap gap-2 -mt-6">
               {([
                 { key: 'all', label: 'All' },
                 { key: 'images', label: 'Images' },
                 { key: 'videos', label: 'Videos' },
                 { key: 'music', label: 'Music' },
-                // { key: 'logo', label: 'Logo' },
-                // { key: 'sticker', label: 'Stickers' },
-                // { key: 'product', label: 'Products' },
                 { key: 'user-uploads', label: 'Your Uploads' },
               ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
                 <button
@@ -1130,45 +1104,23 @@ const History = () => {
                     setOverlayLoading(true);
                     let f: any = {};
                     switch (key) {
-                      case 'images':
-                        // Show ALL image generations (text-to-image, image-to-image, upscales, edits, etc.)
-                        // so sorting (Oldest/Recent) reflects the true image history.
-                        f = { mode: 'image' };
-                        break;
-                      case 'videos':
-                        f = { mode: 'video' };
-                        break;
-                      case 'music':
-                        f = { generationType: 'text-to-music' };
-                        break;
-                      case 'logo':
-                        f = { generationType: 'logo-generation' };
-                        break;
-                      case 'sticker':
-                        f = { generationType: 'sticker-generation' };
-                        break;
-                      case 'product':
-                        f = { generationType: 'product-generation' };
-                        break;
-                      case 'user-uploads':
-                        f = { isUserUpload: true };
-                        break;
-                      default:
-                        f = {};
+                      case 'images': f = { mode: 'image' }; break;
+                      case 'videos': f = { mode: 'video' }; break;
+                      case 'music': f = { generationType: 'text-to-music' }; break;
+                      case 'user-uploads': f = { isUserUpload: true }; break;
+                      default: f = {};
                     }
-                    // Preserve sort order and any date range
                     if (sortOrder) (f as any).sortOrder = sortOrder;
                     if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
                     setLocalFilters(f);
                     dispatch(setFilters(f));
-                    // Immediately clear current list so previous category tiles do not linger
                     dispatch(clearHistory());
                     await loadFirstPage(f);
                     setPage(1);
                     setPillLoading(false);
                     setOverlayLoading(false);
                   }}
-                  className={`inline-flex items-center md:gap-2 md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
+                  className={`inline-flex items-center md:gap-1 md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
                     ? 'bg-white border-white/5 text-black shadow-sm'
                     : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                     }`}
@@ -1176,176 +1128,26 @@ const History = () => {
                   {label}
                 </button>
               ))}
-              {/* {pillLoading && (
-              <div className="ml-2 flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white/80 text-sm">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin"></div>
-                Loading generations...
-              </div>
-            )} */}
             </div>
 
-            {/* Search Input and Buttons - Desktop only */}
-            <div className="hidden md:flex ml-auto items-center gap-2 flex-shrink-0">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      // Search is already applied via backend API
-                    }
+            {/* Right-side controls for desktop: use shared HistoryControls component */}
+            <div className="flex items-center ml-auto gap-3 -mt-3">
+              <div className="hidden md:flex items-center justify-end gap-2">
+                <HistoryControls
+                  mode={currentGenerationType === 'text-to-video' ? 'video' : 'image'}
+                  onSearchChange={(s) => {
+                    setSearchQuery(String(s || ''));
+                    setPage(1);
                   }}
-                  placeholder="Search by prompt..."
-                  className={`px-4 py-2 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 w-48 md:w-64 ${searchQuery ? 'pr-10' : ''}`}
+                  onSortChange={(order) => {
+                    setSortOrder(order);
+                    setPage(1);
+                  }}
+                  onDateChange={(dr) => {
+                    setDateRange({ start: dr.start, end: dr.end });
+                    setDateInput(dr.start ? dr.start.toISOString().slice(0, 10) : '');
+                  }}
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Sort buttons - Desktop only */}
-            <div className="hidden md:flex ml-0 items-right justify-end gap-2">
-              <button
-                onClick={() => onSortChange('desc')}
-                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Recent"
-              >
-                <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-5 h-5`} />
-                <span className="text-xs font-medium">Recent</span>
-              </button>
-              <button
-                onClick={() => onSortChange('asc')}
-                className={`relative group px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                aria-label="Oldest"
-              >
-                <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-5 h-5`} />
-                <span className="text-xs font-medium">Oldest</span>
-              </button>
-
-              {/* Date picker - Desktop only */}
-              <div className="relative ml-0 flex items-center gap-2">
-                {/* Hidden native date input used for calendar picker */}
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={dateInput}
-                  onChange={async (e) => {
-                    const value = e.target.value;
-                    if (!value) {
-                      await onDateChange(null, null);
-                      return;
-                    }
-                    const d = new Date(value + 'T00:00:00');
-                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                    await onDateChange(start, end);
-                  }}
-                  // Keep it in-viewport but invisible for reliable native picker behavior
-                  style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
-                />
-                <button
-                  onClick={() => {
-                    // Initialize calendar to selected date or today
-                    const base = dateRange.start ? new Date(dateRange.start) : new Date();
-                    setCalendarMonth(base.getMonth());
-                    setCalendarYear(base.getFullYear());
-                    setShowCalendar((v) => !v);
-                  }}
-                  className={`relative group px-1 py-1 rounded-lg text-sm ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
-                  aria-label="Date"
-                >
-                  <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-6 h-6`} />
-                  <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Date</span>
-                </button>
-
-                {showCalendar && (
-                  <div
-                    ref={calendarRef}
-                    data-calendar-popup="true"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-full mt-2 z-40 w-[280px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-2 text-white">
-                      <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                        const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                        setCalendarYear(prev.getFullYear());
-                        setCalendarMonth(prev.getMonth());
-                      }}>‹</button>
-                      <div className="text-sm font-semibold">
-                        {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
-                      </div>
-                      <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                        const next = new Date(calendarYear, calendarMonth + 1, 1);
-                        setCalendarYear(next.getFullYear());
-                        setCalendarMonth(next.getMonth());
-                      }}>›</button>
-                    </div>
-                    {/* Weekdays */}
-                    <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
-                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
-                    </div>
-                    {/* Days */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                        <div key={`pad-${i}`} className="h-8" />
-                      ))}
-                      {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const thisDate = new Date(calendarYear, calendarMonth, day);
-                        const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
-                        return (
-                          <button
-                            key={day}
-                            className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                            onClick={async () => {
-                              const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
-                              const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                              await onDateChange(start, end, true);
-                            }}
-                          >{day}</button>
-                        );
-                      })}
-                    </div>
-                    {/* Footer actions */}
-                    <div className="flex items-center justify-between mt-3">
-                      <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                        await onDateChange(null, null, true);
-                      }}>Clear</button>
-                      <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onClick={() => {
-                        const now = new Date();
-                        setCalendarMonth(now.getMonth());
-                        setCalendarYear(now.getFullYear());
-                      }}>Today</button>
-                    </div>
-                  </div>
-                )}
-                <div className="w-8 h-8 flex items-center justify-center">
-                  {dateRange.start && (
-                    <button
-                      className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
-                      onClick={async () => {
-                        await onDateChange(null, null);
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -1449,7 +1251,7 @@ const History = () => {
                   ref={calendarRef}
                   data-calendar-popup="true"
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2"
+                  className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2 pb-2"
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between mb-0 text-white">
@@ -1536,7 +1338,7 @@ const History = () => {
         <div
           ref={scrollContainerRef}
           className="relative mt-0 overflow-y-auto no-scrollbar md:ml-14"
-          style={{ maxHeight: 'calc(100vh - 200px)' }}
+          style={{ maxHeight: 'calc(120vh - 200px)' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -1582,7 +1384,7 @@ const History = () => {
 
           {/* History Entries - TextToImage-like UI: date-grouped tiles */}
           {(getFilteredItemsCount() === 0 && !overlayLoading && !loading) ? (
-            <div className="text-center py-12">
+            <div className="text-center pt-12">
               <div className="w-16 h-16 md:mx-auto mb-4 text-white/20">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

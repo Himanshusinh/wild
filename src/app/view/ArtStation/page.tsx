@@ -30,10 +30,10 @@ type PublicItem = {
   isDeleted?: boolean;
   aestheticScore?: number; // Added: aesthetic score field
   createdBy?: { uid?: string; username?: string; displayName?: string; photoURL?: string };
-  images?: { 
-    id: string; 
-    url: string; 
-    originalUrl?: string; 
+  images?: {
+    id: string;
+    url: string;
+    originalUrl?: string;
     storagePath?: string;
     webpUrl?: string;
     thumbnailUrl?: string;
@@ -292,7 +292,7 @@ export default function ArtStationPage() {
           next.add(generationId)
         } else {
           next.delete(generationId)
-      }
+        }
         return next
       })
     }
@@ -373,7 +373,7 @@ export default function ArtStationPage() {
 
 
   // Map UI categories to backend query params
-const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'all'; generationType?: string } => {
+  const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'all'; generationType?: string } => {
     switch (category) {
       case 'Videos':
         // use mode=video; backend maps to multiple generationTypes
@@ -388,7 +388,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       default:
         return { mode: 'all' };
     }
-    };
+  };
 
   const fetchFeed = async (reset = false) => {
     try {
@@ -415,7 +415,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
       const searchAtStart = searchQuery
       const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
       const url = new URL(`${baseUrl}/api/feed`)
-      
+
       // Use same limit for both search and normal browsing - proper pagination
       const hasSearch = searchQuery.trim().length > 0
       url.searchParams.set('limit', '50') // Increased limit for better pagination
@@ -438,16 +438,16 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
       // Log the full URL to verify search parameter is included
       const fullUrlString = url.toString()
-      console.log('[ArtStation] Fetching feed:', { 
-        reset, 
-        cursor, 
-        searchQuery, 
+      console.log('[ArtStation] Fetching feed:', {
+        reset,
+        cursor,
+        searchQuery,
         hasSearch: hasSearch,
         hasSearchParam: url.searchParams.has('search'),
         searchParamValue: url.searchParams.get('search'),
-        fullUrl: fullUrlString 
+        fullUrl: fullUrlString
       })
-      
+
       // Double-check search parameter is in URL
       if (hasSearch && !fullUrlString.includes('search=')) {
         console.error('[ArtStation] ERROR: Search query present but not in URL!', { searchQuery, fullUrl: fullUrlString })
@@ -532,7 +532,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         newItems.forEach(it => map.set(it.id, it))
         return Array.from(map.values())
       })
-  setCursor(newCursor)
+      setCursor(newCursor)
       // Use same page limit for both search and normal browsing
       const pageLimit = 50
       // Enable pagination for both search and normal browsing
@@ -600,7 +600,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     // reset concurrency guards
     loadingMoreRef.current = false
     // scroll to top for a clean start of the new category
-    try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+    try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch { }
     // block infinite scroll until first page for this tab finishes
     initialLoadDoneRef.current = false
     setItems([])
@@ -618,19 +618,19 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     if (isInitialMount && !searchQuery.trim()) {
       return;
     }
-    
+
     // Clear any pending search timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
-    
+
     // Debounce search to avoid too many API calls
     // Shorter delay when searching (300ms) vs clearing (0ms)
     const delay = searchQuery.trim() ? 300 : 0; // Reduced delay for better UX
     searchTimeoutRef.current = setTimeout(() => {
       // Reset and refetch when search changes
       loadingMoreRef.current = false
-      try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch {}
+      try { window.scrollTo({ top: 0, behavior: 'auto' }) } catch { }
       initialLoadDoneRef.current = false
       setItems([])
       setCursor(undefined)
@@ -660,11 +660,11 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     },
     hasMore,
     loading,
-    { 
-      root: null, 
+    {
+      root: null,
       rootMargin: '600px', // Same as normal Art Station
       threshold: 0.01, // Same as normal Art Station
-      requireUserScrollRef: initialLoadDoneRef 
+      requireUserScrollRef: initialLoadDoneRef
     }
   )
 
@@ -728,9 +728,9 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
       if (!media || !media.url) return
 
-        setSelectedImageIndex(0)
-        setSelectedVideoIndex(0)
-        setSelectedAudioIndex(0)
+      setSelectedImageIndex(0)
+      setSelectedVideoIndex(0)
+      setSelectedAudioIndex(0)
 
       const maybeStorage: any = (media as any).storagePath
       const normalizedUrl =
@@ -739,8 +739,8 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
         media.url
 
       setPreview({ kind, url: normalizedUrl || media.url, item })
-        setDeepLinkId(null)
-      }
+      setDeepLinkId(null)
+    }
 
     // 1) Try to find the item in the already-loaded feed
     const inFeed = items.find((i) => i.id === deepLinkId)
@@ -751,7 +751,7 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
 
     // 2) Fallback: fetch that single public generation by id so deep links
     // from Bookmarks / Likes always work even if it's not on the first page
-    ;(async () => {
+    ; (async () => {
       try {
         const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '')
         if (!apiBase) {
@@ -870,18 +870,18 @@ const mapCategoryToQuery = (category: Category): { mode?: 'video' | 'image' | 'a
     }
 
 
-    
+
     let sanitized = categoryFiltered.filter((item) => !shouldHideGenerationType(item.generationType));
 
     // Apply "Liked only" filter when enabled
     if (showLikedOnly && likedIds.size > 0) {
       sanitized = sanitized.filter(item => likedIds.has(item.id))
     }
-    
+
     return sanitized;
   }, [items, activeCategory, searchQuery, showLikedOnly, likedIds]);
 
-const normalizeMediaUrl = (url?: string): string | undefined => {
+  const normalizeMediaUrl = (url?: string): string | undefined => {
     if (!url) return undefined
     const trimmed = url.trim()
     if (!trimmed) return undefined
@@ -918,7 +918,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   // Resolve thumbnail URL with fallback: thumbnailUrl -> optimized formats -> proxied/original (never raw original first)
   const resolveThumbnailUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
-    
+
     const thumbnailUrl = normalizeMediaUrl(m.thumbnailUrl)
     const webpUrl = normalizeMediaUrl(m.webpUrl)
     const avifUrl = normalizeMediaUrl(m.avifUrl)
@@ -952,7 +952,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   // Resolve full image URL for popup: url -> storagePath (NO originalUrl to avoid 404s)
   const resolveFullImageUrl = (m: any): { url: string; fallbacks: string[] } => {
     if (!m) return { url: '', fallbacks: [] }
-    
+
     const directUrl = normalizeMediaUrl(m.url)
     const storageUrl = m.storagePath ? toMediaProxy(m.storagePath) : undefined
 
@@ -980,7 +980,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 
     // Use a stable reference - only recalculate if filteredItems actually changed
     const itemsKey = filteredItems.map(i => i.id).join(',')
-    
+
     for (const it of filteredItems) {
       // Only skip if we've already processed this exact item ID
       if (seenItem.has(it.id)) {
@@ -1008,19 +1008,19 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         const primaryVideo = it.videos?.[0]
         const primaryImage = it.images?.[0]
         const primaryAudio = (it as any).audios?.[0]
-        const fallbackUrl = 
+        const fallbackUrl =
           primaryVideo?.url || primaryVideo?.storagePath ||
           primaryImage?.url || primaryImage?.storagePath ||
           primaryAudio?.url || primaryAudio?.storagePath
         const fallbackKey = canonicalMediaKey(fallbackUrl)
-        
+
         if (fallbackKey && seenMediaUrls.has(fallbackKey)) {
           if (process.env.NODE_ENV !== 'production') {
             console.log('[ArtStation] Skipping duplicate fallback media URL:', fallbackKey, 'from item', it.id)
           }
           continue
         }
-        
+
         if (!fallbackUrl) {
           if (process.env.NODE_ENV !== 'production') {
             console.log('[ArtStation] Item has no media URL:', {
@@ -1038,14 +1038,14 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         if (fallbackKey) seenMediaUrls.add(fallbackKey)
         // Remove originalUrl to prevent 404s - only use Zata URLs
         const { originalUrl, ...mediaWithoutOriginal } = fallbackCandidate || {}
-        out.push({ 
-          item: it, 
-          media: { 
-            ...mediaWithoutOriginal, 
+        out.push({
+          item: it,
+          media: {
+            ...mediaWithoutOriginal,
             url: fallbackUrl,
             blurDataUrl: (fallbackCandidate as any)?.blurDataUrl,
-          }, 
-          kind 
+          },
+          kind
         })
         continue
       }
@@ -1055,14 +1055,14 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       if (candidateKey) seenMediaUrls.add(candidateKey)
       // Remove originalUrl to prevent 404s - only use Zata URLs
       const { originalUrl, ...mediaWithoutOriginal } = candidate || {}
-      out.push({ 
-        item: it, 
-        media: { 
-          ...mediaWithoutOriginal, 
+      out.push({
+        item: it,
+        media: {
+          ...mediaWithoutOriginal,
           url: candidateUrl,
           blurDataUrl: (candidate as any)?.blurDataUrl,
-        }, 
-        kind 
+        },
+        kind
       })
     }
 
@@ -1116,15 +1116,15 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   const [failedTiles, setFailedTiles] = useState<Set<string>>(new Set())
 
   // Component to handle image fallback chain: thumbnail → optimized → original
-  const ImageWithFallback = ({ 
-    media, 
-    alt, 
-    fill, 
-    sizes, 
-    blurDataURL, 
-    className, 
-    priority, 
-    fetchPriority, 
+  const ImageWithFallback = ({
+    media,
+    alt,
+    fill,
+    sizes,
+    blurDataURL,
+    className,
+    priority,
+    fetchPriority,
     onLoadingComplete,
     useThumbnail = false,
     onFailure
@@ -1141,7 +1141,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     useThumbnail?: boolean;
     onFailure?: () => void;
   }) => {
-    const { url: primaryUrl, fallbacks } = useThumbnail 
+    const { url: primaryUrl, fallbacks } = useThumbnail
       ? resolveThumbnailUrl(media)
       : resolveFullImageUrl(media);
     const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
@@ -1153,7 +1153,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     const markCompleteFallback = () => {
       try {
         onLoadingComplete?.({ naturalWidth: 1, naturalHeight: 1 } as HTMLImageElement)
-      } catch {}
+      } catch { }
     }
 
     const handleError = () => {
@@ -1202,7 +1202,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           onLoad={(e) => {
             try {
               onLoadingComplete?.(e.currentTarget as HTMLImageElement);
-            } catch {}
+            } catch { }
           }}
         />
       </div>
@@ -1257,10 +1257,10 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
           head.appendChild(l)
         }
       })
-    } catch {}
+    } catch { }
   }, [])
 
-  const prefetchMedia = (kind: 'image'|'video'|'audio', url: string) => {
+  const prefetchMedia = (kind: 'image' | 'video' | 'audio', url: string) => {
     try {
       const key = `${kind}:${url}`
       if (prefetchedRef.current.has(key)) return
@@ -1269,7 +1269,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         const img = document.createElement('img')
         const src = toDirectUrl(url) || url
         img.decoding = 'async'
-        ;(img as any).loading = 'eager'
+          ; (img as any).loading = 'eager'
         img.src = src
       } else if (kind === 'video') {
         const href = toDirectUrl(url) || url
@@ -1286,7 +1286,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
         l.href = href
         document.head.appendChild(l)
       }
-    } catch {}
+    } catch { }
   }
 
   // (columns masonry) no measurement needed
@@ -1343,249 +1343,283 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
       {/* When authenticated: add margin for sidepanel, when not: full width */}
       <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
-        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
+        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-9 ">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
-            <div className=" mb-0 md:mb-3">
-              <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
-                Art Station
-              </h3>
-              <p className="text-white/80 text-xs sm:text-lg md:text-xl">
+          <div className="sticky top-0 z-20 bg-[#07070B] pt-3">
+            <div className=" mb-0 md:mb-0">
+              <div className='flex items-center gap-3 justify-between w-full'>
+
+                <h3 className="text-white text-xl sm:text-xl md:text-2xl font-semibold md:mb-2 mb-0">
+                  GEN-ART
+                </h3>
+                <div className="ml-4 flex-1">
+                  <div className="flex items-center justify-between md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-0 scrollbar-none">
+                    <div className="flex md:gap-2 gap-1">
+
+                      {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
+                        <button
+                          key={category}
+                          onClick={() => setActiveCategory(category)}
+                          className={`inline-flex items-center md:gap-2  md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
+                            ? 'bg-white border-white/5 text-black shadow-sm'
+                            : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                            }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                    <div className='flex items-center flex-nowrap justify-end md:gap-2 gap-1'>
+                      {/* Liked filter + Search Input */}
+                      <div className="flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-0 p-0">
+                        {/* Liked-only toggle button */}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            // When enabling liked-only for the first time, load IDs from backend
+                            if (!showLikedOnly && likedIds.size === 0) {
+                              await loadLikedIds()
+                            }
+                            setShowLikedOnly(prev => !prev)
+                          }}
+                          className={`md:p-1.5 p-1 rounded-lg border flex items-center justify-center transition-all ${showLikedOnly
+                              ? 'bg-white text-black border-white'
+                              : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+                            }`}
+                          aria-pressed={showLikedOnly}
+                          aria-label={showLikedOnly ? 'Show all creations' : 'Show liked creations'}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill={showLikedOnly ? 'currentColor' : 'none'}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="flex-shrink-0"
+                          >
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        </button>
+
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                // Search is already applied via filteredItems useMemo
+                              }
+                            }}
+                            placeholder="Search by prompt..."
+                            className={`md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg  hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                              aria-label="Clear search"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-2">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
 
             {/* Category Filter Bar */}
-            <div className="md:mb-4 md:pb-0 pb-2 md:mt-0 mt-2">
-              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-0 scrollbar-none">
-                {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center md:gap-2  md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
-                        ? 'bg-white border-white/5 text-black shadow-sm'
-                        : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                      }`}
-                  >
-                    {category}
-                  </button> 
-                ))}
 
-                {/* Liked filter + Search Input */}
-                <div className="ml-auto flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-1 p-0">
-                  {/* Liked-only toggle button */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      // When enabling liked-only for the first time, load IDs from backend
-                      if (!showLikedOnly && likedIds.size === 0) {
-                        await loadLikedIds()
-                      }
-                      setShowLikedOnly(prev => !prev)
-                    }}
-                    className={`md:p-2 p-1 rounded-lg border flex items-center justify-center transition-all ${
-                      showLikedOnly
-                        ? 'bg-white text-black border-white'
-                        : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
-                    }`}
-                    aria-pressed={showLikedOnly}
-                    aria-label={showLikedOnly ? 'Show all creations' : 'Show liked creations'}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill={showLikedOnly ? 'currentColor' : 'none'}
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="flex-shrink-0"
-                    >
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </button>
-
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          // Search is already applied via filteredItems useMemo
-                        }
-                      }}
-                      placeholder="Search by prompt..."
-                      className={`md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg  hover:bg-white/20 text-white/80 hover:text-white transition-colors"
-                        aria-label="Clear search"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           {/* Feed container uses main page scrollbar */}
           <div ref={scrollContainerRef}>
-          {/* Masonry grid */}
-          <Masonry
-            items={cards}
-            config={useMemo(() => ({
-              columns: [2, 3, 4, 5] as const,
-              gap: [2, 2, 2, 2] as const, // uniform 2px spacing
-              media: [640, 768, 1024, 1280] as const,
-            }), [])}
-            className="[overflow-anchor:none]"
-            placeholder={undefined}
-            render={(card: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }, idx: number) => {
-              const { item, media, kind } = card
-              const cardId = `${item.id}-${media.id}-${idx}`
-              
-              // Skip rendering if this tile has failed to load media
-              if (failedTiles.has(cardId)) return null
+            {/* Masonry grid */}
+            <Masonry
+              items={cards}
+              config={useMemo(() => ({
+                columns: [2, 3, 4, 5] as const,
+                gap: [2, 2, 2, 2] as const, // uniform 2px spacing
+                media: [640, 768, 1024, 1280] as const,
+              }), [])}
+              className="[overflow-anchor:none]"
+              placeholder={undefined}
+              render={(card: { item: PublicItem; media: any; kind: 'image' | 'video' | 'audio' }, idx: number) => {
+                const { item, media, kind } = card
+                const cardId = `${item.id}-${media.id}-${idx}`
 
-              const isHovered = hoveredCard === cardId
-              const engagementState = engagement[item.id] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
-              const isLiked = engagementState.likedByMe
+                // Skip rendering if this tile has failed to load media
+                if (failedTiles.has(cardId)) return null
 
-              // Use stable keys to prevent re-renders
-              const ratioKey = `${item.id}-${media.id || media.url || idx}`
-              
-              // Calculate aspect ratio: prefer measured, then item aspect ratio
-              const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
-              const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
-              const measuredRatio = measuredRatios[ratioKey]
-              // REMOVED: fallbackRatios - do not force arbitrary shapes
-              const aspectRatio = measuredRatio || (m ? `${m[1]}/${m[2]}` : undefined)
-              
-              return (
-                <div
-                  key={cardId}
-                  className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none opacity-100 translate-y-0 blur-0`}
-                  onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setSelectedImageIndex(0)
-                    setSelectedVideoIndex(0)
-                    setSelectedAudioIndex(0)
-                    // Normalize the URL before setting preview to ensure it uses proxy endpoint
-                    const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
-                    setPreview({ kind, url: normalizedUrl || media.url, item })
-                  }}
-                  ref={(el) => { 
-                    if (el) {
-                      revealRefs.current[cardId] = el
-                      tileRefs.current[cardId] = el
-                    }
-                  }}
-                  style={{
-                    transitionDelay: `${(idx % 12) * 35}ms`,
-                    // REMOVED: aspectRatio style to allow natural height
-                  }}
-                  tabIndex={-1}
-                >
-                  <div className="relative w-full bg-transparent group" style={{ contain: 'layout style paint' }}>
-                    <div 
-                      className="relative w-full bg-gray-900/20 overflow-hidden flex items-center justify-center"
-                    >
-                      {kind !== 'audio' && (
-                        <div
-                          className={`absolute inset-0 z-0 bg-white/5 transition-opacity duration-500 ease-out pointer-events-none ${
-                            loadedTiles.has(cardId) ? 'opacity-0' : 'opacity-100'
-                          }`}
-                        />
-                      )}
-                      {(() => {
-                        const isPriority = idx < 4
-                        const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
-                        const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
-                        return kind === 'video' ? (
-                          (() => {
-                            const proxied = toMediaProxy(media.url)
-                            const original = toDirectUrl(media.url) || media.url
-                            
-                            return (
-                              <video
-                                key={`video-${cardId}`}
-                                src={proxied}
-                                className="w-full h-auto object-contain"
-                                muted
-                                playsInline
-                                preload="metadata"
-                                data-fallback-src={original}
-                                onMouseEnter={async (e) => {
-                                  const v = e.currentTarget as HTMLVideoElement
-                                  if (v.paused) {
-                                    try { 
-                                      await v.play()
-                                    } catch (err) {
-                                      // If proxy fails, try fallback
-                                      const fallback = v.getAttribute('data-fallback-src')
-                                      if (fallback && v.src !== fallback) {
-                                        v.src = fallback
-                                        v.load()
-                                        try { await v.play() } catch { }
+                const isHovered = hoveredCard === cardId
+                const engagementState = engagement[item.id] || { likesCount: 0, bookmarksCount: 0, likedByMe: false, bookmarkedByMe: false }
+                const isLiked = engagementState.likedByMe
+
+                // Use stable keys to prevent re-renders
+                const ratioKey = `${item.id}-${media.id || media.url || idx}`
+
+                // Calculate aspect ratio: prefer measured, then item aspect ratio
+                const rawRatio = (item.aspectRatio || item.frameSize || item.aspect_ratio || '').replace('x', ':')
+                const m = (rawRatio || '').match(/^(\d+)\s*[:/]\s*(\d+)$/)
+                const measuredRatio = measuredRatios[ratioKey]
+                // REMOVED: fallbackRatios - do not force arbitrary shapes
+                const aspectRatio = measuredRatio || (m ? `${m[1]}/${m[2]}` : undefined)
+
+                return (
+                  <div
+                    key={cardId}
+                    className={`cursor-pointer group relative [content-visibility:auto] [overflow-anchor:none] w-full focus:outline-none opacity-100 translate-y-0 blur-0`}
+                    onMouseEnter={() => { setHoveredCard(cardId); prefetchMedia(kind, media.url) }}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setSelectedImageIndex(0)
+                      setSelectedVideoIndex(0)
+                      setSelectedAudioIndex(0)
+                      // Normalize the URL before setting preview to ensure it uses proxy endpoint
+                      const normalizedUrl = normalizeMediaUrl(media.url) || normalizeMediaUrl(media.storagePath) || media.url
+                      setPreview({ kind, url: normalizedUrl || media.url, item })
+                    }}
+                    ref={(el) => {
+                      if (el) {
+                        revealRefs.current[cardId] = el
+                        tileRefs.current[cardId] = el
+                      }
+                    }}
+                    style={{
+                      transitionDelay: `${(idx % 12) * 35}ms`,
+                      // REMOVED: aspectRatio style to allow natural height
+                    }}
+                    tabIndex={-1}
+                  >
+                    <div className="relative w-full bg-transparent group" style={{ contain: 'layout style paint' }}>
+                      <div
+                        className="relative w-full bg-gray-900/20 overflow-hidden flex items-center justify-center"
+                      >
+                        {kind !== 'audio' && (
+                          <div
+                            className={`absolute inset-0 z-0 bg-white/5 transition-opacity duration-500 ease-out pointer-events-none ${loadedTiles.has(cardId) ? 'opacity-0' : 'opacity-100'
+                              }`}
+                          />
+                        )}
+                        {(() => {
+                          const isPriority = idx < 4
+                          const sizes = '(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw'
+                          const blur = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPTEgaGVpZ2h0PTEgZmlsbD0nI2ZmZicgZmlsbC1vcGFjaXR5PScwLjA1Jy8+PC9zdmc+' // very light placeholder
+                          return kind === 'video' ? (
+                            (() => {
+                              const proxied = toMediaProxy(media.url)
+                              const original = toDirectUrl(media.url) || media.url
+
+                              return (
+                                <video
+                                  key={`video-${cardId}`}
+                                  src={proxied}
+                                  className="w-full h-auto object-contain"
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                  data-fallback-src={original}
+                                  onMouseEnter={async (e) => {
+                                    const v = e.currentTarget as HTMLVideoElement
+                                    if (v.paused) {
+                                      try {
+                                        await v.play()
+                                      } catch (err) {
+                                        // If proxy fails, try fallback
+                                        const fallback = v.getAttribute('data-fallback-src')
+                                        if (fallback && v.src !== fallback) {
+                                          v.src = fallback
+                                          v.load()
+                                          try { await v.play() } catch { }
+                                        }
                                       }
                                     }
-                                  }
-                                }}
-                                onMouseLeave={(e) => { 
-                                  const v = e.currentTarget as HTMLVideoElement
-                                  try { v.pause(); v.currentTime = 0 } catch { }
-                                }}
-                                onLoadedMetadata={(e) => {
-                                  const v = e.currentTarget as HTMLVideoElement
-                                  try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch { }
-                                  markTileLoaded(cardId)
-                                }}
-                                onError={(e) => {
-                                  const v = e.currentTarget as HTMLVideoElement
-                                  const fallback = v.getAttribute('data-fallback-src')
-                                  if (fallback && v.src !== fallback) {
-                                    v.src = fallback
-                                    v.load()
-                                  } else {
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const v = e.currentTarget as HTMLVideoElement
+                                    try { v.pause(); v.currentTime = 0 } catch { }
+                                  }}
+                                  onLoadedMetadata={(e) => {
+                                    const v = e.currentTarget as HTMLVideoElement
+                                    try { if (v && v.videoWidth && v.videoHeight) noteMeasuredRatio(ratioKey, v.videoWidth, v.videoHeight) } catch { }
                                     markTileLoaded(cardId)
-                                    // Hide video tile on error if fallback also fails
-                                    setFailedTiles(prev => {
-                                      const next = new Set(prev)
-                                      next.add(cardId)
-                                      return next
-                                    })
-                                  }
+                                  }}
+                                  onError={(e) => {
+                                    const v = e.currentTarget as HTMLVideoElement
+                                    const fallback = v.getAttribute('data-fallback-src')
+                                    if (fallback && v.src !== fallback) {
+                                      v.src = fallback
+                                      v.load()
+                                    } else {
+                                      markTileLoaded(cardId)
+                                      // Hide video tile on error if fallback also fails
+                                      setFailedTiles(prev => {
+                                        const next = new Set(prev)
+                                        next.add(cardId)
+                                        return next
+                                      })
+                                    }
+                                  }}
+                                />
+                              )
+                            })()
+                          ) : kind === 'audio' ? (
+                            <>
+                              {/* Use a simple music logo image to avoid prompt alt text showing */}
+                              <img
+                                key={`audio-${cardId}`}
+                                src="/icons/musicgenerationwhite.svg"
+                                alt=""
+                                loading={isPriority ? 'eager' : 'lazy'}
+                                fetchPriority={isPriority ? 'high' : 'auto'}
+                                className="w-full h-auto object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                                onLoad={() => { markTileLoaded(cardId) }}
+                                onError={() => {
+                                  setFailedTiles(prev => {
+                                    const next = new Set(prev)
+                                    next.add(cardId)
+                                    return next
+                                  })
                                 }}
                               />
-                            )
-                          })()
-                        ) : kind === 'audio' ? (
-                          <>
-                            {/* Use a simple music logo image to avoid prompt alt text showing */}
-                            <img
-                              key={`audio-${cardId}`}
-                              src="/icons/musicgenerationwhite.svg"
-                              alt=""
-                              loading={isPriority ? 'eager' : 'lazy'}
+                            </>
+                          ) : (
+                            <ImageWithFallback
+                              key={`image-${cardId}`}
+                              media={media}
+                              alt={item.prompt || ''}
+                              fill={false}
+                              sizes={sizes}
+                              blurDataURL={media.blurDataUrl}
+                              className="w-full h-auto object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+                              priority={isPriority}
                               fetchPriority={isPriority ? 'high' : 'auto'}
-                              className="w-full h-auto object-contain p-8 bg-gradient-to-br from-[#0B0F1A] to-[#111827] transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                              onLoad={() => { markTileLoaded(cardId) }}
-                              onError={() => {
+                              useThumbnail={true}
+                              onLoadingComplete={(img) => {
+                                try {
+                                  const el = img as unknown as HTMLImageElement
+                                  if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
+                                } catch { }
+                                markTileLoaded(cardId)
+                              }}
+                              onFailure={() => {
                                 setFailedTiles(prev => {
                                   const next = new Set(prev)
                                   next.add(cardId)
@@ -1593,183 +1627,155 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                                 })
                               }}
                             />
-                          </>
-                        ) : (
-                          <ImageWithFallback
-                            key={`image-${cardId}`}
-                            media={media}
-                            alt={item.prompt || ''}
-                            fill={false}
-                            sizes={sizes}
-                            blurDataURL={media.blurDataUrl}
-                            className="w-full h-auto object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                            priority={isPriority}
-                            fetchPriority={isPriority ? 'high' : 'auto'}
-                            useThumbnail={true}
-                            onLoadingComplete={(img) => {
-                              try {
-                                const el = img as unknown as HTMLImageElement
-                                if (el && el.naturalWidth && el.naturalHeight) noteMeasuredRatio(ratioKey, el.naturalWidth, el.naturalHeight)
-                              } catch { }
-                              markTileLoaded(cardId)
-                            }}
-                            onFailure={() => {
-                              setFailedTiles(prev => {
-                                const next = new Set(prev)
-                                next.add(cardId)
-                                return next
-                              })
-                            }}
-                          />
-                        )
-                      })()}
-                      {kind === 'video' && (
-                        <div className="absolute bottom-2 right-2 opacity-80">
-                          <div className="bg-black/40 rounded-md p-1">
-                            <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Music overlay if the item contains audio tracks (show even when tile is an image/video) */}
-                      {(item as any).audios && (item as any).audios.length > 0 && (
-                        <div className="absolute bottom-2 left-2 opacity-80">
-                          <div className="bg-black/40 rounded-md p-1">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white">
-                              <path d="M9 17a4 4 0 1 0 0-8v8z" />
-                              <path d="M9 9v8" />
-                              <path d="M9 9l10-3v8" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {/* Dark gradient overlay from bottom */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[5]" />
-                    
-                    {/* Hover overlay: user profile + actions */}
-                    <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[6]">
-                      <div className="px-2.5 py-2.5 md:px-3 md:py-3">
-                        <div className="rounded-lg px-3 py-2.5 md:px-4 md:py-3 flex items-center justify-between gap-3 pointer-events-auto">
-                          {/* User Section */}
-                          <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
-                            {(() => {
-                              const cb = item.createdBy || ({} as any)
-                              const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
-                              if (photo) {
-                                const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
-                                return (
-                                  <div className="flex-shrink-0">
-                                    <img 
-                                      src={proxied} 
-                                      alt={cb.username || cb.displayName || ''} 
-                                      className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover border border-white/10" 
-                                    />
-                                  </div>
-                                )
-                              }
-                              return (
-                                <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 flex items-center justify-center text-xs md:text-sm font-medium text-white/90 flex-shrink-0 border border-white/10">
-                                  {(cb.username || cb.displayName || 'U').slice(0,1).toUpperCase()}
-                                </div>
-                              )
-                            })()}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-white text-sm md:text-base font-medium truncate leading-tight">
-                                {item.createdBy?.username || item.createdBy?.displayName || 'User'}
-                              </div>
+                          )
+                        })()}
+                        {kind === 'video' && (
+                          <div className="absolute bottom-2 right-2 opacity-80">
+                            <div className="bg-black/40 rounded-md p-1">
+                              <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
                             </div>
                           </div>
-                          {/* Actions Section */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleLike(item.id) }}
-                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${isLiked ? 'text-red-500' : 'text-white'}`}
-                              aria-label={isLiked ? 'Unlike' : 'Like'}
-                              title={isLiked ? 'Unlike' : 'Like'}
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+                        )}
+
+                        {/* Music overlay if the item contains audio tracks (show even when tile is an image/video) */}
+                        {(item as any).audios && (item as any).audios.length > 0 && (
+                          <div className="absolute bottom-2 left-2 opacity-80">
+                            <div className="bg-black/40 rounded-md p-1">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white">
+                                <path d="M9 17a4 4 0 1 0 0-8v8z" />
+                                <path d="M9 9v8" />
+                                <path d="M9 9l10-3v8" />
                               </svg>
-                              {engagementState.likesCount > 0 && (
-                                <span className="ml-1 text-xs font-medium">{engagementState.likesCount}</span>
-                              )}
-                            </button>
-                            {/* Bookmark button */}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleBookmark(item.id) }}
-                              className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${engagementState.bookmarkedByMe ? 'text-blue-500' : 'text-white'}`}
-                              aria-label={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
-                              title={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill={engagementState.bookmarkedByMe ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                                <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                              </svg>
-                              {engagementState.bookmarksCount > 0 && (
-                                <span className="ml-1 text-xs font-medium">{engagementState.bookmarksCount}</span>
-                              )}
-                            </button>
-                            {currentUid && item.createdBy?.uid === currentUid && (
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Dark gradient overlay from bottom */}
+                      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[5]" />
+
+                      {/* Hover overlay: user profile + actions */}
+                      <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[6]">
+                        <div className="px-2.5 py-2.5 md:px-3 md:py-3">
+                          <div className="rounded-lg px-3 py-2.5 md:px-4 md:py-3 flex items-center justify-between gap-3 pointer-events-auto">
+                            {/* User Section */}
+                            <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+                              {(() => {
+                                const cb = item.createdBy || ({} as any)
+                                const photo = cb.photoURL || cb.photoUrl || cb.avatarUrl || cb.avatarURL || cb.profileImageUrl || ''
+                                if (photo) {
+                                  const proxied = `/api/proxy/external?url=${encodeURIComponent(photo)}`
+                                  return (
+                                    <div className="flex-shrink-0">
+                                      <img
+                                        src={proxied}
+                                        alt={cb.username || cb.displayName || ''}
+                                        className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover border border-white/10"
+                                      />
+                                    </div>
+                                  )
+                                }
+                                return (
+                                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 flex items-center justify-center text-xs md:text-sm font-medium text-white/90 flex-shrink-0 border border-white/10">
+                                    {(cb.username || cb.displayName || 'U').slice(0, 1).toUpperCase()}
+                                  </div>
+                                )
+                              })()}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-white text-sm md:text-base font-medium truncate leading-tight">
+                                  {item.createdBy?.username || item.createdBy?.displayName || 'User'}
+                                </div>
+                              </div>
+                            </div>
+                            {/* Actions Section */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               <button
-                                onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
-                                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all duration-200 flex-shrink-0 flex items-center justify-center focus:outline-none"
-                                aria-label="Delete"
-                                title="Delete"
+                                onClick={(e) => { e.stopPropagation(); toggleLike(item.id) }}
+                                className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${isLiked ? 'text-red-500' : 'text-white'}`}
+                                aria-label={isLiked ? 'Unlike' : 'Like'}
+                                title={isLiked ? 'Unlike' : 'Like'}
                               >
-                                <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5 flex-shrink-0" />
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+                                </svg>
+                                {engagementState.likesCount > 0 && (
+                                  <span className="ml-1 text-xs font-medium">{engagementState.likesCount}</span>
+                                )}
                               </button>
-                            )}
+                              {/* Bookmark button */}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleBookmark(item.id) }}
+                                className={`p-2 rounded-lg transition-all duration-200 focus:outline-none flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 ${engagementState.bookmarkedByMe ? 'text-blue-500' : 'text-white'}`}
+                                aria-label={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
+                                title={engagementState.bookmarkedByMe ? 'Unsave' : 'Save'}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill={engagementState.bookmarkedByMe ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                                  <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                </svg>
+                                {engagementState.bookmarksCount > 0 && (
+                                  <span className="ml-1 text-xs font-medium">{engagementState.bookmarksCount}</span>
+                                )}
+                              </button>
+                              {currentUid && item.createdBy?.uid === currentUid && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); confirmDelete(item) }}
+                                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all duration-200 flex-shrink-0 flex items-center justify-center focus:outline-none"
+                                  aria-label="Delete"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5 flex-shrink-0" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 pointer-events-none transition focus:outline-none z-[4]" />
+                      <div className="absolute inset-0 ring-1 ring-transparent group-hover:ring-white/20 pointer-events-none transition focus:outline-none z-[4]" />
+                    </div>
+                  </div>
+                )
+              }}
+            />
+
+            {/* Loading indicator for pagination */}
+            {loading && items.length > 0 && (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                <p className="text-white/60 mt-2">Loading more...</p>
+              </div>
+            )}
+
+            {/* Initial loading - unified logo across tabs */}
+            {loading && items.length === 0 && (
+              <div className="flex items-center justify-center py-28">
+                <div className="flex flex-col items-center gap-4">
+                  {/* Using lightweight spinner instead of 604.6 KiB Logo.gif */}
+                  <div className="w-28 h-28 flex items-center justify-center">
+                    <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                  </div>
+                  <div className="text-white text-lg">
+                    Loading Art Station...
                   </div>
                 </div>
-              )
-            }}
-          />
-
-          {/* Loading indicator for pagination */}
-          {loading && items.length > 0 && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white/60 mt-2">Loading more...</p>
-            </div>
-          )}
-
-          {/* Initial loading - unified logo across tabs */}
-          {loading && items.length === 0 && (
-            <div className="flex items-center justify-center py-28">
-              <div className="flex flex-col items-center gap-4">
-                {/* Using lightweight spinner instead of 604.6 KiB Logo.gif */}
-                <div className="w-28 h-28 flex items-center justify-center">
-                  <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-                </div>
-                <div className="text-white text-lg">
-                  Loading Art Station...
-                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* No items message (based on filtered cards) */}
-          {!loading && cards.length === 0 && !error && (
-            <div className="text-center py-16">
-              <p className="text-white/60 text-lg">No public generations available yet.</p>
-              <p className="text-white/40 text-sm mt-2">Be the first to share your creations!</p>
-            </div>
-          )}
+            {/* No items message (based on filtered cards) */}
+            {!loading && cards.length === 0 && !error && (
+              <div className="text-center py-16">
+                <p className="text-white/60 text-lg">No public generations available yet.</p>
+                <p className="text-white/40 text-sm mt-2">Be the first to share your creations!</p>
+              </div>
+            )}
 
-          {/* End message */}
-          {!loading && !hasMore && items.length > 0 && (
-            <div className="text-center py-8">
-              <p className="text-white/40 text-sm">You've reached the end</p>
-            </div>
-          )}
+            {/* End message */}
+            {!loading && !hasMore && items.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-white/40 text-sm">You've reached the end</p>
+              </div>
+            )}
 
-          <div ref={sentinelRef} style={{ height: 1 }} />
+            <div ref={sentinelRef} style={{ height: 1 }} />
           </div>
 
           {/* Preview Modal */}

@@ -151,35 +151,38 @@ export default function MusicGenerationPage() {
             `}</style>
             {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
             <div className="flex h-full">
-                <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 -mt-14 h-full overflow-hidden">
+                <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 h-full overflow-hidden">
                     {/* Sticky header + filters (pinned under navbar) */}
                     <div className="sticky top-0 z-20 bg-[#07070B] flex-shrink-0 -mb-4">
-                        <div className="mb-2 md:mb-3 pt-10">
-                            <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0 sm:mb-3">
-                                Music Generation
-                            </h3>
-                            <p className="text-white/80 text-xs md:text-xl ">
+                        <div className="mb-1 pt-6">
+                            <div className='flex items-center gap-3'>
+                                <h3 className="text-white text-xl sm:text-xl md:text-2xl font-semibold md:mb-0 mb-0">
+                                    Music Generation
+                                </h3>
+                                <div className="ml-4 flex-0">
+                                    <div className="flex items-center flex-nowrap justify-end w-full md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-0 pt-0 scrollbar-none scroll-smooth">
+                                        {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning'] as MusicFeature[]).map((feature) => (
+                                            <button
+                                                key={feature}
+                                                onClick={() => handleSetFeature(feature)}
+                                                className={`inline-flex flex-shrink-0 whitespace-nowrap items-center gap-2 md:px-3 px-2 md:py-0.75 py-1 rounded-lg md:text-sm text-xs font-medium transition-all border ${activeFeature === feature
+                                                    ? 'bg-white border-white/5 text-black shadow-sm'
+                                                    : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                {feature}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-white/80 text-xs md:text-sm mt-2">
                                 Transform your ideas into stunning audio using advanced AI models
                             </p>
                         </div>
 
                         {/* Feature Filter Bar */}
-                        <div className="mb-0 w-full">
-                            <div className="flex items-center flex-nowrap w-full md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-2 scrollbar-none scroll-smooth">
-                                {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning',] as MusicFeature[]).map((feature) => (
-                                    <button
-                                        key={feature}
-                                        onClick={() => handleSetFeature(feature)}
-                                        className={`inline-flex flex-shrink-0 whitespace-nowrap items-center gap-2 md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-xs font-medium transition-all border ${activeFeature === feature
-                                            ? 'bg-white border-white/5 text-black shadow-sm'
-                                            : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                                            }`}
-                                    >
-                                        {feature}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        
                     </div>
 
                     {/* Responsive layout: stack on small screens, columns on large */}

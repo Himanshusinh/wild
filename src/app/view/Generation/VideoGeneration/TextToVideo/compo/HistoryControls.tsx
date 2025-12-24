@@ -9,24 +9,26 @@ import { loadHistory } from '@/store/slices/historySlice';
 
 interface HistoryControlsProps {
   mode: 'video' | 'image';
-  limit?: number; // Pagination limit (default: 10 for video, can be overridden for image)
+  className?: string;
+  limit?: number; // Pagination limit (default: 20 for video, can be overridden for image)
   onSearchChange?: (search: string) => void;
   onSortChange?: (sortOrder: 'asc' | 'desc') => void;
   onDateChange?: (dateRange: { start: Date | null; end: Date | null }) => void;
 }
 
-const HistoryControls: React.FC<HistoryControlsProps> = ({ 
+const HistoryControls: React.FC<HistoryControlsProps> = ({
   mode = 'video',
+  className,
   limit,
   onSearchChange,
   onSortChange: onSortChangeCallback,
   onDateChange: onDateChangeCallback,
 }) => {
-  // Default limit: 10 for video, 60 for image (can be overridden)
-  const paginationLimit = limit || (mode === 'image' ? 60 : 10);
+  // Default limit: 20 for video, 60 for image (can be overridden)
+  const paginationLimit = limit || (mode === 'image' ? 60 : 20);
   const dispatch = useAppDispatch();
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
-  
+
   // Initialize from Redux state if available
   const initialSortOrder = currentFilters.sortOrder || 'desc';
   const initialSearch = currentFilters.search || '';
@@ -34,16 +36,16 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     start: currentFilters.dateRange.start ? new Date(currentFilters.dateRange.start) : null,
     end: currentFilters.dateRange.end ? new Date(currentFilters.dateRange.end) : null,
   } : { start: null, end: null };
-  
+
   // Search state
   const [searchInput, setSearchInput] = useState<string>(initialSearch);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const searchDebounceRef = useRef<any>(null);
   const didInitSearchRef = useRef(false);
-  
+
   // Sort state
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>(initialSortOrder);
-  
+
   // Date state
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>(initialDateRange);
   const [dateInput, setDateInput] = useState<string>(initialDateRange.start ? initialDateRange.start.toISOString().slice(0, 10) : "");
@@ -55,7 +57,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   const calendarButtonRef = useRef<HTMLButtonElement | null>(null);
   const [calendarPosition, setCalendarPosition] = useState<{ top: number; right: number } | null>(null);
   const [mounted, setMounted] = useState(false);
-  
+
   const didInitialLoadRef = useRef(false);
   const sortRequestInFlightRef = useRef(false);
 
@@ -63,7 +65,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
 
@@ -127,11 +129,11 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     if (onSearchChange) {
       onSearchChange(s);
     }
-    
+
     // Use currentFilters.sortOrder from Redux to get the latest value, not local state
     // This prevents applySearch from being recreated when local sortOrder state changes
     const currentSortOrder = (currentFilters as any)?.sortOrder || 'desc';
-    
+
     didInitialLoadRef.current = true;
     dispatch(clearHistory());
     dispatch(setFilters({
@@ -180,17 +182,17 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     if (sortOrder === order || sortRequestInFlightRef.current) {
       return;
     }
-    
+
     // Set loading guard
     sortRequestInFlightRef.current = true;
-    
+
     try {
       // Update state AFTER API call to prevent triggering other effects
       // Use the order parameter directly in API calls, not state
       if (onSortChangeCallback) {
         onSortChangeCallback(order);
       }
-      
+
       didInitialLoadRef.current = true;
       dispatch(clearHistory());
       dispatch(setFilters({
@@ -209,7 +211,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
         forceRefresh: true,
         debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
       } as any));
-      
+
       // Update local state AFTER successful API call to prevent triggering applySearch recreation
       setSortOrder(order);
     } finally {
@@ -227,7 +229,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     if (onDateChangeCallback) {
       onDateChangeCallback(next);
     }
-    
+
     didInitialLoadRef.current = true;
     dispatch(clearHistory());
     dispatch(setFilters({
@@ -249,7 +251,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
 
   return (
-    <div className="flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-10 md:pt-0 sticky">
+    <div className={`flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-10 md:pt-0 sticky ${className || ''}`}>
       {/* Prompt search (backend-driven) */}
       <div className="relative flex items-center md:mr-0 mr-auto">
         <input
@@ -257,7 +259,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search prompt..."
-          className={`px-2 py-1 md:py-2 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
+          className={`px-2 py-1 md:py-1.5 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
         />
         {searchInput && (
           <button
@@ -279,7 +281,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </div>
       <button
         onClick={() => onSortChange('desc')}
-        className={`relative group md:px-2 px-1 py-1 md:py-2 rounded-lg text-xs flex items-center gap-1.5 ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+        className={`relative group md:px-2 px-1 py-1 md:py-1.5 rounded-lg text-xs flex items-center gap-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white border-white/5 text-black shadow-sm' : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
         aria-label="Recent"
       >
         <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
@@ -287,7 +289,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </button>
       <button
         onClick={() => onSortChange('asc')}
-        className={`relative group md:px-2 px-1 py-1 md:py-2 rounded-lg text-xs flex items-center gap-1.5 ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+        className={`relative group md:px-2 px-1 py-1 md:py-1.5 rounded-lg text-xs flex items-center gap-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white border-white/5 text-black shadow-sm' : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
         aria-label="Oldest"
       >
         <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
@@ -323,26 +325,26 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
             setCalendarYear(base.getFullYear());
             setShowCalendar((v) => !v);
           }}
-          className={`relative group px-1 py-1 md:py-1.5 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+          className={`relative group px-1 py-1 md:py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
           aria-label="Date"
         >
           <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
         </button>
-          {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
-            <div 
-              ref={calendarRef} 
-              data-calendar-popup="true" 
-              className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3" 
-              onMouseDown={(e) => e.stopPropagation()} 
-              style={{
-                top: `${calendarPosition.top}px`,
-                right: `${calendarPosition.right}px`,
-                zIndex: 99999,
-              }}
-            >
+        {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
+          <div
+            ref={calendarRef}
+            data-calendar-popup="true"
+            className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              top: `${calendarPosition.top}px`,
+              right: `${calendarPosition.right}px`,
+              zIndex: 99999,
+            }}
+          >
             <div className="flex items-center justify-between mb-2 text-white">
-              <button 
-                className="px-2 py-1 rounded hover:bg-white/10" 
+              <button
+                className="px-2 py-1 rounded hover:bg-white/10"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -355,8 +357,8 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
               <div className="text-sm font-semibold">
                 {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
               </div>
-              <button 
-                className="px-2 py-1 rounded hover:bg-white/10" 
+              <button
+                className="px-2 py-1 rounded hover:bg-white/10"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -398,8 +400,8 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
               })}
             </div>
             <div className="flex items-center justify-between mt-3">
-              <button 
-                className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" 
+              <button
+                className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -409,8 +411,8 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
                   setShowCalendar(false);
                 }}
               >Clear</button>
-              <button 
-                className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" 
+              <button
+                className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
