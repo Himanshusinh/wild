@@ -41,6 +41,7 @@ body {
   color: #ffffff;
   font-family: var(--font-poppins, "Poppins"), sans-serif;
   font-weight: 400;
+  min-height: 100px;
 }
 
 /* Apply Satoshi to all headings - body text remains Poppins */

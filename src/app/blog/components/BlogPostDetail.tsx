@@ -1,5 +1,9 @@
 // @ts-nocheck - This file was converted from JavaScript and contains complex nested structures
+'use client'
+
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { blogPosts } from '../data/blogPosts'
 import './styles.css'
 import FooterNew from '../../view/core/FooterNew'
 
@@ -9,6 +13,39 @@ interface BlogPostDetailProps {
 }
 
 function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
+  const router = useRouter()
+  // Deterministic publish dates between Dec 4–15, 2025
+  const datePool = [
+    '2025-12-04',
+    '2025-12-05',
+    '2025-12-06',
+    '2025-12-07',
+    '2025-12-08',
+    '2025-12-09',
+    '2025-12-10',
+    '2025-12-11',
+    '2025-12-12',
+    '2025-12-13',
+    '2025-12-14',
+    '2025-12-15',
+  ].map((d) => new Date(d));
+
+  const publishDate = datePool[(post?.id ?? 0) % datePool.length];
+  const formattedDate = publishDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+  
+  // Deterministic related posts selection using post.id as seed to avoid hydration mismatch
+  const filteredPosts = blogPosts.filter((p: any) => p.id !== post.id);
+  const seed = post?.id ?? 0;
+  const relatedPosts = filteredPosts
+    .map((p: any) => ({
+      post: p,
+      // Deterministic hash based on post id and seed (same result every time for same post.id)
+      hash: ((p.id * 9301 + seed * 49297) % 233280) / 233280
+    }))
+    .sort((a: any, b: any) => a.hash - b.hash)
+    .map((item: any) => item.post)
+    .slice(0, 3)
+
   // Update page title
   useEffect(() => {
     const originalTitle = document.title
@@ -96,13 +133,47 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
                   <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
+                {formattedDate}
+              </div>
+              <div className="read-time-post">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
                 {post.readTime}
               </div>
+              <button className="share-button" type="button" aria-label="Share">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 5h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M10 14l9-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M9 5H5v14h14v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
           </header>
 
           <div className="blog-post-content">
             <p className="blog-intro">{post.content.introduction}</p>
+
+            {/* Generic sections fallback */}
+            {Array.isArray(post.content.sections) && post.content.sections.length > 0 && (
+              post.content.sections.map((section: any, idx: number) => (
+                <section className="blog-section-content" key={`generic-section-${idx}`}>
+                  {section.title && <h2>{section.title}</h2>}
+                  {Array.isArray(section.paragraphs) &&
+                    section.paragraphs.map((p: string, pIdx: number) => (
+                      <p key={`p-${pIdx}`}>{p}</p>
+                    ))}
+                  {Array.isArray(section.bullets) && section.bullets.length > 0 && (
+                    <ul className="blog-list">
+                      {section.bullets.map((item: string, bIdx: number) => (
+                        <li key={`b-${bIdx}`}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              ))
+            )}
 
             {/* Multimodal Content content structure */}
             {post.content.whatIsMultimodal && (
@@ -5256,10 +5327,64 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
           </div>
 
           <div className="blog-post-cta">
-            <button className="cta-button" onClick={onBack}>
+            <h3 className="cta-title">
               Explore More Articles
-            </button>
+              <svg className="cta-arrow" width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </h3>
           </div>
+
+          {relatedPosts.length > 0 && (
+            <div className="related-posts">
+              <div className="related-grid">
+                {relatedPosts.map((item) => (
+                  <article
+                    key={item.id}
+                    className="related-card"
+                    onClick={() => router.push(`/blog/${item.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/blog/${item.id}`);
+                      }
+                    }}
+                  >
+                    <div className="related-card-image">
+                      <div className="related-card-placeholder" aria-hidden="true" />
+                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          loading="lazy"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const placeholder = target.parentElement?.querySelector('.related-card-placeholder') as HTMLElement;
+                            if (placeholder) placeholder.style.display = 'flex';
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div className="related-card-body">
+                      <span className={`category-tag category-${item.categoryColor}`}>{item.category}</span>
+                      <h4 className="related-card-title">{item.title}</h4>
+                      <p className="related-card-description">{item.description}</p>
+                      <div className="read-time">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                        <span>{item.readTime}</span>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
         </article>
       </div>
       <FooterNew />
