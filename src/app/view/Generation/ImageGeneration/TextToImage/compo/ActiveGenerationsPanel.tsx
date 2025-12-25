@@ -8,16 +8,39 @@
 
 import React from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { removeActiveGeneration, updateActiveGeneration } from '@/store/slices/generationSlice';
+import { removeActiveGeneration } from '@/store/slices/generationSlice';
+import { useQueueManagement } from '@/hooks/useQueueManagement';
 import { X, Loader2, CheckCircle, XCircle, Image as ImageIcon, Video, Music } from 'lucide-react';
 import type { ActiveGeneration } from '@/lib/generationPersistence';
 
 export default function ActiveGenerationsPanel() {
   const dispatch = useAppDispatch();
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'generation');
+  const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
 
-  // Don't render if no active generations
-  if (activeGenerations.length === 0) {
+  // Use unified queue management hook
+  // - Success: Show success message for 5 seconds, then remove
+  // - Failed: Show error message for 3 seconds, then remove
+  useQueueManagement({
+    successDisplayDuration: 5000,
+    errorDisplayDuration: 3000,
+    showSuccessToast: true,
+    showErrorToast: false, // Errors are already shown by specific error handlers
+  });
+
+  const visibleGenerations = React.useMemo(() => {
+    if (!Array.isArray(activeGenerations) || activeGenerations.length === 0) return [];
+    // Only show active generations for the currently selected generation type.
+    // This prevents e.g. a music "Generating" tile from appearing on the image page.
+    return activeGenerations.filter((gen) => {
+      const genType = gen.params?.generationType;
+      return typeof genType === 'string' && genType === currentGenerationType;
+    });
+  }, [activeGenerations, currentGenerationType]);
+
+  // Don't render on non-generation views, or if nothing relevant is active
+  if (currentView !== 'generation' || visibleGenerations.length === 0) {
     return null;
   }
 
@@ -73,12 +96,12 @@ export default function ActiveGenerationsPanel() {
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
-              Generating ({activeGenerations.length}/4)
+              Generating ({visibleGenerations.length}/4)
             </h3>
-            {activeGenerations.some(g => g.status === 'completed' || g.status === 'failed') && (
+            {visibleGenerations.some(g => g.status === 'completed' || g.status === 'failed') && (
               <button
                 onClick={() => {
-                  activeGenerations.forEach(g => {
+                  visibleGenerations.forEach(g => {
                     if (g.status === 'completed' || g.status === 'failed') {
                       dispatch(removeActiveGeneration(g.id));
                     }
@@ -94,7 +117,7 @@ export default function ActiveGenerationsPanel() {
 
         {/* Generation Cards */}
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {activeGenerations.map((gen) => (
+          {visibleGenerations.map((gen) => (
             <div key={gen.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
               <div className="flex items-start gap-3">
                 {/* Status Icon */}

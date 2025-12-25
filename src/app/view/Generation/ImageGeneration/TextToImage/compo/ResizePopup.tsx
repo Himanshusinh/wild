@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 type ResizeModel = 'Lanczos' | 'Bicubic' | 'Nearest';
 
@@ -193,7 +194,20 @@ const ResizePopup: React.FC<ResizePopupProps> = ({ isOpen, onClose, defaultImage
             </div>
             {output && (
               <div className="flex gap-2">
-                <a href={output} download={`resized.${format === 'jpg' ? 'jpg' : format}`} className="flex-1 text-center bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 h-10 rounded-xl leading-10">Download</a>
+                <button
+                  onClick={async () => {
+                    if (output) {
+                      try {
+                        await downloadFileWithNaming(output, null, 'image', 'resized');
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                      }
+                    }
+                  }}
+                  className="flex-1 text-center bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 h-10 rounded-xl leading-10"
+                >
+                  Download
+                </button>
               </div>
             )}
           </div>

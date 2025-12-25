@@ -87,6 +87,8 @@ export const useHistoryLoader = ({
     const currentFilterVal = currentFilters?.generationType;
     const currentFilterMode = currentFilters?.mode;
     const currentFilterSortOrder = (currentFilters as any)?.sortOrder;
+    const normalizeSort = (v: any): 'asc' | 'desc' | undefined => (v === 'asc' || v === 'desc' ? v : undefined);
+    const effectiveSortOrder: 'asc' | 'desc' | undefined = sortOrder ?? normalizeSort(currentFilterSortOrder);
     const wantedTypes = Array.isArray(generationTypes) && generationTypes.length > 0 ? generationTypes : [generationType];
     // If skipBackendGenerationFilter is enabled, generationType is intentionally not used as a filter.
     // In that case, treat "filtersMatch" as satisfied and rely on mode/sort checks.
@@ -145,6 +147,13 @@ export const useHistoryLoader = ({
         currentFilterDateRange,
         currentFilterSearch,
       });
+      return;
+    }
+
+    // If a history request is already loading, do not dispatch a second request.
+    // This is especially important when other UI (e.g. HistoryControls) clears entries and
+    // immediately triggers loadHistory; without this guard, the hook may fire an extra request.
+    if (loading) {
       return;
     }
     
@@ -214,7 +223,7 @@ export const useHistoryLoader = ({
       ? {}
       : { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
     if (mode) genFilter.mode = mode;
-    if (sortOrder) genFilter.sortOrder = sortOrder;
+    if (effectiveSortOrder) genFilter.sortOrder = effectiveSortOrder;
     const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
     
     if (shouldSkipInitial) {

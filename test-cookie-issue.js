@@ -86,7 +86,7 @@ async function testCookieIssue() {
   // 4. Test backend debug endpoint
   console.log('\n4️⃣ Testing backend debug endpoint:');
   try {
-    const response = await fetch('/api/auth/debug-session', {
+    const response = await fetch('/api/auth/me', {
       method: 'GET',
       credentials: 'include',
       headers: {

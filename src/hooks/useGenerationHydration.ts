@@ -8,12 +8,15 @@
 import { useEffect } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { hydrateGenerations, clearOldGenerations } from '@/store/slices/generationSlice';
-import { loadGenerations } from '@/lib/generationPersistence';
+import { loadGenerations, cleanupCompletedGenerations } from '@/lib/generationPersistence';
 
 export function useGenerationHydration() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
+    // Cleanup any completed/failed items from storage first
+    cleanupCompletedGenerations();
+    
     // Load persisted generations from localStorage
     const persistedGenerations = loadGenerations();
 

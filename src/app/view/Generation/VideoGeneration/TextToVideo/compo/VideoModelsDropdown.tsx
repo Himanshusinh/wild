@@ -12,7 +12,7 @@ interface VideoModelsDropdownProps {
   selectedResolution?: string;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit';
 }
 
 const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
@@ -48,7 +48,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
@@ -91,7 +91,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "runway-act-two", label: "Runway Act-Two", description: "Control character expressions and movements using reference video, 1280:720/720:1280/960:960", provider: "runway" }
       ];
     }
-    
+
     // For Lipsync feature, only show specific models
     if (activeFeature === 'Lipsync') {
       return [
@@ -102,7 +102,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         // { value: "kling-v2.5-turbo-pro-t2v", label: "Kling Lipsync", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" }
       ];
     }
-    
+
     // Handle video-to-video mode separately (but not for Animate feature)
     // if (generationMode === "video_to_video") {
     //   return [
@@ -110,7 +110,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     //     { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" }
     //   ];
     // }
-    
+
     // For text-to-video and image-to-video modes, always return all models
     // This ensures consistent visibility regardless of current mode
     return [
@@ -120,7 +120,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "sora2-t2v", label: "Sora 2", description: "OpenAI's Sora 2, 4s/8s/12s, 720p, 16:9/9:16", provider: "fal" },
       { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
       // { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },
-      
+
+      { value: "kling-2.6-pro", label: "Kling 2.6 Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1, Audio On/Off", provider: "fal" },
       { value: "kling-v2.5-turbo-pro-t2v", label: "Kling 2.5 Turbo Pro", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" },
       { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video & Image→Video, 5s/10s, 720p/1080p", provider: "replicate" },
       { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Text→Video & Image→Video, 5s/10s, 1080p", provider: "replicate" },
@@ -167,7 +168,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     const s = String(d);
     return /s$/.test(s) ? s : `${s}s`;
   };
-  
+
   const normalizeResolution = (r: any, defaultRes: string): string => {
     if (!r) return defaultRes;
     return String(r).toLowerCase();
@@ -177,7 +178,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     // Per-model normalization/fallbacks so credits always resolve from the first render
     let d: string;
     let r: string | undefined;
-    
+
     if (model.value.includes('wan-2.5')) {
       // WAN models: default to 5s and 720p if not provided
       d = normalizeDuration(selectedDuration, '5s');
@@ -263,7 +264,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       d = normalizeDuration(selectedDuration, '5s');
       r = normalizeResolution(selectedResolution, '720p');
     }
-    
+
     let creditInfo = getModelCreditInfo(model.value, d, r);
     // As a final safety net, retry with strict defaults if no credits resolved
     if (!creditInfo.hasCredits) {
@@ -305,7 +306,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$/, '');
       return baseAvailable === baseSelected;
     });
-    
+
     if (variantMatch) return;
 
     if (availableModels.length > 0) {
@@ -316,12 +317,12 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   return (
     <div ref={dropdownRef} className="relative dropdown-container">
       <button
-      onClick={() => {
-        try {
-          if (onCloseOtherDropdowns) onCloseOtherDropdowns();
-        } catch {}
-        setIsOpen(!isOpen);
-      }}
+        onClick={() => {
+          try {
+            if (onCloseOtherDropdowns) onCloseOtherDropdowns();
+          } catch { }
+          setIsOpen(!isOpen);
+        }}
         className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
       >
         <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
@@ -347,7 +348,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         key={`t2v-left-${model.value}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          try { onModelChange(model.value); } catch {}
+                          try { onModelChange(model.value); } catch { }
                           setIsOpen(false);
                         }}
                         className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
@@ -374,7 +375,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         key={`t2v-right-${model.value}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          try { onModelChange(model.value); } catch {}
+                          try { onModelChange(model.value); } catch { }
                           setIsOpen(false);
                         }}
                         className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
@@ -402,7 +403,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
             // For image-to-video: two columns
             const leftModels = filteredModels.slice(0, Math.ceil(filteredModels.length / 2));
             const rightModels = filteredModels.slice(Math.ceil(filteredModels.length / 2));
-            
+
             return (
               <div className="md:grid md:grid-cols-2 grid-cols-1 gap-0">
                 {/* Left column */}
@@ -412,7 +413,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       key={`left-${model.value}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        try { onModelChange(model.value); } catch {}
+                        try { onModelChange(model.value); } catch { }
                         setIsOpen(false);
                       }}
                       className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
@@ -441,7 +442,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       key={`right-${model.value}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        try { onModelChange(model.value); } catch {}
+                        try { onModelChange(model.value); } catch { }
                         setIsOpen(false);
                       }}
                       className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value

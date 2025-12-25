@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, ArrowUpRight, Loader2, FolderOpen } from 'lucide-react';
-import { fetchCanvasProjects } from '@/lib/canvasApi';
+import { Plus, ArrowUpRight, Loader2, FolderOpen, Trash2 } from 'lucide-react';
+import { fetchCanvasProjects, deleteProject } from '@/lib/canvasApi';
 import { CanvasProject } from '@/types/canvasTypes';
 import Image from 'next/image';
 
@@ -20,17 +20,35 @@ export function ProjectsView() {
 
     useEffect(() => {
         loadProjects();
+        // Reload when window gets focus (e.g. user comes back from canvas tab)
+        window.addEventListener('focus', loadProjects);
+        return () => window.removeEventListener('focus', loadProjects);
     }, []);
 
     const loadProjects = async () => {
         setLoading(true);
         setError(null);
         try {
+            // Check if user is authenticated first
+            const { getMeCached } = await import('@/lib/me');
+            try {
+                await getMeCached();
+            } catch (authError) {
+                console.warn('[ProjectsView] User not authenticated, projects may not load', authError);
+                // Continue anyway - the API call will fail with 401 if not authenticated
+            }
+
             const response = await fetchCanvasProjects();
             setProjects(response.projects || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
-            setError('Failed to load projects. Please try again.');
+
+            // Provide specific error message for authentication issues
+            if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
+                setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
+            } else {
+                setError('Failed to load projects. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -40,8 +58,41 @@ export function ProjectsView() {
         window.open(`${canvasUrl}?projectId=new`, '_blank', 'noopener,noreferrer');
     };
 
-    const handleOpenProject = (projectId: string) => {
-        window.open(`${canvasUrl}?projectId=${projectId}`, '_blank', 'noopener,noreferrer');
+    const handleOpenProject = async (projectId: string) => {
+        // Try to get auth token to pass along (helps with cross-subdomain auth)
+        // Since localStorage isn't shared across subdomains, we pass the token via URL hash
+        // The hash is not sent to the server, so it's relatively safe
+        let authHint = '';
+        try {
+            const authToken = localStorage.getItem('authToken') || localStorage.getItem('idToken');
+            if (authToken && authToken.startsWith('eyJ')) {
+                // Pass full token as URL hash (not sent to server, only accessible via JavaScript)
+                // The studio app will extract it and store it in localStorage
+                authHint = `#authToken=${encodeURIComponent(authToken)}`;
+                console.log('[ProjectsView] Passing auth token via URL hash for cross-subdomain auth');
+            }
+        } catch (e) {
+            console.warn('[ProjectsView] Failed to get auth token for cross-subdomain auth', e);
+        }
+
+        window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleDeleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
+        e.stopPropagation(); // Prevent opening the project when clicking delete
+
+        if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await deleteProject(projectId);
+            // Remove the project from the list
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+        } catch (error: any) {
+            console.error('Failed to delete project:', error);
+            alert(error.message || 'Failed to delete project. Please try again.');
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -104,7 +155,18 @@ export function ProjectsView() {
                                         <h3 className="text-xl font-medium text-white truncate max-w-[200px]">{p.name}</h3>
                                         <span className="text-sm text-slate-400">{formatDate(p.updatedAt)}</span>
                                     </div>
-                                    <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white hover:text-black"><ArrowUpRight size={18} /></button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => handleDeleteProject(e, p.id, p.name)}
+                                            className="w-10 h-10 rounded-full bg-red-500/20 backdrop-blur flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                                            title="Delete project"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                        <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white hover:text-black" title="Open project">
+                                            <ArrowUpRight size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

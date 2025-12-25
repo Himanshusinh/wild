@@ -22,6 +22,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   let models = [
+    { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     { name: 'Flux 2 Pro', value: 'flux-2-pro' },
     { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Seedream 4.5 4K', value: 'seedream-4.5' },
@@ -60,7 +61,10 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
   // Add credits information to models from distribution data
   const modelsWithCredits = models.map((model) => {
-    const creditInfo = getModelCreditInfo(model.value);
+    // For GPT Image 1.5, show minimum cost (low quality: 46 credits) in model dropdown
+    // User can see actual credits per quality in the quality dropdown
+    const quality = model.value === 'openai/gpt-image-1.5' ? 'low' : undefined;
+    const creditInfo = getModelCreditInfo(model.value, undefined, undefined, undefined, quality);
     const isFree = model.value === "new-turbo-model";
     const creditLabel = isFree
       ? 'Free (0 credits)'
@@ -88,7 +92,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
-      m.value === 'prunaai/p-image'
+      m.value === 'prunaai/p-image' ||
+      m.value === 'openai/gpt-image-1.5'
     );
   }
 

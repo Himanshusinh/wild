@@ -77,7 +77,8 @@ export function generateDownloadFilename(
   // Ensure extension starts with a dot
   const cleanExtension = extension.startsWith('.') ? extension : `.${extension}`;
   
-  return `${prefix}${cleanUsername}_${date}_${time}${cleanExtension}`;
+  // Always prefix with wildmind_ as requested
+  return `wildmind_${prefix}${cleanUsername}_${date}_${time}${cleanExtension}`;
 }
 
 /**
@@ -163,9 +164,11 @@ export function getFileType(media: any, url: string): 'image' | 'video' | 'audio
 }
 
 import { toResourceProxy } from '@/lib/thumb';
+import { store } from '@/store';
+import { addDownload, updateDownloadProgress, completeDownload, failDownload } from '@/store/slices/downloadSlice';
 
 /**
- * Downloads a file with proper naming convention
+ * Downloads a file with proper naming convention and progress tracking
  * @param url - The file URL to download
  * @param username - User's username
  * @param fileType - Type of file being downloaded
@@ -178,11 +181,88 @@ export async function downloadFileWithNaming(
   fileType: 'image' | 'video' | 'audio',
   customPrefix?: string
 ): Promise<boolean> {
+  const downloadId = `download-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  
   try {
     // Try to get username from multiple sources if not provided
     const actualUsername = username || getCurrentUsername();
     console.log('[DownloadUtils] Using username:', actualUsername);
     
+    // Handle data URLs (data:image/png;base64,...) and blob URLs (blob:http://...)
+    const isDataUrl = url.startsWith('data:');
+    const isBlobUrl = url.startsWith('blob:');
+    
+    if (isDataUrl || isBlobUrl) {
+      // Extract extension from data URL mime type or default
+      let extension = 'png';
+      if (isDataUrl) {
+        const mimeMatch = url.match(/data:([^;]+)/);
+        if (mimeMatch) {
+          const mime = mimeMatch[1];
+          if (mime.includes('png')) extension = 'png';
+          else if (mime.includes('jpeg') || mime.includes('jpg')) extension = 'jpg';
+          else if (mime.includes('webp')) extension = 'webp';
+          else if (mime.includes('gif')) extension = 'gif';
+          else if (mime.includes('svg')) extension = 'svg';
+          else if (mime.includes('mp4')) extension = 'mp4';
+          else if (mime.includes('webm')) extension = 'webm';
+          else if (mime.includes('mp3')) extension = 'mp3';
+          else if (mime.includes('wav')) extension = 'wav';
+        }
+      }
+      
+      const filename = generateDownloadFilename(actualUsername, fileType, extension, customPrefix);
+      
+      // Add download to tracking
+      store.dispatch(addDownload({
+        id: downloadId,
+        filename,
+        url: url.substring(0, 50) + '...', // Truncate for display
+        fileType,
+      }));
+      
+      // Show initial progress immediately
+      store.dispatch(updateDownloadProgress({ id: downloadId, progress: 10 }));
+      
+      // Small delay to ensure UI updates
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Convert data/blob URL to blob
+      let blob: Blob;
+      if (isDataUrl) {
+        const response = await fetch(url);
+        blob = await response.blob();
+      } else {
+        // Blob URL
+        const response = await fetch(url);
+        blob = await response.blob();
+      }
+      
+      // Show progress updates
+      store.dispatch(updateDownloadProgress({ id: downloadId, progress: 70 }));
+      await new Promise(resolve => setTimeout(resolve, 50));
+      store.dispatch(updateDownloadProgress({ id: downloadId, progress: 90 }));
+      
+      // Create download link
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      a.style.display = 'none';
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      window.URL.revokeObjectURL(objectUrl);
+      
+      // Mark as completed
+      store.dispatch(completeDownload(downloadId));
+      console.log(`Downloaded: ${filename}`);
+      return true;
+    }
+    
+    // Regular HTTP/HTTPS URL handling (existing code)
     let extension = getExtensionFromUrl(url);
     
     // Enhanced video extension detection
@@ -258,24 +338,111 @@ export async function downloadFileWithNaming(
     const filename = generateDownloadFilename(actualUsername, fileType, extension, customPrefix);
     console.log('[DownloadUtils] Generated filename:', filename, 'content-type:', respContentType);
 
-    const blob = await response.blob();
-    const objectUrl = window.URL.createObjectURL(blob);
+    // Add download to tracking
+    store.dispatch(addDownload({
+      id: downloadId,
+      filename,
+      url: proxyUrl,
+      fileType,
+    }));
+
+    // Track download progress if content-length is available and response body is readable
+    const contentLength = response.headers.get('content-length');
+    const totalBytes = contentLength ? parseInt(contentLength, 10) : null;
+    const hasReadableStream = response.body && typeof response.body.getReader === 'function';
+
+    if (hasReadableStream && totalBytes && totalBytes > 0) {
+      // Track progress for files with known size using ReadableStream
+      // Clone the response so we can fall back to blob() if stream reading fails
+      const clonedResponse = response.clone();
+      let loadedBytes = 0;
+      const reader = response.body!.getReader();
+      const chunks: Uint8Array[] = [];
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          chunks.push(value);
+          loadedBytes += value.length;
+          const progress = Math.round((loadedBytes / totalBytes) * 100);
+          store.dispatch(updateDownloadProgress({ id: downloadId, progress }));
+        }
+        
+        // Combine chunks into blob
+        const allChunks = new Uint8Array(loadedBytes);
+        let offset = 0;
+        for (const chunk of chunks) {
+          allChunks.set(chunk, offset);
+          offset += chunk.length;
+        }
+        const blob = new Blob([allChunks], { type: respContentType || 'application/octet-stream' });
+        
+        const objectUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        window.URL.revokeObjectURL(objectUrl);
+      } catch (streamError) {
+        console.warn('[DownloadUtils] Stream reading failed, falling back to blob:', streamError);
+        // Fallback to blob using cloned response
+        const blob = await clonedResponse.blob();
+        const objectUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(objectUrl);
+      }
+    } else {
+      // Fallback: download without detailed progress tracking
+      // Show initial progress immediately
+      store.dispatch(updateDownloadProgress({ id: downloadId, progress: 10 }));
+      
+      // Small delay to ensure UI updates
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const blob = await response.blob();
+      
+      // Show progress updates
+      store.dispatch(updateDownloadProgress({ id: downloadId, progress: 70 }));
+      await new Promise(resolve => setTimeout(resolve, 50));
+      store.dispatch(updateDownloadProgress({ id: downloadId, progress: 90 }));
+      
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      a.style.display = 'none';
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      window.URL.revokeObjectURL(objectUrl);
+    }
     
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename;
-    a.style.display = 'none';
-    
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    window.URL.revokeObjectURL(objectUrl);
-    
+    // Mark as completed
+    store.dispatch(completeDownload(downloadId));
     console.log(`Downloaded: ${filename}`);
     return true;
   } catch (error) {
     console.error('Download failed, falling back to direct link:', error);
+    
+    // Mark download as failed
+    const errorMessage = error instanceof Error ? error.message : 'Download failed';
+    store.dispatch(failDownload({ id: downloadId, error: errorMessage }));
+    
     try {
       // Fallback: open the original URL in a new tab
       const a = document.createElement('a');
@@ -287,9 +454,14 @@ export async function downloadFileWithNaming(
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      
+      // If fallback succeeds, mark as completed
+      store.dispatch(completeDownload(downloadId));
       return true;
     } catch (e) {
       console.error('Direct open fallback failed:', e);
+      const fallbackError = e instanceof Error ? e.message : 'Fallback download failed';
+      store.dispatch(failDownload({ id: downloadId, error: fallbackError }));
       return false;
     }
   }

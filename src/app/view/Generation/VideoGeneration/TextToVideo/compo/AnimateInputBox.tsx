@@ -1337,18 +1337,23 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         let pollCount = 0;
         const maxPolls = 900; // 15 minutes max
         const pollInterval = 1000; // 1 second
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
 
         const pollForResult = async () => {
           try {
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               const videoResult = resultRes.data?.data || resultRes.data;
               
@@ -1379,7 +1384,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 // Fetch the actual entry from backend to ensure it matches backend structure
                 if (result.historyId) {
                   try {
-                    const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                    const historyRes = await api.get(`/api/generations/${result.historyId}`, { timeout: 20000 });
                     const historyData = historyRes.data?.data || historyRes.data;
                     
                     if (historyData) {

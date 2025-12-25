@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       headers['cookie'] = cookie
     }
 
-    const resp = await fetch(`${apiBase}/api/auth/debug-session`, {
+    const resp = await fetch(`${apiBase}/api/auth/me`, {
       method: 'GET',
       headers,
       credentials: 'include',

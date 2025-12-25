@@ -208,8 +208,14 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';
   const isPImage = selectedModel === 'prunaai/p-image';
+  const isGptImage15 = selectedModel === 'openai/gpt-image-1.5';
 
   const frameSizes = (() => {
+    if (isGptImage15) {
+      // GPT Image 1.5: only supports 1:1, 3:2, 2:3 per schema
+      const allowed = new Set(['1:1', '3:2', '2:3']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isPImage) {
       // P-Image: allowed ratios per schema
       const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom']);

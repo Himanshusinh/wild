@@ -2536,7 +2536,7 @@ In a familiar corner, a stranger gazes"
             {generating || runningGenerationsCount > 0 ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
-                {runningGenerationsCount > 0 ? `Composing (${runningGenerationsCount}/4)` : 'Composing...'}
+                Composing...
               </>
             ) : (
               <>

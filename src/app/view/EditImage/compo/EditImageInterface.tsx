@@ -3380,11 +3380,11 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-30 px-4 md:px-4  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-10">
+      <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0  sm:ml-8 md:ml-7 lg:ml-7 ">
-            <h1 className="text-white text-xl sm:text-4xl md:text-4xl lg:text-4xl font-semibold">Edit Images</h1>
-            <p className="text-white/80 text-xs sm:text-lg md:text-xl">Transform your images with AI</p>
+            <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Images</h1>
+            <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your images with AI</p>
           </div>
           {/* feature tabs moved to left sidebar */}
         </div>
@@ -3438,9 +3438,9 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-8 md:pt-14 flex-col md:flex-row">
+      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-8 md:pt-18 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-8 md:mx-0 mx-4">
+        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-4">
           {/* Error Message */}
           {errorMsg && (
             <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">
@@ -3509,6 +3509,31 @@ const EditImageInterface: React.FC = () => {
 
                   </button>
                 ))}
+                {/* Editor external link button */}
+                <button
+                  key="editor-external"
+                  onClick={() => {
+                    try {
+                      if (typeof window !== 'undefined') {
+                        window.open('http://localhost:3005', '_blank', 'noopener');
+                      }
+                    } catch (e) { }
+                  }}
+                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition border-white/10 hover:bg-white/10`}
+                  title="Open Editor"
+                >
+                  <div className="flex items-center gap-0 justify-center">
+                    <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center`}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/90">
+                        <path d="M3 21v-3a4 4 0 0 1 4-4h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M17.5 6.5l0 0a2.12 2.12 0 0 1 3 3L12 18l-4 1 1-4 8.5-8.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center pt-1">
+                    <span className="text-white text-[10px] md:text-sm text-center">Editor</span>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -3921,13 +3946,13 @@ const EditImageInterface: React.FC = () => {
                         ))}
                       </div>
 
-                      <div className="mt-2">
-                        <div className="relative">
+                      <div className="mt-2 gap-4">
+                        <div className="relative gap-2">
                           <input
                             value={livePrompt}
                             onChange={(e) => setLivePrompt(e.target.value)}
                             placeholder="Tell me your edit request"
-                            className="w-full md:h-[36px] h-[30px] md:px-3 px-2 pr-10 bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
+                            className="w-full md:h-[36px] h-[30px] md:px-3 px-2 md:pr-[40px] pr-[32px] bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLiveGenerate(); } }}
                           />
                           <button

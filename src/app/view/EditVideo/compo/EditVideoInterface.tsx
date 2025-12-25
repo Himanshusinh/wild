@@ -469,6 +469,8 @@ const EditVideoInterface: React.FC = () => {
   const handleOpenUploadModal = () => setIsUploadOpen(true);
 
   const handleRun = async () => {
+    const TWENTY_MINUTES_MS = 20 * 60 * 1000;
+
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
       if (!url) return url as any;
       if (url.startsWith('data:')) return url as any;
@@ -494,76 +496,53 @@ const EditVideoInterface: React.FC = () => {
       return url as any;
     };
 
-    const toDataUriIfLocal = async (src: string): Promise<string> => {
-      if (!src) return src as any;
-      if (src.startsWith('data:')) return src;
-      if (src.startsWith('blob:')) {
-        try {
-          const resp = await fetch(src);
-          const blob = await resp.blob();
-          return await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(String(reader.result || ''));
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        } catch {
-          return src;
-        }
-      }
-      // If the video/image is stored on Zata (or another known storage served via
-      // the `/api/proxy/download/:path` backend route), fetch via our proxy
-      // so we avoid cross-origin/read restrictions, then convert to data URI.
-      // This ensures the backend can access the file even if the original URL
-      // is not accessible from the production server.
-      try {
-        const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-        if (String(src).startsWith(ZATA_PREFIX)) {
-          const path = src.substring(ZATA_PREFIX.length);
-          const proxyUrl = `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}`;
-          try {
-            const pResp = await fetch(proxyUrl, { credentials: 'include' });
-            if (pResp && pResp.ok) {
-              const blob = await pResp.blob();
-              return await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(String(reader.result || ''));
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-            }
-          } catch (e) {
-            // fallthrough to attempt direct fetch below
-            console.warn('[toDataUriIfLocal] proxy fetch failed, falling back to direct fetch', e);
-          }
-          // Try direct fetch from Zata as fallback (may work if CORS allows)
-          try {
-            const directResp = await fetch(src, {
-              method: 'GET',
-              mode: 'cors',
-              credentials: 'omit'
-            });
-            if (directResp && directResp.ok) {
-              const blob = await directResp.blob();
-              return await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(String(reader.result || ''));
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-            }
-          } catch (directErr) {
-            console.warn('[toDataUriIfLocal] direct fetch also failed', directErr);
-          }
-        }
-      } catch (e) {
-        // ignore and continue
-      }
-
-      // Last resort: return the original src (backend will try to use it as video_url)
-      return src;
+    const blobUrlToDataUri = async (src: string): Promise<string> => {
+      const resp = await fetch(src);
+      const blob = await resp.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result || ''));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
     };
+
+    // For videos: prefer sending a public URL (small payload, visible in DevTools).
+    // Only use data URI when the input is local (blob:) or already a data URI.
+    const normalizeVideoInput = async (srcRaw: string): Promise<{ video?: string; video_url?: string }> => {
+      if (!srcRaw) return {};
+      if (srcRaw.startsWith('data:')) return { video: srcRaw };
+      if (srcRaw.startsWith('blob:')) return { video: await blobUrlToDataUri(srcRaw) };
+      const abs = String(toAbsoluteProxyUrl(srcRaw) || srcRaw);
+      if (abs.startsWith('data:')) return { video: abs };
+      return { video_url: abs };
+    };
+
+    const pollFalQueueResult = async (modelId: string, requestId: string): Promise<any> => {
+      const start = Date.now();
+      // Poll every 2s for up to 20 minutes
+      while (Date.now() - start < TWENTY_MINUTES_MS) {
+        const statusRes = await axiosInstance.get('/api/fal/queue/status', {
+          params: { model: modelId, requestId }
+        });
+        const statusBody = statusRes?.data?.data || statusRes?.data;
+        const s = String(statusBody?.status || '').toLowerCase();
+        if (s === 'completed' || s === 'success' || s === 'succeeded') {
+          const resultRes = await axiosInstance.get('/api/fal/queue/result', {
+            params: { model: modelId, requestId }
+          });
+          return resultRes?.data?.data || resultRes?.data;
+        }
+        if (s === 'failed' || s === 'error') {
+          throw new Error('Video processing failed');
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      throw new Error('Video processing timeout exceeded (20 minutes)');
+    };
+
+    // NOTE: we intentionally do NOT fetch/convert remote videos to data URIs.
+    // Doing so creates huge request bodies (hard to debug in DevTools) and can break/timeout.
 
     const currentInputRaw = inputs[selectedFeature];
     const currentInput = toAbsoluteProxyUrl(currentInputRaw) as any;
@@ -572,8 +551,8 @@ const EditVideoInterface: React.FC = () => {
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
     try {
-      // Convert video URL to data URI to ensure backend can access it (fixes production issues)
-      const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
+      // Keep payloads small and debuggable: prefer public URLs for remote assets
+      const normalizedVideo = currentInputRaw ? await normalizeVideoInput(String(currentInputRaw)) : {};
       const isPublic = await getIsPublic();
 
       if (selectedFeature === 'upscale') {
@@ -581,17 +560,8 @@ const EditVideoInterface: React.FC = () => {
         const src = inputs['upscale'];
         if (!src) throw new Error('Please upload a video to upscale');
         const body: any = {};
-        // Use normalizedInput (data URI) if conversion succeeded, otherwise fall back to video_url
-        if (normalizedInput && normalizedInput.startsWith('data:')) {
-          // For data URI, send video (validator will convert data URI to video_url)
-          body.video = normalizedInput;
-        } else if (String(src).startsWith('data:')) {
-          // Fallback: if original src is already a data URI, use it
-          body.video = src;
-        } else {
-          // Use the absolute proxy URL (Zata URL) as fallback
-          body.video_url = currentInput;
-        }
+        if (normalizedVideo.video) body.video = normalizedVideo.video;
+        if (normalizedVideo.video_url) body.video_url = normalizedVideo.video_url;
         body.upscale_mode = seedvrUpscaleMode;
         if (seedvrUpscaleMode === 'factor') body.upscale_factor = Number(seedvrUpscaleFactor) || 2;
         if (seedvrUpscaleMode === 'target') body.target_resolution = seedvrTargetResolution;
@@ -601,14 +571,31 @@ const EditVideoInterface: React.FC = () => {
         body.output_quality = seedvrOutputQuality;
         body.output_write_mode = seedvrOutputWriteMode;
         if (seedvrSyncMode) body.sync_mode = true;
-        const res = await axiosInstance.post('/api/fal/seedvr/upscale/video', body);
-        // Backend returns { videos: [{ url: string, ... }], historyId, ... }
-        const videoUrl = res?.data?.data?.videos?.[0]?.url || res?.data?.videos?.[0]?.url || '';
-        if (videoUrl) {
-          setOutputs(prev => ({ ...prev, ['upscale']: videoUrl }));
-        } else {
-          console.error('[Video Upscale] No video URL in response:', res?.data);
+        const res = await axiosInstance.post('/api/fal/seedvr/upscale/video', body, { timeout: TWENTY_MINUTES_MS });
+
+        // 1) If backend returns the final URL immediately
+        const immediateUrl = res?.data?.data?.videos?.[0]?.url || res?.data?.videos?.[0]?.url || '';
+        if (immediateUrl) {
+          setOutputs(prev => ({ ...prev, ['upscale']: immediateUrl }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          return;
         }
+
+        // 2) Otherwise, queue-based response: poll status/result until completed
+        const requestId = res?.data?.data?.requestId || res?.data?.requestId || '';
+        const modelId = res?.data?.data?.model || res?.data?.model || 'fal-ai/seedvr/upscale/video';
+        if (!requestId) {
+          console.error('[Video Upscale] No video URL and no requestId in response:', res?.data);
+          throw new Error('Upscale submitted but no tracking ID returned');
+        }
+
+        const result = await pollFalQueueResult(String(modelId), String(requestId));
+        const polledUrl = result?.videos?.[0]?.url || result?.video?.url || '';
+        if (!polledUrl) {
+          console.error('[Video Upscale] Polling completed but no URL in result:', result);
+          throw new Error('Upscale completed but no output URL returned');
+        }
+        setOutputs(prev => ({ ...prev, ['upscale']: polledUrl }));
         try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
         return;
       }
@@ -616,16 +603,8 @@ const EditVideoInterface: React.FC = () => {
         const src = inputs['remove-bg'];
         if (!src) throw new Error('Please upload a video');
         const body: any = {};
-        // Use normalizedInput (data URI) if conversion succeeded, otherwise fall back to video_url
-        if (normalizedInput && normalizedInput.startsWith('data:')) {
-          body.video = normalizedInput; // validator uploads and sets video_url
-        } else if (String(src).startsWith('data:')) {
-          // Fallback: if original src is already a data URI, use it
-          body.video = src;
-        } else {
-          // Use the absolute proxy URL (Zata URL) as fallback
-          body.video_url = currentInput;
-        }
+        if (normalizedVideo.video) body.video = normalizedVideo.video;
+        if (normalizedVideo.video_url) body.video_url = normalizedVideo.video_url;
         // BiRefNet parameters
         body.model = birefModel;
         body.operating_resolution = birefOperatingResolution;
@@ -833,11 +812,11 @@ const EditVideoInterface: React.FC = () => {
   return (
     <div className=" bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-30 px-4  md:pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-10">
+      <div className="w-full fixed top-0 z-30 px-0  md:pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0 md:px-1  sm:ml-5 md:ml-7 lg:ml-7 ">
-            <h1 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold">Edit Videos</h1>
-            <p className="text-white/80 text-xs sm:text-lg md:text-xl">Transform your videos with AI</p>
+            <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Videos</h1>
+            <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your videos with AI</p>
           </div>
           {/* feature tabs moved to left sidebar */}
         </div>
@@ -874,9 +853,9 @@ const EditVideoInterface: React.FC = () => {
           onClose={() => setIsVideoEditorOpen(false)}
         />
       ) : (
-        <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-5 md:pt-14 flex-col md:flex-row">
+        <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-5 md:pt-18 flex-col md:flex-row">
           {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-          <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-8 md:mx-0 mx-2">
+          <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-2">
             {/* Error Message */}
             {errorMsg && (
               <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">

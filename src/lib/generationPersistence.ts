@@ -8,14 +8,13 @@ import { GeneratedImage, GeneratedVideo, GeneratedAudio } from '@/types/history'
 
 // Storage configuration
 const STORAGE_KEY = 'wildmind_active_generations';
-const CLEANUP_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 const MAX_CONCURRENT_GENERATIONS = 4;
 
 export interface ActiveGeneration {
   id: string;
   prompt: string;
   model: string;
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  status: 'pending' | 'generating' | 'completed' | 'failed' | 'cancelled';
   progress?: number;
   error?: string;
   // Support all media types
@@ -23,6 +22,7 @@ export interface ActiveGeneration {
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
   historyId?: string;
+  startedAt?: number;
   createdAt: number;
   updatedAt: number;
   params: {
@@ -33,6 +33,9 @@ export interface ActiveGeneration {
     width?: number;
     height?: number;
     generationType?: string; // 'text-to-image' | 'text-to-video' | 'text-to-music' | etc.
+    model?: string;
+    provider?: string;
+    requestId?: string;
     isPublic?: boolean;
     // Video-specific params
     aspectRatio?: string;
@@ -61,6 +64,7 @@ function isLocalStorageAvailable(): boolean {
 
 /**
  * Load all generations from localStorage
+ * CRITICAL: Only loads pending/generating generations to avoid quota issues
  */
 export function loadGenerations(): ActiveGeneration[] {
   if (!isLocalStorageAvailable()) {
@@ -83,14 +87,12 @@ export function loadGenerations(): ActiveGeneration[] {
       return [];
     }
 
-    // Auto-cleanup old generations
-    const cleaned = generations.filter(gen => {
-      const age = Date.now() - gen.updatedAt;
-      return age < CLEANUP_THRESHOLD_MS;
-    });
+    // CRITICAL: Persist only active items: pending or generating. Completed/failed are not stored.
+    const cleaned = generations.filter(gen => gen.status === 'pending' || gen.status === 'generating');
 
-    // If we cleaned any, save back
+    // If we cleaned any, save back (this ensures old completed/failed/cancelled items are removed)
     if (cleaned.length !== generations.length) {
+      console.log(`[generationPersistence] Cleaned ${generations.length - cleaned.length} completed/failed/cancelled items from storage`);
       saveGenerations(cleaned);
     }
 
@@ -98,7 +100,11 @@ export function loadGenerations(): ActiveGeneration[] {
   } catch (error) {
     console.error('[generationPersistence] Error loading generations:', error);
     // Clear corrupted data
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore errors when clearing
+    }
     return [];
   }
 }
@@ -110,6 +116,7 @@ let pendingGenerations: ActiveGeneration[] | null = null;
 /**
  * Save all generations to localStorage
  * OPTIMIZED: Batched writes to reduce blocking operations
+ * CRITICAL: Only persists pending/generating generations to avoid quota issues
  */
 export function saveGenerations(generations: ActiveGeneration[]): void {
   if (!isLocalStorageAvailable()) {
@@ -117,8 +124,21 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
     return;
   }
 
+  // CRITICAL: Filter out completed/failed/cancelled BEFORE batching to reduce data size
+  const activeOnly = generations.filter(g => g.status === 'pending' || g.status === 'generating');
+  
+  // If no active generations, clear storage and return early
+  if (activeOnly.length === 0) {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore errors when clearing
+    }
+    return;
+  }
+
   // OPTIMIZED: Batch writes - store pending and schedule async write
-  pendingGenerations = generations;
+  pendingGenerations = activeOnly.slice(0, MAX_CONCURRENT_GENERATIONS);
   
   // Clear existing timeout
   if (saveTimeout) {
@@ -134,22 +154,65 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
     pendingGenerations = null;
     
     try {
-      // Limit to max concurrent generations
-      const toSave = generationsToSave.slice(0, MAX_CONCURRENT_GENERATIONS);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      // Double-check: only save pending/generating (should already be filtered, but be safe)
+      const toSave = generationsToSave.filter(g => g.status === 'pending' || g.status === 'generating');
+
+      if (toSave.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        // Additional safety: limit data size by removing large media arrays before saving
+        // We only need to persist the generation metadata, not the full media
+        const lightweight = toSave.map(g => ({
+          id: g.id,
+          prompt: g.prompt,
+          model: g.model,
+          status: g.status,
+          progress: g.progress,
+          error: g.error,
+          historyId: g.historyId,
+          createdAt: g.createdAt,
+          updatedAt: g.updatedAt,
+          params: g.params,
+          // Don't persist media arrays - they're too large and not needed for persistence
+          // Media will be loaded from history when needed
+        }));
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+      }
     } catch (error) {
       console.error('[generationPersistence] Error saving generations:', error);
       
-      // Handle quota exceeded
+      // Handle quota exceeded - try to save even less data
       if (error instanceof Error && error.name === 'QuotaExceededError' && generationsToSave) {
-        // Try to free up space by removing completed generations
-        const activeOnly = generationsToSave.filter(
-          g => g.status === 'pending' || g.status === 'generating'
-        );
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(activeOnly));
-        } catch {
-          console.error('[generationPersistence] Failed to save even after cleanup');
+          // Save only the absolute minimum: id, status, and essential params
+          const minimal = generationsToSave.map(g => ({
+            id: g.id,
+            prompt: g.prompt?.substring(0, 100) || '', // Truncate long prompts
+            model: g.model,
+            status: g.status,
+            createdAt: g.createdAt,
+            updatedAt: g.updatedAt,
+            params: {
+              generationType: g.params?.generationType,
+              imageCount: g.params?.imageCount,
+            }
+          }));
+          
+          if (minimal.length === 0) {
+            localStorage.removeItem(STORAGE_KEY);
+          } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
+            console.log('[generationPersistence] Saved minimal data after quota error');
+          }
+        } catch (retryError) {
+          console.error('[generationPersistence] Failed to save even after cleanup:', retryError);
+          // Last resort: clear storage completely
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch {
+            // Ignore final cleanup errors
+          }
         }
       }
     }
@@ -158,8 +221,15 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
 
 /**
  * Add a new generation
+ * Only persists if status is 'pending' or 'generating'
  */
 export function addGeneration(generation: ActiveGeneration): void {
+  // Only persist pending or generating generations
+  if (generation.status !== 'pending' && generation.status !== 'generating') {
+    console.log('[generationPersistence] Skipping persistence for non-active generation:', generation.id, generation.status);
+    return;
+  }
+
   const current = loadGenerations();
   
   // Check if already exists
@@ -176,20 +246,41 @@ export function addGeneration(generation: ActiveGeneration): void {
 
 /**
  * Update an existing generation
+ * If status becomes 'completed' or 'failed', remove from persistence instead of updating
  */
 export function updateGeneration(
   id: string,
   updates: Partial<ActiveGeneration>
 ): void {
+  // If status is being updated to completed, failed, or cancelled, remove from persistence
+  if (updates.status === 'completed' || updates.status === 'failed' || updates.status === 'cancelled') {
+    console.log('[generationPersistence] Removing completed/failed/cancelled generation from persistence:', id, updates.status);
+    removeGeneration(id);
+    return;
+  }
+
   const current = loadGenerations();
   const index = current.findIndex(g => g.id === id);
 
   if (index === -1) {
-    console.warn('[generationPersistence] Generation not found:', id);
+    // Generation not in persistence - this is fine if it was never persisted or was already removed
+    // Only log if we're trying to update a non-completed/failed/cancelled status
+    const updateStatus = updates.status as ActiveGeneration['status'] | undefined;
+    if (updateStatus && updateStatus !== 'completed' && updateStatus !== 'failed' && updateStatus !== 'cancelled') {
+      console.log('[generationPersistence] Generation not found in persistence (may have been removed):', id);
+    }
     return;
   }
 
-  // Update the generation
+  // Check if the updated status would make it non-persistable
+  const newStatus = updates.status || current[index].status;
+  if (newStatus === 'completed' || newStatus === 'failed' || newStatus === 'cancelled') {
+    console.log('[generationPersistence] Removing generation from persistence due to status change:', id, newStatus);
+    removeGeneration(id);
+    return;
+  }
+
+  // Update the generation (only if it remains in pending/generating state)
   current[index] = {
     ...current[index],
     ...updates,
@@ -221,10 +312,7 @@ export function clearOldGenerations(): ActiveGeneration[] {
   const current = loadGenerations();
   const now = Date.now();
   
-  const active = current.filter(gen => {
-    const age = now - gen.updatedAt;
-    return age < CLEANUP_THRESHOLD_MS;
-  });
+  const active = current.filter(gen => gen.status === 'pending' || gen.status === 'generating');
 
   if (active.length !== current.length) {
     saveGenerations(active);
@@ -241,6 +329,62 @@ export function clearAllGenerations(): void {
     return;
   }
   localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * Cleanup function to remove any completed/failed items from storage
+ * Call this on app startup to ensure storage is clean
+ */
+export function cleanupCompletedGenerations(): void {
+  if (!isLocalStorageAvailable()) {
+    return;
+  }
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return;
+    }
+
+    const generations: ActiveGeneration[] = JSON.parse(stored);
+    if (!Array.isArray(generations)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    // Filter out completed/failed/cancelled
+    const activeOnly = generations.filter((gen: ActiveGeneration) => gen.status === 'pending' || gen.status === 'generating');
+    
+    if (activeOnly.length !== generations.length) {
+      console.log(`[generationPersistence] Cleanup: Removed ${generations.length - activeOnly.length} completed/failed/cancelled items`);
+      if (activeOnly.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        // Save lightweight version without media
+        const lightweight = activeOnly.map(g => ({
+          id: g.id,
+          prompt: g.prompt,
+          model: g.model,
+          status: g.status,
+          progress: g.progress,
+          error: g.error,
+          historyId: g.historyId,
+          createdAt: g.createdAt,
+          updatedAt: g.updatedAt,
+          params: g.params,
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+      }
+    }
+  } catch (error) {
+    console.error('[generationPersistence] Error during cleanup:', error);
+    // Clear corrupted data
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore errors
+    }
+  }
 }
 
 /**

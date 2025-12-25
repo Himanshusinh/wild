@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "node scripts/generateBlogSitemapData.js",
     "build": "next build --webpack",
     "postbuild": "next-sitemap",
     "ping-sitemap": "node scripts/ping-sitemap.js",
@@ -21,6 +22,7 @@
     "dotted-map": "^2.2.3",
     "firebase": "^12.1.0",
     "gsap": "^3.13.0",
+    "jszip": "^3.10.1",
     "konva": "^10.0.12",
     "lucide-react": "^0.540.0",
     "masonry-layout": "^4.2.2",
@@ -34,11 +36,13 @@
     "react-konva": "^19.2.1",
     "react-redux": "^9.2.0",
     "replicate": "^1.2.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "use-image": "^1.1.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

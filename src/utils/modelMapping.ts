@@ -13,6 +13,7 @@ export interface ModelMapping {
     duration?: number[];
     frameSize?: string[];
     frames_per_second?: number[];
+    quality?: string[];
   };
 }
 
@@ -195,6 +196,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'New Turbo Model', // TODO: Update with actual credit model name from creditDistribution.ts
     generationType: 'image',
     provider: 'replicate'
+  },
+  {
+    frontendValue: 'openai/gpt-image-1.5',
+    creditModelName: 'gpt-image-1.5 auto', // Base name, quality appended dynamically
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      quality: ['low', 'medium', 'high', 'auto']
+    }
   },
 
   // VIDEO GENERATION MODELS
@@ -436,6 +446,13 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
   
   // Kling Models (Replicate)
+  {
+    frontendValue: 'kling-2.6-pro',
+    creditModelName: 'Kling 2.6 Pro T2V', // Base name, audio and duration appended dynamically
+    generationType: 'video',
+    provider: 'fal',
+    options: { duration: [5, 10] }
+  },
   {
     frontendValue: 'kling-v2.5-turbo-pro-t2v',
     creditModelName: 'Kling 2.5 Turbo Pro T2V',
@@ -938,6 +955,7 @@ export const buildCreditModelName = (
     resolution?: string;
     duration?: number;
     frameSize?: string;
+    quality?: string;
   }
 ): string | null => {
   const mapping = getModelMapping(frontendValue);
@@ -972,7 +990,13 @@ export const buildCreditModelName = (
   // Handle Kling models
   else if (mapping.frontendValue.startsWith('kling') && options?.duration) {
     const d = options.duration;
-    if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('t2v')) {
+    if (mapping.frontendValue === 'kling-2.6-pro') {
+      // Kling 2.6 Pro: duration and audio-based
+      const hasAudio = (options as any)?.generateAudio !== false; // Default to true
+      const audioSuffix = hasAudio ? '' : ' Audio Off';
+      const mode = (options as any)?.generationMode === 'image-to-video' ? 'I2V' : 'T2V';
+      modelName = `Kling 2.6 Pro ${mode} ${d}s${audioSuffix}`;
+    } else if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('t2v')) {
       modelName = `Kling 2.5 Turbo Pro T2V ${d}s`;
     } else if (mapping.frontendValue.includes('v2.5') && mapping.frontendValue.includes('i2v')) {
       modelName = `Kling 2.5 Turbo Pro I2V ${d}s`;
@@ -1054,10 +1078,23 @@ export const buildCreditModelName = (
     const resNormalized = res.includes('2k') ? '2k' : (res.includes('1080') ? '1080p' : '720p');
     modelName = `SeedVR2 ${d}s ${resNormalized}`;
   }
+  // Handle Kling 2.6 Pro (duration and audio-based) - matches creditDistribution.ts format
+  else if (mapping.frontendValue === 'kling-2.6-pro' && options?.duration) {
+    const d = options.duration;
+    const hasAudio = (options as any)?.generateAudio !== false; // Default to true if not specified
+    const audioSuffix = hasAudio ? ' Audio On' : ' Audio Off';
+    // Use unified T2V/I2V format to match creditDistribution.ts
+    modelName = `Kling 2.6 Pro T2V/I2V ${d}s${audioSuffix}`;
+  }
   // Handle Kling o1 (duration-based)
   else if (mapping.frontendValue === 'kling-o1' && options?.duration) {
     const d = options.duration;
     modelName = d === 10 ? 'Kling o1 10s' : 'Kling o1 5s';
+  }
+  // Handle GPT Image 1.5 with quality
+  else if (mapping.frontendValue === 'openai/gpt-image-1.5' && options?.quality) {
+    const quality = String(options.quality).toLowerCase();
+    modelName = `gpt-image-1.5 ${quality}`;
   }
   // Handle FLUX.2 Pro with resolution
   else if ((mapping.frontendValue === 'flux-2-pro-1080p' || mapping.frontendValue === 'flux-2-pro-2k')) {

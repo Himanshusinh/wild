@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { X, Plus, Loader2, FolderOpen } from 'lucide-react';
+import { X, Plus, Loader2, FolderOpen, Trash2 } from 'lucide-react';
 import { CanvasProject } from '@/types/canvasTypes';
-import { fetchCanvasProjects } from '@/lib/canvasApi';
+import { fetchCanvasProjects, deleteProject } from '@/lib/canvasApi';
 
 interface WildCanvasProjectsModalProps {
     isOpen: boolean;
@@ -28,6 +28,9 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
     useEffect(() => {
         if (isOpen) {
             loadProjects();
+            // Reload when window gets focus (e.g. user comes back from canvas tab)
+            window.addEventListener('focus', loadProjects);
+            return () => window.removeEventListener('focus', loadProjects);
         }
     }, [isOpen]);
 
@@ -35,11 +38,26 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
         setLoading(true);
         setError(null);
         try {
+            // Check if user is authenticated first
+            const { getMeCached } = await import('@/lib/me');
+            try {
+                await getMeCached();
+            } catch (authError) {
+                console.warn('[WildCanvasProjectsModal] User not authenticated, projects may not load', authError);
+                // Continue anyway - the API call will fail with 401 if not authenticated
+            }
+
             const response = await fetchCanvasProjects();
             setProjects(response.projects || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
-            setError('Failed to load projects. Please try again.');
+
+            // Provide specific error message for authentication issues
+            if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
+                setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
+            } else {
+                setError('Failed to load projects. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -50,9 +68,42 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
         onClose();
     };
 
-    const handleOpenProject = (projectId: string) => {
-        window.open(`${canvasUrl}?projectId=${projectId}`, '_blank', 'noopener,noreferrer');
+    const handleOpenProject = async (projectId: string) => {
+        // Try to get auth token to pass along (helps with cross-subdomain auth)
+        // Since localStorage isn't shared across subdomains, we pass the token via URL hash
+        // The hash is not sent to the server, so it's relatively safe
+        let authHint = '';
+        try {
+            const authToken = localStorage.getItem('authToken') || localStorage.getItem('idToken');
+            if (authToken && authToken.startsWith('eyJ')) {
+                // Pass full token as URL hash (not sent to server, only accessible via JavaScript)
+                // The studio app will extract it and store it in localStorage
+                authHint = `#authToken=${encodeURIComponent(authToken)}`;
+                console.log('[WildCanvasProjectsModal] Passing auth token via URL hash for cross-subdomain auth');
+            }
+        } catch (e) {
+            console.warn('[WildCanvasProjectsModal] Failed to get auth token for cross-subdomain auth', e);
+        }
+
+        window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
         onClose();
+    };
+
+    const handleDeleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
+        e.stopPropagation(); // Prevent opening the project when clicking delete
+
+        if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await deleteProject(projectId);
+            // Remove the project from the list
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+        } catch (error: any) {
+            console.error('Failed to delete project:', error);
+            alert(error.message || 'Failed to delete project. Please try again.');
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -145,49 +196,62 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
                                     </div>
                                 ) : (
                                     projects.map((project) => (
-                                        <button
+                                        <div
                                             key={project.id}
-                                            onClick={() => handleOpenProject(project.id)}
                                             className="group relative aspect-video bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-xl transition-all duration-300 overflow-hidden"
                                         >
-                                            {/* Thumbnail */}
-                                            {project.thumbnail ? (
-                                                <div className="absolute inset-0">
-                                                    <Image
-                                                        src={project.thumbnail}
-                                                        alt={project.name}
-                                                        fill
-                                                        className="object-cover"
-                                                        unoptimized
-                                                    />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                                                </div>
-                                            ) : (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <Image
-                                                        src="/icons/canvas.svg"
-                                                        alt="Canvas"
-                                                        width={64}
-                                                        height={64}
-                                                        className="w-16 h-16 opacity-20"
-                                                        unoptimized
-                                                    />
-                                                </div>
-                                            )}
+                                            <button
+                                                onClick={() => handleOpenProject(project.id)}
+                                                className="absolute inset-0 w-full h-full"
+                                            >
+                                                {/* Thumbnail */}
+                                                {project.thumbnail ? (
+                                                    <div className="absolute inset-0">
+                                                        <Image
+                                                            src={project.thumbnail}
+                                                            alt={project.name}
+                                                            fill
+                                                            className="object-cover"
+                                                            unoptimized
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <Image
+                                                            src="/icons/canvas.svg"
+                                                            alt="Canvas"
+                                                            width={64}
+                                                            height={64}
+                                                            className="w-16 h-16 opacity-20"
+                                                            unoptimized
+                                                        />
+                                                    </div>
+                                                )}
 
-                                            {/* Project Info */}
-                                            <div className="absolute bottom-0 left-0 right-0 p-4">
-                                                <h3 className="text-white font-medium text-left mb-1 truncate">
-                                                    {project.name}
-                                                </h3>
-                                                <p className="text-white/60 text-sm text-left">
-                                                    {formatDate(project.updatedAt)}
-                                                </p>
-                                            </div>
+                                                {/* Project Info */}
+                                                <div className="absolute bottom-0 left-0 right-0 p-4">
+                                                    <h3 className="text-white font-medium text-left mb-1 truncate">
+                                                        {project.name}
+                                                    </h3>
+                                                    <p className="text-white/60 text-sm text-left">
+                                                        {formatDate(project.updatedAt)}
+                                                    </p>
+                                                </div>
 
-                                            {/* Hover Overlay */}
-                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/20 group-hover:to-blue-500/20 transition-all duration-300" />
-                                        </button>
+                                                {/* Hover Overlay */}
+                                                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/20 group-hover:to-blue-500/20 transition-all duration-300" />
+                                            </button>
+
+                                            {/* Delete Button */}
+                                            <button
+                                                onClick={(e) => handleDeleteProject(e, project.id, project.name)}
+                                                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/20 backdrop-blur flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white z-10"
+                                                title="Delete project"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     ))
                                 )}
                             </div>
