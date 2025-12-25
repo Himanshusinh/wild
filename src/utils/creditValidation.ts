@@ -77,8 +77,8 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
           // Use default values if not provided for WAN models to avoid "Unknown model" error
           const defaultDuration = duration || 5;
           const defaultResolution = resolution || '720p';
-          // For Kling 2.6 Pro, pass generateAudio parameter
-          const audioParam = frontendModel === 'kling-2.6-pro' ? generateAudio : undefined;
+          // For models where pricing depends on audio, pass generateAudio through
+          const audioParam = (frontendModel === 'kling-2.6-pro' || frontendModel.includes('seedance-1.5')) ? generateAudio : undefined;
           const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution, audioParam);
           if (cost !== null && cost > 0) {
             console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
@@ -207,6 +207,14 @@ export const getImageGenerationCreditCost = (
   resolution?: string,
   uploadedImages?: any[]
 ): number => {
+  // Qwen Image Edit: backend charges a flat per-generation cost (not per image)
+  // Keep frontend validation/reservation aligned with backend.
+  if (frontendModel === 'qwen-image-edit') {
+    const mapping = getModelMapping(frontendModel);
+    const baseCost = mapping ? getCreditCostForModel(mapping.creditModelName) : 0;
+    return (baseCost && baseCost > 0) ? baseCost : 80;
+  }
+
   // Special case: z-image-turbo (new-turbo-model) is free for launch offer
   if (frontendModel === 'new-turbo-model') {
     console.log('getImageGenerationCreditCost: new-turbo-model is free (0 credits)');

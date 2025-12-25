@@ -209,8 +209,22 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isZTurbo = selectedModel === 'new-turbo-model';
   const isPImage = selectedModel === 'prunaai/p-image';
   const isGptImage15 = selectedModel === 'openai/gpt-image-1.5';
+  const isQwenImageEdit = selectedModel === 'qwen-image-edit';
 
   const frameSizes = (() => {
+    if (isQwenImageEdit) {
+      // Qwen Image Edit: schema-supported aspect_ratio values only
+      // Supported: 1:1, 16:9, 9:16, 4:3, 3:4, match_input_image
+      const allowed = [
+        { name: 'Match Input Image', value: 'match_input_image', icon: 'square', hideValue: true },
+        { name: 'Square', value: '1:1', icon: 'square' },
+        { name: 'Wide', value: '16:9', icon: 'landscape' },
+        { name: 'Vertical', value: '9:16', icon: 'portrait' },
+        { name: 'Landscape', value: '4:3', icon: 'landscape' },
+        { name: 'Portrait', value: '3:4', icon: 'portrait' },
+      ];
+      return allowed;
+    }
     if (isGptImage15) {
       // GPT Image 1.5: only supports 1:1, 3:2, 2:3 per schema
       const allowed = new Set(['1:1', '3:2', '2:3']);

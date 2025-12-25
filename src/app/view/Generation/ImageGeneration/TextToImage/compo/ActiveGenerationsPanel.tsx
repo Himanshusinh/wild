@@ -7,6 +7,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { removeActiveGeneration } from '@/store/slices/generationSlice';
 import { useQueueManagement } from '@/hooks/useQueueManagement';
@@ -31,16 +32,33 @@ export default function ActiveGenerationsPanel() {
 
   const visibleGenerations = React.useMemo(() => {
     if (!Array.isArray(activeGenerations) || activeGenerations.length === 0) return [];
-    // Only show active generations for the currently selected generation type.
-    // This prevents e.g. a music "Generating" tile from appearing on the image page.
+
+    // Flexible matching: map generation types to a simple category (image/video/audio)
+    const normalize = (s: any) => (String(s || '').replace(/[_\s]/g, '-').toLowerCase());
+    const categoryOf = (raw: any) => {
+      const n = normalize(raw);
+      if (!n) return '';
+      if (n.includes('image') || n.includes('upscale') || n.includes('edit-image') || n.includes('logo') || n.includes('sticker') || n.includes('mockup')) return 'image';
+      if (n.includes('video')) return 'video';
+      if (n.includes('music') || n.includes('audio') || n.includes('speech') || n.includes('tts') || n.includes('sfx')) return 'audio';
+      return n;
+    };
+
+    const uiCategory = categoryOf(currentGenerationType);
+
+    // Show generations that match the UI category. Also show items with no type provided.
     return activeGenerations.filter((gen) => {
       const genType = gen.params?.generationType;
-      return typeof genType === 'string' && genType === currentGenerationType;
+      if (!genType) return true; // be permissive for legacy/empty entries
+      const genCategory = categoryOf(genType);
+      if (uiCategory && genCategory) return genCategory === uiCategory;
+      // Fallback to exact match if categories couldn't be determined
+      return String(genType) === String(currentGenerationType);
     });
   }, [activeGenerations, currentGenerationType]);
 
-  // Don't render on non-generation views, or if nothing relevant is active
-  if (currentView !== 'generation' || visibleGenerations.length === 0) {
+  // Don't render if there are no relevant active generations
+  if (!visibleGenerations || visibleGenerations.length === 0) {
     return null;
   }
 
@@ -89,8 +107,9 @@ export default function ActiveGenerationsPanel() {
     }
   };
 
-  return (
-    <div className="fixed top-20 right-4 z-50 w-80 max-h-[70vh] overflow-y-auto">
+  // Build panel JSX
+  const panel = (
+    <div className="fixed top-20 right-4 z-[99999] w-80 max-h-[70vh] overflow-y-auto">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -193,4 +212,10 @@ export default function ActiveGenerationsPanel() {
       </div>
     </div>
   );
+
+  if (typeof window === 'undefined' || !document?.body) {
+    return panel; // SSR fallback
+  }
+
+  return createPortal(panel, document.body);
 }

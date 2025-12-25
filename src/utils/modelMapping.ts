@@ -9,6 +9,7 @@ export interface ModelMapping {
   generationType: 'image' | 'video' | 'music' | 'sfx' | 'text-to-dialogue' ;
   provider: string;
   options?: {
+    [key: string]: string[] | number[] | undefined;
     resolution?: string[];
     duration?: number[];
     frameSize?: string[];
@@ -165,6 +166,16 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
     generationType: 'image',
     provider: 'replicate'
+  },
+  {
+    frontendValue: 'qwen-image-edit',
+    creditModelName: 'qwen-image-edit-2511',
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      aspect_ratio: ['1:1', '16:9', '9:16', '4:3', '3:4', 'match_input_image'],
+      output_format: ['png', 'webp', 'jpg']
+    }
   },
   {
     frontendValue: 'ideogram-ai/ideogram-v3-quality',
@@ -548,6 +559,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
   },
 
   // Seedance Models (Replicate)
+  {
+    frontendValue: 'seedance-1.5-pro-t2v',
+    creditModelName: 'Seedance 1.5 T2V/I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: {
+      duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  },
   {
     frontendValue: 'seedance-1.0-pro-t2v',
     creditModelName: 'Seedance 1.0 Pro T2V', // Base name, duration and resolution appended dynamically
@@ -1014,6 +1034,12 @@ export const buildCreditModelName = (
     }
   }
   // Handle Seedance models
+  else if (mapping.frontendValue.includes('seedance-1.5') && options?.duration) {
+    const d = options.duration;
+    const hasAudio = (options as any)?.generateAudio === true; // default off unless explicitly true
+    const audioLabel = hasAudio ? 'Audio On' : 'Audio Off';
+    modelName = `Seedance 1.5 T2V/I2V ${audioLabel} ${d}s`;
+  }
   else if (mapping.frontendValue.includes('seedance') && options?.duration && options?.resolution) {
     const d = options.duration;
     const res = String(options.resolution).toLowerCase();

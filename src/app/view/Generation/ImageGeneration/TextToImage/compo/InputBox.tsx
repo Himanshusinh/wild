@@ -79,6 +79,7 @@ import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
+import { getImageGenerationCreditCost, formatCredits } from '@/utils/creditValidation';
 import Image from "next/image";
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
@@ -774,9 +775,9 @@ const InputBox = () => {
     try {
       e.stopPropagation();
       e.preventDefault();
-      
+
       const isSingleImage = imageId && entry.images && entry.images.length > 0;
-      const confirmMessage = isSingleImage 
+      const confirmMessage = isSingleImage
         ? 'Delete this image permanently? This cannot be undone.'
         : 'Delete this generation permanently? This cannot be undone.';
 
@@ -785,7 +786,7 @@ const InputBox = () => {
       const response = await axiosInstance.delete(`/api/generations/${entry.id}`, {
         params: imageId ? { imageId } : undefined
       });
-      
+
       const updatedItem = response.data?.data?.item;
 
       if (updatedItem && !updatedItem.isDeleted) {
@@ -919,6 +920,8 @@ const InputBox = () => {
       if (existing) {
         // Update existing entry - only update changed fields to avoid overwriting
         qlog('[DEBUG refreshSingleGeneration] Updating existing entry:', existing.id);
+        const extraUpdates: any = {};
+        if (Array.isArray((normalizedEntry as any)?.inputImages)) extraUpdates.inputImages = (normalizedEntry as any).inputImages;
         dispatch(updateHistoryEntry({
           id: existing.id,
           updates: {
@@ -926,6 +929,7 @@ const InputBox = () => {
             images: normalizedEntry.images,
             imageCount: normalizedEntry.imageCount,
             timestamp: normalizedEntry.timestamp,
+            ...extraUpdates,
           }
         }));
         qlog('[refreshSingleGeneration] Updated existing generation:', existing.id);
@@ -968,36 +972,36 @@ const InputBox = () => {
             });
           }
 
-        // If we didn't find a requestId-based match, try a safe prompt+timestamp correlation
-        try {
-          const nePrompt = String((normalizedEntry as any)?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
-          const neModel = String((normalizedEntry as any)?.model || '');
-          const createdRaw = (normalizedEntry as any)?.createdAt || (normalizedEntry as any)?.timestamp || (normalizedEntry as any)?.updatedAt;
-          const neTime = typeof createdRaw === 'number' ? createdRaw : Date.parse(String(createdRaw || '')) || Date.now();
-          const MAX_TIME_DIFF = 120000; // 2 minutes
+          // If we didn't find a requestId-based match, try a safe prompt+timestamp correlation
+          try {
+            const nePrompt = String((normalizedEntry as any)?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const neModel = String((normalizedEntry as any)?.model || '');
+            const createdRaw = (normalizedEntry as any)?.createdAt || (normalizedEntry as any)?.timestamp || (normalizedEntry as any)?.updatedAt;
+            const neTime = typeof createdRaw === 'number' ? createdRaw : Date.parse(String(createdRaw || '')) || Date.now();
+            const MAX_TIME_DIFF = 120000; // 2 minutes
 
-          activeGenerations.forEach((g: any) => {
-            try {
-              const gPrompt = String(g?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
-              const gModel = String(g?.model || '');
-              const gTimeRaw = g?.startedAt || g?.createdAt || 0;
-              const gTime = typeof gTimeRaw === 'number' ? gTimeRaw : Date.parse(String(gTimeRaw || '')) || 0;
-              const timeDiff = Math.abs(neTime - gTime);
-              const promptMatch = gPrompt && nePrompt && (gPrompt === nePrompt || gPrompt.startsWith(nePrompt) || nePrompt.startsWith(gPrompt));
-              const modelMatch = gModel && neModel && gModel === neModel;
+            activeGenerations.forEach((g: any) => {
+              try {
+                const gPrompt = String(g?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const gModel = String(g?.model || '');
+                const gTimeRaw = g?.startedAt || g?.createdAt || 0;
+                const gTime = typeof gTimeRaw === 'number' ? gTimeRaw : Date.parse(String(gTimeRaw || '')) || 0;
+                const timeDiff = Math.abs(neTime - gTime);
+                const promptMatch = gPrompt && nePrompt && (gPrompt === nePrompt || gPrompt.startsWith(nePrompt) || nePrompt.startsWith(gPrompt));
+                const modelMatch = gModel && neModel && gModel === neModel;
 
-              if ((promptMatch && timeDiff < MAX_TIME_DIFF) || (promptMatch && modelMatch && timeDiff < MAX_TIME_DIFF)) {
-                console.log('[queue] Correlating active generation by prompt+time', { generationId: g.id, historyId: normalizedEntry.id, promptMatch: gPrompt.slice(0,50), timeDiff });
-                dispatch(updateActiveGeneration({ id: g.id, updates: { historyId: normalizedEntry.id } }));
-                removeLocalGeneratingEntry([g.id, normalizedEntry.id]);
+                if ((promptMatch && timeDiff < MAX_TIME_DIFF) || (promptMatch && modelMatch && timeDiff < MAX_TIME_DIFF)) {
+                  console.log('[queue] Correlating active generation by prompt+time', { generationId: g.id, historyId: normalizedEntry.id, promptMatch: gPrompt.slice(0, 50), timeDiff });
+                  dispatch(updateActiveGeneration({ id: g.id, updates: { historyId: normalizedEntry.id } }));
+                  removeLocalGeneratingEntry([g.id, normalizedEntry.id]);
+                }
+              } catch (e) {
+                // continue
               }
-            } catch (e) {
-              // continue
-            }
-          });
-        } catch (e) {
-          // ignore
-        }
+            });
+          } catch (e) {
+            // ignore
+          }
         } catch (e) {
           qerr('Failed to correlate new history entry with active generations by requestId:', e);
         }
@@ -1045,7 +1049,7 @@ const InputBox = () => {
     while (Date.now() < deadline) {
       attempt++;
       try {
-        const res = await api.get('/api/generations', { params: { limit: 20, sortBy: 'createdAt', generationType: 'text-to-image' }, timeout: 10000 });
+        const res = await api.get('/api/generations', { params: { limit: 30, sortBy: 'createdAt', mode: 'image' }, timeout: 10000 });
         const items: any[] = res.data?.data?.items || res.data?.items || [];
         qlog('pollForMatchingHistory: fetched items', { attempt, itemsFound: items.length });
 
@@ -1152,6 +1156,7 @@ const InputBox = () => {
         const normalizedModel = normalize(entry.model);
         const isSeedream = normalizedModel.includes('seedream');
         const isTextToImage = normalizedType === 'text-to-image';
+        const isImageToImage = normalizedType === 'image-to-image';
 
         // Explicitly exclude video types - video entries should NOT appear in image generation
         const isVideoType = normalizedType === 'text-to-video' ||
@@ -1190,6 +1195,7 @@ const InputBox = () => {
 
         return (
           normalizedType === 'text-to-image' ||
+          isImageToImage ||
           normalizedType === 'image-upscale' ||
           normalizedType === 'image-to-svg' ||
           normalizedType === 'image-edit' ||
@@ -2010,6 +2016,27 @@ const InputBox = () => {
 
     return result;
   };
+
+  const expectedCredits = useMemo(() => {
+    try {
+      const resolution = selectedModel === 'google/nano-banana-pro'
+        ? nanoBananaProResolution
+        : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined);
+      return getImageGenerationCreditCost(selectedModel, imageCount, frameSize, style, resolution, getCombinedUploadedImages());
+    } catch {
+      return 0;
+    }
+  }, [
+    selectedModel,
+    imageCount,
+    frameSize,
+    style,
+    nanoBananaProResolution,
+    flux2ProResolution,
+    prompt,
+    uploadedImages,
+    selectedCharacters,
+  ]);
 
   // Function to remove character reference (removes from selectedCharacters)
   const removeCharacterReference = (characterName: string) => {
@@ -4984,9 +5011,31 @@ const InputBox = () => {
             console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
           }
 
+          // Qwen image-edit specific parameters
+          if (selectedModel === 'qwen-image-edit') {
+            generationPayload.aspect_ratio = frameSize;
+            // FileTypeDropdown stores 'jpeg' but Qwen schema uses 'jpg'
+            generationPayload.output_format = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+          }
+
           const result = await dispatch(
             generateImages(generationPayload)
           ).unwrap();
+
+          // Persist source uploads for Qwen image-edit so the Preview Modal can show the input image(s)
+          try {
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+            if (selectedModel === 'qwen-image-edit' && resultHistoryId && Array.isArray(combinedImages) && combinedImages.length > 0) {
+              const inputImages = combinedImages.map((u: string, idx: number) => {
+                const p = toZataPath(u);
+                if (p) return { id: `input-${idx + 1}`, storagePath: p, url: toDirectUrl(p) };
+                return { id: `input-${idx + 1}`, url: u };
+              });
+              await updateFirebaseHistory(resultHistoryId, { inputImages });
+            }
+          } catch {
+            // best-effort only
+          }
 
           // Update the local loading entry with completed images
           try {
@@ -5286,7 +5335,7 @@ const InputBox = () => {
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
-                
+
                 {/* Info button - only show when there are generations */}
                 {historyEntries.length > 0 && sortedDates.length > 0 && (
                   <button
@@ -5840,12 +5889,12 @@ const InputBox = () => {
             e.preventDefault();
             e.stopPropagation();
             setIsInputBoxHovered(false);
-            
+
             // Handle Files (dragged from desktop/OS)
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
               const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
               if (files.length === 0) return;
-              
+
               const newUrls: string[] = [];
               for (const file of files) {
                 const reader = new FileReader();
@@ -5855,7 +5904,7 @@ const InputBox = () => {
                 });
                 newUrls.push(dataUrl);
               }
-              
+
               if (newUrls.length > 0) {
                 dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 4)));
                 // Open assets viewer if needed or just show toast
@@ -5867,8 +5916,8 @@ const InputBox = () => {
             // Handle dragged logical items (URLs from within the app)
             const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
             if (url && (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/'))) {
-               dispatch(setUploadedImages([...uploadedImages, url].slice(0, 4)));
-               toast.success('Image added');
+              dispatch(setUploadedImages([...uploadedImages, url].slice(0, 4)));
+              toast.success('Image added');
             }
           }}
         >
@@ -6129,6 +6178,11 @@ const InputBox = () => {
             {/* Fixed position Generate button - Desktop only */}
             <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
               {error && <div className="text-red-500 text-xs">{error}</div>}
+              {expectedCredits > 0 && (
+                <div className="text-[11px] text-white/70">
+                  Cost: {formatCredits(expectedCredits)} credits
+                </div>
+              )}
               <button
                 onClick={async () => {
                   try {
@@ -6267,6 +6321,11 @@ const InputBox = () => {
                 <ModelsDropdown />
               </div>
               {error && <div className="text-red-500 text-sm">{error}</div>}
+              {expectedCredits > 0 && (
+                <div className="text-[11px] text-white/70 whitespace-nowrap">
+                  {formatCredits(expectedCredits)} credits
+                </div>
+              )}
               <button
                 onClick={async () => {
                   try {
@@ -6504,6 +6563,7 @@ const InputBox = () => {
                     </div>
                   </>
                 )}
+                {/* Qwen Image Edit: no extra advanced controls */}
               </div>
             </div>
           </div>

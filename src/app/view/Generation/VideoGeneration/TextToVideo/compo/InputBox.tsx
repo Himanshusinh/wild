@@ -344,9 +344,9 @@ const InputBox = (props: InputBoxProps = {}) => {
     selectedModel.includes("MiniMax") ? selectedResolution :
       (selectedModel.includes("wan-2.5") ? (frameSize.includes("480") ? "480p" : (frameSize.includes("720") ? "720p" : "1080p")) :
         (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') :
-          (selectedModel.includes('seedance') ? seedanceResolution :
+          (selectedModel.includes('seedance-1.5') ? undefined : (selectedModel.includes('seedance') ? seedanceResolution :
             (selectedModel.includes('ltx2') ? normalizedSelectedRes :
-              (selectedModel.includes('pixverse') ? pixverseQuality : undefined)))))
+              (selectedModel.includes('pixverse') ? pixverseQuality : undefined))))))
   );
   const {
     validateAndReserveCredits,
@@ -377,8 +377,10 @@ const InputBox = (props: InputBoxProps = {}) => {
         return selectedModel;
       })();
 
-      // For Kling 2.6 Pro, pass generateAudio parameter
-      const audioParam = normalizedModelForCredits === 'kling-2.6-pro' ? generateAudio : undefined;
+      // Pass generateAudio only for models whose pricing depends on it
+      const audioParam = (normalizedModelForCredits === 'kling-2.6-pro' || normalizedModelForCredits.includes('seedance-1.5'))
+        ? generateAudio
+        : undefined;
       return Math.max(0, Number(getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam)) || 0);
     } catch {
       return 0;
@@ -944,10 +946,17 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5);
           setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
-          // Seedance models: duration default 5s (only 5s and 10s supported), resolution default 1080p, aspect ratio default 16:9
-          setDuration(5);
-          setSeedanceResolution("1080p");
-          setFrameSize("16:9"); // For T2V aspect ratio
+          // Seedance models
+          if (newModel.includes('seedance-1.5')) {
+            setDuration(2);
+            setFrameSize('16:9');
+            setGenerateAudio(false);
+          } else {
+            // Seedance 1.0: frontend pricing uses 5s/10s buckets and resolution
+            setDuration(5);
+            setSeedanceResolution("1080p");
+            setFrameSize("16:9");
+          }
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
@@ -1063,11 +1072,17 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5);
           setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
-          // Seedance models: duration default 5s (only 5s and 10s supported), resolution default 1080p
-          setDuration(5);
-          setSeedanceResolution("1080p");
-          // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
-          setFrameSize("16:9");
+          // Seedance models
+          if (newModel.includes('seedance-1.5')) {
+            setDuration(2);
+            setGenerateAudio(false);
+            setFrameSize("16:9");
+          } else {
+            setDuration(5);
+            setSeedanceResolution("1080p");
+            // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
+            setFrameSize("16:9");
+          }
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
@@ -2833,7 +2848,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
-          // Seedance T2V - supports first and last frame images (Pro and Lite only, not Pro Fast)
+          // Seedance T2V
+          const isSeedance15 = selectedModel.includes('seedance-1.5');
+          // Seedance 1.0: supports first/last frame only for Pro/Lite (not Pro Fast)
           const isLite = selectedModel.includes('lite');
           const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
@@ -2843,31 +2860,42 @@ const InputBox = (props: InputBoxProps = {}) => {
           const hasFirstFrame = Boolean(firstFrame);
           const hasLastFrame = Boolean(lastFrame);
 
-          let modelName = 'bytedance/seedance-1-pro';
-          if (isLite) {
-            modelName = 'bytedance/seedance-1-lite';
-          } else if (isProFast) {
-            modelName = 'bytedance/seedance-1-pro-fast';
+          if (isSeedance15) {
+            requestBody = {
+              model: 'bytedance/seedance-1.5-pro',
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              duration,
+              aspect_ratio: frameSize,
+              generate_audio: generateAudio,
+              generationType: 'text-to-video',
+              isPublic,
+              ...(hasFirstFrame ? { image: firstFrame } : {}),
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+            };
+          } else {
+            let modelName = 'bytedance/seedance-1-pro';
+            if (isLite) {
+              modelName = 'bytedance/seedance-1-lite';
+            } else if (isProFast) {
+              modelName = 'bytedance/seedance-1-pro-fast';
+            }
+            requestBody = {
+              model: modelName,
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              duration,
+              resolution: seedanceResolution,
+              aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
+              generationType: 'text-to-video',
+              isPublic,
+              ...(hasFirstFrame ? { image: firstFrame } : {}),
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+              ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
+                reference_images: references.slice(0, 4)
+              } : {}),
+            };
           }
-          requestBody = {
-            model: modelName,
-            prompt: apiPrompt,
-            originalPrompt: prompt, // Store original prompt for display
-            duration,
-            resolution: seedanceResolution,
-            aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
-            generationType: 'text-to-video',
-            isPublic,
-            // First frame image (optional, but required if last_frame_image is provided)
-            ...(hasFirstFrame ? { image: firstFrame } : {}),
-            // Last frame image (optional, only works if first frame image is also provided)
-            ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
-            // Reference images (1-4 images) - only include if first/last frame images are NOT used
-            // reference_images cannot be used with first/last frame images or 1080p resolution
-            ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
-              reference_images: references.slice(0, 4)
-            } : {}),
-          };
           generationType = 'text-to-video';
           apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-t2v/submit' : '/api/replicate/seedance-t2v/submit';
         } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
@@ -3294,11 +3322,12 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/kling-i2v/submit';
         } else if (selectedModel.includes('seedance')) {
-          // Seedance I2V - Image-to-video mode (supports first frame image and optional last frame for Pro/Lite)
+          // Seedance I2V - Image-to-video mode
           if (uploadedImages.length === 0) {
             setError("Seedance image-to-video requires an input image");
             return;
           }
+          const isSeedance15 = selectedModel.includes('seedance-1.5');
           const isLite = selectedModel.includes('lite');
           const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
@@ -3306,30 +3335,42 @@ const InputBox = (props: InputBoxProps = {}) => {
           const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : null;
           const hasLastFrame = Boolean(lastFrame);
 
-          let modelName = 'bytedance/seedance-1-pro';
-          if (isLite) {
-            modelName = 'bytedance/seedance-1-lite';
-          } else if (isProFast) {
-            modelName = 'bytedance/seedance-1-pro-fast';
+          if (isSeedance15) {
+            requestBody = {
+              model: 'bytedance/seedance-1.5-pro',
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              image: uploadedImages[0],
+              duration,
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              generate_audio: generateAudio,
+              generationType: 'image-to-video',
+              isPublic,
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+            } as any;
+          } else {
+            let modelName = 'bytedance/seedance-1-pro';
+            if (isLite) {
+              modelName = 'bytedance/seedance-1-lite';
+            } else if (isProFast) {
+              modelName = 'bytedance/seedance-1-pro-fast';
+            }
+            requestBody = {
+              model: modelName,
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              image: uploadedImages[0], // First frame image for I2V
+              duration,
+              resolution: seedanceResolution,
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              generationType: 'image-to-video',
+              isPublic,
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+              ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
+                reference_images: references.slice(0, 4)
+              } : {}),
+            } as any;
           }
-          requestBody = {
-            model: modelName,
-            prompt: apiPrompt,
-            originalPrompt: prompt, // Store original prompt for display
-            image: uploadedImages[0], // First frame image for I2V
-            duration,
-            resolution: seedanceResolution,
-            // aspect_ratio is ignored for I2V, but we can include it for consistency
-            generationType: 'image-to-video',
-            isPublic,
-            // Optional: Add last_frame_image if provided (for Seedance Pro/Lite)
-            ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
-            // Reference images (1-4 images) - only include if last_frame_image is NOT used
-            // reference_images cannot be used with first/last frame images or 1080p resolution
-            ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
-              reference_images: references.slice(0, 4)
-            } : {}),
-          } as any;
           generationType = 'image-to-video';
           apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-i2v/submit' : '/api/replicate/seedance-i2v/submit';
         } else if (selectedModel.includes('pixverse')) {
@@ -6169,6 +6210,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 />
                 {/* Audio toggle button for models that support it (mobile only) */}
                 {(selectedModel === 'kling-2.6-pro' ||
+                  selectedModel.includes('seedance-1.5') ||
                   (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
                   selectedModel.includes('ltx2') ||
                   (selectedModel.includes("veo3.1") && !(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1"))) ||
@@ -6861,24 +6903,26 @@ const InputBox = (props: InputBoxProps = {}) => {
                           onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                         />
                       )}
-                      {/* Quality - Always shown for Seedance models */}
-                      <QualityDropdown
-                        selectedModel={selectedModel}
-                        selectedQuality={seedanceResolution}
-                        onQualityChange={setSeedanceResolution}
-                        onCloseOtherDropdowns={() => {
-                          // Close models dropdown
-                          setCloseModelsDropdown(true);
-                          setTimeout(() => setCloseModelsDropdown(false), 0);
-                          // Close frame size dropdown
-                          setCloseFrameSizeDropdown(true);
-                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          // Close duration dropdown
-                          setCloseDurationDropdown(true);
-                          setTimeout(() => setCloseDurationDropdown(false), 0);
-                        }}
-                        onCloseThisDropdown={undefined}
-                      />
+                      {/* Quality - Seedance 1.0 only (Seedance 1.5 doesn't use resolution) */}
+                      {!selectedModel.includes('seedance-1.5') && (
+                        <QualityDropdown
+                          selectedModel={selectedModel}
+                          selectedQuality={seedanceResolution}
+                          onQualityChange={setSeedanceResolution}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={undefined}
+                        />
+                      )}
                       {/* Duration - Always shown for Seedance models */}
                       <VideoDurationDropdown
                         selectedDuration={duration}
@@ -6897,6 +6941,23 @@ const InputBox = (props: InputBoxProps = {}) => {
                         }}
                         onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                       />
+                      {/* Audio toggle - Seedance 1.5 only */}
+                      {selectedModel.includes('seedance-1.5') && (
+                        <button
+                          onClick={() => setGenerateAudio(v => !v)}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                            ? 'bg-transparent text-white '
+                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                            }`}
+                        >
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
+                        </button>
+                      )}
                     </div>
                   );
                 }
