@@ -33,6 +33,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'qwen-image-edit': 'Qwen Image Edit',
   'qwen-image-edit-2511': 'Qwen Image Edit',
   'qwen/qwen-image-edit-2511': 'Qwen Image Edit',
+  'replicate/qwen/qwen-image-edit-2511': 'Qwen Image Edit',
   
   // Video Generation Models
   'veo3-t2v-8s': 'Veo3',
@@ -100,6 +101,9 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
   
   // Normalize known provider prefixes often saved in history (e.g., "Fal Ai Veo3 Fast")
   const normalized = modelId
+    .trim()
+    // Handle slash-prefixed provider model IDs (e.g., "replicate/qwen/qwen-image-edit-2511")
+    .replace(/^replicate\s*\//i, '')
     .replace(/^\s*(fal\s*ai)\s*/i, '')
     .replace(/^\s*(replicate)\s*/i, '')
     .replace(/^\s*(runway)\s*/i, '')
