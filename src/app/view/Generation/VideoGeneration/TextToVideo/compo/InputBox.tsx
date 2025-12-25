@@ -948,7 +948,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (newModel.includes('seedance')) {
           // Seedance models
           if (newModel.includes('seedance-1.5')) {
-            setDuration(2);
+            setDuration(4);
             setFrameSize('16:9');
             setGenerateAudio(false);
           } else {
@@ -1074,7 +1074,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (newModel.includes('seedance')) {
           // Seedance models
           if (newModel.includes('seedance-1.5')) {
-            setDuration(2);
+            setDuration(4);
             setGenerateAudio(false);
             setFrameSize("16:9");
           } else {
