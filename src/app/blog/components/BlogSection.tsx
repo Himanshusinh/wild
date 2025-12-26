@@ -144,21 +144,24 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
               }}
             >
               <div className="blog-card-image">
-                {post.image ? (
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    loading="lazy"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const placeholder = target.parentElement?.querySelector('.blog-card-image-placeholder') as HTMLElement;
-                      if (placeholder) placeholder.style.display = 'block';
-                    }}
-                  />
-                ) : (
-                  <div className="blog-card-image-placeholder"></div>
-                )}
+            <div
+              className="blog-card-image-placeholder"
+              style={{ display: post.image ? 'none' : 'block' }}
+              aria-hidden="true"
+            />
+            {post.image && (
+              <img
+                src={post.image}
+                alt={post.title}
+                loading="lazy"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const placeholder = target.parentElement?.querySelector('.blog-card-image-placeholder') as HTMLElement;
+                  if (placeholder) placeholder.style.display = 'block';
+                }}
+              />
+            )}
               </div>
               <div className="blog-card-content">
                 <span className={`category-tag category-${post.categoryColor}`}>
