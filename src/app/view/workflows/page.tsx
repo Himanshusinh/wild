@@ -16,7 +16,7 @@ interface Workflow {
   sampleAfter: string;
 }
 
-export default function WorkflowsPage() {
+export function WorkflowsPageComponent({ initialCategory = 'All', basePath = '/view/workflows' }: { initialCategory?: string; basePath?: string }) {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
@@ -43,7 +43,7 @@ export default function WorkflowsPage() {
       {/* Main Content */}
       <main className="relative z-10 pt-4 pb-32 px-4 sm:px-6 md:px-8 min-h-screen">
         <div className="w-full">
-          <WorkflowsView openModal={openWorkflowModal} />
+          <WorkflowsView openModal={openWorkflowModal} initialCategory={initialCategory} basePath={basePath} />
         </div>
       </main>
 
@@ -55,4 +55,8 @@ export default function WorkflowsPage() {
       )}
     </div>
   );
+}
+
+export default function WorkflowsPage() {
+  return <WorkflowsPageComponent />;
 }

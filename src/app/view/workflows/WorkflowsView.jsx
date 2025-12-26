@@ -1,12 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search, LayoutGrid, List } from 'lucide-react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
 
-export default function WorkflowsView({ openModal }) {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const filteredWorkflows = activeCategory === "All" ? WORKFLOWS_DATA : WORKFLOWS_DATA.filter(wf => wf.category === activeCategory);
+export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows" }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const slugify = (cat) => cat.toLowerCase().replace(/[^a-z0-9]+/g, '').trim();
+  const categoryBySlug = useMemo(() => (
+    CATEGORIES.reduce((acc, cat) => {
+      acc[slugify(cat)] = cat;
+      return acc;
+    }, {})
+  ), []);
+
+  const deriveCategoryFromPath = (path) => {
+    if (!path) return null;
+    const segments = path.split('/').filter(Boolean);
+    const last = segments[segments.length - 1];
+    return categoryBySlug[last] || (last === 'workflows' ? null : 'All');
+  };
+
+  const [activeCategory, setActiveCategory] = useState(() => {
+    return deriveCategoryFromPath(pathname) || initialCategory;
+  });
+
+  useEffect(() => {
+    const nextCategory = deriveCategoryFromPath(pathname);
+    setActiveCategory(nextCategory || initialCategory);
+  }, [pathname, initialCategory]);
+
+  const filteredWorkflows = useMemo(() => (
+    activeCategory === "All"
+      ? WORKFLOWS_DATA
+      : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory)
+  ), [activeCategory]);
+
+  const handleCategoryClick = (cat) => {
+    setActiveCategory(cat);
+    const slug = slugify(cat);
+    const path = slug ? `${basePath}/${slug}` : basePath;
+    router.push(path);
+  };
 
   return (
     <div className="animate-in">
@@ -52,7 +90,7 @@ export default function WorkflowsView({ openModal }) {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => handleCategoryClick(cat)}
                 className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-all border ${activeCategory === cat
                   ? 'bg-white border-white/5 text-black'
                   : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'

@@ -64,6 +64,32 @@ export function proxy(req: NextRequest) {
     }
   }
 
+  // Proxy /api/workflows requests to the backend Express service
+  // Fixes 404 for routes like /api/workflows/selfie-video/generate-image
+  if (pathname.startsWith('/api/workflows')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/workflows');
+    }
+  }
+
+  // Proxy /api/replicate requests to the backend Express service
+  // Fixes 404 for routes like /api/replicate/seedance-i2v/submit and /api/replicate/queue/*
+  if (pathname.startsWith('/api/replicate')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/replicate');
+    }
+  }
+
   // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
   // forwards all traffic to Next.js using the www.* host which causes an infinite
   // redirect loop if we try to rewrite it at the edge. Canonical host enforcement
