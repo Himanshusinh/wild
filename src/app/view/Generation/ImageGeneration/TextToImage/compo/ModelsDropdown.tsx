@@ -46,7 +46,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
     { name: "P-Image", value: "prunaai/p-image" },
-    { name: "Qwen Image Edit", value: "qwen-image-edit" },
+    { name: "Qwen Image Edit", value: "qwen-image-edit-2511" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },

@@ -168,7 +168,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
-    frontendValue: 'qwen-image-edit',
+    frontendValue: 'qwen-image-edit-2511',
     creditModelName: 'qwen-image-edit-2511',
     generationType: 'image',
     provider: 'replicate',
