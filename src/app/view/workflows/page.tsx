@@ -1,52 +1,58 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-// Nav and SidePannelFeatures are provided by the persistent root layout
-import Header from './compo/Header';
-import TemplateGrid from './compo/TemplateGrid';
-import FooterNew from '../core/FooterNew';
-import { ViewType, GenerationType } from '@/types/generation';
+import { useState } from 'react';
+import WorkflowsView from './WorkflowsView';
+import WorkflowModal from './WorkflowModal';
+import SelfieVideoModal from './components/selfieVideo';
 
-type CategoryType = 'All' | 'General' | 'Fun' | 'Viral Trend' | 'Architecture' | 'Photography' | 'Fashion' | 'Virtual tryon' | 'Social Media' | 'Film Industry' | 'Branding' | 'Design' | 'Video';
+interface Workflow {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  model: string;
+  thumbnail: string;
+  sampleBefore: string;
+  sampleAfter: string;
+}
 
-const WorkflowsPage: React.FC = () => {
-  const router = useRouter();
-  const [currentView, setCurrentView] = useState<ViewType>('workflows');
-  const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
-  const [activeCategory, setActiveCategory] = useState<CategoryType>('All');
+export default function WorkflowsPage() {
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  const handleViewChange = (view: ViewType) => {
-    console.log('View changed to:', view);
-    setCurrentView(view);
+  const openWorkflowModal = (workflow: Workflow) => {
+    setSelectedWorkflow(workflow);
+    setIsModalOpen(true);
+    document.body.style.overflow = 'hidden';
   };
 
-  const handleGenerationTypeChange = (type: GenerationType) => {
-    console.log('Generation type changed to:', type);
-    setCurrentGenerationType(type);
-    router.push(`/${type}`);
-  };
-
-  const handleCategoryChange = (category: CategoryType) => {
-    setActiveCategory(category);
+  const closeWorkflowModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedWorkflow(null), 300);
+    document.body.style.overflow = 'unset';
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B]">
-      {/* Main layout - content area (root layout provides Nav + SidePanel) */}
-      <div className="flex pt-10 ml-[68px]"> {/* spacing to account for persistent Nav + SidePanel */}
-        <div className="flex-1 min-w-0">
-          <Header 
-            activeCategory={activeCategory}
-            onCategoryChange={handleCategoryChange}
-          />
-          <TemplateGrid activeCategory={activeCategory} />
-          <FooterNew />
-        </div>
+    <div className="min-h-screen bg-[#07070B] text-white font-sans selection:bg-white/10 selection:text-white overflow-x-hidden relative">
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}></div>
+        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600/[0.03] rounded-full blur-[120px]"></div>
       </div>
+
+      {/* Main Content */}
+      <main className="relative z-10 pt-4 pb-32 px-4 sm:px-6 md:px-8 min-h-screen">
+        <div className="w-full">
+          <WorkflowsView openModal={openWorkflowModal} />
+        </div>
+      </main>
+
+      {/* Modal - Conditionally render based on workflow type */}
+      {selectedWorkflow?.id === 'selfie-video' ? (
+        <SelfieVideoModal isOpen={isModalOpen} onClose={closeWorkflowModal} workflowData={selectedWorkflow} />
+      ) : (
+        <WorkflowModal isOpen={isModalOpen} onClose={closeWorkflowModal} workflowData={selectedWorkflow} />
+      )}
     </div>
   );
-};
-
-export default WorkflowsPage;
-
+}
