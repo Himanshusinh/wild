@@ -130,6 +130,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "MiniMax-Hailuo-02", label: "Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
       { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video & Image→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
 
+      { value: "seedance-1.5-pro-t2v", label: "Seedance 1.5 Pro", description: "Text→Video & Image→Video, 2-12s, 16:9/4:3/1:1/3:4/9:16/21:9/9:21, Audio On/Off", provider: "replicate" },
       { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video & Image→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
       { value: "seedance-1.0-pro-fast-t2v", label: "Seedance 1.0 Pro Fast", description: "Text→Video & Image→Video (fastest), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
       { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video & Image→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
@@ -247,6 +248,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       } else {
         r = undefined; // Standard Sora 2 doesn't need resolution
       }
+    } else if (model.value.includes('seedance-1.5')) {
+      d = normalizeDuration(selectedDuration, '5s');
+      r = undefined; // Seedance 1.5 pricing does not use resolution
     } else if (model.value.includes('seedance')) {
       d = normalizeDuration(selectedDuration, '5s');
       const rRaw = normalizeResolution(selectedResolution, '720p');

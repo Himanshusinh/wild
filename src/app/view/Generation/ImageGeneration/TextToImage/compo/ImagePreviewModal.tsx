@@ -1031,9 +1031,14 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const inputImageItems = React.useMemo(() => {
     try {
-      const inputs = Array.isArray((selectedEntry as any)?.inputImages)
-        ? (selectedEntry as any).inputImages
-        : [];
+      const entryAny: any = selectedEntry as any;
+      const inputs = Array.isArray(entryAny?.inputImages)
+        ? entryAny.inputImages
+        : (Array.isArray(entryAny?.params?.uploadedImages)
+          ? entryAny.params.uploadedImages
+          : (Array.isArray(entryAny?.uploadedImages)
+            ? entryAny.uploadedImages
+            : []));
       console.log('[ImagePreviewModal] Processing inputImages:', {
         hasInputImages: inputs.length > 0,
         count: inputs.length,

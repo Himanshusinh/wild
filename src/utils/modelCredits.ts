@@ -21,6 +21,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
+  'qwen-image-edit': 80,        // Replicate Qwen Image Edit (flat 80 credits)
   // Imagen 4 family (FAL/Google)
   'imagen-4-ultra': 140,
   'imagen-4': 100,
@@ -445,6 +446,21 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Seedance models
   if (modelValue.includes('seedance')) {
+    // Seedance 1.5: priced by exact duration (2-12s) and audio on/off.
+    // Source of truth is creditDistributionData rows like:
+    // "Seedance 1.5 T2V/I2V Audio On 2s" / "Seedance 1.5 T2V/I2V Audio Off 2s".
+    if (modelValue.includes('seedance-1.5')) {
+      const dRaw = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const d = Math.max(2, Math.min(12, Math.round(dRaw)));
+      // Backend defaults generate_audio to false if omitted, so default to Audio Off on frontend too.
+      const hasAudio = generateAudio === true;
+      const audioLabel = hasAudio ? 'Audio On' : 'Audio Off';
+      const modelName = `Seedance 1.5 T2V/I2V ${audioLabel} ${d}s`;
+      const row = creditDistributionData.find((m: any) => m?.modelName === modelName);
+      const credits = row?.creditsPerGeneration;
+      return typeof credits === 'number' ? credits : null;
+    }
+
     const isI2V = modelValue.includes('i2v');
     const modelType = isI2V ? 'i2v' : 't2v';
     const isProFast = modelValue.includes('pro-fast');

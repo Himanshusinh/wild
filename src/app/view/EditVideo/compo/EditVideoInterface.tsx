@@ -563,7 +563,7 @@ const EditVideoInterface: React.FC = () => {
         if (normalizedVideo.video) body.video = normalizedVideo.video;
         if (normalizedVideo.video_url) body.video_url = normalizedVideo.video_url;
         body.upscale_mode = seedvrUpscaleMode;
-        if (seedvrUpscaleMode === 'factor') body.upscale_factor = Number(seedvrUpscaleFactor) || 2;
+        if (seedvrUpscaleMode === 'factor') body.upscale_factor = Math.max(1.1, Number(seedvrUpscaleFactor) || 2);
         if (seedvrUpscaleMode === 'target') body.target_resolution = seedvrTargetResolution;
         if (seedvrSeed !== '') body.seed = Math.round(Number(seedvrSeed) || 0);
         body.noise_scale = Number.isFinite(Number(seedvrNoiseScale)) ? Number(seedvrNoiseScale) : 0.1;
@@ -1065,7 +1065,7 @@ const EditVideoInterface: React.FC = () => {
                     {seedvrUpscaleMode === 'factor' ? (
                       <div>
                         <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Upscale Factor</label>
-                        <input type="number" min={0.1} max={10} step={0.1} value={seedvrUpscaleFactor} onChange={(e) => setSeedvrUpscaleFactor(Math.max(0.1, Math.min(10, Number(e.target.value) || 2)))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        <input type="number" min={1.1} max={10} step={0.1} value={seedvrUpscaleFactor} onChange={(e) => setSeedvrUpscaleFactor(Math.max(1.1, Math.min(10, Number(e.target.value) || 2)))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
                       </div>
                     ) : (
                       <div>
