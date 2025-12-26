@@ -94,6 +94,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
       m.value === 'prunaai/p-image' ||
+      m.value === 'qwen-image-edit-2511' ||
       m.value === 'qwen-image-edit' ||
       m.value === 'openai/gpt-image-1.5'
     );
@@ -212,6 +213,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'prunaai/p-image', // z-image-turbo - should be first
               'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
+              'qwen-image-edit-2511',
               'qwen-image-edit',
               'z-image-turbo',
               'flux-kontext-max',
