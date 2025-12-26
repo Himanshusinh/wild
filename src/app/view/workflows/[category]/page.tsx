@@ -1,7 +1,9 @@
 'use client';
 
-import { WorkflowsPageComponent } from '../page';
+import { WorkflowsPageComponent } from '../WorkflowsPageComponent';
 import { CATEGORIES } from '../data';
+
+type CategoryParam = { category: string };
 
 const slugToCategory = (slug: string) => {
   const normalized = (slug || '').toLowerCase();
@@ -9,7 +11,8 @@ const slugToCategory = (slug: string) => {
   return match || 'All';
 };
 
-export default function CategoryWorkflowsPage({ params }: { params: { category: string } }) {
-  const category = slugToCategory(params?.category || '');
+export default async function CategoryWorkflowsPage({ params }: { params: Promise<CategoryParam> }) {
+  const resolvedParams = await params;
+  const category = slugToCategory(resolvedParams?.category || '');
   return <WorkflowsPageComponent initialCategory={category} basePath="/view/workflows" />;
 }
