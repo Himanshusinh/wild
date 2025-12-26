@@ -6176,7 +6176,7 @@ const InputBox = () => {
             </div>
 
             {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
+            <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
               {error && <div className="text-red-500 text-xs">{error}</div>}
               {expectedCredits > 0 && (
                 <div className="text-[11px] text-white/70">
