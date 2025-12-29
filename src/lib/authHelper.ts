@@ -5,13 +5,26 @@ import { auth } from './firebase';
  */
 export async function getAuthToken(): Promise<string | null> {
     try {
-        // Try to get token from localStorage first (faster)
+        // Prefer a fresh token from Firebase (force refresh) to avoid expired ID tokens
+        if (auth?.currentUser) {
+            try {
+                const token = await auth.currentUser.getIdToken(true);
+                if (token && token.startsWith('eyJ')) {
+                    try { localStorage.setItem('authToken', token); } catch {}
+                    return token;
+                }
+            } catch (error) {
+                console.warn('[Auth] Failed to refresh Firebase token:', error);
+            }
+        }
+
+        // Fallback to cached token in localStorage (if any)
         const storedToken = localStorage.getItem('authToken');
         if (storedToken && storedToken.startsWith('eyJ')) {
             return storedToken;
         }
 
-        // Try to get from user object
+        // Fallback to user object stored in localStorage
         const userString = localStorage.getItem('user');
         if (userString) {
             try {
@@ -21,23 +34,6 @@ export async function getAuthToken(): Promise<string | null> {
                     return token;
                 }
             } catch { }
-        }
-
-        // Try to get fresh token from Firebase Auth (most reliable)
-        if (auth?.currentUser) {
-            try {
-                // Force refresh to ensure token is valid
-                const token = await auth.currentUser.getIdToken(true);
-                if (token && token.startsWith('eyJ')) {
-                    // Cache it for next time
-                    try {
-                        localStorage.setItem('authToken', token);
-                    } catch { }
-                    return token;
-                }
-            } catch (error) {
-                console.warn('[Auth] Failed to get Firebase token:', error);
-            }
         }
 
         return null;

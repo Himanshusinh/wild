@@ -35,7 +35,11 @@ interface SelfieVideoModalProps {
 }
 
 export default function SelfieVideoModal({ isOpen, onClose, workflowData }: SelfieVideoModalProps) {
+  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [hideControlsDuringGenerate, setHideControlsDuringGenerate] = useState(false);
+  const [showLogoGifForCreate, setShowLogoGifForCreate] = useState(false);
+  const [uploadReplaceIndex, setUploadReplaceIndex] = useState<number | null>(null);
 
   // State Management: 0: Upload, 1: Images Grid, 2: Videos Grid, 3: Final Video
   const [step, setStep] = useState(0);
@@ -43,10 +47,12 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   const [friendPhotos, setFriendPhotos] = useState<string[]>([]);
   const [selfiePhoto, setSelfiePhoto] = useState<string | null>(null);
   const [customBackground, setCustomBackground] = useState<string>("");
+  const [customClothes, setCustomClothes] = useState<string>("");
+  const [step2FriendPhoto, setStep2FriendPhoto] = useState<string | null>(null);
 
   // Upload Modal State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadTarget, setUploadTarget] = useState<'selfie' | 'friends' | null>(null);
+  const [uploadTarget, setUploadTarget] = useState<'selfie' | 'friends' | 'step2Friend' | null>(null);
 
   // Result Data
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
@@ -72,6 +78,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       setFriendPhotos([]);
       setSelfiePhoto(null);
       setCustomBackground("");
+      setCustomClothes("");
+      setStep2FriendPhoto(null);
       setGeneratedImages([]);
       setGeneratedVideos([]);
       setFinalVideoUrl(null);
@@ -148,6 +156,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
     deductCreditsOptimisticForGeneration(requiredCredits);
     setIsGenerating(true);
+    setHideControlsDuringGenerate(true);
     setGeneratedImages([]);
 
     try {
@@ -159,9 +168,36 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         return;
       }
 
+      // Helper to retry transient network/proxy errors
+      const fetchWithRetry = async (input: RequestInfo, init: RequestInit, attempts = 3, baseDelay = 800) => {
+        let lastErr: any = null;
+        for (let i = 0; i < attempts; i++) {
+          try {
+            const res = await fetch(input, { ...init, credentials: 'include' });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(body?.message || `HTTP ${res.status}`);
+            }
+            return res;
+          } catch (err: any) {
+            lastErr = err;
+            const isLast = i === attempts - 1;
+            if (isLast) break;
+            const delayMs = baseDelay * Math.pow(2, i);
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => setTimeout(r, delayMs));
+          }
+        }
+        throw lastErr;
+      };
+
       const generatePromises = friendPhotos.map(async (friendPhoto, index) => {
         try {
-          const response = await fetch('/api/workflows/selfie-video/generate-image', {
+          const endpoint = API_BASE ? `${API_BASE}/api/workflows/selfie-video/generate-image` : '/api/workflows/selfie-video/generate-image';
+          // Set model and aspect ratio as per requirements
+          const model = 'openai/gpt-image-1.5';
+          const aspect_ratio = frameSize === 'vertical' ? '2:3' : '3:2';
+          const response = await fetchWithRetry(endpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -172,18 +208,16 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
               friendImageUrl: friendPhoto,
               frameSize: frameSize,
               customBackground: customBackground || undefined,
+              customClothes: customClothes || undefined,
+              model,
+              aspect_ratio,
             }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Failed to generate image ${index + 1}`);
-          }
+          }, 3, 800);
 
           const data = await response.json();
           return {
             success: true,
-            imageUrl: data.data.imageUrl,
+            imageUrl: data?.data?.imageUrl,
             index,
           };
         } catch (error: any) {
@@ -215,6 +249,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       setIsGenerating(false);
 
       if (!hasErrors && generatedUrls.every(url => url)) {
+        // restore controls after successful generation
+        setHideControlsDuringGenerate(false);
         setStep(1);
       } else {
         rollbackOptimisticDeduction(requiredCredits);
@@ -223,6 +259,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     } catch (error: any) {
       console.error('Error in handleMergeImages:', error);
       setIsGenerating(false);
+      setHideControlsDuringGenerate(false);
       rollbackOptimisticDeduction(requiredCredits);
       alert('Failed to generate images. Please try again.');
     }
@@ -260,7 +297,11 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         return;
       }
 
-      const response = await fetch('/api/workflows/selfie-video/generate-image', {
+      const endpoint = API_BASE ? `${API_BASE}/api/workflows/selfie-video/generate-image` : '/api/workflows/selfie-video/generate-image';
+      // Set model and aspect ratio as per requirements
+      const model = 'openai/gpt-image-1.5';
+      const aspect_ratio = frameSize === 'vertical' ? '2:3' : '3:2';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +312,11 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
           friendImageUrl: friendPhotos[index],
           frameSize: frameSize,
           customBackground: customBackground || undefined,
+          customClothes: customClothes || undefined,
+          model,
+          aspect_ratio,
         }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -300,8 +345,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     }
   };
 
-  const handleImagesToVideos = async () => {
-    const images = generatedImages.filter((u) => typeof u === 'string' && u.length > 0);
+  const handleImagesToVideos = async (sourceImages?: string[]) => {
+    const images = (sourceImages || generatedImages).filter((u) => typeof u === 'string' && u.length > 0);
     if (images.length < 2) {
       alert('Please generate at least 2 images first.');
       return;
@@ -329,6 +374,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         alert('Please log in to generate videos');
         setIsGenerating(false);
         rollbackOptimisticDeduction(requiredCredits);
+        setVideosRequested(false);
         return;
       }
 
@@ -343,49 +389,70 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     Strictly preserve identity, facial features, skin tone, hairstyle, and proportions of all subjects. Maintain consistent lighting, camera perspective, and environmental continuity. Use smooth camera easing and realistic motion interpolation. Avoid abrupt scene cuts, sudden background swaps, morphing artifacts, ghosting, warping, text, logos, or watermarks.`;
 
       // 1) Submit all jobs first (so you'll see multiple submit requests)
+      // Make submission resilient: collect successes and failures rather than aborting all on one failure.
       const submitJobs = await Promise.all(
         Array.from({ length: images.length - 1 }).map(async (_v, i) => {
           const firstFrameUrl = images[i];
           const lastFrameUrl = images[i + 1];
+          try {
+            const submitRes = await fetch('/api/replicate/seedance-i2v/submit', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                model: 'bytedance/seedream-1-lite',
+                prompt: basePrompt,
+                image: firstFrameUrl,
+                last_frame_image: lastFrameUrl,
+                aspect_ratio: aspectRatio,
+                resolution: '480p',
+                duration: 5,
+              }),
+            });
 
-          const submitRes = await fetch('/api/replicate/seedance-i2v/submit', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              model: 'bytedance/seedance-1-pro',
-              prompt: basePrompt,
-              image: firstFrameUrl,
-              last_frame_image: lastFrameUrl,
-              aspect_ratio: aspectRatio,
-              resolution: '480p',
-              duration: 5,
-            }),
-          });
+            if (!submitRes.ok) {
+              const err = await submitRes.json().catch(() => ({}));
+              const msg = err?.message || `Failed to submit video ${i + 1}`;
+              setVideoErrors((prev) => {
+                const next = [...prev];
+                next[i] = msg;
+                return next;
+              });
+              return { index: i, error: msg };
+            }
 
-          if (!submitRes.ok) {
-            const err = await submitRes.json().catch(() => ({}));
-            const msg = err?.message || `Failed to submit video ${i + 1}`;
+            const submitJson = await submitRes.json();
+            const requestId = submitJson?.data?.requestId || submitJson?.data?.requestID || submitJson?.data?.taskId;
+            if (!requestId) {
+              const msg = `Missing requestId for video ${i + 1}`;
+              setVideoErrors((prev) => {
+                const next = [...prev];
+                next[i] = msg;
+                return next;
+              });
+              return { index: i, error: msg };
+            }
+
+            return { index: i, requestId: String(requestId) };
+          } catch (e: any) {
+            const msg = e?.message || 'Failed to submit video';
+            console.error(`[selfieVideo] submit job ${i + 1} failed`, e);
             setVideoErrors((prev) => {
               const next = [...prev];
               next[i] = msg;
               return next;
             });
-            throw new Error(msg);
+            return { index: i, error: msg };
           }
-
-          const submitJson = await submitRes.json();
-          const requestId = submitJson?.data?.requestId || submitJson?.data?.requestID || submitJson?.data?.taskId;
-          if (!requestId) throw new Error(`Missing requestId for video ${i + 1}`);
-          return { index: i, requestId: String(requestId) };
         })
       );
 
-      // 2) Poll all results concurrently and fill slots as they complete
+      // 2) Poll all successful submissions concurrently and fill slots as they complete
+      const successfulSubmits = submitJobs.filter((s: any) => s && s.requestId) as { index: number; requestId: string }[];
       await Promise.all(
-        submitJobs.map(async ({ index, requestId }) => {
+        successfulSubmits.map(async ({ index, requestId }) => {
           try {
             const videoUrl = await pollReplicateVideoResult(requestId, token);
             setGeneratedVideos((prev) => {
@@ -414,20 +481,377 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       console.error('[selfieVideo] handleImagesToVideos error', err);
       setIsGenerating(false);
       rollbackOptimisticDeduction(requiredCredits);
+      setVideosRequested(false);
       alert(err?.message || 'Failed to generate videos. Please try again.');
     }
   };
 
-  const handleVideosToFinal = () => {
+  const handleLoopAndRegenerate = async () => {
+    const images = generatedImages.filter((u) => typeof u === 'string' && u.length > 0);
+    if (images.length < 2) {
+      alert('Please generate at least 2 images first.');
+      return;
+    }
+
+    // We only want a single video from last -> first (loop), not regenerate all pairwise videos.
+    const firstFrameUrl = images[images.length - 1];
+    const lastFrameUrl = images[0];
+
+    const requiredCredits = VIDEO_COST;
+    if (creditBalance < requiredCredits) {
+      alert(`You need ${requiredCredits} credits to generate this video. Your balance is ${creditBalance}.`);
+      return;
+    }
+
+    deductCreditsOptimisticForGeneration(requiredCredits);
     setIsGenerating(true);
-    setTimeout(() => {
-      setFinalVideoUrl("https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1200");
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Please log in to generate videos');
+        rollbackOptimisticDeduction(requiredCredits);
+        setIsGenerating(false);
+        return;
+      }
+
+      const aspectRatio = frameSize === 'vertical' ? '9:16' : '16:9';
+      const backgroundClause = customBackground && customBackground.trim().length > 0
+        ? ` Set the scene in ${customBackground}.`
+        : '';
+      const basePrompt = `Create a smooth, realistic video transition from the first frame ({FIRST_FRAME_DESC}) to the last frame ({LAST_FRAME_DESC}). The person who appears in BOTH the first and last frames must remain the same individual and act as the anchor of the transition. Do not morph; instead, show this shared person moving naturally through space—walking or stepping forward toward the second person in the last frame to take a selfie together.
+
+    Drive the transition with continuous physical motion of this shared person (forward movement, slight body shift, natural arm extension). Let the background and scene evolve gradually as they move; no abrupt swaps. The camera may gently orbit up to 180 degrees around the shared person to emphasize motion, but keep the movement smooth and cinematic. Ensure the shared person visibly walks or advances so it feels intentional and natural, never like a morph.${backgroundClause}
+
+    Strictly preserve identity, facial features, skin tone, hairstyle, and proportions of all subjects. Maintain consistent lighting, camera perspective, and environmental continuity. Use smooth camera easing and realistic motion interpolation. Avoid abrupt scene cuts, sudden background swaps, morphing artifacts, ghosting, warping, text, logos, or watermarks.`;
+
+      const submitRes = await fetch('/api/replicate/seedance-i2v/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          model: 'bytedance/seedream-1-lite',
+          prompt: basePrompt,
+          image: firstFrameUrl,
+          last_frame_image: lastFrameUrl,
+          aspect_ratio: aspectRatio,
+          resolution: '480p',
+          duration: 5,
+        }),
+      });
+
+      if (!submitRes.ok) {
+        const err = await submitRes.json().catch(() => ({}));
+        throw new Error(err?.message || 'Failed to submit loop video');
+      }
+
+      const submitJson = await submitRes.json();
+      const requestId = submitJson?.data?.requestId || submitJson?.data?.requestID || submitJson?.data?.taskId;
+      if (!requestId) throw new Error('Missing requestId for loop video');
+
+      // Poll for result and append the completed video to the videos list (stay on Step 2)
+      const videoUrl = await pollReplicateVideoResult(String(requestId), token);
+      setGeneratedVideos((prev) => {
+        const next = [...prev];
+        next.push(videoUrl);
+        return next;
+      });
+      setVideoErrors((prev) => {
+        const next = [...prev];
+        next.push(null);
+        return next;
+      });
+      setVideoPlayed((prev) => {
+        const next = [...prev];
+        next.push(false);
+        return next;
+      });
+      setVideosRequested(true);
+    } catch (e: any) {
+      console.error('[selfieVideo] handleLoopAndRegenerate (single) failed', e);
+      rollbackOptimisticDeduction(requiredCredits);
+      alert(e?.message || 'Failed to generate loop video. Please try again.');
+    } finally {
       setIsGenerating(false);
-      setStep(3);
-    }, 2000);
+    }
   };
 
-  const openUploadModal = (target: 'selfie' | 'friends') => {
+  const regenerateVideo = async (index: number) => {
+    const images = generatedImages;
+    const firstFrameUrl = images[index];
+    const lastFrameUrl = images[index + 1];
+    if (!firstFrameUrl || !lastFrameUrl) {
+      alert('Missing frames to regenerate this video. Please make sure all images are generated.');
+      return;
+    }
+
+    const requiredCredits = VIDEO_COST;
+    if (creditBalance < requiredCredits) {
+      alert(`You need ${requiredCredits} credits to regenerate this video. Your balance is ${creditBalance}.`);
+      return;
+    }
+
+    deductCreditsOptimisticForGeneration(requiredCredits);
+    const previousUrl = generatedVideos[index];
+
+    setVideosRequested(true);
+    setVideoPlayed((prev) => {
+      const next = [...prev];
+      next[index] = false;
+      return next;
+    });
+    setVideoErrors((prev) => {
+      const next = [...prev];
+      next[index] = null;
+      return next;
+    });
+    setGeneratedVideos((prev) => {
+      const next = [...prev];
+      next[index] = '';
+      return next;
+    });
+
+    setIsGenerating(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Please log in to regenerate videos');
+        rollbackOptimisticDeduction(requiredCredits);
+        setGeneratedVideos((prev) => {
+          const next = [...prev];
+          next[index] = previousUrl;
+          return next;
+        });
+        return;
+      }
+
+      const aspectRatio = frameSize === 'vertical' ? '9:16' : '16:9';
+      const backgroundClause = customBackground && customBackground.trim().length > 0
+        ? ` Set the scene in ${customBackground}.`
+        : '';
+      const basePrompt = `Create a smooth, realistic video transition from the first frame ({FIRST_FRAME_DESC}) to the last frame ({LAST_FRAME_DESC}). The person who appears in BOTH the first and last frames must remain the same individual and act as the anchor of the transition. Do not morph; instead, show this shared person moving naturally through space—walking or stepping forward toward the second person in the last frame to take a selfie together.
+
+    Drive the transition with continuous physical motion of this shared person (forward movement, slight body shift, natural arm extension). Let the background and scene evolve gradually as they move; no abrupt swaps. The camera may gently orbit up to 180 degrees around the shared person to emphasize motion, but keep the movement smooth and cinematic. Ensure the shared person visibly walks or advances so it feels intentional and natural, never like a morph.${backgroundClause}
+
+    Strictly preserve identity, facial features, skin tone, hairstyle, and proportions of all subjects. Maintain consistent lighting, camera perspective, and environmental continuity. Use smooth camera easing and realistic motion interpolation. Avoid abrupt scene cuts, sudden background swaps, morphing artifacts, ghosting, warping, text, logos, or watermarks.`;
+
+      const submitRes = await fetch('/api/replicate/seedance-i2v/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          model: 'bytedance/seedream-1-lite',
+          prompt: basePrompt,
+          image: firstFrameUrl,
+          last_frame_image: lastFrameUrl,
+          aspect_ratio: aspectRatio,
+          resolution: '480p',
+          duration: 5,
+        }),
+      });
+
+      if (!submitRes.ok) {
+        const err = await submitRes.json().catch(() => ({}));
+        throw new Error(err?.message || `Failed to submit video ${index + 1}`);
+      }
+
+      const submitJson = await submitRes.json();
+      const requestId = submitJson?.data?.requestId || submitJson?.data?.requestID || submitJson?.data?.taskId;
+      if (!requestId) throw new Error(`Missing requestId for video ${index + 1}`);
+
+      const videoUrl = await pollReplicateVideoResult(String(requestId), token);
+      setGeneratedVideos((prev) => {
+        const next = [...prev];
+        next[index] = videoUrl;
+        return next;
+      });
+      setVideoErrors((prev) => {
+        const next = [...prev];
+        next[index] = null;
+        return next;
+      });
+    } catch (e: any) {
+      console.error(`[selfieVideo] regenerateVideo ${index + 1} failed`, e);
+      rollbackOptimisticDeduction(requiredCredits);
+      setGeneratedVideos((prev) => {
+        const next = [...prev];
+        next[index] = previousUrl;
+        return next;
+      });
+      setVideoErrors((prev) => {
+        const next = [...prev];
+        next[index] = e?.message || 'Video regeneration failed';
+        return next;
+      });
+      alert(e?.message || 'Failed to regenerate video. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleNextFromImages = () => {
+    // If videos were already requested/generated, don't generate again; just go to videos (Step 3/4 UI).
+    if (videosRequested || generatedVideos.some((u) => typeof u === 'string' && u.length > 0)) {
+      setStep(2);
+      return;
+    }
+    void handleImagesToVideos();
+  };
+
+  // Merge generated videos client-side using ffmpeg.wasm (xfade crossfade for smooth transitions)
+  const mergeGeneratedVideos = async (videoUrls: string[]): Promise<string> => {
+    if (!videoUrls || videoUrls.length === 0) throw new Error('No videos to merge');
+
+    // short crossfade duration (seconds)
+    const xfadeDur = 0.2;
+    // assumed per-video duration in seconds (replicate-generated videos use 5s in this workflow)
+    const perDuration = 5;
+
+    // Load @ffmpeg/ffmpeg as a UMD script at runtime to avoid Next/Turbopack server-side resolution issues
+    const loadFFmpegUmd = async () => {
+      if (typeof window === 'undefined') throw new Error('FFmpeg must be loaded in the browser');
+      const w = window as any;
+      if (w.FFmpeg && typeof w.FFmpeg.createFFmpeg === 'function') return w.FFmpeg;
+
+      await new Promise<void>((resolve, reject) => {
+        const src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js';
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+          // If already added but not yet ready, wait for load event
+          existing.addEventListener('load', () => resolve());
+          existing.addEventListener('error', () => reject(new Error('Failed to load FFmpeg script')));
+          return;
+        }
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load FFmpeg script'));
+        document.head.appendChild(s);
+      });
+
+      const w2 = window as any;
+      if (!w2.FFmpeg || typeof w2.FFmpeg.createFFmpeg !== 'function') throw new Error('FFmpeg UMD did not initialize correctly');
+      return w2.FFmpeg;
+    };
+
+    const FFmpegPkg = await loadFFmpegUmd();
+    const createFFmpeg = FFmpegPkg.createFFmpeg;
+    const ffmpeg = createFFmpeg({
+      log: false,
+      corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+    });
+
+    // Minimal fetchFile replacement: returns Uint8Array suitable for ffmpeg.FS writeFile
+    const fetchFile = async (inputUrl: string) => {
+      const res = await fetch(inputUrl);
+      if (!res.ok) throw new Error(`Failed to fetch ${inputUrl}: ${res.status}`);
+      const ab = await res.arrayBuffer();
+      return new Uint8Array(ab);
+    };
+    if (!ffmpeg.isLoaded()) {
+      await ffmpeg.load();
+    }
+
+    // Write inputs to FS
+    for (let i = 0; i < videoUrls.length; i++) {
+      const url = videoUrls[i];
+      try {
+        const data = await fetchFile(url);
+        ffmpeg.FS('writeFile', `in${i}.mp4`, data);
+      } catch (e) {
+        throw new Error(`Failed to fetch or write video ${i + 1}: ${String(e)}`);
+      }
+    }
+
+    // Build filter_complex for chained xfade transitions
+    // Prepare input labels
+    const n = videoUrls.length;
+    // Build video streams labels [0:v]...[n-1:v] -> apply xfade chain
+    // We'll name intermediate outputs v0, v1, ... starting from in0
+    let filterParts: string[] = [];
+
+    // Ensure formats are compatible and set pixel format
+    for (let i = 0; i < n; i++) {
+      filterParts.push(`[${i}:v]format=yuv420p,setsar=1[v${i}];`);
+    }
+
+    // Chain xfade operations
+    if (n === 1) {
+      // Single file: just pass through
+      filterParts.push(`[v0]copy[outv]`);
+    } else {
+      // first xfade between v0 and v1
+      let prevName = `v0`;
+      let curOut = `v01`;
+      const firstOffset = perDuration - xfadeDur;
+      filterParts.push(`[${prevName}][v1]xfade=transition=fade:duration=${xfadeDur}:offset=${firstOffset}[${curOut}];`);
+      prevName = curOut;
+
+      for (let i = 2; i < n; i++) {
+        const nextOut = `v0${i}`;
+        const offset = i * (perDuration - xfadeDur);
+        filterParts.push(`[${prevName}][v${i}]xfade=transition=fade:duration=${xfadeDur}:offset=${offset}[${nextOut}];`);
+        prevName = nextOut;
+      }
+
+      // final mapping
+      filterParts.push(`[${prevName}]fps=30,format=yuv420p[outv]`);
+    }
+
+    const filterComplex = filterParts.join('');
+
+    // Build ffmpeg args: -i in0.mp4 -i in1.mp4 ... -filter_complex "..." -map [outv] -c:v libx264 -preset veryfast -crf 23 out.mp4
+    const args: string[] = [];
+    for (let i = 0; i < n; i++) {
+      args.push('-i', `in${i}.mp4`);
+    }
+    args.push('-filter_complex', filterComplex, '-map', '[outv]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-movflags', 'frag_keyframe+empty_moov', 'out.mp4');
+
+    try {
+      await ffmpeg.run(...args);
+      const outData = ffmpeg.FS('readFile', 'out.mp4');
+      const blob = new Blob([outData.buffer], { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      return url;
+    } catch (e: any) {
+      throw new Error(`FFmpeg failed: ${e?.message || String(e)}`);
+    } finally {
+      // cleanup input files to free memory
+      try {
+        for (let i = 0; i < n; i++) ffmpeg.FS('unlink', `in${i}.mp4`);
+        if (ffmpeg.FS('readdir', '/').includes('out.mp4')) ffmpeg.FS('unlink', 'out.mp4');
+      } catch (e) {
+        // ignore cleanup errors
+      }
+    }
+  };
+
+  const handleVideosToFinal = async () => {
+    const vids = generatedVideos.filter((u) => typeof u === 'string' && u.length > 0);
+    if (vids.length === 0) {
+      alert('No generated videos to merge.');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // Merge and produce final video URL
+      const mergedUrl = await mergeGeneratedVideos(vids);
+      setFinalVideoUrl(mergedUrl);
+      setStep(3);
+    } catch (e: any) {
+      console.error('[selfieVideo] merge videos failed', e);
+      alert(e?.message || 'Failed to merge videos. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const openUploadModal = (target: 'selfie' | 'friends' | 'step2Friend') => {
     setUploadTarget(target);
     setIsUploadModalOpen(true);
   };
@@ -438,11 +862,105 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         setSelfiePhoto(urls[0]);
       }
     } else if (uploadTarget === 'friends') {
-      setFriendPhotos([...friendPhotos, ...urls]);
+      // If uploadReplaceIndex is set, replace that friend photo and clear corresponding generated image
+      if (uploadReplaceIndex !== null && typeof uploadReplaceIndex === 'number') {
+        const idx = uploadReplaceIndex;
+        setFriendPhotos((prev) => {
+          const next = [...prev];
+          if (urls.length > 0) next[idx] = urls[0];
+          return next;
+        });
+        setGeneratedImages((prev) => {
+          const next = [...prev];
+          // clear the generated image so user can regenerate
+          next[idx] = '';
+          return next;
+        });
+        setUploadReplaceIndex(null);
+      } else {
+        setFriendPhotos([...friendPhotos, ...urls]);
+      }
+    } else if (uploadTarget === 'step2Friend') {
+      if (urls.length > 0) {
+        setStep2FriendPhoto(urls[0]);
+      }
     }
     setIsUploadModalOpen(false);
     setUploadTarget(null);
   };
+
+  const handleCreateImageWithStep2Friend = async () => {
+    if (!selfiePhoto || !step2FriendPhoto) return;
+
+    const requiredCredits = IMAGE_COST;
+    if (creditBalance < requiredCredits) {
+      alert(`You need ${requiredCredits} credits to create this image. Your balance is ${creditBalance}.`);
+      return;
+    }
+
+    deductCreditsOptimisticForGeneration(requiredCredits);
+    setIsGenerating(true);
+    setShowLogoGifForCreate(true);
+    setHideControlsDuringGenerate(true);
+
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Please log in to generate images');
+        rollbackOptimisticDeduction(requiredCredits);
+        return;
+      }
+
+      const endpoint = API_BASE ? `${API_BASE}/api/workflows/selfie-video/generate-image` : '/api/workflows/selfie-video/generate-image';
+      // Set model and aspect ratio as per requirements
+      const model = 'gpt-1.5-image';
+      const aspect_ratio = frameSize === 'vertical' ? '2:3' : '3:2';
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          selfieImageUrl: selfiePhoto,
+          friendImageUrl: step2FriendPhoto,
+          frameSize: frameSize,
+          customBackground: customBackground || undefined,
+          customClothes: customClothes || undefined,
+          model,
+          aspect_ratio,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.message || 'Failed to generate image');
+      }
+
+      const data = await response.json();
+      const imageUrl = data?.data?.imageUrl;
+      if (!imageUrl) throw new Error('Missing imageUrl in response');
+
+      setGeneratedImages((prev) => [...prev, imageUrl]);
+      setFriendPhotos((prev) => [...prev, step2FriendPhoto]);
+      // Images changed => any previously generated videos are no longer in sync.
+      setGeneratedVideos([]);
+      setVideoPlayed([]);
+      setVideoErrors([]);
+      setVideosRequested(false);
+      setStep2FriendPhoto(null);
+    } catch (e: any) {
+      console.error('[selfieVideo] handleCreateImageWithStep2Friend error', e);
+      rollbackOptimisticDeduction(requiredCredits);
+      alert(e?.message || 'Failed to generate image. Please try again.');
+    } finally {
+      setIsGenerating(false);
+      setShowLogoGifForCreate(false);
+      setHideControlsDuringGenerate(false);
+    }
+  };
+
+  const stepDisplayNumber = Math.min(4, Math.max(1, step + 1));
 
   return (
     <>
@@ -485,12 +1003,14 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">1. Your Photo</label>
                   {selfiePhoto ? (
-                    <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/10 group">
+                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
                       <img src={selfiePhoto} className="w-full h-full object-cover" alt="selfie" />
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => openUploadModal('selfie')}>
-                        <span className="text-white text-sm font-medium">Change Photo</span>
+                        {/* <span className="text-white text-xs font-medium">Change Photo</span> */}
                       </div>
-                    </div>
+                      </div>
+
+                      
                   ) : (
                     <div onClick={() => openUploadModal('selfie')} className="border border-dashed border-white/15 rounded-xl bg-black/20 h-24 flex items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors">
                       <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={16} /></div>
@@ -535,7 +1055,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-2">
                     4. Custom Background
-                    <span className="text-[9px] normal-case font-normal text-slate-600 bg-slate-800/50 px-1.5 py-0.5 rounded">Optional</span>
+                    <span className="text-[9px] normal-case font-normal text-slate-300 bg-slate-800/50 px-1.5 py-0.5 rounded">Optional</span>
                   </label>
                   <input
                     type="text"
@@ -544,26 +1064,59 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                     placeholder="e.g., beach sunset, office, studio..."
                     className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all"
                   />
-                  <p className="text-[11px] text-slate-600 mt-1.5">Describe the background you want for your video</p>
+                  <p className="text-[11px] text-slate-400 mt-1.5">Describe the background you want for your video</p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-2">
+                    5. Custom Clothes
+                    <span className="text-[9px] normal-case font-normal text-slate-300 bg-slate-800/50 px-1.5 py-0.5 rounded">Optional</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customClothes}
+                    onChange={(e) => setCustomClothes(e.target.value)}
+                    placeholder="e.g., formal suits, casual streetwear, traditional outfits..."
+                    className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1.5">If set, update the outfits for everyone in the photo to match this style.</p>
                 </div>
               </div>
 
               <div className="pt-6 border-t border-white/5 mt-auto">
-                <button onClick={handleMergeImages} disabled={isGenerating || !selfiePhoto || friendPhotos.length === 0} className={`w-full py-4 bg-[#60a5fa] hover:bg-[#4f8edb] text-black font-bold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${(isGenerating || !selfiePhoto || friendPhotos.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  {isGenerating ? <><span className="animate-spin"><Sparkles size={18} /></span> Generating...</> : "Submit & Generate"}
-                </button>
-                {generatedImages.some((img) => Boolean(img)) && (
-                  <button
-                    onClick={() => setStep(1)}
-                    className="w-full mt-3 py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg border border-white/10 transition-all hover:scale-[1.01]"
-                  >
-                    Next
+                {!hideControlsDuringGenerate && (
+                  <button onClick={handleMergeImages} disabled={isGenerating || !selfiePhoto || friendPhotos.length === 0} className={`w-full py-4 bg-[#60a5fa] hover:bg-[#4f8edb] text-black font-bold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${(isGenerating || !selfiePhoto || friendPhotos.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isGenerating ? <><span className="animate-spin"><Sparkles size={18} /></span> Generating...</> : "Submit & Generate"}
                   </button>
+                )}
+                {generatedImages.some((img) => Boolean(img)) && (
+                  !hideControlsDuringGenerate && (
+                    <button
+                      onClick={() => setStep(1)}
+                      className="w-full mt-3 py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg border border-white/10 transition-all hover:scale-[1.01]"
+                    >
+                      Next
+                    </button>
+                  )
                 )}
               </div>
             </div>
 
             <div className={`relative bg-[#020202] ${isFullScreenStep ? 'w-full h-full p-0 flex flex-col' : 'w-full md:w-[60%] p-8 flex items-center justify-center'}`}>
+              {/* Generating overlay: shows a centered animation/message during long-running operations */}
+              {isGenerating && (
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-md">
+                  <div className="flex flex-col items-center gap-4 px-6 py-6 rounded-lg">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                      <div className="animate-spin text-white"><Sparkles size={34} /></div>
+                    </div>
+                    <div className="text-white font-semibold text-lg">
+                      {step === 2 ? 'Generating videos...' : step === 0 ? 'Generating images...' : 'Processing...'}
+                    </div>
+                    <div className="text-slate-300 text-sm">This can take a minute — please keep this window open.</div>
+                  </div>
+                </div>
+              )}
               {step === 0 && (
                 <div className="text-center opacity-50">
                   <div className="w-32 h-32 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10"><ImageIcon size={48} className="text-slate-600" /></div>
@@ -573,15 +1126,21 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
               {step === 1 && (
                 <div className="w-full h-full flex flex-col animate-in relative">
-                  <div className="flex justify-between items-center p-8 z-20 absolute top-0 w-full bg-gradient-to-b from-black/80 to-transparent">
-                    <h2 className="text-white text-xl font-medium">Images</h2>
-                    <button onClick={() => setStep(0)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
-                      <ArrowLeft size={24} className="text-white" />
-                    </button>
+                  <div className="flex justify-between items-start p-8 z-20 absolute top-0 w-full bg-gradient-to-b from-black/80 to-transparent">
+                    <div>
+                      <div className="inline-flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-white/10 px-2 py-1 rounded-full">Step {stepDisplayNumber}/4</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">Images</span>
+
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-8 pb-24 flex justify-center items-center">
                     <div className={`grid gap-6 w-full max-w-7xl content-center ${frameSize === 'horizontal' ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
+                      
+
                       {generatedImages.map((src, i) => (
                         <div key={i} className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
                           {src ? (
@@ -606,29 +1165,74 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                             </div>
                           )}
                           <div
-                            onClick={() => regenerateImage(i)}
-                            className="absolute bottom-3 right-3 w-7 h-7 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-[#60a5fa] hover:text-black transition-all cursor-pointer"
-                            aria-label="Regenerate image"
+                            className="absolute bottom-3 right-3 flex items-center gap-2"
                           >
-                            <RefreshCw size={14} />
+                            {!hideControlsDuringGenerate && (
+                              <div
+                                onClick={() => regenerateImage(i)}
+                                className="w-7 h-7 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-[#60a5fa] hover:text-black transition-all cursor-pointer"
+                                aria-label="Regenerate image"
+                              >
+                                <RefreshCw size={14} />
+                              </div>
+                            )}
+                            
                           </div>
                         </div>
                       ))}
+
+                      {/* Step 2 friend preview/upload tile */}
+                      <div
+                        className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}
+                      >
+                        {step2FriendPhoto ? (
+                          <>
+                            <img src={step2FriendPhoto} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="friend preview" />
+                            <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/50 via-black/0 to-transparent" />
+                            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openUploadModal('step2Friend')}
+                                disabled={isGenerating}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors ${(isGenerating) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                Upload
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleCreateImageWithStep2Friend()}
+                                disabled={isGenerating || !selfiePhoto}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md bg-[#60a5fa] text-black hover:bg-[#4f8edb] transition-colors ${(isGenerating || !selfiePhoto) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                {showLogoGifForCreate ? (
+                                  <img src="/logo.gif" alt="loading" className="w-6 h-6 object-contain" />
+                                ) : (
+                                  'Create'
+                                )}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openUploadModal('step2Friend')}
+                            disabled={isGenerating}
+                            className={`w-full h-full flex flex-col items-center justify-center gap-3 ${(isGenerating) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-slate-400 group-hover:text-white group-hover:bg-white/10 transition-colors">
+                              <Plus size={18} />
+                            </div>
+                            <div className="text-sm text-slate-400 group-hover:text-white transition-colors">Upload friend photo</div>
+                          </button>
+                        )}
+                      </div>
+                      
                     </div>
                   </div>
 
                   <div className="absolute bottom-8 left-8 z-30">
-                    <button onClick={handleImagesToVideos} className="py-3 px-8 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium rounded-md shadow-lg transition-all hover:scale-105">
+                    <button onClick={handleNextFromImages} className="py-3 px-8 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium rounded-md shadow-lg transition-all hover:scale-105">
                       Next
-                    </button>
-                  </div>
-                  <div className="absolute bottom-8 right-8 z-30">
-                    <button
-                      onClick={() => setStep(2)}
-                      disabled={!(videosRequested || generatedVideos.some((u) => u))}
-                      className={`py-3 px-8 rounded-md shadow-lg transition-all hover:scale-105 ${videosRequested || generatedVideos.some((u) => u) ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white/5 text-slate-500 cursor-not-allowed'}`}
-                    >
-                      Go to Videos
                     </button>
                   </div>
                 </div>
@@ -636,51 +1240,87 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
               {step === 2 && (
                 <div className="w-full h-full flex flex-col animate-in relative">
-                  <div className="flex justify-between items-center p-8 z-20 absolute top-0 w-full bg-gradient-to-b from-black/80 to-transparent">
-                    <h2 className="text-white text-xl font-medium">Videos</h2>
+                  <div className="flex justify-between items-start p-8 z-20 absolute top-0 w-full bg-gradient-to-b from-black/80 to-transparent">
+                    <div>
+                      <div className="inline-flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-white/10 px-2 py-1 rounded-full">Step {stepDisplayNumber}/4</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">Videos</span>
+
+                        </div>
+                    </div>
                     <button onClick={() => setStep(1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
                       <ArrowLeft size={24} className="text-white" />
                     </button>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-8 pb-24 flex justify-center items-center">
-                    {(() => {
-                      const allReady = generatedVideos.length > 0 && generatedVideos.every((u) => typeof u === 'string' && u.length > 0);
-                      const anyError = videoErrors.some((m) => m);
-                      if (!allReady && !anyError) {
-                        // Show placeholders until all videos are ready
-                        const count = Math.max(1, generatedVideos.length || 2);
-                        return (
-                          <div className={`grid gap-6 w-full max-w-7xl content-center ${frameSize === 'horizontal' ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
-                            {Array.from({ length: count }).map((_, i) => (
-                              <div key={i} className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 video-placeholder ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className="animate-spin"><Sparkles size={24} className="text-slate-600" /></div>
-                                </div>
+                    <div className={`grid gap-6 w-full max-w-7xl content-center ${frameSize === 'horizontal' ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
+                      {(generatedVideos.length > 0 ? generatedVideos : ['']).map((src, i) => {
+                        const err = videoErrors[i];
+
+                        if (err) {
+                          return (
+                            <div key={i} className={`relative group bg-[#111] rounded-lg overflow-hidden border border-red-500/60 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+                              <div className="w-full h-full flex items-center justify-center px-4 text-center text-sm text-red-300">
+                                {err}
                               </div>
-                            ))}
-                          </div>
-                        );
-                      }
-                      // Render videos when all ready or show errors inline
-                      return (
-                        <div className={`grid gap-6 w-full max-w-7xl content-center ${frameSize === 'horizontal' ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
-                          {generatedVideos.map((src, i) => {
-                            const err = videoErrors[i];
-                            if (err) {
-                              return (
-                                <div key={i} className={`relative group bg-[#111] rounded-lg overflow-hidden border border-red-500/60 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
-                                  <div className="w-full h-full flex items-center justify-center px-4 text-center text-sm text-red-300">
-                                    {err}
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return (
-                              <div
-                                key={i}
-                                className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}
-                                onClick={() => {
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void regenerateVideo(i);
+                                }}
+                                className="absolute bottom-3 right-3 w-7 h-7 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-[#60a5fa] hover:text-black transition-all"
+                                aria-label="Regenerate video"
+                              >
+                                {!hideControlsDuringGenerate && <RefreshCw size={14} />}
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        if (!src) {
+                          return (
+                            <div key={i} className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 video-placeholder ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+                              <div className="w-full h-full flex items-center justify-center">
+                                <div className="animate-spin"><Sparkles size={24} className="text-slate-600" /></div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={i}
+                            className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}
+                            onClick={() => {
+                              const v = videoRefs.current[i];
+                              if (v) {
+                                v.play().catch(() => {});
+                              }
+                              setVideoPlayed((prev) => {
+                                const next = [...prev];
+                                next[i] = true;
+                                return next;
+                              });
+                            }}
+                          >
+                            <video
+                              src={src}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              loop
+                              preload="metadata"
+                              controls
+                              ref={(el) => { videoRefs.current[i] = el; }}
+                            />
+                            {!videoPlayed[i] && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   const v = videoRefs.current[i];
                                   if (v) {
                                     v.play().catch(() => {});
@@ -691,55 +1331,75 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                                     return next;
                                   });
                                 }}
+                                className="absolute inset-0 flex items-center justify-center"
                               >
-                                <video
-                                  src={src}
-                                  className="w-full h-full object-cover"
-                                  muted
-                                  playsInline
-                                  loop
-                                  preload="metadata"
-                                  controls
-                                  ref={(el) => { videoRefs.current[i] = el; }}
-                                />
-                                {!videoPlayed[i] && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const v = videoRefs.current[i];
-                                      if (v) {
-                                        v.play().catch(() => {});
-                                      }
-                                      setVideoPlayed((prev) => {
-                                        const next = [...prev];
-                                        next[i] = true;
-                                        return next;
-                                      });
-                                    }}
-                                    className="absolute inset-0 flex items-center justify-center"
-                                  >
-                                    <div className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 transition-colors backdrop-blur flex items-center justify-center pl-1">
-                                      <Play size={18} fill="white" />
-                                    </div>
-                                  </button>
-                                )}
-                                <a
-                                  href={src}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="absolute top-3 right-3 px-3 py-1.5 text-xs font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors"
-                                >
-                                  Download
-                                </a>
-                              </div>
-                            );
-                          })}
+                                <div className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 transition-colors backdrop-blur flex items-center justify-center pl-1">
+                                  <Play size={18} fill="white" />
+                                </div>
+                              </button>
+                            )}
+                            <a
+                              href={src}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute top-3 right-3 px-3 py-1.5 text-xs font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors"
+                            >
+                              Download
+                            </a>
+                            {/* Aspect ratio badge (shows 9:16 or 16:9 to match generated video) */}
+                            <div className="absolute top-3 right-14 px-2 py-1 rounded-md bg-black/60 text-xs font-semibold text-white border border-white/10">
+                              {frameSize === 'vertical' ? '9:16' : '16:9'}
+                            </div>
+                            {/* If this is the last generated video tile, show a small Loop button to rotate images and regenerate sequence */}
+                            {/* {i === Math.max(0, generatedVideos.length - 1) && generatedImages.filter(u => typeof u === 'string' && u.length > 0).length >= 2 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleLoopAndRegenerate();
+                                }}
+                                className="absolute bottom-3 right-12 px-3 py-1.5 text-xs font-semibold rounded-md bg-white/10 backdrop-blur-md text-white border border-white/10 hover:bg-white/20 hover:text-black transition-all"
+                                aria-label="Loop and regenerate"
+                              >
+                                Loop
+                              </button>
+                            )} */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void regenerateVideo(i);
+                              }}
+                              className="absolute bottom-3 right-3 w-7 h-7 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-[#60a5fa] hover:text-black transition-all"
+                              aria-label="Regenerate video"
+                            >
+                              {!hideControlsDuringGenerate && <RefreshCw size={14} />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {/* Dedicated Loop tile: appears to the right of videos grid and matches aspect ratio */}
+                      {generatedImages.filter(u => typeof u === 'string' && u.length > 0).length >= 2 && (
+                        <div className={`relative group bg-[#0d0d0d] rounded-lg overflow-hidden border border-white/10 flex items-center justify-center ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+                          <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-black/60 text-xs font-semibold text-white border border-white/10">
+                            {frameSize === 'vertical' ? '9:16' : '16:9'}
+                          </div>
+                          <div className="text-center px-4">
+                            <div className="mb-3 text-sm text-slate-300">Create loop video</div>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); void handleLoopAndRegenerate(); }}
+                              disabled={isGenerating}
+                              className={`px-6 py-3 rounded-lg text-sm font-semibold ${isGenerating ? 'bg-white/10 text-slate-400 cursor-not-allowed' : 'bg-[#60a5fa] text-black hover:bg-[#4f8edb]'}`}
+                            >
+                              {isGenerating ? 'Generating...' : 'Loop'}
+                            </button>
+                          </div>
                         </div>
-                      );
-                    })()}
+                      )}
+                    </div>
                   </div>
 
                   <div className="absolute bottom-8 left-8 z-30">
@@ -752,13 +1412,31 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
               {step === 3 && (
                 <div className="w-full h-full flex flex-col items-center justify-center animate-in bg-black relative">
-                  <div className="absolute top-8 left-8 text-white text-xl font-medium z-20">Final Video</div>
+                  <div className="absolute top-0 left-0 right-0 p-8 z-20 bg-gradient-to-b from-black/80 to-transparent">
+                    <div className="inline-flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-white/10 px-2 py-1 rounded-full">Step {stepDisplayNumber}/4</span>
+                    </div>
+                    <div className="text-white text-xl font-medium">Final Video</div>
+                  </div>
                   <div className="w-full max-w-4xl aspect-video bg-[#111] border border-white/10 rounded-xl overflow-hidden relative shadow-2xl">
                     <img src={finalVideoUrl || ""} className="w-full h-full object-cover opacity-80" alt="final video" />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center pl-1 cursor-pointer hover:scale-110 transition-transform"><Play size={40} fill="white" /></div>
                     </div>
-                    <div className="absolute top-4 right-4 z-30">
+                    <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleLoopAndRegenerate();
+                        }}
+                        disabled={isGenerating || generatedImages.filter(u => typeof u === 'string' && u.length > 0).length < 2}
+                        className={`px-3 py-2 rounded-md text-sm font-semibold border border-white/20 transition-all ${isGenerating ? 'bg-white/10 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                        aria-label="Loop and regenerate"
+                      >
+                        Loop
+                      </button>
                       <a
                         href={finalVideoUrl || undefined}
                         download
@@ -790,7 +1468,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={handleUpload}
-            remainingSlots={uploadTarget === 'selfie' ? 1 : 10}
+            remainingSlots={uploadTarget === 'selfie' || uploadTarget === 'step2Friend' ? 1 : 10}
+            initialTab="computer"
+            enableCameraCapture
+            cameraFacingMode={uploadTarget === 'selfie' ? 'user' : 'environment'}
           />
         </div>
       )}
