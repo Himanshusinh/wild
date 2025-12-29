@@ -106,7 +106,17 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {/* Workflow Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
         {filteredWorkflows.map((wf) => (
-          <div key={wf.id} onClick={() => openModal(wf)} className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1">
+          <div
+            key={wf.id}
+            onClick={() => {
+              if (wf.id === 'selfie-video') {
+                router.push('/viraltrend/selfievideo');
+              } else {
+                openModal(wf);
+              }
+            }}
+            className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1"
+          >
             <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/[0.02] mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
               <img
                 src={wf.thumbnail}
