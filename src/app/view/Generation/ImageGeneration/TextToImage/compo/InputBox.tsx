@@ -5011,8 +5011,10 @@ const InputBox = () => {
             console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
           }
 
+          const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit';
+
           // Qwen image-edit specific parameters
-          if (selectedModel === 'qwen-image-edit') {
+          if (isQwenImageEdit) {
             generationPayload.aspect_ratio = frameSize;
             // FileTypeDropdown stores 'jpeg' but Qwen schema uses 'jpg'
             generationPayload.output_format = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
@@ -5025,7 +5027,7 @@ const InputBox = () => {
           // Persist source uploads for Qwen image-edit so the Preview Modal can show the input image(s)
           try {
             const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
-            if (selectedModel === 'qwen-image-edit' && resultHistoryId && Array.isArray(combinedImages) && combinedImages.length > 0) {
+            if (isQwenImageEdit && resultHistoryId && Array.isArray(combinedImages) && combinedImages.length > 0) {
               const inputImages = combinedImages.map((u: string, idx: number) => {
                 const p = toZataPath(u);
                 if (p) return { id: `input-${idx + 1}`, storagePath: p, url: toDirectUrl(p) };
@@ -6176,7 +6178,7 @@ const InputBox = () => {
             </div>
 
             {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
+            <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
               {error && <div className="text-red-500 text-xs">{error}</div>}
               {expectedCredits > 0 && (
                 <div className="text-[11px] text-white/70">
