@@ -56,9 +56,13 @@ export default function CommunityCreations({
     const fetchItems = async () => {
       try {
         setError(null)
-        const res = await fetch('/api/community-showcase', {
+        // Force fresh fetch with timestamp to break browser "disk cache"
+        const res = await fetch(`/api/community-showcase?t=${Date.now()}`, {
           credentials: 'include',
-          cache: 'force-cache', // Use cached version when available
+          cache: 'no-store', // Disable browser caching
+          headers: {
+            'Cache-Control': 'no-cache, no-store'
+          }
         })
         
         if (!res.ok) {
