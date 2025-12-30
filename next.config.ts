@@ -64,7 +64,7 @@ const nextConfig: NextConfig = {
     if (!isDev) {
       headers.push(
         {
-          source: '/:path*.(js|css|woff|woff2|ttf|otf|jpg|jpeg|png|gif|svg|webp|avif|mp4|webm)',
+          source: '/:path*.(woff|woff2|ttf|otf|jpg|jpeg|png|gif|svg|webp|avif|mp4|webm)',
           headers: [
             { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
           ],
