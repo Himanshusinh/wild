@@ -125,6 +125,19 @@ export function proxy(req: NextRequest) {
   if (pathname === '/robots.txt') {
     res.headers.set('Content-Type', 'text/plain; charset=utf-8');
   }
+  // For the main HTML document, we disable caching at the edge (Vercel/CDN)
+  // to ensure we don't serve stale HTML that points to old JS chunk hashes.
+  const isDocument = !pathname.includes('.') || pathname.endsWith('.html');
+  const isApi = pathname.startsWith('/api/');
+
+  if (isDocument && !isApi) {
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+    res.headers.set('Surrogate-Control', 'no-store'); // Specifically for CDNs like Vercel/Cloudflare
+  }
+
+  // Security Headers
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
