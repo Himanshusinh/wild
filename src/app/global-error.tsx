@@ -3,6 +3,17 @@
 import React from "react";
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  React.useEffect(() => {
+    // Automatically reload on ChunkLoadError (deployment version mismatch)
+    if (error?.message?.includes('Loading chunk') || error?.message?.includes('ChunkLoadError') || error?.name === 'ChunkLoadError') {
+       const reloadKey = `reload_chunk_error_${new Date().getMinutes()}`;
+       if (!sessionStorage.getItem(reloadKey)) {
+         sessionStorage.setItem(reloadKey, 'true');
+         window.location.reload();
+       }
+    }
+  }, [error]);
+
   return (
     <html>
       <body>
