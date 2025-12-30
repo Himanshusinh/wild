@@ -46,7 +46,13 @@ export async function GET() {
 
     try {
       const debugUrl = `${apiBase.replace(/\/$/, '')}/api/feed?mode=image&limit=5`;
-      const debugRes = await fetch(debugUrl);
+      const debugRes = await fetch(debugUrl, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.wildmindai.com/',
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
       const debugText = await debugRes.text();
       
       debugInfo.rawFetchStatus = debugRes.status;
