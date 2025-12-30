@@ -51,18 +51,19 @@ export default function CommunityCreations({
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PublicItem | null>(null)
 
-  // Fetch from our new cached API with better error handling
+  // Fetch directly from backend to bypass Cloudflare/Vercel proxy bolcks
   useEffect(() => {
     const fetchItems = async () => {
       try {
         setError(null)
-        // Force fresh fetch with timestamp to break browser "disk cache"
-        const res = await fetch(`/api/community-showcase?t=${Date.now()}`, {
-          credentials: 'include',
-          cache: 'no-store', // Disable browser caching
-          headers: {
-            'Cache-Control': 'no-cache, no-store'
-          }
+        // Hardcoded fallback for now to ensure it works
+        const apiBase = API_BASE || 'https://wildmindai.com'
+        // Direct fetch to backend
+        const res = await fetch(`${apiBase}/api/feed?mode=image&limit=50`, {
+           method: 'GET',
+           headers: {
+             'Content-Type': 'application/json'
+           }
         })
         
         if (!res.ok) {
@@ -70,35 +71,44 @@ export default function CommunityCreations({
         }
         
         const json = await res.json()
+        const itemsList = json?.data?.items || json?.items || []
         
-        if (json.responseStatus === 'success' && Array.isArray(json.data)) {
-          // Validate and filter items to ensure they have valid image data
-          const validItems = json.data.filter((item: PublicItem) => {
-            // Must have an ID
+        if (Array.isArray(itemsList)) {
+          // Validate and filter items locally since we are bypassing the proxy cache
+          const validItems = itemsList.filter((item: any) => {
+            // Basic validation
             if (!item?.id) return false
             
-            // Must have at least one valid image with a resolvable URL
-            if (Array.isArray(item.images) && item.images.length > 0) {
-              const hasValidImage = item.images.some((img: any) => {
-                const url = resolveMediaUrl(img)
-                return !!url && url.length > 0
-              })
-              if (hasValidImage) return true
-            }
+            // Filter non-images
+            const type = (item.generationType || '').toLowerCase()
+            const isImage = type === 'text-to-image' || type === 'image-upscale' || type === 'logo' || type === 'product-generation' || type === 'sticker-generation'
+            if (!isImage) return false
+
+            // Exclude video/audio
+            if (item.videos?.length > 0 || item.audios?.length > 0) return false
             
-            // Try to resolve from root level if images array is empty
-            const rootUrl = resolveMediaUrl(item)
-            return !!rootUrl && rootUrl.length > 0
+            // Check for valid image URL (relaxed check)
+            const hasValidImage = resolveMediaUrl(item) || (Array.isArray(item.images) && item.images.some((img: any) => resolveMediaUrl(img)))
+            
+            return !!hasValidImage
+          }).map((item: any) => {
+              // Normalize structure to PublicItem if needed
+              return {
+                  ...item,
+                  // Ensure basic fields exists
+                  images: Array.isArray(item.images) ? item.images : []
+              } as PublicItem
           })
           
           setItems(validItems)
         } else {
-          throw new Error('Invalid response format')
+          console.warn('[CommunityCreations] Invalid data format from backend', json)
+          setItems([])
         }
       } catch (e: any) {
         console.error('[CommunityCreations] Failed to load community creations', e)
         setError(e?.message || 'Failed to load community creations')
-        setItems([]) // Set empty array on error
+        setItems([])
       } finally {
         setLoading(false)
       }
