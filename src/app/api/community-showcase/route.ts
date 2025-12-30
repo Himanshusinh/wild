@@ -47,16 +47,24 @@ export async function GET() {
     try {
       const debugUrl = `${apiBase.replace(/\/$/, '')}/api/feed?mode=image&limit=5`;
       const debugRes = await fetch(debugUrl);
-      const debugJson = await debugRes.json();
+      const debugText = await debugRes.text();
+      
       debugInfo.rawFetchStatus = debugRes.status;
       debugInfo.rawFetchOk = debugRes.ok;
-      debugInfo.rawItemsCount = (debugJson?.data?.items || []).length;
-      debugInfo.firstRawItem = (debugJson?.data?.items || [])[0] ? {
-        id: debugJson.data.items[0].id,
-        url: debugJson.data.items[0].url,
-        images: debugJson.data.items[0].images,
-        type: debugJson.data.items[0].generationType
-      } : 'No items';
+      debugInfo.rawResponseExcerpt = debugText.substring(0, 200); // See what the HTML says!
+      
+      try {
+          const debugJson = JSON.parse(debugText);
+          debugInfo.rawItemsCount = (debugJson?.data?.items || []).length;
+          debugInfo.firstRawItem = (debugJson?.data?.items || [])[0] ? {
+            id: debugJson.data.items[0].id,
+            url: debugJson.data.items[0].url,
+            images: debugJson.data.items[0].images,
+            type: debugJson.data.items[0].generationType
+          } : 'No items';
+      } catch (jsonErr) {
+          debugInfo.jsonParseError = String(jsonErr);
+      }
     } catch (debugErr: any) {
       debugInfo.rawFetchError = String(debugErr);
     }
