@@ -209,7 +209,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isZTurbo = selectedModel === 'new-turbo-model';
   const isPImage = selectedModel === 'prunaai/p-image';
   const isGptImage15 = selectedModel === 'openai/gpt-image-1.5';
-  const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit';
+  const isQwenImageEdit = selectedModel === 'qwen-image-edit';
 
   const frameSizes = (() => {
     if (isQwenImageEdit) {

@@ -76,13 +76,10 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
         // 4. High quality check (score >= 9)
         const score = typeof item.aestheticScore === 'number' ? item.aestheticScore : (typeof item.score === 'number' ? item.score : 0)
         
-        // Relaxed score to ensure we always show content
-        // The backend already sorts by score/quality, so we should trust its ordering
-        // Just filter out absolute garbage (0 score usually means unscored, but we can accept them if needed)
-        // Set to 0.1 to allow basically anything that has been processed
-        // if (score < 0.1) {
-        //    return false
-        // }
+        // Relaxed score to 9 to ensure fast loading with sufficient items
+        if (score < 9) {
+           return false
+        }
 
         return true
       })

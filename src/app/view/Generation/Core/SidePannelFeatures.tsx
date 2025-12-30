@@ -111,7 +111,7 @@ const SidePannelFeatures = () => {
       <div
         onMouseLeave={() => setIsSidebarHovered(false)}
         className={`fixed top-0 bottom-0 left-0 flex flex-col transition-all duration-500 ease-in-out  bg-[#050505]/95 backdrop-blur-2xl
-          ${isMobileSidebarOpen ? 'w-56 translate-x-0 z-[110]' : '-translate-x-full md:translate-x-0 z-[110] md:w-20'}`}
+          ${isMobileSidebarOpen ? 'w-56 translate-x-0 z-[56]' : '-translate-x-full md:translate-x-0 z-[50] md:w-20'}`}
       >
         {/* Mobile Close Button */}
         <div className="flex items-center justify-between px-3 pt-3 md:hidden">
@@ -178,14 +178,6 @@ const SidePannelFeatures = () => {
             isActive={pathname?.includes('/canvas-projects')}
             setIsSidebarHovered={setIsSidebarHovered}
             onClick={() => nav('/canvas-projects')}
-          />
-
-          <SidebarItem
-            icon={<Hexagon />}
-            label="Workflows"
-            isActive={pathname?.includes('/view/workflows') || pathname?.includes('/workflows')}
-            setIsSidebarHovered={setIsSidebarHovered}
-            onClick={() => nav(NAV_ROUTES.WORKFLOWS)}
           />
 
           <SidebarItem

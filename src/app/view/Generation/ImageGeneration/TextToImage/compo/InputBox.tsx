@@ -5011,10 +5011,8 @@ const InputBox = () => {
             console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
           }
 
-          const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit';
-
           // Qwen image-edit specific parameters
-          if (isQwenImageEdit) {
+          if (selectedModel === 'qwen-image-edit') {
             generationPayload.aspect_ratio = frameSize;
             // FileTypeDropdown stores 'jpeg' but Qwen schema uses 'jpg'
             generationPayload.output_format = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
@@ -5027,7 +5025,7 @@ const InputBox = () => {
           // Persist source uploads for Qwen image-edit so the Preview Modal can show the input image(s)
           try {
             const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
-            if (isQwenImageEdit && resultHistoryId && Array.isArray(combinedImages) && combinedImages.length > 0) {
+            if (selectedModel === 'qwen-image-edit' && resultHistoryId && Array.isArray(combinedImages) && combinedImages.length > 0) {
               const inputImages = combinedImages.map((u: string, idx: number) => {
                 const p = toZataPath(u);
                 if (p) return { id: `input-${idx + 1}`, storagePath: p, url: toDirectUrl(p) };
@@ -5665,16 +5663,6 @@ const InputBox = () => {
                                   opacity: 0,
                                 } : {}),
                               }}
-                              draggable={true}
-                              onDragStart={(e) => {
-                                const url = image.thumbnailUrl || image.avifUrl || image.url;
-                                if (url) {
-                                  e.dataTransfer.setData('text/plain', url);
-                                  e.dataTransfer.setData('text/uri-list', url);
-                                  e.dataTransfer.effectAllowed = 'copy';
-                                  // Optional: Set a custom drag image if needed, but browser default is usually fine
-                                }
-                              }}
                               onAnimationEnd={(e) => {
                                 if (isNewEntry) {
                                   e.currentTarget.style.opacity = '1';
@@ -5884,10 +5872,7 @@ const InputBox = () => {
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         <div
-          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered 
-            ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]' 
-            : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
-          }`}
+          className="relative rounded-lg md:rounded-b-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
           onDragOver={(e) => {
@@ -5907,42 +5892,23 @@ const InputBox = () => {
 
             // Handle Files (dragged from desktop/OS)
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-              const files = Array.from(e.dataTransfer.files);
-              const validFiles: File[] = [];
-              const maxBytes = 14 * 1024 * 1024; // 14MB limit
+              const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+              if (files.length === 0) return;
 
+              const newUrls: string[] = [];
               for (const file of files) {
-                if (!file.type.startsWith('image/')) {
-                  continue;
-                }
-                if (file.size > maxBytes) {
-                  toast.error(`Image "${file.name}" exceeds 14MB limit`);
-                  continue;
-                }
-                validFiles.push(file);
+                const reader = new FileReader();
+                const dataUrl: string = await new Promise((resolve) => {
+                  reader.onload = () => resolve(reader.result as string);
+                  reader.readAsDataURL(file);
+                });
+                newUrls.push(dataUrl);
               }
 
-              if (validFiles.length > 0) {
-                const newUrls: string[] = [];
-                for (const file of validFiles) {
-                  try {
-                    const reader = new FileReader();
-                    const dataUrl: string = await new Promise((resolve, reject) => {
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(file);
-                    });
-                    newUrls.push(dataUrl);
-                  } catch (error) {
-                    console.error("Error reading file:", file.name, error);
-                    toast.error(`Failed to read "${file.name}"`);
-                  }
-                }
-
-                if (newUrls.length > 0) {
-                  dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
-                  toast.success(`Added ${newUrls.length} image(s)`);
-                }
+              if (newUrls.length > 0) {
+                dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 4)));
+                // Open assets viewer if needed or just show toast
+                toast.success(`added ${newUrls.length} image(s)`);
               }
               return;
             }
@@ -5950,7 +5916,7 @@ const InputBox = () => {
             // Handle dragged logical items (URLs from within the app)
             const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
             if (url && (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/'))) {
-              dispatch(setUploadedImages([...uploadedImages, url].slice(0, 10)));
+              dispatch(setUploadedImages([...uploadedImages, url].slice(0, 4)));
               toast.success('Image added');
             }
           }}
@@ -6069,40 +6035,20 @@ const InputBox = () => {
                 onPaste={async (e) => {
                   // Check for files first
                   if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                    const files = Array.from(e.clipboardData.files);
-                    const validFiles: File[] = [];
-                    const maxBytes = 14 * 1024 * 1024; // 14MB limit
-
-                    for (const file of files) {
-                      if (!file.type.startsWith('image/')) {
-                        continue;
-                      }
-                      if (file.size > maxBytes) {
-                        toast.error(`Image "${file.name}" exceeds 14MB limit`);
-                        continue;
-                      }
-                      validFiles.push(file);
-                    }
-
-                    if (validFiles.length > 0) {
+                    const files = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length > 0) {
                       e.preventDefault();
                       const newUrls: string[] = [];
-                      for (const file of validFiles) {
-                        try {
-                          const reader = new FileReader();
-                          const dataUrl: string = await new Promise((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result as string);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                          });
-                          newUrls.push(dataUrl);
-                        } catch (error) {
-                          console.error("Error reading pasted file:", file.name, error);
-                          toast.error(`Failed to read pasted image`);
-                        }
+                      for (const file of files) {
+                        const reader = new FileReader();
+                        const dataUrl: string = await new Promise((resolve) => {
+                          reader.onload = () => resolve(reader.result as string);
+                          reader.readAsDataURL(file);
+                        });
+                        newUrls.push(dataUrl);
                       }
                       if (newUrls.length > 0) {
-                        dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
+                        dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 4)));
                         toast.success(`Pasted ${newUrls.length} image(s)`);
                       }
                       return;
@@ -6229,83 +6175,8 @@ const InputBox = () => {
               </div>
             </div>
 
-            {/* Uploaded Images / Characters Preview (Moved INSIDE container to match Video Gen style) */}
-            {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-              <div className="hidden md:flex flex-wrap gap-2 px-1 pb-3 pt-2">
-                 {/* Selected Characters */}
-                 {selectedCharacters.map((character: any) => (
-                  <div key={character.id} className="relative group">
-                    <div
-                      className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                      title={`Character: ${character.name}`}
-                    >
-                      <img
-                        src={character.frontImageUrl}
-                        alt={character.name}
-                        decoding="async"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                        {character.name || 'Character'}
-                      </div>
-                    </div>
-                    <button
-                      aria-label="Remove character"
-                      className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        dispatch(removeSelectedCharacter(character.id));
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                 ))}
-
-                 {/* Uploaded Images */}
-                 {uploadedImages.map((u: string, i: number) => (
-                   <div key={i} className="relative group">
-                     <div
-                       className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                       onClick={() => {
-                         setAssetViewer({
-                           isOpen: true,
-                           assetUrl: u,
-                           assetType: 'image',
-                           title: `Uploaded Image ${i + 1}`
-                         });
-                       }}
-                     >
-                       <img
-                         src={u}
-                         alt=""
-                         decoding="async"
-                         className="w-full h-full object-cover"
-                       />
-                       <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                         Image {i + 1}
-                       </div>
-                     </div>
-                     <button
-                       aria-label="Remove image"
-                       className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
-                         dispatch(setUploadedImages(next));
-                       }}
-                     >
-                       ×
-                     </button>
-                   </div>
-                 ))}
-              </div>
-            )}
-            
-
-
             {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
+            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
               {error && <div className="text-red-500 text-xs">{error}</div>}
               {expectedCredits > 0 && (
                 <div className="text-[11px] text-white/70">
@@ -6358,7 +6229,90 @@ const InputBox = () => {
           </div>
 
           {/* Bottom row: pill options */}
-
+          {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+            <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[100vw] md:max-w-none pr-1 no-scrollbar mb-1">
+              {/* Selected Characters Preview */}
+              {selectedCharacters.map((character: any) => (
+                <div
+                  key={character.id}
+                  className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                  title={`Character: ${character.name}`}
+                >
+                  <img
+                    src={character.frontImageUrl}
+                    alt={character.name}
+                    aria-hidden="true"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                  />
+                  <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                    <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                      C
+                    </div>
+                  </div>
+                  <button
+                    aria-label={`Remove character ${character.name}`}
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dispatch(removeSelectedCharacter(character.id));
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {/* Uploaded Images Preview */}
+              {uploadedImages.map((u: string, i: number) => {
+                const count = uploadedImages.length;
+                const sizeClass = count >= 9 ? 'w-12 h-12' : count >= 6 ? 'w-12 h-12' : 'w-12 h-12';
+                return (
+                  <div
+                    key={i}
+                    data-image-index={i}
+                    title={`Image ${i + 1} (index ${i})`}
+                    className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
+                    onClick={() => {
+                      setAssetViewer({
+                        isOpen: true,
+                        assetUrl: u,
+                        assetType: 'image',
+                        title: `Uploaded Image ${i + 1}`
+                      });
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={u}
+                      alt=""
+                      aria-hidden="true"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                    />
+                    {/* Number badge (1-based display, zero-based in payload order) */}
+                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                        {i + 1}
+                      </div>
+                    </div>
+                    <button
+                      aria-label="Remove reference"
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = uploadedImages.filter(
+                          (_: string, idx: number) => idx !== i
+                        );
+                        dispatch(setUploadedImages(next));
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
             {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
 

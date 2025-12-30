@@ -3,20 +3,6 @@
 import React from "react";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  React.useEffect(() => {
-    // Automatically reload the page if a ChunkLoadError occurs
-    // This usually happens after a new deployment when old chunks are no longer available
-    if (error?.message?.includes('Loading chunk') || error?.message?.includes('ChunkLoadError') || error?.name === 'ChunkLoadError') {
-      console.log('ChunkLoadError detected, attempting recovery...');
-      const reloadKey = `reload_chunk_error_${new Date().getMinutes()}`;
-      if (!sessionStorage.getItem(reloadKey)) {
-        sessionStorage.setItem(reloadKey, 'true');
-        // Force reload with cache busting
-        window.location.reload();
-      }
-    }
-  }, [error]);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white p-6">
       <div className="max-w-md w-full text-center space-y-4">

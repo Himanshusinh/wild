@@ -21,8 +21,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
-  'qwen-image-edit': 80,        // Legacy alias (keep for backward compatibility)
-  'qwen-image-edit-2511': 80,   // Replicate Qwen Image Edit 2511 (flat 80 credits)
+  'qwen-image-edit': 80,        // Replicate Qwen Image Edit (flat 80 credits)
   // Imagen 4 family (FAL/Google)
   'imagen-4-ultra': 140,
   'imagen-4': 100,
