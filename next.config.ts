@@ -94,6 +94,11 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn']
     }
   },
+  // Force fresh build ID on every deployment to prevent chunk name collisions 
+  // and force CDNs to recognize new assets.
+  generateBuildId: async () => {
+    return new Date().getTime().toString();
+  },
   // Explicitly set Turbopack root to avoid incorrect inference when multiple lockfiles exist
   turbopack: {
     root: process.cwd(),
