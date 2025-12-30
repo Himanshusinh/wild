@@ -14,9 +14,8 @@ const normalizeDate = (d: any) =>
 // Helper to resolve image URL
 const resolveImageUrl = (item: any) => {
   if (!item) return ''
-  // Prefer optimized formats and strictly avoid raw Replicate URLs (url/storagePath)
-  // User requested "zata urls only" (likely meaning data/optimized urls) and "not replicate"
-  return item.avifUrl || item.webpUrl || item.thumbnailUrl || ''
+  // Prefer optimized formats but fallback to standard url/storagePath to prevent empty feed
+  return item.avifUrl || item.webpUrl || item.thumbnailUrl || item.url || item.storagePath || ''
 }
 
 export async function getShowcaseImages(): Promise<PublicItem[]> {
@@ -61,7 +60,10 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
         const type = (item.generationType || '').toLowerCase()
         const isImage = type === 'text-to-image' || type === 'image-upscale' || type === 'logo' || type === 'product-generation' || type === 'sticker-generation'
         
-        if (!isImage) return false
+        if (!isImage) {
+           // console.log('[ShowcaseCache] Filtered out non-image type:', type)
+           return false
+        }
 
         // 2. Must not be video or audio
         if (item.videos?.length > 0 || item.audios?.length > 0) return false
