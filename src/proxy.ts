@@ -64,6 +64,32 @@ export function proxy(req: NextRequest) {
     }
   }
 
+  // Proxy /api/workflows requests to the backend Express service
+  // Fixes 404 for routes like /api/workflows/selfie-video/generate-image
+  if (pathname.startsWith('/api/workflows')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/workflows');
+    }
+  }
+
+  // Proxy /api/replicate requests to the backend Express service
+  // Fixes 404 for routes like /api/replicate/seedance-i2v/submit and /api/replicate/queue/*
+  if (pathname.startsWith('/api/replicate')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/replicate');
+    }
+  }
+
   // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
   // forwards all traffic to Next.js using the www.* host which causes an infinite
   // redirect loop if we try to rewrite it at the edge. Canonical host enforcement
@@ -130,12 +156,12 @@ export function proxy(req: NextRequest) {
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Allow OAuth popups to function (prevents window.closed blocking)
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  
+
   // Improved CSP - allows Turnstile and removes unsafe directives
   const csp = [
     "default-src 'self'",
     // Allow inline styles (Next.js requires this)
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     // Allow scripts from Google, Firebase, Cloudflare Turnstile
     // Note: 'unsafe-eval' needed for Firebase/Google Auth
     "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com",
@@ -146,7 +172,7 @@ export function proxy(req: NextRequest) {
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
     // Permit API/XHR/WebSocket to Google/Firebase backends and our gateway
-    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com",
+    "connect-src 'self' blob: https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com",
     // Allow Google, Firebase OAuth popups/iframes, and Turnstile widget
     "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com",
     // Do not allow our app to be framed by other sites
@@ -158,7 +184,7 @@ export function proxy(req: NextRequest) {
     "object-src 'none'",
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
-  
+
   // Add additional security headers
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.headers.set('X-DNS-Prefetch-Control', 'on');
