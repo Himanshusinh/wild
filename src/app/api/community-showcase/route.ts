@@ -40,15 +40,19 @@ export async function GET() {
       data: validItems
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
       }
     })
   } catch (e: any) {
-    console.error('[CommunityShowcase] Error:', e)
+    console.error('[CommunityShowcase] Critical Error:', e)
     return NextResponse.json({
       responseStatus: 'error',
       message: e?.message || 'Failed to load showcase',
+      debug: process.env.NODE_ENV === 'development' ? String(e) : undefined,
       data: []
-    }, { status: 500 })
+    }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
   }
 }

@@ -1,7 +1,7 @@
 import { PublicItem } from '@/components/ArtStationPreview'
 
 // Cache configuration
-export const REVALIDATE_SECONDS = 86400 // 24 hours
+export const REVALIDATE_SECONDS = 10 // Reduced to 10s for debugging (was 86400)
 
 // Helper to normalize dates
 const normalizeDate = (d: any) => 
@@ -22,10 +22,12 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
     
+    console.log('[ShowcaseCache] Init fetch from API Base:', apiBase)
+    
     const allItems: any[] = []
     let nextCursor: string | undefined = undefined
     let page = 0
-    const MAX_PAGES = 3 // Limit to 3 pages (150 items) for speed
+    const MAX_PAGES = 3 
     const TARGET_COUNT = 50
 
     while (page < MAX_PAGES && allItems.length < TARGET_COUNT) {
@@ -39,7 +41,7 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
       const res = await fetch(apiUrl.toString(), {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
-        next: { revalidate: REVALIDATE_SECONDS }, // Cache for 24 hours
+        next: { revalidate: REVALIDATE_SECONDS },
       })
 
       if (!res.ok) {
@@ -48,8 +50,12 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
       }
 
       const json = await res.json()
+      
+      // Log simple stats about raw response
       const payload = json?.data || json
       const items = (payload?.items || []) as any[]
+      console.log(`[ShowcaseCache] Page ${page + 1} raw items count:`, items.length)
+      
       nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
       if (items.length === 0) break
@@ -61,33 +67,34 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
         const isImage = type === 'text-to-image' || type === 'image-upscale' || type === 'logo' || type === 'product-generation' || type === 'sticker-generation'
         
         if (!isImage) {
-           // console.log('[ShowcaseCache] Filtered out non-image type:', type)
+           console.log('[ShowcaseCache] Filtered out (not image):', item.id, type)
            return false
         }
 
         // 2. Must not be video or audio
-        if (item.videos?.length > 0 || item.audios?.length > 0) return false
+        if (item.videos?.length > 0 || item.audios?.length > 0) {
+           console.log('[ShowcaseCache] Filtered out (has video/audio):', item.id)
+           return false
+        }
 
         // 3. Must have a valid OPTIMIZED image URL (zata/optimized only)
         // Check root or any image in the array
         const rootOptimized = resolveImageUrl(item)
         const hasOptimizedImage = rootOptimized || (Array.isArray(item.images) && item.images.some((img: any) => resolveImageUrl(img)))
         
-        if (!hasOptimizedImage) return false
+        if (!hasOptimizedImage) {
+           console.log('[ShowcaseCache] Filtered out (no valid image URL):', item.id, 'Images:', item.images?.length)
+           return false
+        }
 
-        // 4. High quality check (score >= 9)
-        const score = typeof item.aestheticScore === 'number' ? item.aestheticScore : (typeof item.score === 'number' ? item.score : 0)
+        // 4. Score check (relaxed)
+        // const score = typeof item.aestheticScore === 'number' ? item.aestheticScore : (typeof item.score === 'number' ? item.score : 0)
+        // We accept all scores now
         
-        // Relaxed score to ensure we always show content
-        // The backend already sorts by score/quality, so we should trust its ordering
-        // Just filter out absolute garbage (0 score usually means unscored, but we can accept them if needed)
-        // Set to 0.1 to allow basically anything that has been processed
-        // if (score < 0.1) {
-        //    return false
-        // }
-
         return true
       })
+      
+      console.log(`[ShowcaseCache] Page ${page + 1} valid items after filter:`, filtered.length)
 
       allItems.push(...filtered)
       page++
