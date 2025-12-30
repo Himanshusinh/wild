@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-export default function ImageComparisonSlider({ beforeImage, afterImage, beforeLabel = "Before", afterLabel = "After", imagePosition = "object-top", imageFit = "object-cover" }) {
+export default function ImageComparisonSlider({ beforeImage, afterImage, beforeLabel = "Before", afterLabel = "After", imagePosition = "object-center", imageFit = "object-cover" }) {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
@@ -56,7 +56,7 @@ export default function ImageComparisonSlider({ beforeImage, afterImage, beforeL
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-[#111] select-none group"
+      className="relative w-full h-full overflow-hidden select-none group"
       style={{ touchAction: 'none' }}
     >
       {/* Before Image (Bottom Layer - Right Side) */}

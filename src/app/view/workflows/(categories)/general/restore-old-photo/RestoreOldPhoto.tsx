@@ -1,15 +1,21 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
+import { useCredits } from '@/hooks/useCredits';
 
-export default function RemoveBackground() {
+export default function RestoreOldPhoto() {
     const router = useRouter();
+    const {
+        creditBalance,
+        deductCreditsOptimisticForGeneration,
+        rollbackOptimisticDeduction
+    } = useCredits();
 
     // State
     const [isOpen, setIsOpen] = useState(false);
@@ -20,12 +26,12 @@ export default function RemoveBackground() {
 
     // Workflow Data (Hardcoded for this specific page, matching data.js)
     const workflowData = {
-        id: "remove-background",
-        title: "Remove Background",
+        id: "restore-old-photo",
+        title: "Restore Old Photo",
         category: "General",
-        description: "Clean background removal with high precision studio quality output.",
+        description: "Restore and colorize this image, remove any scratches or imperfections.",
         model: "Seadream4/ Nano Banana",
-        cost: 8 // Backend cost
+        cost: 80 // Frontend cost display
     };
 
     useEffect(() => {
@@ -57,34 +63,45 @@ export default function RemoveBackground() {
             return;
         }
 
+        const CREDIT_COST = 80;
+        if (creditBalance < CREDIT_COST) {
+            toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
+            return;
+        }
+
         try {
+            deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
-            const response = await axiosInstance.post('/api/workflows/general/remove-background', {
-                image: originalImage
-            });
+            // Updated Payload structure as requested
+            const payload = {
+                image: originalImage,
+                prompt: "Restore and colorize this image, remove any scratches or imperfections. [Style: none]",
+                model: "qwen/qwen-image-edit-2511",
+                frameSize: "match_input_image",
+                output_format: "jpg",
+                style: "none",
+                generationType: "text-to-image",
+                isPublic: true,
+                n: 1,
+            };
+
+            const response = await axiosInstance.post('/api/workflows/general/restore-old-photo', payload);
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
                 setGeneratedImage(response.data.data.images[0].url);
-                toast.success('Background removed successfully!');
+                toast.success('Photo restored successfully!');
             } else {
                 throw new Error(response.data?.message || 'Invalid response from server');
             }
 
         } catch (error: any) {
-            console.error('Remove background error:', error);
-            toast.error(error.response?.data?.message || error.message || 'Failed to remove background');
+            console.error('Restore photo error:', error);
+            rollbackOptimisticDeduction(CREDIT_COST);
+            toast.error(error.response?.data?.message || error.message || 'Failed to restore photo');
         } finally {
             setIsGenerating(false);
         }
-    };
-
-    // Helper to get proxy URL for images if needed (similar to other components)
-    const getDisplayUrl = (url: string | null) => {
-        if (!url) return '';
-        // If it's a relative path starting with /users, prepend proxy
-        // (Adjust logic based on how your app handles this; usually straightforward URL works if signed/public)
-        return url;
     };
 
     return (
@@ -196,9 +213,9 @@ export default function RemoveBackground() {
                                     <ImageComparisonSlider
                                         beforeImage={originalImage}
                                         afterImage={generatedImage}
-                                        beforeLabel="Original"
-                                        afterLabel="No Background"
-                                        imageFit="object-contain" // Use object-contain to see full images properly
+                                        beforeLabel="Before"
+                                        afterLabel="After"
+                                        imageFit="object-contain"
                                     />
                                 </div>
                             ) : originalImage ? (
@@ -210,15 +227,15 @@ export default function RemoveBackground() {
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                                             </div>
-                                            <p className="text-white font-medium text-lg animate-pulse">Removing background...</p>
+                                            <p className="text-white font-medium text-lg animate-pulse">Restoring photo...</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/remove-bg-horse-before.jpg"
-                                        afterImage="/remove-bg-horse-after.jpg"
+                                        beforeImage="/portrait-before.jpg"
+                                        afterImage="/portrait-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"

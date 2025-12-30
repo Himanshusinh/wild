@@ -1,15 +1,21 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
+import { useCredits } from '@/hooks/useCredits';
 
-export default function RemoveBackground() {
+export default function LineDrawingToPhoto() {
     const router = useRouter();
+    const {
+        creditBalance,
+        deductCreditsOptimisticForGeneration,
+        rollbackOptimisticDeduction
+    } = useCredits();
 
     // State
     const [isOpen, setIsOpen] = useState(false);
@@ -18,15 +24,24 @@ export default function RemoveBackground() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-    // Workflow Data (Hardcoded for this specific page, matching data.js)
+    // Workflow Data
     const workflowData = {
-        id: "remove-background",
-        title: "Remove Background",
+        id: "line-drawing-to-photo",
+        title: "Line Drawing to Photo",
         category: "General",
-        description: "Clean background removal with high precision studio quality output.",
+        description: "Transform line art into a high-quality photorealistic image.",
         model: "Seadream4/ Nano Banana",
-        cost: 8 // Backend cost
+        cost: 80
     };
+
+    const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
+Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
+Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
+Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
+Add environmental realism with depth, atmosphere, and scale appropriate to the scene.
+Use cinematic lighting, realistic depth of field, and professional photography quality.
+Ultra-high resolution, sharp focus, realistic contrast, natural imperfections, and physically accurate rendering.
+No illustration style — the final result should look like a real photograph.`;
 
     useEffect(() => {
         // Open modal animation on mount
@@ -57,34 +72,45 @@ export default function RemoveBackground() {
             return;
         }
 
+        const CREDIT_COST = 80;
+        if (creditBalance < CREDIT_COST) {
+            toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
+            return;
+        }
+
         try {
+            deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
-            const response = await axiosInstance.post('/api/workflows/general/remove-background', {
-                image: originalImage
-            });
+            // Payload structure
+            const payload = {
+                image: originalImage,
+                prompt: DETAILED_PROMPT,
+                model: "qwen/qwen-image-edit-2511",
+                frameSize: "match_input_image",
+                output_format: "jpg",
+                style: "none",
+                generationType: "text-to-image",
+                isPublic: true,
+                n: 1,
+            };
+
+            const response = await axiosInstance.post('/api/workflows/general/line-drawing-to-photo', payload);
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
                 setGeneratedImage(response.data.data.images[0].url);
-                toast.success('Background removed successfully!');
+                toast.success('Generated successfully!');
             } else {
                 throw new Error(response.data?.message || 'Invalid response from server');
             }
 
         } catch (error: any) {
-            console.error('Remove background error:', error);
-            toast.error(error.response?.data?.message || error.message || 'Failed to remove background');
+            console.error('Line Drawing to Photo error:', error);
+            rollbackOptimisticDeduction(CREDIT_COST);
+            toast.error(error.response?.data?.message || error.message || 'Failed to generate');
         } finally {
             setIsGenerating(false);
         }
-    };
-
-    // Helper to get proxy URL for images if needed (similar to other components)
-    const getDisplayUrl = (url: string | null) => {
-        if (!url) return '';
-        // If it's a relative path starting with /users, prepend proxy
-        // (Adjust logic based on how your app handles this; usually straightforward URL works if signed/public)
-        return url;
     };
 
     return (
@@ -134,7 +160,7 @@ export default function RemoveBackground() {
                                             <>
                                                 <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
                                                 <div className="text-center">
-                                                    <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
+                                                    <span className="text-sm text-slate-300 block font-medium">Upload Line Drawing</span>
                                                     <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
                                                 </div>
                                             </>
@@ -196,9 +222,9 @@ export default function RemoveBackground() {
                                     <ImageComparisonSlider
                                         beforeImage={originalImage}
                                         afterImage={generatedImage}
-                                        beforeLabel="Original"
-                                        afterLabel="No Background"
-                                        imageFit="object-contain" // Use object-contain to see full images properly
+                                        beforeLabel="Line Drawing"
+                                        afterLabel="Photorealistic"
+                                        imageFit="object-contain"
                                     />
                                 </div>
                             ) : originalImage ? (
@@ -210,17 +236,17 @@ export default function RemoveBackground() {
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                                             </div>
-                                            <p className="text-white font-medium text-lg animate-pulse">Removing background...</p>
+                                            <p className="text-white font-medium text-lg animate-pulse">Generating...</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/remove-bg-horse-before.jpg"
-                                        afterImage="/remove-bg-horse-after.jpg"
+                                        beforeImage="/line-to-photo-before.jpg"
+                                        afterImage="/line-to-photo-after.jpg"
                                         beforeLabel="Before"
-                                        afterLabel="After"
+                                        afterLabel="Photorealistic"
                                         imageFit="object-contain"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

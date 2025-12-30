@@ -135,6 +135,16 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                 router.push('/view/workflows/viral-trend/selfie-video');
               } else if (wf.id === 'remove-background') {
                 router.push('/view/workflows/general/remove-background');
+              } else if (wf.id === 'restore-old-photo') {
+                router.push('/view/workflows/general/restore-old-photo');
+              } else if (wf.id === 'photo-to-line-drawing') {
+                router.push('/view/workflows/general/photo-to-line-drawing');
+              } else if (wf.id === 'line-drawing-to-photo') {
+                router.push('/view/workflows/general/line-drawing-to-photo');
+              } else if (wf.id === 'remove-element') {
+                router.push('/view/workflows/general/remove-element');
+              } else if (wf.id === 'remove-watermark') {
+                router.push('/view/workflows/general/remove-watermark');
               } else {
                 router.push(`/view/workflows/${wf.id}`);
               }
