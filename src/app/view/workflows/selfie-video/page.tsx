@@ -40,7 +40,7 @@ export default function SelfieVideoPage() {
   return (
     <SelfieVideoModal
       isOpen
-      onClose={() => router.push('/view/workflows')}
+      onClose={() => router.push('/viraltrend')}
       workflowData={workflow}
     />
   );

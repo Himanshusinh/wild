@@ -56,20 +56,48 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
   // Result Data
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [generatedImageBilling, setGeneratedImageBilling] = useState<Array<{ debitedCredits?: number; status?: string }>>([]);
   const [generatedVideos, setGeneratedVideos] = useState<string[]>([]);
   const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
   const [videoPlayed, setVideoPlayed] = useState<boolean[]>([]);
   const [videoErrors, setVideoErrors] = useState<(string | null)[]>([]);
   const [videosRequested, setVideosRequested] = useState<boolean>(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const remoteVideoUrlsRef = useRef<string[]>([]); // Store original remote URLs for editor export
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
     rollbackOptimisticDeduction,
   } = useCredits();
 
-  const IMAGE_COST = 98;
-  const VIDEO_COST = 360;
+  const IMAGE_COST = 46;
+  const VIDEO_COST = 200;
+
+  // Track optimistic deductions so we can compute deltas and show totals.
+  const prevImageCreditsRef = useRef<number>(0);
+  const prevVideoCreditsRef = useRef<number>(0);
+  const extraCreditsRef = useRef<number>(0); // for regenerations / ad-hoc charges
+
+  const totalReservedCredits = () => prevImageCreditsRef.current + prevVideoCreditsRef.current + extraCreditsRef.current;
+
+  const tryDeduct = (amount: number, trackRef?: React.MutableRefObject<number>) => {
+    if (!amount || amount <= 0) return true;
+    if (creditBalance < amount) {
+      alert(`You need ${amount} credits to perform this action. Your balance is ${creditBalance}.`);
+      return false;
+    }
+    deductCreditsOptimisticForGeneration(amount);
+    if (trackRef) trackRef.current += amount;
+    else extraCreditsRef.current += amount;
+    return true;
+  };
+
+  const rollbackDeduction = (amount: number, trackRef?: React.MutableRefObject<number>) => {
+    if (!amount || amount <= 0) return;
+    rollbackOptimisticDeduction(amount);
+    if (trackRef) trackRef.current = Math.max(0, trackRef.current - amount);
+    else extraCreditsRef.current = Math.max(0, extraCreditsRef.current - amount);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -86,6 +114,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       setVideoErrors([]);
       setVideoPlayed([]);
       setVideosRequested(false);
+      // reset optimistic tracking
+      prevImageCreditsRef.current = 0;
+      prevVideoCreditsRef.current = 0;
+      extraCreditsRef.current = 0;
     }
   }, [isOpen, workflowData]);
 
@@ -148,13 +180,17 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       return;
     }
 
-    const requiredCredits = friendPhotos.length * IMAGE_COST;
-    if (creditBalance < requiredCredits) {
-      alert(`You need ${requiredCredits} credits to generate these images. Your balance is ${creditBalance}.`);
+    const totalRequired = friendPhotos.length * IMAGE_COST;
+    const delta = Math.max(0, totalRequired - prevImageCreditsRef.current);
+    if (delta > 0 && creditBalance < delta) {
+      alert(`You need ${delta} more credits to generate these images. Your balance is ${creditBalance}.`);
       return;
     }
 
-    deductCreditsOptimisticForGeneration(requiredCredits);
+    if (delta > 0) {
+      // only deduct the incremental amount (use helper to track)
+      if (!tryDeduct(delta, prevImageCreditsRef)) return;
+    }
     setIsGenerating(true);
     setHideControlsDuringGenerate(true);
     setGeneratedImages([]);
@@ -164,7 +200,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       if (!token) {
         alert('Please log in to generate images');
         setIsGenerating(false);
-        rollbackOptimisticDeduction(requiredCredits);
+        // rollback only the delta we reserved in this call
+        if (delta > 0) rollbackDeduction(delta, prevImageCreditsRef);
         return;
       }
 
@@ -218,6 +255,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
           return {
             success: true,
             imageUrl: data?.data?.imageUrl,
+            debitedCredits: Number(data?.data?.debitedcredits ?? data?.data?.debitedCredits ?? 0) || 0,
+            status: String(data?.data?.status ?? '') || '',
             index,
           };
         } catch (error: any) {
@@ -233,11 +272,16 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       const results = await Promise.allSettled(generatePromises);
 
       const generatedUrls: string[] = [];
+      const billingInfo: Array<{ debitedCredits?: number; status?: string }> = [];
       let hasErrors = false;
 
       results.forEach((result, index) => {
         if (result.status === 'fulfilled' && result.value.success) {
           generatedUrls[index] = result.value.imageUrl;
+          const rv: any = result.value;
+          const debited = Number(rv.debitedCredits ?? rv.debitedcredits ?? 0) || 0;
+          const st = String(rv.status ?? rv.debitStatus ?? rv.debitstatus ?? '') || '';
+          billingInfo[index] = { debitedCredits: debited, status: st };
         } else {
           hasErrors = true;
           generatedUrls[index] = '';
@@ -246,6 +290,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       });
 
       setGeneratedImages(generatedUrls);
+      setGeneratedImageBilling(billingInfo);
       setIsGenerating(false);
 
       if (!hasErrors && generatedUrls.every(url => url)) {
@@ -253,14 +298,14 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         setHideControlsDuringGenerate(false);
         setStep(1);
       } else {
-        rollbackOptimisticDeduction(requiredCredits);
+        if (delta > 0) rollbackDeduction(delta, prevImageCreditsRef);
         alert('Some images failed to generate. Please try again.');
       }
     } catch (error: any) {
       console.error('Error in handleMergeImages:', error);
       setIsGenerating(false);
       setHideControlsDuringGenerate(false);
-      rollbackOptimisticDeduction(requiredCredits);
+      if (delta > 0) rollbackDeduction(delta, prevImageCreditsRef);
       alert('Failed to generate images. Please try again.');
     }
   };
@@ -276,7 +321,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       return;
     }
 
-    deductCreditsOptimisticForGeneration(requiredCredits);
+    if (!tryDeduct(requiredCredits, extraCreditsRef)) return;
     const previousUrl = generatedImages[index];
     setGeneratedImages((prev) => {
       const next = [...prev];
@@ -288,7 +333,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       const token = await getAuthToken();
       if (!token) {
         alert('Please log in to regenerate images');
-        rollbackOptimisticDeduction(requiredCredits);
+        rollbackDeduction(requiredCredits);
         setGeneratedImages((prev) => {
           const next = [...prev];
           next[index] = previousUrl;
@@ -327,16 +372,23 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       const newUrl = data?.data?.imageUrl;
       if (!newUrl) throw new Error('Missing imageUrl in response');
 
+      const billing = { debitedCredits: Number(data?.data?.debitedcredits ?? data?.data?.debitedCredits ?? data?.data?.debitedCredits ?? 0) || 0, status: String(data?.data?.status ?? data?.data?.debitStatus ?? data?.data?.debitstatus ?? '') };
+
       // IMPORTANT: use a fresh array reference so React re-renders
       setGeneratedImages((prev) => {
         const next = [...prev];
         next[index] = newUrl;
         return next;
       });
+      setGeneratedImageBilling((prev) => {
+        const next = [...prev];
+        next[index] = billing;
+        return next;
+      });
     } catch (error: any) {
       console.error(`Error regenerating image ${index + 1}:`, error);
       alert('Failed to regenerate image. Please try again.');
-      rollbackOptimisticDeduction(requiredCredits);
+      rollbackDeduction(requiredCredits);
       setGeneratedImages((prev) => {
         const next = [...prev];
         next[index] = previousUrl;
@@ -353,18 +405,52 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     }
 
     const slots = Math.max(0, images.length - 1);
-    const requiredCredits = slots * VIDEO_COST;
-    if (creditBalance < requiredCredits) {
-      alert(`You need ${requiredCredits} credits to generate these videos. Your balance is ${creditBalance}.`);
+
+    // Determine which video slots actually need generation (empty or missing)
+    const currentVideos = Array.isArray(generatedVideos) ? generatedVideos : [];
+    const indicesToGenerate: number[] = [];
+    for (let i = 0; i < slots; i++) {
+      if (!currentVideos[i] || String(currentVideos[i] || '').length === 0) indicesToGenerate.push(i);
+    }
+
+    // If nothing to generate, just navigate to videos step
+    if (indicesToGenerate.length === 0) {
+      setStep(2);
       return;
     }
 
-    deductCreditsOptimisticForGeneration(requiredCredits);
+    const slotsToGenerate = indicesToGenerate.length;
+    const totalRequired = slotsToGenerate * VIDEO_COST;
+    const delta = Math.max(0, totalRequired - prevVideoCreditsRef.current);
+    if (delta > 0 && creditBalance < delta) {
+      alert(`You need ${delta} more credits to generate these videos. Your balance is ${creditBalance}.`);
+      return;
+    }
+
+    if (delta > 0) {
+      if (!tryDeduct(delta, prevVideoCreditsRef)) return;
+    }
+
     setIsGenerating(true);
-    // n images => n-1 videos (pairwise transitions)
-    setGeneratedVideos(new Array(slots).fill(''));
-    setVideoPlayed(new Array(slots).fill(false));
-    setVideoErrors(new Array(slots).fill(null));
+    // Prepare generatedVideos array: preserve existing urls and set empty for indices we will generate
+    setGeneratedVideos((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      // ensure length
+      while (next.length < slots) next.push('');
+      // ensure empty markers for indices we'll generate
+      for (const idx of indicesToGenerate) next[idx] = '';
+      return next.slice(0, slots);
+    });
+    setVideoPlayed((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      while (next.length < slots) next.push(false);
+      return next.slice(0, slots);
+    });
+    setVideoErrors((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      while (next.length < slots) next.push(null);
+      return next.slice(0, slots);
+    });
     setVideosRequested(true);
     setStep(2);
 
@@ -373,7 +459,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       if (!token) {
         alert('Please log in to generate videos');
         setIsGenerating(false);
-        rollbackOptimisticDeduction(requiredCredits);
+        if (delta > 0) rollbackDeduction(delta, prevVideoCreditsRef);
         setVideosRequested(false);
         return;
       }
@@ -388,10 +474,9 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
     Strictly preserve identity, facial features, skin tone, hairstyle, and proportions of all subjects. Maintain consistent lighting, camera perspective, and environmental continuity. Use smooth camera easing and realistic motion interpolation. Avoid abrupt scene cuts, sudden background swaps, morphing artifacts, ghosting, warping, text, logos, or watermarks.`;
 
-      // 1) Submit all jobs first (so you'll see multiple submit requests)
-      // Make submission resilient: collect successes and failures rather than aborting all on one failure.
+      // 1) Submit jobs only for the indices we marked for generation
       const submitJobs = await Promise.all(
-        Array.from({ length: images.length - 1 }).map(async (_v, i) => {
+        indicesToGenerate.map(async (i) => {
           const firstFrameUrl = images[i];
           const lastFrameUrl = images[i + 1];
           try {
@@ -455,11 +540,16 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         successfulSubmits.map(async ({ index, requestId }) => {
           try {
             const videoUrl = await pollReplicateVideoResult(requestId, token);
-            setGeneratedVideos((prev) => {
-              const next = [...prev];
-              next[index] = videoUrl;
-              return next;
-            });
+            // Store remote URL for editor export
+            if (remoteVideoUrlsRef.current) {
+              const newUrls = [...remoteVideoUrlsRef.current];
+              newUrls[index] = videoUrl;
+              remoteVideoUrlsRef.current = newUrls;
+            }
+
+            // Try resolve via proxy to avoid CORS when playing in <video>
+            const playable = await resolveVideoForPlayer(videoUrl);
+            setGeneratedVideoAtIndex(index, playable);
             setVideoErrors((prev) => {
               const next = [...prev];
               next[index] = null;
@@ -480,7 +570,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     } catch (err: any) {
       console.error('[selfieVideo] handleImagesToVideos error', err);
       setIsGenerating(false);
-      rollbackOptimisticDeduction(requiredCredits);
+      if (delta > 0) rollbackDeduction(delta, prevVideoCreditsRef);
       setVideosRequested(false);
       alert(err?.message || 'Failed to generate videos. Please try again.');
     }
@@ -498,18 +588,20 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     const lastFrameUrl = images[0];
 
     const requiredCredits = VIDEO_COST;
-    if (creditBalance < requiredCredits) {
-      alert(`You need ${requiredCredits} credits to generate this video. Your balance is ${creditBalance}.`);
+    const delta = requiredCredits; // single extra video appended
+    if (creditBalance < delta) {
+      alert(`You need ${delta} credits to generate this video. Your balance is ${creditBalance}.`);
       return;
     }
 
-    deductCreditsOptimisticForGeneration(requiredCredits);
+    // treat this as adding one more reserved video credit
+    if (!tryDeduct(delta, prevVideoCreditsRef)) return;
     setIsGenerating(true);
     try {
       const token = await getAuthToken();
       if (!token) {
         alert('Please log in to generate videos');
-        rollbackOptimisticDeduction(requiredCredits);
+        rollbackDeduction(delta, prevVideoCreditsRef);
         setIsGenerating(false);
         return;
       }
@@ -552,25 +644,26 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
       // Poll for result and append the completed video to the videos list (stay on Step 2)
       const videoUrl = await pollReplicateVideoResult(String(requestId), token);
+      const playable = await resolveVideoForPlayer(videoUrl);
       setGeneratedVideos((prev) => {
-        const next = [...prev];
-        next.push(videoUrl);
+        const next = Array.isArray(prev) ? [...prev] : [];
+        next.push(playable);
         return next;
       });
       setVideoErrors((prev) => {
-        const next = [...prev];
+        const next = Array.isArray(prev) ? [...prev] : [];
         next.push(null);
         return next;
       });
       setVideoPlayed((prev) => {
-        const next = [...prev];
+        const next = Array.isArray(prev) ? [...prev] : [];
         next.push(false);
         return next;
       });
       setVideosRequested(true);
     } catch (e: any) {
       console.error('[selfieVideo] handleLoopAndRegenerate (single) failed', e);
-      rollbackOptimisticDeduction(requiredCredits);
+      rollbackDeduction(delta, prevVideoCreditsRef);
       alert(e?.message || 'Failed to generate loop video. Please try again.');
     } finally {
       setIsGenerating(false);
@@ -592,7 +685,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       return;
     }
 
-    deductCreditsOptimisticForGeneration(requiredCredits);
+    if (!tryDeduct(requiredCredits, extraCreditsRef)) return;
     const previousUrl = generatedVideos[index];
 
     setVideosRequested(true);
@@ -617,7 +710,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       const token = await getAuthToken();
       if (!token) {
         alert('Please log in to regenerate videos');
-        rollbackOptimisticDeduction(requiredCredits);
+        rollbackDeduction(requiredCredits);
         setGeneratedVideos((prev) => {
           const next = [...prev];
           next[index] = previousUrl;
@@ -663,11 +756,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       if (!requestId) throw new Error(`Missing requestId for video ${index + 1}`);
 
       const videoUrl = await pollReplicateVideoResult(String(requestId), token);
-      setGeneratedVideos((prev) => {
-        const next = [...prev];
-        next[index] = videoUrl;
-        return next;
-      });
+      const playable = await resolveVideoForPlayer(videoUrl);
+      setGeneratedVideoAtIndex(index, playable);
       setVideoErrors((prev) => {
         const next = [...prev];
         next[index] = null;
@@ -675,7 +765,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       });
     } catch (e: any) {
       console.error(`[selfieVideo] regenerateVideo ${index + 1} failed`, e);
-      rollbackOptimisticDeduction(requiredCredits);
+      rollbackDeduction(requiredCredits);
       setGeneratedVideos((prev) => {
         const next = [...prev];
         next[index] = previousUrl;
@@ -693,11 +783,21 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const handleNextFromImages = () => {
-    // If videos were already requested/generated, don't generate again; just go to videos (Step 3/4 UI).
-    if (videosRequested || generatedVideos.some((u) => typeof u === 'string' && u.length > 0)) {
+    // If videos are already being requested, just navigate
+    if (videosRequested) {
       setStep(2);
       return;
     }
+
+    const hasVideos = Array.isArray(generatedVideos) && generatedVideos.some((u) => typeof u === 'string' && u.length > 0);
+    const hasEmptySlots = Array.isArray(generatedVideos) && generatedVideos.some((u) => !u || String(u).length === 0);
+
+    // If we already have fully-generated videos, just navigate. If some slots are empty, generate only those.
+    if (hasVideos && !hasEmptySlots) {
+      setStep(2);
+      return;
+    }
+
     void handleImagesToVideos();
   };
 
@@ -830,6 +930,49 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     }
   };
 
+  // Resolve a remote video URL to a playable URL for the browser by trying the local proxy first.
+  const resolveVideoForPlayer = async (remoteUrl: string): Promise<string> => {
+    if (!remoteUrl) return remoteUrl;
+    try {
+      const proxyUrl = `/api/proxy/video?url=${encodeURIComponent(remoteUrl)}`;
+      const res = await fetch(proxyUrl, { method: 'GET', cache: 'no-cache' });
+      if (res.ok || res.status === 304) {
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        return blobUrl;
+      }
+    } catch (e) {
+      console.warn('[selfieVideo] proxy fetch failed for video, falling back to original url', remoteUrl, e);
+    }
+
+    // Try direct CORS fetch as a last resort
+    try {
+      const r2 = await fetch(remoteUrl, { method: 'GET', mode: 'cors', cache: 'no-cache' });
+      if (r2.ok || r2.status === 304) {
+        const blob2 = await r2.blob();
+        const blobUrl2 = URL.createObjectURL(blob2);
+        return blobUrl2;
+      }
+    } catch (e) {
+      console.warn('[selfieVideo] direct fetch failed for video', remoteUrl, e);
+    }
+
+    // Give up and return the original URL (may fail due to CORS)
+    return remoteUrl;
+  };
+
+  const setGeneratedVideoAtIndex = (index: number, url: string) => {
+    setGeneratedVideos((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      const prevVal = next[index];
+      if (prevVal && typeof prevVal === 'string' && prevVal.startsWith('blob:')) {
+        try { URL.revokeObjectURL(prevVal); } catch (e) { /* ignore */ }
+      }
+      next[index] = url;
+      return next;
+    });
+  };
+
   const handleVideosToFinal = async () => {
     const vids = generatedVideos.filter((u) => typeof u === 'string' && u.length > 0);
     if (vids.length === 0) {
@@ -848,6 +991,158 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       alert(e?.message || 'Failed to merge videos. Please try again.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleOpenInEditor = async () => {
+    const vids = generatedVideos.filter((u) => typeof u === 'string' && u.length > 0);
+    if (vids.length === 0) {
+      alert('No generated videos to open in editor.');
+      return;
+    }
+
+    try {
+      // Use remote URLs if available (preferred for cross-origin), otherwise fallback to current vids
+      const videosToExport = remoteVideoUrlsRef.current.length > 0
+        ? remoteVideoUrlsRef.current.filter(u => u && u.length > 0)
+        : vids;
+
+      console.log('[selfieVideo] preparing export with videos:', videosToExport);
+
+      const payload = { videos: videosToExport, frameSize };
+
+      // Use internal route of the same app
+      const editorBaseUrl = window.location.origin + '/view/Generation/VideoGeneration/Editor';
+      const hashPayload = encodeURIComponent(JSON.stringify(payload));
+      const editorUrl = `${editorBaseUrl}#wild_import=${hashPayload}`;
+
+      console.log('[selfieVideo] opening internal editor with hash payload');
+      const newWin = window.open(editorUrl, '_blank');
+      const editorOrigin = window.location.origin; // Same origin now!
+
+      // KEEP existing fallback logic just in case hash fails or is too long (though usually 2k-4k chars is fine)
+      // Try to fetch each video and send blobs to the editor via postMessage to avoid COEP/CORP cross-origin fetch issues.
+      // NOTE: If CSP blocks blob fetches, we'll just send the URLs directly
+      try {
+        const payloadForEditor: any = {
+          frameSize,
+          videos: [] as any[]
+        };
+
+        // Check if videos are already blob URLs - if so, send them directly to avoid CSP issues
+        const areAllBlobUrls = vids.every(u => typeof u === 'string' && u.startsWith('blob:'));
+
+        if (areAllBlobUrls) {
+          console.log('[selfieVideo] videos are already blob URLs, sending directly');
+          payloadForEditor.videos = vids;
+        } else {
+          // Try to fetch and convert to blobs (may fail due to CSP)
+          const fetchResults = await Promise.all(vids.map(async (u) => {
+            try {
+              const r = await fetch(u, { mode: 'cors', cache: 'no-cache' });
+              if (!(r.ok || r.status === 304)) throw new Error(`HTTP ${r.status}`);
+              const b = await r.blob();
+              return { ok: true, blob: b };
+            } catch (e) {
+              console.warn('[selfieVideo] failed to fetch video as blob', u, e);
+              return { ok: false, url: u };
+            }
+          }));
+          console.log('[selfieVideo] fetchResults prepared', fetchResults.map(r => (r.ok ? 'blob' : 'url')));
+
+          // Build payload with blobs or proxy URLs
+          const proxyBase = 'http://localhost:3000/api/proxy/video?url=';
+          payloadForEditor.videos = fetchResults.map((r) => {
+            if (r && r.ok) return r.blob;
+            const candidate = r && typeof r.url === 'string' && r.url ? r.url : null;
+            return candidate ? `${proxyBase}${encodeURIComponent(candidate)}` : '';
+          });
+        }
+
+        console.log('[selfieVideo] prepared payload with', payloadForEditor.videos.length, 'videos for editor');
+
+        // Write fallback metadata to localStorage containing proxy URLs (useful only in same-origin cases).
+        // NOTE: This won't work cross-origin (different ports), but kept as fallback for same-origin scenarios.
+        try {
+          localStorage.setItem('wild_import_videos', JSON.stringify({ videos: vids, frameSize }));
+          console.log('[selfieVideo] wrote fallback to localStorage (won\'t work cross-origin)');
+        } catch (e) {
+          console.warn('Failed to write localStorage import payload', e);
+        }
+
+        // Handshake: wait for editor readiness then send structured payload (blobs or urls)
+        const handshakeHandler = (ev: MessageEvent) => {
+          try {
+            if (!ev.data) return;
+            if (ev.origin !== editorOrigin) return; // ensure origin matches editor
+            if (ev.data.type === 'wild_editor_ready') {
+              console.log('[selfieVideo] received wild_editor_ready from editor');
+              try {
+                if (newWin && newWin.postMessage) {
+                  newWin.postMessage({ type: 'wild_import_videos', payload: payloadForEditor }, editorOrigin);
+                  console.log('[selfieVideo] sent payload to editor via handshake (', payloadForEditor.videos.length, 'videos)');
+                }
+              } catch (e) {
+                console.warn('[selfieVideo] failed to postMessage via handshake', e);
+              }
+              window.removeEventListener('message', handshakeHandler);
+            }
+          } catch (e) {
+            // ignore
+          }
+        };
+
+        window.addEventListener('message', handshakeHandler);
+
+        // Fallback: if handshake doesn't arrive in time, post after delay (editor should read localStorage or receive urls)
+        const fallbackTimer = setTimeout(() => {
+          console.log('[selfieVideo] handshake timeout, sending via fallback postMessage');
+          try {
+            if (newWin && newWin.postMessage) {
+              try {
+                newWin.postMessage({ type: 'wild_import_videos', payload: payloadForEditor }, editorOrigin);
+                console.log('[selfieVideo] sent payload to editor via fallback postMessage (', payloadForEditor.videos.length, 'videos) -> editorOrigin');
+              } catch (err1) {
+                try {
+                  newWin.postMessage({ type: 'wild_import_videos', payload: payloadForEditor }, '*');
+                  console.log('[selfieVideo] sent payload to editor via fallback postMessage (', payloadForEditor.videos.length, 'videos) -> *');
+                } catch (err2) {
+                  console.warn('postMessage to editor failed (both editorOrigin and *)', err1, err2);
+                }
+              }
+            } else if (!newWin) {
+              console.warn('[selfieVideo] window was closed, reopening editor');
+              window.open(editorUrl, '_blank');
+            }
+          } catch (err) {
+            console.warn('postMessage to editor failed (fallback); editor should read localStorage on load', err);
+          }
+          window.removeEventListener('message', handshakeHandler);
+        }, 5000); // Increased timeout to give editor more time to load
+
+        // Clear fallback if window unloads
+        const cleanup = () => {
+          clearTimeout(fallbackTimer);
+          window.removeEventListener('message', handshakeHandler);
+        };
+        window.addEventListener('beforeunload', cleanup);
+      } catch (e) {
+        console.error('[selfieVideo] open in editor failed preparing blobs', e);
+        // Best-effort fallback: write urls only and open editor
+        try {
+          localStorage.setItem('wild_import_videos', JSON.stringify(payload));
+        } catch (er) {
+          console.warn('Failed to write localStorage import payload', er);
+        }
+        try {
+          if (!newWin) window.open(editorUrl, '_blank');
+        } catch (err) {
+          console.error('[selfieVideo] fallback open editor failed', err);
+        }
+      }
+    } catch (e) {
+      console.error('[selfieVideo] open in editor failed', e);
+      alert('Failed to open editor. Please ensure your video editor is running on http://localhost:3001');
     }
   };
 
@@ -891,14 +1186,17 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
   const handleCreateImageWithStep2Friend = async () => {
     if (!selfiePhoto || !step2FriendPhoto) return;
-
-    const requiredCredits = IMAGE_COST;
-    if (creditBalance < requiredCredits) {
-      alert(`You need ${requiredCredits} credits to create this image. Your balance is ${creditBalance}.`);
+    // After this action, total friend photos will be friendPhotos.length + 1
+    const totalRequired = (friendPhotos.length + 1) * IMAGE_COST;
+    const delta = Math.max(0, totalRequired - prevImageCreditsRef.current);
+    if (delta > 0 && creditBalance < delta) {
+      alert(`You need ${delta} more credits to create this image. Your balance is ${creditBalance}.`);
       return;
     }
 
-    deductCreditsOptimisticForGeneration(requiredCredits);
+    if (delta > 0) {
+      if (!tryDeduct(delta, prevImageCreditsRef)) return;
+    }
     setIsGenerating(true);
     setShowLogoGifForCreate(true);
     setHideControlsDuringGenerate(true);
@@ -907,7 +1205,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       const token = await getAuthToken();
       if (!token) {
         alert('Please log in to generate images');
-        rollbackOptimisticDeduction(requiredCredits);
+        if (delta > 0) rollbackDeduction(delta, prevImageCreditsRef);
         return;
       }
 
@@ -941,17 +1239,46 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       const imageUrl = data?.data?.imageUrl;
       if (!imageUrl) throw new Error('Missing imageUrl in response');
 
-      setGeneratedImages((prev) => [...prev, imageUrl]);
+      const billing = { debitedCredits: Number(data?.data?.debitedcredits ?? data?.data?.debitedCredits ?? 0) || 0, status: String(data?.data?.status ?? data?.data?.debitStatus ?? data?.data?.debitstatus ?? '') };
+
+      // Append the new image and billing
+      const prevImgs = generatedImages;
+      const newImages = [...prevImgs, imageUrl];
+      setGeneratedImages(newImages);
+      setGeneratedImageBilling((prev) => [...prev, billing]);
       setFriendPhotos((prev) => [...prev, step2FriendPhoto]);
-      // Images changed => any previously generated videos are no longer in sync.
-      setGeneratedVideos([]);
-      setVideoPlayed([]);
-      setVideoErrors([]);
+
+      // Preserve existing generated videos where possible.
+      // If the images array grew, append empty slots for the missing videos so we only generate those.
+      setGeneratedVideos((prev) => {
+        const prevVideos = Array.isArray(prev) ? [...prev] : [];
+        const slots = Math.max(0, newImages.length - 1);
+        // Truncate if fewer slots
+        if (prevVideos.length > slots) {
+          return prevVideos.slice(0, slots);
+        }
+        // Append empty strings for new slots
+        while (prevVideos.length < slots) prevVideos.push('');
+        return prevVideos;
+      });
+
+      // Keep playback/errors arrays in sync with videos
+      setVideoPlayed((prev) => {
+        const next = Array.isArray(prev) ? [...prev] : [];
+        while (next.length < Math.max(0, newImages.length - 1)) next.push(false);
+        return next.slice(0, Math.max(0, newImages.length - 1));
+      });
+      setVideoErrors((prev) => {
+        const next = Array.isArray(prev) ? [...prev] : [];
+        while (next.length < Math.max(0, newImages.length - 1)) next.push(null);
+        return next.slice(0, Math.max(0, newImages.length - 1));
+      });
+
       setVideosRequested(false);
       setStep2FriendPhoto(null);
     } catch (e: any) {
       console.error('[selfieVideo] handleCreateImageWithStep2Friend error', e);
-      rollbackOptimisticDeduction(requiredCredits);
+      if (delta > 0) rollbackDeduction(delta, prevImageCreditsRef);
       alert(e?.message || 'Failed to generate image. Please try again.');
     } finally {
       setIsGenerating(false);
@@ -979,8 +1306,9 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         @keyframes shimmer { 100% { left: 150%; } }
       `}</style>
 
-      <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose}></div>
+      <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 md:pl-20 transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+        {/* overlay excludes left sidebar area on md+ so sidebar remains visible */}
+        <div className="absolute top-0 right-0 bottom-0 left-0 md:left-20 bg-black/80 backdrop-blur-xl" onClick={onClose}></div>
 
         <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
@@ -1008,9 +1336,9 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => openUploadModal('selfie')}>
                         {/* <span className="text-white text-xs font-medium">Change Photo</span> */}
                       </div>
-                      </div>
+                    </div>
 
-                      
+
                   ) : (
                     <div onClick={() => openUploadModal('selfie')} className="border border-dashed border-white/15 rounded-xl bg-black/20 h-24 flex items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors">
                       <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={16} /></div>
@@ -1083,6 +1411,11 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                 </div>
               </div>
 
+              {/* Total reserved credits badge */}
+              <div className="absolute right-6 bottom-6 z-40">
+                <div className="px-3 py-2 bg-white/5 text-xs text-slate-200 rounded-md border border-white/10">Reserved: {totalReservedCredits()} credits</div>
+              </div>
+
               <div className="pt-6 border-t border-white/5 mt-auto">
                 {!hideControlsDuringGenerate && (
                   <button onClick={handleMergeImages} disabled={isGenerating || !selfiePhoto || friendPhotos.length === 0} className={`w-full py-4 bg-[#60a5fa] hover:bg-[#4f8edb] text-black font-bold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${(isGenerating || !selfiePhoto || friendPhotos.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}>
@@ -1139,7 +1472,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
 
                   <div className="flex-1 overflow-y-auto p-8 pb-24 flex justify-center items-center">
                     <div className={`grid gap-6 w-full max-w-7xl content-center ${frameSize === 'horizontal' ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
-                      
+
 
                       {generatedImages.map((src, i) => (
                         <div key={i} className={`relative group bg-[#111] rounded-lg overflow-hidden border border-white/10 ${frameSize === 'horizontal' ? 'aspect-video' : 'aspect-[9/16]'}`}>
@@ -1164,6 +1497,11 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                               <div className="animate-spin"><Sparkles size={24} className="text-slate-600" /></div>
                             </div>
                           )}
+                          {generatedImageBilling[i] && (
+                            <div className="absolute top-3 left-3 bg-black/60 text-xs text-slate-200 px-2 py-1 rounded-md border border-white/10">
+                              {generatedImageBilling[i].debitedCredits ? `${generatedImageBilling[i].debitedCredits} cr` : ''} {generatedImageBilling[i].status ? `· ${generatedImageBilling[i].status}` : ''}
+                            </div>
+                          )}
                           <div
                             className="absolute bottom-3 right-3 flex items-center gap-2"
                           >
@@ -1176,7 +1514,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                                 <RefreshCw size={14} />
                               </div>
                             )}
-                            
+
                           </div>
                         </div>
                       ))}
@@ -1226,7 +1564,11 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                           </button>
                         )}
                       </div>
-                      
+
+                      <div className="absolute right-6 bottom-6 z-30">
+                        <div className="px-3 py-2 bg-black/40 text-xs text-slate-200 rounded-md border border-white/10">Step credits: {prevImageCreditsRef.current} img, {prevVideoCreditsRef.current} vid — Total {totalReservedCredits()}</div>
+                      </div>
+
                     </div>
                   </div>
 
@@ -1247,7 +1589,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-white/10 px-2 py-1 rounded-full">Step {stepDisplayNumber}/4</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">Videos</span>
 
-                        </div>
+                      </div>
                     </div>
                     <button onClick={() => setStep(1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
                       <ArrowLeft size={24} className="text-white" />
@@ -1297,7 +1639,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                             onClick={() => {
                               const v = videoRefs.current[i];
                               if (v) {
-                                v.play().catch(() => {});
+                                v.play().catch(() => { });
                               }
                               setVideoPlayed((prev) => {
                                 const next = [...prev];
@@ -1309,6 +1651,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                             <video
                               src={src}
                               className="w-full h-full object-cover"
+                              crossOrigin="anonymous"
                               muted
                               playsInline
                               loop
@@ -1323,7 +1666,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                                   e.stopPropagation();
                                   const v = videoRefs.current[i];
                                   if (v) {
-                                    v.play().catch(() => {});
+                                    v.play().catch(() => { });
                                   }
                                   setVideoPlayed((prev) => {
                                     const next = [...prev];
@@ -1403,8 +1746,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                   </div>
 
                   <div className="absolute bottom-8 left-8 z-30">
-                    <button onClick={handleVideosToFinal} className="py-3 px-8 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium rounded-md shadow-lg transition-all hover:scale-105">
-                      Next
+                    <button onClick={handleOpenInEditor} className="py-3 px-8 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium rounded-md shadow-lg transition-all hover:scale-105">
+                      Open in Editor
                     </button>
                   </div>
                 </div>

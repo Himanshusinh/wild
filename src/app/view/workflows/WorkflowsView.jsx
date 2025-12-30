@@ -42,7 +42,8 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
   const handleCategoryClick = (cat) => {
     setActiveCategory(cat);
     const slug = slugify(cat);
-    const path = slug ? `${basePath}/${slug}` : basePath;
+    // Always use /view/workflows/[slug] for all categories, regardless of current basePath
+    const path = `/view/workflows/${slug}`;
     router.push(path);
   };
 
@@ -109,11 +110,9 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           <div
             key={wf.id}
             onClick={() => {
-              if (wf.id === 'selfie-video') {
-                router.push('/viraltrend/selfievideo');
-              } else {
-                openModal(wf);
-              }
+              // Route to /view/workflows/[slug] for all workflows, including selfie-video
+              const slug = wf.id === 'selfie-video' ? 'selfie-video' : wf.id;
+              router.push(`/view/workflows/${slug}`);
             }}
             className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1"
           >
