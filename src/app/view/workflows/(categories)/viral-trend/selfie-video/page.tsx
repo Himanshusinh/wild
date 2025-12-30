@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import SelfieVideoModal from '../components/selfieVideo';
-import { WORKFLOWS_DATA } from '../data';
+import SelfieVideoModal from './SelfieVideo';
+import { WORKFLOWS_DATA } from '../../../components/data';
 
 interface Workflow {
   id: string;
@@ -40,7 +40,7 @@ export default function SelfieVideoPage() {
   return (
     <SelfieVideoModal
       isOpen
-      onClose={() => router.push('/viraltrend')}
+      onClose={() => router.push('/view/workflows/viral-trend')}
       workflowData={workflow}
     />
   );

@@ -5,11 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Search, LayoutGrid, List } from 'lucide-react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
 
-export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows" }) {
+// ... imports
+export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows", workflows = null }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const slugify = (cat) => cat.toLowerCase().replace(/[^a-z0-9]+/g, '').trim();
+  // ... slugify ...
+  const slugify = (cat) => cat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').trim();
   const categoryBySlug = useMemo(() => (
     CATEGORIES.reduce((acc, cat) => {
       acc[slugify(cat)] = cat;
@@ -17,27 +19,45 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
     }, {})
   ), []);
 
+  // ... deriveCategoryFromPath ...
+  // ... useState ...
+
   const deriveCategoryFromPath = (path) => {
     if (!path) return null;
     const segments = path.split('/').filter(Boolean);
     const last = segments[segments.length - 1];
-    return categoryBySlug[last] || (last === 'workflows' ? null : 'All');
+
+    // 1. Check if last segment is a category slug
+    if (categoryBySlug[last]) return categoryBySlug[last];
+
+    // 2. Check if last segment is a workflow ID
+    const workflow = WORKFLOWS_DATA.find(w => w.id === last);
+    if (workflow) return workflow.category;
+
+    // 3. Fallback
+    return (last === 'workflows' ? null : 'All');
   };
 
   const [activeCategory, setActiveCategory] = useState(() => {
     return deriveCategoryFromPath(pathname) || initialCategory;
   });
 
+  // Use passed workflows if available, otherwise filter from global
+  const filteredWorkflows = useMemo(() => {
+    if (workflows) return workflows;
+    return activeCategory === "All"
+      ? WORKFLOWS_DATA
+      : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
+  }, [activeCategory, workflows]);
+
+
+
   useEffect(() => {
     const nextCategory = deriveCategoryFromPath(pathname);
     setActiveCategory(nextCategory || initialCategory);
   }, [pathname, initialCategory]);
 
-  const filteredWorkflows = useMemo(() => (
-    activeCategory === "All"
-      ? WORKFLOWS_DATA
-      : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory)
-  ), [activeCategory]);
+
 
   const handleCategoryClick = (cat) => {
     setActiveCategory(cat);
@@ -110,9 +130,14 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           <div
             key={wf.id}
             onClick={() => {
-              // Route to /view/workflows/[slug] for all workflows, including selfie-video
-              const slug = wf.id === 'selfie-video' ? 'selfie-video' : wf.id;
-              router.push(`/view/workflows/${slug}`);
+              // Route to custom pages
+              if (wf.id === 'selfie-video') {
+                router.push('/view/workflows/viral-trend/selfie-video');
+              } else if (wf.id === 'remove-background') {
+                router.push('/view/workflows/general/remove-background');
+              } else {
+                router.push(`/view/workflows/${wf.id}`);
+              }
             }}
             className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1"
           >

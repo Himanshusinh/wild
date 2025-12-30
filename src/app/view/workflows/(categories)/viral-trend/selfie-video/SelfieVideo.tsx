@@ -11,7 +11,7 @@ import {
   Play,
   ImageIcon
 } from 'lucide-react';
-import UploadModal from '../../Generation/ImageGeneration/TextToImage/compo/UploadModal';
+import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import { getAuthToken } from '@/lib/authHelper';
 import { useCredits } from '@/hooks/useCredits';
 

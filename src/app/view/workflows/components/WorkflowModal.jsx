@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, UploadCloud, Zap, Sparkles, Wand2, Layers } from 'lucide-react';
-import ImageComparisonSlider from './components/ImageComparisonSlider';
+import ImageComparisonSlider from './ImageComparisonSlider';
 
 export default function WorkflowModal({ isOpen, onClose, workflowData }) {
   const [isGenerating, setIsGenerating] = useState(false);
