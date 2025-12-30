@@ -70,10 +70,18 @@ export default function WorkflowsView({ openModal }) {
         {filteredWorkflows.map((wf) => (
           <div key={wf.id} onClick={() => openModal(wf)} className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1">
             <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/[0.02] mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
+              {/* Thumbnail (Visible by default) */}
               <img
                 src={wf.thumbnail}
-                className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 ease-out"
+                className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} opacity-80 group-hover:opacity-0 transition-opacity duration-300`}
                 alt={wf.title}
+              />
+
+              {/* Result Image (Visible on hover) */}
+              <img
+                src={wf.sampleAfter}
+                className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                alt={`${wf.title} Result`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             </div>
@@ -83,6 +91,6 @@ export default function WorkflowsView({ openModal }) {
           </div>
         ))}
       </div>
-    </div>
+    </div >
   );
 }

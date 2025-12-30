@@ -7,9 +7,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Creatively upscale the image. Ensure that all details are crisp and in high quality, Muted color.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?q=80&w=400&auto=format&fit=crop&blur=10",
-    "sampleAfter": "https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/creatively-upscale-before.png",
+    "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
+    "sampleAfter": "/workflow-samples/creatively-upscale-after.png"
   },
   {
     "id": "remove-background",
@@ -17,9 +17,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Clean background removal with high precision studio quality output.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?q=80&w=400&auto=format&fit=crop&blur=5",
-    "sampleAfter": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/remove-bg-horse-before.jpg",
+    "sampleBefore": "/remove-bg-horse-before.jpg",
+    "sampleAfter": "/remove-bg-horse-after.jpg"
   },
   {
     "id": "restore-old-photo",
@@ -27,9 +27,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Restore and colorize this image, remove any scratches or imperfections.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1461360370896-922624d12aa1?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1461360370896-922624d12aa1?q=80&w=400&auto=format&fit=crop&grayscale=1",
-    "sampleAfter": "https://images.unsplash.com/photo-1461360370896-922624d12aa1?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/portrait-before.jpg",
+    "sampleBefore": "/portrait-before.jpg",
+    "sampleAfter": "/portrait-after.jpg"
   },
   {
     "id": "photo-to-line-drawing",
@@ -37,9 +37,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Turn this image into a simple coloring book line drawing, black and white.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=800&auto=format&fit=crop&grayscale=1"
+    "thumbnail": "/photo-to-line-before.jpg",
+    "sampleBefore": "/photo-to-line-before.jpg",
+    "sampleAfter": "/photo-to-line-after.jpg"
   },
   {
     "id": "line-drawing-to-photo",
@@ -47,9 +47,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Make it look like the image has been color in with crayons. Realistic results from markers/sketches.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1541462608141-ad60397d4bc7?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1541462608141-ad60397d4bc7?q=80&w=400&auto=format&fit=crop&grayscale=1",
-    "sampleAfter": "https://images.unsplash.com/photo-1541462608141-ad60397d4bc7?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/line-to-photo-before.jpg",
+    "sampleBefore": "/line-to-photo-before.jpg",
+    "sampleAfter": "/line-to-photo-after.jpg"
   },
   {
     "id": "remove-element",
@@ -57,9 +57,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove unwanted objects or persons from your Image seamlessly.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1500674425944-24ba5ec746aa?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1500674425944-24ba5ec746aa?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1500674425944-24ba5ec746aa?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/remove-element-before.jpg",
+    "sampleBefore": "/remove-element-before.jpg",
+    "sampleAfter": "/remove-element-after.jpg"
   },
   {
     "id": "replace-element",
@@ -67,9 +67,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Replace element from image 1 to image 2 using detailed prompts.",
     "model": "AI Transform",
-    "thumbnail": "https://images.unsplash.com/photo-1492691523567-6119203ad9f3?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1492691523567-6119203ad9f3?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1492691523567-6119203ad9f3?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/replace-element-before.jpg",
+    "sampleBefore": "/replace-element-before.jpg",
+    "sampleAfter": "/replace-element-after.jpg"
   },
   {
     "id": "remove-watermark",
@@ -77,9 +77,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove watermark from reference image while maintaining quality.",
     "model": "Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1533158326339-7f3cf2404354?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1533158326339-7f3cf2404354?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1533158326339-7f3cf2404354?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/remove-watermark-before.jpg",
+    "sampleBefore": "/remove-watermark-before.jpg",
+    "sampleAfter": "/remove-watermark-after.jpg"
   },
   {
     "id": "surprise-me",
@@ -87,9 +87,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "100,000 prompts ready to inspire your next creative masterpiece.",
     "model": "AI Prompt Engine",
-    "thumbnail": "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/surpriseme-before.jpg",
+    "sampleBefore": "/workflow-samples/surpriseme-before.jpg",
+    "sampleAfter": "/workflow-samples/surpriseme-after.jpg"
   },
   {
     "id": "people-age",
@@ -97,9 +97,11 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Make her/him look old with grey hair and wrinkles, or travel back to being a toddler or teenager.",
     "model": "Seadream4",
-    "thumbnail": "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=800&auto=format&fit=crop&sepia=1"
+    "thumbnail": "/workflow-samples/people-age-before.png",
+    "sampleBefore": "/workflow-samples/people-age-before.png",
+    "sampleAfter": "/workflow-samples/people-age-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "become-celebrity",
@@ -107,9 +109,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Ultra realistic candid photo in a crowded place with fans and cameras, giving a true celebrity vibe.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/become-celebrity-before.jpg",
+    "sampleBefore": "/workflow-samples/become-celebrity-before.jpg",
+    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg"
   },
   {
     "id": "polaroid-style",
@@ -117,9 +119,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Retro flash photography with silly props and poses on a classic white curtain background.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1520390138845-fd2d229dd553?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1520390138845-fd2d229dd553?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1520390138845-fd2d229dd553?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/polaroid-style-before.jpg",
+    "sampleBefore": "/workflow-samples/polaroid-style-before.jpg",
+    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg"
   },
   {
     "id": "custom-stickers",
@@ -127,9 +129,11 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Create a collection of cute chibi illustration stickers and see them as mockups on notebooks or laptops.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1595169002027-33675f2669da?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1595169002027-33675f2669da?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1595169002027-33675f2669da?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/custom-stickers-before.jpg",
+    "sampleBefore": "/workflow-samples/custom-stickers-before.jpg",
+    "sampleAfter": "/workflow-samples/custom-stickers-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-top"
   },
   {
     "id": "fusion-styles",
@@ -137,9 +141,11 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Blend 2D characters or animals seamlessly into realistic backgrounds.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/fusion-styles-before.jpg",
+    "sampleBefore": "/workflow-samples/fusion-styles-before.jpg",
+    "sampleAfter": "/workflow-samples/fusion-styles-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "vintage-teleport",
@@ -147,9 +153,11 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Teleport yourself to the late 1800s with period clothing, sepia tones, and worn textures.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1560133900-34fa969f6430?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1560133900-34fa969f6430?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1560133900-34fa969f6430?q=80&w=800&auto=format&fit=crop&sepia=1"
+    "thumbnail": "/workflow-samples/vintage-teleport-before.png",
+    "sampleBefore": "/workflow-samples/vintage-teleport-before.png",
+    "sampleAfter": "/workflow-samples/vintage-teleport-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "cctv-footage",
@@ -157,9 +165,11 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Generate photorealistic low-quality CCTV footage with timestamps and ceiling-mounted perspectives.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/cctv-footage-before.jpg",
+    "sampleBefore": "/workflow-samples/cctv-footage-before.jpg",
+    "sampleAfter": "/workflow-samples/cctv-footage-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "change-seasons",
@@ -167,19 +177,23 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Transform any landscape from Summer to Winter, Spring, or Autumn instantly.",
     "model": "Weather AI",
-    "thumbnail": "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/change-seasons-before.jpg",
+    "sampleBefore": "/workflow-samples/change-seasons-before.jpg",
+    "sampleAfter": "/workflow-samples/change-seasons-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
   },
   {
     "id": "relighting",
     "title": "Relighting / Change the lighting",
     "category": "Fun",
     "description": "Change the lighting of any scene to Night, Golden Hour, or custom studio presets.",
-    "model": "Lumen AI",
-    "thumbnail": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=800&auto=format&fit=crop"
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/relighting-before.jpg",
+    "sampleBefore": "/workflow-samples/relighting-before.jpg",
+    "sampleAfter": "/workflow-samples/relighting-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
   },
 
   {

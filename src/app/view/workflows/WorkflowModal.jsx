@@ -1,18 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, UploadCloud, Zap, Sparkles, Wand2, Layers, ChevronRight } from 'lucide-react';
+import { X, UploadCloud, Zap, Sparkles, Wand2, Layers } from 'lucide-react';
+import ImageComparisonSlider from './components/ImageComparisonSlider';
 
 export default function WorkflowModal({ isOpen, onClose, workflowData }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [promptText, setPromptText] = useState("");
+  const [selectedAge, setSelectedAge] = useState("Young Adult");
+  const [uploadedImage, setUploadedImage] = useState(null);
+
+  const ageOptions = [
+    "Toddler",
+    "Child",
+    "Teenager",
+    "Young Adult",
+    "Middle-Aged Adult",
+    "Senior Adult",
+    "Elderly"
+  ];
 
   useEffect(() => {
     if (isOpen) {
       setResult(null);
       setIsGenerating(false);
       setPromptText("");
+      setUploadedImage(null);
     }
   }, [isOpen, workflowData]);
 
@@ -25,7 +39,18 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
     setTimeout(() => {
       setIsGenerating(false);
       setResult(workflowData.sampleAfter);
-    }, 3000);
+    }, 3500);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -45,12 +70,51 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
             {workflowData.model && <p className="text-xs font-mono text-slate-500 mb-8">Model: {workflowData.model}</p>}
 
             {/* Upload Area */}
-            <div className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-48 flex flex-col items-center justify-center text-center p-6 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden mb-6">
+            <div
+              onClick={() => document.getElementById('workflow-file-upload').click()}
+              className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-48 flex flex-col items-center justify-center text-center p-6 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden mb-6"
+            >
+              <input
+                id="workflow-file-upload"
+                type="file"
+                className="hidden"
+                onChange={handleImageUpload}
+                accept="image/*"
+              />
               <div className="absolute inset-0 bg-gradient-to-br from-[#60a5fa]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="w-12 h-12 mb-3 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10"><UploadCloud size={20} /></div>
-              <p className="text-white font-medium mb-1 relative z-10">Upload Image</p>
+              {uploadedImage ? (
+                <img src={uploadedImage} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity" alt="Uploaded" />
+              ) : (
+                <div className="w-12 h-12 mb-3 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10"><UploadCloud size={20} /></div>
+              )}
+              <p className="text-white font-medium mb-1 relative z-10">{uploadedImage ? 'Change Image' : 'Upload Image'}</p>
               <p className="text-xs text-slate-500 relative z-10">JPG, PNG, WebP up to 25MB</p>
             </div>
+
+            {/* Age Selection Dropdown (Only for People Age) */}
+            {workflowData.id === 'people-age' && (
+              <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-2 tracking-wider">Select Target Age</label>
+                <div className="relative group">
+                  <select
+                    value={selectedAge}
+                    onChange={(e) => setSelectedAge(e.target.value)}
+                    className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white appearance-none focus:outline-none focus:border-[#60a5fa] transition-all cursor-pointer group-hover:border-white/20"
+                  >
+                    {ageOptions.map(age => (
+                      <option key={age} value={age} className="bg-[#0A0A0A] text-white py-2">
+                        {age}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-white transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Optional Text Box */}
             <div className="mb-6">
@@ -73,50 +137,30 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
           </div>
         </div>
 
-        {/* Right Column: Preview */}
-        <div className="w-full md:w-[55%] bg-[#020202] relative flex flex-col p-8">
-          <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent z-10 pointer-events-none flex items-center px-8">
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2"><Layers size={14} /> Result Preview</span>
-          </div>
-
-          <div className="flex-1 flex flex-col gap-4 justify-center h-full overflow-y-auto">
-            {/* Input Image */}
-            <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/10 bg-[#111] group">
-              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-300 border border-white/5 z-10">
-                {result ? "Your Input" : "Sample Input"}
+        {/* Right Column: Preview with Image Comparison Slider */}
+        <div className="w-full md:w-[55%] bg-[#020202] relative flex flex-col">
+          <div className="flex-1 flex items-center justify-center">
+            {isGenerating ? (
+              <div className="w-full h-full flex flex-col items-center justify-center">
+                <div className="w-16 h-16 border-4 border-[#60a5fa] border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(96,165,250,0.2)]"></div>
+                <span className="text-[#60a5fa] font-mono text-sm animate-pulse">
+                  {workflowData.id === 'people-age' ? `Aging to ${selectedAge}...` :
+                    workflowData.id === 'cctv-footage' ? 'Simulating CCTV feed...' :
+                      workflowData.id === 'change-seasons' ? 'Reimagining landscape for a new season...' :
+                        workflowData.id === 'relighting' ? 'Adjusting scene lighting...' :
+                          'Processing your image...'}
+                </span>
               </div>
-              <img
-                src={result ? "https://images.unsplash.com/photo-1542291026-6610b8445771?q=80&w=800&auto=format&fit=crop" : workflowData.sampleBefore}
-                className="w-full h-full object-contain"
-                alt="Input"
+            ) : (
+              <ImageComparisonSlider
+                beforeImage={uploadedImage || workflowData.sampleBefore}
+                afterImage={result || workflowData.sampleAfter}
+                beforeLabel={uploadedImage ? "Your Input" : "Before"}
+                afterLabel={result ? "Generated Result" : "After"}
+                imagePosition={workflowData.imagePosition}
+                imageFit={workflowData.imageFit}
               />
-            </div>
-
-            <div className="flex justify-center text-slate-600">
-              <div className="bg-[#111] p-2 rounded-full border border-white/10">
-                <ChevronRight className="rotate-90 md:rotate-90" size={20} />
-              </div>
-            </div>
-
-            {/* Output Image */}
-            <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/10 bg-[#111] group">
-              <div className={`absolute top-3 left-3 backdrop-blur px-3 py-1 rounded-full text-xs font-bold border z-10 ${result ? 'bg-[#60a5fa]/20 text-[#60a5fa] border-[#60a5fa]/30' : 'bg-black/60 text-slate-300 border-white/5'}`}>
-                {result ? "Generated Result" : "Sample Output"}
-              </div>
-
-              {isGenerating && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-20 animate-in fade-in">
-                  <div className="w-12 h-12 border-4 border-[#60a5fa] border-t-transparent rounded-full animate-spin mb-3"></div>
-                  <span className="text-[#60a5fa] font-mono text-xs animate-pulse">Processing...</span>
-                </div>
-              )}
-
-              <img
-                src={result || workflowData.sampleAfter}
-                className={`w-full h-full object-contain transition-all duration-700 ${isGenerating ? 'scale-105 blur-sm grayscale' : 'scale-100 blur-0 grayscale-0'}`}
-                alt="Output"
-              />
-            </div>
+            )}
           </div>
         </div>
       </div>

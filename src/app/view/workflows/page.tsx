@@ -33,13 +33,7 @@ export default function WorkflowsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B] text-white font-sans selection:bg-white/10 selection:text-white overflow-x-hidden relative">
-      {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}></div>
-        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600/[0.03] rounded-full blur-[120px]"></div>
-      </div>
-
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-white/10 selection:text-white overflow-x-hidden relative">
       {/* Main Content */}
       <main className="relative z-10 pt-4 pb-32 px-4 sm:px-6 md:px-8 min-h-screen">
         <div className="w-full">
