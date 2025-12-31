@@ -56,7 +56,7 @@ const SidebarItem = ({
       })}
     </div>
 
-    <span className={`ml-2 md:ml-0 md:mt-1 mt-0 text-[10px] uppercase font-black tracking-[0.12em] transition-colors duration-300
+    <span className={`ml-2 md:ml-0 md:mt-1 mt-0 text-[9px] uppercase font-black tracking-[0.12em] transition-colors duration-300
       ${isActive ? 'text-[#60a5fa]' : 'text-slate-100 '}`}>
       {label}
     </span>

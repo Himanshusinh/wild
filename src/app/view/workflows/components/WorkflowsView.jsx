@@ -141,6 +141,8 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                 router.push('/view/workflows/general/photo-to-line-drawing');
               } else if (wf.id === 'line-drawing-to-photo') {
                 router.push('/view/workflows/general/line-drawing-to-photo');
+              } else if (wf.id === 'become-celebrity') {
+                router.push('/view/workflows/fun/become-celebrity');
               } else if (wf.id === 'remove-element') {
                 router.push('/view/workflows/general/remove-element');
               } else if (wf.id === 'remove-watermark') {
