@@ -1,20 +1,4 @@
-'use client';
-
-import { useState } from 'react';
-import WorkflowsView from './WorkflowsView';
-import WorkflowModal from './WorkflowModal';
-import SelfieVideoModal from './components/selfieVideo';
-
-interface Workflow {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  model: string;
-  thumbnail: string;
-  sampleBefore: string;
-  sampleAfter: string;
-}
+import { WorkflowsPageComponent } from './components/WorkflowsPageComponent';
 
 export default function WorkflowsPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);

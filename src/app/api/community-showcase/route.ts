@@ -35,20 +35,65 @@ export async function GET() {
       return false
     })
     
+    // DEBUG: Perform a raw fetch to see what the server sees
+    // FALLBACK: If env vars are missing, default to production URL
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'https://wildmindai.com';
+    let debugInfo: any = {
+      apiBase,
+      timestamp: new Date().toISOString(),
+      nodeEnv: process.env.NODE_ENV,
+    };
+
+    try {
+      const debugUrl = `${apiBase.replace(/\/$/, '')}/api/feed?mode=image&limit=5`;
+      const debugRes = await fetch(debugUrl, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.wildmindai.com/',
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
+      const debugText = await debugRes.text();
+      
+      debugInfo.rawFetchStatus = debugRes.status;
+      debugInfo.rawFetchOk = debugRes.ok;
+      debugInfo.rawResponseExcerpt = debugText.substring(0, 200); // See what the HTML says!
+      
+      try {
+          const debugJson = JSON.parse(debugText);
+          debugInfo.rawItemsCount = (debugJson?.data?.items || []).length;
+          debugInfo.firstRawItem = (debugJson?.data?.items || [])[0] ? {
+            id: debugJson.data.items[0].id,
+            url: debugJson.data.items[0].url,
+            images: debugJson.data.items[0].images,
+            type: debugJson.data.items[0].generationType
+          } : 'No items';
+      } catch (jsonErr) {
+          debugInfo.jsonParseError = String(jsonErr);
+      }
+    } catch (debugErr: any) {
+      debugInfo.rawFetchError = String(debugErr);
+    }
+
     return NextResponse.json({
       responseStatus: 'success',
-      data: validItems
+      data: validItems,
+      debug: debugInfo
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
       }
     })
   } catch (e: any) {
-    console.error('[CommunityShowcase] Error:', e)
+    console.error('[CommunityShowcase] Critical Error:', e)
     return NextResponse.json({
       responseStatus: 'error',
       message: e?.message || 'Failed to load showcase',
+      debug: process.env.NODE_ENV === 'development' ? String(e) : undefined,
       data: []
-    }, { status: 500 })
+    }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
   }
 }

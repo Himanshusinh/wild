@@ -125,6 +125,19 @@ export function proxy(req: NextRequest) {
   if (pathname === '/robots.txt') {
     res.headers.set('Content-Type', 'text/plain; charset=utf-8');
   }
+  // For the main HTML document, we disable caching at the edge (Vercel/CDN)
+  // to ensure we don't serve stale HTML that points to old JS chunk hashes.
+  const isDocument = !pathname.includes('.') || pathname.endsWith('.html');
+  const isApi = pathname.startsWith('/api/');
+
+  if (isDocument && !isApi) {
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+    res.headers.set('Surrogate-Control', 'no-store'); // Specifically for CDNs like Vercel/Cloudflare
+  }
+
+  // Security Headers
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -138,15 +151,15 @@ export function proxy(req: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     // Allow scripts from Google, Firebase, Cloudflare Turnstile
     // Note: 'unsafe-eval' needed for Firebase/Google Auth
-    "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com",
+    "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
     // script-src-elem for external script tags - includes Turnstile
     // Note: 'unsafe-inline' required for Next.js hydration/inline scripts
-    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com",
+    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
     // Images and media from HTTPS/data/blob
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
     // Permit API/XHR/WebSocket to Google/Firebase backends and our gateway
-    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com",
+    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
     // Allow Google, Firebase OAuth popups/iframes, and Turnstile widget
     "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com",
     // Do not allow our app to be framed by other sites

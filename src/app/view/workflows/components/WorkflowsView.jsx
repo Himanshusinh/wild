@@ -4,9 +4,67 @@ import { useState } from 'react';
 import { Search, LayoutGrid, List } from 'lucide-react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
 
-export default function WorkflowsView({ openModal }) {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const filteredWorkflows = activeCategory === "All" ? WORKFLOWS_DATA : WORKFLOWS_DATA.filter(wf => wf.category === activeCategory);
+// ... imports
+export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows", workflows = null }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // ... slugify ...
+  const slugify = (cat) => cat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').trim();
+  const categoryBySlug = useMemo(() => (
+    CATEGORIES.reduce((acc, cat) => {
+      acc[slugify(cat)] = cat;
+      return acc;
+    }, {})
+  ), []);
+
+  // ... deriveCategoryFromPath ...
+  // ... useState ...
+
+  const deriveCategoryFromPath = (path) => {
+    if (!path) return null;
+    const segments = path.split('/').filter(Boolean);
+    const last = segments[segments.length - 1];
+
+    // 1. Check if last segment is a category slug
+    if (categoryBySlug[last]) return categoryBySlug[last];
+
+    // 2. Check if last segment is a workflow ID
+    const workflow = WORKFLOWS_DATA.find(w => w.id === last);
+    if (workflow) return workflow.category;
+
+    // 3. Fallback
+    return (last === 'workflows' ? null : 'All');
+  };
+
+  const [activeCategory, setActiveCategory] = useState(() => {
+    return deriveCategoryFromPath(pathname) || initialCategory;
+  });
+
+  // Use passed workflows if available, otherwise filter from global
+  const filteredWorkflows = useMemo(() => {
+    if (workflows) return workflows;
+    return activeCategory === "All"
+      ? WORKFLOWS_DATA
+      : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
+  }, [activeCategory, workflows]);
+
+
+
+  useEffect(() => {
+    const nextCategory = deriveCategoryFromPath(pathname);
+    setActiveCategory(nextCategory || initialCategory);
+  }, [pathname, initialCategory]);
+
+
+
+  const handleCategoryClick = (cat) => {
+    setActiveCategory(cat);
+    const slug = slugify(cat);
+    // Always use /view/workflows/[slug] for all categories, regardless of current basePath
+    const path = `/view/workflows/${slug}`;
+    router.push(path);
+  };
 
   return (
     <div className="animate-in">
@@ -68,7 +126,20 @@ export default function WorkflowsView({ openModal }) {
       {/* Workflow Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
         {filteredWorkflows.map((wf) => (
-          <div key={wf.id} onClick={() => openModal(wf)} className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1">
+          <div
+            key={wf.id}
+            onClick={() => {
+              // Route to custom pages
+              if (wf.id === 'selfie-video') {
+                router.push('/view/workflows/viral-trend/selfie-video');
+              } else if (wf.id === 'remove-background') {
+                router.push('/view/workflows/general/remove-background');
+              } else {
+                router.push(`/view/workflows/${wf.id}`);
+              }
+            }}
+            className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1"
+          >
             <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/[0.02] mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
               {/* Thumbnail (Visible by default) */}
               <img

@@ -3,6 +3,21 @@
 import React from "react";
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  React.useEffect(() => {
+    // Automatically reload on ChunkLoadError (deployment version mismatch)
+    if (error?.message?.includes('Loading chunk') || error?.message?.includes('ChunkLoadError') || error?.name === 'ChunkLoadError') {
+      console.log('Global ChunkLoadError detected, attempting recovery with cache-buster...');
+      const reloadKey = `reload_chunk_error_${new Date().getMinutes()}`;
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, 'true');
+        // Force reload with cache busting query param to break CDN/Browser cache of the HTML itself
+        const url = new URL(window.location.href);
+        url.searchParams.set('cv', Date.now().toString());
+        window.location.href = url.toString();
+      }
+    }
+  }, [error]);
+
   return (
     <html>
       <body>
