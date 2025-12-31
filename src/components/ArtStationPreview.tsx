@@ -744,31 +744,7 @@ export default function ArtStationPreview({
 
             {/* Delete button (owner only) - on same row as Like button */}
             {/* Delete button (owner only) - on same row as Like button */}
-            {currentUid && preview.item.createdBy?.uid === currentUid ? (
-              <div className="relative group">
-                <button
-                  title="Delete"
-                  className="md:w-20 w-16 h-8 md:h-10 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm transition-colors"
-                  onClick={() => {
-                    // Determine which image is currently selected
-                    const images = (preview.item.images || []) as any[];
-                    const currentImg = images[selectedImageIndex] || images[0];
-                    const imageId = currentImg?.id;
-                    
-                    // Pass imageId to parent (if multiple images exist, otherwise it might be undefined or just delete the item)
-                    // If we have multiple images, we want to delete just the current one.
-                    // If we have just one image, the backend will treat it as a full delete anyway if we pass the ID.
-                    // So always passing the ID is safe and correct for "single image deletion".
-                    onConfirmDelete(preview.item, imageId);
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
-              </div>
-            ) : (
-              <div className="w-10 h-10"></div>
-            )}
+
           </div>
         </div>
 
@@ -792,7 +768,7 @@ export default function ArtStationPreview({
                       : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
                   : preview.url
                 return (
-                  <div className="relative w-full h-full">
+                  <div className="relative w-full h-full group">
                     <img
                       src={src}
                       alt={preview.item.prompt || ''}
@@ -813,13 +789,30 @@ export default function ArtStationPreview({
                         e.stopPropagation()
                         openFullscreen()
                       }}
-                      className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40"
+                       className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 opacity-0 group-hover:opacity-100 duration-200"
                       title="Fullscreen (F)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 md:h-5 md:w-5">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                       </svg>
                     </button>
+                    
+                    {/* Delete button (owner only) - TOP LEFT (Next to Fullscreen) */}
+                    {currentUid && preview.item.createdBy?.uid === currentUid && (
+                      <button
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           const images = (preview.item.images || []) as any[];
+                           const currentImg = images[selectedImageIndex] || images[0];
+                           const imageId = currentImg?.id;
+                           onConfirmDelete(preview.item, imageId);
+                        }}
+                        className="absolute top-2 left-12 md:top-4 md:left-16 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-red-500/40 opacity-0 group-hover:opacity-100 duration-200"
+                        title="Delete"
+                      >
+                         <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                    )}
                   </div>
                 )
               }
@@ -828,7 +821,7 @@ export default function ArtStationPreview({
                 const proxied = toDirectUrl(vid.url) || vid.url
                 const poster = (vid as any).thumbnailUrl || (vid as any).avifUrl || undefined
                 return (
-                  <div className="relative w-full h-full">
+                  <div className="relative w-full h-full group">
                     <video
                       src={proxied}
                       className="w-full h-full"
@@ -848,13 +841,28 @@ export default function ArtStationPreview({
                         e.stopPropagation()
                         openFullscreen()
                       }}
-                      className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40"
+                       className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 opacity-0 group-hover:opacity-100 duration-200"
                       title="Fullscreen (F)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 md:h-5 md:w-5">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                       </svg>
                     </button>
+
+                     {/* Delete button (owner only) - TOP LEFT (Next to Fullscreen) */}
+                    {currentUid && preview.item.createdBy?.uid === currentUid && (
+                      <button
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           // For video, we usually delete the whole item or just pass item
+                           onConfirmDelete(preview.item);
+                        }}
+                        className="absolute top-2 left-12 md:top-4 md:left-16 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-red-500/40 opacity-0 group-hover:opacity-100 duration-200"
+                        title="Delete"
+                      >
+                         <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                    )}
                   </div>
                 )
               }
