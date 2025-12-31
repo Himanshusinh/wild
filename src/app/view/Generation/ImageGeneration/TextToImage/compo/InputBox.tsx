@@ -1297,6 +1297,7 @@ const InputBox = () => {
   const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
+  const [qwenResolution, setQwenResolution] = useState<'1K' | '2K'>('1K');
   const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
   const [gptImage15Quality, setGptImage15Quality] = useState<'low' | 'medium' | 'high' | 'auto'>('low');
   const [gptImage15OutputFormat, setGptImage15OutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
@@ -2021,7 +2022,7 @@ const InputBox = () => {
     try {
       const resolution = selectedModel === 'google/nano-banana-pro'
         ? nanoBananaProResolution
-        : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined);
+        : (selectedModel === 'flux-2-pro' ? flux2ProResolution : (selectedModel === 'qwen-image-edit-2512' ? qwenResolution : undefined));
       return getImageGenerationCreditCost(selectedModel, imageCount, frameSize, style, resolution, getCombinedUploadedImages());
     } catch {
       return 0;
@@ -2033,6 +2034,7 @@ const InputBox = () => {
     style,
     nanoBananaProResolution,
     flux2ProResolution,
+    qwenResolution,
     prompt,
     uploadedImages,
     selectedCharacters,
@@ -2130,7 +2132,7 @@ const InputBox = () => {
     frameSize,
     count: imageCount,
     style,
-    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined),
+    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : (selectedModel === 'qwen-image-edit-2512' ? qwenResolution : undefined)),
     quality: selectedModel === 'openai/gpt-image-1.5' ? gptImage15Quality : undefined
   });
 
@@ -5011,13 +5013,45 @@ const InputBox = () => {
             console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
           }
 
-          const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit';
+          const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit' || selectedModel === 'qwen-image-edit-2512';
 
           // Qwen image-edit specific parameters
           if (isQwenImageEdit) {
             generationPayload.aspect_ratio = frameSize;
             // FileTypeDropdown stores 'jpeg' but Qwen schema uses 'jpg'
             generationPayload.output_format = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+            if (selectedModel === 'qwen-image-edit-2512') {
+              generationPayload.resolution = qwenResolution; // '1K' or '2K'
+
+              // Explicit width/height mapping for QWEN 2512
+              const QWEN_MAP: Record<string, Record<string, { w: number, h: number }>> = {
+                '1K': {
+                  '1:1': { w: 1024, h: 1024 },
+                  '16:9': { w: 1024, h: 576 },
+                  '9:16': { w: 576, h: 1024 },
+                  '4:3': { w: 1024, h: 768 },
+                  '3:4': { w: 768, h: 1024 },
+                  '3:2': { w: 1024, h: 683 },
+                  '2:3': { w: 683, h: 1024 },
+                },
+                '2K': {
+                  '1:1': { w: 2048, h: 2048 },
+                  '16:9': { w: 2048, h: 1152 },
+                  '9:16': { w: 1152, h: 2048 },
+                  '4:3': { w: 2048, h: 1536 },
+                  '3:4': { w: 1536, h: 2048 },
+                  '3:2': { w: 2048, h: 1365 },
+                  '2:3': { w: 1365, h: 2048 },
+                }
+              };
+
+              if (QWEN_MAP[qwenResolution]?.[frameSize]) {
+                const dims = QWEN_MAP[qwenResolution][frameSize];
+                generationPayload.width = dims.w;
+                generationPayload.height = dims.h;
+                generationPayload.aspect_ratio = 'custom';
+              }
+            }
           }
 
           const result = await dispatch(
@@ -5884,10 +5918,10 @@ const InputBox = () => {
       )}
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         <div
-          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered 
-            ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]' 
+          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
+            ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
             : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
-          }`}
+            }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
           onDragOver={(e) => {
@@ -6232,8 +6266,8 @@ const InputBox = () => {
             {/* Uploaded Images / Characters Preview (Moved INSIDE container to match Video Gen style) */}
             {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
               <div className="hidden md:flex flex-wrap gap-2 px-1 pb-3 pt-2">
-                 {/* Selected Characters */}
-                 {selectedCharacters.map((character: any) => (
+                {/* Selected Characters */}
+                {selectedCharacters.map((character: any) => (
                   <div key={character.id} className="relative group">
                     <div
                       className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
@@ -6260,48 +6294,48 @@ const InputBox = () => {
                       ×
                     </button>
                   </div>
-                 ))}
+                ))}
 
-                 {/* Uploaded Images */}
-                 {uploadedImages.map((u: string, i: number) => (
-                   <div key={i} className="relative group">
-                     <div
-                       className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                       onClick={() => {
-                         setAssetViewer({
-                           isOpen: true,
-                           assetUrl: u,
-                           assetType: 'image',
-                           title: `Uploaded Image ${i + 1}`
-                         });
-                       }}
-                     >
-                       <img
-                         src={u}
-                         alt=""
-                         decoding="async"
-                         className="w-full h-full object-cover"
-                       />
-                       <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                         Image {i + 1}
-                       </div>
-                     </div>
-                     <button
-                       aria-label="Remove image"
-                       className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
-                         dispatch(setUploadedImages(next));
-                       }}
-                     >
-                       ×
-                     </button>
-                   </div>
-                 ))}
+                {/* Uploaded Images */}
+                {uploadedImages.map((u: string, i: number) => (
+                  <div key={i} className="relative group">
+                    <div
+                      className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: u,
+                          assetType: 'image',
+                          title: `Uploaded Image ${i + 1}`
+                        });
+                      }}
+                    >
+                      <img
+                        src={u}
+                        alt=""
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                        Image {i + 1}
+                      </div>
+                    </div>
+                    <button
+                      aria-label="Remove image"
+                      className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
+                        dispatch(setUploadedImages(next));
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
-            
+
 
 
             {/* Fixed position Generate button - Desktop only */}
@@ -6439,6 +6473,16 @@ const InputBox = () => {
                   />
                 </div>
               )}
+              {selectedModel === 'qwen-image-edit-2512' && (
+                <div className="flex items-center gap-2 relative">
+                  <ResolutionDropdown
+                    resolution={qwenResolution}
+                    onResolutionChange={(val) => setQwenResolution(val as '1K' | '2K')}
+                    options={['1K', '2K']}
+                    dropdownId="qwen2512Resolution"
+                  />
+                </div>
+              )}
               {selectedModel === 'seedream-4.5' && (
                 <div className="flex items-center gap-2 relative">
                   <ResolutionDropdown
@@ -6537,6 +6581,16 @@ const InputBox = () => {
                       onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
                       options={['1K', '2K']}
                       dropdownId="flux2ProResolution"
+                    />
+                  </div>
+                )}
+                {selectedModel === 'qwen-image-edit-2512' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={qwenResolution}
+                      onResolutionChange={(val) => setQwenResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="qwen2512Resolution"
                     />
                   </div>
                 )}

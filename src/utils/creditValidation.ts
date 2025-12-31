@@ -210,10 +210,10 @@ export const getImageGenerationCreditCost = (
 ): number => {
   // Qwen Image Edit: backend charges a flat per-generation cost (not per image)
   // Keep frontend validation/reservation aligned with backend.
-  if (frontendModel === 'qwen-image-edit-2511' || frontendModel === 'qwen-image-edit') {
+  if (frontendModel === 'qwen-image-edit-2511' || frontendModel === 'qwen-image-edit' || frontendModel === 'qwen-image-edit-2512') {
     const mapping = getModelMapping(frontendModel);
     const baseCost = mapping ? getCreditCostForModel(mapping.creditModelName) : 0;
-    return (baseCost && baseCost > 0) ? baseCost : 80;
+    return (baseCost && baseCost > 0) ? baseCost : (frontendModel === 'qwen-image-edit-2512' ? 60 : 80);
   }
 
   // Special case: z-image-turbo (new-turbo-model) is free for launch offer

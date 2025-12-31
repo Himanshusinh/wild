@@ -4034,7 +4034,25 @@ export const creditDistributionData: ModelCreditInfo[] = [
     planD: 2472,
     free: 25
   },
+},
+
+
+{
+  srNo: 214,
+  modelName: "qwen-image-edit-2512",
+  priceToPay: 0.02,
+  overCharge: 0.01,
+  userCost: 0.03,
+  creditsPerGeneration: 60,
+  plans: {
+    planA: 206,
+    planB: 412,
+    planC: 1030,
+    planD: 3296,
+    free: 33.33333333
+  },
 }
+
 
 
 
