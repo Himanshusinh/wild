@@ -155,9 +155,7 @@ export default function VideoGenerationPage() {
                                     </button>
                                 ))}
                             </div>
-                             <div className=" items-center pt-2">
-                                    <HistoryControls mode="video"/>
-                                </div>
+                    
                         </div>
                     </div>
 
