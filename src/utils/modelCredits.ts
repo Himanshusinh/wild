@@ -414,6 +414,12 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Kling models
   if (modelValue.startsWith('kling')) {
+    // Special case: kling-o1 is a simple FAL model with only duration-based pricing (5s / 10s)
+    if (modelValue === 'kling-o1') {
+      const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const key = `kling-o1-${d >= 10 ? '10s' : '5s'}`;
+      return MODEL_CREDITS_MAPPING[key] || MODEL_CREDITS_MAPPING['kling-o1'] || null;
+    }
     // Kling 2.6 Pro: duration and audio-based
     if (modelValue === 'kling-2.6-pro') {
       const d = duration ? parseInt(String(duration).replace('s', '')) : 5;

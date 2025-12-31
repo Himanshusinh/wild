@@ -119,6 +119,7 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
   })();
   const selectedImageProxyUrl = toResourceProxy(selectedImage?.url || selectedImagePath) || '';
   const [selectedImageObjectUrl, setSelectedImageObjectUrl] = useState<string>('');
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // ---- Fullscreen helpers (unconditional hooks) ----
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -530,18 +531,20 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
                 <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">Delete</div>
               </div>
 
-              <div className="relative group flex-1">
-                <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
-                  <Image 
-                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
-                    alt={isPublicFlag ? "Public" : "Private"} 
-                    width={16} 
-                    height={16} 
-                    className="w-4 h-4"
-                  />
-                </button>
-                <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
-              </div>
+              {entryToUse.status !== 'generating' && (
+                <div className="relative group flex-1">
+                  <button onClick={toggleVisibility} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/20 text-sm" aria-pressed={isPublicFlag} aria-label="Toggle visibility" title={isPublicFlag ? 'Public' : 'Private'}>
+                    <Image 
+                      src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                      alt={isPublicFlag ? "Public" : "Private"} 
+                      width={16} 
+                      height={16} 
+                      className="w-4 h-4"
+                    />
+                  </button>
+                  <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">{isPublicFlag ? 'Public' : 'Private'}</div>
+                </div>
+              )}
             </div>
 
             {/* Prompt */}
@@ -642,12 +645,36 @@ const LogoImagePreview: React.FC<LogoImagePreviewProps> = ({
 
             {/* Action Button */}
             <div className="mt-6">
-              <button
-                onClick={onClose}
-                className="w-full px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
-              >
-                Close Preview
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2.5 bg-[#2D6CFF] text-white rounded-lg hover:bg-[#255fe6] transition-colors text-sm font-medium"
+                >
+                  Close Preview
+                </button>
+
+                <div className="flex-1">
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    try {
+                      const f = e.target.files && e.target.files[0];
+                      if (!f) return;
+                      const obj = URL.createObjectURL(f);
+                      const newImg: any = { id: `upload-${Date.now()}`, url: obj, isUserUpload: true };
+                      setCurrentEntry((prev) => ({ ...(prev as any), inputImages: [newImg, ...((prev as any)?.inputImages || [])] } as any));
+                      setSelectedImageIndex(0);
+                      try { const toast = (await import('react-hot-toast')).default; toast.success('Upload added to preview (local only)'); } catch {}
+                    } catch (err) {
+                      console.error('Upload failed:', err);
+                    }
+                  }} />
+                  <button
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className="w-full px-4 py-2.5 bg-white/5 text-white rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+                  >
+                    Upload New
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

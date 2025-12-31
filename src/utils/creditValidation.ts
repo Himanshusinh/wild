@@ -43,7 +43,8 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
   // Kling o1 (FAL) fixed per-duration pricing
   if (frontendModel === 'kling-o1') {
     const dur = duration || 5;
-    return dur >= 10 ? 2300 : 1180;
+    // Updated pricing: 5s -> 870, 10s (or >=10) -> 1710
+    return dur >= 10 ? 1710 : 870;
   }
         // WAN 2.2 Animate Replace uses per-second pricing (1 credit per second)
         if (frontendModel === 'wan-2.2-animate-replace') {

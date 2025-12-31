@@ -911,7 +911,14 @@ Output: High-resolution vector-style logo, plain background, sharp edges.
                 disabled={!prompt.trim() || isGeneratingLocally}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-6 py-2.5 rounded-lg text-[15px] font-semibold transition-colors"
               >
-                {isGeneratingLocally ? "Generating Logo..." : "Generate Logo"}
+                {isGeneratingLocally ? (
+                  <span className="flex items-center gap-2">
+                    <img src="/styles/Logo.gif" alt="Generating" className="w-6 h-6" />
+                    <span>Generating...</span>
+                  </span>
+                ) : (
+                  "Generate Logo"
+                )}
               </button>
             </div>
           </div>
