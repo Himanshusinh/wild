@@ -101,7 +101,7 @@ const SidePannelFeatures = () => {
       {!isMobileSidebarOpen && (
         <button
           onClick={() => setIsMobileSidebarOpen(true)}
-          className="fixed top-0 left-0 z-[60] md:hidden flex items-center gap-2 px-3 py-2"
+          className="fixed top-0 left-0 z-[60] md:hidden flex items-center gap-2 px-2 py-2"
         >
           <Menu size={24} className="text-[#f9fafb]" strokeWidth={2.5} />
         </button>

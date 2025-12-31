@@ -82,7 +82,8 @@ export default function VideoGenerationPage() {
                                             </div>
                                         </button>
                                     )}
-                                    <div className="flex items-center md:gap-3 gap-2 overflow-x-auto scrollbar-none ml-2 md:ml-4">
+                                    {/* Desktop buttons: hidden on small screens */}
+                                    <div className="hidden md:flex items-center md:gap-3 gap-2 overflow-x-auto scrollbar-none ml-2 md:ml-4">
                                         {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
                                             <button
                                                 key={feature}
@@ -122,6 +123,41 @@ export default function VideoGenerationPage() {
                             <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-2">
                                 Transform your ideas into stunning videos using advanced AI models
                             </p>
+
+                            {/* Mobile-only feature buttons: placed below the descriptive text */}
+                            <div className="flex md:hidden items-center gap-2 overflow-x-auto scrollbar-none pb-2">
+                                {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
+                                    <button
+                                        key={feature + '-mobile'}
+                                        onClick={() => {
+                                            if (feature === 'Edit') {
+                                                router.push('/view/EditVideo?feature=video-edit');
+                                                return;
+                                            }
+                                            setActiveFeature(feature);
+                                            const params = new URLSearchParams(window.location.search);
+                                            if (feature === 'Video') {
+                                                params.delete('feature');
+                                            } else if (feature === 'Lipsync') {
+                                                params.set('feature', 'lipsync');
+                                            } else if (feature === 'Animate') {
+                                                params.set('feature', 'animation');
+                                            }
+                                            const queryString = params.toString();
+                                            router.push(`/text-to-video${queryString ? '?' + queryString : ''}`, { scroll: false });
+                                        }}
+                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all border whitespace-nowrap ${activeFeature === feature
+                                            ? 'bg-white border-white/5 text-black shadow-sm'
+                                            : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                                            }`}
+                                    >
+                                        {feature}
+                                    </button>
+                                ))}
+                            </div>
+                             <div className=" items-center pt-2">
+                                    <HistoryControls mode="video"/>
+                                </div>
                         </div>
                     </div>
 
