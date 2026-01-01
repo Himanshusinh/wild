@@ -42,27 +42,27 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         const isDisplayed = computedStyle.display !== 'none';
         const isVisible = computedStyle.visibility !== 'hidden';
         const hasOpacity = parseFloat(computedStyle.opacity) > 0;
-        
+
         // Check if element has dimensions (not collapsed)
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const hasDimensions = buttonRect.width > 0 && buttonRect.height > 0;
-        
+
         // Only create dropdown if button is actually visible
         if (!isDisplayed || !isVisible || !hasOpacity || !hasDimensions) {
           setDropdownPosition(null);
           return;
         }
-        
+
         const dropdownWidth = 176; // w-44 = 11rem = 176px
         const spaceAbove = buttonRect.top;
         const spaceBelow = window.innerHeight - buttonRect.bottom;
-        
+
         let top: number;
         let left: number;
-        
+
         // Determine if we should open up or down based on available space
         const shouldOpenUp = openDirection === 'up' || (spaceAbove > spaceBelow && openDirection !== 'down');
-        
+
         if (shouldOpenUp) {
           // Position top of dropdown at button top, then translate up by 100% to make it grow upward
           top = buttonRect.top;
@@ -72,7 +72,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
           top = buttonRect.bottom + 8; // mt-2 = 8px
           left = buttonRect.left;
         }
-        
+
         // Ensure dropdown doesn't go off screen horizontally
         if (left + dropdownWidth > window.innerWidth) {
           left = window.innerWidth - dropdownWidth - 8;
@@ -80,7 +80,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         if (left < 8) {
           left = 8;
         }
-        
+
         // If opening up and dropdown would go off screen, switch to opening down
         let finalOpenUp = shouldOpenUp;
         if (shouldOpenUp && top < 8) {
@@ -88,7 +88,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
           top = buttonRect.bottom + 8;
           finalOpenUp = false;
         }
-        
+
         setDropdownPosition({ top, left, openUp: finalOpenUp });
       } else {
         setDropdownPosition(null);
@@ -96,11 +96,11 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     };
 
     updateDropdownPosition();
-    
+
     if (activeDropdown === 'frameSize') {
       window.addEventListener('scroll', updateDropdownPosition, true);
       window.addEventListener('resize', updateDropdownPosition);
-      
+
       // Close dropdown when clicking outside
       // Use bubble phase so React's onClick runs first
       const handleClickOutside = (event: MouseEvent) => {
@@ -108,7 +108,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         if (buttonJustClickedRef.current || shouldCloseRef.current || selectingRef.current) {
           return;
         }
-        
+
         const target = event.target as HTMLElement;
         // Don't close if clicking the button itself
         if (buttonRef.current && buttonRef.current.contains(target)) {
@@ -122,13 +122,13 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
         setIsActiveInstance(false);
         dispatch(toggleDropdown(''));
       };
-      
+
       // Use bubble phase (default) so React's onClick runs first, then this handler
       // Add a small delay to ensure React's event handlers complete first
       const timeoutId = setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
       }, 0);
-      
+
       return () => {
         clearTimeout(timeoutId);
         window.removeEventListener('scroll', updateDropdownPosition, true);
@@ -145,7 +145,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 5 seconds
       timeoutRef.current = setTimeout(() => {
         dispatch(toggleDropdown(''));
@@ -209,20 +209,23 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isZTurbo = selectedModel === 'new-turbo-model';
   const isPImage = selectedModel === 'prunaai/p-image';
   const isGptImage15 = selectedModel === 'openai/gpt-image-1.5';
-  const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit';
+  const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit' || selectedModel === 'qwen-image-edit-2512';
 
   const frameSizes = (() => {
     if (isQwenImageEdit) {
       // Qwen Image Edit: schema-supported aspect_ratio values only
       // Supported: 1:1, 16:9, 9:16, 4:3, 3:4, match_input_image
       const allowed = [
-        { name: 'Match Input Image', value: 'match_input_image', icon: 'square', hideValue: true },
         { name: 'Square', value: '1:1', icon: 'square' },
         { name: 'Wide', value: '16:9', icon: 'landscape' },
         { name: 'Vertical', value: '9:16', icon: 'portrait' },
         { name: 'Landscape', value: '4:3', icon: 'landscape' },
         { name: 'Portrait', value: '3:4', icon: 'portrait' },
       ];
+      if (selectedModel === 'qwen-image-edit-2512') {
+        allowed.push({ name: 'Landscape Wide', value: '3:2', icon: 'landscape' });
+        allowed.push({ name: 'Portrait Tall', value: '2:3', icon: 'portrait' });
+      }
       return allowed;
     }
     if (isGptImage15) {
@@ -316,7 +319,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   useEffect(() => {
     const currentFrameSize = frameSize;
     const isCurrentFrameSizeSupported = frameSizes.some(size => size.value === currentFrameSize);
-    
+
     if (!isCurrentFrameSizeSupported && frameSizes.length > 0) {
       // Switch to the first supported frame size (usually 1:1)
       dispatch(setFrameSize(frameSizes[0].value));
@@ -326,13 +329,13 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const handleDropdownClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent click outside handler from firing
-    
+
     // Mark that button was just clicked - do this immediately and synchronously
     buttonJustClickedRef.current = true;
-    
+
     // Check current state and toggle accordingly
     const isCurrentlyOpen = activeDropdown === 'frameSize' && isActiveInstance;
-    
+
     if (isCurrentlyOpen) {
       // Close the dropdown immediately
       setIsActiveInstance(false);
@@ -344,7 +347,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       dispatch(toggleDropdown('frameSize'));
       shouldCloseRef.current = false;
     }
-    
+
     // Reset the flag after a short delay
     setTimeout(() => {
       buttonJustClickedRef.current = false;
@@ -355,11 +358,11 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const handleFrameSizeSelect = (sizeValue: string) => {
     // Mark that we're selecting to prevent click outside handler from interfering
     selectingRef.current = true;
-    
+
     dispatch(setFrameSize(sizeValue));
     setIsActiveInstance(false);
     dispatch(toggleDropdown(''));
-    
+
     // Reset the flag after a short delay
     setTimeout(() => {
       selectingRef.current = false;
@@ -367,7 +370,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   };
 
   const dropdownContent = activeDropdown === 'frameSize' && isActiveInstance && dropdownPosition ? (
-    <div 
+    <div
       data-dropdown="frameSize"
       className="fixed md:w-50 w-44 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-xl ring-1 ring-white/30 pb-2 pt-2 z-[9999] md:max-h-150 max-h-100 overflow-y-auto dropdown-scrollbar"
       style={{
@@ -397,8 +400,8 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
             handleFrameSizeSelect(size.value);
           }}
           className={`w-full px-3 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between gap-3 ${frameSize === size.value
-              ? 'bg-white text-black'
-              : 'text-white/90 hover:bg-white/10'
+            ? 'bg-white text-black'
+            : 'text-white/90 hover:bg-white/10'
             }`}
         >
           <span className="flex items-center gap-2">
@@ -420,13 +423,13 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
                 }`}></span>
             )}
             <span>{size.name}</span>
-          {size.value !== 'match_input_image' && !(size as any).hideValue && (
-            <span className={`text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'}`}>{size.value}</span>
-          )}
+            {size.value !== 'match_input_image' && !(size as any).hideValue && (
+              <span className={`text-[12px] ${frameSize === size.value ? 'text-black/70' : 'text-white/50'}`}>{size.value}</span>
+            )}
           </span>
           {frameSize === size.value && <div className="w-2 h-2 bg-black rounded-full" />}
         </button>
-        
+
       ))}
     </div>
   ) : null;
@@ -438,8 +441,8 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
           ref={buttonRef}
           onClick={handleDropdownClick}
           className={`h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 ${frameSize !== '1:1'
-              ? 'bg-transparent text-white/90'
-              : 'bg-transparent text-white/90 hover:bg-white/5'
+            ? 'bg-transparent text-white/90'
+            : 'bg-transparent text-white/90 hover:bg-white/5'
             }`}
         >
           <Crop className="w-4 h-4 mr-1" />

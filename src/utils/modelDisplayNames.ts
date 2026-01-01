@@ -32,8 +32,11 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   // Qwen
   'qwen-image-edit': 'Qwen Image Edit',
   'qwen-image-edit-2511': 'Qwen Image Edit',
+  'qwen-image-edit-2512': 'Qwen Image Edit',
   'qwen/qwen-image-edit-2511': 'Qwen Image Edit',
+  'qwen/qwen-image-edit-2512': 'Qwen Image Edit',
   'replicate/qwen/qwen-image-edit-2511': 'Qwen Image Edit',
+  'replicate/qwen/qwen-image-edit-2512': 'Qwen Image Edit',
   
   // Video Generation Models
   'veo3-t2v-8s': 'Veo3',

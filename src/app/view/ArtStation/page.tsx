@@ -1442,26 +1442,26 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
       {/* When authenticated: add margin for sidepanel, when not: full width */}
       <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
-        <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8 lg:px-12 ">
+        <div className="flex-1 min-w-0 px-2 sm:px-4 md:px-6 ">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className="sticky top-0 z-20 bg-[#07070B] pt-10 ">
-            <div className=" mb-0 md:mb-3">
-              <h3 className="text-white text-xl sm:text-4xl md:text-5xl lg:text-4xl font-semibold md:mb-2 mb-0">
+          <div className="sticky top-0 z-20 bg-[#07070B] pt-8 md:pt-4 ">
+            <div className=" mb-2 md:mb-0">
+              <h3 className="text-white text-xl sm:text-xl md:text-2xl font-semibold md:mb-0 mb-0">
                 Art Station
               </h3>
-              <p className="text-white/80 text-xs sm:text-lg md:text-xl">
+              <p className="text-white/80 text-xs sm:text-lg md:text-md">
                 Discover amazing AI-generated content from our creative community
               </p>
             </div>
 
             {/* Category Filter Bar */}
-            <div className="md:mb-4 md:pb-0 pb-2 md:mt-0 mt-2">
-              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-2 pb-0 scrollbar-none">
+            <div className="md:mb-2 md:pb-0 pb-2 md:mt-0 mt-0">
+              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-0 pb-0 scrollbar-none">
                 {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center md:gap-2  md:px-4 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
+                    className={`inline-flex items-center md:gap-2  md:px-2 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
                         ? 'bg-white border-white/5 text-black shadow-sm'
                         : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                       }`}
@@ -1482,7 +1482,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                       }
                       setShowLikedOnly(prev => !prev)
                     }}
-                    className={`md:p-2 p-1 rounded-lg border flex items-center justify-center transition-all ${
+                    className={`md:p-1.5 p-1 rounded-lg border flex items-center justify-center transition-all ${
                       showLikedOnly
                         ? 'bg-white text-black border-white'
                         : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
@@ -1517,7 +1517,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
                         }
                       }}
                       placeholder="Search by prompt..."
-                      className={`md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
+                      className={`md:px-2 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
                     />
                     {searchQuery && (
                       <button
@@ -1902,4 +1902,3 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
     </div>
   )
 }
-
