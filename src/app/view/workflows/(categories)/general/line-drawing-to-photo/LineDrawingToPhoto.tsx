@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap } from 'lucide-react';
+import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
 
 export default function LineDrawingToPhoto() {
@@ -110,6 +111,16 @@ No illustration style — the final result should look like a real photograph.`;
             toast.error(error.response?.data?.message || error.message || 'Failed to generate');
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleDownload = async () => {
+        if (!generatedImage) return;
+        try {
+            await downloadFileWithNaming(generatedImage, null, 'image', 'photo');
+            toast.success('Downloading...');
+        } catch (error) {
+            toast.error('Failed to download image');
         }
     };
 
@@ -226,6 +237,13 @@ No illustration style — the final result should look like a real photograph.`;
                                         afterLabel="Photorealistic"
                                         imageFit="object-contain"
                                     />
+                                    <button
+                                        onClick={handleDownload}
+                                        className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
+                                    >
+                                        <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
+                                        Download
+                                    </button>
                                 </div>
                             ) : originalImage ? (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">

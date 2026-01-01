@@ -82,6 +82,7 @@ const EditImageInterface: React.FC = () => {
     deductCreditsOptimisticForGeneration,
     rollbackOptimisticDeduction,
     refreshCredits,
+    creditBalance,
   } = useCredits();
 
   // Live Chat state
@@ -188,7 +189,7 @@ const EditImageInterface: React.FC = () => {
   const [expandHoverEdge, setExpandHoverEdge] = useState<string | null>(null);
 
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('philz1337x/crystal-upscaler');
+  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/seedvr/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('philz1337x/crystal-upscaler');
   const [prompt, setPrompt] = useState('');
   const [scaleFactor, setScaleFactor] = useState('');
   const [faceEnhance, setFaceEnhance] = useState(false);
@@ -203,6 +204,7 @@ const EditImageInterface: React.FC = () => {
     if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
     if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
     if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
+    if (m === 'fal-ai/seedvr/upscale/image') return 'SeedVR Upscaler (factor)';
     if (m === 'fal-ai/bria/expand') return 'Bria Expand (Resize)';
     if (m === 'fal-ai/bria/genfill') return 'Bria GenFill';
     if (m === 'google_nano_banana') return 'Google Nano Banana';
@@ -215,12 +217,27 @@ const EditImageInterface: React.FC = () => {
   // Topaz upscaler state
   const [topazModel, setTopazModel] = useState<'Low Resolution V2' | 'Standard V2' | 'CGI' | 'High Fidelity V2' | 'Text Refine' | 'Recovery' | 'Redefine' | 'Recovery V2'>('Standard V2');
   const [topazUpscaleFactor, setTopazUpscaleFactor] = useState<number>(2);
+  const [seedvrUpscaleFactor, setSeedvrUpscaleFactor] = useState<number>(2);
   const [topazCropToFill, setTopazCropToFill] = useState<boolean>(false);
   const [topazOutputFormat, setTopazOutputFormat] = useState<'jpeg' | 'png'>('jpeg');
   const [topazSubjectDetection, setTopazSubjectDetection] = useState<'All' | 'Foreground' | 'Background'>('All');
   const [topazFaceEnhance, setTopazFaceEnhance] = useState<boolean>(true);
   const [topazFaceCreativity, setTopazFaceCreativity] = useState<number>(0);
   const [topazFaceStrength, setTopazFaceStrength] = useState<number>(0.8);
+
+  const seedvrEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'fal-ai/seedvr/upscale/image') return null;
+    const w = Number(inputNaturalSize?.width || 0);
+    const h = Number(inputNaturalSize?.height || 0);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+    const factor = Math.max(1, Math.min(8, Math.round(Number(seedvrUpscaleFactor) || 2)));
+    const outW = Math.max(1, Math.round(w * factor));
+    const outH = Math.max(1, Math.round(h * factor));
+    const mp = (outW * outH) / 1_000_000;
+    const credits = Math.max(1, Math.ceil(mp * 4));
+    return { factor, outW, outH, credits };
+  }, [inputNaturalSize?.width, inputNaturalSize?.height, model, seedvrUpscaleFactor, selectedFeature]);
   // Outpaint (resize) controls
   const [resizeExpandLeft, setResizeExpandLeft] = useState<number>(0);
   const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
@@ -1904,6 +1921,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleRun = async () => {
+    if (processing[selectedFeature]) return;
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
       if (!url) return url as any;
       if (url.startsWith('data:')) return url as any;
@@ -3136,6 +3154,66 @@ const EditImageInterface: React.FC = () => {
           const crystalScale = Math.max(1, Math.min(6, clarityScale));
           const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
           payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
+        } else if (model === 'fal-ai/seedvr/upscale/image') {
+          // SeedVR factor-only upscaler (credits: 4 per output megapixel, rounded up)
+          const getNaturalSize = async () => {
+            const w0 = Number(inputNaturalSize?.width || 0);
+            const h0 = Number(inputNaturalSize?.height || 0);
+            if (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0) return { width: w0, height: h0 };
+            const src = String(normalizedInput).startsWith('data:') ? normalizedInput : String(currentInput || normalizedInput);
+            return await new Promise<{ width: number; height: number }>((resolve, reject) => {
+              const img = document.createElement('img');
+              img.onload = () => {
+                const width = Number(img.naturalWidth || img.width || 0);
+                const height = Number(img.naturalHeight || img.height || 0);
+                if (!width || !height) return reject(new Error('Could not read image dimensions'));
+                resolve({ width, height });
+              };
+              img.onerror = () => reject(new Error('Failed to load image for sizing'));
+              img.src = src;
+            });
+          };
+
+          const factor = Math.max(1, Math.min(8, Math.round(Number(seedvrUpscaleFactor) || 2)));
+          const { width: inW, height: inH } = await getNaturalSize();
+          const outW = Math.max(1, Math.round(inW * factor));
+          const outH = Math.max(1, Math.round(inH * factor));
+          const expectedCredits = Math.max(1, Math.ceil(((outW * outH) / 1_000_000) * 4));
+
+          if ((creditBalance || 0) < expectedCredits) {
+            throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+          }
+
+          if (expectedCredits > 0) {
+            try {
+              deductCreditsOptimisticForGeneration(expectedCredits);
+              optimisticDebit = expectedCredits;
+            } catch { /* ignore optimistic errors */ }
+          }
+
+          const normalizedLocal = normalizedInput;
+          const isData = String(normalizedLocal).startsWith('data:');
+          const body: any = {
+            ...(isData ? { image: normalizedLocal } : { image_url: currentInput }),
+            upscale_mode: 'factor',
+            upscale_factor: factor,
+            noise_scale: 0.1,
+            output_format: 'jpg',
+          };
+
+          const res = await axiosInstance.post('/api/fal/seedvr/upscale/image', body);
+          const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
+          if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
+          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          try {
+            await (dispatch as any)(loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: 'page',
+              debugTag: `refresh-after-upscale-seedvr:${Date.now()}`,
+            }));
+          } catch { }
+          try { await refreshCredits(); } catch { }
+          return;
         } else if (model === 'fal-ai/topaz/upscale/image') {
           // Use FAL Topaz Upscaler endpoint
           const normalizedLocal = normalizedInput;
@@ -4006,6 +4084,7 @@ const EditImageInterface: React.FC = () => {
                                   ]
                                   : [
                                     { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+                                    { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
                                     { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
                                     { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
                                   ]
@@ -4335,6 +4414,35 @@ const EditImageInterface: React.FC = () => {
 
                 {selectedFeature === 'upscale' && (
                   <>
+                    {model === 'fal-ai/seedvr/upscale/image' && (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Upscale factor (N)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={8}
+                              step={1}
+                              value={seedvrUpscaleFactor}
+                              onChange={(e) => setSeedvrUpscaleFactor(Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 2))))}
+                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-end">
+                            <div className="text-xs text-white/70">
+                              Output: {seedvrEstimate ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}` : '—'}
+                            </div>
+                            <div className="text-xs text-white/70">
+                              Est. cost: {seedvrEstimate ? `${seedvrEstimate.credits} credits` : '—'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-white/50">
+                          Uses factor-only upscaling. Estimated cost uses 4 credits per output megapixel (rounded up). Final cost is recalculated and deducted server-side only after success.
+                        </div>
+                      </div>
+                    )}
                     {model === 'nightmareai/real-esrgan' && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>

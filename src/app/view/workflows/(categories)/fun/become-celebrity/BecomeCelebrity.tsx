@@ -7,10 +7,11 @@ import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
-import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 
-export default function RestoreOldPhoto() {
+export default function BecomeCelebrity() {
     const router = useRouter();
     const {
         creditBalance,
@@ -26,14 +27,18 @@ export default function RestoreOldPhoto() {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     // Workflow Data (Hardcoded for this specific page, matching data.js)
-    const workflowData = {
-        id: "restore-old-photo",
-        title: "Restore Old Photo",
-        category: "General",
-        description: "Restore and colorize this image, remove any scratches or imperfections.",
-        model: "Seadream4/ Nano Banana",
-        cost: 80 // Frontend cost display
+    const workflowData = WORKFLOWS_DATA.find(w => w.id === "become-celebrity") || {
+        id: "become-celebrity",
+        title: "Become a Celebrity",
+        category: "Fun",
+        description: "Ultra realistic candid photo in a crowded place with fans and cameras, giving a true celebrity vibe.",
+        model: "Seadream4/ Nano Banana/ Qwen",
+        cost: 80,
+        sampleBefore: "/workflow-samples/become-celebrity-before.jpg",
+        sampleAfter: "/workflow-samples/become-celebrity-after.jpg"
     };
+
+    const CREDIT_COST = 80;
 
     useEffect(() => {
         // Open modal animation on mount
@@ -43,7 +48,7 @@ export default function RestoreOldPhoto() {
     const onClose = () => {
         setIsOpen(false);
         setTimeout(() => {
-            router.push('/view/workflows/general');
+            router.push('/view/workflows/fun');
         }, 300);
     };
 
@@ -64,7 +69,6 @@ export default function RestoreOldPhoto() {
             return;
         }
 
-        const CREDIT_COST = 80;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;
@@ -74,32 +78,22 @@ export default function RestoreOldPhoto() {
             deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
-            // Updated Payload structure as requested
-            const payload = {
+            const response = await axiosInstance.post('/api/workflows/fun/become-celebrity', {
                 image: originalImage,
-                prompt: "Restore and colorize this image, remove any scratches or imperfections. [Style: none]",
-                model: "qwen/qwen-image-edit-2511",
-                frameSize: "match_input_image",
-                output_format: "jpg",
-                style: "none",
-                generationType: "text-to-image",
-                isPublic: true,
-                n: 1,
-            };
-
-            const response = await axiosInstance.post('/api/workflows/general/restore-old-photo', payload);
+                isPublic: true
+            });
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
                 setGeneratedImage(response.data.data.images[0].url);
-                toast.success('Photo restored successfully!');
+                toast.success('Celebrity transformation complete!');
             } else {
                 throw new Error(response.data?.message || 'Invalid response from server');
             }
 
         } catch (error: any) {
-            console.error('Restore photo error:', error);
+            console.error('Become Celebrity error:', error);
             rollbackOptimisticDeduction(CREDIT_COST);
-            toast.error(error.response?.data?.message || error.message || 'Failed to restore photo');
+            toast.error(error.response?.data?.message || error.message || 'Failed to transform photo');
         } finally {
             setIsGenerating(false);
         }
@@ -108,7 +102,7 @@ export default function RestoreOldPhoto() {
     const handleDownload = async () => {
         if (!generatedImage) return;
         try {
-            await downloadFileWithNaming(generatedImage, null, 'image', 'restored');
+            await downloadFileWithNaming(generatedImage, null, 'image', 'celebrity');
             toast.success('Downloading...');
         } catch (error) {
             toast.error('Failed to download image');
@@ -144,7 +138,7 @@ export default function RestoreOldPhoto() {
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                                 </div>
                                 <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                                 <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
@@ -185,7 +179,7 @@ export default function RestoreOldPhoto() {
                                     <span className="text-xs font-medium text-slate-500">Cost estimated:</span>
                                     <div className="flex items-center gap-1.5 text-white font-medium text-sm">
                                         <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
-                                        {workflowData.cost} Credits
+                                        {CREDIT_COST} Credits
                                     </div>
                                 </div>
                                 <button
@@ -224,9 +218,9 @@ export default function RestoreOldPhoto() {
                                     <ImageComparisonSlider
                                         beforeImage={originalImage}
                                         afterImage={generatedImage}
-                                        beforeLabel="Before"
-                                        afterLabel="Restored" // Changed from "After" to "Restored"
-                                        imageFit="object-contain" // Use object-contain to see full images properly
+                                        beforeLabel="Original"
+                                        afterLabel="Celebrity Vibe"
+                                        imageFit="object-contain"
                                     />
                                     <button
                                         onClick={handleDownload}
@@ -245,15 +239,15 @@ export default function RestoreOldPhoto() {
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                                             </div>
-                                            <p className="text-white font-medium text-lg animate-pulse">Restoring photo...</p>
+                                            <p className="text-white font-medium text-lg animate-pulse">Processing transformation...</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/portrait-before.jpg"
-                                        afterImage="/portrait-after.jpg"
+                                        beforeImage={workflowData.sampleBefore}
+                                        afterImage={workflowData.sampleAfter}
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"

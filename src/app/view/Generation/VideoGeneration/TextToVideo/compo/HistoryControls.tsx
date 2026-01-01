@@ -251,7 +251,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
 
   return (
-    <div className={`flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-10 md:pt-0 sticky ${className || ''}`}>
+    <div className={`flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-2 md:pt-0 sticky ${className || ''}`}>
       {/* Prompt search (backend-driven) */}
       <div className="relative flex items-center md:mr-0 mr-auto">
         <input

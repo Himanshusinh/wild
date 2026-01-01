@@ -1,21 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap, Download } from 'lucide-react';
+import { X, Camera, Zap, Plus, Image as ImageIcon, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
-import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
-export default function RestoreOldPhoto() {
+export default function CreativelyUpscale() {
     const router = useRouter();
+
     const {
         creditBalance,
         deductCreditsOptimisticForGeneration,
-        rollbackOptimisticDeduction
+        rollbackOptimisticDeduction,
+        refreshCredits,
     } = useCredits();
 
     // State
@@ -24,19 +26,54 @@ export default function RestoreOldPhoto() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [upscaleFactor, setUpscaleFactor] = useState(2);
+    const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
-    // Workflow Data (Hardcoded for this specific page, matching data.js)
+    // Workflow Data
     const workflowData = {
-        id: "restore-old-photo",
-        title: "Restore Old Photo",
+        id: "creatively-upscale",
+        title: "Creatively Upscale",
         category: "General",
-        description: "Restore and colorize this image, remove any scratches or imperfections.",
-        model: "Seadream4/ Nano Banana",
-        cost: 80 // Frontend cost display
+        description: "Creatively upscale the image using SeedVR to ensure all details are crisp and in high quality.",
+        model: "SeedVR Image Upscale",
+        costPerMp: 5,
     };
 
     useEffect(() => {
-        // Open modal animation on mount
+        const url = originalImage;
+        if (!url) {
+            setInputNaturalSize({ width: 0, height: 0 });
+            return;
+        }
+        let cancelled = false;
+        const img = document.createElement('img');
+        img.onload = () => {
+            if (cancelled) return;
+            const w = Number(img.naturalWidth || img.width || 0);
+            const h = Number(img.naturalHeight || img.height || 0);
+            setInputNaturalSize({ width: w, height: h });
+        };
+        img.onerror = () => {
+            if (cancelled) return;
+            setInputNaturalSize({ width: 0, height: 0 });
+        };
+        img.src = url;
+        return () => { cancelled = true; };
+    }, [originalImage]);
+
+    const estimate = useMemo(() => {
+        const w = Number(inputNaturalSize?.width || 0);
+        const h = Number(inputNaturalSize?.height || 0);
+        if (!originalImage || !Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+        const factor = Math.max(1, Math.min(8, Math.round(Number(upscaleFactor) || 2)));
+        const outW = Math.max(1, Math.round(w * factor));
+        const outH = Math.max(1, Math.round(h * factor));
+        const mp = (outW * outH) / 1_000_000;
+        const credits = Math.max(1, Math.ceil(mp * 5));
+        return { factor, outW, outH, credits };
+    }, [inputNaturalSize?.width, inputNaturalSize?.height, originalImage, upscaleFactor]);
+
+    useEffect(() => {
         setTimeout(() => setIsOpen(true), 50);
     }, []);
 
@@ -47,59 +84,80 @@ export default function RestoreOldPhoto() {
         }, 300);
     };
 
-    const openUploadModal = () => {
-        setIsUploadModalOpen(true);
-    };
-
     const handleImageSelect = (url: string) => {
         setOriginalImage(url);
-        // Reset generated image when new image is selected
         setGeneratedImage(null);
         setIsUploadModalOpen(false);
     };
 
     const handleRun = async () => {
+        if (isGenerating) return;
         if (!originalImage) {
             toast.error('Please upload an image first');
             return;
         }
 
-        const CREDIT_COST = 80;
-        if (creditBalance < CREDIT_COST) {
-            toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
-            return;
-        }
+        const toZataPublicUrl = (urlOrPath: string): string => {
+            const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+            const RESOURCE_SEG = '/api/proxy/resource/';
+            const s = String(urlOrPath || '').trim();
+            if (!s) return s;
+            if (s.startsWith(ZATA_PREFIX)) return s;
+            if (s.startsWith(RESOURCE_SEG)) {
+                const decoded = decodeURIComponent(s.substring(RESOURCE_SEG.length));
+                return `${ZATA_PREFIX}${decoded}`;
+            }
+            if (s.startsWith('http://') || s.startsWith('https://')) {
+                try {
+                    const u = new URL(s);
+                    if (u.pathname.startsWith(RESOURCE_SEG)) {
+                        const decoded = decodeURIComponent(u.pathname.substring(RESOURCE_SEG.length));
+                        return `${ZATA_PREFIX}${decoded}`;
+                    }
+                } catch { }
+            }
+            return s;
+        };
 
+        let optimisticDebit = 0;
         try {
-            deductCreditsOptimisticForGeneration(CREDIT_COST);
+            const expectedCredits = estimate?.credits;
+            if (!expectedCredits || expectedCredits <= 0) {
+                toast.error('Unable to estimate credits. Please try another image.');
+                return;
+            }
+            if ((creditBalance || 0) < expectedCredits) {
+                toast.error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+                return;
+            }
             setIsGenerating(true);
 
-            // Updated Payload structure as requested
-            const payload = {
-                image: originalImage,
-                prompt: "Restore and colorize this image, remove any scratches or imperfections. [Style: none]",
-                model: "qwen/qwen-image-edit-2511",
-                frameSize: "match_input_image",
-                output_format: "jpg",
-                style: "none",
-                generationType: "text-to-image",
-                isPublic: true,
-                n: 1,
-            };
+            try {
+                deductCreditsOptimisticForGeneration(expectedCredits);
+                optimisticDebit = expectedCredits;
+            } catch { /* ignore optimistic errors */ }
 
-            const response = await axiosInstance.post('/api/workflows/general/restore-old-photo', payload);
+            const imageForApi = toZataPublicUrl(originalImage);
+
+            const response = await axiosInstance.post('/api/workflows/general/creatively-upscale', {
+                image: imageForApi,
+                upscaleFactor: upscaleFactor
+            });
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
                 setGeneratedImage(response.data.data.images[0].url);
-                toast.success('Photo restored successfully!');
+                toast.success('Image upscaled successfully!');
+                try { await refreshCredits(); } catch { }
             } else {
                 throw new Error(response.data?.message || 'Invalid response from server');
             }
 
         } catch (error: any) {
-            console.error('Restore photo error:', error);
-            rollbackOptimisticDeduction(CREDIT_COST);
-            toast.error(error.response?.data?.message || error.message || 'Failed to restore photo');
+            console.error('Upscale error:', error);
+            if (optimisticDebit > 0) {
+                try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+            }
+            toast.error(error.response?.data?.message || error.message || 'Failed to upscale image');
         } finally {
             setIsGenerating(false);
         }
@@ -108,7 +166,7 @@ export default function RestoreOldPhoto() {
     const handleDownload = async () => {
         if (!generatedImage) return;
         try {
-            await downloadFileWithNaming(generatedImage, null, 'image', 'restored');
+            await downloadFileWithNaming(generatedImage, null, 'image', 'upscaled');
             toast.success('Downloading...');
         } catch (error) {
             toast.error('Failed to download image');
@@ -118,8 +176,8 @@ export default function RestoreOldPhoto() {
     return (
         <>
             <style jsx global>{`
-        @keyframes shimmer { 100% { left: 150%; } }
-      `}</style>
+                @keyframes shimmer { 100% { left: 150%; } }
+            `}</style>
             <Toaster position="bottom-center" toastOptions={{
                 style: { background: '#333', color: '#fff' }
             }} />
@@ -136,7 +194,7 @@ export default function RestoreOldPhoto() {
 
                 <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-                    <div className="flex w-full h-full">
+                    <div className="flex w-full h-full flex-col md:flex-row">
                         {/* Left Panel - Controls */}
                         <div className="w-full md:w-[40%] p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
                             <div className="flex-1">
@@ -146,11 +204,11 @@ export default function RestoreOldPhoto() {
                                 <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
-                                <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
+                                <div className="text-xs text-slate-500 mb-6 font-mono">Model: {workflowData.model}</div>
 
                                 <div className="mb-8">
                                     <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                                        onClick={openUploadModal}>
+                                        onClick={() => setIsUploadModalOpen(true)}>
                                         {originalImage ? (
                                             <>
                                                 <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
@@ -170,13 +228,41 @@ export default function RestoreOldPhoto() {
                                     </div>
                                 </div>
 
-                                <div className="mb-4">
+                                {/* Upscale Factor Slider */}
+                                <div className="mb-8 p-4 bg-white/5 rounded-xl border border-white/10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">Upscale Factor</label>
+                                        <span className="text-[#60a5fa] font-bold font-mono bg-[#60a5fa]/10 px-2 py-0.5 rounded text-sm">{upscaleFactor}x</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="8"
+                                        step="1"
+                                        value={upscaleFactor}
+                                        onChange={(e) => setUpscaleFactor(parseInt(e.target.value))}
+                                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] px-3"
+                                    />
+                                    <div className="mt-2 grid grid-cols-8 text-[10px] text-slate-500 font-mono">
+                                        {Array.from({ length: 8 }).map((_, i) => (
+                                            <span key={i} className="text-center">{i + 1}x</span>
+                                        ))}
+                                    </div>
+                                    <div className="mt-3 text-[11px] text-slate-500 font-mono">
+                                        Output: {estimate ? `${estimate.outW} × ${estimate.outH}` : '—'} • Est. cost: {estimate ? `${estimate.credits} credits` : '—'}
+                                    </div>
+                                    {/* <div className="mt-1 text-[11px] text-slate-600">
+                                        Estimated cost uses 5 credits per output megapixel (rounded up). Final cost is recalculated and deducted server-side only after success.
+                                    </div> */}
+                                </div>
+
+                                {/* <div className="mb-4">
                                     <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
                                     <textarea
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-24"
                                         placeholder="Add extra data or specific instructions here..."
                                     ></textarea>
-                                </div>
+                                </div> */}
 
                             </div>
 
@@ -185,7 +271,7 @@ export default function RestoreOldPhoto() {
                                     <span className="text-xs font-medium text-slate-500">Cost estimated:</span>
                                     <div className="flex items-center gap-1.5 text-white font-medium text-sm">
                                         <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
-                                        {workflowData.cost} Credits
+                                        {estimate ? `${estimate.credits} Credits` : '—'}
                                     </div>
                                 </div>
                                 <button
@@ -200,7 +286,7 @@ export default function RestoreOldPhoto() {
                                     {isGenerating ? (
                                         <>
                                             <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                                            Running Workflow...
+                                            Upscaling...
                                         </>
                                     ) : (
                                         <>
@@ -213,8 +299,7 @@ export default function RestoreOldPhoto() {
                         </div>
 
                         {/* Right Panel - Preview */}
-                        <div className="hidden md:flex flex-1 items-center justify-center bg-[#050505] relative overflow-hidden">
-                            {/* Background pattern */}
+                        <div className="flex-1 items-center justify-center bg-[#050505] relative overflow-hidden flex">
                             <div className="absolute inset-0 opacity-20"
                                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
                             </div>
@@ -224,9 +309,9 @@ export default function RestoreOldPhoto() {
                                     <ImageComparisonSlider
                                         beforeImage={originalImage}
                                         afterImage={generatedImage}
-                                        beforeLabel="Before"
-                                        afterLabel="Restored" // Changed from "After" to "Restored"
-                                        imageFit="object-contain" // Use object-contain to see full images properly
+                                        beforeLabel="Original"
+                                        afterLabel="Upscaled"
+                                        imageFit="object-contain"
                                     />
                                     <button
                                         onClick={handleDownload}
@@ -245,15 +330,15 @@ export default function RestoreOldPhoto() {
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                                             </div>
-                                            <p className="text-white font-medium text-lg animate-pulse">Restoring photo...</p>
+                                            <p className="text-white font-medium text-lg animate-pulse">Upscaling image...</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/portrait-before.jpg"
-                                        afterImage="/portrait-after.jpg"
+                                        beforeImage="/workflow-samples/creatively-upscale-before.png"
+                                        afterImage="/workflow-samples/creatively-upscale-after.png"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"

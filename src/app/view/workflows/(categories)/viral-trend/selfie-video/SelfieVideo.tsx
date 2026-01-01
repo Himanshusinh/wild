@@ -9,11 +9,14 @@ import {
   ArrowLeft,
   RefreshCw,
   Play,
-  ImageIcon
+  ImageIcon,
+  Download
 } from 'lucide-react';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import { getAuthToken } from '@/lib/authHelper';
 import { useCredits } from '@/hooks/useCredits';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import toast from 'react-hot-toast';
 
 // --- TYPES ---
 interface Workflow {
@@ -1146,6 +1149,16 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     }
   };
 
+  const handleDownloadFile = async (url: string, type: 'image' | 'video', naming: string) => {
+    if (!url) return;
+    try {
+      await downloadFileWithNaming(url, null, type, naming);
+      toast.success('Downloading...');
+    } catch (error) {
+      toast.error('Failed to download');
+    }
+  };
+
   const openUploadModal = (target: 'selfie' | 'friends' | 'step2Friend') => {
     setUploadTarget(target);
     setIsUploadModalOpen(true);
@@ -1480,17 +1493,16 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                             <>
                               <img src={src} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="generated" />
                               <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <div className="absolute bottom-3 left-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a
-                                  href={src}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors"
-                                >
-                                  Download
-                                </a>
-                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadFile(src, 'image', 'selfie-image');
+                                }}
+                                className="px-3 py-1.5 text-xs flex items-center gap-1.5 font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors"
+                              >
+                                <Download size={14} />
+                                Download
+                              </button>
                             </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
@@ -1681,16 +1693,16 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                                 </div>
                               </button>
                             )}
-                            <a
-                              href={src}
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute top-3 right-3 px-3 py-1.5 text-xs font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors"
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadFile(src, 'video', 'selfie-video-segment');
+                              }}
+                              className="absolute top-3 right-3 px-3 py-1.5 text-xs flex items-center gap-1.5 font-medium rounded-md bg-black/70 text-white border border-white/20 hover:bg-black/80 transition-colors"
                             >
+                              <Download size={14} />
                               Download
-                            </a>
+                            </button>
                             {/* Aspect ratio badge (shows 9:16 or 16:9 to match generated video) */}
                             <div className="absolute top-3 right-14 px-2 py-1 rounded-md bg-black/60 text-xs font-semibold text-white border border-white/10">
                               {frameSize === 'vertical' ? '9:16' : '16:9'}
@@ -1780,16 +1792,17 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                       >
                         Loop
                       </button>
-                      <a
-                        href={finalVideoUrl || undefined}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`px-4 py-2 rounded-md text-sm font-semibold border border-white/20 shadow-[0_0_20px_rgba(59,130,246,0.35)] transition-all ${finalVideoUrl ? 'bg-[#3b82f6] hover:bg-[#2563eb] text-white' : 'bg-white/10 text-slate-400 cursor-not-allowed'}`}
-                        aria-disabled={!finalVideoUrl}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(finalVideoUrl || '', 'video', 'selfie-video-final');
+                        }}
+                        disabled={!finalVideoUrl}
+                        className={`px-4 py-2 rounded-md text-sm font-semibold border border-white/20 shadow-[0_0_20px_rgba(59,130,246,0.35)] flex items-center gap-2 transition-all ${finalVideoUrl ? 'bg-[#3b82f6] hover:bg-[#2563eb] text-white' : 'bg-white/10 text-slate-400 cursor-not-allowed'}`}
                       >
+                        <Download size={16} />
                         Download
-                      </a>
+                      </button>
                     </div>
                     <div className="absolute bottom-0 w-full p-6 bg-gradient-to-t from-black to-transparent">
                       <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">

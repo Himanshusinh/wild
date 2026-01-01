@@ -4051,7 +4051,25 @@ export const creditDistributionData: ModelCreditInfo[] = [
     planD: 3296,
     free: 33.33333333
   },
+},
+
+
+{
+  srNo: 214,
+  modelName: "Seedvr Image Upscle per 1MP",
+  priceToPay: 0.001,
+  overCharge: 0.001,
+  userCost: 0.002,
+  creditsPerGeneration: 4,
+  plans: {
+    planA: 3090,
+    planB: 6180,
+    planC: 15450,
+    planD: 49440,
+    free: 500
+  },
 }
+
 
 
 

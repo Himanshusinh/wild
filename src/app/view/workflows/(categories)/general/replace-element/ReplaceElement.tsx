@@ -10,7 +10,7 @@ import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparis
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
 
-export default function RestoreOldPhoto() {
+export default function ReplaceElement() {
     const router = useRouter();
     const {
         creditBalance,
@@ -24,15 +24,17 @@ export default function RestoreOldPhoto() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [replaceFrom, setReplaceFrom] = useState('');
+    const [replaceTo, setReplaceTo] = useState('');
 
-    // Workflow Data (Hardcoded for this specific page, matching data.js)
+    // Workflow Data
     const workflowData = {
-        id: "restore-old-photo",
-        title: "Restore Old Photo",
+        id: "replace-element",
+        title: "Replace Element",
         category: "General",
-        description: "Restore and colorize this image, remove any scratches or imperfections.",
+        description: "Replace any object in your image with something else using AI.",
         model: "Seadream4/ Nano Banana",
-        cost: 80 // Frontend cost display
+        cost: 80
     };
 
     useEffect(() => {
@@ -64,6 +66,16 @@ export default function RestoreOldPhoto() {
             return;
         }
 
+        if (!replaceFrom.trim()) {
+            toast.error('Please specify what you want to replace');
+            return;
+        }
+
+        if (!replaceTo.trim()) {
+            toast.error('Please specify what to replace it with');
+            return;
+        }
+
         const CREDIT_COST = 80;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
@@ -74,32 +86,26 @@ export default function RestoreOldPhoto() {
             deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
-            // Updated Payload structure as requested
+            // Payload structure
             const payload = {
                 image: originalImage,
-                prompt: "Restore and colorize this image, remove any scratches or imperfections. [Style: none]",
-                model: "qwen/qwen-image-edit-2511",
-                frameSize: "match_input_image",
-                output_format: "jpg",
-                style: "none",
-                generationType: "text-to-image",
-                isPublic: true,
-                n: 1,
+                from: replaceFrom,
+                to: replaceTo
             };
 
-            const response = await axiosInstance.post('/api/workflows/general/restore-old-photo', payload);
+            const response = await axiosInstance.post('/api/workflows/general/replace-element', payload);
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
                 setGeneratedImage(response.data.data.images[0].url);
-                toast.success('Photo restored successfully!');
+                toast.success('Element replaced successfully!');
             } else {
                 throw new Error(response.data?.message || 'Invalid response from server');
             }
 
         } catch (error: any) {
-            console.error('Restore photo error:', error);
+            console.error('Replace Element error:', error);
             rollbackOptimisticDeduction(CREDIT_COST);
-            toast.error(error.response?.data?.message || error.message || 'Failed to restore photo');
+            toast.error(error.response?.data?.message || error.message || 'Failed to replace element');
         } finally {
             setIsGenerating(false);
         }
@@ -108,7 +114,7 @@ export default function RestoreOldPhoto() {
     const handleDownload = async () => {
         if (!generatedImage) return;
         try {
-            await downloadFileWithNaming(generatedImage, null, 'image', 'restored');
+            await downloadFileWithNaming(generatedImage, null, 'image', 'element-replaced');
             toast.success('Downloading...');
         } catch (error) {
             toast.error('Failed to download image');
@@ -170,12 +176,27 @@ export default function RestoreOldPhoto() {
                                     </div>
                                 </div>
 
-                                <div className="mb-4">
-                                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
-                                    <textarea
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                                        placeholder="Add extra data or specific instructions here..."
-                                    ></textarea>
+                                <div className="space-y-4 mb-4">
+                                    <div>
+                                        <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-[0.1em]">Element to replace</label>
+                                        <input
+                                            type="text"
+                                            value={replaceFrom}
+                                            onChange={(e) => setReplaceFrom(e.target.value)}
+                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all"
+                                            placeholder="e.g. 'the red car'"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-[0.1em]">Replace with</label>
+                                        <input
+                                            type="text"
+                                            value={replaceTo}
+                                            onChange={(e) => setReplaceTo(e.target.value)}
+                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all"
+                                            placeholder="e.g. 'a blue sports bike'"
+                                        />
+                                    </div>
                                 </div>
 
                             </div>
@@ -190,9 +211,9 @@ export default function RestoreOldPhoto() {
                                 </div>
                                 <button
                                     onClick={handleRun}
-                                    disabled={isGenerating || !originalImage}
+                                    disabled={isGenerating || !originalImage || !replaceFrom.trim() || !replaceTo.trim()}
                                     className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !originalImage
+                    ${isGenerating || !originalImage || !replaceFrom.trim() || !replaceTo.trim()
                                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                                             : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
                                         }`}
@@ -204,7 +225,7 @@ export default function RestoreOldPhoto() {
                                         </>
                                     ) : (
                                         <>
-                                            <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
+                                            <Zap size={16} className={(!originalImage || !replaceFrom.trim() || !replaceTo.trim()) ? "fill-slate-500" : "fill-black"} />
                                             Run Workflow
                                         </>
                                     )}
@@ -225,7 +246,7 @@ export default function RestoreOldPhoto() {
                                         beforeImage={originalImage}
                                         afterImage={generatedImage}
                                         beforeLabel="Before"
-                                        afterLabel="Restored" // Changed from "After" to "Restored"
+                                        afterLabel="Result"
                                         imageFit="object-contain" // Use object-contain to see full images properly
                                     />
                                     <button
@@ -245,15 +266,15 @@ export default function RestoreOldPhoto() {
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
                                                 <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                                             </div>
-                                            <p className="text-white font-medium text-lg animate-pulse">Restoring photo...</p>
+                                            <p className="text-white font-medium text-lg animate-pulse">Generating...</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/portrait-before.jpg"
-                                        afterImage="/portrait-after.jpg"
+                                        beforeImage="/replace-element-before.jpg"
+                                        afterImage="/replace-element-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
