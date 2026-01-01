@@ -1080,15 +1080,15 @@ const History = () => {
     <div className="min-h-full bg-[#07070B] text-white md:p-2 select-none">
       {/* Fixed Header with title and controls */}
       <div className="fixed top-0 left-0 right-0 z-30 bg-[#07070B] backdrop-blur-xl shadow-xl px-3">
-        <div className="pt-10 md:pt-4  md:px-8">
+        <div className="pt-10 md:pt-4  md:px-3">
           <div className="flex  md:items-center gap-4 md:pl-14 pb-2">
             <div>
               <h2 className="text-xl md:text-2xl font-semibold text-white pb-2 ">{headerTitle}</h2>
-              <div className="hidden md:block text-white/80 text-sm mt-0">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</div>
+              <div className="hidden md:flex text-white/80 text-sm mt-0">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</div>
             </div>
 
             {/* Filter pills (left) - keep visible near title */}
-            <div className="flex flex-wrap gap-2 -mt-6">
+            <div className="hidden md:flex flex-wrap gap-2 -mt-6">
               {([
                 { key: 'all', label: 'All' },
                 { key: 'images', label: 'Images' },
@@ -1154,9 +1154,50 @@ const History = () => {
         </div>
 
         {/* Mobile-only: Search, Sort buttons, and Date Picker below filter buttons */}
-        <div className="flex md:hidden flex-col gap-1 mt-0 w-full pb-1 mx-4">
+        <div className="flex md:hidden flex-col gap-1 mt-2 w-full pb-1 mx-0">
+          <div className="flex md:hidden flex-wrap gap-2 -mt-6">
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'images', label: 'Images' },
+                { key: 'videos', label: 'Videos' },
+                { key: 'music', label: 'Music' },
+                { key: 'user-uploads', label: 'Your Uploads' },
+              ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={async () => {
+                    setQuickFilter(key);
+                    setPillLoading(true);
+                    setOverlayLoading(true);
+                    let f: any = {};
+                    switch (key) {
+                      case 'images': f = { mode: 'image' }; break;
+                      case 'videos': f = { mode: 'video' }; break;
+                      case 'music': f = { generationType: 'text-to-music' }; break;
+                      case 'user-uploads': f = { isUserUpload: true }; break;
+                      default: f = {};
+                    }
+                    if (sortOrder) (f as any).sortOrder = sortOrder;
+                    if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                    setLocalFilters(f);
+                    dispatch(setFilters(f));
+                    dispatch(clearHistory());
+                    await loadFirstPage(f);
+                    setPage(1);
+                    setPillLoading(false);
+                    setOverlayLoading(false);
+                  }}
+                  className={`inline-flex items-center md:gap-1 md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
+                    ? 'bg-white border-white/5 text-black shadow-sm'
+                    : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           {/* First row: Search and Date Picker */}
-          <div className="flex items-center gap-1 w-full">
+          <div className="flex items-center gap-1 w-auto">
             {/* Search Input */}
             <div className="flex-1 relative flex items-center">
               <input
@@ -1170,7 +1211,7 @@ const History = () => {
                   }
                 }}
                 placeholder="Search by prompt..."
-                className={`w-full px-2 py-1 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 placeholder:text-xs ${searchQuery ? 'pr-10' : ''}`}
+                className={`w-full px-1 py-0.5 rounded-lg text-sm bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/70 placeholder:text-xs ${searchQuery ? 'pr-10' : ''}`}
               />
               {searchQuery && (
                 <button
@@ -1189,20 +1230,20 @@ const History = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onSortChange('desc')}
-                className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                className={`relative group px-1 py-1 rounded-lg text-xs ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Recent"
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
                   <span className="text-xs">Recent</span>
                 </div>
               </button>
               <button
                 onClick={() => onSortChange('asc')}
-                className={`relative group px-2 py-1.5 rounded-lg text-xs ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                className={`relative group px-1 py-1 rounded-lg text-xs ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Oldest"
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
                   <span className="text-xs">Oldest</span>
                 </div>
@@ -1238,7 +1279,7 @@ const History = () => {
                   setCalendarYear(base.getFullYear());
                   setShowCalendar((v) => !v);
                 }}
-                className={`relative group px-1 py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+                className={`relative group px-1 py-0.5 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Date"
               >
                 <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
@@ -1463,7 +1504,7 @@ const History = () => {
                 return (
                   <div key={dateKey} className="space-y-2 md:mb-6 mb-3">
                     {/* Date Header */}
-                    <div className="flex items-center md:gap-3 gap-1 md:mx-9 mx-4 ">
+                    <div className="flex items-center md:gap-3 gap-1 md:mx-3 mx-0 ">
                       <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
                           <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
@@ -1480,7 +1521,7 @@ const History = () => {
                     </div>
 
                     {/* Tiles for this date */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-6 gap-1 mx-4 md:mx-9">
+                    <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-6 gap-1 mx-0 md:mx-3">
                       {groupedByDate.groups[dateKey].map((entry: HistoryEntry) => {
                         const inputImagesArr = (((entry as any).inputImages) || []) as any[];
                         const inputVideosArr = (((entry as any).inputVideos) || []) as any[];

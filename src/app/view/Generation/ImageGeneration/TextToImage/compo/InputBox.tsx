@@ -5363,10 +5363,10 @@ const InputBox = () => {
       `}</style>
 
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
-        <div className="md:py-0  py-0 md:pl-4  ">
+        <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-0 py-2 md:ml-20 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
-            <div className="flex items-center justify-between md:mb-2 mb-0">
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-0 pt-2 md:pl-20 mr-1 backdrop-blur-lg shadow-xl ">
+            <div className="flex items-center justify-between md:mb-2 mb-0 pl-10 md:pl-0">
               <div className="flex items-center gap-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
 
@@ -5404,14 +5404,18 @@ const InputBox = () => {
               <div className="hidden md:flex items-center pt-4 pr-4">
                 <HistoryControls mode="image" />
               </div>
+
+
             </div>
 
+            <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
+              <HistoryControls mode="image" />
+            </div>
           </div>
 
+
           {/* Mobile: Search, Sort, and Date controls */}
-          <div className="flex md:hidden items-center justify-start px-2 gap-2 pb-0 mt-0">
-            <HistoryControls mode="image" />
-          </div>
+
         </div>
 
         {/* <div className="hidden md:flex items-center justify-end gap-2 md:mt-5 -mb-4">
@@ -5622,7 +5626,7 @@ const InputBox = () => {
 
           {/* History Entries - Grouped by Date */}
           {sortedDates.length > 0 && (
-            <div className=" space-y-4 md:px-0 px-2 md:mt-18 ">
+            <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
               {sortedDates.map((date) => (
                 <div key={date} className="space-y-2 md:-mt-2">
                   {/* Date Header */}

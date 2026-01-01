@@ -134,17 +134,17 @@ const PricingPage: React.FC = () => {
       </div>
 
       {/* --- Hero Section --- */}
-      <div className="relative z-10  md:pt-24 pb-12 px-6 text-center animate-in fade-in duration-700 slide-in-from-bottom-4">
-        <div className="inline-flex items-center gap-2 border border-[#60a5fa]/30 bg-[#60a5fa]/10 rounded-full px-3 py-1 text-[10px] uppercase tracking-widest text-[#60a5fa] mb-8 shadow-[0_0_10px_rgba(96,165,250,0.2)]">
+      <div className="relative z-10 pt-10  md:pt-24 pb-12 px-6 text-center animate-in fade-in duration-700 slide-in-from-bottom-4">
+        <div className="inline-flex items-center gap-2 border border-[#60a5fa]/30 bg-[#60a5fa]/10 rounded-full md:px-3 px-2 py-1 md:text-[10px] text-[9px] uppercase tracking-widest text-[#60a5fa] mb-8 shadow-[0_0_10px_rgba(96,165,250,0.2)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse"></span>
           Generate unlimited images from z image turbo
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-medium tracking-tight text-white mb-6 leading-[0.95]">
+        <h1 className="text-2xl md:text-7xl font-medium tracking-tight text-white mb-6 leading-[0.95]">
           Launching Offer<br />
           <span className="bg-gradient-to-r from-[#60a5fa] to-white bg-clip-text text-transparent">15 Days Free</span>
         </h1>
-        <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
+        <p className="text-md md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
           Get <span className="text-[#60a5fa] font-bold">4,000 credits</span>  for 15 days. 
           Create <span className="text-white font-semibold">unlimited images &</span> <span className="text-white font-semibold">20 videos</span>, absolutely free.
         </p>
@@ -161,12 +161,12 @@ const PricingPage: React.FC = () => {
             <div className="relative z-10">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#60a5fa]/20 border border-[#60a5fa]/40 rounded-full mb-6">
                 <Sparkles size={16} className="text-[#60a5fa]" />
-                <span className="text-[#60a5fa] text-xs font-bold uppercase tracking-widest">Launching Offer</span>
+                <span className="text-[#60a5fa] text-xs md:text-xs font-bold uppercase tracking-widest">Launching Offer</span>
               </div>
 
               <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex-1 text-center md:text-left">
-                  <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
+                  <h2 className="text-2xl md:text-5xl font-bold text-white mb-4 leading-tight">
                     <span className="bg-gradient-to-r from-white to-[#60a5fa] bg-clip-text text-transparent">
                      Free
                     </span>
@@ -180,7 +180,7 @@ const PricingPage: React.FC = () => {
                         <Zap size={20} className="text-[#60a5fa]" fill="currentColor" />
                       </div>
                       <div>
-                        <div className="text-2xl md:text-3xl font-bold text-white">
+                        <div className="text-lg md:text-3xl font-bold text-white">
                           <span className="text-[#60a5fa]">4,000</span> Credits
                         </div>
                         <p className="text-slate-400 text-sm">Free for 15 days</p>
@@ -207,7 +207,7 @@ const PricingPage: React.FC = () => {
                   {isAuthenticated && userPlan === 'LAUNCH_4000_FIXED' ? (
                     <div className="text-center">
                       <div className="px-8 py-4 bg-gradient-to-r from-[#60a5fa]/20 to-[#3b82f6]/20 border-2 border-[#60a5fa]/40 text-white font-bold rounded-full flex items-center justify-center gap-2">
-                        <Check size={20} className="text-[#60a5fa]" />
+                        <Check size={20} className="text-[#60a5fa] text-md md:text-lg" />
                         <span>You're already in free trial</span>
                       </div>
                       {timeRemaining === null ? (

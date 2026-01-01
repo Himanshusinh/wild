@@ -56,10 +56,10 @@ export default function VideoGenerationPage() {
         <div className="min-h-screen bg-[#07070B]">
             {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
             <div className="flex">
-                <div className="flex-1 min-w-0 px-4 sm:px-6 md:px-8">
+                <div className="flex-1 min-w-0 px-2 sm:px-6 md:px-8">
                     {/* Sticky header + filters (pinned under navbar) */}
                     <div className="sticky top-0 z-20 bg-[#07070B]">
-                        <div className="mb-2 md:mb-1 pt-2">
+                        <div className="mb-0 md:mb-1 pt-8 md:pt-2">
                             <div className="flex items-center justify-between gap-4 mb-0">
                                 <div className="flex items-center gap-2">
                                     <h3 className="text-white text-xl sm:text-2xl md:text-2xl  font-semibold">
@@ -125,7 +125,7 @@ export default function VideoGenerationPage() {
                             </p>
 
                             {/* Mobile-only feature buttons: placed below the descriptive text */}
-                            <div className="flex md:hidden items-center gap-2 overflow-x-auto scrollbar-none pb-2">
+                            <div className="flex md:hidden items-center gap-2 overflow-x-auto scrollbar-none ">
                                 {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
                                     <button
                                         key={feature + '-mobile'}
@@ -155,6 +155,9 @@ export default function VideoGenerationPage() {
                                     </button>
                                 ))}
                             </div>
+                             <div className="flex md:hidden items-center pt-0">
+                                    <HistoryControls mode="video"/>
+                                </div>
                     
                         </div>
                     </div>
