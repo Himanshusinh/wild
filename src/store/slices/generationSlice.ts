@@ -147,6 +147,8 @@ export const generateImages = createAsyncThunk(
         prompt,
         model,
         n: requestedCount,
+        // Some Replicate-backed models expect `num_images` semantics (we still keep `n` for backward compatibility).
+        ...(typeof model === 'string' && /qwen-image/i.test(model) ? { num_images: requestedCount } : {}),
         frameSize,
         style,
         generationType,
