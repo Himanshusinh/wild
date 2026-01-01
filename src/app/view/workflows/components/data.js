@@ -9,7 +9,9 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "/workflow-samples/creatively-upscale-before.png",
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
-    "sampleAfter": "/workflow-samples/creatively-upscale-after.png"
+    "sampleAfter": "/workflow-samples/creatively-upscale-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "remove-background",
@@ -214,9 +216,11 @@ export const WORKFLOWS_DATA = [
     "category": "Viral Trend",
     "description": "Step 1: Full body shot. Step 2: Realistic product-style sculpted character figurine with toy packaging mockups.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/figurine-before.jpg",
+    "sampleBefore": "/workflow-samples/figurine-before.jpg",
+    "sampleAfter": "/workflow-samples/figurine-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "style-transfer-viral",
@@ -224,9 +228,11 @@ export const WORKFLOWS_DATA = [
     "category": "Viral Trend",
     "description": "Create photorealistic 4-panel style transfer images using the palette and style of any reference image.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/style-transfer-before.jpg",
+    "sampleBefore": "/workflow-samples/style-transfer-before.jpg",
+    "sampleAfter": "/workflow-samples/style-transfer-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
   },
   {
     "id": "3d-print-mockup",
@@ -234,8 +240,95 @@ export const WORKFLOWS_DATA = [
     "category": "Viral Trend",
     "description": "1/7 scale commercialized figurine mockup in a realistic office environment with high-quality packaging design.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/3d-print-before.jpg",
+    "sampleBefore": "/workflow-samples/3d-print-before.jpg",
+    "sampleAfter": "/workflow-samples/3d-print-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "cad-to-3d",
+    "title": "Cad plans to 3d render (Int/Ext)",
+    "category": "Architecture",
+    "description": "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/cad-to-3d-before.jpg",
+    "sampleBefore": "/workflow-samples/cad-to-3d-before.jpg",
+    "sampleAfter": "/workflow-samples/cad-to-3d-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top"
+  },
+  {
+    "id": "building-angles",
+    "title": "Building different angles",
+    "category": "Architecture",
+    "description": "Generate multiple perspectives and angles of a building from a single reference image.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/palace-angles-before.jpg",
+    "sampleBefore": "/workflow-samples/palace-angles-before.jpg",
+    "sampleAfter": "/workflow-samples/palace-angles-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "interior-refine",
+    "title": "interior refine",
+    "category": "Architecture",
+    "description": "Refine and enhance interior renders with realistic lighting, textures, and furniture placement.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/interior-refine-before.jpg",
+    "sampleBefore": "/workflow-samples/interior-refine-before.jpg",
+    "sampleAfter": "/workflow-samples/interior-refine-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "interior-product",
+    "title": "Interior product display",
+    "category": "Architecture",
+    "description": "Create professional product displays within high-end interior environments for catalog-quality renders.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/interior-product-before.jpg",
+    "sampleBefore": "/workflow-samples/interior-product-before.jpg",
+    "sampleAfter": "/workflow-samples/interior-product-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "3d-isometric",
+    "title": "3D Isomatric view",
+    "category": "Architecture",
+    "description": "Generate clean, stylized 3D isometric views of architectural spaces or rooms.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/3d-isometric-before.jpg",
+    "sampleBefore": "/workflow-samples/3d-isometric-before.jpg",
+    "sampleAfter": "/workflow-samples/3d-isometric-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "replace-texture",
+    "title": "Replace texture of an element",
+    "category": "Architecture",
+    "description": "Change materials and textures (wood, marble, concrete) of specific architectural elements seamlessly.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/replace-texture-before.jpg",
+    "sampleBefore": "/workflow-samples/replace-texture-before.jpg",
+    "sampleAfter": "/workflow-samples/replace-texture-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "generate-texture",
+    "title": "Generate texture",
+    "category": "Architecture",
+    "description": "Create custom seamless PBR textures from text descriptions or reference images for architectural use.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "https://images.unsplash.com/photo-1518005020250-eccfde30a0dc?q=80&w=800&auto=format&fit=crop",
+    "sampleBefore": "https://images.unsplash.com/photo-1518005020250-eccfde30a0dc?q=80&w=800&auto=format&fit=crop",
+    "sampleAfter": "https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?q=80&w=800&auto=format&fit=crop",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
   }
 ];
+
