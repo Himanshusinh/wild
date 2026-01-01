@@ -5048,7 +5048,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           {/* Initial loading overlay - show only when actually loading and no entries exist */}
           {loading && historyEntries.length === 0 && (
             <div className="fixed top-[64px] md:top-[0px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 px-4">
+              <div className="flex flex-col items-center gap-4 px-2 md:px-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
                 <div className="text-white text-lg text-center">Loading generations...</div>
               </div>
@@ -5056,9 +5056,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           )}
 
           {/* Mobile: Search, Sort, and Date controls */}
-          <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
+          {/* <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
             <HistoryControls mode="video" />
-          </div>
+          </div> */}
 
           <div className="md:space-y-8 space-y-2 pb-40">
             {/* If there's a local preview and no row for today, render a dated block for today */}
@@ -5777,7 +5777,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(currentModelCapabilities.requiresReferenceImage) && (
                     <div className="relative">
                       <button
-                        className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
+                        className={`py-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                           (generationMode === "video_to_video" && references.length >= 4)
                           ? 'opacity-50 cursor-not-allowed'
                           : ''
@@ -5876,7 +5876,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
                       <div className="relative">
                         <button
-                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                           onClick={() => {
                             setUploadModalType('image');
                             setUploadModalTarget('first_frame');
@@ -5916,9 +5916,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <Image
                           src="/icons/arrow-right-left.svg"
                           alt="Arrow"
-                          width={16}
-                          height={16}
-                          className="opacity-80 mr-1 -ml-1  "
+                          width={14}
+                          height={14}
+                          className="opacity-80 mr-0   "
                         />
                       </div>
                     )}
@@ -5932,7 +5932,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     currentModelCapabilities.supportsImageToVideo) && (
                       <div className="relative ">
                         <button
-                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                           onClick={() => {
                             setUploadModalType('image');
                             setUploadModalTarget('last_frame');
@@ -5952,7 +5952,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
                     <div className="relative">
                       <button
-                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                         onClick={() => {
                           setUploadModalType('video');
                           setIsUploadModalOpen(true);
@@ -5975,7 +5975,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) && (
                     <div className="relative">
                       <button
-                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                         onClick={() => {
                           setUploadModalType('image');
                           setIsUploadModalOpen(true);
