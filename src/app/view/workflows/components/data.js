@@ -6,7 +6,7 @@ export const WORKFLOWS_DATA = [
     "title": "Creatively Upscale",
     "category": "General",
     "description": "Creatively upscale the image. Ensure that all details are crisp and in high quality, Muted color.",
-    "model": "Seadream4/ Nano Banana",
+    "model": "SeedVR",
     "thumbnail": "/workflow-samples/creatively-upscale-before.png",
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
     "sampleAfter": "/workflow-samples/creatively-upscale-after.png"
@@ -65,8 +65,8 @@ export const WORKFLOWS_DATA = [
     "id": "replace-element",
     "title": "Replace Element",
     "category": "General",
-    "description": "Replace element from image 1 to image 2 using detailed prompts.",
-    "model": "AI Transform",
+    "description": "Replace any object in your image with something else using AI.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/replace-element-before.jpg",
     "sampleBefore": "/replace-element-before.jpg",
     "sampleAfter": "/replace-element-after.jpg"
@@ -200,11 +200,11 @@ export const WORKFLOWS_DATA = [
     "id": "selfie-video",
     "title": "Selfie Video",
     "category": "Viral Trend",
-    "description": "Step 1: Full body shot. Step 2: Realistic product-style sculpted character figurine with toy packaging mockups.",
+    "description": "Generate high-quality AI selfie videos from a single photo.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=800&auto=format&fit=crop",
+    "sampleBefore": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop",
+    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop"
   },
 
 
@@ -212,11 +212,11 @@ export const WORKFLOWS_DATA = [
     "id": "turn-into-figurine",
     "title": "Turn your self into a figurine",
     "category": "Viral Trend",
-    "description": "Step 1: Full body shot. Step 2: Realistic product-style sculpted character figurine with toy packaging mockups.",
+    "description": "Transform yourself into a premium 3D sculpted character figurine mockup.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1558855430-6601ad06002c?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop",
+    "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
+    "sampleAfter": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop"
   },
   {
     "id": "style-transfer-viral",

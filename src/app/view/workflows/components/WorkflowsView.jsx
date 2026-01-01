@@ -108,73 +108,119 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
           {/* Category Navigation - Moved Below Subtitle */}
           <div className="flex items-center md:gap-3 gap-2 overflow-x-auto no-scrollbar py-4">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => handleCategoryClick(cat)}
-                className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-all border ${activeCategory === cat
-                  ? 'bg-white border-white/5 text-black'
-                  : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {CATEGORIES.map((cat) => {
+              const isCatComingSoon = !['All', 'General', 'Viral Trend'].includes(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryClick(cat)}
+                  className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === cat
+                    ? 'bg-white border-white/5 text-black'
+                    : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                    }`}
+                >
+                  {cat}
+                  {isCatComingSoon && (
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full border ${activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white/10 border-white/10 text-white/40'}`}>
+                      Soon
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Workflow Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
-        {filteredWorkflows.map((wf) => (
-          <div
-            key={wf.id}
-            onClick={() => {
-              // Route to custom pages
-              if (wf.id === 'selfie-video') {
-                router.push('/view/workflows/viral-trend/selfie-video');
-              } else if (wf.id === 'remove-background') {
-                router.push('/view/workflows/general/remove-background');
-              } else if (wf.id === 'restore-old-photo') {
-                router.push('/view/workflows/general/restore-old-photo');
-              } else if (wf.id === 'photo-to-line-drawing') {
-                router.push('/view/workflows/general/photo-to-line-drawing');
-              } else if (wf.id === 'line-drawing-to-photo') {
-                router.push('/view/workflows/general/line-drawing-to-photo');
-              } else if (wf.id === 'become-celebrity') {
-                router.push('/view/workflows/fun/become-celebrity');
-              } else if (wf.id === 'remove-element') {
-                router.push('/view/workflows/general/remove-element');
-              } else if (wf.id === 'remove-watermark') {
-                router.push('/view/workflows/general/remove-watermark');
-              } else {
-                router.push(`/view/workflows/${wf.id}`);
-              }
-            }}
-            className="group flex flex-col cursor-pointer transition-all duration-300 hover:-translate-y-1"
-          >
-            <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/[0.02] mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
-              {/* Thumbnail (Visible by default) */}
-              <img
-                src={wf.thumbnail}
-                className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} opacity-80 group-hover:opacity-0 transition-opacity duration-300`}
-                alt={wf.title}
-              />
+      {filteredWorkflows.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
+          {filteredWorkflows.map((wf) => {
+            const isComingSoon = wf.category !== 'General' && wf.id !== 'selfie-video';
 
-              {/* Result Image (Visible on hover) */}
-              <img
-                src={wf.sampleAfter}
-                className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-                alt={`${wf.title} Result`}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            </div>
-            <div className="px-1 text-center">
-              <h3 className="text-xs md:text-[13px] font-semibold text-white/70 group-hover:text-white transition-all duration-300 tracking-tight line-clamp-1">{wf.title}</h3>
-            </div>
+            return (
+              <div
+                key={wf.id}
+                onClick={() => {
+                  if (isComingSoon) return;
+                  // Route to custom pages
+                  if (wf.id === 'selfie-video') {
+                    router.push('/view/workflows/viral-trend/selfie-video');
+                  } else if (wf.id === 'remove-background') {
+                    router.push('/view/workflows/general/remove-background');
+                  } else if (wf.id === 'restore-old-photo') {
+                    router.push('/view/workflows/general/restore-old-photo');
+                  } else if (wf.id === 'photo-to-line-drawing') {
+                    router.push('/view/workflows/general/photo-to-line-drawing');
+                  } else if (wf.id === 'line-drawing-to-photo') {
+                    router.push('/view/workflows/general/line-drawing-to-photo');
+                  } else if (wf.id === 'become-celebrity') {
+                    router.push('/view/workflows/fun/become-celebrity');
+                  } else if (wf.id === 'remove-element') {
+                    router.push('/view/workflows/general/remove-element');
+                  } else if (wf.id === 'remove-watermark') {
+                    router.push('/view/workflows/general/remove-watermark');
+                  } else if (wf.id === 'creatively-upscale') {
+                    router.push('/view/workflows/general/creatively-upscale');
+                  } else if (wf.id === 'replace-element') {
+                    router.push('/view/workflows/general/replace-element');
+                  } else {
+                    router.push(`/view/workflows/${wf.id}`);
+                  }
+                }}
+                className={`group flex flex-col transition-all duration-300 ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1'}`}
+              >
+                <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/5 mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
+                  {/* Thumbnail (Visible by default) */}
+                  <img
+                    src={wf.thumbnail}
+                    className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} ${isComingSoon ? 'opacity-30 grayscale' : 'opacity-100'} transition-all duration-500`}
+                    alt={wf.title}
+                  />
+
+                  {/* Result Image (Visible on hover) */}
+                  {!isComingSoon && (
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
+                      <img
+                        src={wf.sampleAfter}
+                        className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'}`}
+                        alt={`${wf.title} Result`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse shadow-[0_0_8px_#60a5fa]"></div>
+                          <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live Now</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isComingSoon && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+                      <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 shadow-2xl flex flex-col items-center gap-1">
+                        <span className="opacity-50 text-[8px]">Coming</span>
+                        <span>Soon</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="px-1 text-center">
+                  <h3 className={`text-xs md:text-[13px] font-semibold transition-all duration-300 tracking-tight line-clamp-1 ${isComingSoon ? 'text-white/30' : 'text-white/70 group-hover:text-white'}`}>{wf.title}</h3>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 bg-white/[0.02] border border-white/5 rounded-[2.5rem] mt-4">
+          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
+            <span className="text-2xl animate-pulse">✨</span>
           </div>
-        ))}
-      </div>
+          <h3 className="text-white text-xl font-medium mb-2">Something Magic is Coming</h3>
+          <p className="text-white/40 text-sm max-w-xs text-center">We're building incredible AI workflows for the {activeCategory} category. Stay tuned!</p>
+        </div>
+      )}
     </div >
   );
 }
