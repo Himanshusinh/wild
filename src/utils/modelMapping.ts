@@ -178,6 +178,17 @@ export const MODEL_MAPPING: ModelMapping[] = [
     }
   },
   {
+    frontendValue: 'qwen-image-edit-2512',
+    creditModelName: 'qwen-image-edit-2512',
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      aspect_ratio: ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom', 'match_input_image'],
+      output_format: ['webp', 'jpg', 'png'],
+      resolution: ['1K', '2K']
+    }
+  },
+  {
     frontendValue: 'ideogram-ai/ideogram-v3-quality',
     creditModelName: 'Ideogram 3 Quality',
     generationType: 'image',

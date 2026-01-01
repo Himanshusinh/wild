@@ -1,4 +1,6 @@
 import React from 'react';
+import Link from 'next/link';
+import { ROUTES } from '@/routes/routes';
 import {
   Workflow,
   Image as ImageIcon,
@@ -47,9 +49,9 @@ export default function CompactFeatureStrip() {
               <p className="text-sm text-slate-400 leading-relaxed mb-4">
                 The infinite node-based canvas. Connect models, build logic, and create without limits.
               </p>
-              <button className="text-xs font-bold uppercase tracking-widest text-[#60a5fa] flex items-center gap-2 group-hover:gap-3 transition-all">
+              <Link href={ROUTES.LIVE_CHAT} className="text-xs font-bold uppercase tracking-widest text-[#60a5fa] flex items-center gap-2 group-hover:gap-3 transition-all">
                 Enter Studio <span className="text-lg">→</span>
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -57,14 +59,14 @@ export default function CompactFeatureStrip() {
           <div className="p-6 lg:p-8 bg-black hover:bg-[#080808] transition-colors group">
             <CategoryHeader icon={<ImageIcon size={16}/>} title="Image" color="text-emerald-400" />
             <div className="grid grid-cols-2 gap-x-2 gap-y-2 mt-4">
-               <FeatureItem label="Generation" icon={<Wand2 size={12}/>} />
-               <FeatureItem label="Editor" icon={<Crop size={12}/>} />
-               <FeatureItem label="Upscale" icon={<Maximize size={12}/>} />
-               <FeatureItem label="Remove BG" icon={<Scissors size={12}/>} />
-               <FeatureItem label="Erase/Replace" icon={<Zap size={12}/>} />
-               <FeatureItem label="Expand" icon={<Move3d size={12}/>} />
-               <FeatureItem label="Vectorize" icon={<Aperture size={12}/>} />
-               <FeatureItem label="Chat Edit" icon={<MessageSquare size={12}/>} />
+               <Link href={ROUTES.TEXT_TO_IMAGE}><FeatureItem label="Generation" icon={<Wand2 size={12}/>} /></Link>
+               <Link href={'/view/EditImage'}><FeatureItem label="Editor" icon={<Crop size={12}/>} /></Link>
+               <Link href={'/view/EditImage?feature=upscale'}><FeatureItem label="Upscale" icon={<Maximize size={12}/>} /></Link>
+               <Link href={'/view/EditImage?feature=remove-bg'}><FeatureItem label="Remove BG" icon={<Scissors size={12}/>} /></Link>
+               <Link href={'/view/EditImage?feature=erase-replace'}><FeatureItem label="Erase/Replace" icon={<Zap size={12}/>} /></Link>
+               <Link href={'/view/EditImage?feature=resize'}><FeatureItem label="Expand" icon={<Move3d size={12}/>} /></Link>
+               <Link href={'/view/EditImage?feature=vectorize'}><FeatureItem label="Vectorize" icon={<Aperture size={12}/>} /></Link>
+               <Link href={ROUTES.LIVE_CHAT}><FeatureItem label="Chat Edit" icon={<MessageSquare size={12}/>} /></Link>
             </div>
           </div>
 
@@ -72,12 +74,12 @@ export default function CompactFeatureStrip() {
           <div className="p-6 lg:p-8 bg-black hover:bg-[#080808] transition-colors group">
             <CategoryHeader icon={<Video size={16}/>} title="Video" color="text-purple-400" />
             <div className="grid grid-cols-2 gap-x-2 gap-y-2 mt-4">
-               <FeatureItem label="Video Gen" icon={<Video size={12}/>} />
-               <FeatureItem label="Lipsync" icon={<Mic size={12}/>} />
-               <FeatureItem label="Animate" icon={<Move3d size={12}/>} />
-               <FeatureItem label="Upscale" icon={<Maximize size={12}/>} />
-               <FeatureItem label="Remove BG" icon={<Scissors size={12}/>} />
-               <FeatureItem label="WildCut" icon={<Layers size={12}/>} highlight={true} />
+               <Link href={ROUTES.TEXT_TO_VIDEO}><FeatureItem label="Video Gen" icon={<Video size={12}/>} /></Link>
+               <Link href={`${ROUTES.TEXT_TO_VIDEO}?feature=lipsync`}><FeatureItem label="Lipsync" icon={<Mic size={12}/>} /></Link>
+               <Link href={`${ROUTES.TEXT_TO_VIDEO}?feature=animation`}><FeatureItem label="Animate" icon={<Move3d size={12}/>} /></Link>
+               <Link href={'/view/EditVideo?feature=upscale'}><FeatureItem label="Upscale" icon={<Maximize size={12}/>} /></Link>
+               <Link href={'/view/EditVideo?feature=remove-bg'}><FeatureItem label="Remove BG" icon={<Scissors size={12}/>} /></Link>
+               <Link href={ROUTES.WORKFLOWS}><FeatureItem label="WildCut" icon={<Layers size={12}/>} highlight={true} /></Link>
             </div>
           </div>
 
@@ -85,11 +87,11 @@ export default function CompactFeatureStrip() {
           <div className="p-6 lg:p-8 bg-black hover:bg-[#080808] transition-colors group">
             <CategoryHeader icon={<Music size={16}/>} title="Audio" color="text-orange-400" />
             <div className="grid grid-cols-2 gap-x-2 gap-y-2 mt-4">
-               <FeatureItem label="Music Gen" icon={<Music size={12}/>} />
-               <FeatureItem label="Voice (TTS)" icon={<Mic size={12}/>} />
-               <FeatureItem label="Dialogue" icon={<MessageSquare size={12}/>} />
-               <FeatureItem label="SFX" icon={<Zap size={12}/>} />
-               <FeatureItem label="Voice Clone" icon={<Fingerprint size={12}/>} />
+               <Link href={ROUTES.TEXT_TO_MUSIC}><FeatureItem label="Music Gen" icon={<Music size={12}/>} /></Link>
+               <Link href={`${ROUTES.TEXT_TO_MUSIC}?feature=tts`}><FeatureItem label="Voice (TTS)" icon={<Mic size={12}/>} /></Link>
+               <Link href={`${ROUTES.TEXT_TO_MUSIC}?feature=dialogue`}><FeatureItem label="Dialogue" icon={<MessageSquare size={12}/>} /></Link>
+               <Link href={`${ROUTES.TEXT_TO_MUSIC}?feature=sfx`}><FeatureItem label="SFX" icon={<Zap size={12}/>} /></Link>
+               <Link href={`${ROUTES.TEXT_TO_MUSIC}?feature=voice-cloning`}><FeatureItem label="Voice Clone" icon={<Fingerprint size={12}/>} /></Link>
             </div>
           </div>
 

@@ -43,7 +43,8 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
   // Kling o1 (FAL) fixed per-duration pricing
   if (frontendModel === 'kling-o1') {
     const dur = duration || 5;
-    return dur >= 10 ? 2300 : 1180;
+    // Updated pricing: 5s -> 870, 10s (or >=10) -> 1710
+    return dur >= 10 ? 1710 : 870;
   }
         // WAN 2.2 Animate Replace uses per-second pricing (1 credit per second)
         if (frontendModel === 'wan-2.2-animate-replace') {
@@ -209,10 +210,10 @@ export const getImageGenerationCreditCost = (
 ): number => {
   // Qwen Image Edit: backend charges a flat per-generation cost (not per image)
   // Keep frontend validation/reservation aligned with backend.
-  if (frontendModel === 'qwen-image-edit-2511' || frontendModel === 'qwen-image-edit') {
+  if (frontendModel === 'qwen-image-edit-2511' || frontendModel === 'qwen-image-edit' || frontendModel === 'qwen-image-edit-2512') {
     const mapping = getModelMapping(frontendModel);
     const baseCost = mapping ? getCreditCostForModel(mapping.creditModelName) : 0;
-    return (baseCost && baseCost > 0) ? baseCost : 80;
+    return (baseCost && baseCost > 0) ? baseCost : (frontendModel === 'qwen-image-edit-2512' ? 60 : 80);
   }
 
   // Special case: z-image-turbo (new-turbo-model) is free for launch offer

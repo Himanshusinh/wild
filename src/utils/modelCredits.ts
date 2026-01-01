@@ -23,6 +23,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
   'qwen-image-edit': 80,        // Legacy alias (keep for backward compatibility)
   'qwen-image-edit-2511': 80,   // Replicate Qwen Image Edit 2511 (flat 80 credits)
+  'qwen-image-edit-2512': 60,   // Replicate Qwen Image Edit 2512 (flat 60 credits)
   // Imagen 4 family (FAL/Google)
   'imagen-4-ultra': 140,
   'imagen-4': 100,
@@ -414,6 +415,12 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Kling models
   if (modelValue.startsWith('kling')) {
+    // Special case: kling-o1 is a simple FAL model with only duration-based pricing (5s / 10s)
+    if (modelValue === 'kling-o1') {
+      const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const key = `kling-o1-${d >= 10 ? '10s' : '5s'}`;
+      return MODEL_CREDITS_MAPPING[key] || MODEL_CREDITS_MAPPING['kling-o1'] || null;
+    }
     // Kling 2.6 Pro: duration and audio-based
     if (modelValue === 'kling-2.6-pro') {
       const d = duration ? parseInt(String(duration).replace('s', '')) : 5;

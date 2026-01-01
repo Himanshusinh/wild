@@ -69,7 +69,7 @@ const ImageEdit: FeatureItem[] = [
   { title: "Erase/Replace", href: '/view/EditImage?feature=erase-replace', },
   { title: "Resize", href: '/view/EditImage?feature=resize', },
   { title: "Vectorize", href: '/view/EditImage?feature=vectorize', },
-  { title: "Chat to Edit", href: '/view/EditImage?feature=chat-to-edit', },
+  { title: "Chat to Edit", href: NAV_ROUTES.LIVE_CHAT, },
   { title: "Editor", href: 'http://localhost:3005' },
 ]
 
