@@ -1,6 +1,10 @@
 
 export function toZataPath(urlOrPath: string): string {
   if (!urlOrPath) return ''
+  // Never attempt to proxy local object/data URLs
+  // (If these get encoded into /api/proxy/media/* they will fail with 403.)
+  const lowered = urlOrPath.toLowerCase()
+  if (lowered.startsWith('blob:') || lowered.startsWith('data:')) return ''
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
   
   // Handle proxy URLs: /api/proxy/resource/... or /api/proxy/media/...
@@ -30,12 +34,12 @@ export function toZataPath(urlOrPath: string): string {
   }
   
   // If the URL starts with the known Zata bucket prefix, strip it
-  if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length)
+  if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length)
   // If it's an absolute URL but not Zata, do not attempt to treat it as a path
   try {
     const u = new URL(urlOrPath)
     // Not our Zata host/bucket -> no path available for proxy/thumbnail
-    if (!u.href.startsWith(ZATA_PREFIX)) return ''
+    if (!ZATA_PREFIX || !u.href.startsWith(ZATA_PREFIX)) return ''
   } catch {
     // It's a relative path (already a Zata-style path) -> pass through
     return urlOrPath
@@ -60,6 +64,9 @@ export function toThumbUrl(urlOrPath: string, opts?: { w?: number; q?: number; f
 }
 
 export function toMediaProxy(urlOrPath: string): string {
+  if (!urlOrPath) return ''
+  const lowered = urlOrPath.toLowerCase()
+  if (lowered.startsWith('blob:') || lowered.startsWith('data:')) return ''
   const path = toZataPath(urlOrPath)
   if (!path) return ''
   return `/api/proxy/media/${encodeURIComponent(path)}`

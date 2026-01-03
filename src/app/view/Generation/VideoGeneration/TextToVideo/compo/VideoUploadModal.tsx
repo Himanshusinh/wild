@@ -71,14 +71,13 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
-import { saveUpload, getLibraryPage, LibraryItem } from '@/lib/libraryApi';
+import { getLibraryPage, LibraryItem } from '@/lib/libraryApi';
 import { toMediaProxy } from '@/lib/thumb';
-import { uploadLocalVideoFile } from '@/lib/videoUpload';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
+  onAdd: (urls: string[], entries?: any[], filesByUrl?: Record<string, File>) => void;
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
 };
 
@@ -87,7 +86,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const [localUploadFiles, setLocalUploadFiles] = React.useState<Record<string, File>>({});
-  const [isSavingUploads, setIsSavingUploads] = React.useState(false);
+  const preserveObjectUrlsRef = React.useRef<Set<string>>(new Set());
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   
@@ -212,12 +211,14 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
       setLocalUploads([]);
       // Cleanup any lingering object URLs
       try {
+        const preserve = preserveObjectUrlsRef.current || new Set<string>();
         for (const url of Object.keys(localUploadFiles || {})) {
+          if (preserve.has(url)) continue;
           try { URL.revokeObjectURL(url); } catch {}
         }
       } catch {}
       setLocalUploadFiles({});
-      setIsSavingUploads(false);
+      preserveObjectUrlsRef.current = new Set();
       setTab('library');
       // Reset library data when modal closes
       setLibraryItems([]);
@@ -268,50 +269,29 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
       return;
     }
 
-    // tab === 'computer' – persist uploaded videos as reusable uploads in Zata.
+    // tab === 'computer' – DO NOT upload here.
+    // Only add the local blob URL(s) to the input box.
+    // Upload (if needed) should happen later when the user clicks Generate.
     const chosen = localUploads.slice(0, remainingSlots);
     if (!chosen.length) {
       onClose();
       return;
     }
 
-    if (isSavingUploads) return;
-    setIsSavingUploads(true);
+    // Preserve the blob URLs we are passing to the parent so modal cleanup doesn't revoke them.
+    preserveObjectUrlsRef.current = new Set(chosen);
 
-    const savedUrls: string[] = [];
+    const chosenFiles: Record<string, File> = {};
     for (const url of chosen) {
-      try {
-        const file = localUploadFiles[url];
-        if (!file) {
-          // Fallback: if we somehow lost the File mapping, attempt the old behavior
-          const resp = await saveUpload({ url, type: 'video' });
-          if (resp.responseStatus === 'success' && resp.data?.url) savedUrls.push(resp.data.url);
-          else savedUrls.push(url);
-          continue;
-        }
-
-        // Upload the local file to backend (Zata) and persist as an upload
-        const uploaded = await uploadLocalVideoFile(file);
-        savedUrls.push(uploaded.url);
-      } catch (error) {
-        console.error('[VideoUploadModal] Error saving upload:', error);
-        // If anything fails, fall back to the preview URL so user isn't blocked
-        savedUrls.push(url);
-      }
+      const file = localUploadFiles[url];
+      if (file) chosenFiles[url] = file;
     }
 
-    if (savedUrls.length) onAdd(savedUrls, []);
-    // Cleanup object URLs now that we're done
-    try {
-      for (const url of localUploads) {
-        if (localUploadFiles[url]) {
-          try { URL.revokeObjectURL(url); } catch {}
-        }
-      }
-    } catch {}
+    onAdd(chosen, [], chosenFiles);
+
+    // Clear modal-local state (do NOT revoke blob URLs here; they are still used in the input).
     setLocalUploads([]);
     setLocalUploadFiles({});
-    setIsSavingUploads(false);
     onClose();
   };
 
@@ -647,9 +627,9 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   )}
                 </div>
                 <div className="flex justify-end md:mt-3 mt-2 gap-2">
-                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose} disabled={isSavingUploads}>Cancel</button>
-                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-60" onClick={handleAdd} disabled={isSavingUploads}>
-                    {isSavingUploads ? 'Uploading…' : 'Add'}
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-60" onClick={handleAdd}>
+                    Add
                   </button>
                 </div>
               </div>

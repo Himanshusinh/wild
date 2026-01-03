@@ -20,7 +20,7 @@ const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const getHistoryEntries = async (_filters?: any, _pag?: any) => ({ data: [] } as any);
 import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
-import { uploadGeneratedVideo } from "@/lib/videoUpload";
+import { uploadGeneratedVideo, uploadLocalVideoFile } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
@@ -87,7 +87,9 @@ const InputBox = (props: InputBoxProps = {}) => {
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // If ZATA_PREFIX is empty, startsWith('') is true for all strings (including blob:)
+    // which would incorrectly proxy local/object URLs.
+    if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // Allow direct storagePath-like values (users/...)
     if (/^users\//.test(urlOrPath)) return urlOrPath;
     // For external URLs (fal.media, etc.), do not proxy
@@ -119,6 +121,9 @@ const InputBox = (props: InputBoxProps = {}) => {
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState("uploadedVideo", "", "text-to-video");
   const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = usePersistedGenerationState<number>("uploadedVideoDurationSec", 0, "text-to-video");
+  // Local device-selected videos (blob: URL -> File). Used to upload at Generate-time.
+  const [localVideoFilesByUrl, setLocalVideoFilesByUrl] = useState<Record<string, File>>({});
+  const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<Record<string, string>>({});
   // Backup of uploaded video specifically for Gen-4 Aleph (V2V)
   const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState("alephVideoBackup", "", "text-to-video");
   const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState("uploadedAudio", "", "text-to-video"); // For WAN models audio file
@@ -2278,7 +2283,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Handle image/video upload from UploadModal
-  const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
+  const handleImageUploadFromModal = (urls: string[], entries?: any[], filesByUrl?: Record<string, File>) => {
     if (uploadModalType === 'image') {
       if (uploadModalTarget === 'last_frame') {
         // Handle last frame image
@@ -2299,6 +2304,9 @@ const InputBox = (props: InputBoxProps = {}) => {
       const url = urls[0] || "";
       setUploadedVideo(url);
       setUploadedVideoDurationSec(0);
+      if (filesByUrl && Object.keys(filesByUrl).length) {
+        setLocalVideoFilesByUrl(prev => ({ ...prev, ...filesByUrl }));
+      }
       if (url) {
         (async () => {
           try {
@@ -3692,9 +3700,47 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           const characterImage = uploadedCharacterImage || uploadedImages[0];
 
+          // IMPORTANT: blob: URLs are NOT valid outside the browser.
+          // Upload local device-selected video on Generate so backend/Replicate can access it.
+          let videoForRequest = uploadedVideo;
+          if (videoForRequest.startsWith('blob:')) {
+            const cached = uploadedUrlByLocalUrl[videoForRequest];
+            if (cached) {
+              videoForRequest = cached;
+            } else {
+              const file = localVideoFilesByUrl[videoForRequest];
+              if (!file) {
+                throw new Error('Selected local video is not available. Please re-select the video from device.');
+              }
+              const uploaded = await uploadLocalVideoFile(file);
+              if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+              const remoteUrl = uploaded.url;
+              setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
+              setUploadedVideo(remoteUrl);
+              try { URL.revokeObjectURL(videoForRequest); } catch { }
+              videoForRequest = remoteUrl;
+            }
+          } else if (videoForRequest.startsWith('data:video')) {
+            // Fallback for legacy flows that store the video as a data URI.
+            const match = /^data:([^;]+);base64,(.*)$/.exec(videoForRequest);
+            if (!match) throw new Error('Invalid local video data');
+            const contentType = match[1] || 'video/mp4';
+            const base64 = match[2] || '';
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: contentType });
+            const ext = contentType.includes('webm') ? 'webm' : contentType.includes('ogg') ? 'ogg' : contentType.includes('quicktime') ? 'mov' : 'mp4';
+            const file = new File([blob], `upload.${ext}`, { type: contentType });
+            const uploaded = await uploadLocalVideoFile(file);
+            if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+            setUploadedVideo(uploaded.url);
+            videoForRequest = uploaded.url;
+          }
+
           requestBody = {
             model: 'wan-video/wan-2.2-animate-replace',
-            video: uploadedVideo,
+            video: videoForRequest,
             character_image: characterImage,
             video_duration: uploadedVideoDurationSec,
             resolution: wanAnimateResolution,

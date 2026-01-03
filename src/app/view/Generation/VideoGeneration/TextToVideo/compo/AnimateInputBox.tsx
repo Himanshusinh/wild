@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
 import { FilePlay, FilePlus2, Trash2, ChevronUp, Monitor } from 'lucide-react';
 import { getApiClient } from "@/lib/axiosInstance";
+import { uploadLocalVideoFile } from "@/lib/videoUpload";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
 import VideoUploadModal from "./VideoUploadModal";
@@ -32,7 +33,9 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // If ZATA_PREFIX is empty, startsWith('') is true for all strings (including blob:)
+    // which would incorrectly proxy local/object URLs.
+    if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // Allow direct storagePath-like values (users/...)
     if (/^users\//.test(urlOrPath)) return urlOrPath;
     // For external URLs (fal.media, etc.), do not proxy
@@ -51,6 +54,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
   const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = useState<number | null>(null);
+  const [localVideoFilesByUrl, setLocalVideoFilesByUrl] = useState<Record<string, File>>({});
+  const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<Record<string, string>>({});
   const [uploadedCharacterImage, setUploadedCharacterImage] = useState<string>("");
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<{
@@ -992,10 +997,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   }, []);
 
   // Handle video upload from modal
-  const handleVideoUploadFromModal = useCallback((urls: string[]) => {
+  const handleVideoUploadFromModal = useCallback((urls: string[], _entries?: any[], filesByUrl?: Record<string, File>) => {
     const url = urls[0] || "";
     setUploadedVideo(url);
     setUploadedVideoDurationSec(null);
+    if (filesByUrl && Object.keys(filesByUrl).length) {
+      setLocalVideoFilesByUrl(prev => ({ ...prev, ...filesByUrl }));
+    }
     if (url) {
       (async () => {
         try {
@@ -1008,7 +1016,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       })();
     }
     setIsUploadModalOpen(false);
-    toast.success("Video uploaded successfully");
+    toast.success("Video selected");
   }, [loadVideoDurationSeconds]);
 
   // Handle character image upload from modal
@@ -1019,11 +1027,31 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   }, []);
 
   // Handle character video upload from modal (for Runway model when character type is video)
-  const handleCharacterVideoUploadFromModal = useCallback((urls: string[]) => {
+  const handleCharacterVideoUploadFromModal = useCallback((urls: string[], _entries?: any[], filesByUrl?: Record<string, File>) => {
     setUploadedCharacterImage(urls[0] || "");
+    if (filesByUrl && Object.keys(filesByUrl).length) {
+      setLocalVideoFilesByUrl(prev => ({ ...prev, ...filesByUrl }));
+    }
     setIsUploadModalOpen(false);
-    toast.success("Character video uploaded successfully");
+    toast.success("Character video selected");
   }, []);
+
+  const resolveVideoUrlForGenerate = useCallback(async (url: string): Promise<string> => {
+    if (!url) return url;
+    if (!url.startsWith('blob:')) return url;
+
+    const cached = uploadedUrlByLocalUrl[url];
+    if (cached) return cached;
+
+    const file = localVideoFilesByUrl[url];
+    if (!file) return url;
+
+    const uploaded = await uploadLocalVideoFile(file);
+    const remoteUrl = uploaded?.url || url;
+    setUploadedUrlByLocalUrl(prev => ({ ...prev, [url]: remoteUrl }));
+    try { URL.revokeObjectURL(url); } catch {}
+    return remoteUrl;
+  }, [localVideoFilesByUrl, uploadedUrlByLocalUrl]);
 
   // Group history by date
   const groupedByDate = useMemo(() => {
@@ -1171,6 +1199,20 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     try {
       const api = getApiClient();
+
+      // Defer local-file upload until Generate is clicked
+      const resolvedUploadedVideo = await resolveVideoUrlForGenerate(uploadedVideo);
+      if (resolvedUploadedVideo !== uploadedVideo) {
+        setUploadedVideo(resolvedUploadedVideo);
+      }
+
+      let resolvedCharacterUri = uploadedCharacterImage;
+      if (runwayActTwoCharacterType === 'video') {
+        resolvedCharacterUri = await resolveVideoUrlForGenerate(uploadedCharacterImage);
+        if (resolvedCharacterUri !== uploadedCharacterImage) {
+          setUploadedCharacterImage(resolvedCharacterUri);
+        }
+      }
       
       // Handle Runway Act-Two model
       if (isRunwayModel) {
@@ -1178,11 +1220,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           model: 'act_two',
           character: {
             type: runwayActTwoCharacterType,
-            uri: uploadedCharacterImage, // Character can be image or video (both uploaded via character upload button)
+            uri: resolvedCharacterUri,
           },
           reference: {
             type: 'video',
-            uri: uploadedVideo, // Reference video is always the uploaded video
+            uri: resolvedUploadedVideo,
           },
           ratio: runwayActTwoRatio,
           ...(runwayActTwoSeed !== undefined && { seed: runwayActTwoSeed }),
@@ -1681,7 +1723,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   </h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-3 ml-2">
-                  <div className={`relative ${localVideoPreview.status === 'generating' ? 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-auto md:max-h-64' : 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64'} rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10`}>
+                  <div className={`relative ${localVideoPreview.status === 'generating' ? 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-auto md:max-h-80' : 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-80'} rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10`}>
                     {localVideoPreview.status === 'generating' ? (
                       <div className="w-full h-full flex items-center justify-center bg-black/90">
                         <div className="flex flex-col items-center gap-2">
@@ -1734,7 +1776,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-3 ml-0">
                     {/* Prepend local video preview to today's row to push existing items right */}
                     {date === todayKey && localVideoPreview && (
-                      <div className={`relative ${localVideoPreview.status === 'generating' ? 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-auto md:max-h-64' : 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64'} rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10`}>
+                      <div className={`relative ${localVideoPreview.status === 'generating' ? 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-full md:h-auto md:max-h-64' : 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-120'} rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10`}>
                         {localVideoPreview.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">

@@ -9,26 +9,33 @@ export type UploadedVideoResult = {
 };
 
 export async function uploadLocalVideoFile(file: File): Promise<UploadedVideoResult> {
+  // Upload the local (PC-selected) video through the backend so the returned URL is
+  // usable server-side for generation providers.
   const api = getApiClient();
   const form = new FormData();
   form.append('file', file, file.name || 'upload.mp4');
   form.append('type', 'video');
 
-  const response = await api.post('/api/canvas/media-library/upload-file', form, {
-    headers: {
-      // Let Axios set boundary automatically; do not hardcode Content-Type
-    } as any,
-  });
+  try {
+    const response = await api.post('/api/uploads/upload-file', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
 
-  const url = response?.data?.data?.url as string | undefined;
-  if (!url) {
-    throw new Error(response?.data?.message || 'Failed to upload video');
+    const url = response?.data?.data?.url as string | undefined;
+    if (!url) {
+      throw new Error('Upload succeeded but no URL returned');
+    }
+
+    return {
+      url,
+      storagePath: response?.data?.data?.storagePath as string | undefined,
+      historyId: response?.data?.data?.historyId as string | undefined,
+    };
+  } catch (err: any) {
+    const status = err?.response?.status;
+    const message = err?.response?.data?.message || err?.message || 'Upload failed';
+    throw new Error(status ? `Video upload failed (${status}): ${message}` : `Video upload failed: ${message}`);
   }
-  return {
-    url,
-    storagePath: response?.data?.data?.storagePath,
-    historyId: response?.data?.data?.historyId,
-  };
 }
 
 /**
