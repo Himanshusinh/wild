@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { ChevronUp } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
@@ -809,18 +809,23 @@ const EditVideoInterface: React.FC = () => {
     }
   };
 
+  const pathname = usePathname();
+  const isInline = pathname?.startsWith('/text-to-video/edit-video');
+
   return (
-    <div className=" bg-[#07070B]">
+    <div className={` ${isInline ? 'bg-transparent' : 'bg-[#07070B]'}`}>
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-30 px-0  md:pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
-        <div className="flex items-center gap-4">
-          <div className="shrink-0 md:px-1  sm:ml-5 md:ml-7 lg:ml-7 ">
-            <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Videos</h1>
-            <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your videos with AI</p>
+      {/* {!isInline && (
+        <div className="w-full fixed top-0 z-30 px-0  md:pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 md:px-1  sm:ml-5 md:ml-7 lg:ml-7 ">
+              <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Videos</h1>
+              <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your videos with AI</p>
+            </div>
+            feature tabs moved to left sidebar
           </div>
-          {/* feature tabs moved to left sidebar */}
         </div>
-      </div>
+      )} */}
       {/* Spacer to offset fixed header height */}
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
@@ -853,9 +858,9 @@ const EditVideoInterface: React.FC = () => {
           onClose={() => setIsVideoEditorOpen(false)}
         />
       ) : (
-        <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-5 md:pt-18 flex-col md:flex-row">
+        <div className="flex flex-1 min-h-0 md:py-1 pt-0 flex-col md:flex-row">
           {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-          <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-2">
+          <div className="w-auto bg-transparent flex flex-col md:h-full rounded-br-2xl md:mb-3 overflow-hidden relative md:w-[450px]  md:mx-0 mx-0">
             {/* Error Message */}
             {errorMsg && (
               <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">
@@ -865,7 +870,7 @@ const EditVideoInterface: React.FC = () => {
 
 
             {/* Feature tabs (two rows) */}
-            <div className="md:px-3 px-2 md:px-4 pt-3 w-auto">
+            <div className=" w-auto">
               <div className="grid grid-cols-4 md:gap-2 gap-1">
                 {features.map((feature) => (
                   <button
@@ -875,7 +880,7 @@ const EditVideoInterface: React.FC = () => {
                       // Update URL with feature parameter
                       const params = new URLSearchParams(window.location.search);
                       params.set('feature', feature.id);
-                      router.push(`/view/EditVideo?${params.toString()}`, { scroll: false });
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
 
                       if (feature.id === 'remove-bg') {
                         setModel('851-labs/background-remover');
@@ -918,7 +923,7 @@ const EditVideoInterface: React.FC = () => {
             </div>
 
             {/* Feature Preview (GIF banner) */}
-            <div className="px-3 md:px-4 md:mb-2 md:pt-4 pt-2">
+            <div className="px-0 md:px-0 md:mb-2 md:pt-2 pt-2">
               <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
@@ -929,7 +934,7 @@ const EditVideoInterface: React.FC = () => {
             </div>
 
             {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-            <div className="flex-1 min-h-0 px-3 py-2 overflow-hidden md:p-4">
+            <div className="flex-1 min-h-0 px-0.5 py-2 overflow-hidden md:p-1">
               <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
 
               {selectedFeature === 'remove-bg' && model === 'fal-ai/birefnet/v2/video' && (
@@ -1199,7 +1204,7 @@ const EditVideoInterface: React.FC = () => {
 
 
             {/* Right Main Area - Output preview parallel to input image */}
-            <div className="md:p-4 p-5 flex items-center justify-center md:pt-3 pt-0 h-full">
+            <div className="md:p-4 p-1 flex items-center justify-center md:pt-3 pt-0 h-full">
               <div
                 className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] h-full w-full max-w-6xl md:max-w-[100rem] flex items-center justify-center"
                 onDragOver={(e) => { try { e.preventDefault(); } catch { } }}

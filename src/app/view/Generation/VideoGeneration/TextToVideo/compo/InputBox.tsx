@@ -118,6 +118,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState("uploadedVideo", "", "text-to-video");
+  const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = usePersistedGenerationState<number>("uploadedVideoDurationSec", 0, "text-to-video");
   // Backup of uploaded video specifically for Gen-4 Aleph (V2V)
   const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState("alephVideoBackup", "", "text-to-video");
   const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState("uploadedAudio", "", "text-to-video"); // For WAN models audio file
@@ -356,13 +357,61 @@ const InputBox = (props: InputBoxProps = {}) => {
     clearCreditsError,
   } = useGenerationCredits('video', selectedModel, {
     resolution: creditsResolution,
-    duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
+    duration: selectedModel.includes("MiniMax")
+      ? selectedMiniMaxDuration
+      : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration),
   });
+
+  const loadVideoDurationSeconds = useCallback(async (url: string): Promise<number> => {
+    return await new Promise((resolve, reject) => {
+      if (!url) return resolve(0);
+      const video = document.createElement('video');
+      let done = false;
+
+      const cleanup = () => {
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        } catch { }
+      };
+
+      const finish = (value: number, err?: any) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        if (err) reject(err);
+        else resolve(value);
+      };
+
+      const t = window.setTimeout(() => finish(0, new Error('Timed out loading video metadata')), 15000);
+      video.preload = 'metadata';
+      (video as any).crossOrigin = 'anonymous';
+      video.onloadedmetadata = () => {
+        window.clearTimeout(t);
+        const d = Number(video.duration);
+        if (Number.isFinite(d) && d > 0) return finish(d);
+        return finish(0, new Error('Invalid video duration'));
+      };
+      video.onerror = () => {
+        window.clearTimeout(t);
+        finish(0, new Error('Failed to load video metadata'));
+      };
+      try {
+        video.src = url;
+      } catch (e) {
+        window.clearTimeout(t);
+        finish(0, e);
+      }
+    });
+  }, []);
 
   // Live credit preview for current selections
   const liveCreditCost = useMemo(() => {
     try {
-      const dur = selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration;
+      const dur = selectedModel.includes("MiniMax")
+        ? selectedMiniMaxDuration
+        : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration);
       const res = typeof creditsResolution === 'string' ? creditsResolution : undefined;
 
       // Normalize Kling 2.1/2.1 Master to i2v variant when in image_to_video mode
@@ -2247,7 +2296,20 @@ const InputBox = (props: InputBoxProps = {}) => {
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
     } else if (uploadModalType === 'video') {
-      setUploadedVideo(urls[0] || "");
+      const url = urls[0] || "";
+      setUploadedVideo(url);
+      setUploadedVideoDurationSec(0);
+      if (url) {
+        (async () => {
+          try {
+            const d = await loadVideoDurationSeconds(url);
+            setUploadedVideoDurationSec(d);
+          } catch (e) {
+            console.warn('[VideoInputBox] Failed to read video duration', e);
+            setUploadedVideoDurationSec(0);
+          }
+        })();
+      }
       // For Sora 2 Remix, use the entry ID from the modal if provided
       if (urls[0] && selectedModel.includes('sora2-v2v')) {
         if (entries && entries.length > 0 && entries[0]?.id) {
@@ -2663,15 +2725,29 @@ const InputBox = (props: InputBoxProps = {}) => {
       }));
     }
 
-    // Validate and reserve credits before generation
-    let transactionId: string;
+    // Validate credits before generation
+    // NOTE: WAN 2.2 Animate models are debited by backend only after successful completion.
+    // Avoid any frontend reservation to prevent double-charging.
+    let transactionId: string | null = null;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
         (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
-          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse')) ? 'replicate' : 'runway';
-      const creditResult = await validateAndReserveCredits(provider);
-      transactionId = creditResult.transactionId;
-      console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
+
+      if (selectedModel === 'wan-2.2-animate-replace') {
+        if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+          throw new Error('Could not determine input video duration. Please re-upload the video.');
+        }
+        const required = Math.ceil(uploadedVideoDurationSec * 8);
+        if (Number(creditBalance) < required) {
+          throw new Error(`Insufficient credits. You need ${required} credits but have ${creditBalance}.`);
+        }
+        console.log('✅ Credits validated (no reservation):', required);
+      } else {
+        const creditResult = await validateAndReserveCredits(provider);
+        transactionId = creditResult.transactionId;
+        console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+      }
     } catch (creditError: any) {
       console.error('❌ Credit validation failed:', creditError);
       setError(creditError.message || 'Insufficient credits for generation');
@@ -3608,6 +3684,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             setIsGenerating(false);
             return;
           }
+          if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+            toast.error("Could not determine input video duration. Please re-upload the video.");
+            setIsGenerating(false);
+            return;
+          }
 
           const characterImage = uploadedCharacterImage || uploadedImages[0];
 
@@ -3615,6 +3696,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             model: 'wan-video/wan-2.2-animate-replace',
             video: uploadedVideo,
             character_image: characterImage,
+            video_duration: uploadedVideoDurationSec,
             resolution: wanAnimateResolution,
             refert_num: wanAnimateRefertNum,
             go_fast: wanAnimateGoFast,
@@ -4937,9 +5019,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         } as any) : prev);
       } catch { }
 
-      // Confirm credit transaction as successful
-      await handleGenerationSuccess(transactionId);
-      console.log('✅ Credits confirmed for successful generation');
+      // Confirm credit transaction as successful (skip for WAN 2.2 Animate Replace)
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+        console.log('✅ Credits confirmed for successful generation');
+      }
 
       // Clear all inputs and configurations
       clearInputs();
@@ -5015,12 +5099,14 @@ const InputBox = (props: InputBoxProps = {}) => {
         }));
       }
 
-      // Handle credit transaction failure
-      try {
-        await handleGenerationFailure(transactionId);
-        console.log('✅ Credits rolled back for failed generation');
-      } catch (creditError) {
-        console.error('❌ Failed to rollback credits:', creditError);
+      // Handle credit transaction failure (skip for WAN 2.2 Animate Replace)
+      if (transactionId) {
+        try {
+          await handleGenerationFailure(transactionId);
+          console.log('✅ Credits rolled back for failed generation');
+        } catch (creditError) {
+          console.error('❌ Failed to rollback credits:', creditError);
+        }
       }
 
       try {

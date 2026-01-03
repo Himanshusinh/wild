@@ -1,5 +1,35 @@
 import { storage } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getApiClient } from './axiosInstance';
+
+export type UploadedVideoResult = {
+  url: string;
+  storagePath?: string;
+  historyId?: string;
+};
+
+export async function uploadLocalVideoFile(file: File): Promise<UploadedVideoResult> {
+  const api = getApiClient();
+  const form = new FormData();
+  form.append('file', file, file.name || 'upload.mp4');
+  form.append('type', 'video');
+
+  const response = await api.post('/api/canvas/media-library/upload-file', form, {
+    headers: {
+      // Let Axios set boundary automatically; do not hardcode Content-Type
+    } as any,
+  });
+
+  const url = response?.data?.data?.url as string | undefined;
+  if (!url) {
+    throw new Error(response?.data?.message || 'Failed to upload video');
+  }
+  return {
+    url,
+    storagePath: response?.data?.data?.storagePath,
+    historyId: response?.data?.data?.historyId,
+  };
+}
 
 /**
  * Downloads a video from a URL and returns it as a Blob

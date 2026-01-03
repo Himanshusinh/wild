@@ -50,6 +50,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [selectedModel, setSelectedModel] = useState("wan-2.2-animate-replace");
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<string>("");
+  const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = useState<number | null>(null);
   const [uploadedCharacterImage, setUploadedCharacterImage] = useState<string>("");
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<{
@@ -930,11 +931,60 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
   // Credits
   const credits = useAppSelector((state: any) => state.credits?.credits || 0);
-  const estimatedDuration = 5; // Default estimate
   const liveCreditCost = useMemo(() => {
-    // Use the selected model for credit calculation
-    return getVideoCreditCost(selectedModel, undefined, estimatedDuration);
-  }, [selectedModel, estimatedDuration]);
+    // WAN 2.2 Animate is time-based (provider runtime). Frontend does NOT estimate.
+    if (selectedModel === 'wan-2.2-animate-replace' || selectedModel === 'wan-2.2-animate-animation') {
+      return 0;
+    }
+
+    // Other models can use their own internal defaults/estimates.
+    return getVideoCreditCost(selectedModel, undefined, uploadedVideoDurationSec ?? undefined);
+  }, [selectedModel, uploadedVideoDurationSec]);
+
+  const loadVideoDurationSeconds = useCallback(async (url: string): Promise<number> => {
+    return await new Promise((resolve, reject) => {
+      if (!url) return resolve(0);
+
+      const video = document.createElement('video');
+      let done = false;
+
+      const cleanup = () => {
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        } catch { }
+      };
+
+      const finish = (value: number, err?: any) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        if (err) reject(err);
+        else resolve(value);
+      };
+
+      const t = window.setTimeout(() => finish(0, new Error('Timed out loading video metadata')), 15000);
+
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.clearTimeout(t);
+        const d = Number(video.duration);
+        if (Number.isFinite(d) && d > 0) return finish(d);
+        return finish(0, new Error('Invalid video duration'));
+      };
+      video.onerror = () => {
+        window.clearTimeout(t);
+        finish(0, new Error('Failed to load video metadata'));
+      };
+      try {
+        video.src = url;
+      } catch (e) {
+        window.clearTimeout(t);
+        finish(0, e);
+      }
+    });
+  }, []);
 
   // Handle model change
   const handleModelChange = useCallback((model: string) => {
@@ -943,10 +993,23 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
   // Handle video upload from modal
   const handleVideoUploadFromModal = useCallback((urls: string[]) => {
-    setUploadedVideo(urls[0] || "");
+    const url = urls[0] || "";
+    setUploadedVideo(url);
+    setUploadedVideoDurationSec(null);
+    if (url) {
+      (async () => {
+        try {
+          const d = await loadVideoDurationSeconds(url);
+          setUploadedVideoDurationSec(d);
+        } catch (e) {
+          console.warn('[AnimateInputBox] Failed to read video duration', e);
+          setUploadedVideoDurationSec(null);
+        }
+      })();
+    }
     setIsUploadModalOpen(false);
     toast.success("Video uploaded successfully");
-  }, []);
+  }, [loadVideoDurationSeconds]);
 
   // Handle character image upload from modal
   const handleCharacterImageUploadFromModal = useCallback((urls: string[]) => {
@@ -1296,10 +1359,19 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         : 'wan-video/wan-2.2-animate-replace';
 
       // Build request body exactly as in InputBox
+      if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+        toast.error('Could not determine input video duration. Please re-upload the video.');
+        setIsGenerating(false);
+        return;
+      }
+
+      // Credits are billed on the backend based on provider processing time.
+
       const requestBody = {
         model: modelName,
         video: uploadedVideo,
         character_image: uploadedCharacterImage,
+        video_duration: uploadedVideoDurationSec,
         resolution: wanAnimateResolution,
         refert_num: wanAnimateRefertNum,
         go_fast: wanAnimateGoFast,
@@ -1608,7 +1680,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     {todayKey}
                   </h3>
                 </div>
-                <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-3 ml-0">
+                <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-3 ml-2">
                   <div className={`relative ${localVideoPreview.status === 'generating' ? 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-auto md:max-h-64' : 'w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64'} rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10`}>
                     {localVideoPreview.status === 'generating' ? (
                       <div className="w-full h-full flex items-center justify-center bg-black/90">
@@ -2106,7 +2178,12 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             /></div>
             <div className="flex flex-col items-end gap-2 ">
               <div className="text-white/80 text-xs">
-                Total credits: <span className="font-semibold">{liveCreditCost}</span>
+                Total credits:{' '}
+                <span className="font-semibold">
+                  {(selectedModel === 'wan-2.2-animate-replace' || selectedModel === 'wan-2.2-animate-animation')
+                    ? 'Credits will be calculated based on processing time'
+                    : liveCreditCost}
+                </span>
               </div>
               <button
                 onClick={handleGenerate}
@@ -2794,7 +2871,12 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             {error && <div className="text-red-500 text-sm">{error}</div>}
 
             <div className="text-white/80 text-sm pr-1">
-              Total credits: <span className="font-semibold">{liveCreditCost}</span>
+              Total credits:{' '}
+              <span className="font-semibold">
+                {(selectedModel === 'wan-2.2-animate-replace' || selectedModel === 'wan-2.2-animate-animation')
+                  ? 'Credits will be calculated based on processing time'
+                  : liveCreditCost}
+              </span>
             </div>
             <button
               onClick={handleGenerate}

@@ -19,11 +19,11 @@ interface MainLayoutProps {
   currentGenerationType: GenerationType;
 }
 
-export default function MainLayout({ 
-  onViewChange = () => {}, 
-  onGenerationTypeChange = () => {}, 
-  currentView: propCurrentView, 
-  currentGenerationType: propCurrentGenerationType 
+export default function MainLayout({
+  onViewChange = () => { },
+  onGenerationTypeChange = () => { },
+  currentView: propCurrentView,
+  currentGenerationType: propCurrentGenerationType
 }: MainLayoutProps) {
   console.log('🔍 MainLayout - COMPONENT IS RENDERING!');
   console.log('🔍 MainLayout - Props received:', { propCurrentView, propCurrentGenerationType });
@@ -32,10 +32,10 @@ export default function MainLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [showWildmindSkitPopup, setShowWildmindSkitPopup] = React.useState(false);
-  
+
   // Hydrate generations from localStorage on mount
   useGenerationHydration();
-  
+
   // Use props from parent component (main App)
   const currentView = propCurrentView;
   const currentGenerationType = propCurrentGenerationType;
@@ -58,7 +58,7 @@ export default function MainLayout({
 
     // Respect explicit landing navigation from side panel/logo
     if (pathname.includes('/view/Landingpage')) {
-      try { console.log('🔍 MainLayout - Respecting landing route. Setting currentView=landing and skipping generation sync.') } catch {}
+      try { console.log('🔍 MainLayout - Respecting landing route. Setting currentView=landing and skipping generation sync.') } catch { }
       dispatch(setCurrentView('landing'));
       return;
     }
@@ -75,7 +75,15 @@ export default function MainLayout({
     ) {
       dispatch(setCurrentView('generation'));
       // Extract generation type from URL
-      const type = pathname.split('/').pop();
+      let type: string | undefined;
+      if (pathname.startsWith('/text-to-image/edit-image')) {
+        type = 'text-to-image';
+      } else if (pathname.startsWith('/text-to-video/edit-video')) {
+        type = 'text-to-video';
+      } else {
+        type = pathname.split('/').pop();
+      }
+
       if (type && type !== 'generation') {
         const newType = type as GenerationType;
         // PRESERVE STATE: Don't clear generation state when navigating between generation types
@@ -84,7 +92,7 @@ export default function MainLayout({
       }
     } else {
       // Default to landing for any other non-generation routes
-      try { console.log('🔍 MainLayout - Non-generation route detected, setting currentView=landing:', pathname) } catch {}
+      try { console.log('🔍 MainLayout - Non-generation route detected, setting currentView=landing:', pathname) } catch { }
       dispatch(setCurrentView('landing'));
     }
   }, [pathname, dispatch, currentGenerationType, propCurrentView]);
@@ -95,14 +103,14 @@ export default function MainLayout({
     console.log('🔍 MainLayout - handleViewChange called with:', view, 'current view was:', currentView);
     try {
       if (view === currentView) return; // Prevent unnecessary updates
-      
+
       // PRESERVE STATE: Only clear generation state when switching to non-generation views (history, landing, etc.)
       // Don't clear when navigating between generation types
       // Check this BEFORE early returns so TypeScript doesn't narrow the type
       if (currentView === 'generation' && (view === 'history' || view === 'bookmarks' || view === 'landing' || view === 'home')) {
         dispatch(clearGenerationState());
       }
-      
+
       // Handle new view types - these should go to the main App component
       if (view === 'landing' || view === 'home') {
         console.log('🔍 MainLayout - Redirecting to main App for view:', view);
@@ -114,12 +122,12 @@ export default function MainLayout({
         }
         return;
       }
-    
+
       // For other views, handle routing and let parent App handle Redux updates
       if (onViewChange && typeof onViewChange === 'function') {
         onViewChange(view);
       }
-      
+
       // Handle routing for generation-related views
       switch (view) {
         case 'history':
@@ -139,15 +147,15 @@ export default function MainLayout({
   const handleGenerationTypeChange = (type: GenerationType) => {
     try {
       if (type === currentGenerationType && currentView === 'generation') return;
-      
+
       // Call the prop function to handle navigation and Redux updates
       if (onGenerationTypeChange && typeof onGenerationTypeChange === 'function') {
         onGenerationTypeChange(type);
       }
-      
+
       // PRESERVE STATE: Don't clear generation state when switching between generation types
       // This preserves all user inputs and configurations across navigation
-      
+
       // Handle routing
       router.push(`/${type}`);
     } catch (error) {
@@ -158,8 +166,8 @@ export default function MainLayout({
   return (
     <div className="min-h-screen bg-[#07070B]">
       {/* DEBUG: This is MainLayout component */}
-      
-      
+
+
       <div className="md:ml-[48px] ml-0 ">
         <Suspense fallback={null}>
           {/* Let PageRouter read from Redux; MainLayout already syncs UI state */}
@@ -167,27 +175,27 @@ export default function MainLayout({
         </Suspense>
       </div>
       <NotificationToast />
-      
+
       {/* Active Generations Panel - Fixed position overlay */}
       <ActiveGenerationsPanel />
-      
+
       {/* Wildmind Skit Popup */}
       {showWildmindSkitPopup && (
         <>
           {/* Overlay */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center"
             onClick={() => setShowWildmindSkitPopup(false)}
           >
             {/* Popup Content */}
-            <div 
+            <div
               className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-white text-3xl font-bold">Choose Style</h2>
-                <button 
+                <button
                   onClick={() => setShowWildmindSkitPopup(false)}
                   className="text-white hover:text-gray-300 transition-colors"
                 >
@@ -201,7 +209,7 @@ export default function MainLayout({
               {/* Features Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {/* Video Ads - Currently Available */}
-                <div 
+                <div
                   onClick={() => {
                     handleGenerationTypeChange('ad-generation');
                     setShowWildmindSkitPopup(false);
@@ -211,7 +219,7 @@ export default function MainLayout({
                   <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
                     <div className="absolute top-4 right-4">
                       <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div className="text-4xl mb-4">📹</div>
@@ -229,7 +237,7 @@ export default function MainLayout({
                 </div>
 
                 {/* Live Chat - Available */}
-                <div 
+                <div
                   onClick={() => {
                     router.push('/view/Generation/wildmindskit/LiveChat');
                     setShowWildmindSkitPopup(false);
@@ -239,7 +247,7 @@ export default function MainLayout({
                   <div className="bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
                     <div className="absolute top-4 right-4">
                       <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div className="text-4xl mb-4">💬</div>

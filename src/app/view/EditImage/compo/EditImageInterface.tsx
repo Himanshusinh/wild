@@ -2573,7 +2573,7 @@ const EditImageInterface: React.FC = () => {
             // If selectedFeature is 'erase', it's always erase
             // If selectedFeature is 'fill', check eraseActionMode: 'replace' = replace, 'erase' = erase
             const isReplace = selectedFeature === 'fill' ? eraseActionMode === 'replace' : false;
-            
+
             // USE activePrompt to respect Fill mode's input
             const userPrompt = activePrompt ? activePrompt.trim() : '';
 
@@ -3458,15 +3458,15 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
+      {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0  sm:ml-8 md:ml-7 lg:ml-7 ">
             <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Images</h1>
             <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your images with AI</p>
           </div>
-          {/* feature tabs moved to left sidebar */}
+          feature tabs moved to left sidebar
         </div>
-      </div>
+      </div> */}
       {/* Spacer to offset fixed header height */}
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
@@ -3516,9 +3516,9 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-8 md:pt-18 flex-col md:flex-row">
+      <div className="flex flex-1 min-h-0 md:py-1 pt-20 md:pt-13 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-4">
+        <div className="w-auto bg-transparent flex flex-col md:h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-0">
           {/* Error Message */}
           {errorMsg && (
             <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">
@@ -3543,7 +3543,7 @@ const EditImageInterface: React.FC = () => {
                       // Update URL with feature parameter
                       const params = new URLSearchParams(window.location.search);
                       params.set('feature', feature.id);
-                      router.push(`/view/EditImage?${params.toString()}`, { scroll: false });
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
 
                       if (feature.id === 'remove-bg') {
                         setModel('851-labs/background-remover');
@@ -3556,7 +3556,7 @@ const EditImageInterface: React.FC = () => {
                       }
                       setProcessing((p) => ({ ...p, [feature.id]: false }));
                     }}
-                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id 
+                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id
                       ? (feature.id === 'resize' ? 'border-[#2F6BFF] bg-[#2F6BFF]/10' : 'border-white/30 bg-white/10')
                       : 'border-white/10 hover:bg-white/10'}`}
                   >
@@ -3603,8 +3603,8 @@ const EditImageInterface: React.FC = () => {
                   <div className="flex items-center gap-0 justify-center">
                     <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center`}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/90">
-                        <path d="M3 21v-3a4 4 0 0 1 4-4h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M17.5 6.5l0 0a2.12 2.12 0 0 1 3 3L12 18l-4 1 1-4 8.5-8.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M3 21v-3a4 4 0 0 1 4-4h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M17.5 6.5l0 0a2.12 2.12 0 0 1 3 3L12 18l-4 1 1-4 8.5-8.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
                   </div>
@@ -4661,7 +4661,7 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="md:p-4 p-5  flex flex-col md:flex-row items-start justify-center md:gap-4 gap-2 pt-3">
+          <div className="md:p-4 p-0  flex flex-col md:flex-row items-start justify-center md:gap-4 gap-2 md:pt-3 pt-0">
             <div
               className={`bg-white/5 rounded-xl border border-white/10  relative overflow-hidden w-full max-w-6xl md:max-w-[100rem] ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
               onDragOver={(e) => { try { e.preventDefault(); } catch { } }}

@@ -46,23 +46,23 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
     // Updated pricing: 5s -> 870, 10s (or >=10) -> 1710
     return dur >= 10 ? 1710 : 870;
   }
-        // WAN 2.2 Animate Replace uses per-second pricing (1 credit per second)
-        if (frontendModel === 'wan-2.2-animate-replace') {
-          // WAN 2.2 Animate Replace: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second
-          const runtimeSeconds = duration || 5; // Estimate based on input video duration
-          const costPerSecond = 1;
-          const totalCost = Math.ceil(runtimeSeconds * costPerSecond);
-          const finalCost = Math.max(1, totalCost); // Minimum 1 credit
-          console.log(`WAN 2.2 Animate Replace cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
-          return finalCost;
-        }
-        if (frontendModel === 'wan-2.2-animate-animation') {
-          // WAN 2.2 Animate Animation: $0.004 per second = 0.4 credits per second, rounded up to 1 credit per second
-          const runtimeSeconds = duration || 5; // Estimate based on input video duration
-          const costPerSecond = 1;
-          const totalCost = Math.ceil(runtimeSeconds * costPerSecond);
-          const finalCost = Math.max(1, totalCost); // Minimum 1 credit
-          console.log(`WAN 2.2 Animate Animation cost: ${finalCost} credits for ${runtimeSeconds} seconds`);
+        // WAN 2.2 Animate models use duration-based pricing: 8 credits per 1 second of input video
+        if (frontendModel === 'wan-2.2-animate-replace' || frontendModel === 'wan-2.2-animate-animation') {
+          const runtimeSecondsRaw = duration || 0;
+          const runtimeSeconds = typeof runtimeSecondsRaw === 'number'
+            ? runtimeSecondsRaw
+            : parseFloat(String(runtimeSecondsRaw)) || 0;
+
+          // Snap near-integer durations to avoid +1s due to container/metadata drift
+          // (e.g., 5.0004s should bill as 5s, not 6s).
+          const rounded = Math.round(runtimeSeconds);
+          const snappedSeconds = (Number.isFinite(runtimeSeconds) && Math.abs(runtimeSeconds - rounded) <= 0.05)
+            ? rounded
+            : Math.ceil(runtimeSeconds);
+          const billedSeconds = Math.max(1, snappedSeconds);
+          const costPerSecond = 8;
+          const finalCost = billedSeconds * costPerSecond;
+          console.log(`WAN 2.2 Animate cost: ${finalCost} credits for ${billedSeconds}s (raw=${runtimeSeconds})`);
           return finalCost;
         }
         // Runway Act-Two (act_two) - uses SKU-based pricing from backend

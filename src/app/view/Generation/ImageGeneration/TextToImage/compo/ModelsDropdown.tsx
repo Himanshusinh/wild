@@ -20,6 +20,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const uploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInputImage = uploadedImages.length > 0;
 
   let models = [
     { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
@@ -46,8 +47,9 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
     { name: "P-Image", value: "prunaai/p-image" },
-    { name: "Qwen Image 2511", value: "qwen-image-edit-2511" },
-    { name: "QWEN Image 2512  ", value: "qwen-image-edit-2512" },
+    { name: "Qwen Image 2511", value: "qwen-image-2511" },
+    { name: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
+    { name: "Qwen Image Edit 2512", value: "qwen-image-edit-2512" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
@@ -83,7 +85,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
 
   // If imageOnly or user uploaded images, restrict to models which support image inputs
   let filteredModels = modelsWithCredits;
-  const restrictForImages = imageOnly || uploadedImages.length > 0;
+  const restrictForImages = imageOnly || hasInputImage;
   if (restrictForImages) {
     filteredModels = modelsWithCredits.filter(m =>
       m.value.startsWith('flux-kontext') ||
@@ -95,6 +97,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
       m.value === 'prunaai/p-image' ||
+      m.value === 'qwen-image-edit-2511' ||
+      // m.value === 'qwen-image-edit-2512' ||
       m.value === 'openai/gpt-image-1.5'
     );
   }
@@ -119,16 +123,23 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
     const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
     const isZImageTurbo = typeof selectedModel === 'string' && (selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo');
-    const isQwen = typeof selectedModel === 'string' && (selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit-2512' || selectedModel === 'qwen-image-edit');
+    const isQwenNonEdit = typeof selectedModel === 'string' && (selectedModel === 'qwen-image-2511' || selectedModel === 'qwen-image-2512');
 
-    // If qwen, z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
-    if (isQwen || isZImageTurbo || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
+    // If a non-edit Qwen Image model is selected while an input image is attached, switch to the matching Edit variant.
+    if (hasInputImage && isQwenNonEdit) {
+      const preferred = selectedModel === 'qwen-image-2512' ? 'qwen-image-edit-2512' : 'qwen-image-edit-2511';
+      const exists = filteredModels.find(m => m.value === preferred);
+      dispatch(setSelectedModel(exists?.value || preferred));
+      return;
+    }
+    // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
+    if (isZImageTurbo || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
       // Prefer nano banana (gemini-25-flash-image) for image-to-image
       const nanoBanana = filteredModels.find(m => m.value === 'gemini-25-flash-image');
       const fallback = nanoBanana?.value || filteredModels[0]?.value || 'gemini-25-flash-image';
       dispatch(setSelectedModel(fallback));
     }
-  }, [restrictForImages, selectedModel, filteredModels, dispatch]);
+  }, [restrictForImages, hasInputImage, selectedModel, filteredModels, dispatch]);
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('models'));
@@ -213,7 +224,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
               'qwen-image-edit-2511',
-              'qwen-image-2511',
               'qwen-image-edit-2512',
               'z-image-turbo',
               'flux-kontext-max',
