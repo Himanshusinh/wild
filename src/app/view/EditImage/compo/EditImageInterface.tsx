@@ -3593,7 +3593,7 @@ const EditImageInterface: React.FC = () => {
                   onClick={() => {
                     try {
                       if (typeof window !== 'undefined') {
-                        window.open('http://localhost:3005', '_blank', 'noopener');
+                        window.open('/edit-image/editor', '_blank', 'noopener');
                       }
                     } catch (e) { }
                   }}

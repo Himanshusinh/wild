@@ -6,7 +6,7 @@ export function toZataPath(urlOrPath: string): string {
   const lowered = urlOrPath.toLowerCase()
   if (lowered.startsWith('blob:') || lowered.startsWith('data:')) return ''
   const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/')
-  
+
   // Handle proxy URLs: /api/proxy/resource/... or /api/proxy/media/...
   if (urlOrPath.startsWith('/api/proxy/resource/')) {
     const encodedPath = urlOrPath.substring('/api/proxy/resource/'.length)
@@ -32,7 +32,7 @@ export function toZataPath(urlOrPath: string): string {
       return encodedPath // If decoding fails, return as-is
     }
   }
-  
+
   // If the URL starts with the known Zata bucket prefix, strip it
   if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length)
   // If it's an absolute URL but not Zata, do not attempt to treat it as a path
@@ -73,8 +73,15 @@ export function toMediaProxy(urlOrPath: string): string {
 }
 
 export function toResourceProxy(urlOrPath: string): string {
+  if (!urlOrPath) return ''
   const path = toZataPath(urlOrPath)
-  if (!path) return urlOrPath
+  if (!path) {
+    // If it's an absolute external URL, proxy it via /api/proxy/external to avoid CORS
+    if (/^https?:\/\//i.test(urlOrPath)) {
+      return `/api/proxy/external?url=${encodeURIComponent(urlOrPath)}`
+    }
+    return urlOrPath
+  }
   return `/api/proxy/resource/${encodeURIComponent(path)}`
 }
 
