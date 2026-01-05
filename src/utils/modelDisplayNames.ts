@@ -33,6 +33,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'qwen-image-edit': 'Qwen Image Edit',
   'qwen-image-edit-2511': 'Qwen Image Edit',
   'qwen-image-edit-2512': 'Qwen Image Edit',
+  'qwen-image-2511': 'Qwen Image 2511',
   'qwen/qwen-image-edit-2511': 'Qwen Image Edit',
   'qwen/qwen-image-edit-2512': 'Qwen Image Edit',
   'replicate/qwen/qwen-image-edit-2511': 'Qwen Image Edit',

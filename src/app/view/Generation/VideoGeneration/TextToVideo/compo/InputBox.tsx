@@ -20,7 +20,7 @@ const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const getHistoryEntries = async (_filters?: any, _pag?: any) => ({ data: [] } as any);
 import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
-import { uploadGeneratedVideo } from "@/lib/videoUpload";
+import { uploadGeneratedVideo, uploadLocalVideoFile } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
@@ -87,7 +87,9 @@ const InputBox = (props: InputBoxProps = {}) => {
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // If ZATA_PREFIX is empty, startsWith('') is true for all strings (including blob:)
+    // which would incorrectly proxy local/object URLs.
+    if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // Allow direct storagePath-like values (users/...)
     if (/^users\//.test(urlOrPath)) return urlOrPath;
     // For external URLs (fal.media, etc.), do not proxy
@@ -118,6 +120,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState("uploadedVideo", "", "text-to-video");
+  const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = usePersistedGenerationState<number>("uploadedVideoDurationSec", 0, "text-to-video");
+  // Local device-selected videos (blob: URL -> File). Used to upload at Generate-time.
+  const [localVideoFilesByUrl, setLocalVideoFilesByUrl] = useState<Record<string, File>>({});
+  const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<Record<string, string>>({});
   // Backup of uploaded video specifically for Gen-4 Aleph (V2V)
   const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState("alephVideoBackup", "", "text-to-video");
   const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState("uploadedAudio", "", "text-to-video"); // For WAN models audio file
@@ -356,13 +362,61 @@ const InputBox = (props: InputBoxProps = {}) => {
     clearCreditsError,
   } = useGenerationCredits('video', selectedModel, {
     resolution: creditsResolution,
-    duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
+    duration: selectedModel.includes("MiniMax")
+      ? selectedMiniMaxDuration
+      : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration),
   });
+
+  const loadVideoDurationSeconds = useCallback(async (url: string): Promise<number> => {
+    return await new Promise((resolve, reject) => {
+      if (!url) return resolve(0);
+      const video = document.createElement('video');
+      let done = false;
+
+      const cleanup = () => {
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        } catch { }
+      };
+
+      const finish = (value: number, err?: any) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        if (err) reject(err);
+        else resolve(value);
+      };
+
+      const t = window.setTimeout(() => finish(0, new Error('Timed out loading video metadata')), 15000);
+      video.preload = 'metadata';
+      (video as any).crossOrigin = 'anonymous';
+      video.onloadedmetadata = () => {
+        window.clearTimeout(t);
+        const d = Number(video.duration);
+        if (Number.isFinite(d) && d > 0) return finish(d);
+        return finish(0, new Error('Invalid video duration'));
+      };
+      video.onerror = () => {
+        window.clearTimeout(t);
+        finish(0, new Error('Failed to load video metadata'));
+      };
+      try {
+        video.src = url;
+      } catch (e) {
+        window.clearTimeout(t);
+        finish(0, e);
+      }
+    });
+  }, []);
 
   // Live credit preview for current selections
   const liveCreditCost = useMemo(() => {
     try {
-      const dur = selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration;
+      const dur = selectedModel.includes("MiniMax")
+        ? selectedMiniMaxDuration
+        : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration);
       const res = typeof creditsResolution === 'string' ? creditsResolution : undefined;
 
       // Normalize Kling 2.1/2.1 Master to i2v variant when in image_to_video mode
@@ -2229,7 +2283,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Handle image/video upload from UploadModal
-  const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
+  const handleImageUploadFromModal = (urls: string[], entries?: any[], filesByUrl?: Record<string, File>) => {
     if (uploadModalType === 'image') {
       if (uploadModalTarget === 'last_frame') {
         // Handle last frame image
@@ -2247,7 +2301,23 @@ const InputBox = (props: InputBoxProps = {}) => {
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
     } else if (uploadModalType === 'video') {
-      setUploadedVideo(urls[0] || "");
+      const url = urls[0] || "";
+      setUploadedVideo(url);
+      setUploadedVideoDurationSec(0);
+      if (filesByUrl && Object.keys(filesByUrl).length) {
+        setLocalVideoFilesByUrl(prev => ({ ...prev, ...filesByUrl }));
+      }
+      if (url) {
+        (async () => {
+          try {
+            const d = await loadVideoDurationSeconds(url);
+            setUploadedVideoDurationSec(d);
+          } catch (e) {
+            console.warn('[VideoInputBox] Failed to read video duration', e);
+            setUploadedVideoDurationSec(0);
+          }
+        })();
+      }
       // For Sora 2 Remix, use the entry ID from the modal if provided
       if (urls[0] && selectedModel.includes('sora2-v2v')) {
         if (entries && entries.length > 0 && entries[0]?.id) {
@@ -2663,15 +2733,29 @@ const InputBox = (props: InputBoxProps = {}) => {
       }));
     }
 
-    // Validate and reserve credits before generation
-    let transactionId: string;
+    // Validate credits before generation
+    // NOTE: WAN 2.2 Animate models are debited by backend only after successful completion.
+    // Avoid any frontend reservation to prevent double-charging.
+    let transactionId: string | null = null;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
         (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
-          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse')) ? 'replicate' : 'runway';
-      const creditResult = await validateAndReserveCredits(provider);
-      transactionId = creditResult.transactionId;
-      console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
+
+      if (selectedModel === 'wan-2.2-animate-replace') {
+        if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+          throw new Error('Could not determine input video duration. Please re-upload the video.');
+        }
+        const required = Math.ceil(uploadedVideoDurationSec * 8);
+        if (Number(creditBalance) < required) {
+          throw new Error(`Insufficient credits. You need ${required} credits but have ${creditBalance}.`);
+        }
+        console.log('✅ Credits validated (no reservation):', required);
+      } else {
+        const creditResult = await validateAndReserveCredits(provider);
+        transactionId = creditResult.transactionId;
+        console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+      }
     } catch (creditError: any) {
       console.error('❌ Credit validation failed:', creditError);
       setError(creditError.message || 'Insufficient credits for generation');
@@ -3608,13 +3692,57 @@ const InputBox = (props: InputBoxProps = {}) => {
             setIsGenerating(false);
             return;
           }
+          if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+            toast.error("Could not determine input video duration. Please re-upload the video.");
+            setIsGenerating(false);
+            return;
+          }
 
           const characterImage = uploadedCharacterImage || uploadedImages[0];
 
+          // IMPORTANT: blob: URLs are NOT valid outside the browser.
+          // Upload local device-selected video on Generate so backend/Replicate can access it.
+          let videoForRequest = uploadedVideo;
+          if (videoForRequest.startsWith('blob:')) {
+            const cached = uploadedUrlByLocalUrl[videoForRequest];
+            if (cached) {
+              videoForRequest = cached;
+            } else {
+              const file = localVideoFilesByUrl[videoForRequest];
+              if (!file) {
+                throw new Error('Selected local video is not available. Please re-select the video from device.');
+              }
+              const uploaded = await uploadLocalVideoFile(file);
+              if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+              const remoteUrl = uploaded.url;
+              setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
+              setUploadedVideo(remoteUrl);
+              try { URL.revokeObjectURL(videoForRequest); } catch { }
+              videoForRequest = remoteUrl;
+            }
+          } else if (videoForRequest.startsWith('data:video')) {
+            // Fallback for legacy flows that store the video as a data URI.
+            const match = /^data:([^;]+);base64,(.*)$/.exec(videoForRequest);
+            if (!match) throw new Error('Invalid local video data');
+            const contentType = match[1] || 'video/mp4';
+            const base64 = match[2] || '';
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: contentType });
+            const ext = contentType.includes('webm') ? 'webm' : contentType.includes('ogg') ? 'ogg' : contentType.includes('quicktime') ? 'mov' : 'mp4';
+            const file = new File([blob], `upload.${ext}`, { type: contentType });
+            const uploaded = await uploadLocalVideoFile(file);
+            if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+            setUploadedVideo(uploaded.url);
+            videoForRequest = uploaded.url;
+          }
+
           requestBody = {
             model: 'wan-video/wan-2.2-animate-replace',
-            video: uploadedVideo,
+            video: videoForRequest,
             character_image: characterImage,
+            video_duration: uploadedVideoDurationSec,
             resolution: wanAnimateResolution,
             refert_num: wanAnimateRefertNum,
             go_fast: wanAnimateGoFast,
@@ -4937,9 +5065,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         } as any) : prev);
       } catch { }
 
-      // Confirm credit transaction as successful
-      await handleGenerationSuccess(transactionId);
-      console.log('✅ Credits confirmed for successful generation');
+      // Confirm credit transaction as successful (skip for WAN 2.2 Animate Replace)
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+        console.log('✅ Credits confirmed for successful generation');
+      }
 
       // Clear all inputs and configurations
       clearInputs();
@@ -5015,12 +5145,14 @@ const InputBox = (props: InputBoxProps = {}) => {
         }));
       }
 
-      // Handle credit transaction failure
-      try {
-        await handleGenerationFailure(transactionId);
-        console.log('✅ Credits rolled back for failed generation');
-      } catch (creditError) {
-        console.error('❌ Failed to rollback credits:', creditError);
+      // Handle credit transaction failure (skip for WAN 2.2 Animate Replace)
+      if (transactionId) {
+        try {
+          await handleGenerationFailure(transactionId);
+          console.log('✅ Credits rolled back for failed generation');
+        } catch (creditError) {
+          console.error('❌ Failed to rollback credits:', creditError);
+        }
       }
 
       try {

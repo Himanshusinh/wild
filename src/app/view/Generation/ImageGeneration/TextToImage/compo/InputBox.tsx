@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronUp, Trash2, Edit3 } from 'lucide-react';
+import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon , ImageIcon} from 'lucide-react';
 // HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -72,6 +72,7 @@ import AssetViewerModal from '@/components/AssetViewerModal';
 const UpscalePopup = dynamic(() => import("./UpscalePopup"), { ssr: false });
 const RemoveBgPopup = dynamic(() => import("./RemoveBgPopup"), { ssr: false });
 const EditPopup = dynamic(() => import("./EditPopup"), { ssr: false });
+const EditImageInterface = dynamic(() => import('@/app/view/EditImage/compo/EditImageInterface'), { ssr: false });
 const UploadModal = dynamic(() => import("./UploadModal"), { ssr: false });
 const CharacterModal = dynamic(() => import("./CharacterModal"), { ssr: false });
 import type { Character } from "./CharacterModal";
@@ -119,6 +120,7 @@ const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
+  const isInlineEditImagePage = (pathname || '').startsWith('/text-to-image/edit-image');
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
@@ -5362,7 +5364,7 @@ const InputBox = () => {
         }
       `}</style>
 
-      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
+      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-30 md:py-0 pt-2 md:pl-20 mr-1 backdrop-blur-lg shadow-xl ">
@@ -5391,11 +5393,20 @@ const InputBox = () => {
                 )}
 
                 <button
-                  onClick={() => router.push('/edit-image')}
-                  className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs bg-white/10 hover:bg-white/20 border  border-white/10 text-white/100 transition-all"
+                  onClick={() => router.push('/text-to-image')}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80  border border-white/10 transition-all ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  aria-label="Image"
+                >
+                  <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <span className="hidden md:block">Image</span>
+                </button>
+
+                <button
+                  onClick={() => router.push('/text-to-image/edit-image')}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
                   aria-label="Edit Image"
                 >
-                  <Edit3 size={16} className="text-white fill-black" />
+                  <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
                   <span className="hidden md:block">Edit</span>
                 </button>
               </div>
@@ -5586,7 +5597,7 @@ const InputBox = () => {
 
         {/* Initial loading overlay - show when loading OR before initial load attempt */}
         {/* CRITICAL FIX: Don't show full screen loader if we have active generations to show */}
-        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
+        {!isInlineEditImagePage && (loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -5596,7 +5607,7 @@ const InputBox = () => {
         )}
 
         {/* Filtering overlay - show when filtering/searching */}
-        {isFiltering && (
+        {!isInlineEditImagePage && isFiltering && (
           <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Filtering" />
@@ -5606,7 +5617,7 @@ const InputBox = () => {
         )}
 
         {/* Sorting overlay - show when sorting changes */}
-        {isSorting && (
+        {!isInlineEditImagePage && isSorting && (
           <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Sorting" />
@@ -5616,43 +5627,49 @@ const InputBox = () => {
         )}
 
         <div>
-          {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
-            <ImageGenerationGuide />
-          )}
+          {isInlineEditImagePage ? (
+            <div className=" px-2">
+              <EditImageInterface />
+            </div>
+          ) : (
+            <>
+              {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
+              {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
+                <ImageGenerationGuide />
+              )}
 
-          {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
-          {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
+              {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
+              {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
-          {/* History Entries - Grouped by Date */}
-          {sortedDates.length > 0 && (
-            <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
-              {sortedDates.map((date) => (
-                <div key={date} className="space-y-2 md:-mt-2">
-                  {/* Date Header */}
-                  <div className="flex items-center md:mx-8  md:gap-2 gap-2">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="text-white/60"
-                      >
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {formatDate(date)}
-                    </h3>
-                  </div>
+              {/* History Entries - Grouped by Date */}
+              {sortedDates.length > 0 && (
+                <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
+                  {sortedDates.map((date) => (
+                    <div key={date} className="space-y-2 md:-mt-2">
+                      {/* Date Header */}
+                      <div className="flex items-center md:mx-8  md:gap-2 gap-2">
+                        <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="text-white/60"
+                          >
+                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-medium text-white/70">
+                          {formatDate(date)}
+                        </h3>
+                      </div>
 
-                  {/* All Images for this Date - Simple Grid with stable layout */}
-                  <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
-                    {/* Local entries are now merged into history entries below, so we don't render them separately here */}
-                    {/* This prevents the "two frames" issue where local and history entries both render */}
+                      {/* All Images for this Date - Simple Grid with stable layout */}
+                      <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
+                        {/* Local entries are now merged into history entries below, so we don't render them separately here */}
+                        {/* This prevents the "two frames" issue where local and history entries both render */}
 
-                    {/* Render all entries for this date - includes both history and merged local entries */}
+                        {/* Render all entries for this date - includes both history and merged local entries */}
                     {(() => {
                       // Since local entries are now merged into groupedByDate, just render all entries
                       const allEntries = (groupedByDate as { [key: string]: HistoryEntry[] })[date] || [];
@@ -5812,22 +5829,24 @@ const InputBox = () => {
                         });
                       });
                     })()}
-                  </div>
-                </div>
-              ))}
+                      </div>
+                    </div>
+                  ))}
 
-              {/* Scroll pagination loading indicator */}
-              {loading && historyEntries.length > 0 && (
-                <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
-                  <div className="flex flex-col items-center md:gap-3 gap-2">
-                    <GifLoader size={80} alt="Loading more" />
-                    <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
-                  </div>
+                  {/* Scroll pagination loading indicator */}
+                  {loading && historyEntries.length > 0 && (
+                    <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
+                      <div className="flex flex-col items-center md:gap-3 gap-2">
+                        <GifLoader size={80} alt="Loading more" />
+                        <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
+                      </div>
+                    </div>
+                  )}
+
+
                 </div>
               )}
-
-
-            </div>
+            </>
           )}
           {/* Infinite scroll sentinel inside scroll container */}
           <div ref={sentinelRef} style={{ height: 24 }} />
@@ -5835,7 +5854,7 @@ const InputBox = () => {
       </div>
 
       {/* Mobile-only: Selected images/characters grid above input box */}
-      {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+      {!isInlineEditImagePage && (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
           <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
             {/* Combine characters and images for display */}
@@ -5920,6 +5939,7 @@ const InputBox = () => {
           </div>
         </div>
       )}
+      {!isInlineEditImagePage && (
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         <div
           className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
@@ -6344,12 +6364,12 @@ const InputBox = () => {
 
             {/* Fixed position Generate button - Desktop only */}
             <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
-              {error && <div className="text-red-500 text-xs">{error}</div>}
+              {/* {error && <div className="text-red-500 text-xs">{error}</div>}
               {expectedCredits > 0 && (
                 <div className="text-[11px] text-white/70">
                   Cost: {formatCredits(expectedCredits)} credits
                 </div>
-              )}
+              )} */}
               <button
                 onClick={async () => {
                   try {
@@ -6673,6 +6693,7 @@ const InputBox = () => {
           </div>
         </div>
       </div>
+      )}
       {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
       {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
@@ -6687,7 +6708,7 @@ const InputBox = () => {
       />
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isRemoveBgOpen && <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
-      {isEditOpen && (
+      {!isInlineEditImagePage && isEditOpen && (
         <EditPopup
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
@@ -6702,7 +6723,7 @@ const InputBox = () => {
       )}
 
       {/* Upload Modal - Lazy loaded */}
-      {isUploadOpen && (
+      {!isInlineEditImagePage && isUploadOpen && (
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
@@ -6717,7 +6738,7 @@ const InputBox = () => {
       )}
 
       {/* Character Modal - Lazy loaded */}
-      {isCharacterModalOpen && (
+      {!isInlineEditImagePage && isCharacterModalOpen && (
         <CharacterModal
           isOpen={isCharacterModalOpen}
           onClose={() => setIsCharacterModalOpen(false)}

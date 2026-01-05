@@ -24,6 +24,10 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'qwen-image-edit': 80,        // Legacy alias (keep for backward compatibility)
   'qwen-image-edit-2511': 80,   // Replicate Qwen Image Edit 2511 (flat 80 credits)
   'qwen-image-edit-2512': 60,   // Replicate Qwen Image Edit 2512 (flat 60 credits)
+  // Qwen Image (non-edit) variants
+  'qwen-image-2511': 80,
+  'qwen/qwen-image-2511': 80,
+  'replicate/qwen/qwen-image-2511': 80,
   // Backend/provider may return provider-prefixed or non-edit 2512 identifiers; keep them aligned to 60 credits.
   'qwen-image-2512': 60,
   'qwen/qwen-image-2512': 60,
