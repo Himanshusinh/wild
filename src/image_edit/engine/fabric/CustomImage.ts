@@ -234,33 +234,23 @@ export class CustomImage extends fabric.Image {
     /**
      * Static method to load from URL
      */
-    static fromURL(
+    static async fromURL(
         url: string,
-        callback?: (image: CustomImage) => void,
         options?: CustomImageOptions
-    ): CustomImage {
-        let result: CustomImage | null = null;
+    ): Promise<CustomImage> {
+        const crossOrigin = options?.crossOrigin || 'anonymous';
+        const img = await (fabric.Image as any).fromURL(url, { crossOrigin });
 
-        fabric.Image.fromURL(
-            url,
-            (img) => {
-                const customImg = new CustomImage(img.getElement(), {
-                    ...options,
-                    ...img.toObject(),
-                });
+        const customImg = new CustomImage((img as any).getElement(), {
+            ...options,
+            ...(img as any).toObject?.(),
+        });
 
-                if (options?.customFilters) {
-                    customImg.applyCustomFilters(options.customFilters);
-                }
+        if (options?.customFilters) {
+            customImg.applyCustomFilters(options.customFilters);
+        }
 
-                result = customImg;
-                callback?.(customImg);
-            },
-            { crossOrigin: 'anonymous' }
-        );
-
-        // Return a placeholder instance (will be updated via callback)
-        return result || new CustomImage('data:image/gif;base64,R0lGODlhAQABAAAAACw=', options);
+        return customImg;
     }
 }
 
@@ -273,15 +263,6 @@ export class CustomImage extends fabric.Image {
 
     try {
         anyFabric.classRegistry?.setClass(CustomImage, 'CustomImage');
-    } catch {
-        // ignore
-    }
-
-    // Legacy fallback (older code paths may look up constructors on the fabric namespace)
-    try {
-        if (Object.isExtensible(fabric)) {
-            (fabric as unknown as Record<string, unknown>).CustomImage = CustomImage;
-        }
     } catch {
         // ignore
     }
@@ -389,9 +370,14 @@ export const loadImageFromFile = (
 ): void => {
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         const dataUrl = e.target?.result as string;
-        CustomImage.fromURL(dataUrl, callback, options);
+        try {
+            const img = await CustomImage.fromURL(dataUrl, options);
+            callback(img);
+        } catch (err) {
+            console.error('[CustomImage] Failed to load image from file', err);
+        }
     };
 
     reader.readAsDataURL(file);
@@ -404,17 +390,5 @@ export const loadImageWithCORS = async (
     url: string,
     options?: CustomImageOptions
 ): Promise<CustomImage> => {
-    return new Promise((resolve, reject) => {
-        CustomImage.fromURL(
-            url,
-            (img) => {
-                if (img) {
-                    resolve(img);
-                } else {
-                    reject(new Error('Failed to load image'));
-                }
-            },
-            { ...options, crossOrigin: 'anonymous' } as CustomImageOptions
-        );
-    });
+    return CustomImage.fromURL(url, { ...options, crossOrigin: 'anonymous' } as CustomImageOptions);
 };

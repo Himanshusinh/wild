@@ -531,15 +531,6 @@ export class CustomText extends fabric.Textbox {
     } catch {
         // ignore
     }
-
-    // Legacy fallback (older code paths may look up constructors on the fabric namespace)
-    try {
-        if (Object.isExtensible(fabric)) {
-            (fabric as unknown as Record<string, unknown>).CustomText = CustomText;
-        }
-    } catch {
-        // ignore
-    }
 })();
 
 /**

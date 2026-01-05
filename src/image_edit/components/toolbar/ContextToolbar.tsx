@@ -181,29 +181,34 @@ export function ContextToolbar() {
             });
 
             // Update Fabric.js canvas
-            fabric.Image.fromURL(newSrc, (img) => {
-                const canvas = fabricCanvas.getCanvas();
-                if (!canvas) return;
+            (fabric.Image as any)
+                .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                .then((img: fabric.Image) => {
+                    const canvas = fabricCanvas.getCanvas();
+                    if (!canvas) return;
 
-                // Copy properties from old object
-                img.set({
-                    left: fabricObj.left,
-                    top: fabricObj.top,
-                    scaleX: fabricObj.scaleX,
-                    scaleY: fabricObj.scaleY,
-                    angle: fabricObj.angle,
-                    originX: fabricObj.originX,
-                    originY: fabricObj.originY,
-                    opacity: fabricObj.opacity,
-                    data: { id: imageElement.id, type: 'image' },
+                    // Copy properties from old object
+                    img.set({
+                        left: fabricObj.left,
+                        top: fabricObj.top,
+                        scaleX: fabricObj.scaleX,
+                        scaleY: fabricObj.scaleY,
+                        angle: fabricObj.angle,
+                        originX: fabricObj.originX,
+                        originY: fabricObj.originY,
+                        opacity: fabricObj.opacity,
+                        data: { id: imageElement.id, type: 'image' },
+                    });
+
+                    canvas.remove(fabricObj);
+                    canvas.add(img);
+                    fabricCanvas.setObjectById(imageElement.id, img);
+                    canvas.setActiveObject(img);
+                    canvas.renderAll();
+                })
+                .catch((err: unknown) => {
+                    console.error('Failed to load color-replaced image:', err);
                 });
-
-                canvas.remove(fabricObj);
-                canvas.add(img);
-                fabricCanvas.setObjectById(imageElement.id, img);
-                canvas.setActiveObject(img);
-                canvas.renderAll();
-            }, { crossOrigin: 'anonymous' });
         } catch (error) {
             console.error('Color replacement failed:', error);
         }

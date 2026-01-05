@@ -912,7 +912,9 @@ export const useCanvasStore = create<CanvasStore>()(
             }
 
             // Create new fabric image from cropped data
-            fabric.Image.fromURL(croppedDataUrl, (croppedImg) => {
+            (fabric.Image as any)
+                .fromURL(croppedDataUrl, { crossOrigin: 'anonymous' })
+                .then((croppedImg: fabric.Image) => {
                 if (!canvas) return;
 
                 croppedImg.set({
@@ -951,7 +953,10 @@ export const useCanvasStore = create<CanvasStore>()(
                 });
 
                 pushHistory('Crop image');
-            }, { crossOrigin: 'anonymous' });
+            })
+            .catch((err: unknown) => {
+                console.error('Failed to load cropped image:', err);
+            });
 
             // Exit crop mode
             set((state) => {

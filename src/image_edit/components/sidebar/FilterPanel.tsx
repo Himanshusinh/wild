@@ -223,27 +223,33 @@ export function FilterPanel() {
                                 // Update Fabric.js canvas with new image
                                 const canvas = fabricCanvas.getCanvas();
                                 if (canvas) {
-                                    fabric.Image.fromURL(newSrc, (img) => {
-                                        img.set({
-                                            left: fabricObj.left,
-                                            top: fabricObj.top,
-                                            scaleX: fabricObj.scaleX,
-                                            scaleY: fabricObj.scaleY,
-                                            angle: fabricObj.angle,
-                                            originX: fabricObj.originX,
-                                            originY: fabricObj.originY,
-                                            opacity: fabricObj.opacity,
-                                            data: { id: imageElement.id, type: 'image' },
+                                    (fabric.Image as any)
+                                        .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                        .then((img: fabric.Image) => {
+                                            img.set({
+                                                left: fabricObj.left,
+                                                top: fabricObj.top,
+                                                scaleX: fabricObj.scaleX,
+                                                scaleY: fabricObj.scaleY,
+                                                angle: fabricObj.angle,
+                                                originX: fabricObj.originX,
+                                                originY: fabricObj.originY,
+                                                opacity: fabricObj.opacity,
+                                                data: { id: imageElement.id, type: 'image' },
+                                            });
+
+                                            canvas.remove(fabricObj);
+                                            canvas.add(img);
+                                            fabricCanvas.setObjectById(imageElement.id, img);
+                                            canvas.setActiveObject(img);
+                                            canvas.renderAll();
+
+                                            setIsProcessing(false);
+                                        })
+                                        .catch((err: unknown) => {
+                                            console.error('Failed to load processed image:', err);
+                                            setIsProcessing(false);
                                         });
-
-                                        canvas.remove(fabricObj);
-                                        canvas.add(img);
-                                        fabricCanvas.setObjectById(imageElement.id, img);
-                                        canvas.setActiveObject(img);
-                                        canvas.renderAll();
-
-                                        setIsProcessing(false);
-                                    }, { crossOrigin: 'anonymous' });
                                 } else {
                                     setIsProcessing(false);
                                 }
@@ -302,27 +308,33 @@ export function FilterPanel() {
 
                                 const canvas = fabricCanvas.getCanvas();
                                 if (canvas) {
-                                    fabric.Image.fromURL(newSrc, (img) => {
-                                        img.set({
-                                            left: fabricObj.left,
-                                            top: fabricObj.top,
-                                            scaleX: fabricObj.scaleX,
-                                            scaleY: fabricObj.scaleY,
-                                            angle: fabricObj.angle,
-                                            originX: fabricObj.originX,
-                                            originY: fabricObj.originY,
-                                            opacity: fabricObj.opacity,
-                                            data: { id: imageElement.id, type: 'image' },
+                                    (fabric.Image as any)
+                                        .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                        .then((img: fabric.Image) => {
+                                            img.set({
+                                                left: fabricObj.left,
+                                                top: fabricObj.top,
+                                                scaleX: fabricObj.scaleX,
+                                                scaleY: fabricObj.scaleY,
+                                                angle: fabricObj.angle,
+                                                originX: fabricObj.originX,
+                                                originY: fabricObj.originY,
+                                                opacity: fabricObj.opacity,
+                                                data: { id: imageElement.id, type: 'image' },
+                                            });
+
+                                            canvas.remove(fabricObj);
+                                            canvas.add(img);
+                                            fabricCanvas.setObjectById(imageElement.id, img);
+                                            canvas.setActiveObject(img);
+                                            canvas.renderAll();
+
+                                            setIsProcessing(false);
+                                        })
+                                        .catch((err: unknown) => {
+                                            console.error('Failed to load processed image:', err);
+                                            setIsProcessing(false);
                                         });
-
-                                        canvas.remove(fabricObj);
-                                        canvas.add(img);
-                                        fabricCanvas.setObjectById(imageElement.id, img);
-                                        canvas.setActiveObject(img);
-                                        canvas.renderAll();
-
-                                        setIsProcessing(false);
-                                    }, { crossOrigin: 'anonymous' });
                                 } else {
                                     setIsProcessing(false);
                                 }
@@ -381,27 +393,33 @@ export function FilterPanel() {
 
                                 const canvas = fabricCanvas.getCanvas();
                                 if (canvas) {
-                                    fabric.Image.fromURL(newSrc, (img) => {
-                                        img.set({
-                                            left: fabricObj.left,
-                                            top: fabricObj.top,
-                                            scaleX: fabricObj.scaleX,
-                                            scaleY: fabricObj.scaleY,
-                                            angle: fabricObj.angle,
-                                            originX: fabricObj.originX,
-                                            originY: fabricObj.originY,
-                                            opacity: fabricObj.opacity,
-                                            data: { id: imageElement.id, type: 'image' },
+                                    (fabric.Image as any)
+                                        .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                        .then((img: fabric.Image) => {
+                                            img.set({
+                                                left: fabricObj.left,
+                                                top: fabricObj.top,
+                                                scaleX: fabricObj.scaleX,
+                                                scaleY: fabricObj.scaleY,
+                                                angle: fabricObj.angle,
+                                                originX: fabricObj.originX,
+                                                originY: fabricObj.originY,
+                                                opacity: fabricObj.opacity,
+                                                data: { id: imageElement.id, type: 'image' },
+                                            });
+
+                                            canvas.remove(fabricObj);
+                                            canvas.add(img);
+                                            fabricCanvas.setObjectById(imageElement.id, img);
+                                            canvas.setActiveObject(img);
+                                            canvas.renderAll();
+
+                                            setIsProcessing(false);
+                                        })
+                                        .catch((err: unknown) => {
+                                            console.error('Failed to load processed image:', err);
+                                            setIsProcessing(false);
                                         });
-
-                                        canvas.remove(fabricObj);
-                                        canvas.add(img);
-                                        fabricCanvas.setObjectById(imageElement.id, img);
-                                        canvas.setActiveObject(img);
-                                        canvas.renderAll();
-
-                                        setIsProcessing(false);
-                                    }, { crossOrigin: 'anonymous' });
                                 } else {
                                     setIsProcessing(false);
                                 }
@@ -460,27 +478,33 @@ export function FilterPanel() {
 
                                 const canvas = fabricCanvas.getCanvas();
                                 if (canvas) {
-                                    fabric.Image.fromURL(newSrc, (img) => {
-                                        img.set({
-                                            left: fabricObj.left,
-                                            top: fabricObj.top,
-                                            scaleX: fabricObj.scaleX,
-                                            scaleY: fabricObj.scaleY,
-                                            angle: fabricObj.angle,
-                                            originX: fabricObj.originX,
-                                            originY: fabricObj.originY,
-                                            opacity: fabricObj.opacity,
-                                            data: { id: imageElement.id, type: 'image' },
+                                    (fabric.Image as any)
+                                        .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                        .then((img: fabric.Image) => {
+                                            img.set({
+                                                left: fabricObj.left,
+                                                top: fabricObj.top,
+                                                scaleX: fabricObj.scaleX,
+                                                scaleY: fabricObj.scaleY,
+                                                angle: fabricObj.angle,
+                                                originX: fabricObj.originX,
+                                                originY: fabricObj.originY,
+                                                opacity: fabricObj.opacity,
+                                                data: { id: imageElement.id, type: 'image' },
+                                            });
+
+                                            canvas.remove(fabricObj);
+                                            canvas.add(img);
+                                            fabricCanvas.setObjectById(imageElement.id, img);
+                                            canvas.setActiveObject(img);
+                                            canvas.renderAll();
+
+                                            setIsProcessing(false);
+                                        })
+                                        .catch((err: unknown) => {
+                                            console.error('Failed to load processed image:', err);
+                                            setIsProcessing(false);
                                         });
-
-                                        canvas.remove(fabricObj);
-                                        canvas.add(img);
-                                        fabricCanvas.setObjectById(imageElement.id, img);
-                                        canvas.setActiveObject(img);
-                                        canvas.renderAll();
-
-                                        setIsProcessing(false);
-                                    }, { crossOrigin: 'anonymous' });
                                 } else {
                                     setIsProcessing(false);
                                 }
@@ -543,27 +567,33 @@ export function FilterPanel() {
 
                             const canvas = fabricCanvas.getCanvas();
                             if (canvas) {
-                                fabric.Image.fromURL(newSrc, (img) => {
-                                    img.set({
-                                        left: fabricObj.left,
-                                        top: fabricObj.top,
-                                        scaleX: fabricObj.scaleX,
-                                        scaleY: fabricObj.scaleY,
-                                        angle: fabricObj.angle,
-                                        originX: fabricObj.originX,
-                                        originY: fabricObj.originY,
-                                        opacity: fabricObj.opacity,
-                                        data: { id: imageElement.id, type: 'image' },
+                                (fabric.Image as any)
+                                    .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                    .then((img: fabric.Image) => {
+                                        img.set({
+                                            left: fabricObj.left,
+                                            top: fabricObj.top,
+                                            scaleX: fabricObj.scaleX,
+                                            scaleY: fabricObj.scaleY,
+                                            angle: fabricObj.angle,
+                                            originX: fabricObj.originX,
+                                            originY: fabricObj.originY,
+                                            opacity: fabricObj.opacity,
+                                            data: { id: imageElement.id, type: 'image' },
+                                        });
+
+                                        canvas.remove(fabricObj);
+                                        canvas.add(img);
+                                        fabricCanvas.setObjectById(imageElement.id, img);
+                                        canvas.setActiveObject(img);
+                                        canvas.renderAll();
+
+                                        setIsProcessing(false);
+                                    })
+                                    .catch((err: unknown) => {
+                                        console.error('Failed to load processed image:', err);
+                                        setIsProcessing(false);
                                     });
-
-                                    canvas.remove(fabricObj);
-                                    canvas.add(img);
-                                    fabricCanvas.setObjectById(imageElement.id, img);
-                                    canvas.setActiveObject(img);
-                                    canvas.renderAll();
-
-                                    setIsProcessing(false);
-                                }, { crossOrigin: 'anonymous' });
                             } else {
                                 setIsProcessing(false);
                             }
@@ -648,7 +678,7 @@ export function FilterPanel() {
         const fabricObj = fabricCanvas.getObjectById(imageElement.id) as fabric.Image | undefined;
 
         if (fabricObj) {
-            fabric.Image.fromURL(originalSrc, async (img) => {
+            (fabric.Image as any).fromURL(originalSrc, { crossOrigin: 'anonymous' }).then(async (img: fabric.Image) => {
                 img.set({
                     left: fabricObj.left,
                     top: fabricObj.top,
@@ -677,7 +707,9 @@ export function FilterPanel() {
                         }, 100);
                     }
                 }
-            }, { crossOrigin: 'anonymous' });
+            }).catch((err: unknown) => {
+                console.error('Failed to restore original image:', err);
+            });
         }
     };
 
@@ -718,27 +750,33 @@ export function FilterPanel() {
                         // Update Fabric.js canvas with processed image
                         const canvas = fabricCanvas.getCanvas();
                         if (canvas) {
-                            fabric.Image.fromURL(newSrc, (img) => {
-                                img.set({
-                                    left: fabricObj.left,
-                                    top: fabricObj.top,
-                                    scaleX: fabricObj.scaleX,
-                                    scaleY: fabricObj.scaleY,
-                                    angle: fabricObj.angle,
-                                    originX: fabricObj.originX,
-                                    originY: fabricObj.originY,
-                                    opacity: fabricObj.opacity,
-                                    data: { id: elementId, type: 'image' },
+                            (fabric.Image as any)
+                                .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                .then((img: fabric.Image) => {
+                                    img.set({
+                                        left: fabricObj.left,
+                                        top: fabricObj.top,
+                                        scaleX: fabricObj.scaleX,
+                                        scaleY: fabricObj.scaleY,
+                                        angle: fabricObj.angle,
+                                        originX: fabricObj.originX,
+                                        originY: fabricObj.originY,
+                                        opacity: fabricObj.opacity,
+                                        data: { id: elementId, type: 'image' },
+                                    });
+
+                                    canvas.remove(fabricObj);
+                                    canvas.add(img);
+                                    fabricCanvas.setObjectById(elementId, img);
+                                    canvas.setActiveObject(img);
+                                    canvas.renderAll();
+
+                                    setIsProcessing(false);
+                                })
+                                .catch((err: unknown) => {
+                                    console.error('Failed to load adjusted image:', err);
+                                    setIsProcessing(false);
                                 });
-
-                                canvas.remove(fabricObj);
-                                canvas.add(img);
-                                fabricCanvas.setObjectById(elementId, img);
-                                canvas.setActiveObject(img);
-                                canvas.renderAll();
-
-                                setIsProcessing(false);
-                            }, { crossOrigin: 'anonymous' });
                         } else {
                             setIsProcessing(false);
                         }
@@ -803,25 +841,30 @@ export function FilterPanel() {
 
                         const canvas = fabricCanvas.getCanvas();
                         if (canvas) {
-                            fabric.Image.fromURL(newSrc, (img) => {
-                                img.set({
-                                    left: fabricObj.left,
-                                    top: fabricObj.top,
-                                    scaleX: fabricObj.scaleX,
-                                    scaleY: fabricObj.scaleY,
-                                    angle: fabricObj.angle,
-                                    originX: fabricObj.originX,
-                                    originY: fabricObj.originY,
-                                    opacity: fabricObj.opacity,
-                                    data: { id: imageElement.id, type: 'image' },
-                                });
+                            (fabric.Image as any)
+                                .fromURL(newSrc, { crossOrigin: 'anonymous' })
+                                .then((img: fabric.Image) => {
+                                    img.set({
+                                        left: fabricObj.left,
+                                        top: fabricObj.top,
+                                        scaleX: fabricObj.scaleX,
+                                        scaleY: fabricObj.scaleY,
+                                        angle: fabricObj.angle,
+                                        originX: fabricObj.originX,
+                                        originY: fabricObj.originY,
+                                        opacity: fabricObj.opacity,
+                                        data: { id: imageElement.id, type: 'image' },
+                                    });
 
-                                canvas.remove(fabricObj);
-                                canvas.add(img);
-                                fabricCanvas.setObjectById(imageElement.id, img);
-                                canvas.setActiveObject(img);
-                                canvas.renderAll();
-                            }, { crossOrigin: 'anonymous' });
+                                    canvas.remove(fabricObj);
+                                    canvas.add(img);
+                                    fabricCanvas.setObjectById(imageElement.id, img);
+                                    canvas.setActiveObject(img);
+                                    canvas.renderAll();
+                                })
+                                .catch((err: unknown) => {
+                                    console.error('Failed to load adjusted image:', err);
+                                });
                         }
                     };
 
@@ -989,25 +1032,30 @@ export function FilterPanel() {
                                     const canvas = fabricCanvas.getCanvas();
                                     if (canvas) {
                                         // Use current src (which has filter applied, not originalSrc)
-                                        fabric.Image.fromURL(imageElement.src, (img) => {
-                                            img.set({
-                                                left: fabricObj.left,
-                                                top: fabricObj.top,
-                                                scaleX: fabricObj.scaleX,
-                                                scaleY: fabricObj.scaleY,
-                                                angle: fabricObj.angle,
-                                                originX: fabricObj.originX,
-                                                originY: fabricObj.originY,
-                                                opacity: fabricObj.opacity,
-                                                data: { id: imageElement.id, type: 'image' },
-                                            });
+                                        (fabric.Image as any)
+                                            .fromURL(imageElement.src, { crossOrigin: 'anonymous' })
+                                            .then((img: fabric.Image) => {
+                                                img.set({
+                                                    left: fabricObj.left,
+                                                    top: fabricObj.top,
+                                                    scaleX: fabricObj.scaleX,
+                                                    scaleY: fabricObj.scaleY,
+                                                    angle: fabricObj.angle,
+                                                    originX: fabricObj.originX,
+                                                    originY: fabricObj.originY,
+                                                    opacity: fabricObj.opacity,
+                                                    data: { id: imageElement.id, type: 'image' },
+                                                });
 
-                                            canvas.remove(fabricObj);
-                                            canvas.add(img);
-                                            fabricCanvas.setObjectById(imageElement.id, img);
-                                            canvas.setActiveObject(img);
-                                            canvas.renderAll();
-                                        }, { crossOrigin: 'anonymous' });
+                                                canvas.remove(fabricObj);
+                                                canvas.add(img);
+                                                fabricCanvas.setObjectById(imageElement.id, img);
+                                                canvas.setActiveObject(img);
+                                                canvas.renderAll();
+                                            })
+                                            .catch((err: unknown) => {
+                                                console.error('Failed to restore filtered image:', err);
+                                            });
                                     }
                                 }
                             }}

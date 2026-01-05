@@ -673,56 +673,61 @@ export class FabricCanvas {
             }
 
             case 'image':
-                fabric.Image.fromURL(background.src, (img: fabric.Image) => {
-                    if (!this.canvas) return;
+                (fabric.Image as any)
+                    .fromURL(background.src, { crossOrigin: 'anonymous' })
+                    .then((img: fabric.Image) => {
+                        if (!this.canvas) return;
 
-                    const canvasWidth = this.canvas.width!;
-                    const canvasHeight = this.canvas.height!;
-                    const imgWidth = img.width || 1;
-                    const imgHeight = img.height || 1;
+                        const canvasWidth = this.canvas.width!;
+                        const canvasHeight = this.canvas.height!;
+                        const imgWidth = img.width || 1;
+                        const imgHeight = img.height || 1;
 
-                    // Scale image based on fit mode
-                    const scaleX = canvasWidth / imgWidth;
-                    const scaleY = canvasHeight / imgHeight;
+                        // Scale image based on fit mode
+                        const scaleX = canvasWidth / imgWidth;
+                        const scaleY = canvasHeight / imgHeight;
 
-                    let scale: number;
-                    switch (background.fit) {
-                        case 'cover':
-                            // Use max scale to ensure image covers entire canvas
-                            scale = Math.max(scaleX, scaleY);
-                            break;
-                        case 'contain':
-                            scale = Math.min(scaleX, scaleY);
-                            break;
-                        case 'fill':
-                            img.set({ scaleX, scaleY });
-                            scale = 1;
-                            break;
-                        default:
-                            scale = 1;
-                    }
+                        let scale: number;
+                        switch (background.fit) {
+                            case 'cover':
+                                // Use max scale to ensure image covers entire canvas
+                                scale = Math.max(scaleX, scaleY);
+                                break;
+                            case 'contain':
+                                scale = Math.min(scaleX, scaleY);
+                                break;
+                            case 'fill':
+                                img.set({ scaleX, scaleY });
+                                scale = 1;
+                                break;
+                            default:
+                                scale = 1;
+                        }
 
-                    if (background.fit !== 'fill') {
-                        img.scale(scale);
-                    }
+                        if (background.fit !== 'fill') {
+                            img.scale(scale);
+                        }
 
-                    // Center the image (like CSS background-position: center)
-                    // This crops overflow symmetrically from the center
-                    const scaledWidth = imgWidth * (background.fit === 'fill' ? scaleX : scale);
-                    const scaledHeight = imgHeight * (background.fit === 'fill' ? scaleY : scale);
-                    const left = (canvasWidth - scaledWidth) / 2;
-                    const top = (canvasHeight - scaledHeight) / 2;
+                        // Center the image (like CSS background-position: center)
+                        // This crops overflow symmetrically from the center
+                        const scaledWidth = imgWidth * (background.fit === 'fill' ? scaleX : scale);
+                        const scaledHeight = imgHeight * (background.fit === 'fill' ? scaleY : scale);
+                        const left = (canvasWidth - scaledWidth) / 2;
+                        const top = (canvasHeight - scaledHeight) / 2;
 
-                    img.set({
-                        left: left,
-                        top: top,
-                        opacity: background.opacity,
-                        originX: 'left',
-                        originY: 'top',
+                        img.set({
+                            left: left,
+                            top: top,
+                            opacity: background.opacity,
+                            originX: 'left',
+                            originY: 'top',
+                        });
+
+                        setBackgroundImageCompat(img);
+                    })
+                    .catch((err: unknown) => {
+                        console.error('[FabricCanvas] Failed to load background image:', err);
                     });
-
-                    setBackgroundImageCompat(img);
-                }, { crossOrigin: 'anonymous' });
                 break;
         }
 
@@ -895,7 +900,7 @@ export class FabricCanvas {
                 }
 
                 // Legacy callback-based signature fallback
-                fabric.Image.fromURL(
+                (fabric.Image as any).fromURL(
                     element.src,
                     (img: fabric.Image) => onImageLoaded(img),
                     { crossOrigin }

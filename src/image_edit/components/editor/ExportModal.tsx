@@ -275,7 +275,7 @@ export function ExportModal() {
 
         if (actualFormat === 'png-transparent') {
             console.log('[ExportModal] Temporarily removing canvas background for transparent export');
-            canvas.backgroundColor = undefined;
+            canvas.backgroundColor = 'rgba(0,0,0,0)';
             canvas.backgroundImage = undefined;
             canvas.renderAll();
         }
