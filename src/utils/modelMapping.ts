@@ -111,6 +111,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'wildmindimage',
+    creditModelName: 'WILDMINDIMAGE',
+    generationType: 'image',
+    provider: 'wildmind'
+  },
+  {
     frontendValue: 'flux-2-pro-1080p',
     creditModelName: 'FLUX.2 [pro] 1080p',
     generationType: 'image',

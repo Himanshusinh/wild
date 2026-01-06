@@ -89,8 +89,8 @@ export const useCredits = () => {
   ) => {
     const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution, uploadedImages);
 
-    // Special case: z-image-turbo (new-turbo-model) is free and should not trigger "Unknown model"
-    if (model === 'new-turbo-model') {
+    // Special case: Free models should not trigger "Unknown model"
+    if (model === 'new-turbo-model' || model === 'wildmindimage') {
       return { requiredCredits: 0, validation: null as any };
     }
 

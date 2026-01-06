@@ -53,6 +53,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
+    { name: "WILDMINDIMAGE", value: "wildmindimage" },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -69,7 +70,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // User can see actual credits per quality in the quality dropdown
     const quality = model.value === 'openai/gpt-image-1.5' ? 'low' : undefined;
     const creditInfo = getModelCreditInfo(model.value, undefined, undefined, undefined, quality);
-    const isFree = model.value === "new-turbo-model";
+    const isFree = model.value === "new-turbo-model" || model.value === 'wildmindimage';
     const creditLabel = isFree
       ? 'Free (0 credits)'
       : (creditInfo.displayText || (creditInfo.credits != null ? `${creditInfo.credits} credits` : null));
@@ -78,7 +79,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       ...model,
       credits: creditInfo.credits,
       displayText: creditInfo.displayText,
-      isFree: model.value === "new-turbo-model", // Mark z-image-turbo as special
+      isFree,
       displayName: model.name,
     };
   });
@@ -123,6 +124,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
     const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
     const isZImageTurbo = typeof selectedModel === 'string' && (selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo');
+    const isWildmindImage = typeof selectedModel === 'string' && selectedModel === 'wildmindimage';
     const isQwenNonEdit = typeof selectedModel === 'string' && (selectedModel === 'qwen-image-2511' || selectedModel === 'qwen-image-2512');
 
     // If a non-edit Qwen Image model is selected while an input image is attached, switch to the matching Edit variant.
@@ -133,7 +135,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       return;
     }
     // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
-    if (isZImageTurbo || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
+    if (isZImageTurbo || isWildmindImage || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
       // Prefer nano banana (gemini-25-flash-image) for image-to-image
       const nanoBanana = filteredModels.find(m => m.value === 'gemini-25-flash-image');
       const fallback = nanoBanana?.value || filteredModels[0]?.value || 'gemini-25-flash-image';
