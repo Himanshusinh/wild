@@ -7,6 +7,7 @@
 
 import { BlendMode } from '@image-edit/types/canvas';
 import { blendPixels, isCustomBlendMode } from './BlendModes';
+import * as fabric from 'fabric';
 
 /**
  * Apply custom blend mode to a fabric object by rendering with pixel blending
@@ -96,7 +97,7 @@ export function renderObjectWithCustomBlend(
 
     // Get object bounding box using absolute coordinates (ignoring viewport transform)
     // This ensures we get the correct canvas coordinates, not screen coordinates
-    const bounds = object.getBoundingRect(true, true);
+    const bounds = object.getBoundingRect();
     const x = Math.max(0, Math.floor(bounds.left));
     const y = Math.max(0, Math.floor(bounds.top));
     const width = Math.min(canvasWidth - x, Math.ceil(bounds.width) + 4);

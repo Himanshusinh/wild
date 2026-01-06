@@ -3,6 +3,9 @@
 
 import * as fabric from 'fabric';
 
+export type FabricFilters = Exclude<fabric.Image['filters'], undefined | null>;
+export type FabricFilter = FabricFilters[number];
+
 /**
  * Filter configuration for color matrix manipulation
  */
@@ -13,8 +16,8 @@ export interface ColorMatrixConfig {
 /**
  * Create a color matrix filter
  */
-export const createColorMatrixFilter = (matrix: number[]): fabric.IBaseFilter => {
-    return new fabric.Image.filters.ColorMatrix({ matrix });
+export const createColorMatrixFilter = (matrix: number[]): FabricFilter => {
+    return new fabric.filters.ColorMatrix({ matrix });
 };
 
 /**
@@ -113,77 +116,77 @@ export const COLOR_MATRICES = {
 /**
  * Create a brightness filter
  */
-export const createBrightnessFilter = (value: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Brightness({ brightness: value / 100 });
+export const createBrightnessFilter = (value: number): FabricFilter => {
+    return new fabric.filters.Brightness({ brightness: value / 100 });
 };
 
 /**
  * Create a contrast filter
  */
-export const createContrastFilter = (value: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Contrast({ contrast: value / 100 });
+export const createContrastFilter = (value: number): FabricFilter => {
+    return new fabric.filters.Contrast({ contrast: value / 100 });
 };
 
 /**
  * Create a saturation filter
  */
-export const createSaturationFilter = (value: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Saturation({ saturation: value / 100 });
+export const createSaturationFilter = (value: number): FabricFilter => {
+    return new fabric.filters.Saturation({ saturation: value / 100 });
 };
 
 /**
  * Create a blur filter
  */
-export const createBlurFilter = (value: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Blur({ blur: value / 100 });
+export const createBlurFilter = (value: number): FabricFilter => {
+    return new fabric.filters.Blur({ blur: value / 100 });
 };
 
 /**
  * Create a grayscale filter
  */
-export const createGrayscaleFilter = (): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Grayscale();
+export const createGrayscaleFilter = (): FabricFilter => {
+    return new fabric.filters.Grayscale();
 };
 
 /**
  * Create a sepia filter
  */
-export const createSepiaFilter = (): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Sepia();
+export const createSepiaFilter = (): FabricFilter => {
+    return new fabric.filters.Sepia();
 };
 
 /**
  * Create an invert filter
  */
-export const createInvertFilter = (): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Invert();
+export const createInvertFilter = (): FabricFilter => {
+    return new fabric.filters.Invert();
 };
 
 /**
  * Create a noise filter
  */
-export const createNoiseFilter = (value: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Noise({ noise: value });
+export const createNoiseFilter = (value: number): FabricFilter => {
+    return new fabric.filters.Noise({ noise: value });
 };
 
 /**
  * Create a pixelate filter
  */
-export const createPixelateFilter = (blocksize: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Pixelate({ blocksize });
+export const createPixelateFilter = (blocksize: number): FabricFilter => {
+    return new fabric.filters.Pixelate({ blocksize });
 };
 
 /**
  * Create a gamma filter
  */
-export const createGammaFilter = (r: number, g: number, b: number): fabric.IBaseFilter => {
-    return new fabric.Image.filters.Gamma({ gamma: [r, g, b] });
+export const createGammaFilter = (r: number, g: number, b: number): FabricFilter => {
+    return new fabric.filters.Gamma({ gamma: [r, g, b] });
 };
 
 /**
  * Combine multiple filters into one
  */
-export const combineFilters = (filters: fabric.IBaseFilter[]): fabric.IBaseFilter[] => {
+export const combineFilters = (filters: FabricFilters): FabricFilters => {
     return filters;
 };
 
@@ -192,7 +195,7 @@ export const combineFilters = (filters: fabric.IBaseFilter[]): fabric.IBaseFilte
  */
 export const applyFiltersToImage = (
     image: fabric.Image,
-    filters: fabric.IBaseFilter[]
+    filters: FabricFilters
 ): void => {
     image.filters = filters;
     image.applyFilters();
@@ -204,7 +207,7 @@ export const applyFiltersToImage = (
 export const createDuotoneEffect = (
     shadowColor: string,
     highlightColor: string
-): fabric.IBaseFilter[] => {
+): FabricFilters => {
     const grayscale = createGrayscaleFilter();
 
     // Parse colors
@@ -219,7 +222,7 @@ export const createDuotoneEffect = (
         0, 0, 0, 1, 0,
     ];
 
-    return [grayscale, createColorMatrixFilter(matrix)];
+    return [grayscale, createColorMatrixFilter(matrix)] as FabricFilters;
 };
 
 /**
@@ -243,7 +246,7 @@ export interface FilterPresetUI {
     id: string;
     name: string;
     category: 'basic' | 'artistic' | 'color' | 'special';
-    createFilter: () => fabric.IBaseFilter[];
+    createFilter: () => FabricFilters;
     thumbnail?: string;
 }
 

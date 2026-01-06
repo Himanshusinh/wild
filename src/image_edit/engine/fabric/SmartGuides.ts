@@ -87,7 +87,7 @@ export class SmartGuides {
      * Get bounds of a Fabric object
      */
     private getObjectBounds(obj: fabric.Object): ObjectBounds {
-        const bound = obj.getBoundingRect(true, true);
+        const bound = obj.getBoundingRect();
         return {
             left: bound.left,
             top: bound.top,
@@ -141,7 +141,7 @@ export class SmartGuides {
         for (const obj of allObjects) {
             // Skip the moving object and any non-selectable objects
             if (obj === movingObject) continue;
-            if (obj.data?.type === 'guide') continue;  // Skip guide objects if any
+            if ('data' in obj && (obj as any).data?.type === 'guide') continue;  // Skip guide objects if any
 
             allTargetBounds.push({ bounds: this.getObjectBounds(obj), isCanvas: false });
         }

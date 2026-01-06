@@ -427,7 +427,7 @@ export function blendPixels(
  * For modes not natively supported, use the closest visual approximation for preview
  * Export will use true pixel-level blending via renderWithCustomBlendModes()
  */
-export const NATIVE_BLEND_MODES: Record<BlendMode, string> = {
+export const NATIVE_BLEND_MODES: Record<BlendMode, GlobalCompositeOperation> = {
     // Native modes (supported by Canvas 2D API)
     'normal': 'source-over',
     'darken': 'darken',
@@ -495,7 +495,7 @@ export function isCustomBlendMode(mode: BlendMode): boolean {
  * Get the Canvas 2D globalCompositeOperation value for a blend mode
  * For custom modes, returns the closest visual approximation
  */
-export function getCanvasBlendMode(mode: BlendMode): string {
+export function getCanvasBlendMode(mode: BlendMode): GlobalCompositeOperation {
     return NATIVE_BLEND_MODES[mode];
 }
 

@@ -186,7 +186,7 @@ export class FabricCanvas {
         });
 
         // Object modification events (end of transform)
-        this.canvas.on('object:modified', (e: fabric.IEvent<MouseEvent>) => {
+        this.canvas.on('object:modified', (e: any) => {
             const obj = e.target as fabric.Object & { data?: { id: string } };
 
             // Handle single object
@@ -207,7 +207,7 @@ export class FabricCanvas {
         });
 
         // Object updating events (during transform)
-        const onUpdating = (e: fabric.IEvent<MouseEvent>) => {
+        const onUpdating = (e: any) => {
             const obj = e.target as fabric.Object & { data?: { id: string } };
             if (obj && obj.data?.id) {
                 this.onObjectUpdating?.(obj.data.id);
@@ -218,7 +218,7 @@ export class FabricCanvas {
         this.canvas.on('object:rotating', onUpdating);
 
         // Object moving with smart guides snapping
-        this.canvas.on('object:moving', (e: fabric.IEvent<MouseEvent>) => {
+        this.canvas.on('object:moving', (e: any) => {
             const obj = e.target as fabric.Object & { data?: { id: string } };
             if (!obj) return;
 
@@ -252,7 +252,7 @@ export class FabricCanvas {
             }
         });
 
-        this.canvas.on('object:added', (e: fabric.IEvent<MouseEvent>) => {
+        this.canvas.on('object:added', (e: any) => {
             const obj = e.target as fabric.Object & { data?: { id: string } };
             if (obj && obj.data?.id) {
                 this.objectIdMap.set(obj.data.id, obj);
@@ -260,7 +260,7 @@ export class FabricCanvas {
             }
         });
 
-        this.canvas.on('object:removed', (e: fabric.IEvent<MouseEvent>) => {
+        this.canvas.on('object:removed', (e: any) => {
             const obj = e.target as fabric.Object & { data?: { id: string } };
             if (obj && obj.data?.id) {
                 this.objectIdMap.delete(obj.data.id);
@@ -269,7 +269,7 @@ export class FabricCanvas {
         });
 
         // Text editing events - capture text content changes
-        this.canvas.on('text:changed' as any, (e: fabric.IEvent<Event>) => {
+        this.canvas.on('text:changed' as any, (e: any) => {
             const obj = e.target as fabric.IText & { data?: { id: string } };
             if (obj && obj.data?.id && obj.text !== undefined) {
                 console.log('[FabricCanvas] text:changed event for:', obj.data.id, 'new text:', obj.text);
@@ -278,7 +278,7 @@ export class FabricCanvas {
         });
 
         // Also capture when text editing is exited (in case text:changed didn't fire)
-        this.canvas.on('text:editing:exited' as any, (e: fabric.IEvent<Event>) => {
+        this.canvas.on('text:editing:exited' as any, (e: any) => {
             const obj = e.target as fabric.IText & { data?: { id: string } };
             if (obj && obj.data?.id && obj.text !== undefined) {
                 console.log('[FabricCanvas] text:editing:exited event for:', obj.data.id, 'text:', obj.text);
@@ -566,7 +566,7 @@ export class FabricCanvas {
                 const width = this.canvas.width!;
                 const height = this.canvas.height!;
 
-                let coords: fabric.IGradientOptions['coords'];
+                let coords: Partial<fabric.GradientCoords<'linear'>> | Partial<fabric.GradientCoords<'radial'>>;
 
                 if (background.gradientType === 'linear') {
                     // Calculate linear gradient coords based on angle
@@ -781,13 +781,15 @@ export class FabricCanvas {
             lockMovementX: element.locked,
             lockMovementY: element.locked,
             visible: element.visible,
-            data: { id: element.id, type: 'text' },
             // CustomText specific properties
             customId: element.id,
             effect: element.effect,
             textStyle: element.textStyle,
             globalCompositeOperation: getCanvasBlendMode(element.blendMode || 'normal') || 'source-over',
-        });
+        } as any);
+
+        // Set data property after construction to avoid type errors
+        (text as any).data = { id: element.id, type: 'text' };
 
         // Apply shadow if present
         if (element.style.shadow) {
@@ -834,53 +836,53 @@ export class FabricCanvas {
                     return;
                 }
 
-                    // Get image natural dimensions
-                    const naturalWidth = img.width || 1;
-                    const naturalHeight = img.height || 1;
+                // Get image natural dimensions
+                const naturalWidth = img.width || 1;
+                const naturalHeight = img.height || 1;
 
-                    // Calculate scale to display image at desired logical dimensions
-                    const desiredWidth = element.transform.width || 200;
-                    const desiredHeight = element.transform.height || 200;
+                // Calculate scale to display image at desired logical dimensions
+                const desiredWidth = element.transform.width || 200;
+                const desiredHeight = element.transform.height || 200;
 
-                    // Base scale to fit image to desired dimensions
-                    const baseScaleX = desiredWidth / naturalWidth;
-                    const baseScaleY = desiredHeight / naturalHeight;
+                // Base scale to fit image to desired dimensions
+                const baseScaleX = desiredWidth / naturalWidth;
+                const baseScaleY = desiredHeight / naturalHeight;
 
-                    // Apply user's additional scale (Fabric zoom handles workingScale)
-                    const finalScaleX = baseScaleX * element.transform.scaleX;
-                    const finalScaleY = baseScaleY * element.transform.scaleY;
+                // Apply user's additional scale (Fabric zoom handles workingScale)
+                const finalScaleX = baseScaleX * element.transform.scaleX;
+                const finalScaleY = baseScaleY * element.transform.scaleY;
 
-                    console.log('[FabricCanvas] Image loaded:', element.id,
-                        'natural:', naturalWidth, 'x', naturalHeight,
-                        'desired:', desiredWidth, 'x', desiredHeight,
-                        'scale:', finalScaleX.toFixed(4), 'x', finalScaleY.toFixed(4));
+                console.log('[FabricCanvas] Image loaded:', element.id,
+                    'natural:', naturalWidth, 'x', naturalHeight,
+                    'desired:', desiredWidth, 'x', desiredHeight,
+                    'scale:', finalScaleX.toFixed(4), 'x', finalScaleY.toFixed(4));
 
-                    // Use logical coordinates - Fabric's zoom handles the scaling
-                    img.set({
-                        left: element.transform.x,
-                        top: element.transform.y,
-                        scaleX: finalScaleX,
-                        scaleY: finalScaleY,
-                        angle: element.transform.rotation,
-                        originX: element.transform.originX,
-                        originY: element.transform.originY,
-                        opacity: element.style.opacity,
-                        selectable: element.selectable,
-                        lockMovementX: element.locked,
-                        lockMovementY: element.locked,
-                        visible: element.visible,
-                        data: { id: element.id, type: 'image' },
-                        globalCompositeOperation: getCanvasBlendMode(element.blendMode || 'normal') || 'source-over',
-                    });
+                // Use logical coordinates - Fabric's zoom handles the scaling
+                img.set({
+                    left: element.transform.x,
+                    top: element.transform.y,
+                    scaleX: finalScaleX,
+                    scaleY: finalScaleY,
+                    angle: element.transform.rotation,
+                    originX: element.transform.originX,
+                    originY: element.transform.originY,
+                    opacity: element.style.opacity,
+                    selectable: element.selectable,
+                    lockMovementX: element.locked,
+                    lockMovementY: element.locked,
+                    visible: element.visible,
+                    data: { id: element.id, type: 'image' },
+                    globalCompositeOperation: getCanvasBlendMode(element.blendMode || 'normal') || 'source-over',
+                });
 
-                    // Apply filters
-                    this.applyImageFilters(img, element);
+                // Apply filters
+                this.applyImageFilters(img, element);
 
-                    this.canvas!.add(img);
-                    this.objectIdMap.set(element.id, img);
-                    console.log('[FabricCanvas] Image added to canvas for element:', element.id);
+                this.canvas!.add(img);
+                this.objectIdMap.set(element.id, img);
+                console.log('[FabricCanvas] Image added to canvas for element:', element.id);
 
-                    resolve(img);
+                resolve(img);
             };
 
             const onImageError = (err: unknown) => {
@@ -915,42 +917,42 @@ export class FabricCanvas {
      * Apply image filters
      */
     private applyImageFilters(img: fabric.Image, element: ImageElement): void {
-        const filters: fabric.IBaseFilter[] = [];
+        const filters: fabric.Image['filters'] = [];
 
         if (element.filters.brightness !== 0) {
-            filters.push(new fabric.Image.filters.Brightness({
+            filters.push(new fabric.filters.Brightness({
                 brightness: element.filters.brightness / 100,
             }));
         }
 
         if (element.filters.contrast !== 0) {
-            filters.push(new fabric.Image.filters.Contrast({
+            filters.push(new fabric.filters.Contrast({
                 contrast: element.filters.contrast / 100,
             }));
         }
 
         if (element.filters.saturation !== 0) {
-            filters.push(new fabric.Image.filters.Saturation({
+            filters.push(new fabric.filters.Saturation({
                 saturation: element.filters.saturation / 100,
             }));
         }
 
         if (element.filters.blur > 0) {
-            filters.push(new fabric.Image.filters.Blur({
+            filters.push(new fabric.filters.Blur({
                 blur: element.filters.blur / 100,
             }));
         }
 
         if (element.filters.grayscale) {
-            filters.push(new fabric.Image.filters.Grayscale());
+            filters.push(new fabric.filters.Grayscale());
         }
 
         if (element.filters.sepia) {
-            filters.push(new fabric.Image.filters.Sepia());
+            filters.push(new fabric.filters.Sepia());
         }
 
         if (element.filters.invert) {
-            filters.push(new fabric.Image.filters.Invert());
+            filters.push(new fabric.filters.Invert());
         }
 
         img.filters = filters;
@@ -1883,7 +1885,7 @@ export class FabricCanvas {
     /**
      * Export canvas to data URL
      */
-    public toDataURL(options?: fabric.IDataURLOptions): string {
+    public toDataURL(options?: fabric.TDataUrlOptions): string {
         if (!this.canvas) return '';
         return this.canvas.toDataURL(options);
     }
@@ -2033,7 +2035,7 @@ export class FabricCanvas {
      */
     public toJSON(): object {
         if (!this.canvas) return {};
-        return this.canvas.toJSON(['data']);
+        return this.canvas.toObject(['data']);
     }
 
     /**
@@ -2073,41 +2075,34 @@ export class FabricCanvas {
     public async addSticker(element: StickerElement): Promise<fabric.Object> {
         if (!this.canvas) throw new Error('Canvas not initialized');
 
-        return new Promise((resolve, reject) => {
-            // Parse SVG string to fabric objects
-            fabric.loadSVGFromString(element.svgContent, (objects, options) => {
-                if (!this.canvas) {
-                    reject(new Error('Canvas not initialized'));
-                    return;
-                }
+        const { objects, options } = await fabric.loadSVGFromString(element.svgContent);
+        if (!this.canvas) throw new Error('Canvas not initialized');
 
-                // Create a group from the SVG objects
-                const group = fabric.util.groupSVGElements(objects, options);
+        const fabricObjects = objects.filter((o): o is fabric.FabricObject => !!o);
+        const group = fabric.util.groupSVGElements(fabricObjects, options);
 
-                // Set position and properties
-                group.set({
-                    left: element.transform.x,
-                    top: element.transform.y,
-                    scaleX: element.transform.scaleX * (element.transform.width / (group.width || 100)),
-                    scaleY: element.transform.scaleY * (element.transform.height / (group.height || 100)),
-                    angle: element.transform.rotation,
-                    originX: element.transform.originX,
-                    originY: element.transform.originY,
-                    opacity: element.style.opacity,
-                    selectable: element.selectable,
-                    lockMovementX: element.locked,
-                    lockMovementY: element.locked,
-                    visible: element.visible,
-                    data: { id: element.id, type: 'sticker' },
-                    globalCompositeOperation: getCanvasBlendMode(element.blendMode || 'normal') || 'source-over',
-                });
-
-                this.canvas!.add(group);
-                this.objectIdMap.set(element.id, group);
-
-                resolve(group);
-            });
+        // Set position and properties
+        group.set({
+            left: element.transform.x,
+            top: element.transform.y,
+            scaleX: element.transform.scaleX * (element.transform.width / (group.width || 100)),
+            scaleY: element.transform.scaleY * (element.transform.height / (group.height || 100)),
+            angle: element.transform.rotation,
+            originX: element.transform.originX,
+            originY: element.transform.originY,
+            opacity: element.style.opacity,
+            selectable: element.selectable,
+            lockMovementX: element.locked,
+            lockMovementY: element.locked,
+            visible: element.visible,
+            data: { id: element.id, type: 'sticker' },
+            globalCompositeOperation: getCanvasBlendMode(element.blendMode || 'normal') || 'source-over',
         });
+
+        this.canvas.add(group);
+        this.objectIdMap.set(element.id, group);
+
+        return group;
     }
 
     /**
@@ -2140,19 +2135,24 @@ export class FabricCanvas {
         this.canvas.remove(existingObj);
 
         // Parse new SVG and create replacement object
-        fabric.loadSVGFromString(newSvgContent, (objects, options) => {
-            if (!this.canvas) return;
+        fabric.loadSVGFromString(newSvgContent)
+            .then(({ objects, options }) => {
+                if (!this.canvas) return;
 
-            const group = fabric.util.groupSVGElements(objects, options);
+                const fabricObjects = objects.filter((o): o is fabric.FabricObject => !!o);
+                const group = fabric.util.groupSVGElements(fabricObjects, options);
 
-            // Restore transform properties
-            group.set(currentProps);
+                // Restore transform properties
+                group.set(currentProps);
 
-            this.canvas.add(group);
-            this.objectIdMap.set(id, group);
+                this.canvas.add(group);
+                this.objectIdMap.set(id, group);
 
-            this.canvas.requestRenderAll();
-        });
+                this.canvas.requestRenderAll();
+            })
+            .catch((err) => {
+                console.error('[FabricCanvas] Failed to parse sticker SVG', err);
+            });
     }
 }
 
