@@ -4,7 +4,8 @@
 import * as fabric from 'fabric';
 import { TextEffect, TextStyle } from '@image-edit/types/canvas';
 
-export interface CustomTextOptions extends fabric.ITextboxOptions {
+export interface CustomTextOptions extends Partial<fabric.TextboxProps> {
+    text?: string;
     customId?: string;
     effect?: TextEffect;
     textStyle?: Partial<TextStyle>;
@@ -283,8 +284,8 @@ export class CustomText extends fabric.Textbox {
 
         // Reset STYLE effect properties only (not shape)
         // Shape effects (curved) are independent and handled separately
-        this.shadow = undefined;
-        this.stroke = undefined;
+        this.shadow = null;
+        this.stroke = null;
         this.strokeWidth = 0;
         this.textBackgroundColor = '';
         this._bgColor = '';
@@ -500,7 +501,7 @@ export class CustomText extends fabric.Textbox {
     /**
      * Override toObject to include custom properties
      */
-    public toObject(propertiesToInclude?: string[]): object {
+    public toObject(propertiesToInclude?: any[]): any {
         return {
             ...super.toObject(propertiesToInclude),
             customId: this.customId,
@@ -510,12 +511,10 @@ export class CustomText extends fabric.Textbox {
     }
 
     /**
-     * Static method to create from object
+     * Static method to create from object (Fabric v6+ signature)
      */
-    static fromObject(object: CustomTextOptions, callback?: (text: CustomText) => void): CustomText {
-        const text = new CustomText(object.text || '', object);
-        callback?.(text);
-        return text;
+    static async fromObject(object: any): Promise<any> {
+        return new CustomText(object.text || '', object);
     }
 }
 
@@ -540,7 +539,7 @@ export const createTextGradient = (
     colors: string[],
     type: 'linear' | 'radial' = 'linear',
     angle: number = 0
-): fabric.Gradient => {
+): fabric.Gradient<'linear' | 'radial'> => {
     const colorStops: Record<string, string> = {};
     colors.forEach((color, index) => {
         colorStops[String(index / (colors.length - 1))] = color;

@@ -2,7 +2,7 @@
 // Extended Fabric.js image object with advanced features
 
 import * as fabric from 'fabric';
-import { ImageFilter, CropData } from '@image-edit/types/canvas';
+import { ImageFilter, CropData, createDefaultImageFilter } from '@image-edit/types/canvas';
 
 export interface CustomImageOptions {
     customId?: string;
@@ -39,7 +39,7 @@ export class CustomImage extends fabric.Image {
         super(element as HTMLImageElement, options);
 
         this.customId = options?.customId;
-        this.customFilters = options?.customFilters;
+        this.customFilters = { ...createDefaultImageFilter(), ...(options?.customFilters || {}) };
         this.cropData = options?.cropData;
 
         // Store original element for reset
@@ -52,49 +52,52 @@ export class CustomImage extends fabric.Image {
      * Apply custom filters
      */
     public applyCustomFilters(filterConfig: Partial<ImageFilter>): void {
-        this.customFilters = { ...this.customFilters, ...filterConfig } as ImageFilter;
+        this.customFilters = {
+            ...(this.customFilters || createDefaultImageFilter()),
+            ...filterConfig
+        };
 
-        const filters: fabric.IBaseFilter[] = [];
+        const filters: fabric.Image['filters'] = [];
 
         if (this.customFilters.brightness !== 0) {
-            filters.push(new fabric.Image.filters.Brightness({
+            filters.push(new fabric.filters.Brightness({
                 brightness: this.customFilters.brightness / 100,
             }));
         }
 
         if (this.customFilters.contrast !== 0) {
-            filters.push(new fabric.Image.filters.Contrast({
+            filters.push(new fabric.filters.Contrast({
                 contrast: this.customFilters.contrast / 100,
             }));
         }
 
         if (this.customFilters.saturation !== 0) {
-            filters.push(new fabric.Image.filters.Saturation({
+            filters.push(new fabric.filters.Saturation({
                 saturation: this.customFilters.saturation / 100,
             }));
         }
 
         if (this.customFilters.blur > 0) {
-            filters.push(new fabric.Image.filters.Blur({
+            filters.push(new fabric.filters.Blur({
                 blur: this.customFilters.blur / 100,
             }));
         }
 
         if (this.customFilters.grayscale) {
-            filters.push(new fabric.Image.filters.Grayscale());
+            filters.push(new fabric.filters.Grayscale());
         }
 
         if (this.customFilters.sepia) {
-            filters.push(new fabric.Image.filters.Sepia());
+            filters.push(new fabric.filters.Sepia());
         }
 
         if (this.customFilters.invert) {
-            filters.push(new fabric.Image.filters.Invert());
+            filters.push(new fabric.filters.Invert());
         }
 
         // Apply HueRotation for temperature (approximate)
         if (this.customFilters.temperature !== 0) {
-            filters.push(new fabric.Image.filters.HueRotation({
+            filters.push(new fabric.filters.HueRotation({
                 rotation: this.customFilters.temperature / 100,
             }));
         }
@@ -108,26 +111,7 @@ export class CustomImage extends fabric.Image {
      * Reset all filters
      */
     public resetFilters(): void {
-        this.customFilters = {
-            brightness: 0,
-            contrast: 0,
-            saturation: 0,
-            blur: 0,
-            temperature: 0,
-            tint: 0,
-            highlights: 0,
-            shadows: 0,
-            whites: 0,
-            blacks: 0,
-            vibrance: 0,
-            clarity: 0,
-            sharpness: 0,
-            vignette: 0,
-            grayscale: false,
-            sepia: false,
-            invert: false,
-            filterPreset: null,
-        };
+        this.customFilters = createDefaultImageFilter();
 
         this.filters = [];
         this.applyFilters();
@@ -222,7 +206,7 @@ export class CustomImage extends fabric.Image {
     /**
      * Override toObject to include custom properties
      */
-    public toObject(propertiesToInclude?: string[]): object {
+    public toObject(propertiesToInclude: any[] = []): any {
         return {
             ...super.toObject(propertiesToInclude),
             customId: this.customId,
@@ -236,7 +220,7 @@ export class CustomImage extends fabric.Image {
      */
     static async fromURL(
         url: string,
-        options?: CustomImageOptions
+        options?: any
     ): Promise<CustomImage> {
         const crossOrigin = options?.crossOrigin || 'anonymous';
         const img = await (fabric.Image as any).fromURL(url, { crossOrigin });

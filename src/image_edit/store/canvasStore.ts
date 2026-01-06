@@ -575,7 +575,7 @@ export const useCanvasStore = create<CanvasStore>()(
             const obj = fabricCanvas.getObjectById(id);
             const canvas = fabricCanvas.getCanvas();
             if (obj && canvas) {
-                canvas.bringToFront(obj);
+                canvas.bringObjectToFront(obj);
                 canvas.renderAll();
             }
         },
@@ -590,7 +590,7 @@ export const useCanvasStore = create<CanvasStore>()(
             const obj = fabricCanvas.getObjectById(id);
             const canvas = fabricCanvas.getCanvas();
             if (obj && canvas) {
-                canvas.sendToBack(obj);
+                canvas.sendObjectToBack(obj);
                 canvas.renderAll();
             }
         },
@@ -606,7 +606,7 @@ export const useCanvasStore = create<CanvasStore>()(
                 const obj = fabricCanvas.getObjectById(id);
                 const canvas = fabricCanvas.getCanvas();
                 if (obj && canvas) {
-                    canvas.bringForward(obj);
+                    canvas.bringObjectForward(obj);
                     canvas.renderAll();
                 }
             }
@@ -623,7 +623,7 @@ export const useCanvasStore = create<CanvasStore>()(
                 const obj = fabricCanvas.getObjectById(id);
                 const canvas = fabricCanvas.getCanvas();
                 if (obj && canvas) {
-                    canvas.sendBackwards(obj);
+                    canvas.sendObjectBackwards(obj);
                     canvas.renderAll();
                 }
             }
