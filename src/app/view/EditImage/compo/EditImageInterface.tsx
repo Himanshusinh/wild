@@ -297,7 +297,7 @@ const EditImageInterface: React.FC = () => {
   ), [currentVectorizeCredits, vectorizeSuperMode, vectorizeArtExtraCredits]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   // Live Chat feature state
-  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5'>('gemini-25-flash-image');
+  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511'>('gemini-25-flash-image');
   const [liveFrameSize, setLiveFrameSize] = useState<'1:1' | '3:4' | '4:3' | '16:9' | '9:16'>('1:1');
   const [liveResolution, setLiveResolution] = useState<'1K' | '2K' | '4K'>('1K');
   const [livePrompt, setLivePrompt] = useState<string>('');
@@ -321,16 +321,19 @@ const EditImageInterface: React.FC = () => {
 
   // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
 
-  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' }> = [
+  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511' }> = [
     { label: 'Nano Banana', value: 'gemini-25-flash-image' },
     { label: 'Nano Banana Pro', value: 'google/nano-banana-pro' },
     { label: 'Seedream v4 4k', value: 'seedream-v4' },
     { label: 'Seedream v4.5', value: 'seedream-v4.5' },
+    { label: 'GPT-IMAGE-1.5 (low)', value: 'openai/gpt-image-1.5' },
+    { label: 'Qwen Image Edit 2511', value: 'qwen-image-edit-2511' },
   ];
 
-  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5', resolution?: string) => {
+  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511', resolution?: string) => {
     const mapped = value;
-    const credits = getCreditsForModel(mapped, undefined, resolution);
+    const quality = mapped === 'openai/gpt-image-1.5' ? 'low' : undefined;
+    const credits = getCreditsForModel(mapped, undefined, resolution, undefined, undefined, quality);
     if (credits != null) return credits;
     // Fallback defaults
     if (mapped === 'gemini-25-flash-image') return 98;
@@ -340,6 +343,8 @@ const EditImageInterface: React.FC = () => {
     }
     if (mapped === 'seedream-v4') return 80;
     if (mapped === 'seedream-v4.5') return 100;
+    if (mapped === 'openai/gpt-image-1.5') return 46;
+    if (mapped === 'qwen-image-edit-2511') return 80;
     return 0;
   };
 
@@ -438,6 +443,15 @@ const EditImageInterface: React.FC = () => {
       // Upload image to Zata if it's still a blob URL or base64
       const imageUrl = await ensureZataUrl(img);
 
+      const coerceGptImage15AspectRatio = (raw?: string): '1:1' | '3:2' | '2:3' => {
+        const v = String(raw || '').trim();
+        if (v === '1:1') return '1:1';
+        // Portrait-ish ratios in this UI
+        if (v === '3:4' || v === '9:16') return '2:3';
+        // Landscape-ish ratios in this UI
+        return '3:2';
+      };
+
       let out = '';
       if (liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') {
         const modelName = liveModel === 'seedream-v4' ? 'bytedance/seedream-4' : 'bytedance/seedream-4.5';
@@ -449,6 +463,35 @@ const EditImageInterface: React.FC = () => {
           image_input: [imageUrl],
           sequential_image_generation: 'disabled',
           max_images: 1,
+          isPublic: true,
+        };
+        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === 'openai/gpt-image-1.5') {
+        const payload: any = {
+          prompt: livePrompt,
+          model: 'openai/gpt-image-1.5',
+          n: 1,
+          number_of_images: 1,
+          uploadedImages: [imageUrl],
+          aspect_ratio: coerceGptImage15AspectRatio(liveFrameSize),
+          quality: 'low',
+          output_format: 'jpeg',
+          generationType: 'live-chat',
+          isPublic: true,
+        };
+        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === 'qwen-image-edit-2511') {
+        const payload: any = {
+          prompt: livePrompt,
+          model: 'qwen-image-edit-2511',
+          uploadedImages: [imageUrl],
+          aspect_ratio: liveFrameSize,
+          size: liveResolution,
+          num_images: 1,
+          output_format: 'jpg',
+          generationType: 'live-chat',
           isPublic: true,
         };
         const res = await axiosInstance.post('/api/replicate/generate', payload);
