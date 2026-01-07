@@ -28,6 +28,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'imagen-4': 'Imagen 4',
   'imagen-4-fast': 'Imagen 4 Fast',
   'new-turbo-model': 'Z-Turbo Model',
+  'wildmindimage': 'WILDMINDIMAGE',
   'openai/gpt-image-1.5': 'GPT Image 1.5',
   // Qwen
   'qwen-image-edit': 'Qwen Image Edit',

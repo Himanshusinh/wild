@@ -48,6 +48,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'google_nano_banana': 98,
   // Z-Image Turbo: Free (0 credits) for launch offer
   'new-turbo-model': 0, // Free unlimited image generation
+  // WILDMINDIMAGE: Free (0 credits)
+  'wildmindimage': 0,
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]
   'flux-kontext-dev': 90,       // Similar to FLUX.1 [dev]

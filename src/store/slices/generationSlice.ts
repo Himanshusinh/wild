@@ -124,7 +124,9 @@ export const generateImages = createAsyncThunk(
         model === 'imagen-4-fast';
 
       let endpoint: string;
-      if (provider === 'replicate') {
+      if (provider === 'wildmind') {
+        endpoint = '/api/wildmindimage/generate';
+      } else if (provider === 'replicate') {
         endpoint = '/api/replicate/generate';
       } else if (isFalModel) {
         endpoint = '/api/fal/generate';

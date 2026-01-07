@@ -222,6 +222,12 @@ export const getImageGenerationCreditCost = (
     return 0;
   }
 
+  // Special case: WILDMINDIMAGE is free (0 credits)
+  if (frontendModel === 'wildmindimage') {
+    console.log('getImageGenerationCreditCost: wildmindimage is free (0 credits)');
+    return 0;
+  }
+
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== 'image') {
     console.warn(`Unknown or invalid image model: ${frontendModel}`);
