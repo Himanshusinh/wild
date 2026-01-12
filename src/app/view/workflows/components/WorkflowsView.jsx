@@ -109,7 +109,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           {/* Category Navigation - Moved Below Subtitle */}
           <div className="flex items-center md:gap-3 gap-2 overflow-x-auto no-scrollbar py-4">
             {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Viral Trend'].includes(cat);
+              const isCatComingSoon = !['All', 'General', 'Viral Trend', 'Branding', 'Photography', 'Architecture'].includes(cat);
               return (
                 <button
                   key={cat}
@@ -136,7 +136,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {filteredWorkflows.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = wf.category !== 'General' && wf.id !== 'selfie-video';
+            const isComingSoon = !['General', 'Branding', 'Photography', 'Architecture'].includes(wf.category) && wf.id !== 'selfie-video';
 
             return (
               <div
@@ -164,6 +164,16 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                     router.push('/view/workflows/general/creatively-upscale');
                   } else if (wf.id === 'replace-element') {
                     router.push('/view/workflows/general/replace-element');
+                  } else if (wf.id === 'create-logo') {
+                    router.push('/view/workflows/branding/create-logo');
+                  } else if (wf.id === 'logo-variations') {
+                    router.push('/view/workflows/branding/logo-variations');
+                  } else if (wf.id === 'mockup-generation') {
+                    router.push('/view/workflows/branding/mockup-generation');
+                  } else if (wf.category === 'Photography') {
+                    router.push(`/view/workflows/photography/${wf.id}`);
+                  } else if (wf.category === 'Architecture') {
+                    router.push(`/view/workflows/architecture/${wf.id}`);
                   } else {
                     router.push(`/view/workflows/${wf.id}`);
                   }
@@ -221,6 +231,6 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           <p className="text-white/40 text-sm max-w-xs text-center">We're building incredible AI workflows for the {activeCategory} category. Stay tuned!</p>
         </div>
       )}
-    </div >
+    </div>
   );
 }
