@@ -6,6 +6,8 @@ import { X, Upload, Maximize2, Download } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
+import { useCredits } from '@/hooks/useCredits';
 
 interface UpscalePopupProps {
   isOpen: boolean;
@@ -17,12 +19,20 @@ interface UpscalePopupProps {
 
 const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: UpscalePopupProps) => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(defaultImage || null);
+  const [uploadedDims, setUploadedDims] = useState<{ width: number; height: number } | null>(null);
   const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string>("");
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [fullscreenTitle, setFullscreenTitle] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    creditBalance,
+    deductCreditsOptimisticForGeneration,
+    rollbackOptimisticDeduction,
+    refreshCredits,
+  } = useCredits();
 
   // Model selection (clarity upscaler or magic refiner)
   const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | 'philz1337x/crystal-upscaler'>('philz1337x/clarity-upscaler');
@@ -70,6 +80,12 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   // Crystal Upscaler
   const [crystalResolution, setCrystalResolution] = useState<'1080p'|'1440p'|'2160p'|'6K'|'8K'|'12K'>('1080p');
 
+  const crystalEstimate = React.useMemo(() => {
+    if (model !== 'philz1337x/crystal-upscaler') return null;
+    if (!uploadedDims) return null;
+    return estimateCrystalUpscalerCredits(uploadedDims.width, uploadedDims.height, scaleFactor);
+  }, [model, uploadedDims, scaleFactor]);
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -94,9 +110,40 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const handleUpscale = async () => {
     if (!uploadedImage) return;
     setIsUpscaling(true);
+    let optimisticDebit = 0;
     try {
       const isPublic = await getIsPublic();
-  let payload: any = { image: uploadedImage, prompt: prompt || undefined, isPublic, model };
+      let payload: any = {
+        image: uploadedImage,
+        prompt: prompt || undefined,
+        isPublic,
+        model,
+      };
+
+      const getDims = async (): Promise<{ width: number; height: number } | null> => {
+        if (uploadedDims?.width && uploadedDims?.height) return uploadedDims;
+        return await new Promise((resolve) => {
+          try {
+            const img = new window.Image();
+            img.onload = () => {
+              const width = Number((img as any).naturalWidth || img.width || 0);
+              const height = Number((img as any).naturalHeight || img.height || 0);
+              if (width > 0 && height > 0) return resolve({ width, height });
+              return resolve(null);
+            };
+            img.onerror = () => resolve(null);
+            img.src = uploadedImage;
+          } catch {
+            resolve(null);
+          }
+        });
+      };
+
+      // Include input dimensions when available (helps server-side pricing for Crystal Upscaler)
+      const dims = await getDims();
+      if (dims) {
+        payload = { ...payload, width: dims.width, height: dims.height };
+      }
       if (model === 'philz1337x/clarity-upscaler') {
         payload = {
           ...payload,
@@ -149,9 +196,26 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
         };
       } else if (model === 'philz1337x/crystal-upscaler') {
         // crystal upscaler expects scale_factor and optional output_format (png/jpg)
+        const clampedScale = Math.max(1, Math.min(4, Number(scaleFactor) || 2));
+
+        // Calculate and validate credits BEFORE generation call.
+        const estimate = dims ? estimateCrystalUpscalerCredits(dims.width, dims.height, clampedScale) : null;
+        const expectedCredits = estimate?.credits;
+        if (!expectedCredits || expectedCredits <= 0) {
+          throw new Error('Unable to calculate credits for Crystal Upscaler. Please re-upload the image.');
+        }
+        if ((creditBalance || 0) < expectedCredits) {
+          throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+        }
+        try {
+          deductCreditsOptimisticForGeneration(expectedCredits);
+          optimisticDebit = expectedCredits;
+        } catch { }
+
         payload = {
           ...payload,
-          scale_factor: scaleFactor,
+          // Match backend clamp for pricing and provider inputs
+          scale_factor: clampedScale,
           output_format: crystalOutput,
         };
       }
@@ -159,7 +223,13 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
       const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || '';
       if (first) setUpscaledImage(first);
       if (onCompleted) onCompleted();
+
+      // Ensure UI re-syncs with backend after successful debit.
+      try { await refreshCredits(); } catch { }
     } catch (e: any) {
+      if (optimisticDebit > 0) {
+        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+      }
       // eslint-disable-next-line no-alert
       alert(e?.response?.data?.message || e?.message || 'Upscale failed');
     } finally {
@@ -187,6 +257,25 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   };
 
   useEffect(() => { if (defaultImage) setUploadedImage(defaultImage); }, [defaultImage]);
+
+  useEffect(() => {
+    if (!uploadedImage) {
+      setUploadedDims(null);
+      return;
+    }
+    try {
+      const img = new window.Image();
+      img.onload = () => {
+        const width = Number((img as any).naturalWidth || img.width || 0);
+        const height = Number((img as any).naturalHeight || img.height || 0);
+        if (width > 0 && height > 0) setUploadedDims({ width, height });
+      };
+      img.onerror = () => setUploadedDims(null);
+      img.src = uploadedImage;
+    } catch {
+      setUploadedDims(null);
+    }
+  }, [uploadedImage]);
   // Lock background scroll while modal is open (skip for inline)
   useEffect(() => {
     if (inline || !isOpen) return;
@@ -507,6 +596,11 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                           <option value="png">PNG</option>
                           <option value="jpg">JPG</option>
                         </select>
+                      </div>
+                      <div className="col-span-2 text-[11px] text-white/60">
+                        Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
+                        {' '}
+                        · Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
                       </div>
                     </div>
                     ) : null}

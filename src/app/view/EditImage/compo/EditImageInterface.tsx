@@ -14,6 +14,7 @@ import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { getCreditsForModel } from '@/utils/modelCredits';
+import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
 import { toast } from 'react-hot-toast';
 import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
@@ -238,6 +239,16 @@ const EditImageInterface: React.FC = () => {
     const credits = Math.max(1, Math.ceil(mp * 4));
     return { factor, outW, outH, credits };
   }, [inputNaturalSize?.width, inputNaturalSize?.height, model, seedvrUpscaleFactor, selectedFeature]);
+
+  const crystalEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'philz1337x/crystal-upscaler') return null;
+    const w = Number(inputNaturalSize?.width || 0);
+    const h = Number(inputNaturalSize?.height || 0);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+    const factorRaw = Number(String(scaleFactor).replace('x', '')) || 2;
+    return estimateCrystalUpscalerCredits(w, h, factorRaw);
+  }, [inputNaturalSize?.width, inputNaturalSize?.height, model, scaleFactor, selectedFeature]);
   // Outpaint (resize) controls
   const [resizeExpandLeft, setResizeExpandLeft] = useState<number>(0);
   const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
@@ -3194,9 +3205,26 @@ const EditImageInterface: React.FC = () => {
         } else if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
         } else if (model === 'philz1337x/crystal-upscaler') {
-          const crystalScale = Math.max(1, Math.min(6, clarityScale));
+          const crystalScale = Math.max(1, Math.min(4, clarityScale));
           const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
           payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
+
+          // Pre-check credits using the same pixel-tier pricing as backend.
+          const w0 = Number(inputNaturalSize?.width || 0);
+          const h0 = Number(inputNaturalSize?.height || 0);
+          const estimate = (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0)
+            ? estimateCrystalUpscalerCredits(w0, h0, crystalScale)
+            : null;
+          const expectedCredits = estimate?.credits;
+          if (expectedCredits && expectedCredits > 0) {
+            if ((creditBalance || 0) < expectedCredits) {
+              throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+            }
+            try {
+              deductCreditsOptimisticForGeneration(expectedCredits);
+              optimisticDebit = expectedCredits;
+            } catch { }
+          }
         } else if (model === 'fal-ai/seedvr/upscale/image') {
           // SeedVR factor-only upscaler (credits: 4 per output megapixel, rounded up)
           const getNaturalSize = async () => {
@@ -3288,6 +3316,15 @@ const EditImageInterface: React.FC = () => {
         }
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
+
+        // Provide input dimensions when available (helps server-side pricing for Crystal Upscaler)
+        try {
+          const w0 = Number((inputNaturalSize as any)?.width || 0);
+          const h0 = Number((inputNaturalSize as any)?.height || 0);
+          if (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0) {
+            payload = { ...payload, width: w0, height: h0 };
+          }
+        } catch { }
 
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
         console.log('[EditImage] upscale.res', res?.data);
@@ -4515,6 +4552,7 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     )}
                     {model === 'philz1337x/crystal-upscaler' && (
+                      <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
@@ -4553,6 +4591,11 @@ const EditImageInterface: React.FC = () => {
                             )}
                           </div>
                         </div>
+                      </div>
+                      <div className="text-[11px] text-white/50">
+                        Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
+                        {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                      </div>
                       </div>
                     )}
                     {model === 'fal-ai/topaz/upscale/image' && (
