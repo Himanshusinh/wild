@@ -18,7 +18,7 @@ const plans: Plan[] = [
     monthlyPrice: 0,
     annualPrice: 0,
     subtitle: "Best for beginners exploring our platform",
-    features: ["4120 Credits", "Generate up to 82 images (model-dependent)", "Generate up to 18 Videos (model-dependent)"],
+    features: ["2000 Credits", "Generate up to 40 images (model-dependent)", "Generate up to 8 Videos (model-dependent)"],
     buttonText: "Activate",
     glow: "from-slate-400 via-slate-600 to-slate-900", // Elegant slate gray
   },

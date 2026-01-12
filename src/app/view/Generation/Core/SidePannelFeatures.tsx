@@ -69,7 +69,7 @@ const SidePannelFeatures = () => {
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
-  const { creditBalance, loading: creditsLoading, refreshCredits } = useCredits();
+  const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
 
   const nav = (url: string) => {
     setIsMobileSidebarOpen(false);
@@ -255,9 +255,26 @@ const SidePannelFeatures = () => {
               }}
               className="cursor-pointer transition-all duration-300 md:opacity-0 md:group-hover:opacity-100 md:translate-y-1 md:group-hover:translate-y-0"
             >
-              <div className="bg-[#60a5fa]/10 border border-[#60a5fa]/20 text-[#60a5fa] text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg hover:bg-[#60a5fa]/20 transition-colors">
+              <div className="bg-[#60a5fa]/10 border border-[#60a5fa]/20 text-[#60a5fa] text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg hover:bg-[#60a5fa]/20 transition-colors mb-1 text-center">
                 {creditsLoading ? '...' : (creditBalance ?? 0)}
               </div>
+              
+              {/* Storage Display */}
+              {userData && (
+                 <div className="flex flex-col gap-0.5 w-full min-w-[60px]">
+                   <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-emerald-500 rounded-full"
+                       style={{ 
+                         width: `${Math.min(100, (((credits?.storageUsed || 0) / (credits?.storageQuota || 1)) * 100))}%` 
+                       }}
+                     />
+                   </div>
+                   <div className="text-[7px] text-slate-400 text-center font-mono">
+                     {((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB
+                   </div>
+                 </div>
+              )}
             </div>
           </div>
         </div>
