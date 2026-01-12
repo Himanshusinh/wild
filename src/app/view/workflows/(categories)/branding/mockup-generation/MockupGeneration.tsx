@@ -33,12 +33,12 @@ export default function MockupGeneration() {
     category: "Branding",
     description: "Generate professional product mockups for your brand and logo.",
     model: "Mockup Creator AI",
-    cost: 70,
+    cost: 90,
     sampleBefore: "/workflow-samples/mockup-generation-before.png",
     sampleAfter: "/workflow-samples/mockup-generation-after.png"
   };
 
-  const CREDIT_COST = 70;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -73,16 +73,24 @@ export default function MockupGeneration() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Mocking API call for frontend UI focus
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Real API Call
+      const response = await axiosInstance.post('/api/workflows/branding/mockup-generation', {
+        image: originalImage,
+        productType,
+        prompt: prompt.trim() || undefined,
+        isPublic: true
+      });
 
-      const mockResult = "/workflow-samples/mockup-generation-after.png";
-      setGeneratedImage(mockResult);
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
 
-      const selectionText = productType.trim()
-        ? ` for ${productType}`
-        : '';
-      toast.success(`Mockup generated successfully${selectionText}!`);
+        const selectionText = productType.trim()
+          ? ` for ${productType}`
+          : '';
+        toast.success(`Mockup generated successfully${selectionText}!`);
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
 
     } catch (error: any) {
       console.error('Mockup Generation error:', error);
@@ -216,7 +224,7 @@ export default function MockupGeneration() {
 
               {originalImage && generatedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
+                  <div className="w-full h-full rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
                     <img src={generatedImage} className="max-w-full max-h-full object-contain" alt="Generated Mockup" />
                   </div>
                   <button
@@ -229,7 +237,7 @@ export default function MockupGeneration() {
                 </div>
               ) : originalImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
+                  <div className="w-full h-full  rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
                     <img src={originalImage} className="max-w-full max-h-full object-contain" alt="Preview" />
                   </div>
                   {isGenerating && (

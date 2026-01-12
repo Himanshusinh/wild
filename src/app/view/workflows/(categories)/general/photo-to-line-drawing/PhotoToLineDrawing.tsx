@@ -32,7 +32,7 @@ export default function PhotoToLineDrawing() {
         category: "General",
         description: "Turn this image into a simple coloring book line drawing, black and white.",
         model: "Seadream4/ Nano Banana",
-        cost: 80 // Frontend cost display
+        cost: 90 // Frontend cost display
     };
 
     useEffect(() => {
@@ -64,7 +64,7 @@ export default function PhotoToLineDrawing() {
             return;
         }
 
-        const CREDIT_COST = 80;
+        const CREDIT_COST = 90;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;

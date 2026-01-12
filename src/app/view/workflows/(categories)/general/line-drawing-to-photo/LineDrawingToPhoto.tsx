@@ -32,7 +32,7 @@ export default function LineDrawingToPhoto() {
         category: "General",
         description: "Transform line art into a high-quality photorealistic image.",
         model: "Seadream4/ Nano Banana",
-        cost: 80
+        cost: 90
     };
 
     const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
@@ -73,7 +73,7 @@ No illustration style — the final result should look like a real photograph.`;
             return;
         }
 
-        const CREDIT_COST = 80;
+        const CREDIT_COST = 90;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;

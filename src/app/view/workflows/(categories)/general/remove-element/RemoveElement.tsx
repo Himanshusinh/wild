@@ -33,7 +33,7 @@ export default function RemoveElement() {
         category: "General",
         description: "Remove unwanted objects or persons from your Image seamlessly.",
         model: "Seadream4/ Nano Banana",
-        cost: 80
+        cost: 90
     };
 
     useEffect(() => {
@@ -70,7 +70,7 @@ export default function RemoveElement() {
             return;
         }
 
-        const CREDIT_COST = 80;
+        const CREDIT_COST = 90;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;

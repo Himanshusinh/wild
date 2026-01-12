@@ -40,12 +40,12 @@ export default function ReimagineProduct() {
     category: "Photography",
     description: "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic styles and settings.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/reimagine-product-before.png",
     sampleAfter: "/workflow-samples/reimagine-product-after.png"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -146,7 +146,7 @@ export default function ReimagineProduct() {
 
                 <div className="mb-8">
                   <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block ml-1">Product Snapshot</label>
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => setIsUploadModalOpen(true)}>
                     {originalImage ? (
                       <>
@@ -240,7 +240,7 @@ export default function ReimagineProduct() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={(workflowData as any).imageFit || 'object-cover'}
+                    imageFit={(workflowData as any).imageFit || 'object-contain'}
                     imagePosition={(workflowData as any).imagePosition || 'object-center'}
                   />
                   <button
@@ -271,7 +271,7 @@ export default function ReimagineProduct() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={(workflowData as any).imageFit || 'object-cover'}
+                    imageFit={(workflowData as any).imageFit || 'object-contain'}
                     imagePosition={(workflowData as any).imagePosition || 'object-center'}
                   />
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

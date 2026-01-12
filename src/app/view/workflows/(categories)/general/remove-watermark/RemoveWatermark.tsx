@@ -32,7 +32,7 @@ export default function RemoveWatermark() {
         category: "General",
         description: "Remove watermark from reference image while maintaining quality.",
         model: "Seadream4/ Nano Banana",
-        cost: 80
+        cost: 90
     };
 
     useEffect(() => {
@@ -64,7 +64,7 @@ export default function RemoveWatermark() {
             return;
         }
 
-        const CREDIT_COST = 80;
+        const CREDIT_COST = 90;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;
