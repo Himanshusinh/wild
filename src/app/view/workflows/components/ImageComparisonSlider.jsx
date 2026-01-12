@@ -61,16 +61,22 @@ export default function ImageComparisonSlider({ beforeImage, afterImage, beforeL
     >
       {/* Before Image (Bottom Layer - Right Side) */}
       <div className="absolute inset-0 w-full h-full">
-        <img
-          src={afterImage}
-          alt={afterLabel}
-          className={`w-full h-full ${imageFit} ${imagePosition}`}
-          draggable={false}
-        />
+        {typeof afterImage === 'string' ? (
+          <img
+            src={afterImage}
+            alt={afterLabel}
+            className={`w-full h-full ${imageFit} ${imagePosition}`}
+            draggable={false}
+          />
+        ) : (
+          afterImage
+        )}
         {/* After Label */}
-        <div className="absolute top-3 right-3 bg-[#60a5fa]/20 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-[#60a5fa] border border-[#60a5fa]/30 z-10">
-          {afterLabel}
-        </div>
+        {afterLabel && (
+          <div className="absolute top-3 right-3 bg-[#60a5fa]/20 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-[#60a5fa] border border-[#60a5fa]/30 z-10">
+            {afterLabel}
+          </div>
+        )}
       </div>
 
       {/* After Image (Top Layer - Left Side) with Clip */}
@@ -78,19 +84,25 @@ export default function ImageComparisonSlider({ beforeImage, afterImage, beforeL
         className="absolute inset-0 w-full h-full overflow-hidden"
         style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
       >
-        <img
-          src={beforeImage}
-          alt={beforeLabel}
-          className={`w-full h-full ${imageFit} ${imagePosition}`}
-          draggable={false}
-        />
+        {typeof beforeImage === 'string' ? (
+          <img
+            src={beforeImage}
+            alt={beforeLabel}
+            className={`w-full h-full ${imageFit} ${imagePosition}`}
+            draggable={false}
+          />
+        ) : (
+          beforeImage
+        )}
         {/* Before Label */}
-        <div
-          className="absolute top-3 left-3 bg-black/60 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-300 border border-white/5 z-10"
-          style={{ opacity: sliderPosition > 15 ? 1 : 0, transition: 'opacity 0.2s' }}
-        >
-          {beforeLabel}
-        </div>
+        {beforeLabel && (
+          <div
+            className="absolute top-3 left-3 bg-black/60 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-300 border border-white/5 z-10"
+            style={{ opacity: sliderPosition > 15 ? 1 : 0, transition: 'opacity 0.2s' }}
+          >
+            {beforeLabel}
+          </div>
+        )}
       </div>
 
       {/* Slider Line and Handle */}
