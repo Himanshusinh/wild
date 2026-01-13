@@ -11,10 +11,16 @@ export function ProjectsView() {
 
     // Determine canvas URL based on environment (copied from original logic)
     const getCanvasUrl = () => {
+        if (process.env.NEXT_PUBLIC_CANVAS_URL) return process.env.NEXT_PUBLIC_CANVAS_URL;
         if (typeof window === 'undefined') return '';
-        const isProd = window.location.hostname === 'wildmindai.com' ||
-            window.location.hostname === 'www.wildmindai.com';
-        return isProd ? 'https://studio.wildmindai.com' : 'http://localhost:3001';
+        
+        const hostname = window.location.hostname;
+        if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') {
+            return 'https://studio.wildmindai.com';
+        } else if (hostname === 'onstaging-wildmindai.com') {
+             return 'https://onstaging-studios.wildmindai.com';
+        }
+        return 'http://localhost:3001';
     };
     const canvasUrl = getCanvasUrl();
 
@@ -39,7 +45,7 @@ export function ProjectsView() {
             }
 
             const response = await fetchCanvasProjects();
-            const enrichedProjects = (response.projects || []).map(p => {
+            const enrichedProjects = (response.projects || []).map((p: CanvasProject) => {
                 if (p.previewImages && p.previewImages.length > 0) {
                     const randomIndex = Math.floor(Math.random() * p.previewImages.length);
                     return { ...p, thumbnail: p.previewImages[randomIndex] };
@@ -96,7 +102,7 @@ export function ProjectsView() {
         try {
             await deleteProject(projectId);
             // Remove the project from the list
-            setProjects(prev => prev.filter(p => p.id !== projectId));
+            setProjects((prev: CanvasProject[]) => prev.filter((p: CanvasProject) => p.id !== projectId));
         } catch (error: any) {
             console.error('Failed to delete project:', error);
             alert(error.message || 'Failed to delete project. Please try again.');
@@ -160,7 +166,7 @@ export function ProjectsView() {
                     </div>
 
                     {/* Project Cards */}
-                    {projects.map((p) => (
+                    {projects.map((p: CanvasProject) => (
                         <div key={p.id} onClick={() => handleOpenProject(p.id)} className="group relative aspect-[4/3] bg-[#0A0A0A] rounded-2xl border border-white/5 overflow-hidden hover:border-[#60a5fa]/50 transition-all cursor-pointer">
                             {p.thumbnail ? (
                                 <Image src={p.thumbnail} fill className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover:scale-105 transition-all duration-700" alt={p.name} unoptimized />
@@ -179,7 +185,7 @@ export function ProjectsView() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={(e) => handleDeleteProject(e, p.id, p.name)}
+                                            onClick={(e: React.MouseEvent) => handleDeleteProject(e, p.id, p.name)}
                                             className="w-10 h-10 rounded-full bg-red-500/20 backdrop-blur flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
                                             title="Delete project"
                                         >

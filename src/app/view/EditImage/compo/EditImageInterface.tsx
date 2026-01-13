@@ -3593,7 +3593,7 @@ const EditImageInterface: React.FC = () => {
                   onClick={() => {
                     try {
                       if (typeof window !== 'undefined') {
-                        window.open('http://localhost:3005', '_blank', 'noopener');
+                        window.open(process.env.NEXT_PUBLIC_CANVAS_URL || 'http://localhost:3001', '_blank', 'noopener');
                       }
                     } catch (e) { }
                   }}

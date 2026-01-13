@@ -1145,7 +1145,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       }
     } catch (e) {
       console.error('[selfieVideo] open in editor failed', e);
-      alert('Failed to open editor. Please ensure your video editor is running on http://localhost:3001');
+      const editorUrl = process.env.NEXT_PUBLIC_CANVAS_URL || 'http://localhost:3001';
+      alert(`Failed to open editor. Please ensure your video editor is running on ${editorUrl}`);
     }
   };
 

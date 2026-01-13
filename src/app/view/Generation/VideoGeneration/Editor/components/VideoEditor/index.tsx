@@ -422,7 +422,8 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
 
                             // Try proxy on workflow app (wild) as same-origin fetch to avoid COEP/CORS
                             try {
-                                const proxyBase = 'http://localhost:3000/api/proxy/video?url=';
+                                const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                                const proxyBase = `${origin}/api/proxy/video?url=`;
                                 const proxyUrl = proxyBase + encodeURIComponent(v);
                                 const pres = await fetch(proxyUrl);
                                 if (pres.ok) {
@@ -805,8 +806,10 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
 
                 const allowedOrigins = [
                     'http://localhost:3000',
-                    'http://127.0.0.1:3000',
                     'http://localhost:3001',
+                    'https://studio.wildmindai.com',
+                    'https://onstaging-studios.wildmindai.com',
+                    'https://onstaging-wildmindai.com',
                     window.location.origin
                 ];
                 // In dev allow messages from local hosts; adjust as needed in production

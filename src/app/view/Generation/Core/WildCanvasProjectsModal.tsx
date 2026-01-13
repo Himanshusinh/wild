@@ -10,17 +10,23 @@ interface WildCanvasProjectsModalProps {
     onClose: () => void;
 }
 
-const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpen, onClose }) => {
+const WildCanvasProjectsModal = ({ isOpen, onClose }: WildCanvasProjectsModalProps) => {
     const [projects, setProjects] = useState<CanvasProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Determine canvas URL based on environment
     const getCanvasUrl = () => {
+        if (process.env.NEXT_PUBLIC_CANVAS_URL) return process.env.NEXT_PUBLIC_CANVAS_URL;
         if (typeof window === 'undefined') return '';
-        const isProd = window.location.hostname === 'wildmindai.com' ||
-            window.location.hostname === 'www.wildmindai.com';
-        return isProd ? 'https://studio.wildmindai.com' : 'http://localhost:3001';
+        
+        const hostname = window.location.hostname;
+        if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') {
+            return 'https://studio.wildmindai.com';
+        } else if (hostname === 'onstaging-wildmindai.com') {
+             return 'https://onstaging-studios.wildmindai.com';
+        }
+        return 'http://localhost:3001';
     };
 
     const canvasUrl = getCanvasUrl();
@@ -99,14 +105,14 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
         try {
             await deleteProject(projectId);
             // Remove the project from the list
-            setProjects(prev => prev.filter(p => p.id !== projectId));
+            setProjects((prev: CanvasProject[]) => prev.filter((p: CanvasProject) => p.id !== projectId));
         } catch (error: any) {
             console.error('Failed to delete project:', error);
             alert(error.message || 'Failed to delete project. Please try again.');
         }
     };
 
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
