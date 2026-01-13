@@ -31,7 +31,7 @@ export default function LineDrawingToPhoto() {
         title: "Line Drawing to Photo",
         category: "General",
         description: "Transform line art into a high-quality photorealistic image.",
-        model: "Seadream4/ Nano Banana",
+        // model: "Seadream4/ Nano Banana",
         cost: 90
     };
 
@@ -155,7 +155,7 @@ No illustration style — the final result should look like a real photograph.`;
                                 <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
-                                <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
+                                {/* <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div> */}
 
                                 <div className="mb-8">
                                     <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -267,11 +267,11 @@ No illustration style — the final result should look like a real photograph.`;
                                         afterLabel="Photorealistic"
                                         imageFit="object-contain"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                         <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
                                             Try it with your own image
                                         </div>
-                                    </div>
+                                    </div> */}
                                 </div>
                             )}
                         </div>
