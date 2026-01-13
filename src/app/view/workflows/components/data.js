@@ -59,9 +59,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove unwanted objects or persons from your Image seamlessly.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/remove-element-before.jpg",
-    "sampleBefore": "/remove-element-before.jpg",
-    "sampleAfter": "/remove-element-after.jpg"
+    "thumbnail": "/workflow-samples/remove-element-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-element-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-element-after.jpg"
   },
   {
     "id": "replace-element",

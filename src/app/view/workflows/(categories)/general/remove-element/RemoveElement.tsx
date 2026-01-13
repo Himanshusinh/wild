@@ -260,8 +260,8 @@ export default function RemoveElement() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/remove-element-before.jpg"
-                                        afterImage="/remove-element-after.jpg"
+                                        beforeImage="/workflow-samples/remove-element-before.jpg"
+                                        afterImage="/workflow-samples/remove-element-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
