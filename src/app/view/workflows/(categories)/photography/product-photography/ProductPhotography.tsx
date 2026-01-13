@@ -27,6 +27,7 @@ export default function ProductPhotography() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeUploadType, setActiveUploadType] = useState<'product' | 'reference' | null>(null);
+  const [photographyStyle, setPhotographyStyle] = useState('');
 
   // Workflow Data
   const workflowData = (WORKFLOWS_DATA.find(w => w.id === "product-photography") || {
@@ -83,6 +84,7 @@ export default function ProductPhotography() {
       const response = await axiosInstance.post('/api/workflows/photography/product-photography', {
         productImage: productImage,
         referenceImage: referenceImage,
+        style: photographyStyle,
         isPublic: true
       });
 
@@ -207,6 +209,8 @@ export default function ProductPhotography() {
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">PHOTOGRAPHY STYLE (OPTIONAL)</label>
                   <textarea
+                    value={photographyStyle}
+                    onChange={(e) => setPhotographyStyle(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="E.g. Minimalist studio, cinematic lighting, wooden table background..."
                   ></textarea>

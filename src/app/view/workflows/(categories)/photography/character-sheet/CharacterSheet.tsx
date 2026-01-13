@@ -25,9 +25,10 @@ export default function CharacterSheet() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [characterDetails, setCharacterDetails] = useState('');
 
   // Workflow Data
-  const workflowData = WORKFLOWS_DATA.find(w => w.id === "character-sheet") || {
+  const workflowData = (WORKFLOWS_DATA.find(w => w.id === "character-sheet") || {
     id: "character-sheet",
     title: "Character Sheet",
     category: "Photography",
@@ -36,7 +37,7 @@ export default function CharacterSheet() {
     cost: 80,
     sampleBefore: "/workflow-samples/character-sheet-before.png",
     sampleAfter: "/workflow-samples/character-sheet-after.jpg"
-  };
+  }) as any;
 
   const CREDIT_COST = 90;
 
@@ -74,6 +75,7 @@ export default function CharacterSheet() {
 
       const response = await axiosInstance.post('/api/workflows/photography/character-sheet', {
         image: originalImage,
+        details: characterDetails,
         isPublic: true
       });
 
@@ -160,6 +162,8 @@ export default function CharacterSheet() {
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">CHARACTER DETAILS (OPTIONAL)</label>
                   <textarea
+                    value={characterDetails}
+                    onChange={(e) => setCharacterDetails(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="Add background info or specific character traits..."
                   ></textarea>
@@ -208,10 +212,10 @@ export default function CharacterSheet() {
                   <ImageComparisonSlider
                     beforeImage={originalImage}
                     afterImage={generatedImage}
-                    beforeLabel="Original"
-                    afterLabel="Character Sheet"
-                    imageFit={(workflowData as any).imageFit || 'object-contain'}
-                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                    beforeLabel="Before"
+                    afterLabel="After"
+                    imageFit={workflowData.imageFit as any}
+                    imagePosition={workflowData.imagePosition}
                   />
                   <button
                     onClick={handleDownload}

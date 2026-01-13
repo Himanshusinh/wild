@@ -2,21 +2,33 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Camera, Zap, Download, Sparkles, Layers } from 'lucide-react';
+import { X, Camera, Zap, Download, Car, Sparkles, Map, Sun, Wind } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
-import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 
-const CAMERA_ANGLES = [
-  'Eye-Level', 'Low Angle', 'High Angle', 'Top-Down', 'Side Angle',
-  'Straight-On', 'Close-Up', 'Wide Shot', 'POV', 'Dutch Angle'
+const BACKGROUND_STYLES = [
+  { id: 'urban', label: 'Modern City', icon: <Map size={14} /> },
+  { id: 'mountain', label: 'Mountain Pass', icon: <Map size={14} /> },
+  { id: 'coast', label: 'Coastal Road', icon: <Map size={14} /> },
+  { id: 'studio', label: 'Pro Studio', icon: <Camera size={14} /> },
+  { id: 'forest', label: 'Pine Forest', icon: <Map size={14} /> },
+  { id: 'desert', label: 'Open Desert', icon: <Map size={14} /> }
 ];
 
-export default function ReimagineProduct() {
+const LIGHTING_EFFECTS = [
+  { id: 'golden-hour', label: 'Golden Hour', icon: <Sun size={14} /> },
+  { id: 'sunset', label: 'Deep Sunset', icon: <Sun size={14} /> },
+  { id: 'noon', label: 'Harsh Daylight', icon: <Sun size={14} /> },
+  { id: 'moonlight', label: 'Moonlight', icon: <Sun size={14} /> },
+  { id: 'cinematic', label: 'Cinematic Blue', icon: <Sparkles size={14} /> },
+  { id: 'neon', label: 'Neon Night', icon: <Sparkles size={14} /> }
+];
+
+export default function Automotive() {
   const router = useRouter();
   const {
     creditBalance,
@@ -26,26 +38,27 @@ export default function ReimagineProduct() {
 
   // State
   const [isOpen, setIsOpen] = useState(false);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [carImage, setCarImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedAngle, setSelectedAngle] = useState<string>('Eye-Level');
-  const [additionalDetails, setAdditionalDetails] = useState('');
+  const [selectedBackground, setSelectedBackground] = useState('urban');
+  const [selectedLighting, setSelectedLighting] = useState('golden-hour');
+  const [motionBlur, setMotionBlur] = useState('Medium');
 
   // Workflow Data
-  const workflowData = WORKFLOWS_DATA.find(w => w.id === "reimagine-product") || {
-    id: "reimagine-product",
-    title: "Reimagine Product",
+  const workflowData = (WORKFLOWS_DATA.find(w => w.id === "automotive") || {
+    id: "automotive",
+    title: "Automotive Photography",
     category: "Photography",
-    description: "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
-    model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
-    sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
-    sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
-  };
+    description: "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
+    model: "AutoRender AI",
+    cost: 85,
+    sampleBefore: "/workflow-samples/automotive-before.png",
+    sampleAfter: "/workflow-samples/automotive-after.png"
+  }) as any;
 
-  const CREDIT_COST = 90;
+  const CREDIT_COST = 85;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -59,14 +72,14 @@ export default function ReimagineProduct() {
   };
 
   const handleImageSelect = (url: string) => {
-    setOriginalImage(url);
+    setCarImage(url);
     setGeneratedImage(null);
     setIsUploadModalOpen(false);
   };
 
   const handleRun = async () => {
-    if (!originalImage) {
-      toast.error('Please upload an image first');
+    if (!carImage) {
+      toast.error('Please upload your car photo first');
       return;
     }
 
@@ -79,35 +92,33 @@ export default function ReimagineProduct() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      const response = await axiosInstance.post('/api/workflows/photography/reimagine-product', {
-        image: originalImage,
-        angle: selectedAngle,
-        additionalDetails: additionalDetails,
+      const response = await axiosInstance.post('/api/workflows/photography/automotive', {
+        carImage,
+        background: selectedBackground,
+        lighting: selectedLighting,
+        motionBlur,
         isPublic: true
       });
 
       if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
         setGeneratedImage(response.data.data.images[0].url);
-        toast.success('Product reimagined successfully!');
+        toast.success('Automotive shot generated successfully!');
       } else {
         throw new Error(response.data?.message || 'Invalid response from server');
       }
 
     } catch (error: any) {
-      console.error('Reimagine Product error:', error);
+      console.error('Automotive Photography error:', error);
       rollbackOptimisticDeduction(CREDIT_COST);
-      toast.error(error.response?.data?.message || error.message || 'Failed to reimagine product');
+      toast.error(error.response?.data?.message || 'Failed to generate automotive shot');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleDownload = async () => {
-    if (!generatedImage) return;
-    try {
-      await downloadFileWithNaming(generatedImage, null, 'image', 'reimagine-product');
-    } catch (error) {
-      toast.error('Failed to download image');
+  const handleDownload = () => {
+    if (generatedImage) {
+      downloadFileWithNaming(generatedImage, null, 'image', 'automotive');
     }
   };
 
@@ -142,57 +153,82 @@ export default function ReimagineProduct() {
               <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
               <div className="flex flex-col gap-6 mb-8">
-                {/* 1. Source Photo */}
+                {/* 1. Car Photo */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Car Snapshot</label>
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => setIsUploadModalOpen(true)}>
-                    {originalImage ? (
+                    {carImage ? (
                       <>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Source" />
+                        <img src={carImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Car" />
                         <div className="relative z-10">
-                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Product</span>
+                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Car</span>
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Product Image</span>
-                          <span className="text-[10px] text-slate-500">Upload your product snapshot</span>
+                          <span className="text-sm text-slate-300 block font-medium">Upload Car</span>
+                          <span className="text-[10px] text-slate-500">Subject to enhance</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* 2. Angle Selection */}
-                <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">2. Dynamic Camera Angle</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CAMERA_ANGLES.map((angle) => (
+                {/* 2. Environment Style */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">2. Environment Style</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {BACKGROUND_STYLES.map((style) => (
                       <button
-                        key={angle}
-                        onClick={() => setSelectedAngle(angle)}
-                        className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${selectedAngle === angle
-                          ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.1)]'
+                        key={style.id}
+                        onClick={() => setSelectedBackground(style.id)}
+                        className={`py-3 rounded-xl text-[10px] font-bold transition-all border flex items-center justify-center gap-2 ${selectedBackground === style.id
+                          ? 'bg-[#60a5fa] border-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.3)]'
                           : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
                       >
-                        {angle}
+                        {style.label}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* 3. Additional Details */}
+                {/* 3. Lighting Type */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">3. Additional Details (Optional)</label>
-                  <textarea
-                    value={additionalDetails}
-                    onChange={(e) => setAdditionalDetails(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-24"
-                    placeholder="E.g. Artistic watercolor, cyberpunk neon, vintage film look..."
-                  ></textarea>
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">3. Lighting Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {LIGHTING_EFFECTS.map((effect) => (
+                      <button
+                        key={effect.id}
+                        onClick={() => setSelectedLighting(effect.id)}
+                        className={`py-3 rounded-xl text-[10px] font-bold transition-all border flex items-center justify-center gap-2 ${selectedLighting === effect.id
+                          ? 'bg-[#60a5fa] border-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
+                      >
+                        {effect.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Motion Blur */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">4. Motion Effect</label>
+                  <div className="flex gap-2">
+                    {['None', 'Low', 'Medium', 'High'].map((intensity) => (
+                      <button
+                        key={intensity}
+                        onClick={() => setMotionBlur(intensity)}
+                        className={`flex-1 py-3 rounded-xl text-[10px] font-bold transition-all border ${motionBlur === intensity
+                          ? 'bg-[#60a5fa] border-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
+                      >
+                        {intensity}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -207,9 +243,9 @@ export default function ReimagineProduct() {
               </div>
               <button
                 onClick={handleRun}
-                disabled={isGenerating || !originalImage}
+                disabled={isGenerating || !carImage}
                 className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                  ${isGenerating || !originalImage
+                  ${isGenerating || !carImage
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                     : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)] active:scale-[0.98]'
                   }`}
@@ -217,11 +253,11 @@ export default function ReimagineProduct() {
                 {isGenerating ? (
                   <>
                     <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    Reimagining...
+                    Generating Shot...
                   </>
                 ) : (
                   <>
-                    <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
+                    <Zap size={16} className={!carImage ? "fill-slate-500" : "fill-black"} />
                     Run Workflow
                   </>
                 )}
@@ -232,18 +268,11 @@ export default function ReimagineProduct() {
           {/* Right Column: Preview */}
           <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
             <div className="flex-1 relative">
-              {originalImage && generatedImage ? (
+              {generatedImage ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                    <ImageComparisonSlider
-                      beforeImage={originalImage}
-                      afterImage={generatedImage}
-                      beforeLabel="Before"
-                      afterLabel="Output"
-                      imageFit="object-contain"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    <img src={generatedImage} className="w-full h-full object-contain bg-black/40" alt="Generated Automotive Shot" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                     {/* Download Button */}
                     <button
@@ -251,26 +280,19 @@ export default function ReimagineProduct() {
                       className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
                     >
                       <Download size={18} />
-                      Download
+                      Download Shot
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-                    <ImageComparisonSlider
-                      beforeImage={workflowData.sampleBefore}
-                      afterImage={workflowData.sampleAfter}
-                      beforeLabel="Before"
-                      afterLabel="After"
-                      imageFit="object-cover"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    <img src={workflowData.sampleAfter} className="w-full h-full object-cover" alt="Sample Display" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own product
+                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own car photo
                       </div>
                     </div>
                   </div>
@@ -280,11 +302,11 @@ export default function ReimagineProduct() {
                       <div className="relative w-24 h-24 mb-6">
                         <div className="absolute inset-0 border-4 border-[#60a5fa]/10 rounded-full" />
                         <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin" />
-                        <Camera size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
+                        <Car size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
                       </div>
                       <div className="text-center">
-                        <p className="text-white font-bold text-xl mb-2 tracking-tight">Processing Reimagine</p>
-                        <p className="text-white/40 text-sm font-medium italic">Generating high-end artistic settings...</p>
+                        <p className="text-white font-bold text-xl mb-2 tracking-tight">Rendering Automotive Scenery</p>
+                        <p className="text-white/40 text-sm font-medium italic">Adjusting lighting and motion blur physics...</p>
                       </div>
                     </div>
                   )}
@@ -299,11 +321,7 @@ export default function ReimagineProduct() {
         <UploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
-          onAdd={(urls: string[]) => {
-            if (urls && urls.length > 0) {
-              handleImageSelect(urls[0]);
-            }
-          }}
+          onAdd={(urls: string[]) => urls.length > 0 && handleImageSelect(urls[0])}
           remainingSlots={1}
         />
       )}
