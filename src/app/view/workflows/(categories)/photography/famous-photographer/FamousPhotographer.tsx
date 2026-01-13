@@ -2,21 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Camera, Zap, Download, Sparkles, Layers } from 'lucide-react';
+import { X, Camera, Zap, Download, Sparkles, User, Image as ImageIcon, Palmtree } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
-import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 
-const CAMERA_ANGLES = [
-  'Eye-Level', 'Low Angle', 'High Angle', 'Top-Down', 'Side Angle',
-  'Straight-On', 'Close-Up', 'Wide Shot', 'POV', 'Dutch Angle'
+const PHOTOGRAPHER_STYLES = [
+  { id: 'steve-mccurry', label: 'Steve McCurry', description: 'Vibrant, humanistic, National Geographic style.', icon: <Palmtree size={14} /> },
+  { id: 'annie-leibovitz', label: 'Annie Leibovitz', description: 'Dramatic, painterly, high-end celebrity portraits.', icon: <User size={14} /> },
+  { id: 'ansel-adams', label: 'Ansel Adams', description: 'Classic B&W, high contrast, majestic landscapes.', icon: <ImageIcon size={14} /> },
+  { id: 'peter-lindbergh', label: 'Peter Lindbergh', description: 'Raw, emotional, cinematic B&W fashion.', icon: <Camera size={14} /> },
+  { id: 'cartier-bresson', label: 'Henri Cartier-Bresson', description: 'Candid B&W, the "Decisive Moment".', icon: <Camera size={14} /> }
 ];
 
-export default function ReimagineProduct() {
+export default function FamousPhotographer() {
   const router = useRouter();
   const {
     creditBalance,
@@ -26,26 +28,25 @@ export default function ReimagineProduct() {
 
   // State
   const [isOpen, setIsOpen] = useState(false);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedAngle, setSelectedAngle] = useState<string>('Eye-Level');
-  const [additionalDetails, setAdditionalDetails] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('steve-mccurry');
 
   // Workflow Data
-  const workflowData = WORKFLOWS_DATA.find(w => w.id === "reimagine-product") || {
-    id: "reimagine-product",
-    title: "Reimagine Product",
+  const workflowData = (WORKFLOWS_DATA.find(w => w.id === "famous-photographer") || {
+    id: "famous-photographer",
+    title: "World Famous Photographer",
     category: "Photography",
-    description: "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
-    model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
-    sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
-    sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
-  };
+    description: "Transform your photos into the signature style of legendary world-famous photographers.",
+    model: "StyleRender AI",
+    cost: 85,
+    sampleBefore: "/workflow-samples/famous-photographer-before.png",
+    sampleAfter: "/workflow-samples/famous-photographer-after.png"
+  }) as any;
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 85;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -59,14 +60,14 @@ export default function ReimagineProduct() {
   };
 
   const handleImageSelect = (url: string) => {
-    setOriginalImage(url);
+    setSourceImage(url);
     setGeneratedImage(null);
     setIsUploadModalOpen(false);
   };
 
   const handleRun = async () => {
-    if (!originalImage) {
-      toast.error('Please upload an image first');
+    if (!sourceImage) {
+      toast.error('Please upload your photo first');
       return;
     }
 
@@ -79,35 +80,31 @@ export default function ReimagineProduct() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      const response = await axiosInstance.post('/api/workflows/photography/reimagine-product', {
-        image: originalImage,
-        angle: selectedAngle,
-        additionalDetails: additionalDetails,
+      const response = await axiosInstance.post('/api/workflows/photography/famous-photographer', {
+        sourceImage,
+        style: selectedStyle,
         isPublic: true
       });
 
       if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
         setGeneratedImage(response.data.data.images[0].url);
-        toast.success('Product reimagined successfully!');
+        toast.success('Professional style applied successfully!');
       } else {
         throw new Error(response.data?.message || 'Invalid response from server');
       }
 
     } catch (error: any) {
-      console.error('Reimagine Product error:', error);
+      console.error('Photographer Style error:', error);
       rollbackOptimisticDeduction(CREDIT_COST);
-      toast.error(error.response?.data?.message || error.message || 'Failed to reimagine product');
+      toast.error(error.response?.data?.message || 'Failed to apply professional style');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleDownload = async () => {
-    if (!generatedImage) return;
-    try {
-      await downloadFileWithNaming(generatedImage, null, 'image', 'reimagine-product');
-    } catch (error) {
-      toast.error('Failed to download image');
+  const handleDownload = () => {
+    if (generatedImage) {
+      downloadFileWithNaming(generatedImage, null, 'image', 'famous-photographer');
     }
   };
 
@@ -144,55 +141,50 @@ export default function ReimagineProduct() {
               <div className="flex flex-col gap-6 mb-8">
                 {/* 1. Source Photo */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Your Photograph</label>
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => setIsUploadModalOpen(true)}>
-                    {originalImage ? (
+                    {sourceImage ? (
                       <>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Source" />
+                        <img src={sourceImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Source" />
                         <div className="relative z-10">
-                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Product</span>
+                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Photo</span>
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Product Image</span>
-                          <span className="text-[10px] text-slate-500">Upload your product snapshot</span>
+                          <span className="text-sm text-slate-300 block font-medium">Upload Photo</span>
+                          <span className="text-[10px] text-slate-500">Subject to transform</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* 2. Angle Selection */}
+                {/* 2. Photographer Style Selection */}
                 <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">2. Dynamic Camera Angle</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CAMERA_ANGLES.map((angle) => (
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">2. Choose Photographer Style</label>
+                  <div className="flex flex-col gap-2">
+                    {PHOTOGRAPHER_STYLES.map((style) => (
                       <button
-                        key={angle}
-                        onClick={() => setSelectedAngle(angle)}
-                        className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${selectedAngle === angle
-                          ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.1)]'
+                        key={style.id}
+                        onClick={() => setSelectedStyle(style.id)}
+                        className={`p-4 rounded-xl transition-all border flex items-start gap-4 text-left ${selectedStyle === style.id
+                          ? 'bg-[#60a5fa]/10 border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.1)]'
                           : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
                       >
-                        {angle}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedStyle === style.id ? 'bg-[#60a5fa] text-black' : 'bg-white/5 text-slate-500'}`}>
+                          {style.icon}
+                        </div>
+                        <div>
+                          <p className={`text-xs font-bold leading-none mb-1 ${selectedStyle === style.id ? 'text-white' : 'text-slate-300'}`}>{style.label}</p>
+                          <p className="text-[10px] text-slate-500 font-medium leading-tight">{style.description}</p>
+                        </div>
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* 3. Additional Details */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">3. Additional Details (Optional)</label>
-                  <textarea
-                    value={additionalDetails}
-                    onChange={(e) => setAdditionalDetails(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-24"
-                    placeholder="E.g. Artistic watercolor, cyberpunk neon, vintage film look..."
-                  ></textarea>
                 </div>
               </div>
             </div>
@@ -207,9 +199,9 @@ export default function ReimagineProduct() {
               </div>
               <button
                 onClick={handleRun}
-                disabled={isGenerating || !originalImage}
+                disabled={isGenerating || !sourceImage}
                 className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                  ${isGenerating || !originalImage
+                  ${isGenerating || !sourceImage
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                     : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)] active:scale-[0.98]'
                   }`}
@@ -217,11 +209,11 @@ export default function ReimagineProduct() {
                 {isGenerating ? (
                   <>
                     <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    Reimagining...
+                    Applying Style...
                   </>
                 ) : (
                   <>
-                    <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
+                    <Zap size={16} className={!sourceImage ? "fill-slate-500" : "fill-black"} />
                     Run Workflow
                   </>
                 )}
@@ -232,18 +224,11 @@ export default function ReimagineProduct() {
           {/* Right Column: Preview */}
           <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
             <div className="flex-1 relative">
-              {originalImage && generatedImage ? (
+              {generatedImage ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                    <ImageComparisonSlider
-                      beforeImage={originalImage}
-                      afterImage={generatedImage}
-                      beforeLabel="Before"
-                      afterLabel="Output"
-                      imageFit="object-contain"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    <img src={generatedImage} className="w-full h-full object-contain bg-black/40" alt="Generated Professional Style" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                     {/* Download Button */}
                     <button
@@ -251,26 +236,19 @@ export default function ReimagineProduct() {
                       className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
                     >
                       <Download size={18} />
-                      Download
+                      Download Final Shot
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-                    <ImageComparisonSlider
-                      beforeImage={workflowData.sampleBefore}
-                      afterImage={workflowData.sampleAfter}
-                      beforeLabel="Before"
-                      afterLabel="After"
-                      imageFit="object-cover"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    <img src={workflowData.sampleAfter} className="w-full h-full object-cover" alt="Style Sample" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own product
+                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own photo
                       </div>
                     </div>
                   </div>
@@ -283,8 +261,8 @@ export default function ReimagineProduct() {
                         <Camera size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
                       </div>
                       <div className="text-center">
-                        <p className="text-white font-bold text-xl mb-2 tracking-tight">Processing Reimagine</p>
-                        <p className="text-white/40 text-sm font-medium italic">Generating high-end artistic settings...</p>
+                        <p className="text-white font-bold text-xl mb-2 tracking-tight">Applying Artist Palette</p>
+                        <p className="text-white/40 text-sm font-medium italic">Replicating signature lens work and lighting...</p>
                       </div>
                     </div>
                   )}
@@ -299,11 +277,7 @@ export default function ReimagineProduct() {
         <UploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
-          onAdd={(urls: string[]) => {
-            if (urls && urls.length > 0) {
-              handleImageSelect(urls[0]);
-            }
-          }}
+          onAdd={(urls: string[]) => urls.length > 0 && handleImageSelect(urls[0])}
           remainingSlots={1}
         />
       )}

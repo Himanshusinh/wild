@@ -25,6 +25,7 @@ export default function ReplaceTexture() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [texturePrompt, setTexturePrompt] = useState('');
 
   // Workflow Data
   const workflowData = WORKFLOWS_DATA.find(w => w.id === "replace-texture") || {
@@ -74,6 +75,7 @@ export default function ReplaceTexture() {
 
       const response = await axiosInstance.post('/api/workflows/architecture/replace-texture', {
         image: originalImage,
+        prompt: texturePrompt,
         isPublic: true
       });
 
@@ -160,6 +162,8 @@ export default function ReplaceTexture() {
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">TEXTURE REQUEST (OPTIONAL)</label>
                   <textarea
+                    value={texturePrompt}
+                    onChange={(e) => setTexturePrompt(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="E.g. Replace wood with dark marble, change concrete to red brick..."
                   ></textarea>
@@ -205,13 +209,16 @@ export default function ReplaceTexture() {
 
               {originalImage && generatedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <ImageComparisonSlider
-                    beforeImage={originalImage}
-                    afterImage={generatedImage}
-                    beforeLabel="Original"
-                    afterLabel="New Texture"
-                    imageFit="object-contain"
-                  />
+                  <div className="w-full h-full bg-black/20 rounded-xl overflow-hidden shadow-2xl">
+                    <ImageComparisonSlider
+                      beforeImage={originalImage}
+                      afterImage={generatedImage}
+                      beforeLabel="Before"
+                      afterLabel="After"
+                      imageFit="object-cover"
+                      imagePosition="object-center"
+                    />
+                  </div>
                   <button
                     onClick={handleDownload}
                     className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
@@ -235,13 +242,16 @@ export default function ReplaceTexture() {
                 </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <ImageComparisonSlider
-                    beforeImage={workflowData.sampleBefore}
-                    afterImage={workflowData.sampleAfter}
-                    beforeLabel="Before"
-                    afterLabel="After"
-                    imageFit="object-contain"
-                  />
+                  <div className="w-full h-full bg-black/20 rounded-xl overflow-hidden shadow-2xl">
+                    <ImageComparisonSlider
+                      beforeImage={workflowData.sampleBefore}
+                      afterImage={workflowData.sampleAfter}
+                      beforeLabel="Before"
+                      afterLabel="After"
+                      imageFit="object-cover"
+                      imagePosition="object-center"
+                    />
+                  </div>
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
                       Try it with your own image

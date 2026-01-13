@@ -27,9 +27,10 @@ export default function PoseControl() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [poseDescription, setPoseDescription] = useState('');
 
   // Workflow Data
-  const workflowData = WORKFLOWS_DATA.find(w => w.id === "pose-control") || {
+  const workflowData = (WORKFLOWS_DATA.find(w => w.id === "pose-control") || {
     id: "pose-control",
     title: "Pose Control",
     category: "Photography",
@@ -38,7 +39,7 @@ export default function PoseControl() {
     cost: 80,
     sampleBefore: "/workflow-samples/pose-control-before.png",
     sampleAfter: "/workflow-samples/pose-control-after.png"
-  };
+  }) as any;
 
   const CREDIT_COST = 80;
 
@@ -81,6 +82,7 @@ export default function PoseControl() {
       const response = await axiosInstance.post('/api/workflows/photography/pose-control', {
         image: originalImage,
         pose_image: poseReferenceImage,
+        description: poseDescription,
         isPublic: true
       });
 
@@ -199,6 +201,8 @@ export default function PoseControl() {
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">POSE DESCRIPTION (OPTIONAL)</label>
                   <textarea
+                    value={poseDescription}
+                    onChange={(e) => setPoseDescription(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="Describe the desired pose or character position..."
                   ></textarea>
@@ -247,8 +251,8 @@ export default function PoseControl() {
                   <ImageComparisonSlider
                     beforeImage={originalImage}
                     afterImage={generatedImage}
-                    beforeLabel="Original"
-                    afterLabel="New Pose"
+                    beforeLabel="Before"
+                    afterLabel="After"
                     imageFit="object-contain"
                   />
                   <button

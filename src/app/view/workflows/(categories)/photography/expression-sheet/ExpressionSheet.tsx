@@ -25,9 +25,10 @@ export default function ExpressionSheet() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [expressionDetails, setExpressionDetails] = useState('');
 
   // Workflow Data
-  const workflowData = WORKFLOWS_DATA.find(w => w.id === "expression-sheet") || {
+  const workflowData = (WORKFLOWS_DATA.find(w => w.id === "expression-sheet") || {
     id: "expression-sheet",
     title: "Expression Sheet",
     category: "Photography",
@@ -36,7 +37,7 @@ export default function ExpressionSheet() {
     cost: 80,
     sampleBefore: "/workflow-samples/expression-sheet-before.jpg",
     sampleAfter: "/workflow-samples/expression-sheet-after.jpg"
-  };
+  }) as any;
 
   const CREDIT_COST = 80;
 
@@ -74,6 +75,7 @@ export default function ExpressionSheet() {
 
       const response = await axiosInstance.post('/api/workflows/photography/expression-sheet', {
         image: originalImage,
+        details: expressionDetails,
         isPublic: true
       });
 
@@ -160,6 +162,8 @@ export default function ExpressionSheet() {
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">EXPRESSION DETAILS (OPTIONAL)</label>
                   <textarea
+                    value={expressionDetails}
+                    onChange={(e) => setExpressionDetails(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="E.g. Happy, sad, angry, surprised expressions..."
                   ></textarea>
@@ -208,8 +212,8 @@ export default function ExpressionSheet() {
                   <ImageComparisonSlider
                     beforeImage={originalImage}
                     afterImage={generatedImage}
-                    beforeLabel="Original"
-                    afterLabel="Expression Sheet"
+                    beforeLabel="Before"
+                    afterLabel="After"
                     imageFit={(workflowData as any).imageFit || 'object-cover'}
                     imagePosition={(workflowData as any).imagePosition || 'object-top'}
                   />
