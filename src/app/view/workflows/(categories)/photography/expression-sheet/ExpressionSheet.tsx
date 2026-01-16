@@ -39,7 +39,7 @@ export default function ExpressionSheet() {
     sampleAfter: "/workflow-samples/expression-sheet-after.jpg"
   }) as any;
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -138,7 +138,7 @@ export default function ExpressionSheet() {
                 <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
                 <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => setIsUploadModalOpen(true)}>
                     {originalImage ? (
                       <>
@@ -216,6 +216,10 @@ export default function ExpressionSheet() {
                     afterLabel="After"
                     imageFit={(workflowData as any).imageFit || 'object-cover'}
                     imagePosition={(workflowData as any).imagePosition || 'object-top'}
+                    beforeLabel="Original"
+                    afterLabel="Expression Sheet"
+                    imageFit={(workflowData as any).imageFit || 'object-contain'}
+                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
                   />
                   <button
                     onClick={handleDownload}
@@ -245,14 +249,14 @@ export default function ExpressionSheet() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={(workflowData as any).imageFit || 'object-cover'}
-                    imagePosition={(workflowData as any).imagePosition || 'object-top'}
+                    imageFit={(workflowData as any).imageFit || 'object-contain'}
+                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
                   />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
                       Try it with your own image
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>

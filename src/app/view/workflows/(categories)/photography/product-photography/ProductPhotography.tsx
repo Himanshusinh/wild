@@ -36,14 +36,14 @@ export default function ProductPhotography() {
     category: "Photography",
     description: "Transform simple product snapshots into professional-grade studio photography with realistic lighting and environments.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/product-photography-before-1.jpg",
     sampleBeforeReference: "/workflow-samples/product-photography-before-2.png",
     sampleAfter: "/workflow-samples/product-photography-after.jpg",
     isDualUpload: true
   }) as any;
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -161,7 +161,7 @@ export default function ProductPhotography() {
                 <div className="flex flex-col gap-6 mb-8">
                   <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Product Snapshot</label>
-                    <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                    <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                       onClick={() => { setActiveUploadType('product'); setIsUploadModalOpen(true); }}>
                       {productImage ? (
                         <>
@@ -184,7 +184,7 @@ export default function ProductPhotography() {
 
                   <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Atmosphere Reference</label>
-                    <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                    <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                       onClick={() => { setActiveUploadType('reference'); setIsUploadModalOpen(true); }}>
                       {referenceImage ? (
                         <>
@@ -261,7 +261,7 @@ export default function ProductPhotography() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={workflowData.imageFit || 'object-cover'}
+                    imageFit={workflowData.imageFit || 'object-contain'}
                     imagePosition={workflowData.imagePosition || 'object-center'}
                   />
                   <button
@@ -292,14 +292,14 @@ export default function ProductPhotography() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={workflowData.imageFit || 'object-cover'}
+                    imageFit={workflowData.imageFit || 'object-contain'}
                     imagePosition={workflowData.imagePosition || 'object-center'}
                   />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
                       Try it with your own images
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>

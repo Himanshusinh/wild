@@ -21,10 +21,11 @@ export default function LogoVariations() {
   // State
   const [isOpen, setIsOpen] = useState(false);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
+  const [numVariations, setNumVariations] = useState(4); // Default to 4 as per request
 
   const workflowData = WORKFLOWS_DATA.find(w => w.id === "logo-variations") || {
     id: "logo-variations",
@@ -32,12 +33,12 @@ export default function LogoVariations() {
     category: "Branding",
     description: "Generate multiple creative variations and styles for your existing logo.",
     model: "Logo Variation AI",
-    cost: 70,
+    cost: 90,
     sampleBefore: "/workflow-samples/logo-variations-before.png",
     sampleAfter: "/workflow-samples/logo-variations-after.png"
   };
 
-  const CREDIT_COST = 70;
+  const CREDIT_COST = 90 * numVariations;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -52,7 +53,7 @@ export default function LogoVariations() {
 
   const handleImageSelect = (url: string) => {
     setOriginalImage(url);
-    setGeneratedImage(null);
+    setGeneratedImages([]);
     setIsUploadModalOpen(false);
   };
 
@@ -71,13 +72,21 @@ export default function LogoVariations() {
     try {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
+      setGeneratedImages([]);
 
-      // Mocking API call for frontend UI focus
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      const response = await axiosInstance.post('/api/workflows/branding/logo-variations', {
+        image: originalImage,
+        numVariations,
+        prompt: prompt.trim() || undefined,
+        isPublic: true
+      });
 
-      const mockResult = "/workflow-samples/logo-variations-after.png";
-      setGeneratedImage(mockResult);
-      toast.success(prompt ? `Variations generated with your instructions!` : `Variations generated successfully!`);
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.length > 0) {
+        setGeneratedImages(response.data.data.images.map((img: any) => img.url));
+        toast.success(`Generated ${response.data.data.images.length} variations successfully!`);
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
 
     } catch (error: any) {
       console.error('Logo Variations error:', error);
@@ -89,10 +98,9 @@ export default function LogoVariations() {
   };
 
 
-  const handleDownload = async () => {
-    if (!generatedImage) return;
+  const handleDownload = async (url: string, index: number) => {
     try {
-      await downloadFileWithNaming(generatedImage, null, 'image', 'logo-variation');
+      await downloadFileWithNaming(url, null, 'image', `logo-variation-${index + 1}`);
       toast.success('Downloading...');
     } catch (error) {
       toast.error('Failed to download image');
@@ -151,6 +159,24 @@ export default function LogoVariations() {
                 </div>
 
                 <div className="mb-8">
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-4 block">Number of Variations</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4].map(num => (
+                      <button
+                        key={num}
+                        onClick={() => setNumVariations(num)}
+                        className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all
+                           ${numVariations === num
+                            ? 'bg-[#60a5fa] border-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-8">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-4 block">Additional Details (Optional)</label>
                   <textarea
                     value={prompt}
@@ -181,12 +207,12 @@ export default function LogoVariations() {
                   {isGenerating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                      Generating Variations...
+                      Generating {numVariations} Variations...
                     </>
                   ) : (
                     <>
                       <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
-                      Generate Variations
+                      Generate {numVariations} Variations
                     </>
                   )}
                 </button>
@@ -198,22 +224,25 @@ export default function LogoVariations() {
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
 
-              {originalImage && generatedImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
-                    <img src={generatedImage} className="max-w-full max-h-full object-contain" alt="Generated Variation" />
+              {generatedImages.length > 0 ? (
+                <div className="relative w-full h-full p-12 overflow-y-auto custom-scrollbar">
+                  <div className={`grid gap-6 w-full h-full ${generatedImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                    {generatedImages.map((img, idx) => (
+                      <div key={idx} className="relative group rounded-2xl overflow-hidden border border-white/10  shadow-inner flex items-center justify-center p-6">
+                        <img src={img} className="max-w-full max-h-full object-contain" alt={`Variation ${idx + 1}`} />
+                        <button
+                          onClick={() => handleDownload(img, idx)}
+                          className="absolute bottom-4 right-4 z-30 w-10 h-10 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white flex items-center justify-center transition-all active:scale-95 opacity-0 group-hover:opacity-100"
+                        >
+                          <Download size={18} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    onClick={handleDownload}
-                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
-                  >
-                    <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
-                    Download
-                  </button>
                 </div>
               ) : originalImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
+                  <div className="w-full h-full  rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
                     <img src={originalImage} className="max-w-full max-h-full object-contain" alt="Preview" />
                   </div>
                   {isGenerating && (
@@ -228,18 +257,18 @@ export default function LogoVariations() {
                 </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
+                  <div className="w-full h-full  rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
                     <img
                       src={workflowData.sampleAfter}
                       className="max-w-full max-h-full object-contain"
                       alt="Logo Variations Preview"
                     />
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
                       Try it with your own logo
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>

@@ -11,7 +11,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
     "sampleAfter": "/workflow-samples/creatively-upscale-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "remove-background",
@@ -21,7 +22,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "/remove-bg-horse-before.jpg",
     "sampleBefore": "/remove-bg-horse-before.jpg",
-    "sampleAfter": "/remove-bg-horse-after.jpg"
+    "sampleAfter": "/remove-bg-horse-after.jpg",
+    "cost": 90
   },
   {
     "id": "restore-old-photo",
@@ -31,7 +33,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "/portrait-before.jpg",
     "sampleBefore": "/portrait-before.jpg",
-    "sampleAfter": "/portrait-after.jpg"
+    "sampleAfter": "/portrait-after.jpg",
+    "cost": 90
   },
   {
     "id": "photo-to-line-drawing",
@@ -41,7 +44,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "/photo-to-line-before.jpg",
     "sampleBefore": "/photo-to-line-before.jpg",
-    "sampleAfter": "/photo-to-line-after.jpg"
+    "sampleAfter": "/photo-to-line-after.jpg",
+    "cost": 90
   },
   {
     "id": "line-drawing-to-photo",
@@ -51,7 +55,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "/line-to-photo-before.jpg",
     "sampleBefore": "/line-to-photo-before.jpg",
-    "sampleAfter": "/line-to-photo-after.jpg"
+    "sampleAfter": "/line-to-photo-after.jpg",
+    "cost": 90
   },
   {
     "id": "remove-element",
@@ -61,7 +66,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "/workflow-samples/remove-element-before.jpg",
     "sampleBefore": "/workflow-samples/remove-element-before.jpg",
-    "sampleAfter": "/workflow-samples/remove-element-after.jpg"
+    "sampleAfter": "/workflow-samples/remove-element-after.jpg",
+    "cost": 90
   },
   {
     "id": "replace-element",
@@ -71,7 +77,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/replace-element-before.jpg",
     "sampleBefore": "/replace-element-before.jpg",
-    "sampleAfter": "/replace-element-after.jpg"
+    "sampleAfter": "/replace-element-after.jpg",
+    "cost": 90
   },
   {
     "id": "remove-watermark",
@@ -81,7 +88,8 @@ export const WORKFLOWS_DATA = [
     "model": "Nano Banana",
     "thumbnail": "/remove-watermark-before.jpg",
     "sampleBefore": "/remove-watermark-before.jpg",
-    "sampleAfter": "/remove-watermark-after.jpg"
+    "sampleAfter": "/remove-watermark-after.jpg",
+    "cost": 90
   },
   {
     "id": "surprise-me",
@@ -91,7 +99,8 @@ export const WORKFLOWS_DATA = [
     "model": "AI Prompt Engine",
     "thumbnail": "/workflow-samples/surpriseme-before.jpg",
     "sampleBefore": "/workflow-samples/surpriseme-before.jpg",
-    "sampleAfter": "/workflow-samples/surpriseme-after.jpg"
+    "sampleAfter": "/workflow-samples/surpriseme-after.jpg",
+    "cost": 90
   },
   {
     "id": "people-age",
@@ -103,7 +112,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/people-age-before.png",
     "sampleAfter": "/workflow-samples/people-age-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "become-celebrity",
@@ -113,7 +123,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/become-celebrity-before.jpg",
     "sampleBefore": "/workflow-samples/become-celebrity-before.jpg",
-    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg"
+    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg",
+    "cost": 90
   },
   {
     "id": "polaroid-style",
@@ -123,7 +134,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/polaroid-style-before.jpg",
     "sampleBefore": "/workflow-samples/polaroid-style-before.jpg",
-    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg"
+    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg",
+    "cost": 90
   },
   {
     "id": "custom-stickers",
@@ -135,7 +147,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/custom-stickers-before.jpg",
     "sampleAfter": "/workflow-samples/custom-stickers-after.jpg",
     "imageFit": "object-contain",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "fusion-styles",
@@ -147,7 +160,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/fusion-styles-before.jpg",
     "sampleAfter": "/workflow-samples/fusion-styles-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "vintage-teleport",
@@ -159,7 +173,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/vintage-teleport-before.png",
     "sampleAfter": "/workflow-samples/vintage-teleport-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "cctv-footage",
@@ -171,7 +186,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/cctv-footage-before.jpg",
     "sampleAfter": "/workflow-samples/cctv-footage-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "change-seasons",
@@ -183,7 +199,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/change-seasons-before.jpg",
     "sampleAfter": "/workflow-samples/change-seasons-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "relighting",
@@ -195,9 +212,9 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/relighting-before.jpg",
     "sampleAfter": "/workflow-samples/relighting-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
-
   {
     "id": "selfie-video",
     "title": "Selfie Video",
@@ -206,10 +223,9 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=800&auto=format&fit=crop",
     "sampleBefore": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop"
+    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop",
+    "cost": 200
   },
-
-
   {
     "id": "turn-into-figurine",
     "title": "Turn your self into a figurine",
@@ -218,7 +234,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop",
     "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop"
+    "sampleAfter": "https://images.unsplash.com/photo-1594732832278-abd644401422?q=80&w=800&auto=format&fit=crop",
+    "cost": 90
   },
   {
     "id": "style-transfer-viral",
@@ -230,7 +247,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/style-transfer-before.jpg",
     "sampleAfter": "/workflow-samples/style-transfer-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "3d-print-mockup",
@@ -242,7 +260,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/3d-print-before.jpg",
     "sampleAfter": "/workflow-samples/3d-print-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "cad-to-3d",
@@ -254,7 +273,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/cad-to-3d-before.jpg",
     "sampleAfter": "/workflow-samples/cad-to-3d-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "building-angles",
@@ -266,7 +286,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/palace-angles-before.jpg",
     "sampleAfter": "/workflow-samples/palace-angles-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "interior-refine",
@@ -278,7 +299,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/interior-refine-before.jpg",
     "sampleAfter": "/workflow-samples/interior-refine-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "interior-product",
@@ -290,7 +312,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/interior-product-before.jpg",
     "sampleAfter": "/workflow-samples/interior-product-grid.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "3d-isometric",
@@ -302,7 +325,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/3d-isometric-before.jpg",
     "sampleAfter": "/workflow-samples/3d-isometric-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "replace-texture",
@@ -314,7 +338,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/replace-texture-before.jpg",
     "sampleAfter": "/workflow-samples/replace-texture-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "generate-texture",
@@ -326,7 +351,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/generate-texture-before.jpg",
     "sampleAfter": "/workflow-samples/generate-texture-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "pose-control",
@@ -337,8 +363,9 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleBefore": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleAfter": "/workflow-samples/pose-control-after-v2.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "character-sheet",
@@ -349,8 +376,9 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/character-sheet-before-v2.png",
     "sampleBefore": "/workflow-samples/character-sheet-before-v2.png",
     "sampleAfter": "/workflow-samples/character-sheet-after-v2.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "cost": 90,
+    "imageFit": "object-contain",
+    "imagePosition": "object-center"
   },
   {
     "id": "expression-sheet",
@@ -361,8 +389,9 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/expression-sheet-before.jpg",
     "sampleBefore": "/workflow-samples/expression-sheet-before.jpg",
     "sampleAfter": "/workflow-samples/expression-sheet-after.jpg",
-    "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "cost": 90,
+    "imageFit": "object-contain",
+    "imagePosition": "object-center"
   },
   {
     "id": "product-photography",
@@ -374,9 +403,10 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/product-photography-before-1.jpg",
     "sampleBeforeReference": "/workflow-samples/product-photography-before-2.png",
     "sampleAfter": "/workflow-samples/product-photography-after.jpg",
-    "imageFit": "object-cover",
+    "imageFit": "object-contain",
     "imagePosition": "object-center",
-    "isDualUpload": true
+    "isDualUpload": true,
+    "cost": 90
   },
   {
     "id": "reimagine-product",
@@ -388,7 +418,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/reimagine-product-before-v2.png",
     "sampleAfter": "/workflow-samples/reimagine-product-after-v2.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "create-logo",
@@ -400,7 +431,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/create-logo-before.png",
     "sampleAfter": "/workflow-samples/create-logo-grid.png",
     "imageFit": "object-contain",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "logo-variations",
@@ -412,7 +444,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/logo-variations-before.png",
     "sampleAfter": "/workflow-samples/logo-variations-after.png",
     "imageFit": "object-contain",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "mockup-generation",
@@ -424,7 +457,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/mockup-generation-before.png",
     "sampleAfter": "/workflow-samples/mockup-generation-after.png",
     "imageFit": "object-contain",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "business-card",
@@ -436,7 +470,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/business-card-before.png",
     "sampleAfter": "/workflow-samples/business-card-after.png",
     "imageFit": "object-contain",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "id-card",
@@ -448,7 +483,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/id-card-after.png",
     "sampleAfter": "/workflow-samples/id-card-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "automotive",
@@ -460,7 +496,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/automotive-before.png",
     "sampleAfter": "/workflow-samples/automotive-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "famous-photographer",
@@ -472,6 +509,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/famous-photographer-before.png",
     "sampleAfter": "/workflow-samples/famous-photographer-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   }
-]
+];

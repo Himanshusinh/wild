@@ -40,12 +40,12 @@ export default function ReimagineProduct() {
     category: "Photography",
     description: "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
-    sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
-    sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
+    cost: 90,
+    sampleBefore: "/workflow-samples/reimagine-product-before.png",
+    sampleAfter: "/workflow-samples/reimagine-product-after.png"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -141,11 +141,9 @@ export default function ReimagineProduct() {
 
               <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
-              <div className="flex flex-col gap-6 mb-8">
-                {/* 1. Source Photo */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                <div className="mb-8">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block ml-1">Product Snapshot</label>
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => setIsUploadModalOpen(true)}>
                     {originalImage ? (
                       <>
@@ -233,61 +231,51 @@ export default function ReimagineProduct() {
           <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
             <div className="flex-1 relative">
               {originalImage && generatedImage ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
-                  <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                    <ImageComparisonSlider
-                      beforeImage={originalImage}
-                      afterImage={generatedImage}
-                      beforeLabel="Before"
-                      afterLabel="Output"
-                      imageFit="object-contain"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                    {/* Download Button */}
-                    <button
-                      onClick={handleDownload}
-                      className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
-                    >
-                      <Download size={18} />
-                      Download
-                    </button>
-                  </div>
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <ImageComparisonSlider
+                    beforeImage={originalImage}
+                    afterImage={generatedImage}
+                    beforeLabel="Before"
+                    afterLabel="After"
+                    imageFit={(workflowData as any).imageFit || 'object-contain'}
+                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                  />
+                  <button
+                    onClick={handleDownload}
+                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
+                  >
+                    <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
+                    Download
+                  </button>
                 </div>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
-                  <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-                    <ImageComparisonSlider
-                      beforeImage={workflowData.sampleBefore}
-                      afterImage={workflowData.sampleAfter}
-                      beforeLabel="Before"
-                      afterLabel="After"
-                      imageFit="object-cover"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own product
-                      </div>
-                    </div>
-                  </div>
-
+              ) : originalImage ? (
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                   {isGenerating && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-40 transition-all duration-500 rounded-3xl m-8">
-                      <div className="relative w-24 h-24 mb-6">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/10 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin" />
-                        <Camera size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
+                      <div className="relative w-20 h-20 mb-4">
+                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-white font-bold text-xl mb-2 tracking-tight">Processing Reimagine</p>
-                        <p className="text-white/40 text-sm font-medium italic">Generating high-end artistic settings...</p>
-                      </div>
+                      <p className="text-white font-medium text-lg animate-pulse">Reimagining product...</p>
                     </div>
                   )}
+                </div>
+              ) : (
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <ImageComparisonSlider
+                    beforeImage={workflowData.sampleBefore}
+                    afterImage={workflowData.sampleAfter}
+                    beforeLabel="Before"
+                    afterLabel="After"
+                    imageFit={(workflowData as any).imageFit || 'object-contain'}
+                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                  />
+                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
+                      Try it with your own product
+                    </div>
+                  </div> */}
                 </div>
               )}
             </div>

@@ -112,7 +112,7 @@ export default function CreateLogo() {
   ];
 
   const FILE_TYPES = [
-    'PNG', 'SVG', 'JPG'
+    'PNG', 'WEBP', 'JPG'
   ];
 
   const toggleStyle = (style: string) => {
@@ -138,12 +138,12 @@ export default function CreateLogo() {
     category: "Branding",
     description: "Professional AI logo design from your sketches or descriptions.",
     model: "Logo Creator AI",
-    cost: 60,
+    cost: 90,
     sampleBefore: "/workflow-samples/create-logo-before.png",
     sampleAfter: "/workflow-samples/create-logo-grid.png"
   };
 
-  const CREDIT_COST = 60;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -163,10 +163,11 @@ export default function CreateLogo() {
   };
 
   const handleRun = async () => {
-    if (!originalImage) {
-      toast.error('Please upload an image first');
-      return;
-    }
+    // Image is optional now
+    // if (!originalImage) {
+    //   toast.error('Please upload an image first');
+    //   return;
+    // }
 
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
@@ -177,14 +178,6 @@ export default function CreateLogo() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Mocking API call for frontend UI focus
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const mockResult = "/workflow-samples/create-logo-grid.png";
-      setGeneratedImage(mockResult);
-      toast.success('Logo created successfully!');
-
-      /* 
       const response = await axiosInstance.post('/api/workflows/branding/create-logo', {
         image: originalImage,
         companyName,
@@ -203,7 +196,6 @@ export default function CreateLogo() {
       } else {
         throw new Error(response.data?.message || 'Invalid response from server');
       }
-      */
 
     } catch (error: any) {
       console.error('Create Logo error:', error);
@@ -270,7 +262,7 @@ export default function CreateLogo() {
                       <>
                         <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Reference Image</span>
+                          <span className="text-sm text-slate-300 block font-medium">Upload Reference Image (Optional)</span>
                           <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
                         </div>
                       </>
@@ -411,9 +403,9 @@ export default function CreateLogo() {
                 </div>
                 <button
                   onClick={handleRun}
-                  disabled={isGenerating || !originalImage}
+                  disabled={isGenerating}
                   className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !originalImage
+                  ${isGenerating
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
                     }`}
@@ -425,7 +417,7 @@ export default function CreateLogo() {
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
+                      <Zap size={16} className="fill-black" />
                       Generate Logo
                     </>
                   )}
@@ -438,9 +430,9 @@ export default function CreateLogo() {
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
 
-              {originalImage && generatedImage ? (
+              {generatedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
+                  <div className="w-full h-full  rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
                     <img
                       src={generatedImage}
                       className="max-w-full max-h-full object-contain"
@@ -457,7 +449,7 @@ export default function CreateLogo() {
                 </div>
               ) : originalImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-12 bg-white/5">
-                  <div className="w-full h-full bg-[#f8f9fa] rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
+                  <div className="w-full h-full  rounded-2xl shadow-inner border border-white/5 flex items-center justify-center p-8 overflow-hidden">
                     <img src={originalImage} className="max-w-full max-h-full object-contain" alt="Preview" />
                   </div>
                   {isGenerating && (
@@ -479,17 +471,26 @@ export default function CreateLogo() {
                       ))}
                     </div>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
                       Try it with your sketch
                     </div>
-                  </div>
+                  </div> */}
+                  {isGenerating && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-40 transition-all duration-500 rounded-3xl">
+                      <div className="relative w-20 h-20 mb-4">
+                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
+                      </div>
+                      <p className="text-white font-medium text-lg animate-pulse">Designing your logo...</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {isUploadModalOpen && (
         <UploadModal
@@ -502,7 +503,8 @@ export default function CreateLogo() {
           }}
           remainingSlots={1}
         />
-      )}
+      )
+      }
     </>
   );
 }
