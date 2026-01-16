@@ -1,0 +1,34 @@
+name: Deploy Wild Frontend
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USER }}
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          port: 22
+          script: |
+            # 1. Go to the main deployment folder (where the orchestration happens)
+            cd wildmind-staging/api-gateway-services-wildmind/deployment || exit 1
+            
+            # 2. Update the specific submodule/folder for this service
+            # Assuming the server has the repo cloned at ../../wild or similar
+            # Ideally, if you are using submodules or separate folders:
+            cd ../../wild
+            git pull origin staging
+            
+            # 3. Return to deployment folder and redeploy
+            cd ../api-gateway-services-wildmind/deployment
+            
+            # 4. Run the deploy script for just this service
+            chmod +x deploy.sh
+            ./deploy.sh wild
