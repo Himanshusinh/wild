@@ -33,12 +33,12 @@ export default function CadTo3d() {
     category: "Architecture",
     description: "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 100,
+    cost: 90,
     sampleBefore: "/workflow-samples/cad-to-3d-before.jpg",
     sampleAfter: "/workflow-samples/cad-to-3d-after.jpg"
   };
 
-  const CREDIT_COST = 100;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

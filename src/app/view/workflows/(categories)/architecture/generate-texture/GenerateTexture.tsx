@@ -33,12 +33,12 @@ export default function GenerateTexture() {
     category: "Architecture",
     description: "Create custom seamless PBR textures from text descriptions or reference images for architectural use.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 60,
+    cost: 90,
     sampleBefore: "/workflow-samples/generate-texture-before.jpg",
     sampleAfter: "/workflow-samples/generate-texture-after.jpg"
   };
 
-  const CREDIT_COST = 60;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

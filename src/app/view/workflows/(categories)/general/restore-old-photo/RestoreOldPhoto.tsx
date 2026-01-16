@@ -252,8 +252,8 @@ export default function RestoreOldPhoto() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/portrait-before.jpg"
-                                        afterImage="/portrait-after.jpg"
+                                        beforeImage="/workflow-samples/portrait-before.jpg"
+                                        afterImage="/workflow-samples/portrait-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"

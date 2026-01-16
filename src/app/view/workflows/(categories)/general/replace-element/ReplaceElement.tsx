@@ -273,8 +273,8 @@ export default function ReplaceElement() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/replace-element-before.jpg"
-                                        afterImage="/replace-element-after.jpg"
+                                        beforeImage="/workflow-samples/replace-element-before.jpg"
+                                        afterImage="/workflow-samples/replace-element-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"

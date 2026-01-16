@@ -53,12 +53,12 @@ export default function Automotive() {
     category: "Photography",
     description: "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
     model: "AutoRender AI",
-    cost: 85,
+    cost: 90,
     sampleBefore: "/workflow-samples/automotive-before.png",
     sampleAfter: "/workflow-samples/automotive-after.png"
   }) as any;
 
-  const CREDIT_COST = 85;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

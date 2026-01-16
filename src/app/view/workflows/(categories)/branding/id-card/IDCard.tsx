@@ -54,12 +54,12 @@ export default function IDCard() {
     category: "Branding",
     description: "Generate professional corporate ID cards and employee badges.",
     model: "Branding AI",
-    cost: 70,
+    cost: 90,
     sampleBefore: "/workflow-samples/id-card-after.png",
     sampleAfter: "/workflow-samples/id-card-after.png"
   };
 
-  const CREDIT_COST = 70;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

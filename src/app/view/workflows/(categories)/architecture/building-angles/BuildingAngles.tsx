@@ -33,12 +33,12 @@ export default function BuildingAngles() {
     category: "Architecture",
     description: "Generate multiple perspectives and angles of a building from a single reference image.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/palace-angles-before.jpg",
     sampleAfter: "/workflow-samples/palace-angles-after.jpg"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

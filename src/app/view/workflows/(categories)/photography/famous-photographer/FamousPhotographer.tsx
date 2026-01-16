@@ -41,12 +41,12 @@ export default function FamousPhotographer() {
     category: "Photography",
     description: "Transform your photos into the signature style of legendary world-famous photographers.",
     model: "StyleRender AI",
-    cost: 85,
+    cost: 90,
     sampleBefore: "/workflow-samples/famous-photographer-before.png",
     sampleAfter: "/workflow-samples/famous-photographer-after.png"
   }) as any;
 
-  const CREDIT_COST = 85;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -243,7 +243,7 @@ export default function FamousPhotographer() {
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-                    <img src={workflowData.sampleAfter} className="w-full h-full object-cover" alt="Style Sample" />
+                    <img src={workflowData.sampleAfter || undefined} className="w-full h-full object-cover" alt="Style Sample" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

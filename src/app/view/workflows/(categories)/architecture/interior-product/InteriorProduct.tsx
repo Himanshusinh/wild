@@ -48,12 +48,12 @@ export default function InteriorProduct() {
     category: "Architecture",
     description: "Create professional product displays within high-end interior environments for catalog-quality renders.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/interior-product-before.jpg",
-    sampleAfter: "/workflow-samples/interior-product-after.jpg"
+    sampleAfter: "/workflow-samples/interior-product-grid.jpg"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

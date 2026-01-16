@@ -242,8 +242,8 @@ export default function RemoveWatermark() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/remove-watermark-before.jpg"
-                                        afterImage="/remove-watermark-after.jpg"
+                                        beforeImage="/workflow-samples/remove-watermark-before.jpg"
+                                        afterImage="/workflow-samples/remove-watermark-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"

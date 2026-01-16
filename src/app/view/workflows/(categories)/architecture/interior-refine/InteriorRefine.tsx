@@ -33,12 +33,12 @@ export default function InteriorRefine() {
     category: "Architecture",
     description: "Refine and enhance interior renders with realistic lighting, textures, and furniture placement.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/interior-refine-before.jpg",
     sampleAfter: "/workflow-samples/interior-refine-after.jpg"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

@@ -34,12 +34,12 @@ export default function ReplaceTexture() {
     category: "Architecture",
     description: "Change materials and textures (wood, marble, concrete) of specific architectural elements seamlessly.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/replace-texture-before.jpg",
     sampleAfter: "/workflow-samples/replace-texture-after.jpg"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);

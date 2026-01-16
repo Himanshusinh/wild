@@ -176,14 +176,14 @@ export default function ArtStationPreview({
   const currentFlatIndex = useMemo(() => {
     if (!preview) return 0
 
-    const currentMediaIndex = preview.kind === 'image' ? selectedImageIndex 
-      : preview.kind === 'video' ? selectedVideoIndex 
-      : selectedAudioIndex
+    const currentMediaIndex = preview.kind === 'image' ? selectedImageIndex
+      : preview.kind === 'video' ? selectedVideoIndex
+        : selectedAudioIndex
 
     const idx = flattenedMediaSequence.findIndex((media) => {
       return media.itemId === preview.item.id &&
-             media.mediaType === preview.kind &&
-             media.mediaIndex === currentMediaIndex
+        media.mediaType === preview.kind &&
+        media.mediaIndex === currentMediaIndex
     })
 
     return idx >= 0 ? idx : 0
@@ -192,7 +192,7 @@ export default function ArtStationPreview({
   // CROSS-ITEM NAVIGATION: Navigate through global flattened sequence
   const goPrevMedia = useCallback(() => {
     console.log('[ArtStation] goPrevMedia called', { currentFlatIndex, sequenceLength: flattenedMediaSequence.length })
-    
+
     if (currentFlatIndex <= 0) {
       console.log('[ArtStation] At first media, cannot go prev')
       return // At first media
@@ -202,7 +202,7 @@ export default function ArtStationPreview({
     if (!prevMedia) return
 
     console.log('[ArtStation] Navigating to previous media:', prevMedia)
-    
+
     // Call parent callback to update preview
     if (onNavigate) {
       onNavigate({
@@ -215,7 +215,7 @@ export default function ArtStationPreview({
 
   const goNextMedia = useCallback(() => {
     console.log('[ArtStation] goNextMedia called', { currentFlatIndex, sequenceLength: flattenedMediaSequence.length })
-    
+
     if (currentFlatIndex >= flattenedMediaSequence.length - 1) {
       console.log('[ArtStation] At last media, cannot go next')
       return // At last media
@@ -226,7 +226,7 @@ export default function ArtStationPreview({
 
     console.log('[ArtStation] Navigating to next media:', nextMedia)
     console.log('[ArtStation] onNavigate exists?', !!onNavigate)
-    
+
     // Call parent callback to update preview
     if (onNavigate) {
       console.log('[ArtStation] Calling onNavigate callback...')
@@ -325,7 +325,7 @@ export default function ArtStationPreview({
       if (!preview) return;
 
       console.log('[ArtStation] Key pressed:', e.key, 'isFullscreen:', isFullscreen)
-      
+
       // In fullscreen mode
       if (isFullscreen) {
         if (e.key === 'Escape') {
@@ -457,7 +457,7 @@ export default function ArtStationPreview({
       document.body.style.position = 'fixed'
       document.body.style.top = `-${scrollY}px`
       document.body.style.width = '100%'
-      
+
       return () => {
         // Restore scrolling when preview closes
         document.body.style.overflow = ''
@@ -594,9 +594,9 @@ export default function ArtStationPreview({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-70 flex items-center justify-center p-2 md:py-20" onClick={handleClose}>
-      <button 
-        aria-label="Close" 
-        className="text-white hover:text-white text-lg absolute md:top-8 top-2 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+      <button
+        aria-label="Close"
+        className="text-white hover:text-white text-lg absolute md:top-8 top-2 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
         onClick={handleClose}
         onMouseDown={(e) => {
           e.stopPropagation()
@@ -606,7 +606,7 @@ export default function ArtStationPreview({
           e.stopPropagation()
         }}
       >✕</button>
-      
+
       {/* Navigation Arrows at Screen Edges */}
       {flattenedMediaSequence.length > 1 && currentFlatIndex > 0 && (
         <button
@@ -622,7 +622,7 @@ export default function ArtStationPreview({
           </svg>
         </button>
       )}
-      
+
       {flattenedMediaSequence.length > 1 && currentFlatIndex < flattenedMediaSequence.length - 1 && (
         <button
           onClick={(e) => {
@@ -762,15 +762,17 @@ export default function ArtStationPreview({
                 // Don't use thumbnailUrl in popup - use full resolution
                 const fullImageUrl = img?.url || (img?.storagePath ? toMediaProxy(img.storagePath) : null) || preview.url
                 // Use proxy endpoint for storage paths, direct URL for full URLs
-                const src = fullImageUrl 
-                  ? (fullImageUrl.startsWith('http') 
-                      ? fullImageUrl 
-                      : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
-                  : preview.url
+                const src = fullImageUrl
+                  ? (fullImageUrl.startsWith('http')
+                    ? fullImageUrl
+                    : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
+                  : preview.url;
+
+                if (!src) return <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50 text-white/50 text-xs">No image available</div>;
                 return (
                   <div className="relative w-full h-full group">
                     <img
-                      src={src}
+                      src={src || undefined}
                       alt={preview.item.prompt || ''}
                       loading="eager"
                       decoding="async"
@@ -789,28 +791,28 @@ export default function ArtStationPreview({
                         e.stopPropagation()
                         openFullscreen()
                       }}
-                       className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 opacity-0 group-hover:opacity-100 duration-200"
+                      className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 opacity-0 group-hover:opacity-100 duration-200"
                       title="Fullscreen (F)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 md:h-5 md:w-5">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                       </svg>
                     </button>
-                    
+
                     {/* Delete button (owner only) - TOP LEFT (Next to Fullscreen) */}
                     {currentUid && preview.item.createdBy?.uid === currentUid && (
                       <button
                         onClick={(e) => {
-                           e.stopPropagation();
-                           const images = (preview.item.images || []) as any[];
-                           const currentImg = images[selectedImageIndex] || images[0];
-                           const imageId = currentImg?.id;
-                           onConfirmDelete(preview.item, imageId);
+                          e.stopPropagation();
+                          const images = (preview.item.images || []) as any[];
+                          const currentImg = images[selectedImageIndex] || images[0];
+                          const imageId = currentImg?.id;
+                          onConfirmDelete(preview.item, imageId);
                         }}
                         className="absolute top-2 left-12 md:top-4 md:left-16 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-red-500/40 opacity-0 group-hover:opacity-100 duration-200"
                         title="Delete"
                       >
-                         <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                     )}
                   </div>
@@ -822,26 +824,28 @@ export default function ArtStationPreview({
                 const poster = (vid as any).thumbnailUrl || (vid as any).avifUrl || undefined
                 return (
                   <div className="relative w-full h-full group">
-                    <video
-                      src={proxied}
-                      className="w-full h-full"
-                      controls
-                      autoPlay
-                      playsInline
-                      preload="auto"
-                      poster={poster}
-                      onLoadedMetadata={(e) => {
-                        const v = e.currentTarget
-                        if (v.videoWidth && v.videoHeight) setMediaDimensions({ width: v.videoWidth, height: v.videoHeight })
-                      }}
-                    />
+                    {proxied && (
+                      <video
+                        src={proxied || undefined}
+                        className="w-full h-full"
+                        controls
+                        autoPlay
+                        playsInline
+                        preload="auto"
+                        poster={poster}
+                        onLoadedMetadata={(e) => {
+                          const v = e.currentTarget
+                          if (v.videoWidth && v.videoHeight) setMediaDimensions({ width: v.videoWidth, height: v.videoHeight })
+                        }}
+                      />
+                    )}
                     {/* Fullscreen button overlay - TOP LEFT */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         openFullscreen()
                       }}
-                       className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 opacity-0 group-hover:opacity-100 duration-200"
+                      className="absolute top-2 left-2 md:top-4 md:left-4 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 opacity-0 group-hover:opacity-100 duration-200"
                       title="Fullscreen (F)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 md:h-5 md:w-5">
@@ -849,18 +853,18 @@ export default function ArtStationPreview({
                       </svg>
                     </button>
 
-                     {/* Delete button (owner only) - TOP LEFT (Next to Fullscreen) */}
+                    {/* Delete button (owner only) - TOP LEFT (Next to Fullscreen) */}
                     {currentUid && preview.item.createdBy?.uid === currentUid && (
                       <button
                         onClick={(e) => {
-                           e.stopPropagation();
-                           // For video, we usually delete the whole item or just pass item
-                           onConfirmDelete(preview.item);
+                          e.stopPropagation();
+                          // For video, we usually delete the whole item or just pass item
+                          onConfirmDelete(preview.item);
                         }}
                         className="absolute top-2 left-12 md:top-4 md:left-16 z-10 w-9 h-9 md:w-10 md:h-10 rounded-lg bg-black/60 hover:bg-red-500/80 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-red-500/40 opacity-0 group-hover:opacity-100 duration-200"
                         title="Delete"
                       >
-                         <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                     )}
                   </div>
@@ -870,13 +874,13 @@ export default function ArtStationPreview({
               const audioUrl = toDirectUrl(au.url) || au.url
               return (
                 <div className="p-6">
-                  <CustomAudioPlayer 
-                    audioUrl={audioUrl} 
-                    prompt={preview.item.prompt || ''} 
-                    model={preview.item.model || ''} 
-                    lyrics={preview.item.lyrics || ''} 
-                    generationType={preview.item.generationType} 
-                    autoPlay={true} 
+                  <CustomAudioPlayer
+                    audioUrl={audioUrl}
+                    prompt={preview.item.prompt || ''}
+                    model={preview.item.model || ''}
+                    lyrics={preview.item.lyrics || ''}
+                    generationType={preview.item.generationType}
+                    autoPlay={true}
                   />
                 </div>
               )
@@ -893,7 +897,7 @@ export default function ArtStationPreview({
                   const cb = preview.item.createdBy || ({} as any)
                   const isSelf = (cb?.uid && currentUid && cb.uid === currentUid) || (!cb?.uid && currentUser?.username && cb?.username === currentUser.username)
                   const photo = cb?.photoURL || cb?.photoUrl || cb?.avatarUrl || cb?.avatarURL || cb?.profileImageUrl || (isSelf ? currentUser?.photoURL : '')
-                  if (photo) return <img src={`/api/proxy/external?url=${encodeURIComponent(photo)}`} alt={cb?.username || currentUser?.username || ''} className="w-6 h-6 rounded-full" />
+                  if (photo) return <img src={`/api/proxy/external?url=${encodeURIComponent(photo)}` || undefined} alt={cb?.username || currentUser?.username || ''} className="w-6 h-6 rounded-full" />
                   return <div className="w-6 h-6 rounded-full bg-white/20" />
                 })()}
                 <span className="text-white md:text-sm text-xs font-medium">{(preview.item.createdBy?.username) || (isNaN(0 as any) && preview.item.createdBy?.displayName) || (currentUser?.username) || 'User'}</span>
@@ -965,12 +969,13 @@ export default function ArtStationPreview({
                     >
                       {(() => {
                         const thumbUrl = im.thumbnailUrl || im.avifUrl || im.url
-                        const normalizedThumb = thumbUrl 
+                        const normalizedThumb = thumbUrl
                           ? (thumbUrl.startsWith('http') || thumbUrl.startsWith('/api/')
-                              ? thumbUrl 
-                              : (toMediaProxy(thumbUrl) || toDirectUrl(thumbUrl) || thumbUrl))
+                            ? thumbUrl
+                            : (toMediaProxy(thumbUrl) || toDirectUrl(thumbUrl) || thumbUrl))
                           : ''
-                        return <img src={normalizedThumb} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                        if (!normalizedThumb) return <div className="w-full h-full bg-gray-900" />;
+                        return <img src={normalizedThumb || undefined} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
                       })()}
                     </button>
                   ))}
@@ -993,7 +998,7 @@ export default function ArtStationPreview({
                         const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/'
                         const path = vd.url?.startsWith(ZATA_PREFIX) ? vd.url.substring(ZATA_PREFIX.length) : vd.url
                         const proxied = `/api/proxy/media/${encodeURIComponent(path)}`
-                        return <video src={proxied} className="w-full h-full object-cover" muted preload="metadata" poster={vd.thumbnailUrl || vd.avifUrl || undefined} />
+                        return <video src={proxied || undefined} className="w-full h-full object-cover" muted preload="metadata" poster={vd.thumbnailUrl || vd.avifUrl || undefined} />
                       })()}
                     </button>
                   ))}
@@ -1140,23 +1145,23 @@ export default function ArtStationPreview({
       {isFullscreen && preview && (() => {
         const isImage = preview.kind === 'image'
         const isVideo = preview.kind === 'video'
-        
+
         // For images
         const images = (preview.item.images || []) as any[]
         const img = images[selectedImageIndex] || images[0] || { url: preview.url }
-        
+
         // For videos
         const videos = (preview.item.videos || []) as any[]
         const vid = videos[selectedVideoIndex] || videos[0]
-       
+
         let src = preview.url
         if (isImage) {
           const fullImageUrl = img?.url || (img?.storagePath ? toMediaProxy(img.storagePath) : null) || preview.url
           src = fullImageUrl
             ? (fullImageUrl.startsWith('http')
-                ? fullImageUrl
-                : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
-            : preview.url
+              ? fullImageUrl
+              : (toMediaProxy(fullImageUrl) || toDirectUrl(fullImageUrl) || fullImageUrl))
+            : (preview.url || '');
         } else if (isVideo && vid) {
           src = toDirectUrl(vid.url) || vid.url
         }
@@ -1224,7 +1229,7 @@ export default function ArtStationPreview({
                   }}
                 >
                   <img
-                    src={src}
+                    src={src || undefined}
                     alt={preview.item.prompt || ''}
                     loading="eager"
                     decoding="async"
@@ -1248,15 +1253,17 @@ export default function ArtStationPreview({
             ) : isVideo ? (
               // Video player
               <div className="relative w-full h-full flex items-center justify-center p-8">
-                <video
-                  src={src}
-                  className="max-w-full max-h-full"
-                  controls
-                  autoPlay
-                  playsInline
-                  preload="auto"
-                  poster={(vid as any)?.thumbnailUrl || (vid as any)?.avifUrl || undefined}
-                />
+                {src && (
+                  <video
+                    src={src || undefined}
+                    className="max-w-full max-h-full"
+                    controls
+                    autoPlay
+                    playsInline
+                    preload="auto"
+                    poster={(vid as any)?.thumbnailUrl || (vid as any)?.avifUrl || undefined}
+                  />
+                )}
               </div>
             ) : null}
 

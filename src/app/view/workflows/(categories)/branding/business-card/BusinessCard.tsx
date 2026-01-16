@@ -53,12 +53,12 @@ export default function BusinessCard() {
     category: "Branding",
     description: "Generate professional business card mockups from your logos or descriptions.",
     model: "Logo Creator AI",
-    cost: 70,
+    cost: 90,
     sampleBefore: "/workflow-samples/business-card-before.png",
     sampleAfter: "/workflow-samples/business-card-after.png"
   };
 
-  const CREDIT_COST = 70;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
