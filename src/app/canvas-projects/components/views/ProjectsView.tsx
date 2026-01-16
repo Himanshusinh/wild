@@ -32,6 +32,15 @@ export function ProjectsView() {
 
     useEffect(() => {
         loadProjects();
+        // Log environment status on mount for debugging
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+        console.log('----------------------------------------');
+        console.log('[ProjectsView] Debug Environment Check:');
+        console.log('- NEXT_PUBLIC_CANVAS_URL:', process.env.NEXT_PUBLIC_CANVAS_URL);
+        console.log('- Hostname:', hostname);
+        console.log('- Is Staging?', hostname === 'onstaging.wildmindai.com' || hostname === 'onstaging.wildmindai.com');
+        console.log('----------------------------------------');
+
         // Reload when window gets focus (e.g. user comes back from canvas tab)
         window.addEventListener('focus', loadProjects);
         return () => window.removeEventListener('focus', loadProjects);
