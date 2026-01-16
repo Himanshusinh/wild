@@ -15,6 +15,12 @@ export function ProjectsView() {
         if (typeof window === 'undefined') return '';
         
         const hostname = window.location.hostname;
+        console.log('[ProjectsView] Debug Canvas Redirect:', {
+            env: process.env.NEXT_PUBLIC_CANVAS_URL,
+            hostname,
+            match: hostname === 'onstaging.wildmindai.com'
+        });
+
         if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') {
             return 'https://studio.wildmindai.com';
         } else if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') {
