@@ -1054,7 +1054,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
           console.log('[selfieVideo] fetchResults prepared', fetchResults.map(r => (r.ok ? 'blob' : 'url')));
 
           // Build payload with blobs or proxy URLs
-          const proxyBase = 'http://localhost:3000/api/proxy/video?url=';
+          // Use relative path for proxy to work in both dev and prod
+          const proxyBase = '/api/proxy/video?url=';
           payloadForEditor.videos = fetchResults.map((r) => {
             if (r && r.ok) return r.blob;
             const candidate = r && typeof r.url === 'string' && r.url ? r.url : null;

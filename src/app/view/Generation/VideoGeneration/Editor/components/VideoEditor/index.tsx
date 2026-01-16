@@ -805,11 +805,9 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
                 });
 
                 const allowedOrigins = [
-                    'http://localhost:3000',
-                    'http://localhost:3001',
                     'https://studio.wildmindai.com',
                     'https://onstaging-studios.wildmindai.com',
-                    'https://onstaging-wildmindai.com',
+                    'https://onstaging.wildmindai.com',
                     window.location.origin
                 ];
                 // In dev allow messages from local hosts; adjust as needed in production
