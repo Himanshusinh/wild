@@ -3,7 +3,7 @@ import { Plus, ArrowUpRight, Loader2, FolderOpen, Trash2 } from 'lucide-react';
 import { fetchCanvasProjects, deleteProject } from '@/lib/canvasApi';
 import { CanvasProject } from '@/types/canvasTypes';
 import Image from 'next/image';
-
+ 
 export function ProjectsView() {
     const [projects, setProjects] = useState<CanvasProject[]>([]);
     const [loading, setLoading] = useState(true);
@@ -17,7 +17,7 @@ export function ProjectsView() {
         const hostname = window.location.hostname;
         if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') {
             return 'https://studio.wildmindai.com';
-        } else if (hostname === 'onstaging-wildmindai.com') {
+        } else if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') {
              return 'https://onstaging-studios.wildmindai.com';
         }
         return 'http://localhost:3001';

@@ -23,7 +23,7 @@ const WildCanvasProjectsModal = ({ isOpen, onClose }: WildCanvasProjectsModalPro
         const hostname = window.location.hostname;
         if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') {
             return 'https://studio.wildmindai.com';
-        } else if (hostname === 'onstaging-wildmindai.com') {
+        } else if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') {
              return 'https://onstaging-studios.wildmindai.com';
         }
         return 'http://localhost:3001';
