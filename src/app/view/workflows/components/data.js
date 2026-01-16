@@ -448,7 +448,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/business-card-before.png",
     "sampleAfter": "/workflow-samples/business-card-after.png",
     "imageFit": "object-contain",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "id-card",
