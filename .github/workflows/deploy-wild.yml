@@ -23,7 +23,10 @@ jobs:
             # 2. Update the specific submodule/folder for this service
             # Assuming the server has the repo cloned at ../../wild or similar
             # Ideally, if you are using submodules or separate folders:
+            # 2. Update source code
             cd ../../wild
+            git fetch origin staging
+            git reset --hard origin/staging
             git pull origin staging
             
             # 3. Return to deployment folder and redeploy
