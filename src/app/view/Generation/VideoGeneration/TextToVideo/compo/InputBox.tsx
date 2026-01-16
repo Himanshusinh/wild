@@ -4019,7 +4019,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000 // 15 second timeout
+              timeout: 1200000 // 20 minute timeout
             });
             const status = statusRes.data?.data || statusRes.data;
             const s = String(status?.status || '').toLowerCase();
@@ -4029,7 +4029,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               try {
                 const resultRes = await api.get('/api/fal/queue/result', {
                   params: { model: result.model, requestId: result.requestId },
-                  timeout: 15000
+                  timeout: 1200000
                 });
                 videoResult = resultRes.data?.data || resultRes.data;
                 // CRITICAL: Update queue status immediately to mark as completed
@@ -4093,7 +4093,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4102,7 +4102,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4158,7 +4158,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4167,7 +4167,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
               const resultRes = await api.get('/api/fal/queue/result', {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4235,7 +4235,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4244,7 +4244,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4301,7 +4301,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
