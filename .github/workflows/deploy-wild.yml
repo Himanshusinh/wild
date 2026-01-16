@@ -29,6 +29,6 @@ jobs:
             # 3. Return to deployment folder and redeploy
             cd ../api-gateway-services-wildmind/deployment
             
-            # 4. Run the deploy script for just this service
+            # 4. Run the deploy script from here
             chmod +x deploy.sh
             ./deploy.sh wild
