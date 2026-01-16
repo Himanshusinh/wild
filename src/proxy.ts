@@ -45,6 +45,7 @@ export function proxy(req: NextRequest) {
   if (!isLocalHost && forwardedProto === 'http') {
     url.protocol = 'https:';
     url.host = headerHost; // FIX: Ensure we use the public hostname, not localhost/container IP
+    url.port = ''; // FIX: Clear the internal port (:3000) to prevent it appearing in redirect
     return NextResponse.redirect(url, { status: 308 });
   }
 
