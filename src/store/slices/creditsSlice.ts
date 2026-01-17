@@ -60,8 +60,8 @@ export const fetchUserCredits = createAsyncThunk(
         const creditsData = creditsResponse.data?.data || creditsResponse.data;
         const creditBalance = creditsData?.creditBalance ?? 0;
         const planCode = creditsData?.planCode || 'free';
-        const storageUsed = Number(creditsData?.storageUsed || 0);
-        const storageQuota = Number(creditsData?.storageQuota || 0);
+        const storageUsed = Number(creditsData?.storageUsedBytes || 0);
+        const storageQuota = Number(creditsData?.storageQuotaBytes || 0);
 
         console.log('[CREDITS_FRONTEND] Credits endpoint response:', {
           creditBalance,
