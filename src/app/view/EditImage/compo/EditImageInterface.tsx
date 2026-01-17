@@ -316,8 +316,11 @@ const EditImageInterface: React.FC = () => {
   const [liveHistory, setLiveHistory] = useState<{ id?: string; url: string }[]>([]);
   const [activeLiveIndex, setActiveLiveIndex] = useState<number>(-1);
   const [liveOriginalInput, setLiveOriginalInput] = useState<string | null>(null);
+  const [hoveredThumbnailIdx, setHoveredThumbnailIdx] = useState<number | null>(null);
+  const [showThumbnailMenuIdx, setShowThumbnailMenuIdx] = useState<number | null>(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
+  const thumbnailMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = chatListRef.current;
@@ -424,6 +427,100 @@ const EditImageInterface: React.FC = () => {
 
     return normalized;
   };
+
+  // Handler to delete an image from the live chat history
+  const handleDeleteLiveChatImage = async (origIdx: number, generationId?: string) => {
+    try {
+      // Close the menu first
+      setShowThumbnailMenuIdx(null);
+      setHoveredThumbnailIdx(null);
+
+      // Capture current state BEFORE any updates
+      const currentHistory = [...liveHistory];
+      const currentActiveIdx = activeLiveIndex;
+
+      // Optionally delete from server if generationId exists
+      if (generationId) {
+        try {
+          await axiosInstance.delete(`/api/generations/${generationId}`);
+        } catch (e) {
+          console.error('Failed to delete from server:', e);
+          // Continue with local deletion even if server deletion fails
+        }
+      }
+
+      // Calculate new state based on CURRENT values
+      let newActiveIndex = currentActiveIdx;
+      let newImageUrl: string | null = null;
+      let newHistoryId: string | null = null;
+
+      // If the deleted image was active, switch to another image or reset
+      if (currentActiveIdx === origIdx) {
+        // Calculate which image to show next based on current array
+        if (currentHistory.length > 1) {
+          // Determine which image to show based on which index we're deleting
+          let imageToShow;
+          let newIdxAfterDeletion;
+
+          if (origIdx === 0) {
+            // Deleting first image, show what's currently at index 1 (will become index 0)
+            imageToShow = currentHistory[1];
+            newIdxAfterDeletion = 0;
+          } else {
+            // Deleting any other image, show the previous one (index doesn't change)
+            imageToShow = currentHistory[origIdx - 1];
+            newIdxAfterDeletion = origIdx - 1;
+          }
+
+          if (imageToShow) {
+            newActiveIndex = newIdxAfterDeletion;
+            newImageUrl = imageToShow.url;
+            newHistoryId = imageToShow.id || null;
+          } else {
+            // Fallback to input if something went wrong
+            newActiveIndex = -1;
+            newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+            newHistoryId = null;
+          }
+        } else {
+          // This was the last image, reset to input
+          newActiveIndex = -1;
+          newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+          newHistoryId = null;
+        }
+      } else if (currentActiveIdx > origIdx) {
+        // Adjust active index if it was after the deleted image
+        newActiveIndex = currentActiveIdx - 1;
+      }
+
+      // Now update all states together
+      setLiveHistory((prev) => {
+        const updated = [...prev];
+        updated.splice(origIdx, 1);
+        return updated;
+      });
+
+      // Update active index if it changed
+      if (newActiveIndex !== currentActiveIdx) {
+        setActiveLiveIndex(newActiveIndex);
+      }
+
+      // Update outputs and inputs if the active image changed
+      if (currentActiveIdx === origIdx) {
+        if (newImageUrl) {
+          setOutputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+          setInputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+        } else {
+          setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+          setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+        }
+        setCurrentHistoryId(newHistoryId);
+      }
+    } catch (error) {
+      console.error('Error deleting live chat image:', error);
+    }
+  };
+
 
   const handleLiveGenerate = async () => {
     let optimisticDebit = 0;
@@ -4874,11 +4971,38 @@ const EditImageInterface: React.FC = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const id = currentHistoryId;
-                            if (id) {
-                              await axiosInstance.delete(`/api/generations/${id}`);
+                            if (selectedFeature === 'live-chat') {
+                              // Special case: deleting the input/original image
+                              if (activeLiveIndex === -1) {
+                                // Clear the input images
+                                setLiveOriginalInput(null);
+                                setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+
+                                // If there are generated images, switch to the last one
+                                if (liveHistory.length > 0) {
+                                  const lastIdx = liveHistory.length - 1;
+                                  const lastImage = liveHistory[lastIdx];
+                                  setActiveLiveIndex(lastIdx);
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                  setInputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                  setCurrentHistoryId(lastImage.id || null);
+                                } else {
+                                  // No generated images, reset everything
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+                                  setCurrentHistoryId(null);
+                                }
+                              } else {
+                                // Deleting a generated image from history
+                                await handleDeleteLiveChatImage(activeLiveIndex, currentHistoryId || undefined);
+                              }
+                            } else {
+                              // For other features, just delete from server and clear output
+                              const id = currentHistoryId;
+                              if (id) {
+                                await axiosInstance.delete(`/api/generations/${id}`);
+                              }
+                              setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                             }
-                            setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                             setShowImageMenu(false);
                           } catch (e) {
                             console.error('Delete failed:', e);
@@ -5811,6 +5935,9 @@ const EditImageInterface: React.FC = () => {
                       // revIdx 0 is latest; compute original index
                       const origIdx = liveHistory.length - 1 - revIdx;
                       const isActive = outputs['live-chat'] === item.url && activeLiveIndex === origIdx;
+                      const isHovered = hoveredThumbnailIdx === origIdx;
+                      const showMenu = showThumbnailMenuIdx === origIdx;
+
                       return (
                         <button
                           key={`gen-${origIdx}-${item.url}`}
@@ -5820,7 +5947,7 @@ const EditImageInterface: React.FC = () => {
                             setInputs((prev) => ({ ...prev, ['live-chat']: item.url }));
                             setCurrentHistoryId(item.id || null);
                           }}
-                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
+                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
                           title={`Generation ${origIdx + 1}`}
                         >
                           <img src={normalizeEditImageUrl(item.url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
