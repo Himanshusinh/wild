@@ -4014,22 +4014,22 @@ const InputBox = (props: InputBoxProps = {}) => {
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
-        
+
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000 // 15 second timeout
+              timeout: 1200000 // 20 minute timeout
             });
             const status = statusRes.data?.data || statusRes.data;
             const s = String(status?.status || '').toLowerCase();
             consecutiveErrors = 0; // Reset on success
-            
+
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
               try {
                 const resultRes = await api.get('/api/fal/queue/result', {
                   params: { model: result.model, requestId: result.requestId },
-                  timeout: 15000
+                  timeout: 1200000
                 });
                 videoResult = resultRes.data?.data || resultRes.data;
                 // CRITICAL: Update queue status immediately to mark as completed
@@ -4053,13 +4053,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
             const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
-            
+
             if (isNetworkError) {
               console.warn(`[queue] Kling o1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
             } else {
               console.error(`[queue] Kling o1 - Error (${attempts + 1}/360):`, errorMsg);
             }
-            
+
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Kling o1: Too many network errors. ${errorMsg}`);
             }
@@ -4093,7 +4093,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4102,7 +4102,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4122,13 +4122,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
             const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
-            
+
             if (isNetworkError) {
               console.warn(`[queue] Veo 3.1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
             } else {
               console.error(`[queue] Veo 3.1 - Error (${attempts + 1}/360):`, errorMsg);
             }
-            
+
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Veo 3.1: Too many network errors. ${errorMsg}`);
             }
@@ -4158,7 +4158,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4167,7 +4167,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
               const resultRes = await api.get('/api/fal/queue/result', {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4187,13 +4187,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
             const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
-            
+
             if (isNetworkError) {
               console.warn(`[queue] LTX V2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
             } else {
               console.error(`[queue] LTX V2 - Error (${attempts + 1}/360):`, errorMsg);
             }
-            
+
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`LTX V2: Too many network errors. ${errorMsg}`);
             }
@@ -4235,7 +4235,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4244,7 +4244,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4264,13 +4264,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
             const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
-            
+
             if (isNetworkError) {
               console.warn(`[queue] Veo3 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
             } else {
               console.error(`[queue] Veo3 - Error (${attempts + 1}/360):`, errorMsg);
             }
-            
+
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Veo3: Too many network errors. ${errorMsg}`);
             }
@@ -4301,7 +4301,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 15000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
@@ -4330,13 +4330,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
             const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
-            
+
             if (isNetworkError) {
               console.warn(`[queue] Sora2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
             } else {
               console.error(`[queue] Sora2 - Error (${attempts + 1}/360):`, errorMsg);
             }
-            
+
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Sora2: Too many network errors. ${errorMsg}`);
             }
@@ -4489,7 +4489,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
             const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
-            
+
             // Log less frequently for long-polling (every 10 attempts)
             if (attempts % 10 === 0 || isNetworkError) {
               if (isNetworkError) {
@@ -4498,7 +4498,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 console.error(`[queue] WAN 2.5 - Error (${attempts + 1}/${maxAttempts}):`, errorMsg);
               }
             }
-            
+
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`WAN 2.5: Too many network errors. ${errorMsg}`);
             }
@@ -4663,7 +4663,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           try {
             const statusRes = await api.get('/api/replicate/queue/status', {
               params: { requestId: result.requestId },
-              timeout: 20000
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
@@ -4672,7 +4672,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               const resultRes = await api.get('/api/replicate/queue/result', {
                 params: { requestId: result.requestId },
-                timeout: 20000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
@@ -4741,7 +4741,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
               params: { requestId: result.requestId },
-              timeout: 20000
+              timeout: 1200000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
@@ -4754,7 +4754,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
                 params: { requestId: result.requestId },
-                timeout: 20000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ Seedance result fetched:', videoResult);
@@ -4833,7 +4833,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
               params: { requestId: result.requestId },
-              timeout: 20000
+              timeout: 1200000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
@@ -4846,7 +4846,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
                 params: { requestId: result.requestId },
-                timeout: 20000
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ PixVerse result fetched:', videoResult);
@@ -5383,7 +5383,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                                 // If no thumbnail, we might be dragging a video URL directly. 
                                 // Since we can't easily snapshot a video frame synchronously, we might use a default icon or the video element itself if we clone it.
                                 // But here we try to use a thumbnail if possible.
-                                
+
                                 const ghost = document.createElement('div');
                                 ghost.style.width = '96px';
                                 ghost.style.height = '96px';
@@ -5402,7 +5402,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                                   ghost.style.color = 'white';
                                   ghost.style.fontSize = '12px';
                                 }
-                                
+
                                 ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
                                 ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
                                 ghost.style.zIndex = '-1000';
@@ -5571,8 +5571,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
           className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1  shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            } ${isInputBoxHovered 
-              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]' 
+            } ${isInputBoxHovered
+              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
               : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
             }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
@@ -5606,7 +5606,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             // 1. Handle Files (dragged from desktop/OS)
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
               const files = Array.from(e.dataTransfer.files);
-              
+
               // Separate images and videos
               const imageFiles = files.filter(f => f.type.startsWith('image/'));
               const videoFiles = files.filter(f => f.type.startsWith('video/'));
@@ -5622,10 +5622,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                   });
                   newUrls.push(dataUrl);
                 }
-                
+
                 if (newUrls.length > 0) {
-                   setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
-                   toast.success(`Added ${newUrls.length} image(s)`);
+                  setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                  toast.success(`Added ${newUrls.length} image(s)`);
                 }
               }
 
@@ -5634,7 +5634,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 const file = videoFiles[0];
                 const maxBytes = 14 * 1024 * 1024; // 14MB limit
                 const allowedMimes = new Set([
-                  'video/mp4', 'video/webm', 'video/ogg', 
+                  'video/mp4', 'video/webm', 'video/ogg',
                   'video/quicktime', 'video/mov', 'video/h264'
                 ]);
 
@@ -5662,13 +5662,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (url) {
               // Check if Video
               if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.startsWith('data:video/')) {
-                 setUploadedVideo(url);
-                 toast.success('Video added from URL');
-              } 
+                setUploadedVideo(url);
+                toast.success('Video added from URL');
+              }
               // Check if Image
               else if (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/')) {
-                 setUploadedImages(prev => [...prev, url].slice(0, 4));
-                 toast.success('Image added from URL');
+                setUploadedImages(prev => [...prev, url].slice(0, 4));
+                toast.success('Image added from URL');
               }
             }
           }}
@@ -5738,7 +5738,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       const file = videoFiles[0];
                       const maxBytes = 14 * 1024 * 1024;
                       const allowedMimes = new Set([
-                        'video/mp4', 'video/webm', 'video/ogg', 
+                        'video/mp4', 'video/webm', 'video/ogg',
                         'video/quicktime', 'video/mov', 'video/h264'
                       ]);
 
