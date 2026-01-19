@@ -33,12 +33,12 @@ export default function InteriorRefine() {
     category: "Architecture",
     description: "Refine and enhance interior renders with realistic lighting, textures, and furniture placement.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/interior-refine-before.jpg",
     sampleAfter: "/workflow-samples/interior-refine-after.jpg"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -248,11 +248,7 @@ export default function InteriorRefine() {
                       imagePosition="object-center"
                     />
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                      Try it with your own interior
-                    </div>
-                  </div>
+
                 </div>
               )}
             </div>

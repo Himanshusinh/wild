@@ -11,7 +11,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
     "sampleAfter": "/workflow-samples/creatively-upscale-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "remove-background",
@@ -19,9 +20,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Clean background removal with high precision studio quality output.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/remove-bg-horse-before.jpg",
-    "sampleBefore": "/remove-bg-horse-before.jpg",
-    "sampleAfter": "/remove-bg-horse-after.jpg"
+    "thumbnail": "/workflow-samples/remove-bg-horse-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-bg-horse-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-bg-horse-after.jpg",
+    "cost": 90
   },
   {
     "id": "restore-old-photo",
@@ -29,9 +31,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Restore and colorize this image, remove any scratches or imperfections.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/portrait-before.jpg",
-    "sampleBefore": "/portrait-before.jpg",
-    "sampleAfter": "/portrait-after.jpg",
+    "thumbnail": "/workflow-samples/portrait-before.jpg",
+    "sampleBefore": "/workflow-samples/portrait-before.jpg",
+    "sampleAfter": "/workflow-samples/portrait-after.jpg",
     "cost": 90
   },
   {
@@ -40,9 +42,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Turn this image into a simple coloring book line drawing, black and white.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/photo-to-line-before.jpg",
-    "sampleBefore": "/photo-to-line-before.jpg",
-    "sampleAfter": "/photo-to-line-after.jpg",
+    "thumbnail": "/workflow-samples/photo-to-line-before.jpg",
+    "sampleBefore": "/workflow-samples/photo-to-line-before.jpg",
+    "sampleAfter": "/workflow-samples/photo-to-line-after.jpg",
     "cost": 90
   },
   {
@@ -51,9 +53,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Make it look like the image has been color in with crayons. Realistic results from markers/sketches.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/line-to-photo-before.jpg",
-    "sampleBefore": "/line-to-photo-before.jpg",
-    "sampleAfter": "/line-to-photo-after.jpg",
+    "thumbnail": "/workflow-samples/line-to-photo-before.jpg",
+    "sampleBefore": "/workflow-samples/line-to-photo-before.jpg",
+    "sampleAfter": "/workflow-samples/line-to-photo-after.jpg",
     "cost": 90
   },
   {
@@ -62,9 +64,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove unwanted objects or persons from your Image seamlessly.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/remove-element-before.jpg",
-    "sampleBefore": "/remove-element-before.jpg",
-    "sampleAfter": "/remove-element-after.jpg",
+    "thumbnail": "/workflow-samples/remove-element-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-element-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-element-after.jpg",
     "cost": 90
   },
   {
@@ -73,9 +75,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Replace any object in your image with something else using AI.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/replace-element-before.jpg",
-    "sampleBefore": "/replace-element-before.jpg",
-    "sampleAfter": "/replace-element-after.jpg",
+    "thumbnail": "/workflow-samples/replace-element-before.jpg",
+    "sampleBefore": "/workflow-samples/replace-element-before.jpg",
+    "sampleAfter": "/workflow-samples/replace-element-after.jpg",
     "cost": 90
   },
   {
@@ -84,9 +86,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove watermark from reference image while maintaining quality.",
     "model": "Nano Banana",
-    "thumbnail": "/remove-watermark-before.jpg",
-    "sampleBefore": "/remove-watermark-before.jpg",
-    "sampleAfter": "/remove-watermark-after.jpg",
+    "thumbnail": "/workflow-samples/remove-watermark-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-watermark-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-watermark-after.jpg",
     "cost": 90
   },
   {
@@ -97,7 +99,8 @@ export const WORKFLOWS_DATA = [
     "model": "AI Prompt Engine",
     "thumbnail": "/workflow-samples/surpriseme-before.jpg",
     "sampleBefore": "/workflow-samples/surpriseme-before.jpg",
-    "sampleAfter": "/workflow-samples/surpriseme-after.jpg"
+    "sampleAfter": "/workflow-samples/surpriseme-after.jpg",
+    "cost": 90
   },
   {
     "id": "people-age",
@@ -109,7 +112,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/people-age-before.png",
     "sampleAfter": "/workflow-samples/people-age-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "become-celebrity",
@@ -119,7 +123,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/become-celebrity-before.jpg",
     "sampleBefore": "/workflow-samples/become-celebrity-before.jpg",
-    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg"
+    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg",
+    "cost": 90
   },
   {
     "id": "polaroid-style",
@@ -129,7 +134,8 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/polaroid-style-before.jpg",
     "sampleBefore": "/workflow-samples/polaroid-style-before.jpg",
-    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg"
+    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg",
+    "cost": 90
   },
   {
     "id": "custom-stickers",
@@ -137,11 +143,12 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Create a collection of cute chibi illustration stickers and see them as mockups on notebooks or laptops.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/custom-stickers-before.jpg",
-    "sampleBefore": "/workflow-samples/custom-stickers-before.jpg",
-    "sampleAfter": "/workflow-samples/custom-stickers-after.jpg",
-    "imageFit": "object-contain",
-    "imagePosition": "object-center"
+    "thumbnail": "/workflow-samples/custom-stickers-before.png",
+    "sampleBefore": "/workflow-samples/custom-stickers-before.png",
+    "sampleAfter": "/workflow-samples/custom-stickers-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "fusion-styles",
@@ -151,9 +158,10 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/fusion-styles-before.jpg",
     "sampleBefore": "/workflow-samples/fusion-styles-before.jpg",
-    "sampleAfter": "/workflow-samples/fusion-styles-after.jpg",
+    "sampleAfter": "/workflow-samples/fusion-styles-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "vintage-teleport",
@@ -164,8 +172,9 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/vintage-teleport-before.png",
     "sampleBefore": "/workflow-samples/vintage-teleport-before.png",
     "sampleAfter": "/workflow-samples/vintage-teleport-after.jpg",
-    "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "cctv-footage",
@@ -173,11 +182,12 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Generate photorealistic low-quality CCTV footage with timestamps and ceiling-mounted perspectives.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/cctv-footage-before.jpg",
-    "sampleBefore": "/workflow-samples/cctv-footage-before.jpg",
-    "sampleAfter": "/workflow-samples/cctv-footage-after.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "thumbnail": "/workflow-samples/cctv-footage.jpg",
+    "sampleBefore": "/workflow-samples/cctv-footage.jpg",
+    "sampleAfter": "/workflow-samples/cctv-footage.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "change-seasons",
@@ -189,7 +199,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/change-seasons-before.jpg",
     "sampleAfter": "/workflow-samples/change-seasons-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "relighting",
@@ -197,13 +208,13 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Change the lighting of any scene to Night, Golden Hour, or custom studio presets.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/relighting-before.jpg",
-    "sampleBefore": "/workflow-samples/relighting-before.jpg",
-    "sampleAfter": "/workflow-samples/relighting-after.jpg",
+    "thumbnail": "/workflow-samples/relighting-before.png",
+    "sampleBefore": "/workflow-samples/relighting-before.png",
+    "sampleAfter": "/workflow-samples/relighting-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
-
   {
     "id": "selfie-video",
     "title": "Selfie Video",
@@ -212,19 +223,19 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=800&auto=format&fit=crop",
     "sampleBefore": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop"
+    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop",
+    "cost": 200
   },
-
-
   {
     "id": "turn-into-figurine",
     "title": "Turn your self into a figurine",
     "category": "Viral Trend",
     "description": "Transform yourself into a premium 3D sculpted character figurine mockup.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/figurine-example.jpg",
+    "sampleBefore": "/workflow-samples/figurine-example.jpg",
+    "sampleAfter": "/workflow-samples/figurine-example.jpg",
+    "cost": 90
   },
   {
     "id": "style-transfer-viral",
@@ -236,7 +247,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/style-transfer-before.jpg",
     "sampleAfter": "/workflow-samples/style-transfer-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "3d-print-mockup",
@@ -248,7 +260,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/3d-print-before.jpg",
     "sampleAfter": "/workflow-samples/3d-print-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "cad-to-3d",
@@ -260,7 +273,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/cad-to-3d-before.jpg",
     "sampleAfter": "/workflow-samples/cad-to-3d-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "building-angles",
@@ -272,7 +286,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/palace-angles-before.jpg",
     "sampleAfter": "/workflow-samples/palace-angles-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "interior-refine",
@@ -284,7 +299,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/interior-refine-before.jpg",
     "sampleAfter": "/workflow-samples/interior-refine-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "interior-product",
@@ -296,7 +312,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/interior-product-before.jpg",
     "sampleAfter": "/workflow-samples/interior-product-grid.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "3d-isometric",
@@ -308,7 +325,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/3d-isometric-before.jpg",
     "sampleAfter": "/workflow-samples/3d-isometric-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "replace-texture",
@@ -320,7 +338,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/replace-texture-before.jpg",
     "sampleAfter": "/workflow-samples/replace-texture-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "generate-texture",
@@ -332,7 +351,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/generate-texture-before.jpg",
     "sampleAfter": "/workflow-samples/generate-texture-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "pose-control",
@@ -343,8 +363,8 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleBefore": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleAfter": "/workflow-samples/pose-control-after-v2.png",
-    "imageFit": "object-contain",
-    "imagePosition": "object-center",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -389,16 +409,17 @@ export const WORKFLOWS_DATA = [
     "cost": 90
   },
   {
-    "id": "reimagine-product",
-    "title": "Reimagine Product",
+    "id": "dynamic-camera-angle",
+    "title": "Dynamic Camera Angles",
     "category": "Photography",
     "description": "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/reimagine-product-before-v2.png",
-    "sampleBefore": "/workflow-samples/reimagine-product-before-v2.png",
-    "sampleAfter": "/workflow-samples/reimagine-product-after-v2.png",
+    "thumbnail": "/workflow-samples/dynamic-camera-angle-before.png",
+    "sampleBefore": "/workflow-samples/dynamic-camera-angle-before.png",
+    "sampleAfter": "/workflow-samples/dynamic-camera-angle-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "create-logo",
@@ -458,7 +479,7 @@ export const WORKFLOWS_DATA = [
     "description": "Generate professional corporate ID cards and employee badges.",
     "model": "Branding AI",
     "thumbnail": "/workflow-samples/id-card-after.png",
-    "sampleBefore": "/workflow-samples/id-card-after.png",
+    "sampleBefore": "/workflow-samples/id-card-before.png",
     "sampleAfter": "/workflow-samples/id-card-after.png",
     "imageFit": "object-cover",
     "imagePosition": "object-center"

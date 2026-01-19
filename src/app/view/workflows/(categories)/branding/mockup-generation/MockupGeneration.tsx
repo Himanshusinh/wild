@@ -259,11 +259,7 @@ export default function MockupGeneration() {
                       alt="Mockup Preview"
                     />
                   </div>
-                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                      Try it with your own logo
-                    </div>
-                  </div> */}
+
                 </div>
               )}
             </div>

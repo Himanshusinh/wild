@@ -273,17 +273,13 @@ export default function ReplaceElement() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/replace-element-before.jpg"
-                                        afterImage="/replace-element-after.jpg"
+                                        beforeImage="/workflow-samples/replace-element-before.jpg"
+                                        afterImage="/workflow-samples/replace-element-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
                                     />
-                                    {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                                            Try it with your own image
-                                        </div>
-                                    </div> */}
+
                                 </div>
                             )}
                         </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Camera, Zap, Download, Car, Sparkles, Map, Sun, Wind } from 'lucide-react';
+import { X, Camera, Zap, Download, Car, Sparkles, Map, Sun } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';

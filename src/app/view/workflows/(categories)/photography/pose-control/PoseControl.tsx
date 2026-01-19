@@ -37,8 +37,10 @@ export default function PoseControl() {
     description: "Control the pose of your subjects using pose reference images for precise photography compositions.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/pose-control-before.png",
-    sampleAfter: "/workflow-samples/pose-control-after.png"
+    sampleBefore: "/workflow-samples/pose-control-before-v2.jpg",
+    sampleAfter: "/workflow-samples/pose-control-after-v2.png",
+    imageFit: "object-cover",
+    imagePosition: "object-top"
   }) as any;
 
   const CREDIT_COST = 90;
@@ -241,7 +243,7 @@ export default function PoseControl() {
               </div>
             </div>
 
-            <div className="hidden md:flex flex-1 items-center justify-center bg-[#050505] relative overflow-hidden">
+            <div className="flex flex-1 items-center justify-center bg-[#050505] relative overflow-hidden">
               <div className="absolute inset-0 opacity-20"
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
@@ -286,11 +288,7 @@ export default function PoseControl() {
                     imageFit={(workflowData as any).imageFit || 'object-contain'}
                     imagePosition={(workflowData as any).imagePosition || 'object-center'}
                   />
-                  {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                      Try it with your own image
-                    </div>
-                  </div> */}
+
                 </div>
               )}
             </div>

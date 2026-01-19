@@ -8,9 +8,15 @@ import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { useCredits } from '@/hooks/useCredits';
 
 export default function RemoveBackground() {
     const router = useRouter();
+    const {
+        creditBalance,
+        deductCreditsOptimisticForGeneration,
+        rollbackOptimisticDeduction
+    } = useCredits();
 
     // State
     const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +32,7 @@ export default function RemoveBackground() {
         category: "General",
         description: "Clean background removal with high precision studio quality output.",
         //model: "Seadream4/ Nano Banana",
-        cost: 8 // Backend cost
+        cost: 90 // Backend cost
     };
 
     useEffect(() => {
@@ -58,7 +64,14 @@ export default function RemoveBackground() {
             return;
         }
 
+        const CREDIT_COST = 90;
+        if (creditBalance < CREDIT_COST) {
+            toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
+            return;
+        }
+
         try {
+            deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
             const response = await axiosInstance.post('/api/workflows/general/remove-background', {
@@ -235,17 +248,13 @@ export default function RemoveBackground() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/remove-bg-horse-before.jpg"
-                                        afterImage="/remove-bg-horse-after.jpg"
+                                        beforeImage="/workflow-samples/remove-bg-horse-before.jpg"
+                                        afterImage="/workflow-samples/remove-bg-horse-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
                                     />
-                                    {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                                            Try it with your own image
-                                        </div>
-                                    </div> */}
+
                                 </div>
                             )}
                         </div>

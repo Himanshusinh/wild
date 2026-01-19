@@ -252,17 +252,13 @@ export default function PhotoToLineDrawing() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/photo-to-line-before.jpg"
-                                        afterImage="/photo-to-line-after.jpg"
+                                        beforeImage="/workflow-samples/photo-to-line-before.jpg"
+                                        afterImage="/workflow-samples/photo-to-line-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
                                     />
-                                    {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                                            Try it with your own image
-                                        </div>
-                                    </div> */}
+
                                 </div>
                             )}
                         </div>

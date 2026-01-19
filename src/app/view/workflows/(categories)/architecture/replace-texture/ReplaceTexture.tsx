@@ -34,12 +34,12 @@ export default function ReplaceTexture() {
     category: "Architecture",
     description: "Change materials and textures (wood, marble, concrete) of specific architectural elements seamlessly.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 80,
+    cost: 90,
     sampleBefore: "/workflow-samples/replace-texture-before.jpg",
     sampleAfter: "/workflow-samples/replace-texture-after.jpg"
   };
 
-  const CREDIT_COST = 80;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -252,11 +252,7 @@ export default function ReplaceTexture() {
                       imagePosition="object-center"
                     />
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                      Try it with your own image
-                    </div>
-                  </div>
+
                 </div>
               )}
             </div>

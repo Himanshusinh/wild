@@ -33,12 +33,12 @@ export default function CadTo3d() {
     category: "Architecture",
     description: "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 100,
+    cost: 90,
     sampleBefore: "/workflow-samples/cad-to-3d-before.jpg",
     sampleAfter: "/workflow-samples/cad-to-3d-after.jpg"
   };
 
-  const CREDIT_COST = 100;
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     setTimeout(() => setIsOpen(true), 50);
@@ -242,11 +242,7 @@ export default function CadTo3d() {
                     afterLabel="After"
                     imageFit="object-contain"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                      Try it with your own plan
-                    </div>
-                  </div>
+
                 </div>
               )}
             </div>

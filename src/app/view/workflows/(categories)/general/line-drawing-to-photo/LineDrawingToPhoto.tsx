@@ -261,17 +261,13 @@ No illustration style — the final result should look like a real photograph.`;
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/line-to-photo-before.jpg"
-                                        afterImage="/line-to-photo-after.jpg"
+                                        beforeImage="/workflow-samples/line-to-photo-before.jpg"
+                                        afterImage="/workflow-samples/line-to-photo-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="Photorealistic"
                                         imageFit="object-contain"
                                     />
-                                    {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                                            Try it with your own image
-                                        </div>
-                                    </div> */}
+
                                 </div>
                             )}
                         </div>

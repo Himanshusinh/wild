@@ -200,10 +200,10 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                         {uploadedImage ? 'Change' :
                           workflowData.id === 'character-sheet' ? 'Character' :
                             workflowData.id === 'product-photography' ? 'Product Image' :
-                              workflowData.id === 'reimagine-product' ? 'Product Image' :
+                              workflowData.id === 'dynamic-camera-angle' ? 'Product Image' :
                                 workflowData.id === 'interior-product' ? 'Product Image' : 'Model'}
                       </p>
-                      {['product-photography', 'reimagine-product', 'interior-product'].includes(workflowData.id) && !uploadedImage && (
+                      {['product-photography', 'dynamic-camera-angle', 'interior-product'].includes(workflowData.id) && !uploadedImage && (
                         <p className="text-[10px] text-slate-500 mt-0.5">
                           Upload your product snapshot
                         </p>
@@ -598,7 +598,7 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
             ) : null}
 
             {/* Dynamic Camera Angle for Reimagine Product */}
-            {workflowData.id === 'reimagine-product' && (
+            {workflowData.id === 'dynamic-camera-angle' && (
               <div className="mb-6">
                 <label className="text-[10px] font-bold uppercase text-slate-500 mb-3 block ml-1 tracking-wider">Dynamic Camera Angle</label>
                 <div className="flex flex-wrap gap-2">
@@ -680,12 +680,12 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
             {workflowData.id !== 'business-card' && (
               <div className="mb-6">
                 <label className="block text-xs font-bold uppercase text-slate-500 mb-2">
-                  {workflowData.id === 'reimagine-product' ? 'Reimagination Style & Details (Optional)' : 'Additional Details (Optional)'}
+                  {workflowData.id === 'dynamic-camera-angle' ? 'Reimagination Style & Details (Optional)' : 'Additional Details (Optional)'}
                 </label>
                 <textarea
                   className="w-full bg-[#111] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#60a5fa] transition-colors resize-none"
-                  rows={workflowData.id === 'reimagine-product' ? 3 : 4}
-                  placeholder={workflowData.id === 'reimagine-product' ? "E.g. Artistic watercolor, cyberpunk neon, vintage film look..." : "Add extra data or specific instructions here..."}
+                  rows={workflowData.id === 'dynamic-camera-angle' ? 3 : 4}
+                  placeholder={workflowData.id === 'dynamic-camera-angle' ? "E.g. Artistic watercolor, cyberpunk neon, vintage film look..." : "Add extra data or specific instructions here..."}
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
                 ></textarea>
@@ -694,7 +694,7 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
           </div>
 
           <div className="pt-6 border-t border-white/5">
-            <div className="flex items-center justify-between text-sm text-slate-500 mb-4 font-mono"><span>Cost estimated:</span><span className="text-white flex items-center gap-1"><Zap size={12} className="text-[#60a5fa] fill-[#60a5fa]" /> 2 Credits</span></div>
+            <div className="flex items-center justify-between text-sm text-slate-500 mb-4 font-mono"><span>Cost estimated:</span><span className="text-white flex items-center gap-1"><Zap size={12} className="text-[#60a5fa] fill-[#60a5fa]" /> {workflowData.cost || 90} Credits</span></div>
             <button onClick={handleRunWorkflow} disabled={isGenerating} className={`w-full py-4 font-bold rounded-xl text-base transition-all flex items-center justify-center gap-2 relative overflow-hidden group ${isGenerating ? 'bg-slate-800 text-slate-400 cursor-not-allowed' : 'bg-[#60a5fa] hover:bg-[#4f8edb] text-black hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(96,165,250,0.4)]'}`}>
               {isGenerating ? <><span className="animate-spin"><Sparkles size={18} /></span> Generating...</> : <><span className="relative z-10 flex items-center gap-2"><Wand2 size={18} /> Run Workflow</span><div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300"></div></>}
             </button>
@@ -740,13 +740,11 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                       afterImage={workflowData.sampleAfter}
                       beforeLabel="Before"
                       afterLabel="After"
+                      imageFit={workflowData.imageFit}
+                      imagePosition={workflowData.imagePosition}
                     />
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                      <Sparkles size={16} className="text-[#60a5fa]" /> Workflow Sample Output
-                    </div>
-                  </div>
+
                 </div>
               </div>
             )}
