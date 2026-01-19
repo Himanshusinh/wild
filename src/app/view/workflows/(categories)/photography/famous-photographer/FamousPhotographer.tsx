@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Camera, Zap, Download, Sparkles, User, Image as ImageIcon, Palmtree } from 'lucide-react';
+import { X, Camera, Zap, Download, Sparkles, User, Image as ImageIcon } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
@@ -11,7 +11,7 @@ import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 
 const PHOTOGRAPHER_STYLES = [
-  { id: 'steve-mccurry', label: 'Steve McCurry', description: 'Vibrant, humanistic, National Geographic style.', icon: <Palmtree size={14} /> },
+  { id: 'steve-mccurry', label: 'Steve McCurry', description: 'Vibrant, humanistic, National Geographic style.', icon: <Sparkles size={14} /> },
   { id: 'annie-leibovitz', label: 'Annie Leibovitz', description: 'Dramatic, painterly, high-end celebrity portraits.', icon: <User size={14} /> },
   { id: 'ansel-adams', label: 'Ansel Adams', description: 'Classic B&W, high contrast, majestic landscapes.', icon: <ImageIcon size={14} /> },
   { id: 'peter-lindbergh', label: 'Peter Lindbergh', description: 'Raw, emotional, cinematic B&W fashion.', icon: <Camera size={14} /> },
@@ -42,8 +42,8 @@ export default function FamousPhotographer() {
     description: "Transform your photos into the signature style of legendary world-famous photographers.",
     model: "StyleRender AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/famous-photographer-before.png",
-    sampleAfter: "/workflow-samples/famous-photographer-after.png"
+    sampleBefore: "/workflow-samples/style-transfer-before.jpg",
+    sampleAfter: "/workflow-samples/style-transfer-after.jpg"
   }) as any;
 
   const CREDIT_COST = 90;
@@ -246,11 +246,7 @@ export default function FamousPhotographer() {
                     <img src={workflowData.sampleAfter || undefined} className="w-full h-full object-cover" alt="Style Sample" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own photo
-                      </div>
-                    </div>
+
                   </div>
 
                   {isGenerating && (

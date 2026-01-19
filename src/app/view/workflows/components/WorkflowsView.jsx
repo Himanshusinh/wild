@@ -109,7 +109,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           {/* Category Navigation - Moved Below Subtitle */}
           <div className="flex items-center md:gap-3 gap-2 overflow-x-auto no-scrollbar py-4">
             {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Viral Trend', 'Branding', 'Photography', 'Architecture'].includes(cat);
+              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Branding', 'Photography', 'Architecture'].includes(cat);
               return (
                 <button
                   key={cat}
@@ -136,7 +136,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {filteredWorkflows.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = !['General', 'Branding', 'Photography', 'Architecture'].includes(wf.category) && wf.id !== 'selfie-video';
+            const isComingSoon = !['General', 'Branding', 'Photography', 'Architecture', 'Fun',].includes(wf.category) && wf.id !== 'selfie-video';
 
             return (
               <div
@@ -174,6 +174,8 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                     router.push(`/view/workflows/photography/${wf.id}`);
                   } else if (wf.category === 'Architecture') {
                     router.push(`/view/workflows/architecture/${wf.id}`);
+                  } else if (wf.category === 'Fun') {
+                    router.push(`/view/workflows/fun/${wf.id}`);
                   } else {
                     router.push(`/view/workflows/${wf.id}`);
                   }

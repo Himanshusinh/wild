@@ -326,11 +326,7 @@ export default function BusinessCard() {
                       alt="Business Card Example"
                     />
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                      <Sparkles size={16} className="text-[#60a5fa]" /> Workflow Sample Output
-                    </div>
-                  </div>
+
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-40 transition-all duration-500 rounded-3xl">
                       <div className="relative w-20 h-20 mb-4">

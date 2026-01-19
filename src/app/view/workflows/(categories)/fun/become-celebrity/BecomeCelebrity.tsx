@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap, Download } from 'lucide-react';
+import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
@@ -25,6 +25,7 @@ export default function BecomeCelebrity() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalDetails, setAdditionalDetails] = useState("");
 
     // Workflow Data (Hardcoded for this specific page, matching data.js)
     const workflowData = WORKFLOWS_DATA.find(w => w.id === "become-celebrity") || {
@@ -78,9 +79,18 @@ export default function BecomeCelebrity() {
             deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
+            // Simulation for now
+            console.log(`Generating celebrity with details: ${additionalDetails}`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            setGeneratedImage("/workflow-samples/become-celebrity-after.jpg"); // Placeholder result
+            toast.success('Celebrity transformation complete!');
+
+            /* 
+            // Real API call commented out for simulation
             const response = await axiosInstance.post('/api/workflows/fun/become-celebrity', {
                 image: originalImage,
-                isPublic: true
+                isPublic: true,
+                additionalDetails: additionalDetails
             });
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
@@ -89,6 +99,7 @@ export default function BecomeCelebrity() {
             } else {
                 throw new Error(response.data?.message || 'Invalid response from server');
             }
+            */
 
         } catch (error: any) {
             console.error('Become Celebrity error:', error);
@@ -167,6 +178,8 @@ export default function BecomeCelebrity() {
                                 <div className="mb-4">
                                     <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
                                     <textarea
+                                        value={additionalDetails}
+                                        onChange={(e) => setAdditionalDetails(e.target.value)}
                                         className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                                         placeholder="Add extra data or specific instructions here..."
                                     ></textarea>
@@ -252,11 +265,7 @@ export default function BecomeCelebrity() {
                                         afterLabel="After"
                                         imageFit="object-contain"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                                            Try it with your own image
-                                        </div>
-                                    </div>
+
                                 </div>
                             )}
                         </div>

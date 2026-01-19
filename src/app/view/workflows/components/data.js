@@ -20,9 +20,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Clean background removal with high precision studio quality output.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/remove-bg-horse-before.jpg",
-    "sampleBefore": "/remove-bg-horse-before.jpg",
-    "sampleAfter": "/remove-bg-horse-after.jpg",
+    "thumbnail": "/workflow-samples/remove-bg-horse-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-bg-horse-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-bg-horse-after.jpg",
     "cost": 90
   },
   {
@@ -31,9 +31,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Restore and colorize this image, remove any scratches or imperfections.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/portrait-before.jpg",
-    "sampleBefore": "/portrait-before.jpg",
-    "sampleAfter": "/portrait-after.jpg",
+    "thumbnail": "/workflow-samples/portrait-before.jpg",
+    "sampleBefore": "/workflow-samples/portrait-before.jpg",
+    "sampleAfter": "/workflow-samples/portrait-after.jpg",
     "cost": 90
   },
   {
@@ -42,9 +42,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Turn this image into a simple coloring book line drawing, black and white.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/photo-to-line-before.jpg",
-    "sampleBefore": "/photo-to-line-before.jpg",
-    "sampleAfter": "/photo-to-line-after.jpg",
+    "thumbnail": "/workflow-samples/photo-to-line-before.jpg",
+    "sampleBefore": "/workflow-samples/photo-to-line-before.jpg",
+    "sampleAfter": "/workflow-samples/photo-to-line-after.jpg",
     "cost": 90
   },
   {
@@ -53,9 +53,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Make it look like the image has been color in with crayons. Realistic results from markers/sketches.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/line-to-photo-before.jpg",
-    "sampleBefore": "/line-to-photo-before.jpg",
-    "sampleAfter": "/line-to-photo-after.jpg",
+    "thumbnail": "/workflow-samples/line-to-photo-before.jpg",
+    "sampleBefore": "/workflow-samples/line-to-photo-before.jpg",
+    "sampleAfter": "/workflow-samples/line-to-photo-after.jpg",
     "cost": 90
   },
   {
@@ -75,9 +75,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Replace any object in your image with something else using AI.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/replace-element-before.jpg",
-    "sampleBefore": "/replace-element-before.jpg",
-    "sampleAfter": "/replace-element-after.jpg",
+    "thumbnail": "/workflow-samples/replace-element-before.jpg",
+    "sampleBefore": "/workflow-samples/replace-element-before.jpg",
+    "sampleAfter": "/workflow-samples/replace-element-after.jpg",
     "cost": 90
   },
   {
@@ -86,9 +86,9 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove watermark from reference image while maintaining quality.",
     "model": "Nano Banana",
-    "thumbnail": "/remove-watermark-before.jpg",
-    "sampleBefore": "/remove-watermark-before.jpg",
-    "sampleAfter": "/remove-watermark-after.jpg",
+    "thumbnail": "/workflow-samples/remove-watermark-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-watermark-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-watermark-after.jpg",
     "cost": 90
   },
   {
@@ -143,10 +143,10 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Create a collection of cute chibi illustration stickers and see them as mockups on notebooks or laptops.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/custom-stickers-before.jpg",
-    "sampleBefore": "/workflow-samples/custom-stickers-before.jpg",
-    "sampleAfter": "/workflow-samples/custom-stickers-after.jpg",
-    "imageFit": "object-contain",
+    "thumbnail": "/workflow-samples/custom-stickers-before.png",
+    "sampleBefore": "/workflow-samples/custom-stickers-before.png",
+    "sampleAfter": "/workflow-samples/custom-stickers-after.png",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -158,7 +158,7 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/fusion-styles-before.jpg",
     "sampleBefore": "/workflow-samples/fusion-styles-before.jpg",
-    "sampleAfter": "/workflow-samples/fusion-styles-after.jpg",
+    "sampleAfter": "/workflow-samples/fusion-styles-after.png",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -172,7 +172,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/vintage-teleport-before.png",
     "sampleBefore": "/workflow-samples/vintage-teleport-before.png",
     "sampleAfter": "/workflow-samples/vintage-teleport-after.jpg",
-    "imageFit": "object-cover",
+    "imageFit": "object-contain",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -182,10 +182,10 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Generate photorealistic low-quality CCTV footage with timestamps and ceiling-mounted perspectives.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/cctv-footage-before.jpg",
-    "sampleBefore": "/workflow-samples/cctv-footage-before.jpg",
-    "sampleAfter": "/workflow-samples/cctv-footage-after.png",
-    "imageFit": "object-cover",
+    "thumbnail": "/workflow-samples/cctv-footage.jpg",
+    "sampleBefore": "/workflow-samples/cctv-footage.jpg",
+    "sampleAfter": "/workflow-samples/cctv-footage.jpg",
+    "imageFit": "object-contain",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -208,9 +208,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Change the lighting of any scene to Night, Golden Hour, or custom studio presets.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/relighting-before.jpg",
-    "sampleBefore": "/workflow-samples/relighting-before.jpg",
-    "sampleAfter": "/workflow-samples/relighting-after.jpg",
+    "thumbnail": "/workflow-samples/relighting-before.png",
+    "sampleBefore": "/workflow-samples/relighting-before.png",
+    "sampleAfter": "/workflow-samples/relighting-after.png",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -363,8 +363,8 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleBefore": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleAfter": "/workflow-samples/pose-control-after-v2.png",
-    "imageFit": "object-contain",
-    "imagePosition": "object-center",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -409,14 +409,14 @@ export const WORKFLOWS_DATA = [
     "cost": 90
   },
   {
-    "id": "reimagine-product",
-    "title": "Reimagine Product",
+    "id": "dynamic-camera-angle",
+    "title": "Dynamic Camera Angles",
     "category": "Photography",
     "description": "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/reimagine-product-before-v2.png",
-    "sampleBefore": "/workflow-samples/reimagine-product-before-v2.png",
-    "sampleAfter": "/workflow-samples/reimagine-product-after-v2.png",
+    "thumbnail": "/workflow-samples/dynamic-camera-angle-before.png",
+    "sampleBefore": "/workflow-samples/dynamic-camera-angle-before.png",
+    "sampleAfter": "/workflow-samples/dynamic-camera-angle-after.png",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -480,36 +480,49 @@ export const WORKFLOWS_DATA = [
     "description": "Generate professional corporate ID cards and employee badges.",
     "model": "Branding AI",
     "thumbnail": "/workflow-samples/id-card-after.png",
-    "sampleBefore": "/workflow-samples/id-card-after.png",
+    "sampleBefore": "/workflow-samples/id-card-before.png",
     "sampleAfter": "/workflow-samples/id-card-after.png",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
-  {
-    "id": "automotive",
-    "title": "Automotive Photography",
-    "category": "Photography",
-    "description": "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
-    "model": "AutoRender AI",
-    "thumbnail": "/workflow-samples/automotive-after.png",
-    "sampleBefore": "/workflow-samples/automotive-before.png",
-    "sampleAfter": "/workflow-samples/automotive-after.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-center",
-    "cost": 90
-  },
-  {
-    "id": "famous-photographer",
-    "title": "World Famous Photographer",
-    "category": "Photography",
-    "description": "Transform your photos into the signature style of legendary world-famous photographers.",
-    "model": "StyleRender AI",
-    "thumbnail": "/workflow-samples/famous-photographer-after.png",
-    "sampleBefore": "/workflow-samples/famous-photographer-before.png",
-    "sampleAfter": "/workflow-samples/famous-photographer-after.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-center",
-    "cost": 90
-  }
+  //   {
+  //     "id": "reimagine-product",
+  //     "title": "Reimagine Product",
+  //     "category": "Photography",
+  //     "description": "Place your product in stunning new environments and artistic styles while keeping the product authentic.",
+  //     "model": "Seadream4/ Nano Banana/ Qwen",
+  //     "thumbnail": "/workflow-samples/reimagine-product-after.png",
+  //     "sampleBefore": "/workflow-samples/reimagine-product-before.png",
+  //     "sampleAfter": "/workflow-samples/reimagine-product-after.png",
+  //     "imageFit": "object-cover",
+  //     "imagePosition": "object-center",
+  //     "cost": 90
+  //   },
+  //   {
+  //     "id": "automotive",
+  //     "title": "Automotive Photography",
+  //     "category": "Photography",
+  //     "description": "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
+  //     "model": "AutoRender AI",
+  //     "thumbnail": "/workflow-samples/automotive-after.png",
+  //     "sampleBefore": "/workflow-samples/automotive-before.png",
+  //     "sampleAfter": "/workflow-samples/automotive-after.png",
+  //     "imageFit": "object-cover",
+  //     "imagePosition": "object-center",
+  //     "cost": 90
+  //   },
+  //   {
+  //     "id": "famous-photographer",
+  //     "title": "World Famous Photographer",
+  //     "category": "Photography",
+  //     "description": "Transform your photos into the signature style of legendary world-famous photographers.",
+  //     "model": "StyleRender AI",
+  //     "thumbnail": "/workflow-samples/style-transfer-after.jpg",
+  //     "sampleBefore": "/workflow-samples/style-transfer-before.jpg",
+  //     "sampleAfter": "/workflow-samples/style-transfer-after.jpg",
+  //     "imageFit": "object-cover",
+  //     "imagePosition": "object-center",
+  //     "cost": 90
+  //   }
 ];

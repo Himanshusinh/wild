@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Camera, Zap, Download, Car, Sparkles, Map, Sun, Wind } from 'lucide-react';
+import { X, Camera, Zap, Download, Car, Sparkles, Map, Sun } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
@@ -290,11 +290,7 @@ export default function Automotive() {
                     <img src={workflowData.sampleAfter} className="w-full h-full object-cover" alt="Sample Display" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own car photo
-                      </div>
-                    </div>
+
                   </div>
 
                   {isGenerating && (
