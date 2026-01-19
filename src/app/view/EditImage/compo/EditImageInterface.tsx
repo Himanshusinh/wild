@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { FilePlus, ChevronUp } from 'lucide-react';
+import { FilePlus, ChevronUp, Edit3 } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
@@ -1230,6 +1230,7 @@ const EditImageInterface: React.FC = () => {
     // Reimagine feature is temporarily hidden from the tab list but kept in state for type-safety
     // { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
     { id: 'live-chat', label: 'Chat to Edit', description: 'Chat-driven edits & regenerations' },
+    { id: 'editor', label: 'Canvas Editor', description: 'Open external editor' },
   ] as const;
 
   // Feature preview assets and display labels
@@ -3619,6 +3620,14 @@ const EditImageInterface: React.FC = () => {
                   <button
                     key={feature.id}
                     onClick={() => {
+                      if (feature.id === 'editor') {
+                        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                        // User requested localhost:500 for local (likely typo for 5000 or 3005). 
+                        // The image_edit service runs on 3005, so we use that.
+                        const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
+                        window.open(url, '_blank');
+                        return;
+                      }
                       setSelectedFeature(feature.id as EditFeature);
                       // Update URL with feature parameter
                       const params = new URLSearchParams(window.location.search);
@@ -3652,6 +3661,7 @@ const EditImageInterface: React.FC = () => {
                         {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
                         {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
                         {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
+                        {feature.id === 'editor' && (<Edit3 className="md:w-6 md:h-6 w-5 h-5 text-white" />)}
                       </div>
 
                     </div>
@@ -4553,49 +4563,49 @@ const EditImageInterface: React.FC = () => {
                     )}
                     {model === 'philz1337x/crystal-upscaler' && (
                       <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={6}
-                            step={1}
-                            value={Number(String(scaleFactor).replace('x', '')) || 2}
-                            onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
-                            className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                            >
-                              <span className="truncate uppercase">{(output || 'png').toString()}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                            </button>
-                            {activeDropdown === 'output' && (
-                              <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                {['png', 'jpg'].map((fmt) => (
-                                  <button
-                                    key={fmt}
-                                    onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                  >
-                                    <span className="uppercase">{fmt}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={6}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 2}
+                              onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
+                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
+                            <div className="relative edit-dropdown">
+                              <button
+                                onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                              >
+                                <span className="truncate uppercase">{(output || 'png').toString()}</span>
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                              </button>
+                              {activeDropdown === 'output' && (
+                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                  {['png', 'jpg'].map((fmt) => (
+                                    <button
+                                      key={fmt}
+                                      onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                      className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                    >
+                                      <span className="uppercase">{fmt}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-[11px] text-white/50">
-                        Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
-                        {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
-                      </div>
+                        <div className="text-[11px] text-white/50">
+                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
+                          {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                        </div>
                       </div>
                     )}
                     {model === 'fal-ai/topaz/upscale/image' && (
