@@ -166,6 +166,8 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                     router.push('/view/workflows/general/replace-element');
                   } else if (wf.id === 'create-logo') {
                     router.push('/view/workflows/branding/create-logo');
+                  } else if (wf.id === 'business-card') {
+                    router.push('/view/workflows/branding/business-card');
                   } else if (wf.id === 'logo-variations') {
                     router.push('/view/workflows/branding/logo-variations');
                   } else if (wf.id === 'mockup-generation') {

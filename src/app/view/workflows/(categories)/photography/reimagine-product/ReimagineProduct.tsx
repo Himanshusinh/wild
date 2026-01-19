@@ -40,10 +40,10 @@ export default function ReimagineProduct() {
     category: "Photography",
     description: "Place your product in stunning new environments and artistic styles while keeping the product authentic.",
     model: "Seadream4/ Nano Banana/ Qwen",
-    cost: 90,
-    sampleBefore: "/workflow-samples/reimagine-product-before.png",
-    sampleAfter: "/workflow-samples/reimagine-product-after.png"
-  }) as any;
+    cost: 80,
+    sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
+    sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
+  };
 
   const CREDIT_COST = 90;
 
@@ -142,10 +142,13 @@ export default function ReimagineProduct() {
                 <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
-                <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
+              <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
-                <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+              <div className="flex flex-col gap-6 mb-8">
+                {/* 1. Source Photo */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => setIsUploadModalOpen(true)}>
                     {productImage ? (
                       <>
@@ -194,64 +197,84 @@ export default function ReimagineProduct() {
                 </div>
               </div>
 
-              <div className="mt-auto pt-6 border-t border-white/5">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-medium text-slate-500">Cost:</span>
-                  <div className="flex items-center gap-1.5 text-white font-medium text-sm">
-                    <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
-                    {CREDIT_COST} Credits
+            <div className="mt-auto pt-6 border-t border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-medium text-slate-500">Cost:</span>
+                <div className="flex items-center gap-1.5 text-white font-medium text-sm">
+                  <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
+                  {CREDIT_COST} Credits
+                </div>
+              </div>
+              <button
+                onClick={handleRun}
+                disabled={isGenerating || !originalImage}
+                className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
+                  ${isGenerating || !originalImage
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)] active:scale-[0.98]'
+                  }`}
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Reimagining...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
+                    Run Workflow
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Preview */}
+          <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
+            <div className="flex-1 relative">
+              {originalImage && generatedImage ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
+                  <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                    <ImageComparisonSlider
+                      beforeImage={originalImage}
+                      afterImage={generatedImage}
+                      beforeLabel="Before"
+                      afterLabel="Output"
+                      imageFit="object-contain"
+                      imagePosition="object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                    {/* Download Button */}
+                    <button
+                      onClick={handleDownload}
+                      className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
+                    >
+                      <Download size={18} />
+                      Download
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={handleRun}
-                  disabled={isGenerating || !productImage}
-                  className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !productImage
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
-                    }`}
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                      Reimagining...
-                    </>
-                  ) : (
-                    <>
-                      <Palette size={16} className={!productImage ? "fill-slate-500" : "fill-black"} />
-                      Run Workflow
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
+                  <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
+                    <ImageComparisonSlider
+                      beforeImage={workflowData.sampleBefore}
+                      afterImage={workflowData.sampleAfter}
+                      beforeLabel="Before"
+                      afterLabel="After"
+                      imageFit="object-cover"
+                      imagePosition="object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
-            <div className="hidden md:flex flex-1 items-center justify-center bg-[#050505] relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20"
-                style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
-              </div>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
+                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own product
+                      </div>
+                    </div>
+                  </div>
 
-              {productImage && generatedImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <ImageComparisonSlider
-                    beforeImage={productImage}
-                    afterImage={generatedImage}
-                    beforeLabel="Reference"
-                    afterLabel="Reimagined"
-                    imageFit={workflowData.imageFit || 'object-cover'}
-                    imagePosition={workflowData.imagePosition || 'object-center'}
-                  />
-                  <button
-                    onClick={handleDownload}
-                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
-                  >
-                    <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
-                    Download
-                  </button>
-                </div>
-              ) : productImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={productImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
                       <div className="relative w-20 h-20 mb-4">
@@ -262,17 +285,6 @@ export default function ReimagineProduct() {
                       <p className="text-white font-medium text-lg animate-pulse">Reimagining product...</p>
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <ImageComparisonSlider
-                    beforeImage={workflowData.sampleBefore}
-                    afterImage={workflowData.sampleAfter}
-                    beforeLabel="Before"
-                    afterLabel="After"
-                    imageFit={workflowData.imageFit || 'object-cover'}
-                    imagePosition={workflowData.imagePosition || 'object-center'}
-                  />
                 </div>
               )}
             </div>

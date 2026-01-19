@@ -255,8 +255,7 @@ export default function PoseControl() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={(workflowData as any).imageFit || 'object-contain'}
-                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                    imageFit="object-contain"
                   />
                   <button
                     onClick={handleDownload}

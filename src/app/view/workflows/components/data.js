@@ -457,8 +457,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/mockup-generation-before.png",
     "sampleAfter": "/workflow-samples/mockup-generation-after.png",
     "imageFit": "object-contain",
-    "imagePosition": "object-center",
-    "cost": 90
+    "imagePosition": "object-center"
   },
   {
     "id": "business-card",
@@ -483,46 +482,30 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/id-card-before.png",
     "sampleAfter": "/workflow-samples/id-card-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center",
-    "cost": 90
+    "imagePosition": "object-center"
   },
-  //   {
-  //     "id": "reimagine-product",
-  //     "title": "Reimagine Product",
-  //     "category": "Photography",
-  //     "description": "Place your product in stunning new environments and artistic styles while keeping the product authentic.",
-  //     "model": "Seadream4/ Nano Banana/ Qwen",
-  //     "thumbnail": "/workflow-samples/reimagine-product-after.png",
-  //     "sampleBefore": "/workflow-samples/reimagine-product-before.png",
-  //     "sampleAfter": "/workflow-samples/reimagine-product-after.png",
-  //     "imageFit": "object-cover",
-  //     "imagePosition": "object-center",
-  //     "cost": 90
-  //   },
-  //   {
-  //     "id": "automotive",
-  //     "title": "Automotive Photography",
-  //     "category": "Photography",
-  //     "description": "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
-  //     "model": "AutoRender AI",
-  //     "thumbnail": "/workflow-samples/automotive-after.png",
-  //     "sampleBefore": "/workflow-samples/automotive-before.png",
-  //     "sampleAfter": "/workflow-samples/automotive-after.png",
-  //     "imageFit": "object-cover",
-  //     "imagePosition": "object-center",
-  //     "cost": 90
-  //   },
-  //   {
-  //     "id": "famous-photographer",
-  //     "title": "World Famous Photographer",
-  //     "category": "Photography",
-  //     "description": "Transform your photos into the signature style of legendary world-famous photographers.",
-  //     "model": "StyleRender AI",
-  //     "thumbnail": "/workflow-samples/style-transfer-after.jpg",
-  //     "sampleBefore": "/workflow-samples/style-transfer-before.jpg",
-  //     "sampleAfter": "/workflow-samples/style-transfer-after.jpg",
-  //     "imageFit": "object-cover",
-  //     "imagePosition": "object-center",
-  //     "cost": 90
-  //   }
-];
+  {
+    "id": "automotive",
+    "title": "Automotive Photography",
+    "category": "Photography",
+    "description": "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
+    "model": "AutoRender AI",
+    "thumbnail": "/workflow-samples/automotive-after.png",
+    "sampleBefore": "/workflow-samples/automotive-before.png",
+    "sampleAfter": "/workflow-samples/automotive-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "famous-photographer",
+    "title": "World Famous Photographer",
+    "category": "Photography",
+    "description": "Transform your photos into the signature style of legendary world-famous photographers.",
+    "model": "StyleRender AI",
+    "thumbnail": "/workflow-samples/famous-photographer-after.png",
+    "sampleBefore": "/workflow-samples/famous-photographer-before.png",
+    "sampleAfter": "/workflow-samples/famous-photographer-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  }
+]

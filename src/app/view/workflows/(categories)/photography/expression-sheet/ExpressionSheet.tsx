@@ -212,10 +212,10 @@ export default function ExpressionSheet() {
                   <ImageComparisonSlider
                     beforeImage={originalImage}
                     afterImage={generatedImage}
-                    beforeLabel="Original"
-                    afterLabel="Expression Sheet"
-                    imageFit={(workflowData as any).imageFit || 'object-contain'}
-                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                    beforeLabel="Before"
+                    afterLabel="After"
+                    imageFit={(workflowData as any).imageFit || 'object-cover'}
+                    imagePosition={(workflowData as any).imagePosition || 'object-top'}
                   />
                   <button
                     onClick={handleDownload}

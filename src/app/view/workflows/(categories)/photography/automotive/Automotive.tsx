@@ -273,15 +273,16 @@ export default function Automotive() {
                   <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
                     <img src={generatedImage} className="w-full h-full object-contain bg-black/40" alt="Generated Automotive Shot" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                    {/* Download Button */}
-                    <button
-                      onClick={handleDownload}
-                      className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
-                    >
+                    <button onClick={handleDownload} className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl">
                       <Download size={18} />
                       Download Shot
                     </button>
+                  </div>
+                </div>
+              ) : carImage ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+                  <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/20">
+                    <img src={carImage} className="w-full h-full object-contain" alt="Uploaded Car" />
                   </div>
                 </div>
               ) : (
@@ -289,21 +290,15 @@ export default function Automotive() {
                   <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
                     <img src={workflowData.sampleAfter} className="w-full h-full object-cover" alt="Sample Display" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
-
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
+                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own car photo
+                      </div>
+                    </div>
                   </div>
-
                   {isGenerating && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-40 transition-all duration-500 rounded-3xl m-8">
-                      <div className="relative w-24 h-24 mb-6">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/10 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin" />
-                        <Car size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-white font-bold text-xl mb-2 tracking-tight">Rendering Automotive Scenery</p>
-                        <p className="text-white/40 text-sm font-medium italic">Adjusting lighting and motion blur physics...</p>
-                      </div>
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-40 transition-all duration-500 rounded-3xl m-8">
+                      <img src="/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
                     </div>
                   )}
                 </div>

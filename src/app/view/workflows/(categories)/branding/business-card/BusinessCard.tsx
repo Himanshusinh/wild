@@ -88,15 +88,54 @@ export default function BusinessCard() {
       return;
     }
 
+    // Basic validation
+    if (!companyName || !personDetails || !contactDetails) {
+      toast.error('Please fill in all details');
+      return;
+    }
+
+    if (!selectedColor) {
+      toast.error('Please select a color');
+      return;
+    }
+
     try {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for frontend focus
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Parse person details
+      let personName = personDetails;
+      let designation = 'Founder';
+      if (personDetails.includes('-')) {
+        const parts = personDetails.split('-');
+        personName = parts[0].trim();
+        designation = parts[1].trim();
+      }
 
-      setGeneratedImage(workflowData.sampleAfter);
-      toast.success('Business card mockup generated successfully!');
+      const payload = {
+        logo: logoImage,
+        companyName,
+        personName,
+        designation,
+        contact: contactDetails,
+        style: cardStyle,
+        color: selectedColor,
+        sides: cardType === 'Double Sided' ? 2 : 1,
+        isPublic: true
+      };
+
+      const response = await axiosInstance.post('/api/workflows/branding/business-card', payload);
+
+      if (response.data?.data?.images && response.data.data.images.length > 0) {
+        // Use the first image (front side usually) or handle multiple if needed
+        // For simplicity showing the first result or if comparison needed logic can be added
+        // The backend returns an array of scored images.
+        const resultImage = response.data.data.images[0].url;
+        setGeneratedImage(resultImage);
+        toast.success('Business card mockup generated successfully!');
+      } else {
+        throw new Error('No image returned from generation');
+      }
 
     } catch (error: any) {
       console.error('Business Card error:', error);
