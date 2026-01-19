@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { FilePlus, ChevronUp } from 'lucide-react';
+import { FilePlus, ChevronUp, Edit3 } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
@@ -1334,6 +1334,7 @@ const EditImageInterface: React.FC = () => {
     // Reimagine feature is temporarily hidden from the tab list but kept in state for type-safety
     // { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
     { id: 'live-chat', label: 'Chat to Edit', description: 'Chat-driven edits & regenerations' },
+    { id: 'editor', label: 'Canvas Editor', description: 'Open external editor' },
   ] as const;
 
   // Feature preview assets and display labels
@@ -3723,6 +3724,14 @@ const EditImageInterface: React.FC = () => {
                   <button
                     key={feature.id}
                     onClick={() => {
+                      if (feature.id === 'editor') {
+                        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                        // User requested localhost:500 for local (likely typo for 5000 or 3005). 
+                        // The image_edit service runs on 3005, so we use that.
+                        const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
+                        window.open(url, '_blank');
+                        return;
+                      }
                       setSelectedFeature(feature.id as EditFeature);
                       // Update URL with feature parameter
                       const params = new URLSearchParams(window.location.search);
@@ -3756,6 +3765,7 @@ const EditImageInterface: React.FC = () => {
                         {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
                         {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
                         {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
+                        {feature.id === 'editor' && (<Edit3 className="md:w-6 md:h-6 w-5 h-5 text-white" />)}
                       </div>
 
                     </div>

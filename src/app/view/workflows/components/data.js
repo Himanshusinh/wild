@@ -392,12 +392,12 @@ export const WORKFLOWS_DATA = [
     "id": "reimagine-product",
     "title": "Reimagine Product",
     "category": "Photography",
-    "description": "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic styles and settings.",
+    "description": "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/reimagine-product-before.png",
-    "sampleBefore": "/workflow-samples/reimagine-product-before.png",
-    "sampleAfter": "/workflow-samples/reimagine-product-after.png",
-    "imageFit": "object-contain",
+    "thumbnail": "/workflow-samples/reimagine-product-before-v2.png",
+    "sampleBefore": "/workflow-samples/reimagine-product-before-v2.png",
+    "sampleAfter": "/workflow-samples/reimagine-product-after-v2.png",
+    "imageFit": "object-cover",
     "imagePosition": "object-center"
   },
   {
@@ -436,7 +436,55 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/mockup-generation-before.png",
     "sampleAfter": "/workflow-samples/mockup-generation-after.png",
     "imageFit": "object-contain",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "business-card",
+    "title": "Business Card",
+    "category": "Branding",
+    "description": "Generate professional business card mockups from your logos or descriptions.",
+    "model": "Logo Creator AI",
+    "thumbnail": "/workflow-samples/business-card-before.png",
+    "sampleBefore": "/workflow-samples/business-card-before.png",
+    "sampleAfter": "/workflow-samples/business-card-after.png",
+    "imageFit": "object-contain",
     "imagePosition": "object-center",
     "cost": 90
+  },
+  {
+    "id": "id-card",
+    "title": "ID Card",
+    "category": "Branding",
+    "description": "Generate professional corporate ID cards and employee badges.",
+    "model": "Branding AI",
+    "thumbnail": "/workflow-samples/id-card-after.png",
+    "sampleBefore": "/workflow-samples/id-card-after.png",
+    "sampleAfter": "/workflow-samples/id-card-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "automotive",
+    "title": "Automotive Photography",
+    "category": "Photography",
+    "description": "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
+    "model": "AutoRender AI",
+    "thumbnail": "/workflow-samples/automotive-after.png",
+    "sampleBefore": "/workflow-samples/automotive-before.png",
+    "sampleAfter": "/workflow-samples/automotive-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "famous-photographer",
+    "title": "World Famous Photographer",
+    "category": "Photography",
+    "description": "Transform your photos into the signature style of legendary world-famous photographers.",
+    "model": "StyleRender AI",
+    "thumbnail": "/workflow-samples/famous-photographer-after.png",
+    "sampleBefore": "/workflow-samples/famous-photographer-before.png",
+    "sampleAfter": "/workflow-samples/famous-photographer-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
   }
-];
+]
