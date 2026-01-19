@@ -70,7 +70,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // User can see actual credits per quality in the quality dropdown
     const quality = model.value === 'openai/gpt-image-1.5' ? 'low' : undefined;
     const creditInfo = getModelCreditInfo(model.value, undefined, undefined, undefined, quality);
-    const isFree = model.value === "new-turbo-model" || model.value === 'wildmindimage';
+    const isFree = model.value === 'wildmindimage';
     const creditLabel = isFree
       ? 'Free (0 credits)'
       : (creditInfo.displayText || (creditInfo.credits != null ? `${creditInfo.credits} credits` : null));
@@ -203,7 +203,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
         className="Z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
       >
         {selectedModel === "new-turbo-model" ? (
-          <InfinityIcon className="w-4 h-4 mr-1" />
+          <Cpu className="w-4 h-4 mr-1" />
         ) : (
           <Cpu className="w-4 h-4 mr-1" />
         )}

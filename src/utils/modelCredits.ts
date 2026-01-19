@@ -47,7 +47,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Google Nano Banana (used by erase/replace in Edit Image)
   'google_nano_banana': 98,
   // Z-Image Turbo: Free (0 credits) for launch offer
-  'new-turbo-model': 0, // Free unlimited image generation
+  'new-turbo-model': 25, // z-image-turbo (now 25 credits)
   // WILDMINDIMAGE: Free (0 credits)
   'wildmindimage': 0,
   // Product Generation Models
@@ -321,7 +321,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate-crystal-upscaler-6k': 1620,
   'replicate-crystal-upscaler-8k': 3220,
   'replicate-crystal-upscaler-12k': 6420,
-  
+
   // GPT Image 1.5 quality variants
   'gpt-image-1.5-auto': 292,
   'gpt-image-1.5-low': 46,

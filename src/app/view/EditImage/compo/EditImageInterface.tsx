@@ -313,11 +313,14 @@ const EditImageInterface: React.FC = () => {
   const [liveResolution, setLiveResolution] = useState<'1K' | '2K' | '4K'>('1K');
   const [livePrompt, setLivePrompt] = useState<string>('');
   const [liveChatMessages, setLiveChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; status?: 'generating' | 'done' }>>([]);
-  const [liveHistory, setLiveHistory] = useState<string[]>([]);
+  const [liveHistory, setLiveHistory] = useState<{ id?: string; url: string }[]>([]);
   const [activeLiveIndex, setActiveLiveIndex] = useState<number>(-1);
   const [liveOriginalInput, setLiveOriginalInput] = useState<string | null>(null);
+  const [hoveredThumbnailIdx, setHoveredThumbnailIdx] = useState<number | null>(null);
+  const [showThumbnailMenuIdx, setShowThumbnailMenuIdx] = useState<number | null>(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
+  const thumbnailMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = chatListRef.current;
@@ -425,10 +428,104 @@ const EditImageInterface: React.FC = () => {
     return normalized;
   };
 
+  // Handler to delete an image from the live chat history
+  const handleDeleteLiveChatImage = async (origIdx: number, generationId?: string) => {
+    try {
+      // Close the menu first
+      setShowThumbnailMenuIdx(null);
+      setHoveredThumbnailIdx(null);
+
+      // Capture current state BEFORE any updates
+      const currentHistory = [...liveHistory];
+      const currentActiveIdx = activeLiveIndex;
+
+      // Optionally delete from server if generationId exists
+      if (generationId) {
+        try {
+          await axiosInstance.delete(`/api/generations/${generationId}`);
+        } catch (e) {
+          console.error('Failed to delete from server:', e);
+          // Continue with local deletion even if server deletion fails
+        }
+      }
+
+      // Calculate new state based on CURRENT values
+      let newActiveIndex = currentActiveIdx;
+      let newImageUrl: string | null = null;
+      let newHistoryId: string | null = null;
+
+      // If the deleted image was active, switch to another image or reset
+      if (currentActiveIdx === origIdx) {
+        // Calculate which image to show next based on current array
+        if (currentHistory.length > 1) {
+          // Determine which image to show based on which index we're deleting
+          let imageToShow;
+          let newIdxAfterDeletion;
+
+          if (origIdx === 0) {
+            // Deleting first image, show what's currently at index 1 (will become index 0)
+            imageToShow = currentHistory[1];
+            newIdxAfterDeletion = 0;
+          } else {
+            // Deleting any other image, show the previous one (index doesn't change)
+            imageToShow = currentHistory[origIdx - 1];
+            newIdxAfterDeletion = origIdx - 1;
+          }
+
+          if (imageToShow) {
+            newActiveIndex = newIdxAfterDeletion;
+            newImageUrl = imageToShow.url;
+            newHistoryId = imageToShow.id || null;
+          } else {
+            // Fallback to input if something went wrong
+            newActiveIndex = -1;
+            newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+            newHistoryId = null;
+          }
+        } else {
+          // This was the last image, reset to input
+          newActiveIndex = -1;
+          newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+          newHistoryId = null;
+        }
+      } else if (currentActiveIdx > origIdx) {
+        // Adjust active index if it was after the deleted image
+        newActiveIndex = currentActiveIdx - 1;
+      }
+
+      // Now update all states together
+      setLiveHistory((prev) => {
+        const updated = [...prev];
+        updated.splice(origIdx, 1);
+        return updated;
+      });
+
+      // Update active index if it changed
+      if (newActiveIndex !== currentActiveIdx) {
+        setActiveLiveIndex(newActiveIndex);
+      }
+
+      // Update outputs and inputs if the active image changed
+      if (currentActiveIdx === origIdx) {
+        if (newImageUrl) {
+          setOutputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+          setInputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+        } else {
+          setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+          setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+        }
+        setCurrentHistoryId(newHistoryId);
+      }
+    } catch (error) {
+      console.error('Error deleting live chat image:', error);
+    }
+  };
+
+
   const handleLiveGenerate = async () => {
     let optimisticDebit = 0;
     try {
-      const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex] : null);
+      const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex]?.url : null);
       if (!img) {
         setErrorMsg('Please upload or select an image for Live Chat');
         return;
@@ -464,6 +561,7 @@ const EditImageInterface: React.FC = () => {
       };
 
       let out = '';
+      let res: any = null;
       if (liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') {
         const modelName = liveModel === 'seedream-v4' ? 'bytedance/seedream-4' : 'bytedance/seedream-4.5';
         const payload: any = {
@@ -476,7 +574,7 @@ const EditImageInterface: React.FC = () => {
           max_images: 1,
           isPublic: true,
         };
-        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post('/api/replicate/generate', payload);
         out = parseOutputUrl(res);
       } else if (liveModel === 'openai/gpt-image-1.5') {
         const payload: any = {
@@ -491,7 +589,7 @@ const EditImageInterface: React.FC = () => {
           generationType: 'live-chat',
           isPublic: true,
         };
-        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post('/api/replicate/generate', payload);
         out = parseOutputUrl(res);
       } else if (liveModel === 'qwen-image-edit-2511') {
         const payload: any = {
@@ -505,7 +603,7 @@ const EditImageInterface: React.FC = () => {
           generationType: 'live-chat',
           isPublic: true,
         };
-        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post('/api/replicate/generate', payload);
         out = parseOutputUrl(res);
       } else {
         const payload: any = {
@@ -518,14 +616,20 @@ const EditImageInterface: React.FC = () => {
           size: liveResolution,
           generationType: 'live-chat',
         };
-        const res = await axiosInstance.post('/api/fal/generate', payload);
+        res = await axiosInstance.post('/api/fal/generate', payload);
         out = parseOutputUrl(res);
       }
 
       if (out) {
+        // Extract ID from response (support both Replicate and Fal structures)
+        // Replicate: res.data.id
+        // Fal: res.data.request_id (or sometimes directly in data)
+        const generationId = res?.data?.id || res?.data?.request_id || res?.data?.data?.request_id; // Try to find an ID
+
         setOutputs((prev) => ({ ...prev, ['live-chat']: out }));
-        setLiveHistory((prev) => [...prev, out]);
+        setLiveHistory((prev) => [...prev, { id: generationId, url: out }]);
         setActiveLiveIndex((prev) => prev + 1 >= 0 ? prev + 1 : 0);
+        setCurrentHistoryId(generationId || null); // Set current ID for deletion logic
         // Preserve the original input used for this generation so it can be shown
         // in the right-side thumbnail column below generated images.
         if (!liveOriginalInput && inputs['live-chat']) {
@@ -4553,49 +4657,49 @@ const EditImageInterface: React.FC = () => {
                     )}
                     {model === 'philz1337x/crystal-upscaler' && (
                       <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={6}
-                            step={1}
-                            value={Number(String(scaleFactor).replace('x', '')) || 2}
-                            onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
-                            className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                            >
-                              <span className="truncate uppercase">{(output || 'png').toString()}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                            </button>
-                            {activeDropdown === 'output' && (
-                              <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                {['png', 'jpg'].map((fmt) => (
-                                  <button
-                                    key={fmt}
-                                    onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                  >
-                                    <span className="uppercase">{fmt}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={6}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 2}
+                              onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
+                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
+                            <div className="relative edit-dropdown">
+                              <button
+                                onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                              >
+                                <span className="truncate uppercase">{(output || 'png').toString()}</span>
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                              </button>
+                              {activeDropdown === 'output' && (
+                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                  {['png', 'jpg'].map((fmt) => (
+                                    <button
+                                      key={fmt}
+                                      onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                      className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                    >
+                                      <span className="uppercase">{fmt}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-[11px] text-white/50">
-                        Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
-                        {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
-                      </div>
+                        <div className="text-[11px] text-white/50">
+                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
+                          {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                        </div>
                       </div>
                     )}
                     {model === 'fal-ai/topaz/upscale/image' && (
@@ -4867,11 +4971,38 @@ const EditImageInterface: React.FC = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const id = currentHistoryId;
-                            if (id) {
-                              await axiosInstance.delete(`/api/generations/${id}`);
+                            if (selectedFeature === 'live-chat') {
+                              // Special case: deleting the input/original image
+                              if (activeLiveIndex === -1) {
+                                // Clear the input images
+                                setLiveOriginalInput(null);
+                                setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+
+                                // If there are generated images, switch to the last one
+                                if (liveHistory.length > 0) {
+                                  const lastIdx = liveHistory.length - 1;
+                                  const lastImage = liveHistory[lastIdx];
+                                  setActiveLiveIndex(lastIdx);
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                  setInputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                  setCurrentHistoryId(lastImage.id || null);
+                                } else {
+                                  // No generated images, reset everything
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+                                  setCurrentHistoryId(null);
+                                }
+                              } else {
+                                // Deleting a generated image from history
+                                await handleDeleteLiveChatImage(activeLiveIndex, currentHistoryId || undefined);
+                              }
+                            } else {
+                              // For other features, just delete from server and clear output
+                              const id = currentHistoryId;
+                              if (id) {
+                                await axiosInstance.delete(`/api/generations/${id}`);
+                              }
+                              setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                             }
-                            setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                             setShowImageMenu(false);
                           } catch (e) {
                             console.error('Delete failed:', e);
@@ -5800,22 +5931,26 @@ const EditImageInterface: React.FC = () => {
                 <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-[35rem] lg:h-[45rem] very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
                   <div className="flex flex-row md:flex-col items-center md:items-end md:gap-3 gap-1 pr-1 min-w-max">
                     {/* Generated images (latest first) */}
-                    {(liveHistory || []).slice().reverse().map((url, revIdx) => {
+                    {(liveHistory || []).slice().reverse().map((item, revIdx) => {
                       // revIdx 0 is latest; compute original index
                       const origIdx = liveHistory.length - 1 - revIdx;
-                      const isActive = outputs['live-chat'] === url && activeLiveIndex === origIdx;
+                      const isActive = outputs['live-chat'] === item.url && activeLiveIndex === origIdx;
+                      const isHovered = hoveredThumbnailIdx === origIdx;
+                      const showMenu = showThumbnailMenuIdx === origIdx;
+
                       return (
                         <button
-                          key={`gen-${origIdx}-${url}`}
+                          key={`gen-${origIdx}-${item.url}`}
                           onClick={() => {
                             setActiveLiveIndex(origIdx);
-                            setOutputs((prev) => ({ ...prev, ['live-chat']: url }));
-                            setInputs((prev) => ({ ...prev, ['live-chat']: url }));
+                            setOutputs((prev) => ({ ...prev, ['live-chat']: item.url }));
+                            setInputs((prev) => ({ ...prev, ['live-chat']: item.url }));
+                            setCurrentHistoryId(item.id || null);
                           }}
-                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
+                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
                           title={`Generation ${origIdx + 1}`}
                         >
-                          <img src={normalizeEditImageUrl(url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
+                          <img src={normalizeEditImageUrl(item.url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
                         </button>
                       );
                     })}
@@ -5824,7 +5959,7 @@ const EditImageInterface: React.FC = () => {
                     {(liveOriginalInput || inputs['live-chat']) && (
                       (() => {
                         const inputUrl = (liveOriginalInput || inputs['live-chat']) as string;
-                        const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1] === inputUrl;
+                        const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1]?.url === inputUrl;
                         if (alreadyShown) return null;
                         const isActiveInput = outputs['live-chat'] === inputUrl && activeLiveIndex === -1;
                         return (
