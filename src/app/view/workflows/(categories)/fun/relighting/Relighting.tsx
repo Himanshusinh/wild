@@ -25,7 +25,7 @@ export default function Relighting() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedLighting, setSelectedLighting] = useState("");
+  const [selectedLighting, setSelectedLighting] = useState("Natural");
 
   // Workflow Data
   const workflowData = {
@@ -35,6 +35,15 @@ export default function Relighting() {
     description: "Change the lighting of any scene to Night, Golden Hour, or custom studio presets.",
     cost: 90
   };
+
+  const lightingOptions = [
+    "Natural",
+    "Studio",
+    "Cinematic",
+    "Dramatic",
+    "Soft Diffused",
+    "Moody"
+  ];
 
   useEffect(() => {
     // Open modal animation on mount
@@ -155,14 +164,22 @@ export default function Relighting() {
                   </div>
                 </div>
 
-                <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-2 tracking-wider">Lighting Style (Optional)</label>
-                  <textarea
-                    value={selectedLighting}
-                    onChange={(e) => setSelectedLighting(e.target.value)}
-                    placeholder="E.g., Cyberpunk neon, soft morning light, dramatic shadows..."
-                    className="w-full bg-[#111] border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa] transition-all resize-none h-24"
-                  />
+                <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Lighting Style</label>
+                  <div className="flex flex-wrap gap-2">
+                    {lightingOptions.map(style => (
+                      <button
+                        key={style}
+                        onClick={() => setSelectedLighting(style)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedLighting === style
+                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                          }`}
+                      >
+                        {style}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

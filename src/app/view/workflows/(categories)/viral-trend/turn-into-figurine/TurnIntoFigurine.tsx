@@ -2,16 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Unused imports removed
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
 
-export default function CustomStickers() {
+export default function TurnIntoFigurine() {
   const router = useRouter();
   const {
     creditBalance,
@@ -25,56 +23,17 @@ export default function CustomStickers() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedShape, setSelectedShape] = useState("Circle");
-  const [selectedStyle, setSelectedStyle] = useState("Cartoon");
-  const [selectedTheme, setSelectedTheme] = useState("Emoji / Expressions");
-  const [selectedMaterial, setSelectedMaterial] = useState("Matte");
-  const [selectedFileStyle, setSelectedFileStyle] = useState("PNG");
+  const [toyName, setToyName] = useState("");
   const [additionalDetails, setAdditionalDetails] = useState("");
 
   // Workflow Data
   const workflowData = {
-    id: "custom-stickers",
-    title: "Create custom stickers",
-    category: "Fun",
-    description: "Create a collection of cute chibi illustration stickers and see them as mockups on notebooks or laptops.",
+    id: "turn-into-figurine",
+    title: "Turn your self into a figurine",
+    category: "Viral Trend",
+    description: "Transform yourself into a premium 3D sculpted character figurine mockup.",
     cost: 90
   };
-
-  const shapeOptions = [
-    "Circle",
-    "Square",
-    "Rectangle",
-    "Rounded Rectangle",
-    "Custom Shape (Auto Cut)"
-  ];
-
-  const styleOptions = [
-    "Cartoon",
-    "Minimal",
-    "Cute",
-    "Bold",
-    "Hand-Drawn",
-    "Realistic"
-  ];
-
-  const themeOptions = [
-    "Emoji / Expressions",
-    "Logo / Brand",
-    "Quotes / Typography",
-    "Illustration",
-    "Icon / Symbol",
-    "Pattern-Based"
-  ];
-
-  const materialOptions = [
-    "Matte",
-    "Glossy",
-    "Transparent",
-    "Holographic",
-    "Vinyl",
-    "Paper"
-  ];
 
   useEffect(() => {
     // Open modal animation on mount
@@ -84,7 +43,7 @@ export default function CustomStickers() {
   const onClose = () => {
     setIsOpen(false);
     setTimeout(() => {
-      router.push('/view/workflows/fun');
+      router.push('/view/workflows/viral-trend');
     }, 300);
   };
 
@@ -116,15 +75,14 @@ export default function CustomStickers() {
       setIsGenerating(true);
 
       // Simulation for now
-      console.log(`Generating sticker with shape: ${selectedShape}, style: ${selectedStyle}, theme: ${selectedTheme}, details: ${additionalDetails}`);
       await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/custom-stickers-after.jpg"); // Placeholder result
-      toast.success(`Sticker created successfully!`);
+      setGeneratedImage("/workflow-samples/figurine-example.jpg"); // Placeholder result
+      toast.success('Figurine generated successfully!');
 
     } catch (error: any) {
-      console.error('Custom Stickers error:', error);
+      console.error('Figurine generation error:', error);
       rollbackOptimisticDeduction(CREDIT_COST);
-      toast.error(error.response?.data?.message || error.message || 'Failed to create stickers');
+      toast.error(error.response?.data?.message || error.message || 'Failed to generate figurine');
     } finally {
       setIsGenerating(false);
     }
@@ -133,7 +91,7 @@ export default function CustomStickers() {
   const handleDownload = async () => {
     if (!generatedImage) return;
     try {
-      await downloadFileWithNaming(generatedImage, null, 'image', 'custom-stickers-result');
+      await downloadFileWithNaming(generatedImage, null, 'image', 'figurine-result');
       toast.success('Downloading...');
     } catch (error) {
       toast.error('Failed to download image');
@@ -193,108 +151,15 @@ export default function CustomStickers() {
                   </div>
                 </div>
 
-                <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Shape</label>
-                  <div className="flex flex-wrap gap-2">
-                    {shapeOptions.map(shape => (
-                      <button
-                        key={shape}
-                        onClick={() => setSelectedShape(shape)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedShape === shape
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {shape}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-700">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Style</label>
-                  <div className="flex flex-wrap gap-2">
-                    {styleOptions.map(style => (
-                      <button
-                        key={style}
-                        onClick={() => setSelectedStyle(style)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedStyle === style
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Design Theme</label>
-                  <div className="flex flex-wrap gap-2">
-                    {themeOptions.map(theme => (
-                      <button
-                        key={theme}
-                        onClick={() => setSelectedTheme(theme)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedTheme === theme
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {theme}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Material</label>
-                  <div className="flex flex-wrap gap-2">
-                    {materialOptions.map(material => (
-                      <button
-                        key={material}
-                        onClick={() => setSelectedMaterial(material)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedMaterial === material
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {material}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Type</label>
-                  <div className="flex flex-wrap gap-2">
-                    {["Single Sticker", "Sticker Sheet", "Die Cut", "Kiss Cut"].map(style => (
-                      <button
-                        key={style}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">File Style</label>
-                  <div className="flex flex-wrap gap-2">
-                    {["PNG", "JPG", "WEBP"].map(style => (
-                      <button
-                        key={style}
-                        onClick={() => setSelectedFileStyle(style)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedFileStyle === style
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">TOY NAME</label>
+                  <input
+                    type="text"
+                    value={toyName}
+                    onChange={(e) => setToyName(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all"
+                    placeholder="e.g. Cyberpunk"
+                  />
                 </div>
 
                 <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
@@ -303,11 +168,10 @@ export default function CustomStickers() {
                     value={additionalDetails}
                     onChange={(e) => setAdditionalDetails(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Add extra text, background details, or specific instructions here..."
+                    placeholder="Describe background, accessories, or style details..."
                   ></textarea>
                 </div>
               </div>
-
 
               <div className="mt-auto pt-6 border-t border-white/5">
                 <div className="flex items-center justify-between mb-4">
@@ -355,7 +219,7 @@ export default function CustomStickers() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                   />
                   <button
                     onClick={handleDownload}
@@ -374,19 +238,13 @@ export default function CustomStickers() {
                         <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
                         <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                       </div>
-                      <p className="text-white font-medium text-lg animate-pulse">Creating stickers...</p>
+                      <p className="text-white font-medium text-lg animate-pulse">Generating figurine...</p>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <ImageComparisonSlider
-                    beforeImage="/workflow-samples/custom-stickers-before.png"
-                    afterImage="/workflow-samples/custom-stickers-after.png"
-                    beforeLabel="Before"
-                    afterLabel="After"
-                    imageFit="object-cover"
-                  />
+                  <img src="/workflow-samples/figurine-example.jpg" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                 </div>
               )}
             </div>
@@ -405,8 +263,7 @@ export default function CustomStickers() {
           }}
           remainingSlots={1}
         />
-      )
-      }
+      )}
     </>
   );
 }

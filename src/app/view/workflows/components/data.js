@@ -232,9 +232,9 @@ export const WORKFLOWS_DATA = [
     "category": "Viral Trend",
     "description": "Transform yourself into a premium 3D sculpted character figurine mockup.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1594732832278-abd644401422?q=80&w=800&auto=format&fit=crop",
+    "thumbnail": "/workflow-samples/figurine-example.jpg",
+    "sampleBefore": "/workflow-samples/figurine-example.jpg",
+    "sampleAfter": "/workflow-samples/figurine-example.jpg",
     "cost": 90
   },
   {

@@ -25,7 +25,8 @@ export default function ChangeSeasons() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedSeason, setSelectedSeason] = useState("Winter");
+  const [additionalDetails, setAdditionalDetails] = useState("");
+
 
   // Workflow Data
   const workflowData = {
@@ -36,12 +37,7 @@ export default function ChangeSeasons() {
     cost: 90
   };
 
-  const seasonOptions = [
-    "Spring",
-    "Summer",
-    "Autumn",
-    "Winter"
-  ];
+
 
   useEffect(() => {
     // Open modal animation on mount
@@ -85,7 +81,7 @@ export default function ChangeSeasons() {
       // Simulation for now
       await new Promise(resolve => setTimeout(resolve, 3000));
       setGeneratedImage("/workflow-samples/change-seasons-after.jpg"); // Placeholder result
-      toast.success(`Season changed to ${selectedSeason}!`);
+      toast.success(`Season changed successfully!`);
 
     } catch (error: any) {
       console.error('Change Seasons error:', error);
@@ -137,27 +133,7 @@ export default function ChangeSeasons() {
                 <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
-                <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-2 tracking-wider">Select Season</label>
-                  <div className="relative group">
-                    <select
-                      value={selectedSeason}
-                      onChange={(e) => setSelectedSeason(e.target.value)}
-                      className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white appearance-none focus:outline-none focus:border-[#60a5fa] transition-all cursor-pointer group-hover:border-white/20"
-                    >
-                      {seasonOptions.map(season => (
-                        <option key={season} value={season} className="bg-[#0A0A0A] text-white py-2">
-                          {season}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-white transition-colors">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -180,6 +156,16 @@ export default function ChangeSeasons() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
+                <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">ADDITIONAL DETAILS (OPTIONAL)</label>
+                <textarea
+                  value={additionalDetails}
+                  onChange={(e) => setAdditionalDetails(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                  placeholder="Describe the season or add extra details..."
+                ></textarea>
               </div>
 
               <div className="mt-auto pt-6 border-t border-white/5">
@@ -265,7 +251,7 @@ export default function ChangeSeasons() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {isUploadModalOpen && (
         <UploadModal
@@ -278,7 +264,8 @@ export default function ChangeSeasons() {
           }}
           remainingSlots={1}
         />
-      )}
+      )
+      }
     </>
   );
 }
