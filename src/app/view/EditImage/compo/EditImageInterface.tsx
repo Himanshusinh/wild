@@ -23,7 +23,7 @@ import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
 import { useCredits } from '@/hooks/useCredits';
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
+type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat' | 'editor';
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
 // This prevents passing `/_next/image?url=...` wrappers to the backend, which can't use them.
@@ -102,6 +102,7 @@ const EditImageInterface: React.FC = () => {
     'expand': null,
     'reimagine': null,
     'live-chat': null,
+    'editor': null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
@@ -114,6 +115,7 @@ const EditImageInterface: React.FC = () => {
     'expand': null,
     'reimagine': null,
     'live-chat': null,
+    'editor': null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
     'upscale': false,
@@ -125,6 +127,7 @@ const EditImageInterface: React.FC = () => {
     'expand': false,
     'reimagine': false,
     'live-chat': false,
+    'editor': false,
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
@@ -846,6 +849,7 @@ const EditImageInterface: React.FC = () => {
             'expand': directUrl,
             'reimagine': directUrl,
             'live-chat': directUrl,
+            'editor': directUrl,
           });
         } else if (imageParam && imageParam.trim() !== '') {
           const normalizedImageParam = normalizeEditImageUrl(imageParam);
@@ -859,6 +863,7 @@ const EditImageInterface: React.FC = () => {
             'expand': normalizedImageParam,
             'reimagine': normalizedImageParam,
             'live-chat': normalizedImageParam,
+            'editor': normalizedImageParam,
           });
         }
       } else if (imageParam && imageParam.trim() !== '') {
@@ -874,6 +879,7 @@ const EditImageInterface: React.FC = () => {
           'expand': normalizedImageParam,
           'reimagine': normalizedImageParam,
           'live-chat': normalizedImageParam,
+          'editor': normalizedImageParam,
         });
       }
     } catch { }
@@ -1348,6 +1354,7 @@ const EditImageInterface: React.FC = () => {
     'vectorize': '/editimage/vector_banner.jpg',
     'reimagine': '/editimage/replace_banner.jpg',
     'live-chat': '/editimage/resize_banner.jpg',
+    'editor': '/editimage/upscale_banner.jpg',
   };
   const featureDisplayName: Record<EditFeature, string> = {
     'upscale': 'Upscale',
@@ -1359,6 +1366,7 @@ const EditImageInterface: React.FC = () => {
     'vectorize': 'Vectorize',
     'reimagine': 'Reimagine',
     'live-chat': 'Live Chat',
+    'editor': 'Canvas Editor',
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1378,6 +1386,7 @@ const EditImageInterface: React.FC = () => {
           'expand': img,
           'reimagine': img,
           'live-chat': img,
+          'editor': img,
         });
       };
       reader.readAsDataURL(file);
@@ -3466,8 +3475,8 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null });
+    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null, 'editor': null });
+    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null, 'editor': null });
     // Set appropriate default model based on selected feature
     if (selectedFeature === 'remove-bg') {
       setModel('851-labs/background-remover');
@@ -3681,6 +3690,7 @@ const EditImageInterface: React.FC = () => {
               // Keep reimagine present for type-safety but unused in UI
               'reimagine': null,
               'live-chat': first,
+              'editor': first,
             });
             // Clear all outputs when a new image is selected so the output area re-renders
             setOutputs({
@@ -3694,6 +3704,7 @@ const EditImageInterface: React.FC = () => {
               // Keep reimagine present for type-safety but unused in UI
               'reimagine': null,
               'live-chat': null,
+              'editor': null,
             });
             // Also reset zoom and pan state
             setScale(1);
@@ -3781,31 +3792,6 @@ const EditImageInterface: React.FC = () => {
 
                   </button>
                 ))}
-                {/* Editor external link button */}
-                <button
-                  key="editor-external"
-                  onClick={() => {
-                    try {
-                      if (typeof window !== 'undefined') {
-                        window.open('/edit-image/editor', '_blank', 'noopener');
-                      }
-                    } catch (e) { }
-                  }}
-                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition border-white/10 hover:bg-white/10`}
-                  title="Open Editor"
-                >
-                  <div className="flex items-center gap-0 justify-center">
-                    <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center`}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/90">
-                        <path d="M3 21v-3a4 4 0 0 1 4-4h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M17.5 6.5l0 0a2.12 2.12 0 0 1 3 3L12 18l-4 1 1-4 8.5-8.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center pt-1">
-                    <span className="text-white text-[10px] md:text-sm text-center">Editor</span>
-                  </div>
-                </button>
               </div>
             </div>
 
@@ -4884,6 +4870,7 @@ const EditImageInterface: React.FC = () => {
                       'expand': img,
                       'reimagine': img,
                       'live-chat': img,
+                      'editor': img,
                     });
                     // Clear all outputs when a new image is dropped so the output area re-renders
                     setOutputs({
@@ -4896,6 +4883,7 @@ const EditImageInterface: React.FC = () => {
                       'expand': null,
                       'reimagine': null,
                       'live-chat': null,
+                      'editor': null,
                     });
                     // Also reset zoom and pan state
                     setScale(1);
