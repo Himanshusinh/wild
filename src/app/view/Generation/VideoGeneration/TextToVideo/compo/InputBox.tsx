@@ -57,7 +57,7 @@ import HistoryControls from './HistoryControls';
 
 interface InputBoxProps {
   placeholder?: string;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
   showHistory?: boolean; // Control whether to show the history section
 }
 

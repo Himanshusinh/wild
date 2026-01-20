@@ -10,7 +10,7 @@ import HistoryControls from './TextToVideo/compo/HistoryControls';
 import { usePathname } from 'next/navigation';
 import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
 
-type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'Edit';
+type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
 
 export default function VideoGenerationPage() {
     const searchParams = useSearchParams();
@@ -94,12 +94,21 @@ export default function VideoGenerationPage() {
                                     )}
                                     {/* Desktop buttons: hidden on small screens */}
                                     <div className="hidden md:flex items-center md:gap-3 gap-2 overflow-x-auto scrollbar-none ml-2 md:ml-4">
-                                        {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
+                                        {(['Video', 'Lipsync', 'Animate', 'Edit', 'Video editor'] as VideoFeature[]).map((feature) => (
                                             <button
                                                 key={feature}
                                                 onClick={() => {
                                                     if (feature === 'Edit') {
                                                         router.push('/text-to-video/edit-video?feature=upscale');
+                                                        return;
+                                                    }
+                                                    if (feature === 'Video editor') {
+                                                        const hostname = window.location.hostname;
+                                                        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                                                            window.open('http://localhost:3001', '_blank');
+                                                        } else {
+                                                            window.open('https://editor-video.wildmindai.com/', '_blank');
+                                                        }
                                                         return;
                                                     }
                                                     setActiveFeature(feature);
@@ -136,12 +145,21 @@ export default function VideoGenerationPage() {
 
                             {/* Mobile-only feature buttons: placed below the descriptive text */}
                             <div className="flex md:hidden items-center gap-2 overflow-x-auto scrollbar-none ">
-                                {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
+                                {(['Video', 'Lipsync', 'Animate', 'Edit', 'Video editor'] as VideoFeature[]).map((feature) => (
                                     <button
                                         key={feature + '-mobile'}
                                         onClick={() => {
                                             if (feature === 'Edit') {
                                                 router.push('/text-to-video/edit-video?feature=upscale');
+                                                return;
+                                            }
+                                            if (feature === 'Video editor') {
+                                                const hostname = window.location.hostname;
+                                                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                                                    window.open('http://localhost:3001', '_blank');
+                                                } else {
+                                                    window.open('https://editor-video.wildmindai.com/', '_blank');
+                                                }
                                                 return;
                                             }
                                             setActiveFeature(feature);
