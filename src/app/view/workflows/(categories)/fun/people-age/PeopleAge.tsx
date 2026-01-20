@@ -85,10 +85,18 @@ export default function PeopleAge() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/people-age-after.png"); // Placeholder result
-      toast.success(`Age transformation to ${selectedAge} successful!`);
+      const response = await axiosInstance.post('/api/workflows/fun/people-age', {
+        image: originalImage,
+        targetAge: selectedAge,
+        isPublic: true
+      });
+
+      if (response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success(`Age transformation to ${selectedAge} successful!`);
+      } else {
+        throw new Error('No image returned from server');
+      }
 
     } catch (error: any) {
       console.error('People Age error:', error);
@@ -231,7 +239,8 @@ export default function PeopleAge() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-cover"
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}

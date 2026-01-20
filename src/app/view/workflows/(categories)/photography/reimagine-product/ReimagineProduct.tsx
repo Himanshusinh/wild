@@ -43,7 +43,7 @@ export default function ReimagineProduct() {
     cost: 80,
     sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
     sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
-  };
+  }) as any;
 
   const CREDIT_COST = 90;
 
@@ -142,168 +142,172 @@ export default function ReimagineProduct() {
                 <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
-              <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
+                <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
-              <div className="flex flex-col gap-6 mb-8">
-                {/* 1. Source Photo */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => setIsUploadModalOpen(true)}>
-                    {productImage ? (
-                      <>
-                        <img src={productImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Product" />
-                        <div className="relative z-10">
-                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Product Image</span>
+                <div className="flex flex-col gap-6 mb-8">
+                  {/* 1. Source Photo */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
+                    <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                      onClick={() => setIsUploadModalOpen(true)}>
+                      {productImage ? (
+                        <>
+                          <img src={productImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Product" />
+                          <div className="relative z-10">
+                            <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Product Image</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
+                          <div className="text-center">
+                            <span className="text-sm text-slate-300 block font-medium">Upload Product Image</span>
+                            <span className="text-[10px] text-slate-500">Center-faced snapshot best</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
+                    <label className="text-[10px] font-bold uppercase text-slate-500 mb-3 block ml-1 tracking-wider">REIMAGINATION STYLE</label>
+                    <div className="flex flex-wrap gap-2">
+                      {STYLES.map((style) => (
+                        <button
+                          key={style}
+                          onClick={() => setSelectedStyle(style)}
+                          className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${selectedStyle === style
+                            ? 'bg-[#60a5fa] border-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
+                    <textarea
+                      value={additionalDetails}
+                      onChange={(e) => setAdditionalDetails(e.target.value)}
+                      className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-24"
+                      placeholder="E.g. Soft lighting, marble surface, flowers in background..."
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-auto pt-6 border-t border-white/5">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-medium text-slate-500">Cost:</span>
+                  <div className="flex items-center gap-1.5 text-white font-medium text-sm">
+                    <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
+                    {CREDIT_COST} Credits
+                  </div>
+                </div>
+                <button
+                  onClick={handleRun}
+                  disabled={isGenerating || !productImage}
+                  className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
+                  ${isGenerating || !productImage
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)] active:scale-[0.98]'
+                    }`}
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      Reimagining...
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={16} className={!productImage ? "fill-slate-500" : "fill-black"} />
+                      Run Workflow
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Preview */}
+            <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
+              <div className="flex-1 relative">
+                {productImage && generatedImage ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
+                    <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                      <ImageComparisonSlider
+                        beforeImage={productImage}
+                        afterImage={generatedImage}
+                        beforeLabel="Before"
+                        afterLabel="Output"
+                        imageFit="object-contain"
+                        imagePosition="object-center"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                      {/* Download Button */}
+                      <button
+                        onClick={handleDownload}
+                        className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
+                      >
+                        <Download size={18} />
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
+                    <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
+                      <ImageComparisonSlider
+                        beforeImage={workflowData.sampleBefore}
+                        afterImage={workflowData.sampleAfter}
+                        beforeLabel="Before"
+                        afterLabel="After"
+                        imageFit="object-contain"
+                        imagePosition="object-center"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
+                          <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own product
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Product Image</span>
-                          <span className="text-[10px] text-slate-500">Center-faced snapshot best</span>
+                      </div>
+                    </div>
+
+                    {isGenerating && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
+                        <div className="relative w-20 h-20 mb-4">
+                          <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
+                          <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
+                          <Box size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
                         </div>
-                      </>
+                        <p className="text-white font-medium text-lg animate-pulse">Reimagining product...</p>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                <div className="mb-8">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 mb-3 block ml-1 tracking-wider">REIMAGINATION STYLE</label>
-                  <div className="flex flex-wrap gap-2">
-                    {STYLES.map((style) => (
-                      <button
-                        key={style}
-                        onClick={() => setSelectedStyle(style)}
-                        className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${selectedStyle === style
-                          ? 'bg-[#60a5fa] border-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
-                  <textarea
-                    value={additionalDetails}
-                    onChange={(e) => setAdditionalDetails(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-24"
-                    placeholder="E.g. Soft lighting, marble surface, flowers in background..."
-                  ></textarea>
-                </div>
-              </div>
-
-            <div className="mt-auto pt-6 border-t border-white/5">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-medium text-slate-500">Cost:</span>
-                <div className="flex items-center gap-1.5 text-white font-medium text-sm">
-                  <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
-                  {CREDIT_COST} Credits
-                </div>
-              </div>
-              <button
-                onClick={handleRun}
-                disabled={isGenerating || !originalImage}
-                className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                  ${isGenerating || !originalImage
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)] active:scale-[0.98]'
-                  }`}
-              >
-                {isGenerating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    Reimagining...
-                  </>
-                ) : (
-                  <>
-                    <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
-                    Run Workflow
-                  </>
                 )}
-              </button>
-            </div>
-          </div>
-
-          {/* Right Column: Preview */}
-          <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
-            <div className="flex-1 relative">
-              {originalImage && generatedImage ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
-                  <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                    <ImageComparisonSlider
-                      beforeImage={originalImage}
-                      afterImage={generatedImage}
-                      beforeLabel="Before"
-                      afterLabel="Output"
-                      imageFit="object-contain"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                    {/* Download Button */}
-                    <button
-                      onClick={handleDownload}
-                      className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
-                    >
-                      <Download size={18} />
-                      Download
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
-                  <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-                    <ImageComparisonSlider
-                      beforeImage={workflowData.sampleBefore}
-                      afterImage={workflowData.sampleAfter}
-                      beforeLabel="Before"
-                      afterLabel="After"
-                      imageFit="object-cover"
-                      imagePosition="object-center"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
-                        <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own product
-                      </div>
-                    </div>
-                  </div>
-
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                        <Box size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
-                      </div>
-                      <p className="text-white font-medium text-lg animate-pulse">Reimagining product...</p>
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {isUploadModalOpen && (
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onAdd={(urls: string[]) => {
-            if (urls && urls.length > 0) {
-              handleImageSelect(urls[0]);
-            }
-          }}
-          remainingSlots={1}
-        />
-      )}
+        {isUploadModalOpen && (
+          <UploadModal
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onAdd={(urls: string[]) => {
+              if (urls && urls.length > 0) {
+                handleImageSelect(urls[0]);
+              }
+            }}
+            remainingSlots={1}
+          />
+        )}
+      </div>
     </>
   );
 }
+
+

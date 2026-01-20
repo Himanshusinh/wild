@@ -214,8 +214,8 @@ export default function CharacterSheet() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={workflowData.imageFit as any}
-                    imagePosition={workflowData.imagePosition}
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -245,8 +245,8 @@ export default function CharacterSheet() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={(workflowData as any).imageFit || 'object-contain'}
-                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
 
                 </div>

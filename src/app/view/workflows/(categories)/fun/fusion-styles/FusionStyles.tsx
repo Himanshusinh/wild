@@ -75,11 +75,18 @@ export default function FusionStyles() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      console.log(`Fusing styles with additional text: ${additionalText}`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/fusion-styles-after.png"); // Placeholder result
-      toast.success('Styles fused successfully!');
+      const response = await axiosInstance.post('/api/workflows/fun/fusion-styles', {
+        image: originalImage,
+        isPublic: true,
+        additionalText: additionalText
+      });
+
+      if (response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Styles fused successfully!');
+      } else {
+        throw new Error('No image returned from server');
+      }
 
     } catch (error: any) {
       console.error('Fusion Styles error:', error);
@@ -212,6 +219,7 @@ export default function FusionStyles() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -241,7 +249,8 @@ export default function FusionStyles() {
                     afterImage="/workflow-samples/fusion-styles-after.png"
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-cover"
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

@@ -8,6 +8,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 
 const BACKGROUND_STYLES = [
@@ -133,12 +134,7 @@ export default function Automotive() {
       <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-10 opacity-0'}`}>
 
         {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-6 right-6 md:top-10 md:right-10 z-50 w-10 h-10 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-95 shadow-2xl group"
-        >
-          <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-        </button>
+
 
         <div className="flex w-full h-full">
           {/* Left Column: Controls */}
@@ -268,11 +264,18 @@ export default function Automotive() {
           {/* Right Column: Preview */}
           <div className="flex-1 bg-[#020202] relative overflow-hidden flex flex-col">
             <div className="flex-1 relative">
-              {generatedImage ? (
+              {generatedImage && carImage ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 group">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                    <img src={generatedImage} className="w-full h-full object-contain bg-black/40" alt="Generated Automotive Shot" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <ImageComparisonSlider
+                      beforeImage={carImage}
+                      afterImage={generatedImage}
+                      beforeLabel="Original"
+                      afterLabel="Cinema Shot"
+                      imageFit="object-contain"
+                      imagePosition="object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                     <button onClick={handleDownload} className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#60a5fa] text-black rounded-2xl text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl">
                       <Download size={18} />
                       Download Shot
@@ -283,24 +286,31 @@ export default function Automotive() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/20">
                     <img src={carImage} className="w-full h-full object-contain" alt="Uploaded Car" />
+                    {isGenerating && (
+                      <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-40 transition-all duration-500">
+                        <img src="/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/[0.01]">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-                    <img src={workflowData.sampleAfter} className="w-full h-full object-cover" alt="Sample Display" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <ImageComparisonSlider
+                      beforeImage={workflowData.sampleBefore}
+                      afterImage={workflowData.sampleAfter}
+                      beforeLabel="Before"
+                      afterLabel="After"
+                      imageFit="object-contain"
+                      imagePosition="object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm flex items-center gap-2">
                         <Sparkles size={16} className="text-[#60a5fa]" /> Try it with your own car photo
                       </div>
                     </div>
                   </div>
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-40 transition-all duration-500 rounded-3xl m-8">
-                      <img src="/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
-                    </div>
-                  )}
                 </div>
               )}
             </div>

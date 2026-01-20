@@ -29,6 +29,7 @@ export default function CustomStickers() {
   const [selectedStyle, setSelectedStyle] = useState("Cartoon");
   const [selectedTheme, setSelectedTheme] = useState("Emoji / Expressions");
   const [selectedMaterial, setSelectedMaterial] = useState("Matte");
+  const [selectedStickerType, setSelectedStickerType] = useState("Sticker Sheet");
   const [selectedFileStyle, setSelectedFileStyle] = useState("PNG");
   const [additionalDetails, setAdditionalDetails] = useState("");
 
@@ -115,11 +116,24 @@ export default function CustomStickers() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      console.log(`Generating sticker with shape: ${selectedShape}, style: ${selectedStyle}, theme: ${selectedTheme}, details: ${additionalDetails}`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/custom-stickers-after.jpg"); // Placeholder result
-      toast.success(`Sticker created successfully!`);
+      const response = await axiosInstance.post('/api/workflows/fun/custom-stickers', {
+        image: originalImage,
+        isPublic: true,
+        shape: selectedShape,
+        style: selectedStyle,
+        theme: selectedTheme,
+        material: selectedMaterial,
+        stickerType: selectedStickerType,
+        fileStyle: selectedFileStyle,
+        details: additionalDetails
+      });
+
+      if (response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success(`Stickers created successfully!`);
+      } else {
+        throw new Error('No stickers returned from server');
+      }
 
     } catch (error: any) {
       console.error('Custom Stickers error:', error);
@@ -268,12 +282,16 @@ export default function CustomStickers() {
                 <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
                   <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Type</label>
                   <div className="flex flex-wrap gap-2">
-                    {["Single Sticker", "Sticker Sheet", "Die Cut", "Kiss Cut"].map(style => (
+                    {["Single Sticker", "Sticker Sheet", "Die Cut", "Kiss Cut"].map(type => (
                       <button
-                        key={style}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20`}
+                        key={type}
+                        onClick={() => setSelectedStickerType(type)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedStickerType === type
+                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                          }`}
                       >
-                        {style}
+                        {type}
                       </button>
                     ))}
                   </div>
@@ -356,6 +374,7 @@ export default function CustomStickers() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -385,7 +404,8 @@ export default function CustomStickers() {
                     afterImage="/workflow-samples/custom-stickers-after.png"
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-cover"
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                 </div>
               )}
