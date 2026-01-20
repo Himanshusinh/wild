@@ -165,7 +165,7 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
             <div className="inline-flex items-center gap-2 mb-6">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
+            <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
             <p className="text-slate-400 text-lg mb-4 leading-relaxed">{workflowData.description}</p>
             {workflowData.model && <p className="text-xs font-mono text-slate-500 mb-8">Model: {workflowData.model}</p>}
 

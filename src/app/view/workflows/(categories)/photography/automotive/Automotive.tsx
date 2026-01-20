@@ -140,15 +140,15 @@ export default function Automotive() {
           <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
         </button>
 
-        <div className="flex w-full h-full">
+        <div className="flex w-full h-full flex-col md:flex-row">
           {/* Left Column: Controls */}
           <div className="w-full md:w-[48%] p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 mb-6">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
               </div>
-              <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-              <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
+              <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
+              <p className="text-slate-400 text-sm md:text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
               <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 

@@ -51,12 +51,10 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
   }, [activeCategory, workflows]);
 
 
-
   useEffect(() => {
     const nextCategory = deriveCategoryFromPath(pathname);
     setActiveCategory(nextCategory || initialCategory);
   }, [pathname, initialCategory]);
-
 
 
   const handleCategoryClick = (cat) => {
@@ -114,7 +112,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                 <button
                   key={cat}
                   onClick={() => handleCategoryClick(cat)}
-                  className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === cat
+                  className={`inline-flex items-center px-3 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-xs font-semibold whitespace-nowrap transition-all border relative gap-1.5 md:gap-2 ${activeCategory === cat
                     ? 'bg-white border-white/5 text-black'
                     : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                     }`}
