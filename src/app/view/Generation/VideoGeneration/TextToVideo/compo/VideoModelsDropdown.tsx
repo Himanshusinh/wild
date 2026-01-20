@@ -20,7 +20,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   onModelChange,
   generationMode,
   selectedDuration = "5s",
-  selectedResolution = "512P",
+  selectedResolution = "512P", 
   onCloseOtherDropdowns,
   onCloseThisDropdown,
   activeFeature = 'Video',

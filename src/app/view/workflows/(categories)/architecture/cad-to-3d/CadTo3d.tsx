@@ -124,14 +124,14 @@ export default function CadTo3d() {
 
         <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-          <div className="flex w-full h-full">
-            <div className="w-full md:w-[40%] p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
+          <div className="flex w-full h-full flex-col md:flex-row">
+            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
               <div className="flex-1">
                 <div className="inline-flex items-center gap-2 mb-6">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
+                <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
+                <p className="text-slate-400 text-sm md:text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
@@ -157,13 +157,7 @@ export default function CadTo3d() {
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">RENDER STYLE (OPTIONAL)</label>
-                  <textarea
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="E.g. Modern minimalist, industrial loft, cozy scandinavian..."
-                  ></textarea>
-                </div>
+
               </div>
 
               <div className="mt-auto pt-6 border-t border-white/5">
@@ -198,7 +192,7 @@ export default function CadTo3d() {
               </div>
             </div>
 
-            <div className="hidden md:flex flex-1 items-center justify-center bg-[#050505] relative overflow-hidden">
+            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
               <div className="absolute inset-0 opacity-20"
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
