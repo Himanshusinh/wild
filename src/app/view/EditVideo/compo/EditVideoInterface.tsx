@@ -468,6 +468,17 @@ const EditVideoInterface: React.FC = () => {
 
   const handleOpenUploadModal = () => setIsUploadOpen(true);
 
+  const handleVideoEditorClick = () => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        window.location.href = 'http://localhost:3001';
+      } else {
+        window.location.href = 'https://editor-video.wildmindai.com/';
+      }
+    }
+  };
+
   const handleRun = async () => {
     const TWENTY_MINUTES_MS = 20 * 60 * 1000;
 
@@ -906,7 +917,7 @@ const EditVideoInterface: React.FC = () => {
                 ))}
                 {/* Video Editor tab */}
                 <button
-                  onClick={() => setIsVideoEditorOpen(true)}
+                  onClick={handleVideoEditorClick}
                   className="text-left bg-white/5 items-center justify-center rounded-lg md:p-1 md:h-18 h-14 w-auto border border-white/10 hover:bg-white/10 transition"
                 >
                   <div className="flex items-center gap-0 justify-center">

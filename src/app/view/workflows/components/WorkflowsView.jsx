@@ -134,7 +134,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {filteredWorkflows.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = !['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video';
+            const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
             return (
               <div

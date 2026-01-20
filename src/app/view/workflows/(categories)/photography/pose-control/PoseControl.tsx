@@ -256,6 +256,7 @@ export default function PoseControl() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -285,8 +286,8 @@ export default function PoseControl() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={(workflowData as any).imageFit || 'object-contain'}
-                    imagePosition={(workflowData as any).imagePosition || 'object-center'}
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
 
                 </div>

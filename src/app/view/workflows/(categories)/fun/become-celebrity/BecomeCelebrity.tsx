@@ -79,27 +79,19 @@ export default function BecomeCelebrity() {
             deductCreditsOptimisticForGeneration(CREDIT_COST);
             setIsGenerating(true);
 
-            // Simulation for now
-            console.log(`Generating celebrity with details: ${additionalDetails}`);
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            setGeneratedImage("/workflow-samples/become-celebrity-after.jpg"); // Placeholder result
-            toast.success('Celebrity transformation complete!');
-
-            /* 
-            // Real API call commented out for simulation
+            // Real API call
             const response = await axiosInstance.post('/api/workflows/fun/become-celebrity', {
                 image: originalImage,
                 isPublic: true,
-                additionalDetails: additionalDetails
+                additionalText: additionalDetails
             });
 
-            if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+            if (response.data?.data?.images?.[0]?.url) {
                 setGeneratedImage(response.data.data.images[0].url);
                 toast.success('Celebrity transformation complete!');
             } else {
-                throw new Error(response.data?.message || 'Invalid response from server');
+                throw new Error('No image returned from server');
             }
-            */
 
         } catch (error: any) {
             console.error('Become Celebrity error:', error);
@@ -234,6 +226,7 @@ export default function BecomeCelebrity() {
                                         beforeLabel="Original"
                                         afterLabel="Celebrity Vibe"
                                         imageFit="object-contain"
+                                        imagePosition="object-center"
                                     />
                                     <button
                                         onClick={handleDownload}
@@ -264,6 +257,7 @@ export default function BecomeCelebrity() {
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
+                                        imagePosition="object-center"
                                     />
 
                                 </div>

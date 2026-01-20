@@ -199,6 +199,7 @@ export default function SurpriseMe() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -229,6 +230,7 @@ export default function SurpriseMe() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

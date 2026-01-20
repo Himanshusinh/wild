@@ -74,10 +74,17 @@ export default function PolaroidStyle() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/polaroid-style-after.jpg"); // Placeholder result
-      toast.success('Polaroid generated successfully!');
+      const response = await axiosInstance.post('/api/workflows/fun/polaroid-style', {
+        image: originalImage,
+        isPublic: true
+      });
+
+      if (response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Polaroid generated successfully!');
+      } else {
+        throw new Error('No image returned from server');
+      }
 
     } catch (error: any) {
       console.error('Polaroid Style error:', error);
@@ -199,6 +206,7 @@ export default function PolaroidStyle() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -229,6 +237,7 @@ export default function PolaroidStyle() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

@@ -238,7 +238,7 @@ export default function DynamicCameraAngle() {
                     afterImage={generatedImage}
                     beforeLabel="Reference"
                     afterLabel="Dynamic Angle"
-                    imageFit={workflowData.imageFit || 'object-cover'}
+                    imageFit="object-contain"
                     imagePosition={workflowData.imagePosition || 'object-center'}
                   />
                   <button
@@ -270,7 +270,7 @@ export default function DynamicCameraAngle() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit={workflowData.imageFit || 'object-cover'}
+                    imageFit="object-contain"
                     imagePosition={workflowData.imagePosition || 'object-center'}
                   />
                 </div>

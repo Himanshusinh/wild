@@ -74,14 +74,27 @@ export default function ChangeSeasons() {
       return;
     }
 
+    if (!additionalDetails || additionalDetails.trim() === "") {
+      toast.error("Please enter a season or description to transform the image.");
+      return;
+    }
+
     try {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/change-seasons-after.jpg"); // Placeholder result
-      toast.success(`Season changed successfully!`);
+      const response = await axiosInstance.post('/api/workflows/fun/change-seasons', {
+        image: originalImage,
+        isPublic: true,
+        seasonDescription: additionalDetails
+      });
+
+      if (response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Season changed successfully!');
+      } else {
+        throw new Error('No image returned from server');
+      }
 
     } catch (error: any) {
       console.error('Change Seasons error:', error);
@@ -214,7 +227,8 @@ export default function ChangeSeasons() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-cover"
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}

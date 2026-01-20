@@ -75,11 +75,18 @@ export default function CCTVFootage() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      console.log(`Generating CCTV footage with additional text: ${additionalText}`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/cctv-footage-after.png"); // Placeholder result
-      toast.success('CCTV footage generated successfully!');
+      const response = await axiosInstance.post('/api/workflows/fun/cctv-footage', {
+        image: originalImage,
+        isPublic: true,
+        additionalText: additionalText
+      });
+
+      if (response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('CCTV footage generated successfully!');
+      } else {
+        throw new Error('No image returned from server');
+      }
 
     } catch (error: any) {
       console.error('CCTV Footage error:', error);
@@ -211,7 +218,8 @@ export default function CCTVFootage() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-cover"
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}

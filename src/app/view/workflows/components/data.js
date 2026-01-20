@@ -100,7 +100,8 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/surpriseme-before.jpg",
     "sampleBefore": "/workflow-samples/surpriseme-before.jpg",
     "sampleAfter": "/workflow-samples/surpriseme-after.jpg",
-    "cost": 90
+    "cost": 90,
+    "comingSoon": true
   },
   {
     "id": "people-age",
@@ -124,6 +125,8 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/become-celebrity-before.jpg",
     "sampleBefore": "/workflow-samples/become-celebrity-before.jpg",
     "sampleAfter": "/workflow-samples/become-celebrity-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
     "cost": 90
   },
   {
@@ -135,6 +138,8 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/polaroid-style-before.jpg",
     "sampleBefore": "/workflow-samples/polaroid-style-before.jpg",
     "sampleAfter": "/workflow-samples/polaroid-style-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
     "cost": 90
   },
   {
@@ -363,9 +368,11 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleBefore": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleAfter": "/workflow-samples/pose-control-after-v2.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-top",
-    "cost": 90
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90,
+    "comingSoon": true
+
   },
   {
     "id": "character-sheet",
@@ -506,6 +513,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/famous-photographer-before.png",
     "sampleAfter": "/workflow-samples/famous-photographer-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "comingSoon": true
   }
 ]

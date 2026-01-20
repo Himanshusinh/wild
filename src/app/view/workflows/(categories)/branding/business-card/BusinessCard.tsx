@@ -31,6 +31,8 @@ export default function BusinessCard() {
   const [cardType, setCardType] = useState<'Single Sided' | 'Double Sided'>('Single Sided');
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [cardStyle, setCardStyle] = useState<string>('Modern');
+  const [backImage, setBackImage] = useState<string | null>(null);
+  const [showSide, setShowSide] = useState<'front' | 'back'>('front');
 
   const CARD_STYLES = [
     'Professional', 'Modern', 'Minimalist', 'Corporate',
@@ -127,12 +129,23 @@ export default function BusinessCard() {
       const response = await axiosInstance.post('/api/workflows/branding/business-card', payload);
 
       if (response.data?.data?.images && response.data.data.images.length > 0) {
-        // Use the first image (front side usually) or handle multiple if needed
-        // For simplicity showing the first result or if comparison needed logic can be added
-        // The backend returns an array of scored images.
-        const resultImage = response.data.data.images[0].url;
-        setGeneratedImage(resultImage);
-        toast.success('Business card mockup generated successfully!');
+        const images = response.data.data.images;
+
+        if (images.length === 1) {
+          setGeneratedImage(images[0].url);
+          setBackImage(null);
+          setShowSide('front');
+        } else {
+          // Find front and back based on side property if available, or index
+          const front = images.find((i: any) => i.side === 'front') || images[0];
+          const back = images.find((i: any) => i.side === 'back') || images[1];
+
+          setGeneratedImage(front.url);
+          setBackImage(back?.url || null);
+          setShowSide('front');
+        }
+
+        toast.success('Business card generated successfully!');
       } else {
         throw new Error('No image returned from generation');
       }
@@ -147,9 +160,10 @@ export default function BusinessCard() {
   };
 
   const handleDownload = async () => {
-    if (!generatedImage) return;
+    const activeImage = showSide === 'front' ? generatedImage : backImage;
+    if (!activeImage) return;
     try {
-      await downloadFileWithNaming(generatedImage, null, 'image', 'business-card-mockup');
+      await downloadFileWithNaming(activeImage, null, 'image', `business-card-${showSide}`);
       toast.success('Downloading...');
     } catch (error) {
       toast.error('Failed to download image');
@@ -341,12 +355,29 @@ export default function BusinessCard() {
 
               {generatedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8 bg-white/5">
-                  <div className="w-full h-full bg-white/5 rounded-2xl shadow-inner border border-white/10 overflow-hidden relative">
+                  <div className="w-full aspect-[1050/600] bg-white/5 rounded-2xl shadow-inner border border-white/10 overflow-hidden relative">
                     <img
-                      src={generatedImage}
+                      src={showSide === 'front' ? generatedImage : (backImage || generatedImage)}
                       className="w-full h-full object-contain"
                       alt="Generated Business Card"
                     />
+
+                    {backImage && (
+                      <div className="absolute top-4 right-4 flex gap-2 z-50">
+                        <button
+                          onClick={() => setShowSide('front')}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${showSide === 'front' ? 'bg-[#60a5fa] border-[#60a5fa] text-black' : 'bg-black/50 border-white/10 text-white hover:bg-black/70'}`}
+                        >
+                          Front
+                        </button>
+                        <button
+                          onClick={() => setShowSide('back')}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${showSide === 'back' ? 'bg-[#60a5fa] border-[#60a5fa] text-black' : 'bg-black/50 border-white/10 text-white hover:bg-black/70'}`}
+                        >
+                          Back
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={handleDownload}
