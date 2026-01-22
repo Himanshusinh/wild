@@ -24,6 +24,7 @@ export default function RemoveWatermark() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data
     const workflowData = {
@@ -77,6 +78,7 @@ export default function RemoveWatermark() {
             // Payload structure
             const payload = {
                 image: originalImage,
+                prompt: additionalText || undefined, // Backend has a default, but user can override
                 model: "qwen/qwen-image-edit-2511",
                 frameSize: "match_input_image",
                 output_format: "jpg",
@@ -168,6 +170,16 @@ export default function RemoveWatermark() {
                                         )}
                                     </div>
                                 </div>
+
+                                <div className="mb-4">
+                                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-[0.1em]">Additional Details (Optional)</label>
+                                    <textarea
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
+                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                                        placeholder="Add extra instructions here..."
+                                    ></textarea>
+                                </div>
                             </div>
 
                             <div className="mt-auto pt-6 border-t border-white/5">
@@ -231,10 +243,7 @@ export default function RemoveWatermark() {
                                     <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                                     {isGenerating && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                                            <div className="relative w-20 h-20 mb-4">
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                                            </div>
+                                            <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                                             <p className="text-white font-medium text-lg animate-pulse">Removing watermark...</p>
                                         </div>
                                     )}
