@@ -73,16 +73,16 @@ export const useHistoryLoader = ({
     const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
     const normalizedHookType = norm(generationType);
     const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
-    
+
     // Check if generation type changed (either hook param or UI switch)
     const generationTypeChanged = lastGenerationTypeRef.current !== generationType;
-    
+
     // Check if UI switched to this feature (from a different feature back to this one)
     const switchedToThisFeature = normalizedCurrentUI === normalizedHookType && normalizedLastUI !== normalizedCurrentUI;
-    
+
     // Check if UI switched away from this feature
     const switchedAwayFromThisFeature = normalizedLastUI === normalizedHookType && normalizedCurrentUI !== normalizedHookType && !generationTypes?.some(gt => norm(gt) === normalizedCurrentUI);
-    
+
     // Check filters early to detect mismatches
     const currentFilterVal = currentFilters?.generationType;
     const currentFilterMode = currentFilters?.mode;
@@ -95,18 +95,18 @@ export const useHistoryLoader = ({
     const filtersMatch = skipBackendGenerationFilter
       ? true
       : (Array.isArray(currentFilterVal)
-      ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
+        ? wantedTypes.every(w => (currentFilterVal as string[]).some((cv: string) => norm(cv) === norm(String(w))))
         : norm(String(currentFilterVal || '')) === norm(generationType));
     const sortOrderMatches = sortOrder ? currentFilterSortOrder === sortOrder : true;
     const modeMatches = mode ? norm(String(currentFilterMode || '')) === norm(mode) : true;
-    
+
     // Check if filters are for a different type (e.g., video filters when we're on image page)
     // Video uses mode: 'video', image uses mode: 'image' or generationType, so check both
-    const filtersAreForDifferentType = (currentFilterVal && !filtersMatch) || 
+    const filtersAreForDifferentType = (currentFilterVal && !filtersMatch) ||
       (currentFilterMode && mode && norm(String(currentFilterMode)) !== norm(mode)) ||
       (currentFilterMode && !mode && currentFilterMode === 'video') ||
       !sortOrderMatches; // If sort order differs, reload with new ordering
-    
+
     // If generation type changed, UI switched to/from this feature, or filters don't match, reset mounted state
     if (generationTypeChanged || switchedToThisFeature || (switchedAwayFromThisFeature && mountedRef.current) || filtersAreForDifferentType) {
       console.log('[useHistoryLoader] Generation type, UI, or filters changed, resetting mount state', {
@@ -125,19 +125,19 @@ export const useHistoryLoader = ({
       mountedRef.current = false;
       lastGenerationTypeRef.current = generationType;
     }
-    
+
     // Update last UI type ref
     lastUIGenerationTypeRef.current = currentUIGenerationType;
-    
+
     console.log('[useHistoryLoader] ========== INITIAL LOAD EFFECT ==========');
-    
+
     // Check if date or search filters are active - if so, skip auto-reload (manual refresh is handling it)
     const currentFilterDateRange = (currentFilters as any)?.dateRange;
     const currentFilterSearch = (currentFilters as any)?.search;
     const hasDateFilter = currentFilterDateRange !== undefined && currentFilterDateRange !== null;
     const hasSearchFilter = currentFilterSearch !== undefined && currentFilterSearch !== null && String(currentFilterSearch).trim() !== '';
     const hasActiveFilters = hasDateFilter || hasSearchFilter;
-    
+
     // EARLY RETURN: If date/search filters are active, skip auto-reload to prevent duplicate requests
     // Manual refresh (refreshHistoryFromBackend) is handling the load with correct filters
     if (hasActiveFilters && !forceInitial) {
@@ -156,7 +156,7 @@ export const useHistoryLoader = ({
     if (loading) {
       return;
     }
-    
+
     console.log('[useHistoryLoader] State check:', {
       mounted: mountedRef.current,
       entriesCount: entries.length,
@@ -170,19 +170,19 @@ export const useHistoryLoader = ({
       inFlightLock: inFlightTypeLocks[generationType],
       hasActiveFilters,
     });
-    
+
     // Check if we need to load (no entries or filters don't match) - if so, always load even if mounted
     const hasTypeEntries = skipBackendGenerationFilter
       ? entries.some((e: any) => entryMatchesMode(e, mode))
       : entries.some((e: any) => wantedTypes.some(w => norm(e.generationType || '') === norm(String(w))));
     const mustLoadDueToNoEntries = !hasTypeEntries;
-    
+
     // If mounted but we have no entries or filters don't match, reset mounted state to force load
     if (mountedRef.current && !generationTypeChanged && !switchedToThisFeature && !filtersAreForDifferentType && !mustLoadDueToNoEntries) {
       console.log('[useHistoryLoader] ⚠️ Already mounted and no type/filter change, skipping initial load');
       return; // only once per mount unless type changed or filters don't match
     }
-    
+
     // If we have no entries, always reset mounted state to ensure we load
     if (mustLoadDueToNoEntries && mountedRef.current) {
       console.log('[useHistoryLoader] ⚠️ No entries found, resetting mounted state to force load');
@@ -191,15 +191,15 @@ export const useHistoryLoader = ({
     mountedRef.current = true;
     lastGenerationTypeRef.current = generationType;
     console.log('[useHistoryLoader] ✅ Mounted, proceeding with initial load check...');
-    
+
     // IMPORTANT: If filters don't match or mode doesn't match, we MUST reload even if entries exist
     // This handles the case where we switch from video (mode: 'video') to image (mode: 'image' or no mode)
     const mustReloadDueToFilters = filtersAreForDifferentType || !filtersMatch || (mode && !modeMatches) || !sortOrderMatches;
-    
+
     // CRITICAL: If we have no entries for this type, we MUST load (don't skip)
     // Also, if filters don't match, we MUST reload
     const mustLoad = !hasTypeEntries || mustReloadDueToFilters;
-    
+
     // If generation type changed, UI switched to this feature, filters don't match, or no entries exist, force reload
     const shouldSkipInitial = !forceInitial && !generationTypeChanged && !switchedToThisFeature && !mustLoad && hasTypeEntries && filtersMatch && modeMatches;
     console.log('[useHistoryLoader] Initial load conditions:', {
@@ -217,7 +217,7 @@ export const useHistoryLoader = ({
       switchedToThisFeature,
       shouldSkip: shouldSkipInitial,
     });
-    
+
     // Define genFilter early so it can be used in early return paths
     const genFilter: any = skipBackendGenerationFilter
       ? {}
@@ -225,23 +225,23 @@ export const useHistoryLoader = ({
     if (mode) genFilter.mode = mode;
     if (effectiveSortOrder) genFilter.sortOrder = effectiveSortOrder;
     const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
-    
+
     if (shouldSkipInitial) {
       console.log('[useHistoryLoader] ⚠️ Already loaded, skipping initial load');
       // Still set filters to ensure UI state is correct, but skip API call
       dispatch(setFilters(genFilter as any));
       return; // already loaded - cached data will show immediately
     }
-    
+
     if (inFlightTypeLocks[generationType]) {
       console.log('[useHistoryLoader] ⚠️ Lock active, skipping initial load');
       return; // another component kicked off load
     }
-    
+
     console.log('[useHistoryLoader] ✅ Proceeding with initial load - setting lock and dispatching...');
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
-    
+
     console.log('[useHistoryLoader] Dispatching setFilters and loadHistory with:', {
       filters: genFilter,
       backendFilters,
@@ -251,7 +251,7 @@ export const useHistoryLoader = ({
       debugTag: `hook:init:${generationType}:${Date.now()}`,
       skipBackendGenerationFilter,
     });
-    
+
     dispatch(setFilters(genFilter as any));
     const dispatchPromise = (dispatch as any)(loadHistory({
       filters: genFilter,
@@ -263,9 +263,9 @@ export const useHistoryLoader = ({
       skipBackendGenerationFilter,
       forceRefresh: generationTypeChanged || switchedToThisFeature || mustReloadDueToFilters, // Force refresh when type changes, switching back, or filters/mode don't match
     }));
-    
+
     console.log('[useHistoryLoader] Initial load dispatch promise created');
-    
+
     dispatchPromise.finally(() => {
       console.log('[useHistoryLoader] Initial load dispatch completed, releasing lock');
       inFlightTypeLocks[generationType] = false;
@@ -321,31 +321,31 @@ export const useHistoryLoader = ({
       inFlightLock: inFlightTypeLocks[generationType],
       forceRefresh,
     });
-    
+
     // If forceRefresh is true, clear the lock and proceed anyway (for EditImage)
     if (forceRefresh && inFlightTypeLocks[generationType]) {
       console.log('[useHistoryLoader] ⚠️ Force refresh requested - clearing existing lock');
       inFlightTypeLocks[generationType] = false;
     }
-    
+
     if (!forceRefresh && (loading || inFlightTypeLocks[generationType])) {
       console.log('[useHistoryLoader] ⚠️ refreshImmediate BLOCKED - loading:', loading, 'lock:', inFlightTypeLocks[generationType]);
       return;
     }
-    
+
     console.log('[useHistoryLoader] ✅ refreshImmediate proceeding - FORCING API CALL - setting lock and dispatching...');
     inFlightTypeLocks[generationType] = true;
     lastLoadTimestamps[generationType] = Date.now();
-      const genFilter: any = skipBackendGenerationFilter
-        ? {}
-        : { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
+    const genFilter: any = skipBackendGenerationFilter
+      ? {}
+      : { generationType: (generationTypes && generationTypes.length > 0) ? generationTypes : generationType };
     if (mode) genFilter.mode = mode;
     if (sortOrder) genFilter.sortOrder = sortOrder;
     const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
-    
+
     // Update filters first to ensure fresh state
     dispatch(setFilters(genFilter as any));
-    
+
     console.log('[useHistoryLoader] Dispatching loadHistory with FORCE REFRESH:', {
       filters: genFilter,
       backendFilters,
@@ -355,7 +355,7 @@ export const useHistoryLoader = ({
       debugTag: `hook:refreshImmediate:${generationType}:${Date.now()}`,
       forceRefresh,
     });
-    
+
     const dispatchPromise = (dispatch as any)(loadHistory({
       filters: genFilter,
       backendFilters,
@@ -366,9 +366,9 @@ export const useHistoryLoader = ({
       forceRefresh: forceRefresh, // Pass forceRefresh to thunk
       skipBackendGenerationFilter,
     }));
-    
+
     console.log('[useHistoryLoader] Dispatch promise created, waiting for completion...');
-    
+
     dispatchPromise.finally(() => {
       console.log('[useHistoryLoader] loadHistory dispatch completed, releasing lock');
       inFlightTypeLocks[generationType] = false;
