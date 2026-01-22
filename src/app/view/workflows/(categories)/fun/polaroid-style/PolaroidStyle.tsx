@@ -25,6 +25,7 @@ export default function PolaroidStyle() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [textPrompt, setTextPrompt] = useState("");
 
   // Workflow Data
   const workflowData = {
@@ -76,6 +77,7 @@ export default function PolaroidStyle() {
 
       const response = await axiosInstance.post('/api/workflows/fun/polaroid-style', {
         image: originalImage,
+        prompt: textPrompt,
         isPublic: true
       });
 
@@ -156,6 +158,17 @@ export default function PolaroidStyle() {
                       </>
                     )}
                   </div>
+                </div>
+                <div className="mb-6">
+                  <label className="text-xs text-slate-500 font-medium block mb-2 uppercase tracking-wider">
+                    Add details / style / date (Optional)
+                  </label>
+                  <textarea
+                    value={textPrompt}
+                    onChange={(e) => setTextPrompt(e.target.value)}
+                    placeholder="E.g. Vintage 1990s style, add warm filter, date: 12/12/1990..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#60a5fa]/50 focus:ring-1 focus:ring-[#60a5fa]/50 transition-all placeholder:text-slate-600 resize-none h-24"
+                  />
                 </div>
               </div>
 

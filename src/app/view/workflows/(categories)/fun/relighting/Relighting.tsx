@@ -25,7 +25,11 @@ export default function Relighting() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedLighting, setSelectedLighting] = useState("Natural");
+  const [selectedLighting, setSelectedLighting] = useState("Natural Daylight");
+  const [selectedDirection, setSelectedDirection] = useState("Front Light");
+  const [lightIntensity, setLightIntensity] = useState(50);
+  const [shadowControl, setShadowControl] = useState(50);
+  const [additionalDetails, setAdditionalDetails] = useState("");
 
   // Workflow Data
   const workflowData = {
@@ -37,12 +41,23 @@ export default function Relighting() {
   };
 
   const lightingOptions = [
-    "Natural",
-    "Studio",
-    "Cinematic",
-    "Dramatic",
-    "Soft Diffused",
-    "Moody"
+    "Natural Daylight",
+    "Soft Studio Light",
+    "Dramatic / Cinematic Light",
+    "Night Lighting",
+    "Golden Hour",
+    "Moody / Low-Key",
+    "High-Key / Bright",
+    "Neon / Colored Light"
+  ];
+
+  const directionOptions = [
+    "Front Light",
+    "Side Light (Left / Right)",
+    "Back Light (Rim Light)",
+    "Top Light",
+    "Bottom Light",
+    "Multi-directional (Studio)"
   ];
 
   useEffect(() => {
@@ -87,7 +102,11 @@ export default function Relighting() {
       const response = await axiosInstance.post('/api/workflows/fun/relighting', {
         image: originalImage,
         isPublic: true,
-        lightingStyle: selectedLighting
+        lightingStyle: selectedLighting,
+        lightDirection: selectedDirection,
+        lightIntensity: lightIntensity < 34 ? "Low (Soft & subtle)" : lightIntensity > 66 ? "High (Strong highlights & shadows)" : "Medium (Balanced)",
+        shadowControl: shadowControl < 34 ? "Soft" : shadowControl > 66 ? "Hard / Sharp" : "Natural",
+        additionalDetails: additionalDetails
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -188,6 +207,70 @@ export default function Relighting() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-100">
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Light Direction</label>
+                  <div className="flex flex-wrap gap-2">
+                    {directionOptions.map(direction => (
+                      <button
+                        key={direction}
+                        onClick={() => setSelectedDirection(direction)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedDirection === direction
+                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                          }`}
+                      >
+                        {direction}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Light Intensity</label>
+                    <span className="text-xs font-medium text-[#60a5fa]">
+                      {lightIntensity < 34 ? "Low (Soft & subtle)" : lightIntensity > 66 ? "High (Strong highlights & shadows)" : "Medium (Balanced)"}
+                    </span>
+                  </div>
+                  <div className="relative h-6 flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={lightIntensity}
+                      onChange={(e) => setLightIntensity(parseInt(e.target.value))}
+                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] hover:bg-white/20 transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Shadow Control</label>
+                    <span className="text-xs font-medium text-[#60a5fa]">
+                      {shadowControl < 34 ? "Soft" : shadowControl > 66 ? "Hard / Sharp" : "Natural"}
+                    </span>
+                  </div>
+                  <div className="relative h-6 flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={shadowControl}
+                      onChange={(e) => setShadowControl(parseInt(e.target.value))}
+                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] hover:bg-white/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-400">
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Additional Details <span className="text-slate-600 font-normal normal-case ml-1">(Optional)</span></label>
+                  <textarea
+                    value={additionalDetails}
+                    onChange={(e) => setAdditionalDetails(e.target.value)}
+                    placeholder="E.g., Make it look like sunset on Mars..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-white/10 transition-all resize-none h-24"
+                  />
                 </div>
               </div>
 
