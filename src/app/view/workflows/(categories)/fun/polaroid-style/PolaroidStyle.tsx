@@ -26,13 +26,16 @@ export default function PolaroidStyle() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
+  const [includeProps, setIncludeProps] = useState(true);
+  const [aspectRatio, setAspectRatio] = useState("1:1");
+
   // Workflow Data
   const workflowData = {
     id: "polaroid-style",
     title: "Polaroid style Images",
     category: "Fun",
-    description: "Retro flash photography with silly props and poses on a classic white curtain background.",
-    cost: 90
+    description: "Retro flash photography based on the classic Polaroid instant camera. Add props for extra fun, or keep it clean!",
+    cost: 110
   };
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export default function PolaroidStyle() {
       return;
     }
 
-    const CREDIT_COST = 90;
+    const CREDIT_COST = 110;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -76,7 +79,9 @@ export default function PolaroidStyle() {
 
       const response = await axiosInstance.post('/api/workflows/fun/polaroid-style', {
         image: originalImage,
-        isPublic: true
+        isPublic: true,
+        includeProps,
+        aspectRatio
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -136,7 +141,7 @@ export default function PolaroidStyle() {
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
-                <div className="mb-8">
+                <div className="mb-6">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={openUploadModal}>
                     {originalImage ? (
@@ -157,6 +162,48 @@ export default function PolaroidStyle() {
                     )}
                   </div>
                 </div>
+
+                {/* Include Props Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 mb-4">
+                  <div>
+                    <h3 className="text-white font-medium text-sm">Include Silly Props</h3>
+                    <p className="text-slate-400 text-xs mt-0.5">Add glasses, hats, and ribbons</p>
+                  </div>
+                  <button
+                    onClick={() => setIncludeProps(!includeProps)}
+                    className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${includeProps ? 'bg-[#60a5fa]' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 shadow-md ${includeProps ? 'left-7' : 'left-1'}`}></div>
+                  </button>
+                </div>
+
+                {/* Frame Size Selection - New Feature */}
+                <div className="flex flex-col gap-3 mb-4">
+                  <h3 className="text-white font-medium text-sm">Frame Size</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Square', value: '1:1', ratio: '1/1' },
+                      { label: 'Wide', value: '16:9', ratio: '16/9' },
+                      { label: 'Vertical', value: '9:16', ratio: '9/16' },
+                      { label: 'Landscape', value: '4:3', ratio: '4/3' },
+                      { label: 'Portrait', value: '3:4', ratio: '3/4' }
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setAspectRatio(opt.value)}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${aspectRatio === opt.value
+                          ? 'bg-[#60a5fa]/20 border-[#60a5fa] text-white'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                          }`}
+                      >
+                        <div className="w-6 h-6 border-2 border-current rounded-sm mb-1.5" style={{ aspectRatio: opt.ratio }}></div>
+                        <span className="text-[10px] font-medium uppercase tracking-wide">{opt.label}</span>
+                        <span className="text-[9px] opacity-60">{opt.value}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </div>
 
               <div className="mt-auto pt-6 border-t border-white/5">

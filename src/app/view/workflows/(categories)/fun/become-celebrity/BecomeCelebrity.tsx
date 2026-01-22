@@ -34,12 +34,12 @@ export default function BecomeCelebrity() {
         category: "Fun",
         description: "Ultra realistic candid photo in a crowded place with fans and cameras, giving a true celebrity vibe.",
         model: "Seadream4/ Nano Banana/ Qwen",
-        cost: 90,
+        cost: 110,
         sampleBefore: "/workflow-samples/become-celebrity-before.jpg",
         sampleAfter: "/workflow-samples/become-celebrity-after.jpg"
     };
 
-    const CREDIT_COST = 90;
+    const CREDIT_COST = 110;
 
     useEffect(() => {
         // Open modal animation on mount
