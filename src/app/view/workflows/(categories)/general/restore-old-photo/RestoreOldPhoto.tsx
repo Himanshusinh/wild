@@ -24,6 +24,7 @@ export default function RestoreOldPhoto() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data (Hardcoded for this specific page, matching data.js)
     const workflowData = {
@@ -77,7 +78,7 @@ export default function RestoreOldPhoto() {
             // Updated Payload structure as requested
             const payload = {
                 image: originalImage,
-                prompt: "Restore and colorize this image, remove any scratches or imperfections. [Style: none]",
+                prompt: `${additionalText ? additionalText + '. ' : ''}Restore and colorize this image, remove any scratches or imperfections. [Style: none]`,
                 model: "qwen/qwen-image-edit-2511",
                 frameSize: "match_input_image",
                 output_format: "jpg",
@@ -175,6 +176,8 @@ export default function RestoreOldPhoto() {
                                     <textarea
                                         className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                                         placeholder="Add extra data or specific instructions here..."
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
                                     ></textarea>
                                 </div>
 

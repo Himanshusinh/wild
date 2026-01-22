@@ -29,7 +29,7 @@ export default function CreativelyUpscale() {
     const [upscaleFactor, setUpscaleFactor] = useState(2);
     const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
-    const FIXED_COST = 90;
+
 
     // Workflow Data
     const workflowData = {
@@ -37,7 +37,7 @@ export default function CreativelyUpscale() {
         title: "Creatively Upscale",
         category: "General",
         description: "Creatively upscale the image using SeedVR to ensure all details are crisp and in high quality.",
-        cost: FIXED_COST,
+        cost: null, // Dynamic
     };
 
     useEffect(() => {
@@ -69,7 +69,8 @@ export default function CreativelyUpscale() {
         const factor = Math.max(1, Math.min(8, Math.round(Number(upscaleFactor) || 2)));
         const outW = Math.max(1, Math.round(w * factor));
         const outH = Math.max(1, Math.round(h * factor));
-        const credits = FIXED_COST;
+        const mp = (outW * outH) / 1_000_000;
+        const credits = Math.max(1, Math.ceil(mp * 5));
         return { factor, outW, outH, credits };
     }, [inputNaturalSize?.width, inputNaturalSize?.height, originalImage, upscaleFactor]);
 
@@ -121,7 +122,11 @@ export default function CreativelyUpscale() {
 
         let optimisticDebit = 0;
         try {
-            const expectedCredits = FIXED_COST;
+            const expectedCredits = estimate?.credits || 0;
+            if (!expectedCredits) {
+                toast.error('Unable to estimate credit cost. Please ensure image is loaded.');
+                return;
+            }
             if ((creditBalance || 0) < expectedCredits) {
                 toast.error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
                 return;
@@ -238,7 +243,7 @@ export default function CreativelyUpscale() {
                                     ))}
                                 </div>
                                 <div className="mt-3 text-[11px] text-slate-500 font-mono">
-                                    Output: {estimate ? `${estimate.outW} × ${estimate.outH}` : '—'} • Est. cost: {estimate ? `${FIXED_COST} credits` : '—'}
+                                    Output: {estimate ? `${estimate.outW} × ${estimate.outH}` : '—'} • Est. cost: {estimate ? `${estimate.credits} credits` : '—'}
                                 </div>
                             </div>
                         </div>
@@ -248,7 +253,7 @@ export default function CreativelyUpscale() {
                                 <span className="text-xs font-medium text-slate-500">Cost:</span>
                                 <div className="flex items-center gap-1.5 text-white font-medium text-sm">
                                     <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
-                                    {FIXED_COST} Credits
+                                    {estimate?.credits || '—'} Credits
                                 </div>
                             </div>
                             <button

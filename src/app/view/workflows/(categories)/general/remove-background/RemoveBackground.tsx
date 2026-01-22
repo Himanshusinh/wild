@@ -32,7 +32,7 @@ export default function RemoveBackground() {
         category: "General",
         description: "Clean background removal with high precision studio quality output.",
         //model: "Seadream4/ Nano Banana",
-        cost: 90 // Backend cost
+        cost: 10 // Backend cost
     };
 
     useEffect(() => {
@@ -64,7 +64,7 @@ export default function RemoveBackground() {
             return;
         }
 
-        const CREDIT_COST = 90;
+        const CREDIT_COST = 10;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;
@@ -166,13 +166,7 @@ export default function RemoveBackground() {
                                     </div>
                                 </div>
 
-                                <div className="mb-4">
-                                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
-                                    <textarea
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                                        placeholder="Add extra data or specific instructions here..."
-                                    ></textarea>
-                                </div>
+
 
                             </div>
 

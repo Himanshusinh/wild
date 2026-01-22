@@ -24,6 +24,7 @@ export default function PhotoToLineDrawing() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data
     const workflowData = {
@@ -77,7 +78,7 @@ export default function PhotoToLineDrawing() {
             // Payload structure
             const payload = {
                 image: originalImage,
-                prompt: "turn this image into a simple coloring book line drawing , black and white",
+                prompt: `${additionalText ? additionalText + '. ' : ''}turn this image into a simple coloring book line drawing , black and white`,
                 model: "qwen/qwen-image-edit-2511",
                 frameSize: "match_input_image",
                 output_format: "jpg",
@@ -175,6 +176,8 @@ export default function PhotoToLineDrawing() {
                                     <textarea
                                         className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                                         placeholder="Add extra data or specific instructions here..."
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
                                     ></textarea>
                                 </div>
 
