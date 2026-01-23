@@ -25,6 +25,70 @@ export default function CadTo3d() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [projectType, setProjectType] = useState('Interior Rendering');
+  const [spaces, setSpaces] = useState('');
+  const [designTheme, setDesignTheme] = useState('Modern');
+  const [materials, setMaterials] = useState('');
+  const [lighting, setLighting] = useState('Daylight');
+  const [cameraAngle, setCameraAngle] = useState('Wide-angle');
+  const [furniture, setFurniture] = useState('Furnished');
+  const [renderQuality, setRenderQuality] = useState('High-Resolution Render');
+
+  const lightingOptions = [
+    'Daylight',
+    'Golden Hour',
+    'Evening / Night',
+    'Studio Lighting (Interior)',
+    'Auto lighting'
+  ];
+
+  const interiorCameraAngles = [
+    'Wide-angle',
+    'Straight-on',
+    'Corner View',
+    'Eye-level',
+    'Detail View',
+    'Down-View'
+  ];
+
+  const exteriorCameraAngles = [
+    'Hero Shot',
+    'Elevation',
+    'Street-Level',
+    "Bird's Eye",
+    'Corner View',
+    'Vignette'
+  ];
+
+  const furnitureOptions = [
+    'Furnished',
+    'Semi-furnished',
+    'Empty (architecture only)'
+  ];
+
+  const renderQualityOptions = [
+    'Concept Preview',
+    'High-Resolution Render',
+    'Ultra-Realistic Presentation'
+  ];
+
+  const designThemes = [
+    'Modern',
+    'Minimal',
+    'Contemporary',
+    'Classic',
+    'Industrial',
+    'Scandinavian',
+    'Luxury',
+    'Traditional / Regional',
+    'Auto (AI decides)'
+  ];
+
+  const projectTypes = [
+    { id: 'Interior Rendering', label: 'Interior Rendering' },
+    { id: 'Exterior Rendering', label: 'Exterior Rendering' },
+    { id: 'Both (Interior + Exterior)', label: 'Both (Interior + Exterior)' }
+  ];
 
   // Workflow Data
   const workflowData = WORKFLOWS_DATA.find(w => w.id === "cad-to-3d") || {
@@ -74,6 +138,14 @@ export default function CadTo3d() {
 
       const response = await axiosInstance.post('/api/workflows/architecture/cad-to-3d', {
         image: originalImage,
+        projectType,
+        spaces,
+        designTheme,
+        materials,
+        lighting,
+        cameraAngle,
+        furniture: (projectType === 'Interior Rendering' || projectType === 'Both (Interior + Exterior)') ? furniture : undefined,
+        renderQuality,
         isPublic: true
       });
 
@@ -140,7 +212,18 @@ export default function CadTo3d() {
                     onClick={() => setIsUploadModalOpen(true)}>
                     {originalImage ? (
                       <>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
+                        {originalImage.startsWith('data:application/pdf') || originalImage.toLowerCase().endsWith('.pdf') ? (
+                          <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-red-900/20 text-red-200">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 mb-2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 2v6h6" />
+                              <text x="8" y="18" fontSize="6" fill="currentColor" fontWeight="bold">PDF</text>
+                            </svg>
+                            <span className="text-xs font-medium">PDF Document</span>
+                          </div>
+                        ) : (
+                          <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
+                        )}
                         <div className="relative z-10 flex flex-col items-center gap-2">
                           <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Plan</span>
                         </div>
@@ -150,15 +233,178 @@ export default function CadTo3d() {
                         <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
                         <div className="text-center">
                           <span className="text-sm text-slate-300 block font-medium">Upload CAD Plan</span>
-                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
+                          <span className="text-xs text-slate-500">PDF, PNG, JPG up to 25MB</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
 
+              </div>
+
+              <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Project Type</label>
+                <div className="space-y-2">
+                  {projectTypes.map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => setProjectType(type.id)}
+                      className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-200 flex items-center justify-between group
+                          ${projectType === type.id
+                          ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.2)]'
+                          : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5 hover:border-white/20'
+                        }`}
+                    >
+                      <span className="font-medium text-sm">{type.label}</span>
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center
+                          ${projectType === type.id
+                          ? 'border-[#60a5fa]'
+                          : 'border-slate-600 group-hover:border-slate-500'
+                        }`}>
+                        {projectType === type.id && (
+                          <div className="w-2 h-2 rounded-full bg-[#60a5fa]"></div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mb-8 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Spaces</label>
+                  <input
+                    type="text"
+                    value={spaces}
+                    onChange={(e) => setSpaces(e.target.value)}
+                    placeholder={
+                      projectType === 'Interior Rendering' ? 'e.g. Living Room, Bedroom, Kitchen...' :
+                        projectType === 'Exterior Rendering' ? 'e.g. Front Facade, Backyard, Garden...' :
+                          'e.g. Living Room, Front Facade...'
+                    }
+                    className="w-full bg-black/20 border border-white/10 text-white rounded-xl px-4 py-3 placeholder-slate-600 focus:outline-none focus:border-[#60a5fa] focus:bg-[#60a5fa]/5 transition-all text-sm"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-2 px-1">Describe the spaces you want to render.</p>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Design Theme</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {designThemes.map((theme) => (
+                      <button
+                        key={theme}
+                        onClick={() => setDesignTheme(theme)}
+                        className={`px-3 py-3 rounded-xl border text-xs font-medium transition-all duration-200 text-center
+                          ${designTheme === theme
+                            ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.2)]'
+                            : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5 hover:border-white/20'
+                          }`}
+                      >
+                        {theme}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Materials Preference <span className="text-slate-600 normal-case">(Optional)</span></label>
+                  <input
+                    type="text"
+                    value={materials}
+                    onChange={(e) => setMaterials(e.target.value)}
+                    placeholder={
+                      projectType === 'Interior Rendering' ? 'e.g. Wood finish, Marble / Stone, Concrete...' :
+                        projectType === 'Exterior Rendering' ? 'e.g. Brick, Concrete, Glass façade...' :
+                          'e.g. Wood finish, Brick, Stone...'
+                    }
+                    className="w-full bg-black/20 border border-white/10 text-white rounded-xl px-4 py-3 placeholder-slate-600 focus:outline-none focus:border-[#60a5fa] focus:bg-[#60a5fa]/5 transition-all text-sm"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-2 px-1">Specify preferred materials (e.g., Wood, Marble, Glass).</p>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400">
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Lighting</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {lightingOptions.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setLighting(option)}
+                        className={`px-3 py-3 rounded-xl border text-xs font-medium transition-all duration-200 text-center
+                          ${lighting === option
+                            ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.2)]'
+                            : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5 hover:border-white/20'
+                          }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Camera & View Angle</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(projectType === 'Both (Interior + Exterior)'
+                      ? Array.from(new Set([...interiorCameraAngles, ...exteriorCameraAngles]))
+                      : projectType === 'Exterior Rendering'
+                        ? exteriorCameraAngles
+                        : interiorCameraAngles
+                    ).map((angle) => (
+                      <button
+                        key={angle}
+                        onClick={() => setCameraAngle(angle)}
+                        className={`px-3 py-3 rounded-xl border text-xs font-medium transition-all duration-200 text-center
+                          ${cameraAngle === angle
+                            ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.2)]'
+                            : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5 hover:border-white/20'
+                          }`}
+                      >
+                        {angle}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(projectType === 'Interior Rendering' || projectType === 'Both (Interior + Exterior)') && (
+                  <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-600">
+                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Furniture</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {furnitureOptions.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => setFurniture(option)}
+                          className={`px-3 py-3 rounded-xl border text-xs font-medium transition-all duration-200 text-center
+                            ${furniture === option
+                              ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.2)]'
+                              : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5 hover:border-white/20'
+                            }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-700">
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3 block">Render Quality</label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {renderQualityOptions.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setRenderQuality(option)}
+                        className={`px-3 py-3 rounded-xl border text-xs font-medium transition-all duration-200 text-center
+                          ${renderQuality === option
+                            ? 'bg-[#60a5fa]/10 border-[#60a5fa] text-white shadow-[0_0_15px_rgba(96,165,250,0.2)]'
+                            : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5 hover:border-white/20'
+                          }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
               </div>
+
 
               <div className="mt-auto pt-6 border-t border-white/5">
                 <div className="flex items-center justify-between mb-4">
@@ -242,7 +488,8 @@ export default function CadTo3d() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
+
 
       {isUploadModalOpen && (
         <UploadModal
@@ -254,8 +501,10 @@ export default function CadTo3d() {
             }
           }}
           remainingSlots={1}
+          accept="application/pdf, image/png, image/jpeg, image/jpg"
         />
-      )}
+      )
+      }
     </>
   );
 }

@@ -24,6 +24,7 @@ export default function PolaroidStyle() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [textPrompt, setTextPrompt] = useState("");
 
   const [includeProps, setIncludeProps] = useState(true);
   const [aspectRatio, setAspectRatio] = useState("1:1");
@@ -78,6 +79,7 @@ export default function PolaroidStyle() {
 
       const response = await axiosInstance.post('/api/workflows/fun/polaroid-style', {
         image: originalImage,
+        prompt: textPrompt,
         isPublic: true,
         includeProps,
         aspectRatio,
@@ -212,6 +214,17 @@ export default function PolaroidStyle() {
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="Add extra data or specific instructions here..."
                   ></textarea>
+                </div>
+                <div className="mb-6">
+                  <label className="text-xs text-slate-500 font-medium block mb-2 uppercase tracking-wider">
+                    Add details / style / date (Optional)
+                  </label>
+                  <textarea
+                    value={textPrompt}
+                    onChange={(e) => setTextPrompt(e.target.value)}
+                    placeholder="E.g. Vintage 1990s style, add warm filter, date: 12/12/1990..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#60a5fa]/50 focus:ring-1 focus:ring-[#60a5fa]/50 transition-all placeholder:text-slate-600 resize-none h-24"
+                  />
                 </div>
               </div>
 
