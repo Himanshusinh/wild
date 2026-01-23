@@ -44,10 +44,25 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
   // Use passed workflows if available, otherwise filter from global
   const filteredWorkflows = useMemo(() => {
-    if (workflows) return workflows;
-    return activeCategory === "All"
-      ? WORKFLOWS_DATA
-      : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
+    // Start with either the passed workflows prop or global WORKFLOWS_DATA
+    let baseList = workflows;
+
+    if (!baseList) {
+      baseList = activeCategory === "All"
+        ? WORKFLOWS_DATA
+        : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
+    }
+
+    // Apply visibility filters
+    return baseList.filter(wf => {
+      // Logic for determining if an item is "Coming Soon"
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+
+      // Hide coming soon items if they are in the 'Fun' category
+      if (wf.category === 'Fun' && isComingSoon) return false;
+
+      return true;
+    });
   }, [activeCategory, workflows]);
 
 
@@ -107,7 +122,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           {/* Category Navigation - Moved Below Subtitle */}
           <div className="flex items-center md:gap-3 gap-2 overflow-x-auto no-scrollbar py-4">
             {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Branding', 'Photography', 'Architecture'].includes(cat);
+              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
               return (
                 <button
                   key={cat}
@@ -134,7 +149,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {filteredWorkflows.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+            const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
             return (
               <div
