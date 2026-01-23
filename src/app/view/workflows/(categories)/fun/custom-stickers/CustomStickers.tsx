@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Unused imports removed
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
@@ -95,7 +94,6 @@ export default function CustomStickers() {
 
   const handleImageSelect = (url: string) => {
     setOriginalImage(url);
-    // Reset generated image when new image is selected
     setGeneratedImage(null);
     setIsUploadModalOpen(false);
   };
@@ -175,15 +173,15 @@ export default function CustomStickers() {
 
         <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-          <div className="flex w-full h-full flex-col md:flex-row">
+          <div className="flex w-full h-full flex-col md:flex-row shadow-2xl">
             {/* Left Panel - Controls */}
-            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
-              <div className="flex-1">
+            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto shadow-xl">
+              <div className="flex-1 pb-6">
                 <div className="inline-flex items-center gap-2 mb-6">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -207,116 +205,82 @@ export default function CustomStickers() {
                   </div>
                 </div>
 
-                <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Shape</label>
-                  <div className="flex flex-wrap gap-2">
-                    {shapeOptions.map(shape => (
-                      <button
-                        key={shape}
-                        onClick={() => setSelectedShape(shape)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedShape === shape
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {shape}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Shape</label>
+                    <div className="flex flex-wrap gap-2">
+                      {shapeOptions.map(shape => (
+                        <button
+                          key={shape}
+                          onClick={() => setSelectedShape(shape)}
+                          className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200 border ${selectedShape === shape
+                            ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.2)]'
+                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                            }`}
+                        >
+                          {shape}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Style</label>
+                    <div className="flex flex-wrap gap-2">
+                      {styleOptions.map(style => (
+                        <button
+                          key={style}
+                          onClick={() => setSelectedStyle(style)}
+                          className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200 border ${selectedStyle === style
+                            ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.2)]'
+                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                            }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Design Theme</label>
+                    <div className="flex flex-wrap gap-2">
+                      {themeOptions.map(theme => (
+                        <button
+                          key={theme}
+                          onClick={() => setSelectedTheme(theme)}
+                          className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200 border ${selectedTheme === theme
+                            ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.2)]'
+                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                            }`}
+                        >
+                          {theme}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Material</label>
+                    <div className="flex flex-wrap gap-2">
+                      {materialOptions.map(material => (
+                        <button
+                          key={material}
+                          onClick={() => setSelectedMaterial(material)}
+                          className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200 border ${selectedMaterial === material
+                            ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.2)]'
+                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                            }`}
+                        >
+                          {material}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-700">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Style</label>
-                  <div className="flex flex-wrap gap-2">
-                    {styleOptions.map(style => (
-                      <button
-                        key={style}
-                        onClick={() => setSelectedStyle(style)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedStyle === style
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Design Theme</label>
-                  <div className="flex flex-wrap gap-2">
-                    {themeOptions.map(theme => (
-                      <button
-                        key={theme}
-                        onClick={() => setSelectedTheme(theme)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedTheme === theme
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {theme}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Material</label>
-                  <div className="flex flex-wrap gap-2">
-                    {materialOptions.map(material => (
-                      <button
-                        key={material}
-                        onClick={() => setSelectedMaterial(material)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedMaterial === material
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {material}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Sticker Type</label>
-                  <div className="flex flex-wrap gap-2">
-                    {["Single Sticker", "Sticker Sheet", "Die Cut", "Kiss Cut"].map(type => (
-                      <button
-                        key={type}
-                        onClick={() => setSelectedStickerType(type)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedStickerType === type
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">File Style</label>
-                  <div className="flex flex-wrap gap-2">
-                    {["PNG", "JPG", "WEBP"].map(style => (
-                      <button
-                        key={style}
-                        onClick={() => setSelectedFileStyle(style)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedFileStyle === style
-                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
-                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8 animate-in fade-in slide-in-from-top-5 duration-1000">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">ADDITIONAL DETAILS (OPTIONAL)</label>
+                <div className="mb-8">
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
                   <textarea
                     value={additionalDetails}
                     onChange={(e) => setAdditionalDetails(e.target.value)}
@@ -325,7 +289,6 @@ export default function CustomStickers() {
                   ></textarea>
                 </div>
               </div>
-
 
               <div className="mt-auto pt-6 border-t border-white/5">
                 <div className="flex items-center justify-between mb-4">
@@ -360,14 +323,14 @@ export default function CustomStickers() {
             </div>
 
             {/* Right Panel - Preview */}
-            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
+            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0 shadow-inner">
               {/* Background pattern */}
-              <div className="absolute inset-0 opacity-20"
+              <div className="absolute inset-0 opacity-20 pointer-events-none"
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
 
               {originalImage && generatedImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
+                <div className="relative w-full h-full flex items-center justify-center p-8 transition-all duration-300">
                   <ImageComparisonSlider
                     beforeImage={originalImage}
                     afterImage={generatedImage}
@@ -378,21 +341,18 @@ export default function CustomStickers() {
                   />
                   <button
                     onClick={handleDownload}
-                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
+                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group shadow-2xl"
                   >
                     <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
                     Download
                   </button>
                 </div>
               ) : originalImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                <div className="relative w-full h-full flex items-center justify-center p-8 transition-all duration-300">
+                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
+                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Creating stickers...</p>
                     </div>
                   )}
@@ -425,8 +385,7 @@ export default function CustomStickers() {
           }}
           remainingSlots={1}
         />
-      )
-      }
+      )}
     </>
   );
 }

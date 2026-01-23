@@ -28,8 +28,7 @@ export default function CreativelyUpscale() {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [upscaleFactor, setUpscaleFactor] = useState(2);
     const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-
-    const FIXED_COST = 90;
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data
     const workflowData = {
@@ -37,7 +36,7 @@ export default function CreativelyUpscale() {
         title: "Creatively Upscale",
         category: "General",
         description: "Creatively upscale the image using SeedVR to ensure all details are crisp and in high quality.",
-        cost: FIXED_COST,
+        cost: "Dynamic", // Updated for clarity
     };
 
     useEffect(() => {
@@ -69,7 +68,8 @@ export default function CreativelyUpscale() {
         const factor = Math.max(1, Math.min(8, Math.round(Number(upscaleFactor) || 2)));
         const outW = Math.max(1, Math.round(w * factor));
         const outH = Math.max(1, Math.round(h * factor));
-        const credits = FIXED_COST;
+        const mp = (outW * outH) / 1_000_000;
+        const credits = Math.max(1, Math.ceil(mp * 5));
         return { factor, outW, outH, credits };
     }, [inputNaturalSize?.width, inputNaturalSize?.height, originalImage, upscaleFactor]);
 
@@ -121,7 +121,11 @@ export default function CreativelyUpscale() {
 
         let optimisticDebit = 0;
         try {
-            const expectedCredits = FIXED_COST;
+            const expectedCredits = estimate?.credits || 0;
+            if (!expectedCredits) {
+                toast.error('Unable to estimate credit cost. Please ensure image is loaded.');
+                return;
+            }
             if ((creditBalance || 0) < expectedCredits) {
                 toast.error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
                 return;
@@ -137,7 +141,8 @@ export default function CreativelyUpscale() {
 
             const response = await axiosInstance.post('/api/workflows/general/creatively-upscale', {
                 image: imageForApi,
-                upscaleFactor: upscaleFactor
+                upscaleFactor: upscaleFactor,
+                prompt: additionalText || undefined
             });
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
@@ -170,159 +175,177 @@ export default function CreativelyUpscale() {
     };
 
     return (
-        <div className={`fixed inset-0 z-[80] flex items-center justify-center px-4 transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
-            <Toaster position="bottom-center" />
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose}></div>
+        <>
+            <Toaster position="bottom-center" toastOptions={{
+                style: { background: '#333', color: '#fff' }
+            }} />
 
-            <button
-                onClick={onClose}
-                className="absolute top-6 right-6 md:top-10 md:right-10 z-50 w-10 h-10 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-95 shadow-2xl group"
-            >
-                <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-            </button>
+            <div className={`fixed inset-0 z-[80] flex items-center justify-center px-4 md:pl-20 transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+                <div className="absolute top-0 right-0 bottom-0 left-0 md:left-20 bg-black/80 backdrop-blur-xl" onClick={onClose}></div>
 
-            <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
+                <button
+                    onClick={onClose}
+                    className="absolute top-6 right-6 md:top-10 md:right-10 z-50 w-10 h-10 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-95 shadow-2xl group"
+                >
+                    <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                </button>
 
-                <div className="flex w-full h-full flex-col md:flex-row">
-                    {/* Left Panel - Controls */}
-                    <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
-                        <div className="flex-1">
-                            <div className="inline-flex items-center gap-2 mb-6">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
+                <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
+
+                    <div className="flex w-full h-full flex-col md:flex-row shadow-2xl">
+                        {/* Left Panel - Controls */}
+                        <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto shadow-xl">
+                            <div className="flex-1 pb-6">
+                                <div className="inline-flex items-center gap-2 mb-6">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
+                                </div>
+                                <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
+                                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
+
+                                <div className="mb-8">
+                                    <div
+                                        className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                                        onClick={() => setIsUploadModalOpen(true)}
+                                    >
+                                        {originalImage ? (
+                                            <>
+                                                <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
+                                                <div className="relative z-10 flex flex-col items-center gap-2">
+                                                    <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Image</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
+                                                <div className="text-center">
+                                                    <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
+                                                    <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Upscale Factor Slider */}
+                                <div className="mb-8 p-6 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <label className="text-xs font-bold uppercase text-slate-400 tracking-widest">Upscale Factor</label>
+                                        <span className="text-[#60a5fa] font-bold font-mono bg-[#60a5fa]/10 px-3 py-1 rounded-lg text-sm">{upscaleFactor}x</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="8"
+                                        step="1"
+                                        value={upscaleFactor}
+                                        onChange={(e) => setUpscaleFactor(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#60a5fa] hover:accent-[#60a5fa]/80 transition-all"
+                                    />
+                                    <div className="mt-3 grid grid-cols-8 text-[10px] text-slate-500 font-mono font-medium">
+                                        {Array.from({ length: 8 }).map((_, i) => (
+                                            <span key={i} className="text-center">{i + 1}x</span>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 p-3 bg-black/30 rounded-xl border border-white/5">
+                                        <div className="text-[11px] text-slate-500 font-mono flex justify-between">
+                                            <span>Resolution:</span>
+                                            <span className="text-slate-300">{estimate ? `${estimate.outW} × ${estimate.outH}` : '—'}</span>
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 font-mono flex justify-between mt-1">
+                                            <span>Estimated Cost:</span>
+                                            <span className="text-[#60a5fa]">{estimate ? `${estimate.credits} credits` : '—'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mb-8">
+                                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
+                                    <textarea
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
+                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                                        placeholder="Add extra guidance for upscaling, e.g., 'preserve textures' or 'sharpen edges'..."
+                                    ></textarea>
+                                </div>
                             </div>
-                            <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                            <p className="text-slate-400 text-sm md:text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
-                            <div className="mb-8">
-                                <div
-                                    className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                                    onClick={() => setIsUploadModalOpen(true)}
+                            <div className="mt-auto pt-6 border-t border-white/5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-xs font-medium text-slate-500">Cost:</span>
+                                    <div className="flex items-center gap-1.5 text-white font-medium text-sm">
+                                        <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
+                                        {estimate?.credits || '—'} Credits
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleRun}
+                                    disabled={isGenerating || !originalImage}
+                                    className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
+                                        ${isGenerating || !originalImage
+                                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                            : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
+                                        }`}
                                 >
-                                    {originalImage ? (
+                                    {isGenerating ? (
                                         <>
-                                            <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
-                                            <div className="relative z-10 flex flex-col items-center gap-2">
-                                                <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Image</span>
-                                            </div>
+                                            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                                            Upscaling...
                                         </>
                                     ) : (
                                         <>
-                                            <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
-                                            <div className="text-center">
-                                                <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
-                                                <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
-                                            </div>
+                                            <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
+                                            Run Workflow
                                         </>
                                     )}
-                                </div>
-                            </div>
-
-                            {/* Upscale Factor Slider */}
-                            <div className="mb-8 p-4 bg-white/5 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-between mb-4">
-                                    <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">Upscale Factor</label>
-                                    <span className="text-[#60a5fa] font-bold font-mono bg-[#60a5fa]/10 px-2 py-0.5 rounded text-sm">{upscaleFactor}x</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="8"
-                                    step="1"
-                                    value={upscaleFactor}
-                                    onChange={(e) => setUpscaleFactor(parseInt(e.target.value))}
-                                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa]"
-                                />
-                                <div className="mt-2 grid grid-cols-8 text-[10px] text-slate-500 font-mono">
-                                    {Array.from({ length: 8 }).map((_, i) => (
-                                        <span key={i} className="text-center">{i + 1}x</span>
-                                    ))}
-                                </div>
-                                <div className="mt-3 text-[11px] text-slate-500 font-mono">
-                                    Output: {estimate ? `${estimate.outW} × ${estimate.outH}` : '—'} • Est. cost: {estimate ? `${FIXED_COST} credits` : '—'}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-auto pt-6 border-t border-white/5">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-medium text-slate-500">Cost:</span>
-                                <div className="flex items-center gap-1.5 text-white font-medium text-sm">
-                                    <Zap size={14} className="text-[#60a5fa] fill-[#60a5fa]" />
-                                    {FIXED_COST} Credits
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleRun}
-                                disabled={isGenerating || !originalImage}
-                                className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                                    ${isGenerating || !originalImage
-                                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                        : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
-                                    }`}
-                            >
-                                {isGenerating ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                                        Upscaling...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Zap size={16} className={!originalImage ? "fill-slate-500" : "fill-black"} />
-                                        Run Workflow
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Right Panel - Preview */}
-                    <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
-                        <div className="absolute inset-0 opacity-20"
-                            style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
-                        </div>
-
-                        {originalImage && generatedImage ? (
-                            <div className="relative w-full h-full flex items-center justify-center p-8">
-                                <ImageComparisonSlider
-                                    beforeImage={originalImage}
-                                    afterImage={generatedImage}
-                                    beforeLabel="Original"
-                                    afterLabel="Upscaled"
-                                    imageFit="object-contain"
-                                />
-                                <button
-                                    onClick={handleDownload}
-                                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-[#60a5fa] text-black rounded-full text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl"
-                                >
-                                    <Download size={18} />
-                                    Download
                                 </button>
                             </div>
-                        ) : originalImage ? (
-                            <div className="relative w-full h-full flex items-center justify-center p-8">
-                                <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
-                                {isGenerating && (
-                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                                        <div className="relative w-24 h-24 mb-6">
-                                            <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                                            <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                                            <ImageIcon size={32} className="absolute inset-0 m-auto text-[#60a5fa] animate-pulse" />
+                        </div>
+
+                        {/* Right Panel - Preview */}
+                        <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0 shadow-inner">
+                            <div className="absolute inset-0 opacity-20 pointer-events-none"
+                                style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
+                            </div>
+
+                            {originalImage && generatedImage ? (
+                                <div className="relative w-full h-full flex items-center justify-center p-8 transition-all duration-300">
+                                    <ImageComparisonSlider
+                                        beforeImage={originalImage}
+                                        afterImage={generatedImage}
+                                        beforeLabel="Original"
+                                        afterLabel="Upscaled"
+                                        imageFit="object-contain"
+                                    />
+                                    <button
+                                        onClick={handleDownload}
+                                        className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group shadow-2xl"
+                                    >
+                                        <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
+                                        Download
+                                    </button>
+                                </div>
+                            ) : originalImage ? (
+                                <div className="relative w-full h-full flex items-center justify-center p-8 transition-all duration-300">
+                                    <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
+                                    {isGenerating && (
+                                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
+                                            <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
+                                            <p className="text-white font-bold text-xl tracking-tight animate-pulse">Upscaling image...</p>
                                         </div>
-                                        <p className="text-white font-bold text-xl tracking-tight">Upscaling image...</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="relative w-full h-full flex items-center justify-center p-8">
-                                <ImageComparisonSlider
-                                    beforeImage="/workflow-samples/creatively-upscale-before.png"
-                                    afterImage="/workflow-samples/creatively-upscale-after.png"
-                                    beforeLabel="Before"
-                                    afterLabel="After"
-                                    imageFit="object-contain"
-                                />
-                            </div>
-                        )}
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="relative w-full h-full flex items-center justify-center p-8">
+                                    <ImageComparisonSlider
+                                        beforeImage="/workflow-samples/creatively-upscale-before.png"
+                                        afterImage="/workflow-samples/creatively-upscale-after.png"
+                                        beforeLabel="Before"
+                                        afterLabel="After"
+                                        imageFit="object-contain"
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -339,6 +362,6 @@ export default function CreativelyUpscale() {
                     remainingSlots={1}
                 />
             )}
-        </div>
+        </>
     );
 }

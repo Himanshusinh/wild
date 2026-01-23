@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Unused imports removed
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
@@ -26,6 +25,7 @@ export default function Relighting() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedLighting, setSelectedLighting] = useState("Natural");
+  const [additionalText, setAdditionalText] = useState("");
 
   // Workflow Data
   const workflowData = {
@@ -63,7 +63,6 @@ export default function Relighting() {
 
   const handleImageSelect = (url: string) => {
     setOriginalImage(url);
-    // Reset generated image when new image is selected
     setGeneratedImage(null);
     setIsUploadModalOpen(false);
   };
@@ -87,7 +86,8 @@ export default function Relighting() {
       const response = await axiosInstance.post('/api/workflows/fun/relighting', {
         image: originalImage,
         isPublic: true,
-        lightingStyle: selectedLighting
+        lightingStyle: selectedLighting,
+        additionalText: additionalText
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -138,17 +138,15 @@ export default function Relighting() {
 
         <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-          <div className="flex w-full h-full flex-col md:flex-row">
+          <div className="flex w-full h-full flex-col md:flex-row shadow-2xl">
             {/* Left Panel - Controls */}
-            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
-              <div className="flex-1">
+            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto shadow-xl">
+              <div className="flex-1 pb-6">
                 <div className="inline-flex items-center gap-2 mb-6">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
-
-
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -189,6 +187,16 @@ export default function Relighting() {
                     ))}
                   </div>
                 </div>
+
+                <div className="mb-8">
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
+                  <textarea
+                    value={additionalText}
+                    onChange={(e) => setAdditionalText(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                    placeholder="Describe specific lighting details or instructions..."
+                  ></textarea>
+                </div>
               </div>
 
               <div className="mt-auto pt-6 border-t border-white/5">
@@ -224,9 +232,9 @@ export default function Relighting() {
             </div>
 
             {/* Right Panel - Preview */}
-            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
+            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0 shadow-inner">
               {/* Background pattern */}
-              <div className="absolute inset-0 opacity-20"
+              <div className="absolute inset-0 opacity-20 pointer-events-none"
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
 
@@ -242,7 +250,7 @@ export default function Relighting() {
                   />
                   <button
                     onClick={handleDownload}
-                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
+                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group shadow-2xl"
                   >
                     <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
                     Download
@@ -250,13 +258,10 @@ export default function Relighting() {
                 </div>
               ) : originalImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
+                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Relighting scene...</p>
                     </div>
                   )}

@@ -24,6 +24,7 @@ export default function RemoveBackground() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data (Hardcoded for this specific page, matching data.js)
     const workflowData = {
@@ -32,7 +33,7 @@ export default function RemoveBackground() {
         category: "General",
         description: "Clean background removal with high precision studio quality output.",
         //model: "Seadream4/ Nano Banana",
-        cost: 90 // Backend cost
+        cost: 10 // Backend cost
     };
 
     useEffect(() => {
@@ -64,7 +65,7 @@ export default function RemoveBackground() {
             return;
         }
 
-        const CREDIT_COST = 90;
+        const CREDIT_COST = 10;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;
@@ -75,7 +76,8 @@ export default function RemoveBackground() {
             setIsGenerating(true);
 
             const response = await axiosInstance.post('/api/workflows/general/remove-background', {
-                image: originalImage
+                image: originalImage,
+                prompt: additionalText || undefined
             });
 
             if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
@@ -87,6 +89,7 @@ export default function RemoveBackground() {
 
         } catch (error: any) {
             console.error('Remove background error:', error);
+            rollbackOptimisticDeduction(CREDIT_COST);
             toast.error(error.response?.data?.message || error.message || 'Failed to remove background');
         } finally {
             setIsGenerating(false);
@@ -101,14 +104,6 @@ export default function RemoveBackground() {
         } catch (error) {
             toast.error('Failed to download image');
         }
-    };
-
-    // Helper to get proxy URL for images if needed (similar to other components)
-    const getDisplayUrl = (url: string | null) => {
-        if (!url) return '';
-        // If it's a relative path starting with /users, prepend proxy
-        // (Adjust logic based on how your app handles this; usually straightforward URL works if signed/public)
-        return url;
     };
 
     return (
@@ -132,17 +127,15 @@ export default function RemoveBackground() {
 
                 <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-                    <div className="flex w-full h-full flex-col md:flex-row">
+                    <div className="flex w-full h-full flex-col md:flex-row shadow-2xl">
                         {/* Left Panel - Controls */}
-                        <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
-                            <div className="flex-1">
+                        <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto shadow-xl">
+                            <div className="flex-1 pb-6">
                                 <div className="inline-flex items-center gap-2 mb-6">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                                 </div>
                                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
-
-                                {/* <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div> */}
+                                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                                 <div className="mb-8">
                                     <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -166,11 +159,13 @@ export default function RemoveBackground() {
                                     </div>
                                 </div>
 
-                                <div className="mb-4">
-                                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">ADDITIONAL DETAILS (OPTIONAL)</label>
+                                <div className="mb-8">
+                                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
                                     <textarea
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
                                         className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                                        placeholder="Add extra data or specific instructions here..."
+                                        placeholder="Add extra instructions or specific areas to focus on..."
                                     ></textarea>
                                 </div>
 
@@ -209,38 +204,35 @@ export default function RemoveBackground() {
                         </div>
 
                         {/* Right Panel - Preview */}
-                        <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
+                        <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0 shadow-inner">
                             {/* Background pattern */}
-                            <div className="absolute inset-0 opacity-20"
+                            <div className="absolute inset-0 opacity-20 pointer-events-none"
                                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
                             </div>
 
                             {originalImage && generatedImage ? (
-                                <div className="relative w-full h-full flex items-center justify-center p-8">
+                                <div className="relative w-full h-full flex items-center justify-center p-8 transition-all duration-300">
                                     <ImageComparisonSlider
                                         beforeImage={originalImage}
                                         afterImage={generatedImage}
                                         beforeLabel="Original"
                                         afterLabel="No Background"
-                                        imageFit="object-contain" // Use object-contain to see full images properly
+                                        imageFit="object-contain"
                                     />
                                     <button
                                         onClick={handleDownload}
-                                        className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
+                                        className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group shadow-2xl"
                                     >
                                         <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
                                         Download
                                     </button>
                                 </div>
                             ) : originalImage ? (
-                                <div className="relative w-full h-full flex items-center justify-center p-8">
-                                    <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                                <div className="relative w-full h-full flex items-center justify-center p-8 transition-all duration-300">
+                                    <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
                                     {isGenerating && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                                            <div className="relative w-20 h-20 mb-4">
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                                            </div>
+                                            <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                                             <p className="text-white font-medium text-lg animate-pulse">Removing background...</p>
                                         </div>
                                     )}
@@ -254,7 +246,6 @@ export default function RemoveBackground() {
                                         afterLabel="After"
                                         imageFit="object-contain"
                                     />
-
                                 </div>
                             )}
                         </div>

@@ -26,6 +26,7 @@ export default function PeopleAge() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedAge, setSelectedAge] = useState("Young Adult");
+  const [additionalText, setAdditionalText] = useState("");
 
   // Workflow Data
   const workflowData = {
@@ -88,7 +89,8 @@ export default function PeopleAge() {
       const response = await axiosInstance.post('/api/workflows/fun/people-age', {
         image: originalImage,
         targetAge: selectedAge,
-        isPublic: true
+        isPublic: true,
+        additionalText: additionalText
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -168,6 +170,16 @@ export default function PeopleAge() {
                       </svg>
                     </div>
                   </div>
+                </div>
+
+                <div className="mb-8">
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
+                  <textarea
+                    value={additionalText}
+                    onChange={(e) => setAdditionalText(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                    placeholder="Describe the person's appearance or add extra instructions..."
+                  ></textarea>
                 </div>
 
                 <div className="mb-8">
@@ -255,10 +267,7 @@ export default function PeopleAge() {
                   <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
+                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Transforming age...</p>
                     </div>
                   )}
