@@ -192,7 +192,6 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                     alt={wf.title}
                   />
 
-                  {/* Result Image (Visible on hover) */}
                   {!isComingSoon && (
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
                       <img
@@ -201,12 +200,6 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                         alt={`${wf.title} Result`}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse shadow-[0_0_8px_#60a5fa]"></div>
-                          <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live Now</span>
-                        </div>
-                      </div>
                     </div>
                   )}
 

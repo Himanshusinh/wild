@@ -36,14 +36,14 @@ export default function LineDrawingToPhoto() {
         cost: 90
     };
 
-    const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
-Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
-Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
-Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
-Add environmental realism with depth, atmosphere, and scale appropriate to the scene.
-Use cinematic lighting, realistic depth of field, and professional photography quality.
-Ultra-high resolution, sharp focus, realistic contrast, natural imperfections, and physically accurate rendering.
-No illustration style — the final result should look like a real photograph.`;
+        const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
+    Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
+    Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
+    Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
+    Add environmental realism with depth, atmosphere, and scale appropriate to the scene.
+    Use cinematic lighting, realistic depth of field, and professional photography quality.
+    Ultra-high resolution, sharp focus, realistic contrast, natural imperfections, and physically accurate rendering.
+    No illustration style — the final result should look like a real photograph.`;
 
     useEffect(() => {
         // Open modal animation on mount

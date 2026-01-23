@@ -36,7 +36,7 @@ export default function CreativelyUpscale() {
         title: "Creatively Upscale",
         category: "General",
         description: "Creatively upscale the image using SeedVR to ensure all details are crisp and in high quality.",
-        cost: null, // Dynamic
+        cost: "Dynamic", // Updated for clarity
     };
 
     useEffect(() => {
