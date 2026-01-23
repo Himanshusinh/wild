@@ -88,7 +88,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           <div className="flex items-center justify-between gap-4 mb-1">
             <div className="flex items-center gap-2">
               <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
-                Magic Workflows
+                Explore Apps
               </h3>
             </div>
 

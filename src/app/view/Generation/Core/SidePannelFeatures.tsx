@@ -217,7 +217,7 @@ const SidePannelFeatures = () => {
 
           <SidebarItem
             icon={<Hexagon />}
-            label="Workflows"
+            label="Apps"
             isActive={pathname?.includes('/view/workflows') || pathname?.includes('/workflows')}
             setIsSidebarHovered={setIsSidebarHovered}
             url={NAV_ROUTES.WORKFLOWS}
