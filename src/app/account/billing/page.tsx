@@ -62,7 +62,7 @@ export default function BillingPage() {
       // Open Razorpay modal
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        subscription_id: result.subscription.razorpaySubId,
+        subscription_id: result.razorpaySubscriptionId, // Fixed: use correct field from API response
         name: "WildMind AI",
         description: `Subscription - ${selectedPlan.name}`,
         image: "/logo.png", // Your logo
