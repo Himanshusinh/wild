@@ -60,26 +60,26 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
   // Use passed workflows if available, otherwise filter from global
   // If category is "All", show only the Mostly Used workflows
   const filteredWorkflows = useMemo(() => {
-    let result = workflows ? workflows : WORKFLOWS_DATA;
+    // Start with either the passed workflows prop or global WORKFLOWS_DATA
+    let baseList = workflows;
 
-    if (!workflows) {
-      if (activeCategory === "All") {
-        result = WORKFLOWS_DATA.filter(wf => MOSTLY_USED_IDS.includes(wf.id));
-      } else {
-        result = WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
-      }
+    if (!baseList) {
+      baseList = activeCategory === "All"
+        ? WORKFLOWS_DATA
+        : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
     }
 
-    // Filter by search query
-    if (searchQuery) {
-      result = result.filter(wf =>
-        wf.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (wf.description && wf.description.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
+    // Apply visibility filters
+    return baseList.filter(wf => {
+      // Logic for determining if an item is "Coming Soon"
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
-    return result;
-  }, [activeCategory, workflows, searchQuery]);
+      // Hide coming soon items if they are in the 'Fun' category
+      if (wf.category === 'Fun' && isComingSoon) return false;
+
+      return true;
+    });
+  }, [activeCategory, workflows]);
 
 
   useEffect(() => {
@@ -113,58 +113,10 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {/* Sticky Header Section */}
       <div className="sticky top-0 z-20 bg-[#07070B] -mx-2 px-2">
         <div className="mb-2 md:mb-1 pt-2">
-
-
-
-          {/* Mobile Toolbar (Sticky) */}
-          <div className="flex flex-col md:hidden pb-2 pt-1">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0">
-              {/* Category Buttons */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => handleCategoryClick('All')}
-                  className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-medium transition-all border ${activeCategory === 'All'
-                    ? 'bg-white border-white/5 text-black'
-                    : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                  Mostly Used
-                </button>
-                {CATEGORIES.filter(c => c !== 'All').map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => handleCategoryClick(cat)}
-                    className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-medium transition-all border whitespace-nowrap ${activeCategory === cat
-                      ? 'bg-white border-white/5 text-black'
-                      : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                      }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Right Side Actions: Heart + Search */}
-              <div className="ml-auto flex items-center gap-1 flex-shrink-0 pl-1">
-                <button className="p-1.5 rounded-lg border flex items-center justify-center transition-all bg-white/5 text-white border-white/10 hover:bg-white/10">
-                  <Heart size={16} />
-                </button>
-                <div className="relative flex items-center">
-                  <input
-                    placeholder="Search by prompt..."
-                    className="px-2 py-1.5 rounded-lg text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 w-32"
-                    type="text"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop Title & Controls Row */}
-          <div className="hidden md:flex items-end justify-between mb-2">
-            <div>
-              <h3 className="text-white text-2xl font-bold mb-1">
-                Magic Workflows
+          <div className="flex items-center justify-between gap-4 mb-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
+                Explore Apps
               </h3>
               <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1">
                 Explore AI tools that make your creative process easier and better
@@ -206,7 +158,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           {/* Desktop Category Navigation */}
           <div className="hidden md:flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
             {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Branding', 'Photography', 'Architecture'].includes(cat);
+              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
               return (
                 <button
                   key={cat}
@@ -238,7 +190,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           : "flex flex-col gap-4"
         }>
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+            const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
             return (
 
