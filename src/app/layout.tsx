@@ -183,7 +183,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* Razorpay SDK */}
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
         <Script id="google-analytics" strategy="lazyOnload">
           {`
