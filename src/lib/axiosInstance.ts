@@ -76,9 +76,10 @@ axiosInstance.interceptors.request.use(async (config) => {
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
-  // For backend data endpoints (credits, generations, engagement, auth/me), attach Bearer id token so backend accepts without cookies
+  // For backend data endpoints (credits, generations, engagement, subscriptions, auth/me), attach Bearer id token so backend accepts without cookies
   if (
     url.startsWith('/api/credits/') ||
+    url.startsWith('/api/subscriptions/') ||
     url.startsWith('/api/generations') ||
     url.startsWith('/api/engagement') ||
     url === '/api/auth/me'

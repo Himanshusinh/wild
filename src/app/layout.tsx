@@ -167,6 +167,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://www.googletagmanager.com/gtag/js?id=G-S8H5QSFV5Z"
           strategy="lazyOnload"
         />
+        <Script id="mixpanel-init" strategy="afterInteractive">
+        {`
+          if (window.mixpanel) {
+            window.mixpanel.init('${process.env.NEXT_PUBLIC_MIXPANEL_TOKEN}', {
+              debug: ${process.env.NODE_ENV === 'development'},
+              track_pageview: true,
+              persistence: 'localStorage',
+              record_sessions_percent: 100
+            });
+          }
+        `}
+      </Script>
+
+      {/* Razorpay SDK */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
         <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];

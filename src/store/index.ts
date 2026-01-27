@@ -6,6 +6,7 @@ import bookmarksReducer from './slices/bookmarksSlice';
 import authReducer from './slices/authSlice';
 import creditsReducer from './slices/creditsSlice';
 import downloadReducer from './slices/downloadSlice';
+import subscriptionReducer from './slices/subscriptionSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     bookmarks: bookmarksReducer,
     credits: creditsReducer,
     download: downloadReducer,
+    subscription: subscriptionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
