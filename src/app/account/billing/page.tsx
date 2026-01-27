@@ -1,5 +1,12 @@
 "use client";
 
+// Razorpay TypeScript declarations
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
@@ -59,31 +66,77 @@ export default function BillingPage() {
         })
       ).unwrap();
 
-      // Debug: Log EVERYTHING
-      console.log("=== SUBSCRIPTION RESPONSE DEBUG ===");
-      console.log("Full result object:", JSON.stringify(result, null, 2));
-      console.log("result.data:", result?.data);
-      console.log("result.data.shortUrl:", result?.data?.shortUrl);
-      console.log("result.shortUrl:", result?.shortUrl);
-      console.log("===================================");
+      console.log("✅ Subscription created:", result);
 
-      // Get payment URL - check both possible locations
-      const paymentUrl = result?.data?.shortUrl || result?.shortUrl;
-      
-      console.log("🔗 Payment URL to use:", paymentUrl);
-      
-      if (!paymentUrl) {
-        console.error("❌ No payment URL available in response!");
+      // Get subscription details
+      const subscriptionId = result?.data?.razorpaySubscriptionId;
+      const keyId = result?.data?.keyId;
+
+      if (!subscriptionId || !keyId) {
+        console.error("❌ Missing subscription ID or key ID in response!");
         alert("Unable to initiate payment. Please try again or contact support.");
         setShowCheckout(false);
         setSelectedPlan(null);
         return;
       }
 
-      // Redirect to Razorpay payment page
-      console.log("✅ Redirecting to payment page:", paymentUrl);
-      console.log("⚠️ If you see api.razorpay.com instead of rzp.io, the API is returning the wrong URL!");
-      window.location.href = paymentUrl;
+      // Load Razorpay script if not already loaded
+      if (!window.Razorpay) {
+        console.log("📦 Loading Razorpay SDK...");
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
+        
+        console.log("✅ Razorpay SDK loaded");
+      }
+
+      // Configure Razorpay options
+      const options = {
+        key: keyId,
+        subscription_id: subscriptionId,
+        name: "WildMind AI",
+        description: `${selectedPlan?.name} Plan`,
+        image: "/icons/icon-512x512.png",
+        handler: function (response: any) {
+          console.log("✅ Payment successful:", response);
+          alert("Payment successful! Your subscription is now active.");
+          setShowCheckout(false);
+          setSelectedPlan(null);
+          // Refresh subscription data
+          dispatch(fetchCurrentSubscription());
+          window.location.href = "/account/billing?payment=success";
+        },
+        modal: {
+          ondismiss: function () {
+            console.log("Payment modal closed by user");
+            setShowCheckout(false);
+            setSelectedPlan(null);
+          },
+        },
+        theme: {
+          color: "#3b82f6",
+        },
+      };
+
+      // Open Razorpay checkout modal
+      console.log("🚀 Opening Razorpay checkout modal");
+      const rzp = new window.Razorpay(options);
+      
+      rzp.on("payment.failed", function (response: any) {
+        console.error("❌ Payment failed:", response.error);
+        alert(`Payment failed: ${response.error.description}`);
+        setShowCheckout(false);
+        setSelectedPlan(null);
+      });
+
+      rzp.open();
+      
     } catch (error: any) {
       console.error("Checkout error:", error);
       alert(`Error: ${error.message || "Failed to create subscription"}`);
