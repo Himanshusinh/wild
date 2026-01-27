@@ -141,7 +141,7 @@ export default function BillingPage() {
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Storage:</span>
                   <span className="font-bold ml-2">
-                    {((credits?.storageUsedBytes || 0) / 1024 / 1024 / 1024).toFixed(2)} GB / {currentPlan.storageGB} GB
+                    {((credits?.storageUsed || 0) / 1024 / 1024 / 1024).toFixed(2)} GB / {currentPlan.storageGB} GB
                   </span>
                 </div>
               </div>
