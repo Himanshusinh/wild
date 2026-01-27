@@ -172,30 +172,28 @@ export function proxy(req: NextRequest) {
   // Allow OAuth popups to function (prevents window.closed blocking)
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
-  // Improved CSP - allows Turnstile and removes unsafe directives
+  // Relaxed CSP - More permissive to avoid blocking issues
   const csp = [
     "default-src 'self'",
     // Allow inline styles (Next.js requires this)
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    // Allow scripts from Google, Firebase, Cloudflare Turnstile
-    // Note: 'unsafe-eval' needed for Firebase/Google Auth
-    "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-    // script-src-elem for external script tags - includes Turnstile
-    // Note: 'unsafe-inline' required for Next.js hydration/inline scripts
-    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com https://static.cloudflareinsights.com https://checkout.razorpay.com",
-    // Images and media from HTTPS/data/blob
+    "style-src 'self' 'unsafe-inline' https:",
+    // Allow scripts from anywhere over HTTPS (more permissive)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+    // Allow script elements from HTTPS
+    "script-src-elem 'self' 'unsafe-inline' https:",
+    // Allow images and media from anywhere
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
-    // Permit API/XHR/WebSocket to Google/Firebase backends and our gateway
-    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-    // Allow Google, Firebase OAuth popups/iframes, and Turnstile widget
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com https://checkout.razorpay.com https://api.razorpay.com",
+    // Allow connections to any HTTPS endpoint
+    "connect-src 'self' https: http: ws: wss:",
+    // Allow iframes from HTTPS
+    "frame-src 'self' https:",
     // Do not allow our app to be framed by other sites
     "frame-ancestors 'none'",
     // Hardening
     "base-uri 'self'",
-    "form-action 'self' https://accounts.google.com",
-    // Add object-src restriction
+    "form-action 'self' https:",
+    // Restrict object/embed tags
     "object-src 'none'",
   ].join('; ');
   res.headers.set('Content-Security-Policy', csp);
