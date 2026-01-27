@@ -24,6 +24,7 @@ export default function LineDrawingToPhoto() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data
     const workflowData = {
@@ -35,14 +36,14 @@ export default function LineDrawingToPhoto() {
         cost: 90
     };
 
-    const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
-Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
-Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
-Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
-Add environmental realism with depth, atmosphere, and scale appropriate to the scene.
-Use cinematic lighting, realistic depth of field, and professional photography quality.
-Ultra-high resolution, sharp focus, realistic contrast, natural imperfections, and physically accurate rendering.
-No illustration style — the final result should look like a real photograph.`;
+        const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
+    Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
+    Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
+    Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
+    Add environmental realism with depth, atmosphere, and scale appropriate to the scene.
+    Use cinematic lighting, realistic depth of field, and professional photography quality.
+    Ultra-high resolution, sharp focus, realistic contrast, natural imperfections, and physically accurate rendering.
+    No illustration style — the final result should look like a real photograph.`;
 
     useEffect(() => {
         // Open modal animation on mount
@@ -86,7 +87,7 @@ No illustration style — the final result should look like a real photograph.`;
             // Payload structure
             const payload = {
                 image: originalImage,
-                prompt: DETAILED_PROMPT,
+                prompt: `${additionalText ? additionalText + '. ' : ''}${DETAILED_PROMPT}`,
                 model: "qwen/qwen-image-edit-2511",
                 frameSize: "match_input_image",
                 output_format: "jpg",
@@ -184,6 +185,8 @@ No illustration style — the final result should look like a real photograph.`;
                                     <textarea
                                         className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                                         placeholder="Add extra data or specific instructions here..."
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
                                     ></textarea>
                                 </div>
 
@@ -250,10 +253,7 @@ No illustration style — the final result should look like a real photograph.`;
                                     <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                                     {isGenerating && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                                            <div className="relative w-20 h-20 mb-4">
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                                            </div>
+                                            <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                                             <p className="text-white font-medium text-lg animate-pulse">Generating...</p>
                                         </div>
                                     )}

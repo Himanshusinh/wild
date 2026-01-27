@@ -80,6 +80,26 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
     return result;
   }, [activeCategory, workflows, searchQuery]);
+    // Start with either the passed workflows prop or global WORKFLOWS_DATA
+    let baseList = workflows;
+
+    if (!baseList) {
+      baseList = activeCategory === "All"
+        ? WORKFLOWS_DATA
+        : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
+    }
+
+    // Apply visibility filters
+    return baseList.filter(wf => {
+      // Logic for determining if an item is "Coming Soon"
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+
+      // Hide coming soon items if they are in the 'Fun' category
+      if (wf.category === 'Fun' && isComingSoon) return false;
+
+      return true;
+    });
+  }, [activeCategory, workflows]);
 
 
   useEffect(() => {
@@ -165,6 +185,10 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
             <div>
               <h3 className="text-white text-2xl font-bold mb-1">
                 Magic Workflows
+          <div className="flex items-center justify-between gap-4 mb-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
+                Explore Apps
               </h3>
               <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1">
                 Explore AI tools that make your creative process easier and better
@@ -206,7 +230,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           {/* Desktop Category Navigation */}
           <div className="hidden md:flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
             {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Branding', 'Photography', 'Architecture'].includes(cat);
+              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
               return (
                 <button
                   key={cat}
@@ -238,7 +262,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           : "flex flex-col gap-4"
         }>
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+            const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
             return (
 
@@ -353,6 +377,16 @@ function WorkflowCard({ wf, router }) {
             </div>
           </div>
         )}
+                  {!isComingSoon && (
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
+                      <img
+                        src={wf.sampleAfter}
+                        className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'}`}
+                        alt={`${wf.title} Result`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                  )}
 
         {isComingSoon && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">

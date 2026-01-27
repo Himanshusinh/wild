@@ -6,6 +6,7 @@
 const MODEL_DISPLAY_NAMES: Record<string, string> = {
   // Image Generation Models
   'gemini-25-flash-image': 'Google Nano Banana',
+  'fal-ai/gemini-25-flash-image': 'Google Nano Banana',
   'flux-kontext-pro': 'Flux Kontext Pro',
   'flux-kontext-max': 'Flux Kontext Max',
   'flux-pro-1.1': 'Flux Pro 1.1',
@@ -39,7 +40,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'qwen/qwen-image-edit-2512': 'Qwen Image Edit',
   'replicate/qwen/qwen-image-edit-2511': 'Qwen Image Edit',
   'replicate/qwen/qwen-image-edit-2512': 'Qwen Image Edit',
-  
+
   // Video Generation Models
   'veo3-t2v-8s': 'Veo3',
   'veo3-fast-t2v-8s': 'Veo3 Fast',
@@ -82,7 +83,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'wan-2.5-i2v': 'WAN 2.5 I2V',
   'wan-2.5-i2v-fast': 'WAN 2.5 I2V Fast',
   'MiniMax-Hailuo-02-i2v': 'MiniMax-Hailuo-02',
-  
+
   // Music Generation Models
   'musicgen-remixer': 'MusicGen Remixer',
   'musicgen-melody': 'MusicGen Melody',
@@ -90,7 +91,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'stable-audio-2': 'Stable Audio 2',
   'prunaai/p-image': 'P-Image',
   'prunaai/p-image-edit': 'P-Image-Edit',
-  
+
   // Logo Generation Models
   'flux-kontext-dev': 'Flux Kontext Dev',
   'flux-krea': 'Flux Krea',
@@ -103,7 +104,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
  */
 export function getModelDisplayName(modelId: string | undefined | null): string {
   if (!modelId) return 'Unknown Model';
-  
+
   // Normalize known provider prefixes often saved in history (e.g., "Fal Ai Veo3 Fast")
   const normalized = modelId
     .trim()
@@ -125,34 +126,34 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
 
   // Heuristic remapping for models if provider text snuck into the model string
   const lower = normalized.toLowerCase();
-  
+
   // Runway Act-Two model (check before other Runway models)
-  if (lower.includes('act_two') || lower.includes('act-two') || lower.includes('acttwo') || 
-      lower.includes('runway_act_two') || lower.includes('runway-act-two') ||
-      lower.includes('character performance') && lower.includes('act two')) {
+  if (lower.includes('act_two') || lower.includes('act-two') || lower.includes('acttwo') ||
+    lower.includes('runway_act_two') || lower.includes('runway-act-two') ||
+    lower.includes('character performance') && lower.includes('act two')) {
     return 'Runway Act-Two';
   }
-  
+
   // WAN 2.2 Animate models (check before generic WAN models)
   if (lower.includes('wan-2.2-animate') || lower.includes('wan-video/wan-2.2-animate')) {
     if (lower.includes('replace')) return 'WAN Replace';
     if (lower.includes('animation')) return 'WAN Animate';
     return 'WAN Animate';
   }
-  
+
   // Sora 2 models (check before other models)
   if (lower.includes('sora2') || lower.includes('sora-2')) {
     if (lower.includes('remix') || lower.includes('v2v')) return 'Sora 2 Remix';
     if (lower.includes('pro')) return 'Sora 2 Pro';
     return 'Sora 2';
   }
-  
+
   // Veo 3.1 models (check before generic Veo3)
   if (lower.includes('veo3.1') || lower.includes('veo 3.1')) {
     if (lower.includes('fast')) return 'Veo 3.1 Fast';
     return 'Veo 3.1';
   }
-  
+
   // Veo3 models (legacy)
   if (lower.includes('veo3')) {
     if (lower.includes('fast')) return 'Veo3 Fast';
@@ -190,7 +191,7 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
   if (MODEL_DISPLAY_NAMES[normalized]) {
     return MODEL_DISPLAY_NAMES[normalized];
   }
-  
+
   // Fallback: try to format the model ID nicely
   return normalized
     .replace(/-/g, ' ')

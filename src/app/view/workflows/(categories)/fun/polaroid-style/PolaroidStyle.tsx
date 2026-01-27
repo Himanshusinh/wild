@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Unused imports removed
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
@@ -27,13 +26,17 @@ export default function PolaroidStyle() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [textPrompt, setTextPrompt] = useState("");
 
+  const [includeProps, setIncludeProps] = useState(true);
+  const [aspectRatio, setAspectRatio] = useState("1:1");
+  const [additionalText, setAdditionalText] = useState("");
+
   // Workflow Data
   const workflowData = {
     id: "polaroid-style",
     title: "Polaroid style Images",
     category: "Fun",
-    description: "Retro flash photography with silly props and poses on a classic white curtain background.",
-    cost: 90
+    description: "Retro flash photography based on the classic Polaroid instant camera. Add props for extra fun, or keep it clean!",
+    cost: 110
   };
 
   useEffect(() => {
@@ -54,7 +57,6 @@ export default function PolaroidStyle() {
 
   const handleImageSelect = (url: string) => {
     setOriginalImage(url);
-    // Reset generated image when new image is selected
     setGeneratedImage(null);
     setIsUploadModalOpen(false);
   };
@@ -65,7 +67,7 @@ export default function PolaroidStyle() {
       return;
     }
 
-    const CREDIT_COST = 90;
+    const CREDIT_COST = 110;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -77,8 +79,10 @@ export default function PolaroidStyle() {
 
       const response = await axiosInstance.post('/api/workflows/fun/polaroid-style', {
         image: originalImage,
-        prompt: textPrompt,
-        isPublic: true
+        isPublic: true,
+        includeProps,
+        aspectRatio,
+        additionalText: additionalText
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -128,15 +132,15 @@ export default function PolaroidStyle() {
 
         <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-          <div className="flex w-full h-full flex-col md:flex-row">
+          <div className="flex w-full h-full flex-col md:flex-row shadow-2xl">
             {/* Left Panel - Controls */}
-            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
-              <div className="flex-1">
+            <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto shadow-xl">
+              <div className="flex-1 pb-6">
                 <div className="inline-flex items-center gap-2 mb-6">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -159,16 +163,56 @@ export default function PolaroidStyle() {
                     )}
                   </div>
                 </div>
-                <div className="mb-6">
-                  <label className="text-xs text-slate-500 font-medium block mb-2 uppercase tracking-wider">
-                    Add details / style / date (Optional)
-                  </label>
+
+                {/* Include Props Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 mb-6">
+                  <div>
+                    <h3 className="text-white font-medium text-sm">Include Silly Props</h3>
+                    <p className="text-slate-400 text-xs mt-0.5">Add glasses, hats, and ribbons</p>
+                  </div>
+                  <button
+                    onClick={() => setIncludeProps(!includeProps)}
+                    className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${includeProps ? 'bg-[#60a5fa]' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 shadow-md ${includeProps ? 'left-7' : 'left-1'}`}></div>
+                  </button>
+                </div>
+
+                {/* Frame Size Selection */}
+                <div className="flex flex-col gap-3 mb-8">
+                  <h3 className="text-white font-medium text-sm">Frame Size</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Square', value: '1:1', ratio: '1/1' },
+                      { label: 'Wide', value: '16:9', ratio: '16/9' },
+                      { label: 'Vertical', value: '9:16', ratio: '9/16' },
+                      { label: 'Landscape', value: '4:3', ratio: '4/3' },
+                      { label: 'Portrait', value: '3:4', ratio: '3/4' }
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setAspectRatio(opt.value)}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${aspectRatio === opt.value
+                          ? 'bg-[#60a5fa]/20 border-[#60a5fa] text-white'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                          }`}
+                      >
+                        <div className="w-6 h-6 border-2 border-current rounded-sm mb-1.5" style={{ aspectRatio: opt.ratio }}></div>
+                        <span className="text-[10px] font-medium uppercase tracking-wide">{opt.label}</span>
+                        <span className="text-[9px] opacity-60">{opt.value}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-8">
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
                   <textarea
-                    value={textPrompt}
-                    onChange={(e) => setTextPrompt(e.target.value)}
-                    placeholder="E.g. Vintage 1990s style, add warm filter, date: 12/12/1990..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#60a5fa]/50 focus:ring-1 focus:ring-[#60a5fa]/50 transition-all placeholder:text-slate-600 resize-none h-24"
-                  />
+                    value={additionalText}
+                    onChange={(e) => setAdditionalText(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                    placeholder="Add extra data or specific instructions here..."
+                  ></textarea>
                 </div>
               </div>
 
@@ -205,9 +249,9 @@ export default function PolaroidStyle() {
             </div>
 
             {/* Right Panel - Preview */}
-            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
+            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0 shadow-inner">
               {/* Background pattern */}
-              <div className="absolute inset-0 opacity-20"
+              <div className="absolute inset-0 opacity-20 pointer-events-none"
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
 
@@ -223,7 +267,7 @@ export default function PolaroidStyle() {
                   />
                   <button
                     onClick={handleDownload}
-                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
+                    className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group shadow-2xl"
                   >
                     <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
                     Download
@@ -231,13 +275,10 @@ export default function PolaroidStyle() {
                 </div>
               ) : originalImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
+                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Developing polaroid...</p>
                     </div>
                   )}
