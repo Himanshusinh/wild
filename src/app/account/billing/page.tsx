@@ -59,30 +59,46 @@ export default function BillingPage() {
         })
       ).unwrap();
 
-      // Check if Razorpay SDK is loaded
-      if (typeof window === "undefined") {
-        alert("Error: Window object not available");
-        return;
-      }
+      // Robust Razorpay SDK loader
+      const loadRazorpay = (): Promise<boolean> => {
+        return new Promise((resolve) => {
+          if (window.Razorpay) {
+            console.log("Razorpay SDK already loaded");
+            return resolve(true);
+          }
 
-      if (!window.Razorpay) {
-        console.error("Razorpay SDK not loaded, using fallback payment link");
-        // Fallback: Open payment URL directly
-        window.open(result.shortUrl, "_blank");
-        setShowCheckout(false);
-        setSelectedPlan(null);
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => {
+            console.log("Razorpay SDK loaded successfully");
+            resolve(true);
+          };
+          script.onerror = () => {
+            console.error("Failed to load Razorpay SDK");
+            resolve(false);
+          };
+          document.body.appendChild(script);
+        });
+      };
+
+      // Load Razorpay SDK
+      const loaded = await loadRazorpay();
+
+      if (!loaded) {
+        console.warn("Razorpay SDK not loaded, using fallback payment link");
+        // Use window.location.href instead of window.open to avoid popup blockers
+        window.location.href = result.shortUrl;
         return;
       }
 
       // Open Razorpay modal
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        subscription_id: result.razorpaySubscriptionId, // Fixed: use correct field from API response
+        subscription_id: result.razorpaySubscriptionId,
         name: "WildMind AI",
         description: `Subscription - ${selectedPlan.name}`,
-        image: "/logo.png", // Your logo
+        image: "/logo.png",
         handler: async (response: any) => {
-          // Payment successful
           console.log("Payment successful:", response);
           
           // Refresh credits and subscription
@@ -92,7 +108,6 @@ export default function BillingPage() {
           setShowCheckout(false);
           setSelectedPlan(null);
           
-          // Show success message
           alert("Subscription activated successfully! Credits have been granted.");
         },
         modal: {
