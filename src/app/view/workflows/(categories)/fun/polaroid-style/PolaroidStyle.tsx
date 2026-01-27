@@ -79,7 +79,6 @@ export default function PolaroidStyle() {
 
       const response = await axiosInstance.post('/api/workflows/fun/polaroid-style', {
         image: originalImage,
-        prompt: textPrompt,
         isPublic: true,
         includeProps,
         aspectRatio,
