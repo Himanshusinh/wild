@@ -59,70 +59,26 @@ export default function BillingPage() {
         })
       ).unwrap();
 
-      // Robust Razorpay SDK loader
-      const loadRazorpay = (): Promise<boolean> => {
-        return new Promise((resolve) => {
-          if (window.Razorpay) {
-            console.log("Razorpay SDK already loaded");
-            return resolve(true);
-          }
+      // Debug: Log the entire result
+      console.log("Subscription creation result:", result);
+      console.log("Short URL:", result?.data?.shortUrl || result?.shortUrl);
+      console.log("Razorpay Sub ID:", result?.data?.razorpaySubscriptionId || result?.razorpaySubscriptionId);
 
-          const script = document.createElement("script");
-          script.src = "https://checkout.razorpay.com/v1/checkout.js";
-          script.onload = () => {
-            console.log("Razorpay SDK loaded successfully");
-            resolve(true);
-          };
-          script.onerror = () => {
-            console.error("Failed to load Razorpay SDK");
-            resolve(false);
-          };
-          document.body.appendChild(script);
-        });
-      };
-
-      // Load Razorpay SDK
-      const loaded = await loadRazorpay();
-
-      if (!loaded) {
-        console.warn("Razorpay SDK not loaded, using fallback payment link");
-        // Use window.location.href instead of window.open to avoid popup blockers
-        window.location.href = result.shortUrl;
+      // Get payment URL - check both possible locations
+      const paymentUrl = result?.data?.shortUrl || result?.shortUrl;
+      
+      if (!paymentUrl) {
+        console.error("No payment URL available in response!");
+        alert("Unable to initiate payment. Please try again or contact support.");
+        setShowCheckout(false);
+        setSelectedPlan(null);
         return;
       }
 
-      // Open Razorpay modal
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        subscription_id: result.razorpaySubscriptionId,
-        name: "WildMind AI",
-        description: `Subscription - ${selectedPlan.name}`,
-        image: "/logo.png",
-        handler: async (response: any) => {
-          console.log("Payment successful:", response);
-          
-          // Refresh credits and subscription
-          await dispatch(fetchUserCredits());
-          await dispatch(fetchCurrentSubscription());
-          
-          setShowCheckout(false);
-          setSelectedPlan(null);
-          
-          alert("Subscription activated successfully! Credits have been granted.");
-        },
-        modal: {
-          ondismiss: () => {
-            console.log("Payment cancelled");
-            setShowCheckout(false);
-          },
-        },
-        theme: {
-          color: "#3B82F6",
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      // Redirect to Razorpay payment page
+      // This avoids CSP issues with SDK loading
+      console.log("Redirecting to payment page:", paymentUrl);
+      window.location.href = paymentUrl;
     } catch (error: any) {
       console.error("Checkout error:", error);
       alert(`Error: ${error.message || "Failed to create subscription"}`);
