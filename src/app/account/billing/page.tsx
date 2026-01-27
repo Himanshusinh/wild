@@ -10,6 +10,7 @@ declare global {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
+import { auth } from "@/lib/firebase";
 import { AppDispatch } from "@/store";
 import {
   fetchCurrentSubscription,
@@ -41,10 +42,19 @@ export default function BillingPage() {
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
     dispatch(fetchCurrentSubscription());
     dispatch(fetchUserCredits());
+    
+    // Get real user email from Firebase Auth
+    const user = auth.currentUser;
+    if (user) {
+      setUserEmail(user.email || "");
+      setUserName(user.displayName || user.email?.split("@")[0] || "");
+    }
   }, [dispatch]);
 
   const handleSelectPlan = (planCode: string) => {
@@ -62,7 +72,11 @@ export default function BillingPage() {
       const result = await dispatch(
         createSubscription({
           planCode: selectedPlan.code,
-          billingDetails,
+          billingDetails: {
+            ...billingDetails,
+            email: userEmail,
+            name: userName,
+          },
         })
       ).unwrap();
 

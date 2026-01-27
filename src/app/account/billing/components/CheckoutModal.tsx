@@ -12,6 +12,8 @@ interface CheckoutModalProps {
 }
 
 interface BillingDetails {
+  email?: string;
+  name?: string;
   gstin?: string;
   billingState?: string;
   billingAddress?: string;
