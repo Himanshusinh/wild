@@ -59,6 +59,21 @@ export default function BillingPage() {
         })
       ).unwrap();
 
+      // Check if Razorpay SDK is loaded
+      if (typeof window === "undefined") {
+        alert("Error: Window object not available");
+        return;
+      }
+
+      if (!window.Razorpay) {
+        console.error("Razorpay SDK not loaded, using fallback payment link");
+        // Fallback: Open payment URL directly
+        window.open(result.shortUrl, "_blank");
+        setShowCheckout(false);
+        setSelectedPlan(null);
+        return;
+      }
+
       // Open Razorpay modal
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,

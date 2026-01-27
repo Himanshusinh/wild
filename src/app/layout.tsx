@@ -180,10 +180,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}
       </Script>
 
-      {/* Razorpay SDK */}
+      {/* Razorpay SDK - Load before page interactive */}
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
       />
         <Script id="google-analytics" strategy="lazyOnload">
           {`
