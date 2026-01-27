@@ -59,16 +59,21 @@ export default function BillingPage() {
         })
       ).unwrap();
 
-      // Debug: Log the entire result
-      console.log("Subscription creation result:", result);
-      console.log("Short URL:", result?.data?.shortUrl || result?.shortUrl);
-      console.log("Razorpay Sub ID:", result?.data?.razorpaySubscriptionId || result?.razorpaySubscriptionId);
+      // Debug: Log EVERYTHING
+      console.log("=== SUBSCRIPTION RESPONSE DEBUG ===");
+      console.log("Full result object:", JSON.stringify(result, null, 2));
+      console.log("result.data:", result?.data);
+      console.log("result.data.shortUrl:", result?.data?.shortUrl);
+      console.log("result.shortUrl:", result?.shortUrl);
+      console.log("===================================");
 
       // Get payment URL - check both possible locations
       const paymentUrl = result?.data?.shortUrl || result?.shortUrl;
       
+      console.log("🔗 Payment URL to use:", paymentUrl);
+      
       if (!paymentUrl) {
-        console.error("No payment URL available in response!");
+        console.error("❌ No payment URL available in response!");
         alert("Unable to initiate payment. Please try again or contact support.");
         setShowCheckout(false);
         setSelectedPlan(null);
@@ -76,8 +81,8 @@ export default function BillingPage() {
       }
 
       // Redirect to Razorpay payment page
-      // This avoids CSP issues with SDK loading
-      console.log("Redirecting to payment page:", paymentUrl);
+      console.log("✅ Redirecting to payment page:", paymentUrl);
+      console.log("⚠️ If you see api.razorpay.com instead of rzp.io, the API is returning the wrong URL!");
       window.location.href = paymentUrl;
     } catch (error: any) {
       console.error("Checkout error:", error);
