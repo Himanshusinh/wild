@@ -207,6 +207,21 @@ export default function Relighting() {
 
                 <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-100">
                   <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Light Direction</label>
+                  {originalImage && (
+                    <div className="mb-4 relative w-full h-48 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center group/preview">
+                      <img
+                        src={originalImage}
+                        className="max-w-full max-h-full object-contain"
+                        alt="Light Direction Reference"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                        <p className="text-xs text-white/90 font-medium flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] shadow-[0_0_8px_#60a5fa]"></span>
+                          Previewing: {selectedDirection}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {directionOptions.map(direction => (
                       <button
@@ -327,16 +342,6 @@ export default function Relighting() {
                     Download
                   </button>
                 </div>
-              ) : originalImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
-                      <p className="text-white font-medium text-lg animate-pulse">Relighting scene...</p>
-                    </div>
-                  )}
-                </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
@@ -351,8 +356,8 @@ export default function Relighting() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {isUploadModalOpen && (
         <UploadModal
@@ -365,7 +370,8 @@ export default function Relighting() {
           }}
           remainingSlots={1}
         />
-      )}
+      )
+      }
     </>
   );
 }

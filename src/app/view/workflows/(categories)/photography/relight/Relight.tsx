@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Camera, Zap } from 'lucide-react';
+import { X, Camera, Zap, Plus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import LightDirectionSphere from './LightDirectionSphere';
@@ -15,6 +15,7 @@ export default function Relight() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [lightDirection, setLightDirection] = useState({ x: 0.5, y: 0.5, z: 0.7 });
+  const [selectedColor, setSelectedColor] = useState('#60a5fa');
 
   // Workflow Data
   const workflowData = {
@@ -103,7 +104,9 @@ export default function Relight() {
                   <LightDirectionSphere
                     value={lightDirection}
                     onChange={setLightDirection}
-                    size={220}
+                    size={350}
+                    image={originalImage}
+                    color={selectedColor}
                   />
 
                   <div className="grid grid-cols-3 gap-2 mt-6">
@@ -124,6 +127,40 @@ export default function Relight() {
                       </button>
                     ))}
                   </div>
+
+                  <div className="mt-8">
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Light Color</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: 'Cyan', color: '#38bdf8' },
+                        { label: 'Salmon', color: '#f87171' },
+                        { label: 'Yellow', color: '#fbbf24' },
+                        { label: 'Light Green', color: '#4ade80' },
+                        { label: 'Blue', color: '#60a5fa' },
+                      ].map((swatch) => (
+                        <button
+                          key={swatch.label}
+                          onClick={() => setSelectedColor(swatch.color)}
+                          className={`w-10 h-10 rounded-xl transition-all hover:scale-105 ${selectedColor === swatch.color ? 'scale-110 shadow-lg ring-2 ring-white ring-offset-2 ring-offset-[#0A0A0A]' : 'opacity-90 hover:opacity-100'}`}
+                          style={{ backgroundColor: swatch.color }}
+                          title={swatch.label}
+                        />
+                      ))}
+
+                      {/* Custom Color Picker Button */}
+                      <div className="relative">
+                        <input
+                          type="color"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          value={selectedColor}
+                          onChange={(e) => setSelectedColor(e.target.value)}
+                        />
+                        <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all">
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
               </div>
@@ -138,21 +175,18 @@ export default function Relight() {
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Right Panel - Preview */}
-            <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
-              {/* Background pattern */}
-              <div className="absolute inset-0 opacity-20"
-                style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
-              </div>
+          {/* Right Panel - Preview */}
+          <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
+            {/* Background pattern */}
+            <div className="absolute inset-0 opacity-20"
+              style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
+            </div>
 
-              <div className="relative w-full h-full flex items-center justify-center p-8">
-                {originalImage ? (
-                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
-                ) : (
-                  <div className="text-slate-600 text-sm">Preview will appear here</div>
-                )}
-              </div>
+            <div className="relative w-full h-full flex items-center justify-center p-8">
+              {/* Result Logic Placeholder */}
+              <div className="text-slate-600 text-sm">Preview will appear here</div>
             </div>
           </div>
         </div>
@@ -169,7 +203,8 @@ export default function Relight() {
           }}
           remainingSlots={1}
         />
-      )}
+      )
+      }
     </>
   );
 }

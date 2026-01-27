@@ -12,20 +12,46 @@ interface LightDirectionSphereProps {
   value?: Vector3;
   onChange?: (value: Vector3) => void;
   size?: number;
+  image?: string | null;
+  color?: string;
 }
 
 export default function LightDirectionSphere({
   value = { x: 0, y: 0, z: 1 },
   onChange,
-  size = 200
+  size = 200,
+  image,
+  color = '#60a5fa' // Default blue-ish
 }: LightDirectionSphereProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+
+  // Load image when prop changes
+  useEffect(() => {
+    if (!image) {
+      setLoadedImage(null);
+      return;
+    }
+    const img = new Image();
+    img.src = image;
+    img.onload = () => setLoadedImage(img);
+  }, [image]);
 
   // Constants
   const GLOBE_RADIUS = size * 0.35;
   const CENTER = size / 2;
+
+  // Helper to convert hex to rgb
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 96, g: 165, b: 250 }; // default
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,38 +62,91 @@ export default function LightDirectionSphere({
     // Clear canvas
     ctx.clearRect(0, 0, size, size);
 
-    // Draw Center Image Placeholder (Subject)
-    const iconSize = GLOBE_RADIUS * 0.5;
+    // Draw Center Image (Subject)
+    const iconSize = GLOBE_RADIUS * 0.8; // Reduced size for better fit
     const iconHalf = iconSize / 2;
 
-    // Draw simplified "Image" icon in center
     ctx.save();
     ctx.translate(CENTER, CENTER);
 
-    // Background card for icon
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    // Initial clip path for the image square
+    ctx.beginPath();
+    const borderRadius = iconSize * 0.2; // rounded corners relative to size
+    ctx.roundRect(-iconHalf, -iconHalf, iconSize, iconSize, borderRadius);
+    ctx.clip();
+
+    if (loadedImage) {
+      // Draw the uploaded image
+      // Calculate aspect ratio to cover (square crop)
+      const scale = Math.max(iconSize / loadedImage.width, iconSize / loadedImage.height);
+      const w = loadedImage.width * scale;
+      const h = loadedImage.height * scale;
+      ctx.drawImage(loadedImage, -w / 2, -h / 2, w, h);
+
+      // Add gradients to simulate light direction
+
+      // 1. Shadow Gradient (darkness opposite to light)
+      // Calculate opposite point
+      const gradX = -value.x * iconHalf;
+      const gradY = value.y * iconHalf;
+
+      const gradient = ctx.createRadialGradient(gradX, gradY, 0, gradX, gradY, iconSize);
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)'); // Darkest point opposite light
+      gradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.3)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.globalCompositeOperation = 'multiply'; // Blend darken
+      ctx.fillRect(-iconHalf, -iconHalf, iconSize, iconSize);
+
+      // 2. Light Highlight (brightness at light source)
+      const lightX = value.x * iconHalf;
+      const lightY = -value.y * iconHalf;
+      const lightGrad = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, iconSize * 0.8);
+
+      const rgb = hexToRgb(color);
+      lightGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`); // Tinted highlight
+      lightGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+
+      ctx.fillStyle = lightGrad;
+      ctx.globalCompositeOperation = 'overlay'; // Blend bright
+      ctx.fillRect(-iconHalf, -iconHalf, iconSize, iconSize);
+
+      ctx.globalCompositeOperation = 'source-over'; // Reset blending
+
+    } else {
+      // Default Mountain/Sun icon background if no image
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fillRect(-iconHalf, -iconHalf, iconSize, iconSize);
+
+      // Draw icon
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1.5;
+      // Scale down the drawing operations for the icon relative to the new size
+      const s = 1.0;
+
+      ctx.beginPath();
+      // Mountains
+      ctx.moveTo(-10 * s, 4 * s);
+      ctx.lineTo(-4 * s, -4 * s);
+      ctx.lineTo(2 * s, 2 * s);
+      ctx.lineTo(10 * s, -6 * s);
+      ctx.lineTo(14 * s, 4 * s); // rough shape
+
+      // Sun
+      ctx.moveTo(10 * s, -10 * s);
+      ctx.arc(6 * s, -10 * s, 3 * s, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Draw border around the subject image
+    ctx.beginPath();
+    ctx.roundRect(CENTER - iconHalf, CENTER - iconHalf, iconSize, iconSize, borderRadius);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(-iconHalf, -iconHalf * 0.8, iconSize, iconSize * 0.8, 4);
-    ctx.fill();
     ctx.stroke();
-
-    // Mountain/Sun icon
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    // Mountains
-    ctx.moveTo(-iconHalf + 4, iconHalf * 0.8 - 4);
-    ctx.lineTo(-iconHalf + 10, iconHalf * 0.8 - 12);
-    ctx.lineTo(-iconHalf + 16, iconHalf * 0.8 - 6);
-    ctx.lineTo(-iconHalf + 24, iconHalf * 0.8 - 14);
-    ctx.lineTo(iconHalf - 4, iconHalf * 0.8 - 4);
-    // Sun
-    ctx.moveTo(iconHalf - 10, -iconHalf * 0.8 + 10);
-    ctx.arc(iconHalf - 10, -iconHalf * 0.8 + 10, 3, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
 
 
     // ------------------------------------------------
@@ -160,7 +239,7 @@ export default function LightDirectionSphere({
 
 
     // Draw The Light Emitter
-    const pointColor = '#60a5fa'; // Blue-ish light color
+    const pointColor = color; // Blue-ish light color
 
     // Connection line from Surface to "Light Source" (hovering above surface)
     // The reference shows a point ON the surface.
@@ -189,7 +268,7 @@ export default function LightDirectionSphere({
       ctx.shadowBlur = 0;
     }
 
-  }, [value, size, GLOBE_RADIUS, CENTER]);
+  }, [value, size, GLOBE_RADIUS, CENTER, loadedImage, color]);
 
   // Interaction handlers
   const updateFromPointer = (e: React.PointerEvent) => {

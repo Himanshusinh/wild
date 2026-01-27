@@ -59,12 +59,22 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
   // Use passed workflows if available, otherwise filter from global
   // If category is "All", show only the Mostly Used workflows
+  // Use passed workflows if available, otherwise filter from global
+  // If category is "All", show only the Mostly Used workflows
   const filteredWorkflows = useMemo(() => {
-    let result = workflows ? workflows : WORKFLOWS_DATA;
+    let result = workflows;
 
-    if (!workflows) {
+    if (!result) {
       if (activeCategory === "All") {
-        result = WORKFLOWS_DATA.filter(wf => MOSTLY_USED_IDS.includes(wf.id));
+        // Show only curated list for "Mostly Used"
+        const mostlyUsedIds = [
+          'creatively-upscale',
+          'turn-into-figurine', // Viral Trend
+          'replace-element',    // General
+          'style-transfer-viral', // Viral Trend
+          'relighting'          // Fun
+        ];
+        result = WORKFLOWS_DATA.filter(wf => mostlyUsedIds.includes(wf.id));
       } else {
         result = WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
       }
@@ -78,19 +88,8 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       );
     }
 
-    return result;
-  }, [activeCategory, workflows, searchQuery]);
-    // Start with either the passed workflows prop or global WORKFLOWS_DATA
-    let baseList = workflows;
-
-    if (!baseList) {
-      baseList = activeCategory === "All"
-        ? WORKFLOWS_DATA
-        : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
-    }
-
     // Apply visibility filters
-    return baseList.filter(wf => {
+    return result.filter(wf => {
       // Logic for determining if an item is "Coming Soon"
       const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
@@ -99,7 +98,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
       return true;
     });
-  }, [activeCategory, workflows]);
+  }, [activeCategory, workflows, searchQuery]);
 
 
   useEffect(() => {
@@ -181,77 +180,87 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           </div>
 
           {/* Desktop Title & Controls Row */}
-          <div className="hidden md:flex items-end justify-between mb-2">
-            <div>
-              <h3 className="text-white text-2xl font-bold mb-1">
-                Magic Workflows
-          <div className="flex items-center justify-between gap-4 mb-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
-                Explore Apps
-              </h3>
-              <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1">
-                Explore AI tools that make your creative process easier and better
-              </p>
-            </div>
-
-            {/* Right Side Controls */}
-            <div className="flex items-center gap-3 pb-1">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={14} />
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-[#0A0A0F] border border-white/10 rounded-full pl-9 pr-4 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/20 w-48 transition-all"
-                />
+          {/* Desktop Title & Controls Row */}
+          <div className="hidden md:flex flex-col mb-2">
+            <div className="flex items-center justify-between gap-4 mb-1">
+              <div className="flex flex-col">
+                <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
+                  Explore Apps
+                </h3>
+                <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1 pt-2">
+                  Explore AI tools that make your creative process easier and better
+                </p>
               </div>
 
-              {/* Toggle */}
-              <div className="flex items-center bg-[#0A0A0F] border border-white/10 rounded-lg p-1 gap-1">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'}`}
-                >
-                  <LayoutGrid size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'}`}
-                >
-                  <List size={14} />
-                </button>
+              {/* Right Side Controls */}
+              <div className="flex items-center gap-3 pb-1">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-[#0A0A0F] border border-white/10 rounded-full pl-9 pr-4 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/20 w-48 transition-all"
+                  />
+                </div>
+
+                {/* Toggle */}
+                <div className="flex items-center bg-[#0A0A0F] border border-white/10 rounded-lg p-1 gap-1">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'}`}
+                  >
+                    <LayoutGrid size={14} />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'}`}
+                  >
+                    <List size={14} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Desktop Category Navigation */}
-          <div className="hidden md:flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
-            {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() => handleCategoryClick(cat)}
-                  className={`inline-flex items-center px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === cat
-                    ? 'bg-white border-white/5 text-black'
-                    : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                  {cat === 'All' ? 'Mostly Used' : cat}
-                  {isCatComingSoon && (
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full border ${activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white/10 border-white/10 text-white/40'}`}>
-                      Soon
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            {/* Desktop Category Navigation */}
+            <div className="hidden md:flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
+              <button
+                onClick={() => handleCategoryClick('All')}
+                className={`inline-flex items-center px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === 'All'
+                  ? 'bg-white border-white/5 text-black'
+                  : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+              >
+                Mostly Used
+              </button>
+
+              {CATEGORIES.filter(cat => cat !== 'All').map((cat) => {
+                const isCatComingSoon = !['General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => handleCategoryClick(cat)}
+                    className={`inline-flex items-center px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === cat
+                      ? 'bg-white border-white/5 text-black'
+                      : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                      }`}
+                  >
+                    {cat}
+                    {isCatComingSoon && (
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-full border ${activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white/10 border-white/10 text-white/40'}`}>
+                        Soon
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
+
 
 
 
@@ -280,6 +289,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
         </div>
       )}
     </div>
+
   );
 }
 
@@ -377,16 +387,7 @@ function WorkflowCard({ wf, router }) {
             </div>
           </div>
         )}
-                  {!isComingSoon && (
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
-                      <img
-                        src={wf.sampleAfter}
-                        className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'}`}
-                        alt={`${wf.title} Result`}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                    </div>
-                  )}
+
 
         {isComingSoon && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
