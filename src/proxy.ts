@@ -182,14 +182,14 @@ export function proxy(req: NextRequest) {
     "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
     // script-src-elem for external script tags - includes Turnstile
     // Note: 'unsafe-inline' required for Next.js hydration/inline scripts
-    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com https://static.cloudflareinsights.com https://checkout.razorpay.com",
     // Images and media from HTTPS/data/blob
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
     // Permit API/XHR/WebSocket to Google/Firebase backends and our gateway
     "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
     // Allow Google, Firebase OAuth popups/iframes, and Turnstile widget
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com",
+    "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com https://checkout.razorpay.com https://api.razorpay.com",
     // Do not allow our app to be framed by other sites
     "frame-ancestors 'none'",
     // Hardening
