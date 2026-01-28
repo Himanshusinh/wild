@@ -33,9 +33,9 @@ export default function CreativelyUpscale() {
     // Workflow Data
     const workflowData = {
         id: "creatively-upscale",
-        title: "Creatively Upscale",
+        title: " Upscale Image",
         category: "General",
-        description: "Creatively upscale the image using SeedVR to ensure all details are crisp and in high quality.",
+        description: "Creatively upscale the image  to ensure all details are crisp and in high quality.",
         cost: "Dynamic", // Updated for clarity
     };
 
