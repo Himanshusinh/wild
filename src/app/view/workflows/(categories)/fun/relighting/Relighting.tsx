@@ -28,7 +28,7 @@ export default function Relighting() {
   const [selectedDirection, setSelectedDirection] = useState("Front Light");
   const [lightIntensity, setLightIntensity] = useState(50);
   const [shadowControl, setShadowControl] = useState(50);
-  const [additionalDetails, setAdditionalDetails] = useState("");
+  const [additionalText, setAdditionalText] = useState("");
 
   // Workflow Data
   const workflowData = {
@@ -101,11 +101,10 @@ export default function Relighting() {
         image: originalImage,
         isPublic: true,
         lightingStyle: selectedLighting,
-        additionalText: additionalText,
         lightDirection: selectedDirection,
         lightIntensity: lightIntensity < 34 ? "Low (Soft & subtle)" : lightIntensity > 66 ? "High (Strong highlights & shadows)" : "Medium (Balanced)",
         shadowControl: shadowControl < 34 ? "Soft" : shadowControl > 66 ? "Hard / Sharp" : "Natural",
-        additionalDetails: additionalDetails
+        additionalText: additionalText
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -275,15 +274,7 @@ export default function Relighting() {
                   </div>
                 </div>
 
-                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-400">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Additional Details <span className="text-slate-600 font-normal normal-case ml-1">(Optional)</span></label>
-                  <textarea
-                    value={additionalDetails}
-                    onChange={(e) => setAdditionalDetails(e.target.value)}
-                    placeholder="E.g., Make it look like sunset on Mars..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-white/10 transition-all resize-none h-24"
-                  />
-                </div>
+
 
                 <div className="mb-8">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
