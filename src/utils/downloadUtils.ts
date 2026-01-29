@@ -9,11 +9,11 @@
 export function getCurrentUsername(): string | null {
   try {
     console.log('[DownloadUtils] Checking localStorage for user data...');
-    
+
     // Try to get from localStorage first (most reliable) if user is logged in
     const storedUser = localStorage.getItem('user');
     console.log('[DownloadUtils] Stored user data:', storedUser);
-    
+
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       console.log('[DownloadUtils] Parsed user data:', userData);
@@ -21,11 +21,11 @@ export function getCurrentUsername(): string | null {
       console.log('[DownloadUtils] Found username from localStorage:', username);
       return username;
     }
-    
+
     // Try to get from authToken
     const authToken = localStorage.getItem('authToken');
     console.log('[DownloadUtils] Auth token exists:', !!authToken);
-    
+
     if (authToken) {
       try {
         const tokenData = JSON.parse(authToken);
@@ -38,7 +38,7 @@ export function getCurrentUsername(): string | null {
         console.log('[DownloadUtils] Error parsing authToken:', e);
       }
     }
-    
+
     console.log('[DownloadUtils] No username found in localStorage');
     return null;
   } catch (e) {
@@ -62,21 +62,21 @@ export function generateDownloadFilename(
   customPrefix?: string
 ): string {
   // Clean username - remove special characters and limit length
-  const cleanUsername = username 
+  const cleanUsername = username
     ? username.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 20)
     : 'user';
-  
+
   // Get current date and time
   const now = new Date();
   const date = now.toISOString().split('T')[0].replace(/-/g, '_'); // YYYY_MM_DD
   const time = now.toTimeString().split(' ')[0].replace(/:/g, '_'); // HH_MM_SS
-  
+
   // Only add prefix if customPrefix is explicitly provided
   const prefix = customPrefix ? `${customPrefix}_` : '';
-  
+
   // Ensure extension starts with a dot
   const cleanExtension = extension.startsWith('.') ? extension : `.${extension}`;
-  
+
   // Always prefix with wildmind_ as requested
   return `wildmind_${prefix}${cleanUsername}_${date}_${time}${cleanExtension}`;
 }
@@ -91,7 +91,7 @@ export function getExtensionFromUrl(url: string): string {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
     const extension = pathname.split('.').pop()?.toLowerCase();
-    
+
     // Common extensions mapping
     const extensionMap: Record<string, string> = {
       'jpg': 'jpg',
@@ -110,12 +110,12 @@ export function getExtensionFromUrl(url: string): string {
       'aac': 'aac',
       'ogg': 'ogg'
     };
-    
+
     // If we found a valid extension, return it
     if (extension && extensionMap[extension]) {
       return extensionMap[extension];
     }
-    
+
     // If no extension found, try to detect from URL patterns
     if (url.includes('video') || url.includes('mp4')) return 'mp4';
     if (url.includes('webm')) return 'webm';
@@ -127,7 +127,7 @@ export function getExtensionFromUrl(url: string): string {
     if (url.includes('webp')) return 'webp';
     if (url.includes('audio') || url.includes('mp3')) return 'mp3';
     if (url.includes('wav')) return 'wav';
-    
+
     // Return the original extension or 'file' as fallback
     return extension || 'file';
   } catch {
@@ -148,17 +148,17 @@ export function getFileType(media: any, url: string): 'image' | 'video' | 'audio
     if (media.type.includes('video')) return 'video';
     if (media.type.includes('audio')) return 'audio';
   }
-  
+
   // Check URL extension
   const extension = getExtensionFromUrl(url);
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
   const videoExtensions = ['mp4', 'mov', 'avi', 'webm'];
   const audioExtensions = ['mp3', 'wav', 'm4a', 'aac', 'ogg'];
-  
+
   if (imageExtensions.includes(extension)) return 'image';
   if (videoExtensions.includes(extension)) return 'video';
   if (audioExtensions.includes(extension)) return 'audio';
-  
+
   // Default fallback
   return 'image';
 }
@@ -182,16 +182,16 @@ export async function downloadFileWithNaming(
   customPrefix?: string
 ): Promise<boolean> {
   const downloadId = `download-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  
+
   try {
     // Try to get username from multiple sources if not provided
     const actualUsername = username || getCurrentUsername();
     console.log('[DownloadUtils] Using username:', actualUsername);
-    
+
     // Handle data URLs (data:image/png;base64,...) and blob URLs (blob:http://...)
     const isDataUrl = url.startsWith('data:');
     const isBlobUrl = url.startsWith('blob:');
-    
+
     if (isDataUrl || isBlobUrl) {
       // Extract extension from data URL mime type or default
       let extension = 'png';
@@ -210,9 +210,9 @@ export async function downloadFileWithNaming(
           else if (mime.includes('wav')) extension = 'wav';
         }
       }
-      
+
       const filename = generateDownloadFilename(actualUsername, fileType, extension, customPrefix);
-      
+
       // Add download to tracking
       store.dispatch(addDownload({
         id: downloadId,
@@ -220,13 +220,13 @@ export async function downloadFileWithNaming(
         url: url.substring(0, 50) + '...', // Truncate for display
         fileType,
       }));
-      
+
       // Show initial progress immediately
       store.dispatch(updateDownloadProgress({ id: downloadId, progress: 10 }));
-      
+
       // Small delay to ensure UI updates
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       // Convert data/blob URL to blob
       let blob: Blob;
       if (isDataUrl) {
@@ -237,34 +237,34 @@ export async function downloadFileWithNaming(
         const response = await fetch(url);
         blob = await response.blob();
       }
-      
+
       // Show progress updates
       store.dispatch(updateDownloadProgress({ id: downloadId, progress: 70 }));
       await new Promise(resolve => setTimeout(resolve, 50));
       store.dispatch(updateDownloadProgress({ id: downloadId, progress: 90 }));
-      
+
       // Create download link
       const objectUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = objectUrl;
       a.download = filename;
       a.style.display = 'none';
-      
+
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
+
       window.URL.revokeObjectURL(objectUrl);
-      
+
       // Mark as completed
       store.dispatch(completeDownload(downloadId));
       console.log(`Downloaded: ${filename}`);
       return true;
     }
-    
+
     // Regular HTTP/HTTPS URL handling (existing code)
     let extension = getExtensionFromUrl(url);
-    
+
     // Enhanced video extension detection
     if (fileType === 'video') {
       // Check if URL contains video indicators
@@ -283,7 +283,7 @@ export async function downloadFileWithNaming(
           const response = await fetch(url, { method: 'HEAD' });
           const contentType = response.headers.get('content-type');
           console.log('[DownloadUtils] Content-Type:', contentType);
-          
+
           if (contentType) {
             if (contentType.includes('video/mp4')) extension = 'mp4';
             else if (contentType.includes('video/webm')) extension = 'webm';
@@ -299,10 +299,10 @@ export async function downloadFileWithNaming(
         }
       }
     }
-    
+
     console.log('[DownloadUtils] Detected extension:', extension, 'for fileType:', fileType);
     console.log('[DownloadUtils] Original URL:', url);
-    
+
     // For images, try to detect better extension if we got 'file'
     if (fileType === 'image' && (extension === 'file' || !extension)) {
       console.log('[DownloadUtils] Trying to detect image extension from URL patterns...');
@@ -313,18 +313,19 @@ export async function downloadFileWithNaming(
       else extension = 'png'; // Default to png for images
       console.log('[DownloadUtils] Updated extension for image:', extension);
     }
-    
-    // Convert to proxy URL to avoid CORS issues. Use resource proxy (original file)
+
+    // Convert to proxy URL to avoid CORS issues. 
+    // toResourceProxy now automatically handles Zata storage paths AND external absolute URLs.
     const proxyUrl = toResourceProxy(url) || url;
-    
+
     console.log(`Downloading: ${proxyUrl} (original: ${url})`);
-    
+
     const response = await fetch(proxyUrl, { credentials: 'include' });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     // Override extension based on server content-type when available
     const respContentType = response.headers.get('content-type') || '';
     if (fileType === 'image') {
@@ -363,13 +364,13 @@ export async function downloadFileWithNaming(
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           chunks.push(value);
           loadedBytes += value.length;
           const progress = Math.round((loadedBytes / totalBytes) * 100);
           store.dispatch(updateDownloadProgress({ id: downloadId, progress }));
         }
-        
+
         // Combine chunks into blob
         const allChunks = new Uint8Array(loadedBytes);
         let offset = 0;
@@ -378,17 +379,17 @@ export async function downloadFileWithNaming(
           offset += chunk.length;
         }
         const blob = new Blob([allChunks], { type: respContentType || 'application/octet-stream' });
-        
+
         const objectUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = objectUrl;
         a.download = filename;
         a.style.display = 'none';
-        
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
+
         window.URL.revokeObjectURL(objectUrl);
       } catch (streamError) {
         console.warn('[DownloadUtils] Stream reading failed, falling back to blob:', streamError);
@@ -408,41 +409,41 @@ export async function downloadFileWithNaming(
       // Fallback: download without detailed progress tracking
       // Show initial progress immediately
       store.dispatch(updateDownloadProgress({ id: downloadId, progress: 10 }));
-      
+
       // Small delay to ensure UI updates
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       const blob = await response.blob();
-      
+
       // Show progress updates
       store.dispatch(updateDownloadProgress({ id: downloadId, progress: 70 }));
       await new Promise(resolve => setTimeout(resolve, 50));
       store.dispatch(updateDownloadProgress({ id: downloadId, progress: 90 }));
-      
+
       const objectUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = objectUrl;
       a.download = filename;
       a.style.display = 'none';
-      
+
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
+
       window.URL.revokeObjectURL(objectUrl);
     }
-    
+
     // Mark as completed
     store.dispatch(completeDownload(downloadId));
     console.log(`Downloaded: ${filename}`);
     return true;
   } catch (error) {
     console.error('Download failed, falling back to direct link:', error);
-    
+
     // Mark download as failed
     const errorMessage = error instanceof Error ? error.message : 'Download failed';
     store.dispatch(failDownload({ id: downloadId, error: errorMessage }));
-    
+
     try {
       // Fallback: open the original URL in a new tab
       const a = document.createElement('a');
@@ -454,7 +455,7 @@ export async function downloadFileWithNaming(
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
+
       // If fallback succeeds, mark as completed
       store.dispatch(completeDownload(downloadId));
       return true;

@@ -44,19 +44,32 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
   // Use passed workflows if available, otherwise filter from global
   const filteredWorkflows = useMemo(() => {
-    if (workflows) return workflows;
-    return activeCategory === "All"
-      ? WORKFLOWS_DATA
-      : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
-  }, [activeCategory, workflows]);
+    // Start with either the passed workflows prop or global WORKFLOWS_DATA
+    let baseList = workflows;
 
+    if (!baseList) {
+      baseList = activeCategory === "All"
+        ? WORKFLOWS_DATA
+        : WORKFLOWS_DATA.filter((wf) => wf.category === activeCategory);
+    }
+
+    // Apply visibility filters
+    return baseList.filter(wf => {
+      // Logic for determining if an item is "Coming Soon"
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+
+      // Hide coming soon items if they are in the 'Fun' category
+      if (wf.category === 'Fun' && isComingSoon) return false;
+
+      return true;
+    });
+  }, [activeCategory, workflows]);
 
 
   useEffect(() => {
     const nextCategory = deriveCategoryFromPath(pathname);
     setActiveCategory(nextCategory || initialCategory);
   }, [pathname, initialCategory]);
-
 
 
   const handleCategoryClick = (cat) => {
@@ -75,7 +88,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           <div className="flex items-center justify-between gap-4 mb-1">
             <div className="flex items-center gap-2">
               <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
-                Magic Workflows
+                Explore Apps
               </h3>
             </div>
 
@@ -109,12 +122,12 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           {/* Category Navigation - Moved Below Subtitle */}
           <div className="flex items-center md:gap-3 gap-2 overflow-x-auto no-scrollbar py-4">
             {CATEGORIES.map((cat) => {
-              const isCatComingSoon = !['All', 'General', 'Viral Trend'].includes(cat);
+              const isCatComingSoon = !['All', 'General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
               return (
                 <button
                   key={cat}
                   onClick={() => handleCategoryClick(cat)}
-                  className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === cat
+                  className={`inline-flex items-center px-3 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-xs font-semibold whitespace-nowrap transition-all border relative gap-1.5 md:gap-2 ${activeCategory === cat
                     ? 'bg-white border-white/5 text-black'
                     : 'bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
                     }`}
@@ -136,7 +149,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       {filteredWorkflows.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
           {filteredWorkflows.map((wf) => {
-            const isComingSoon = wf.category !== 'General' && wf.id !== 'selfie-video';
+            const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
             return (
               <div
@@ -164,6 +177,22 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                     router.push('/view/workflows/general/creatively-upscale');
                   } else if (wf.id === 'replace-element') {
                     router.push('/view/workflows/general/replace-element');
+                  } else if (wf.id === 'create-logo') {
+                    router.push('/view/workflows/branding/create-logo');
+                  } else if (wf.id === 'business-card') {
+                    router.push('/view/workflows/branding/business-card');
+                  } else if (wf.id === 'logo-variations') {
+                    router.push('/view/workflows/branding/logo-variations');
+                  } else if (wf.id === 'mockup-generation') {
+                    router.push('/view/workflows/branding/mockup-generation');
+                  } else if (wf.category === 'Photography') {
+                    router.push(`/view/workflows/photography/${wf.id}`);
+                  } else if (wf.category === 'Architecture') {
+                    router.push(`/view/workflows/architecture/${wf.id}`);
+                  } else if (wf.category === 'Fun') {
+                    router.push(`/view/workflows/fun/${wf.id}`);
+                  } else if (wf.category === 'Viral Trend') {
+                    router.push(`/view/workflows/viral-trend/${wf.id}`);
                   } else {
                     router.push(`/view/workflows/${wf.id}`);
                   }
@@ -178,7 +207,6 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                     alt={wf.title}
                   />
 
-                  {/* Result Image (Visible on hover) */}
                   {!isComingSoon && (
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
                       <img
@@ -187,12 +215,6 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                         alt={`${wf.title} Result`}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse shadow-[0_0_8px_#60a5fa]"></div>
-                          <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live Now</span>
-                        </div>
-                      </div>
                     </div>
                   )}
 
@@ -221,6 +243,6 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           <p className="text-white/40 text-sm max-w-xs text-center">We're building incredible AI workflows for the {activeCategory} category. Stay tuned!</p>
         </div>
       )}
-    </div >
+    </div>
   );
 }

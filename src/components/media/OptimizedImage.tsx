@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface OptimizedImageProps {
   /**
@@ -133,6 +133,22 @@ export function OptimizedImage({
 }: OptimizedImageProps) {
   const [error, setError] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const retryRef = useRef(0);
+
+  const withCacheBust = (rawUrl: string, attempt: number) => {
+    try {
+      if (/^https?:\/\//i.test(rawUrl)) {
+        const u = new URL(rawUrl);
+        u.searchParams.set('cb', String(Date.now()));
+        u.searchParams.set('attempt', String(attempt));
+        return u.toString();
+      }
+      const sep = rawUrl.includes('?') ? '&' : '?';
+      return `${rawUrl}${sep}cb=${Date.now()}&attempt=${attempt}`;
+    } catch {
+      return rawUrl;
+    }
+  };
 
   // Determine which URL to use based on display mode
   const getImageUrl = (): string => {
@@ -151,6 +167,34 @@ export function OptimizedImage({
   };
 
   const imageUrl = getImageUrl();
+
+  useEffect(() => {
+    retryRef.current = 0;
+    try { setError(false); } catch {}
+    try { setLoaded(false); } catch {}
+  }, [imageUrl]);
+
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    try {
+      const imgEl = e.currentTarget;
+      const attempt = retryRef.current + 1;
+      if (attempt <= 3) {
+        retryRef.current = attempt;
+        const delayMs = attempt === 1 ? 600 : attempt === 2 ? 1600 : 3000;
+        setTimeout(() => {
+          try {
+            if (!imgEl) return;
+            const base = imageUrl || src;
+            imgEl.src = withCacheBust(base, attempt);
+          } catch {}
+        }, delayMs);
+        return;
+      }
+    } catch {}
+
+    console.warn('[OptimizedImage] Failed to load after retries:', imageUrl);
+    setError(true);
+  };
 
   // Determine quality based on display mode
   const getQuality = (): number => {
@@ -194,10 +238,7 @@ export function OptimizedImage({
           className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           style={{ objectFit }}
           onLoad={() => setLoaded(true)}
-          onError={() => {
-            console.warn('[OptimizedImage] Failed to load:', imageUrl);
-            setError(true);
-          }}
+          onError={handleError}
         />
       </div>
     );
@@ -231,10 +272,7 @@ export function OptimizedImage({
           } : {}),
         }}
         onLoad={() => setLoaded(true)}
-        onError={() => {
-          console.warn('[OptimizedImage] Failed to load:', imageUrl);
-          setError(true);
-        }}
+        onError={handleError}
       />
     </picture>
   );

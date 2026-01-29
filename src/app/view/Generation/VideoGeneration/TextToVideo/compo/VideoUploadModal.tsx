@@ -71,13 +71,13 @@ const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
   return `/api/proxy/media/${encodedPath}`;
 };
 
-import { saveUpload, getLibraryPage, LibraryItem } from '@/lib/libraryApi';
+import { getLibraryPage, LibraryItem } from '@/lib/libraryApi';
 import { toMediaProxy } from '@/lib/thumb';
 
 type VideoUploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (urls: string[], entries?: any[]) => void; // Add optional entries parameter
+  onAdd: (urls: string[], entries?: any[], filesByUrl?: Record<string, File>) => void;
   remainingSlots: number; // how many videos can still be added (max 1 for video-to-video)
 };
 
@@ -85,6 +85,8 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
+  const [localUploadFiles, setLocalUploadFiles] = React.useState<Record<string, File>>({});
+  const preserveObjectUrlsRef = React.useRef<Set<string>>(new Set());
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   
@@ -207,6 +209,16 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
+      // Cleanup any lingering object URLs
+      try {
+        const preserve = preserveObjectUrlsRef.current || new Set<string>();
+        for (const url of Object.keys(localUploadFiles || {})) {
+          if (preserve.has(url)) continue;
+          try { URL.revokeObjectURL(url); } catch {}
+        }
+      } catch {}
+      setLocalUploadFiles({});
+      preserveObjectUrlsRef.current = new Set();
       setTab('library');
       // Reset library data when modal closes
       setLibraryItems([]);
@@ -216,6 +228,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
       // Reset load flag so data reloads when modal opens again
       hasLoadedLibraryRef.current = false;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Lock background scroll when modal is open
@@ -256,39 +269,29 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
       return;
     }
 
-    // tab === 'computer' – persist uploaded videos as reusable uploads in Zata.
+    // tab === 'computer' – DO NOT upload here.
+    // Only add the local blob URL(s) to the input box.
+    // Upload (if needed) should happen later when the user clicks Generate.
     const chosen = localUploads.slice(0, remainingSlots);
     if (!chosen.length) {
       onClose();
       return;
     }
 
-    const savedUrls: string[] = [];
+    // Preserve the blob URLs we are passing to the parent so modal cleanup doesn't revoke them.
+    preserveObjectUrlsRef.current = new Set(chosen);
+
+    const chosenFiles: Record<string, File> = {};
     for (const url of chosen) {
-      try {
-        const resp = await saveUpload({ url, type: 'video' });
-        console.log('[VideoUploadModal] Save upload response:', {
-          responseStatus: resp.responseStatus,
-          hasData: !!resp.data,
-          url: resp.data?.url,
-          storagePath: resp.data?.storagePath,
-          historyId: resp.data?.historyId
-        });
-        if (resp.responseStatus === 'success' && resp.data?.url) {
-          // Use the URL from the response (Zata public URL)
-          savedUrls.push(resp.data.url);
-        } else {
-          console.warn('[VideoUploadModal] Save upload failed:', resp);
-          savedUrls.push(url);
-        }
-      } catch (error) {
-        console.error('[VideoUploadModal] Error saving upload:', error);
-        savedUrls.push(url);
-      }
+      const file = localUploadFiles[url];
+      if (file) chosenFiles[url] = file;
     }
 
-    if (savedUrls.length) onAdd(savedUrls, []);
+    onAdd(chosen, [], chosenFiles);
+
+    // Clear modal-local state (do NOT revoke blob URLs here; they are still used in the input).
     setLocalUploads([]);
+    setLocalUploadFiles({});
     onClose();
   };
 
@@ -459,17 +462,19 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                     if (slotsLeft <= 0) return;
                     const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
-                    const maxSize = 50 * 1024 * 1024; // 50MB for videos
                     const urls: string[] = [];
+                    const nextFiles: Record<string, File> = {};
                     for (const file of files) {
-                      if (file.size > maxSize) continue;
                       if (file.type.startsWith('video/')) {
-                        const reader = new FileReader();
-                        const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
-                        urls.push(asDataUrl);
+                        const objectUrl = URL.createObjectURL(file);
+                        urls.push(objectUrl);
+                        nextFiles[objectUrl] = file;
                       }
                     }
-                    if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
+                    if (urls.length) {
+                      setLocalUploadFiles(prev => ({ ...prev, ...nextFiles }));
+                      setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots));
+                    }
                   }}
                   className={`border-2 border-dashed border-white/30 rounded-xl md:h-[51.75vh] h-[40vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
                   onClick={() => {
@@ -481,17 +486,19 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                       const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
                       if (slotsLeft <= 0) return;
                       const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const maxSize = 500 * 1024 * 1024; // 500MB for videos
                       const urls: string[] = [];
+                      const nextFiles: Record<string, File> = {};
                       for (const file of files) {
-                        if (file.size > maxSize) { continue; }
                         if (file.type.startsWith('video/')) {
-                          const reader = new FileReader();
-                          const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
-                          urls.push(asDataUrl);
+                          const objectUrl = URL.createObjectURL(file);
+                          urls.push(objectUrl);
+                          nextFiles[objectUrl] = file;
                         }
                       }
-                      if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
+                      if (urls.length) {
+                        setLocalUploadFiles(prev => ({ ...prev, ...nextFiles }));
+                        setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots));
+                      }
                     };
                     input.click();
                   }}
@@ -596,6 +603,12 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                             title="Remove"
                             onClick={(e) => {
                               e.stopPropagation();
+                                try { URL.revokeObjectURL(url); } catch {}
+                                setLocalUploadFiles(prev => {
+                                  const next = { ...(prev || {}) };
+                                  delete next[url];
+                                  return next;
+                                });
                               setLocalUploads(prev => prev.filter((u, i) => !(u === url && i === idx)));
                             }}
                             className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -615,7 +628,9 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                 </div>
                 <div className="flex justify-end md:mt-3 mt-2 gap-2">
                   <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                  <button className="md:px-4 px-3 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-60" onClick={handleAdd}>
+                    Add
+                  </button>
                 </div>
               </div>
             )}

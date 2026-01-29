@@ -86,11 +86,25 @@ export const fetchUserCredits = createAsyncThunk(
           lastSync: new Date().toISOString(),
         } as UserCredits;
       } catch (creditsError: any) {
+        const errorStatus = creditsError?.response?.status;
+        const errorMessage = creditsError?.response?.data?.message || creditsError?.message || 'Unknown error';
+
         console.error('[CREDITS_FRONTEND] Credits endpoint failed:', {
-          status: creditsError?.response?.status,
-          message: creditsError?.response?.data?.message || creditsError?.message,
+          status: errorStatus,
+          message: errorMessage,
           responseTime: Date.now() - startTime
         });
+
+        // CRITICAL: If 401, user is definitely not logged in or session is expired.
+        // Skip fallbacks as they will also fail with 401 or return unauthenticated state.
+        if (errorStatus === 401) {
+          console.log('[CREDITS_FRONTEND] skipping fallback due to 401 Unauthorized');
+          return {
+            creditBalance: 0,
+            planCode: 'free',
+            lastSync: new Date().toISOString(),
+          } as UserCredits;
+        }
 
         console.log('[CREDITS_FRONTEND] Falling back to auth/me...');
         const state = getState() as RootState;

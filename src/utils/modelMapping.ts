@@ -111,6 +111,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'wildmindimage',
+    creditModelName: 'WILDMINDIMAGE',
+    generationType: 'image',
+    provider: 'wildmind'
+  },
+  {
     frontendValue: 'flux-2-pro-1080p',
     creditModelName: 'FLUX.2 [pro] 1080p',
     generationType: 'image',
@@ -166,6 +172,16 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
     generationType: 'image',
     provider: 'replicate'
+  },
+  {
+    frontendValue: 'qwen-image-2511',
+    creditModelName: 'qwen-image-2511',
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      aspect_ratio: ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', 'custom', 'match_input_image'],
+      output_format: ['webp', 'jpg', 'png']
+    }
   },
   {
     frontendValue: 'qwen-image-edit-2511',

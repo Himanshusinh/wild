@@ -12,7 +12,7 @@ interface VideoModelsDropdownProps {
   selectedResolution?: string;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
 }
 
 const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
@@ -20,7 +20,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   onModelChange,
   generationMode,
   selectedDuration = "5s",
-  selectedResolution = "512P",
+  selectedResolution = "512P", 
   onCloseOtherDropdowns,
   onCloseThisDropdown,
   activeFeature = 'Video',

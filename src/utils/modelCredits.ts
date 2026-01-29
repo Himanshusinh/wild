@@ -24,6 +24,10 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'qwen-image-edit': 80,        // Legacy alias (keep for backward compatibility)
   'qwen-image-edit-2511': 80,   // Replicate Qwen Image Edit 2511 (flat 80 credits)
   'qwen-image-edit-2512': 60,   // Replicate Qwen Image Edit 2512 (flat 60 credits)
+  // Qwen Image (non-edit) variants
+  'qwen-image-2511': 80,
+  'qwen/qwen-image-2511': 80,
+  'replicate/qwen/qwen-image-2511': 80,
   // Backend/provider may return provider-prefixed or non-edit 2512 identifiers; keep them aligned to 60 credits.
   'qwen-image-2512': 60,
   'qwen/qwen-image-2512': 60,
@@ -43,7 +47,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Google Nano Banana (used by erase/replace in Edit Image)
   'google_nano_banana': 98,
   // Z-Image Turbo: Free (0 credits) for launch offer
-  'new-turbo-model': 0, // Free unlimited image generation
+  'new-turbo-model': 25, // z-image-turbo (now 25 credits)
+  // WILDMINDIMAGE: Free (0 credits)
+  'wildmindimage': 0,
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]
   'flux-kontext-dev': 90,       // Similar to FLUX.1 [dev]
@@ -315,7 +321,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate-crystal-upscaler-6k': 1620,
   'replicate-crystal-upscaler-8k': 3220,
   'replicate-crystal-upscaler-12k': 6420,
-  
+
   // GPT Image 1.5 quality variants
   'gpt-image-1.5-auto': 292,
   'gpt-image-1.5-low': 46,

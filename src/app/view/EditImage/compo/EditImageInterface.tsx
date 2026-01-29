@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { FilePlus, ChevronUp } from 'lucide-react';
+import { FilePlus, ChevronUp, Edit3 } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
@@ -14,6 +14,7 @@ import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { getCreditsForModel } from '@/utils/modelCredits';
+import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
 import { toast } from 'react-hot-toast';
 import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
@@ -238,6 +239,16 @@ const EditImageInterface: React.FC = () => {
     const credits = Math.max(1, Math.ceil(mp * 4));
     return { factor, outW, outH, credits };
   }, [inputNaturalSize?.width, inputNaturalSize?.height, model, seedvrUpscaleFactor, selectedFeature]);
+
+  const crystalEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'philz1337x/crystal-upscaler') return null;
+    const w = Number(inputNaturalSize?.width || 0);
+    const h = Number(inputNaturalSize?.height || 0);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+    const factorRaw = Number(String(scaleFactor).replace('x', '')) || 2;
+    return estimateCrystalUpscalerCredits(w, h, factorRaw);
+  }, [inputNaturalSize?.width, inputNaturalSize?.height, model, scaleFactor, selectedFeature]);
   // Outpaint (resize) controls
   const [resizeExpandLeft, setResizeExpandLeft] = useState<number>(0);
   const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
@@ -279,7 +290,7 @@ const EditImageInterface: React.FC = () => {
   const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
   const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
   const [vHierarchical, setVHierarchical] = useState<'stacked' | 'cutout'>('stacked');
-  const [vMode, setVMode] = useState<'spline' | 'polygon'>('spline');
+  const [vMode, setVMode] = useState<'spline' | 'polygon'>('polygon');
   const [vFilterSpeckle, setVFilterSpeckle] = useState<number>(4);
   const [vColorPrecision, setVColorPrecision] = useState<number>(6);
   const [vLayerDifference, setVLayerDifference] = useState<number>(16);
@@ -297,16 +308,19 @@ const EditImageInterface: React.FC = () => {
   ), [currentVectorizeCredits, vectorizeSuperMode, vectorizeArtExtraCredits]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   // Live Chat feature state
-  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5'>('gemini-25-flash-image');
+  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511'>('gemini-25-flash-image');
   const [liveFrameSize, setLiveFrameSize] = useState<'1:1' | '3:4' | '4:3' | '16:9' | '9:16'>('1:1');
   const [liveResolution, setLiveResolution] = useState<'1K' | '2K' | '4K'>('1K');
   const [livePrompt, setLivePrompt] = useState<string>('');
   const [liveChatMessages, setLiveChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; status?: 'generating' | 'done' }>>([]);
-  const [liveHistory, setLiveHistory] = useState<string[]>([]);
+  const [liveHistory, setLiveHistory] = useState<{ id?: string; url: string }[]>([]);
   const [activeLiveIndex, setActiveLiveIndex] = useState<number>(-1);
   const [liveOriginalInput, setLiveOriginalInput] = useState<string | null>(null);
+  const [hoveredThumbnailIdx, setHoveredThumbnailIdx] = useState<number | null>(null);
+  const [showThumbnailMenuIdx, setShowThumbnailMenuIdx] = useState<number | null>(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
+  const thumbnailMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = chatListRef.current;
@@ -321,16 +335,19 @@ const EditImageInterface: React.FC = () => {
 
   // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
 
-  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' }> = [
+  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511' }> = [
     { label: 'Nano Banana', value: 'gemini-25-flash-image' },
     { label: 'Nano Banana Pro', value: 'google/nano-banana-pro' },
     { label: 'Seedream v4 4k', value: 'seedream-v4' },
     { label: 'Seedream v4.5', value: 'seedream-v4.5' },
+    { label: 'GPT-IMAGE-1.5 (low)', value: 'openai/gpt-image-1.5' },
+    { label: 'Qwen Image Edit 2511', value: 'qwen-image-edit-2511' },
   ];
 
-  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5', resolution?: string) => {
+  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511', resolution?: string) => {
     const mapped = value;
-    const credits = getCreditsForModel(mapped, undefined, resolution);
+    const quality = mapped === 'openai/gpt-image-1.5' ? 'low' : undefined;
+    const credits = getCreditsForModel(mapped, undefined, resolution, undefined, undefined, quality);
     if (credits != null) return credits;
     // Fallback defaults
     if (mapped === 'gemini-25-flash-image') return 98;
@@ -340,6 +357,8 @@ const EditImageInterface: React.FC = () => {
     }
     if (mapped === 'seedream-v4') return 80;
     if (mapped === 'seedream-v4.5') return 100;
+    if (mapped === 'openai/gpt-image-1.5') return 46;
+    if (mapped === 'qwen-image-edit-2511') return 80;
     return 0;
   };
 
@@ -409,10 +428,104 @@ const EditImageInterface: React.FC = () => {
     return normalized;
   };
 
+  // Handler to delete an image from the live chat history
+  const handleDeleteLiveChatImage = async (origIdx: number, generationId?: string) => {
+    try {
+      // Close the menu first
+      setShowThumbnailMenuIdx(null);
+      setHoveredThumbnailIdx(null);
+
+      // Capture current state BEFORE any updates
+      const currentHistory = [...liveHistory];
+      const currentActiveIdx = activeLiveIndex;
+
+      // Optionally delete from server if generationId exists
+      if (generationId) {
+        try {
+          await axiosInstance.delete(`/api/generations/${generationId}`);
+        } catch (e) {
+          console.error('Failed to delete from server:', e);
+          // Continue with local deletion even if server deletion fails
+        }
+      }
+
+      // Calculate new state based on CURRENT values
+      let newActiveIndex = currentActiveIdx;
+      let newImageUrl: string | null = null;
+      let newHistoryId: string | null = null;
+
+      // If the deleted image was active, switch to another image or reset
+      if (currentActiveIdx === origIdx) {
+        // Calculate which image to show next based on current array
+        if (currentHistory.length > 1) {
+          // Determine which image to show based on which index we're deleting
+          let imageToShow;
+          let newIdxAfterDeletion;
+
+          if (origIdx === 0) {
+            // Deleting first image, show what's currently at index 1 (will become index 0)
+            imageToShow = currentHistory[1];
+            newIdxAfterDeletion = 0;
+          } else {
+            // Deleting any other image, show the previous one (index doesn't change)
+            imageToShow = currentHistory[origIdx - 1];
+            newIdxAfterDeletion = origIdx - 1;
+          }
+
+          if (imageToShow) {
+            newActiveIndex = newIdxAfterDeletion;
+            newImageUrl = imageToShow.url;
+            newHistoryId = imageToShow.id || null;
+          } else {
+            // Fallback to input if something went wrong
+            newActiveIndex = -1;
+            newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+            newHistoryId = null;
+          }
+        } else {
+          // This was the last image, reset to input
+          newActiveIndex = -1;
+          newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+          newHistoryId = null;
+        }
+      } else if (currentActiveIdx > origIdx) {
+        // Adjust active index if it was after the deleted image
+        newActiveIndex = currentActiveIdx - 1;
+      }
+
+      // Now update all states together
+      setLiveHistory((prev) => {
+        const updated = [...prev];
+        updated.splice(origIdx, 1);
+        return updated;
+      });
+
+      // Update active index if it changed
+      if (newActiveIndex !== currentActiveIdx) {
+        setActiveLiveIndex(newActiveIndex);
+      }
+
+      // Update outputs and inputs if the active image changed
+      if (currentActiveIdx === origIdx) {
+        if (newImageUrl) {
+          setOutputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+          setInputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+        } else {
+          setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+          setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+        }
+        setCurrentHistoryId(newHistoryId);
+      }
+    } catch (error) {
+      console.error('Error deleting live chat image:', error);
+    }
+  };
+
+
   const handleLiveGenerate = async () => {
     let optimisticDebit = 0;
     try {
-      const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex] : null);
+      const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex]?.url : null);
       if (!img) {
         setErrorMsg('Please upload or select an image for Live Chat');
         return;
@@ -438,7 +551,17 @@ const EditImageInterface: React.FC = () => {
       // Upload image to Zata if it's still a blob URL or base64
       const imageUrl = await ensureZataUrl(img);
 
+      const coerceGptImage15AspectRatio = (raw?: string): '1:1' | '3:2' | '2:3' => {
+        const v = String(raw || '').trim();
+        if (v === '1:1') return '1:1';
+        // Portrait-ish ratios in this UI
+        if (v === '3:4' || v === '9:16') return '2:3';
+        // Landscape-ish ratios in this UI
+        return '3:2';
+      };
+
       let out = '';
+      let res: any = null;
       if (liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') {
         const modelName = liveModel === 'seedream-v4' ? 'bytedance/seedream-4' : 'bytedance/seedream-4.5';
         const payload: any = {
@@ -451,7 +574,36 @@ const EditImageInterface: React.FC = () => {
           max_images: 1,
           isPublic: true,
         };
-        const res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post('/api/replicate/generate', payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === 'openai/gpt-image-1.5') {
+        const payload: any = {
+          prompt: livePrompt,
+          model: 'openai/gpt-image-1.5',
+          n: 1,
+          number_of_images: 1,
+          uploadedImages: [imageUrl],
+          aspect_ratio: coerceGptImage15AspectRatio(liveFrameSize),
+          quality: 'low',
+          output_format: 'jpeg',
+          generationType: 'live-chat',
+          isPublic: true,
+        };
+        res = await axiosInstance.post('/api/replicate/generate', payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === 'qwen-image-edit-2511') {
+        const payload: any = {
+          prompt: livePrompt,
+          model: 'qwen-image-edit-2511',
+          uploadedImages: [imageUrl],
+          aspect_ratio: liveFrameSize,
+          size: liveResolution,
+          num_images: 1,
+          output_format: 'jpg',
+          generationType: 'live-chat',
+          isPublic: true,
+        };
+        res = await axiosInstance.post('/api/replicate/generate', payload);
         out = parseOutputUrl(res);
       } else {
         const payload: any = {
@@ -464,14 +616,20 @@ const EditImageInterface: React.FC = () => {
           size: liveResolution,
           generationType: 'live-chat',
         };
-        const res = await axiosInstance.post('/api/fal/generate', payload);
+        res = await axiosInstance.post('/api/fal/generate', payload);
         out = parseOutputUrl(res);
       }
 
       if (out) {
+        // Extract ID from response (support both Replicate and Fal structures)
+        // Replicate: res.data.id
+        // Fal: res.data.request_id (or sometimes directly in data)
+        const generationId = res?.data?.id || res?.data?.request_id || res?.data?.data?.request_id; // Try to find an ID
+
         setOutputs((prev) => ({ ...prev, ['live-chat']: out }));
-        setLiveHistory((prev) => [...prev, out]);
+        setLiveHistory((prev) => [...prev, { id: generationId, url: out }]);
         setActiveLiveIndex((prev) => prev + 1 >= 0 ? prev + 1 : 0);
+        setCurrentHistoryId(generationId || null); // Set current ID for deletion logic
         // Preserve the original input used for this generation so it can be shown
         // in the right-side thumbnail column below generated images.
         if (!liveOriginalInput && inputs['live-chat']) {
@@ -2573,7 +2731,7 @@ const EditImageInterface: React.FC = () => {
             // If selectedFeature is 'erase', it's always erase
             // If selectedFeature is 'fill', check eraseActionMode: 'replace' = replace, 'erase' = erase
             const isReplace = selectedFeature === 'fill' ? eraseActionMode === 'replace' : false;
-            
+
             // USE activePrompt to respect Fill mode's input
             const userPrompt = activePrompt ? activePrompt.trim() : '';
 
@@ -3151,9 +3309,26 @@ const EditImageInterface: React.FC = () => {
         } else if (model === 'nightmareai/real-esrgan') {
           payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
         } else if (model === 'philz1337x/crystal-upscaler') {
-          const crystalScale = Math.max(1, Math.min(6, clarityScale));
+          const crystalScale = Math.max(1, Math.min(4, clarityScale));
           const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
           payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
+
+          // Pre-check credits using the same pixel-tier pricing as backend.
+          const w0 = Number(inputNaturalSize?.width || 0);
+          const h0 = Number(inputNaturalSize?.height || 0);
+          const estimate = (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0)
+            ? estimateCrystalUpscalerCredits(w0, h0, crystalScale)
+            : null;
+          const expectedCredits = estimate?.credits;
+          if (expectedCredits && expectedCredits > 0) {
+            if ((creditBalance || 0) < expectedCredits) {
+              throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+            }
+            try {
+              deductCreditsOptimisticForGeneration(expectedCredits);
+              optimisticDebit = expectedCredits;
+            } catch { }
+          }
         } else if (model === 'fal-ai/seedvr/upscale/image') {
           // SeedVR factor-only upscaler (credits: 4 per output megapixel, rounded up)
           const getNaturalSize = async () => {
@@ -3245,6 +3420,15 @@ const EditImageInterface: React.FC = () => {
         }
         // else if (model === 'fermatresearch/magic-image-refiner') {
         //   payload = { ...payload };
+
+        // Provide input dimensions when available (helps server-side pricing for Crystal Upscaler)
+        try {
+          const w0 = Number((inputNaturalSize as any)?.width || 0);
+          const h0 = Number((inputNaturalSize as any)?.height || 0);
+          if (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0) {
+            payload = { ...payload, width: w0, height: h0 };
+          }
+        } catch { }
 
         const res = await axiosInstance.post('/api/replicate/upscale', payload);
         console.log('[EditImage] upscale.res', res?.data);
@@ -3458,15 +3642,15 @@ const EditImageInterface: React.FC = () => {
   return (
     <div className="relative min-h-screen bg-[#07070B]">
       {/* Sticky header like ArtStation */}
-      <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
+      {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0  sm:ml-8 md:ml-7 lg:ml-7 ">
             <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Images</h1>
             <p className="text-white/80 text-xs sm:text-sm md:text-sm">Transform your images with AI</p>
           </div>
-          {/* feature tabs moved to left sidebar */}
+          feature tabs moved to left sidebar
         </div>
-      </div>
+      </div> */}
       {/* Spacer to offset fixed header height */}
       {/* <div className="h-[110px]"></div> */}
       {/* Upload from Library/Computer Modal */}
@@ -3516,9 +3700,9 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 overflow-hidden pt-8 md:pt-18 flex-col md:flex-row">
+      <div className="flex flex-1 min-h-0 md:py-1 pt-20 md:pt-13 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-        <div className="w-auto bg-transparent flex flex-col h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-4">
+        <div className="w-auto bg-transparent flex flex-col md:h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-0">
           {/* Error Message */}
           {errorMsg && (
             <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">
@@ -3543,7 +3727,7 @@ const EditImageInterface: React.FC = () => {
                       // Update URL with feature parameter
                       const params = new URLSearchParams(window.location.search);
                       params.set('feature', feature.id);
-                      router.push(`/view/EditImage?${params.toString()}`, { scroll: false });
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
 
                       if (feature.id === 'remove-bg') {
                         setModel('851-labs/background-remover');
@@ -3556,7 +3740,7 @@ const EditImageInterface: React.FC = () => {
                       }
                       setProcessing((p) => ({ ...p, [feature.id]: false }));
                     }}
-                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id 
+                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id
                       ? (feature.id === 'resize' ? 'border-[#2F6BFF] bg-[#2F6BFF]/10' : 'border-white/30 bg-white/10')
                       : 'border-white/10 hover:bg-white/10'}`}
                   >
@@ -3587,31 +3771,6 @@ const EditImageInterface: React.FC = () => {
 
                   </button>
                 ))}
-                {/* Editor external link button */}
-                <button
-                  key="editor-external"
-                  onClick={() => {
-                    try {
-                      if (typeof window !== 'undefined') {
-                        window.open(process.env.NEXT_PUBLIC_CANVAS_URL || 'http://localhost:3001', '_blank', 'noopener');
-                      }
-                    } catch (e) { }
-                  }}
-                  className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition border-white/10 hover:bg-white/10`}
-                  title="Open Editor"
-                >
-                  <div className="flex items-center gap-0 justify-center">
-                    <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center`}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/90">
-                        <path d="M3 21v-3a4 4 0 0 1 4-4h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M17.5 6.5l0 0a2.12 2.12 0 0 1 3 3L12 18l-4 1 1-4 8.5-8.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center pt-1">
-                    <span className="text-white text-[10px] md:text-sm text-center">Editor</span>
-                  </div>
-                </button>
               </div>
             </div>
 
@@ -4472,43 +4631,49 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     )}
                     {model === 'philz1337x/crystal-upscaler' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={6}
-                            step={1}
-                            value={Number(String(scaleFactor).replace('x', '')) || 2}
-                            onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
-                            className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                            >
-                              <span className="truncate uppercase">{(output || 'png').toString()}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                            </button>
-                            {activeDropdown === 'output' && (
-                              <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                {['png', 'jpg'].map((fmt) => (
-                                  <button
-                                    key={fmt}
-                                    onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                  >
-                                    <span className="uppercase">{fmt}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={6}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 2}
+                              onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
+                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
                           </div>
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
+                            <div className="relative edit-dropdown">
+                              <button
+                                onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
+                              >
+                                <span className="truncate uppercase">{(output || 'png').toString()}</span>
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                              </button>
+                              {activeDropdown === 'output' && (
+                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                  {['png', 'jpg'].map((fmt) => (
+                                    <button
+                                      key={fmt}
+                                      onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                      className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                    >
+                                      <span className="uppercase">{fmt}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-white/50">
+                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
+                          {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
                         </div>
                       </div>
                     )}
@@ -4661,7 +4826,7 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="md:p-4 p-5  flex flex-col md:flex-row items-start justify-center md:gap-4 gap-2 pt-3">
+          <div className="md:p-4 p-0  flex flex-col md:flex-row items-start justify-center md:gap-4 gap-2 md:pt-3 pt-0">
             <div
               className={`bg-white/5 rounded-xl border border-white/10  relative overflow-hidden w-full max-w-6xl md:max-w-[100rem] ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
               onDragOver={(e) => { try { e.preventDefault(); } catch { } }}
@@ -4781,11 +4946,38 @@ const EditImageInterface: React.FC = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const id = currentHistoryId;
-                            if (id) {
-                              await axiosInstance.delete(`/api/generations/${id}`);
+                            if (selectedFeature === 'live-chat') {
+                              // Special case: deleting the input/original image
+                              if (activeLiveIndex === -1) {
+                                // Clear the input images
+                                setLiveOriginalInput(null);
+                                setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+
+                                // If there are generated images, switch to the last one
+                                if (liveHistory.length > 0) {
+                                  const lastIdx = liveHistory.length - 1;
+                                  const lastImage = liveHistory[lastIdx];
+                                  setActiveLiveIndex(lastIdx);
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                  setInputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                  setCurrentHistoryId(lastImage.id || null);
+                                } else {
+                                  // No generated images, reset everything
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+                                  setCurrentHistoryId(null);
+                                }
+                              } else {
+                                // Deleting a generated image from history
+                                await handleDeleteLiveChatImage(activeLiveIndex, currentHistoryId || undefined);
+                              }
+                            } else {
+                              // For other features, just delete from server and clear output
+                              const id = currentHistoryId;
+                              if (id) {
+                                await axiosInstance.delete(`/api/generations/${id}`);
+                              }
+                              setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                             }
-                            setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                             setShowImageMenu(false);
                           } catch (e) {
                             console.error('Delete failed:', e);
@@ -5714,22 +5906,26 @@ const EditImageInterface: React.FC = () => {
                 <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-[35rem] lg:h-[45rem] very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
                   <div className="flex flex-row md:flex-col items-center md:items-end md:gap-3 gap-1 pr-1 min-w-max">
                     {/* Generated images (latest first) */}
-                    {(liveHistory || []).slice().reverse().map((url, revIdx) => {
+                    {(liveHistory || []).slice().reverse().map((item, revIdx) => {
                       // revIdx 0 is latest; compute original index
                       const origIdx = liveHistory.length - 1 - revIdx;
-                      const isActive = outputs['live-chat'] === url && activeLiveIndex === origIdx;
+                      const isActive = outputs['live-chat'] === item.url && activeLiveIndex === origIdx;
+                      const isHovered = hoveredThumbnailIdx === origIdx;
+                      const showMenu = showThumbnailMenuIdx === origIdx;
+
                       return (
                         <button
-                          key={`gen-${origIdx}-${url}`}
+                          key={`gen-${origIdx}-${item.url}`}
                           onClick={() => {
                             setActiveLiveIndex(origIdx);
-                            setOutputs((prev) => ({ ...prev, ['live-chat']: url }));
-                            setInputs((prev) => ({ ...prev, ['live-chat']: url }));
+                            setOutputs((prev) => ({ ...prev, ['live-chat']: item.url }));
+                            setInputs((prev) => ({ ...prev, ['live-chat']: item.url }));
+                            setCurrentHistoryId(item.id || null);
                           }}
-                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
+                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
                           title={`Generation ${origIdx + 1}`}
                         >
-                          <img src={normalizeEditImageUrl(url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
+                          <img src={normalizeEditImageUrl(item.url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
                         </button>
                       );
                     })}
@@ -5738,7 +5934,7 @@ const EditImageInterface: React.FC = () => {
                     {(liveOriginalInput || inputs['live-chat']) && (
                       (() => {
                         const inputUrl = (liveOriginalInput || inputs['live-chat']) as string;
-                        const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1] === inputUrl;
+                        const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1]?.url === inputUrl;
                         if (alreadyShown) return null;
                         const isActiveInput = outputs['live-chat'] === inputUrl && activeLiveIndex === -1;
                         return (

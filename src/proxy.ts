@@ -150,6 +150,7 @@ export function proxy(req: NextRequest) {
   if (pathname.endsWith('.xml')) {
     res.headers.set('Content-Type', 'application/xml');
   }
+  
   if (pathname === '/robots.txt') {
     res.headers.set('Content-Type', 'text/plain; charset=utf-8');
   }

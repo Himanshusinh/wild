@@ -124,7 +124,9 @@ export const generateImages = createAsyncThunk(
         model === 'imagen-4-fast';
 
       let endpoint: string;
-      if (provider === 'replicate') {
+      if (provider === 'wildmind') {
+        endpoint = '/api/wildmindimage/generate';
+      } else if (provider === 'replicate') {
         endpoint = '/api/replicate/generate';
       } else if (isFalModel) {
         endpoint = '/api/fal/generate';
@@ -141,6 +143,23 @@ export const generateImages = createAsyncThunk(
           resolvedIsPublic = await mod.getIsPublic();
         }
       } catch {}
+
+      const coerceGptImage15AspectRatio = (raw?: string): '1:1' | '3:2' | '2:3' | undefined => {
+        if (!raw) return undefined;
+        const trimmed = String(raw).trim();
+        if (!trimmed) return undefined;
+        if (trimmed === '1:1' || trimmed === '3:2' || trimmed === '2:3') return trimmed;
+
+        const match = trimmed.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+        if (!match) return undefined;
+        const a = Number(match[1]);
+        const b = Number(match[2]);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) return undefined;
+        const ratio = a / b;
+        if (ratio > 1.05) return '3:2';
+        if (ratio < 0.95) return '2:3';
+        return '1:1';
+      };
 
       // Build payload
       const body: any = {
@@ -165,7 +184,10 @@ export const generateImages = createAsyncThunk(
       }
       // For GPT Image 1.5 (Replicate), use aspect_ratio from frameSize
       if (model === 'openai/gpt-image-1.5' && frameSize) {
-        body.aspect_ratio = frameSize;
+        // GPT Image 1.5 schema only supports: 1:1 | 3:2 | 2:3
+        // Coerce common wides (e.g. 16:9) to the closest supported landscape ratio (3:2).
+        const coerced = coerceGptImage15AspectRatio(frameSize);
+        if (coerced) body.aspect_ratio = coerced;
       }
       // For GPT Image 1.5 (Replicate), schema uses `number_of_images`.
       if (model === 'openai/gpt-image-1.5') {

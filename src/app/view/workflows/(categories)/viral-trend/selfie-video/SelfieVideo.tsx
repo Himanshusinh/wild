@@ -1333,14 +1333,14 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
             </button>
           )}
 
-          <div className="flex w-full h-full">
+          <div className="flex w-full h-full flex-col md:flex-row">
             <div className={`w-full md:w-[40%] p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto ${isFullScreenStep ? 'hidden' : 'flex'}`}>
               <div className="flex-1">
                 <div className="inline-flex items-center gap-2 mb-6">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-white/10 px-2 py-1 rounded-full">Step 1/4</span>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
+                <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8">Upload your photo and friend photos to start.</p>
 
                 <div className="mb-4">

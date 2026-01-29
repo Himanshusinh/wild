@@ -29,39 +29,71 @@ const SidebarItem = ({
   label,
   isActive,
   onClick,
+  url,
   setIsSidebarHovered
 }: {
   icon: React.ReactElement<{ size?: number; strokeWidth?: number }>,
   label: string,
   isActive: boolean,
   onClick: (e: React.MouseEvent) => void,
+  url: string,
   setIsSidebarHovered: (val: boolean) => void
-}) => (
-  <div
-    onMouseEnter={() => setIsSidebarHovered(true)}
-    onClick={onClick}
-    className={`group relative flex items-center justify-start md:flex-col md:items-center md:justify-center py-2.5 md:pl-1 pl-3 pr-0 transition-all duration-300 cursor-pointer
-      ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
-  >
-    {/* Refined Active Indicator */}
-    {isActive && (
-      <div className="absolute left-0 top-[20%] bottom-[20%]  w-[2px] bg-[#60a5fa] shadow-[0_0_12px_#60a5fa] rounded-r-full" />
-    )}
+}) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Middle click (button 1) or Ctrl+Left click
+    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+      e.preventDefault();
+      window.open(url, '_blank');
+    }
+  };
 
-    <div className={`transition-all duration-300  ${isActive ? 'scale-105 text-[#60a5fa]' : 'text-white'}`}>
-      {/* Clone icon to enforce small size and thicker stroke for readability */}
-      {React.isValidElement(icon) && React.cloneElement(icon, {
-        size: 18,
-        strokeWidth: 2
-      })}
+  const handleAuxClick = (e: React.MouseEvent) => {
+    // Middle click handler for better browser compatibility
+    if (e.button === 1) {
+      e.preventDefault();
+      window.open(url, '_blank');
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Open in new tab if Ctrl is pressed
+    if (e.ctrlKey) {
+      e.preventDefault();
+      window.open(url, '_blank');
+    } else {
+      onClick(e);
+    }
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setIsSidebarHovered(true)}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onAuxClick={handleAuxClick}
+      className={`group relative flex items-center justify-start md:flex-col md:items-center md:justify-center py-2.5 md:pl-1 pl-3 pr-0 transition-all duration-300 cursor-pointer
+        ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
+    >
+      {/* Refined Active Indicator */}
+      {isActive && (
+        <div className="absolute left-0 top-[20%] bottom-[20%]  w-[2px] bg-[#60a5fa] shadow-[0_0_12px_#60a5fa] rounded-r-full" />
+      )}
+
+      <div className={`transition-all duration-300  ${isActive ? 'scale-105 text-[#60a5fa]' : 'text-white'}`}>
+        {/* Clone icon to enforce small size and thicker stroke for readability */}
+        {React.isValidElement(icon) && React.cloneElement(icon, {
+          size: 18,
+          strokeWidth: 2
+        })}
+      </div>
+
+      <span className={`ml-2 md:ml-0 md:mt-1 mt-0 text-[9px] uppercase font-black tracking-[0.12em] transition-colors duration-300
+        ${isActive ? 'text-[#60a5fa]' : 'text-slate-100 '}`}>
+        {label}
+      </span>
     </div>
-
-    <span className={`ml-2 md:ml-0 md:mt-1 mt-0 text-[9px] uppercase font-black tracking-[0.12em] transition-colors duration-300
-      ${isActive ? 'text-[#60a5fa]' : 'text-slate-100 '}`}>
-      {label}
-    </span>
-  </div>
-);
+  );
+};
 
 const SidePannelFeatures = () => {
   const pathname = usePathname();
@@ -163,6 +195,7 @@ const SidePannelFeatures = () => {
             label="Home"
             isActive={pathname === APP_ROUTES.HOME || pathname === '/'}
             setIsSidebarHovered={setIsSidebarHovered}
+            url={APP_ROUTES.HOME}
             onClick={() => nav(APP_ROUTES.HOME)}
           />
           <SidebarItem
@@ -170,6 +203,7 @@ const SidePannelFeatures = () => {
             label="Gen-Art"
             isActive={pathname?.includes('/ArtStation')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url="/view/ArtStation"
             onClick={() => nav('/view/ArtStation')}
           />
           <SidebarItem
@@ -177,14 +211,16 @@ const SidePannelFeatures = () => {
             label="Studio"
             isActive={pathname?.includes('/canvas-projects')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url="/canvas-projects"
             onClick={() => nav('/canvas-projects')}
           />
 
           <SidebarItem
             icon={<Hexagon />}
-            label="Workflows"
+            label="Apps"
             isActive={pathname?.includes('/view/workflows') || pathname?.includes('/workflows')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url={NAV_ROUTES.WORKFLOWS}
             onClick={() => nav(NAV_ROUTES.WORKFLOWS)}
           />
 
@@ -193,6 +229,7 @@ const SidePannelFeatures = () => {
             label="Image"
             isActive={pathname?.includes('/text-to-image')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url="/text-to-image"
             onClick={() => nav('/text-to-image')}
           />
 
@@ -201,23 +238,26 @@ const SidePannelFeatures = () => {
             label="Video"
             isActive={pathname?.includes('/text-to-video')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url="/text-to-video"
             onClick={() => nav('/text-to-video')}
           />
-          
+
           <SidebarItem
             icon={<Music />}
             label="Audio"
             isActive={pathname?.includes('/text-to-music')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url="/text-to-music"
             onClick={() => nav('/text-to-music')}
           />
-          
+
 
           <SidebarItem
             icon={<CreditCard />}
             label="Pricing"
             isActive={pathname?.includes('/pricing')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url={NAV_ROUTES.PRICING}
             onClick={() => nav(NAV_ROUTES.PRICING)}
           />
           <SidebarItem
@@ -225,6 +265,7 @@ const SidePannelFeatures = () => {
             label="History"
             isActive={pathname?.includes('/history')}
             setIsSidebarHovered={setIsSidebarHovered}
+            url="/history"
             onClick={() => nav('/history')}
           />
         </div>

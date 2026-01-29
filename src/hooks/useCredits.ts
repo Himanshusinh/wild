@@ -31,6 +31,7 @@ let creditsBootstrapCompleted = false;
 
 export const useCredits = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const authUser = useSelector((state: RootState) => state.auth.user);
   const credits = useSelector(selectCredits);
   const creditBalance = useSelector(selectCreditBalance);
   const loading = useSelector(selectCreditsLoading);
@@ -38,22 +39,32 @@ export const useCredits = () => {
   const lastValidation = useSelector(selectLastValidation);
   const transactions = useSelector(selectTransactions);
 
-  // Fetch credits on mount
+  // Reset bootstrap completion if user is logged out to ensure fresh fetch upon next login
   useEffect(() => {
-    if (credits || creditsBootstrapCompleted) {
+    if (!authUser) {
+      creditsBootstrapCompleted = false;
+    }
+  }, [authUser]);
+
+  // Fetch credits on mount or when user changes
+  useEffect(() => {
+    if (!authUser || credits || creditsBootstrapCompleted) {
       return;
     }
     if (creditsBootstrapInFlight) {
       return;
     }
+    console.log('[useCredits] Bootstrapping credits fetch...');
     creditsBootstrapInFlight = dispatch(fetchUserCredits());
     creditsBootstrapInFlight
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[useCredits] Bootstrap credits fetch failed:', err);
+      })
       .finally(() => {
         creditsBootstrapCompleted = true;
         creditsBootstrapInFlight = null;
       });
-  }, [dispatch, credits]);
+  }, [dispatch, authUser, credits]);
 
   const validateVideoCredits = async (
     provider: 'minimax' | 'runway' | 'fal' | 'replicate',
@@ -62,7 +73,7 @@ export const useCredits = () => {
     duration?: number
   ) => {
     const requiredCredits = getVideoGenerationCreditCost(provider, model, resolution, duration);
-    
+
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
     }
@@ -89,8 +100,8 @@ export const useCredits = () => {
   ) => {
     const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution, uploadedImages);
 
-    // Special case: z-image-turbo (new-turbo-model) is free and should not trigger "Unknown model"
-    if (model === 'new-turbo-model') {
+    // Special case: Free models should not trigger "Unknown model"
+    if (model === 'wildmindimage') {
       return { requiredCredits: 0, validation: null as any };
     }
 
@@ -117,7 +128,7 @@ export const useCredits = () => {
     text?: string // Added for Maya TTS per-second pricing based on text length
   ) => {
     const requiredCredits = getMusicGenerationCreditCost(model, duration, inputs, text);
-    
+
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
     }
@@ -193,7 +204,7 @@ export const useCredits = () => {
     loading,
     error,
     lastValidation,
-    
+
     // Actions
     validateVideoCredits,
     validateImageCredits,
@@ -206,7 +217,7 @@ export const useCredits = () => {
     clearCreditsValidation,
     deductCreditsOptimisticForGeneration,
     rollbackOptimisticDeduction,
-    
+
     // Computed values
     hasCredits: creditBalance > 0,
     isLowOnCredits: creditBalance < 100, // Less than 100 credits
@@ -255,19 +266,19 @@ export const useGenerationCredits = (
           requiredCredits = videoResult.requiredCredits;
           validation = videoResult.validation;
           break;
-        
+
         case 'image':
           const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution, (options as any)?.uploadedImages);
           requiredCredits = imageResult.requiredCredits;
           validation = imageResult.validation;
           break;
-        
+
         case 'music':
           const musicResult = await validateMusicCredits(model, options?.duration);
           requiredCredits = musicResult.requiredCredits;
           validation = musicResult.validation;
           break;
-        
+
         default:
           throw new Error(`Unsupported generation type: ${generationType}`);
       }

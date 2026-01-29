@@ -2,6 +2,26 @@ export const dynamic = 'force-dynamic';
 
 const FORWARD_HEADERS = ['content-type','content-length','accept-ranges','content-range','cache-control','etag','last-modified','content-disposition'];
 
+function guessContentTypeFromExt(ext?: string): string | undefined {
+  if (!ext) return undefined;
+  const e = ext.toLowerCase();
+
+  // Images
+  if (e === 'png') return 'image/png';
+  if (e === 'jpg' || e === 'jpeg') return 'image/jpeg';
+  if (e === 'webp') return 'image/webp';
+  if (e === 'avif') return 'image/avif';
+  if (e === 'gif') return 'image/gif';
+  if (e === 'svg') return 'image/svg+xml';
+
+  // Video
+  if (e === 'mp4') return 'video/mp4';
+  if (e === 'webm') return 'video/webm';
+  if (e === 'mov') return 'video/quicktime';
+
+  return undefined;
+}
+
 export async function GET(req: Request, context: { params: Promise<{ path?: string[] }> }) {
   let encodedPath = '';
   try {
@@ -67,13 +87,12 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
           const v = directResp.headers.get(h);
           if (v) outHeaders.set(h, v);
         });
-        // Ensure video content-type is set
+        // Ensure content-type is set if missing
         if (!outHeaders.has('content-type')) {
           const ext = decodedPath.split('.').pop()?.toLowerCase();
-          if (ext === 'mp4') outHeaders.set('content-type', 'video/mp4');
-          else if (ext === 'webm') outHeaders.set('content-type', 'video/webm');
-          else if (ext === 'mov') outHeaders.set('content-type', 'video/quicktime');
-          else outHeaders.set('content-type', 'video/mp4');
+          const guessed = guessContentTypeFromExt(ext);
+          if (guessed) outHeaders.set('content-type', guessed);
+          else outHeaders.set('content-type', 'application/octet-stream');
         }
         // Add CORS headers
         outHeaders.set('Access-Control-Allow-Origin', '*');
@@ -91,13 +110,12 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
       if (v) outHeaders.set(h, v);
     });
     
-    // Ensure video content-type is set if missing
+    // Ensure content-type is set if missing
     if (!outHeaders.has('content-type')) {
       const ext = decodedPath.split('.').pop()?.toLowerCase();
-      if (ext === 'mp4') outHeaders.set('content-type', 'video/mp4');
-      else if (ext === 'webm') outHeaders.set('content-type', 'video/webm');
-      else if (ext === 'mov') outHeaders.set('content-type', 'video/quicktime');
-      else outHeaders.set('content-type', 'video/mp4');
+      const guessed = guessContentTypeFromExt(ext);
+      if (guessed) outHeaders.set('content-type', guessed);
+      else outHeaders.set('content-type', 'application/octet-stream');
     }
     
     // Add CORS headers for video streaming
