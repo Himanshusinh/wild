@@ -1,8 +1,16 @@
 "use client";
 
+// Razorpay TypeScript declarations
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
+import { auth } from "@/lib/firebase";
 import { AppDispatch } from "@/store";
 import {
   fetchCurrentSubscription,
@@ -34,10 +42,19 @@ export default function BillingPage() {
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
     dispatch(fetchCurrentSubscription());
     dispatch(fetchUserCredits());
+    
+    // Get real user email from Firebase Auth
+    const user = auth.currentUser;
+    if (user) {
+      setUserEmail(user.email || "");
+      setUserName(user.displayName || user.email?.split("@")[0] || "");
+    }
   }, [dispatch]);
 
   const handleSelectPlan = (planCode: string) => {
@@ -55,30 +72,85 @@ export default function BillingPage() {
       const result = await dispatch(
         createSubscription({
           planCode: selectedPlan.code,
-          billingDetails,
+          billingDetails: {
+            ...billingDetails,
+            email: userEmail,
+            name: userName,
+          },
         })
       ).unwrap();
 
-      // Debug: Log the entire result
-      console.log("Subscription creation result:", result);
-      console.log("Short URL:", result?.data?.shortUrl || result?.shortUrl);
-      console.log("Razorpay Sub ID:", result?.data?.razorpaySubscriptionId || result?.razorpaySubscriptionId);
+      console.log("✅ Subscription created:", result);
 
-      // Get payment URL - check both possible locations
-      const paymentUrl = result?.data?.shortUrl || result?.shortUrl;
-      
-      if (!paymentUrl) {
-        console.error("No payment URL available in response!");
+      // Get subscription details
+      const subscriptionId = result?.data?.razorpaySubscriptionId;
+      const keyId = result?.data?.keyId;
+
+      if (!subscriptionId || !keyId) {
+        console.error("❌ Missing subscription ID or key ID in response!");
         alert("Unable to initiate payment. Please try again or contact support.");
         setShowCheckout(false);
         setSelectedPlan(null);
         return;
       }
 
-      // Redirect to Razorpay payment page
-      // This avoids CSP issues with SDK loading
-      console.log("Redirecting to payment page:", paymentUrl);
-      window.location.href = paymentUrl;
+      // Load Razorpay script if not already loaded
+      if (!window.Razorpay) {
+        console.log("📦 Loading Razorpay SDK...");
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
+        
+        console.log("✅ Razorpay SDK loaded");
+      }
+
+      // Configure Razorpay options
+      const options = {
+        key: keyId,
+        subscription_id: subscriptionId,
+        name: "WildMind AI",
+        description: `${selectedPlan?.name} Plan`,
+        image: "/icons/icon-512x512.png",
+        handler: function (response: any) {
+          console.log("✅ Payment successful:", response);
+          alert("Payment successful! Your subscription is now active.");
+          setShowCheckout(false);
+          setSelectedPlan(null);
+          // Refresh subscription data
+          dispatch(fetchCurrentSubscription());
+          window.location.href = "/account/billing?payment=success";
+        },
+        modal: {
+          ondismiss: function () {
+            console.log("Payment modal closed by user");
+            setShowCheckout(false);
+            setSelectedPlan(null);
+          },
+        },
+        theme: {
+          color: "#3b82f6",
+        },
+      };
+
+      // Open Razorpay checkout modal
+      console.log("🚀 Opening Razorpay checkout modal");
+      const rzp = new window.Razorpay(options);
+      
+      rzp.on("payment.failed", function (response: any) {
+        console.error("❌ Payment failed:", response.error);
+        alert(`Payment failed: ${response.error.description}`);
+        setShowCheckout(false);
+        setSelectedPlan(null);
+      });
+
+      rzp.open();
+      
     } catch (error: any) {
       console.error("Checkout error:", error);
       alert(`Error: ${error.message || "Failed to create subscription"}`);
