@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toThumbUrl } from '@/lib/thumb';
 
 type SmartImageProps = {
@@ -91,6 +91,55 @@ const SmartImage: React.FC<SmartImageProps> = ({
 	const finalBlurDataUrl = blurDataUrl || BLUR_PLACEHOLDER;
 
 	const [loaded, setLoaded] = useState(false);
+	const retryRef = useRef(0);
+
+	useEffect(() => {
+		retryRef.current = 0;
+		try { setLoaded(false); } catch {}
+	}, [optimized]);
+
+	const withCacheBust = (rawUrl: string, attempt: number) => {
+		try {
+			// Absolute URL
+			if (/^https?:\/\//i.test(rawUrl)) {
+				const u = new URL(rawUrl);
+				u.searchParams.set('cb', String(Date.now()));
+				u.searchParams.set('attempt', String(attempt));
+				return u.toString();
+			}
+			// Relative URL (e.g. /api/thumb?...)
+			const sep = rawUrl.includes('?') ? '&' : '?';
+			return `${rawUrl}${sep}cb=${Date.now()}&attempt=${attempt}`;
+		} catch {
+			return rawUrl;
+		}
+	};
+
+	const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+		try {
+			const imgEl = e.currentTarget;
+			const currentSrc = String(imgEl?.src || '');
+			const attempt = retryRef.current + 1;
+
+			// Retry a few times for transient storage/gateway 503s.
+			// 1-2: retry the same URL, 3: fall back to original src if different.
+			if (attempt <= 3) {
+				retryRef.current = attempt;
+				const delayMs = attempt === 1 ? 600 : attempt === 2 ? 1600 : 3000;
+				setTimeout(() => {
+					try {
+						if (!imgEl) return;
+						const nextBase = (attempt === 3 && typeof src === 'string' && src && src !== optimized) ? src : optimized;
+						// Avoid tight loop if browser already swapped the src
+						const next = withCacheBust(nextBase, attempt);
+						if (next && next !== currentSrc) imgEl.src = next;
+					} catch {}
+				}, delayMs);
+				return;
+			}
+		} catch {}
+		try { setLoaded(true); } catch {}
+	};
 
 	// Use empty alt if decorative or alt not provided to prevent caption flashes on load
 	const finalAlt = decorative ? '' : (typeof alt === 'string' ? alt : '');
@@ -138,7 +187,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 							onLoadingComplete && onLoadingComplete(e.currentTarget as HTMLImageElement);
 						} catch {}
 					}}
-					onError={() => { try { setLoaded(true); } catch {} }}
+					onError={handleImgError}
 					{...(rest as any)}
 				/>
 			) : (
@@ -153,7 +202,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
 					className={`absolute inset-0 w-full h-full object-cover ${className || ''}`}
 					style={fill ? { position: 'absolute', inset: 0 } : {}}
 					onLoad={(e) => { try { setLoaded(true); onLoadingComplete && onLoadingComplete(e.currentTarget as HTMLImageElement); } catch {} }}
-					onError={() => { try { setLoaded(true); } catch {} }}
+					onError={handleImgError}
 					{...(rest as any)}
 				/>
 			)}

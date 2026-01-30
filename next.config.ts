@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', 'react-hot-toast', '@tabler/icons-react', 'motion'],
     // Enable partial prerendering for better performance
     ppr: false, // Can enable if needed
+    // Allow importing from sibling folders (we embed `image_edit/src` under a route)
+    externalDir: true,
   },
   // Target modern browsers to reduce legacy JavaScript polyfills (11 KiB savings)
   // Next.js 15+ uses SWC which targets modern browsers by default, but we can be explicit

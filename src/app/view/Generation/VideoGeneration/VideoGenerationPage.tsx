@@ -7,13 +7,23 @@ import InputBox from './TextToVideo/compo/InputBox';
 import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 import VideoGenerationGuide from './TextToVideo/compo/VideoGenerationGuide';
 import HistoryControls from './TextToVideo/compo/HistoryControls';
+import { usePathname } from 'next/navigation';
+import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
 
-type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'Edit';
+type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
 
 export default function VideoGenerationPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const pathname = usePathname();
     const [activeFeature, setActiveFeature] = useState<VideoFeature>('Video');
+    const isInlineEditVideoPage = pathname?.startsWith('/text-to-video/edit-video');
+
+    useEffect(() => {
+        if (isInlineEditVideoPage) {
+            setActiveFeature('Edit');
+        }
+    }, [isInlineEditVideoPage]);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
     // Get history entries to check if we should show the info button
@@ -84,12 +94,21 @@ export default function VideoGenerationPage() {
                                     )}
                                     {/* Desktop buttons: hidden on small screens */}
                                     <div className="hidden md:flex items-center md:gap-3 gap-2 overflow-x-auto scrollbar-none ml-2 md:ml-4">
-                                        {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
+                                        {(['Video', 'Lipsync', 'Animate', 'Edit', 'Video editor'] as VideoFeature[]).map((feature) => (
                                             <button
                                                 key={feature}
                                                 onClick={() => {
                                                     if (feature === 'Edit') {
-                                                        router.push('/view/EditVideo?feature=video-edit');
+                                                        router.push('/text-to-video/edit-video?feature=upscale');
+                                                        return;
+                                                    }
+                                                    if (feature === 'Video editor') {
+                                                        const hostname = window.location.hostname;
+                                                        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                                                            window.open('http://localhost:3001', '_blank');
+                                                        } else {
+                                                            window.open('https://editor-video.wildmindai.com/', '_blank');
+                                                        }
                                                         return;
                                                     }
                                                     setActiveFeature(feature);
@@ -117,7 +136,7 @@ export default function VideoGenerationPage() {
                                 </div>
                                 {/* Desktop: Search, Sort, and Date controls - positioned at right end of Video Generation text */}
                                 <div className="hidden md:flex items-center pt-2">
-                                    <HistoryControls mode="video"/>
+                                    <HistoryControls mode="video" />
                                 </div>
                             </div>
                             <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-2">
@@ -126,12 +145,21 @@ export default function VideoGenerationPage() {
 
                             {/* Mobile-only feature buttons: placed below the descriptive text */}
                             <div className="flex md:hidden items-center gap-2 overflow-x-auto scrollbar-none ">
-                                {(['Video', 'Lipsync', 'Animate', 'Edit'] as VideoFeature[]).map((feature) => (
+                                {(['Video', 'Lipsync', 'Animate', 'Edit', 'Video editor'] as VideoFeature[]).map((feature) => (
                                     <button
                                         key={feature + '-mobile'}
                                         onClick={() => {
                                             if (feature === 'Edit') {
-                                                router.push('/view/EditVideo?feature=video-edit');
+                                                router.push('/text-to-video/edit-video?feature=upscale');
+                                                return;
+                                            }
+                                            if (feature === 'Video editor') {
+                                                const hostname = window.location.hostname;
+                                                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                                                    window.open('http://localhost:3001', '_blank');
+                                                } else {
+                                                    window.open('https://editor-video.wildmindai.com/', '_blank');
+                                                }
                                                 return;
                                             }
                                             setActiveFeature(feature);
@@ -155,16 +183,18 @@ export default function VideoGenerationPage() {
                                     </button>
                                 ))}
                             </div>
-                             <div className="flex md:hidden items-center pt-0">
-                                    <HistoryControls mode="video"/>
-                                </div>
-                    
+                            <div className="flex md:hidden items-center pt-0">
+                                <HistoryControls mode="video" />
+                            </div>
+
                         </div>
                     </div>
 
                     {/* Input Box Section - Show for all features, in scrollable area */}
                     <div className="mb-6">
-                        {activeFeature === 'Animate' ? (
+                        {isInlineEditVideoPage ? (
+                            <EditVideoInterface />
+                        ) : activeFeature === 'Animate' ? (
                             <AnimateInputBox
                                 placeholder="Type your video prompt..."
                             />

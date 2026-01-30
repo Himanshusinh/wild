@@ -9,7 +9,10 @@ export const WORKFLOWS_DATA = [
     "model": "SeedVR",
     "thumbnail": "/workflow-samples/creatively-upscale-before.png",
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
-    "sampleAfter": "/workflow-samples/creatively-upscale-after.png"
+    "sampleAfter": "/workflow-samples/creatively-upscale-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "remove-background",
@@ -17,9 +20,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Clean background removal with high precision studio quality output.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/remove-bg-horse-before.jpg",
-    "sampleBefore": "/remove-bg-horse-before.jpg",
-    "sampleAfter": "/remove-bg-horse-after.jpg"
+    "thumbnail": "/workflow-samples/remove-bg-horse-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-bg-horse-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-bg-horse-after.jpg",
+    "cost": 90
   },
   {
     "id": "restore-old-photo",
@@ -27,9 +31,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Restore and colorize this image, remove any scratches or imperfections.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/portrait-before.jpg",
-    "sampleBefore": "/portrait-before.jpg",
-    "sampleAfter": "/portrait-after.jpg"
+    "thumbnail": "/workflow-samples/portrait-before.jpg",
+    "sampleBefore": "/workflow-samples/portrait-before.jpg",
+    "sampleAfter": "/workflow-samples/portrait-after.jpg",
+    "cost": 90
   },
   {
     "id": "photo-to-line-drawing",
@@ -37,9 +42,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Turn this image into a simple coloring book line drawing, black and white.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/photo-to-line-before.jpg",
-    "sampleBefore": "/photo-to-line-before.jpg",
-    "sampleAfter": "/photo-to-line-after.jpg"
+    "thumbnail": "/workflow-samples/photo-to-line-before.jpg",
+    "sampleBefore": "/workflow-samples/photo-to-line-before.jpg",
+    "sampleAfter": "/workflow-samples/photo-to-line-after.jpg",
+    "cost": 90
   },
   {
     "id": "line-drawing-to-photo",
@@ -47,9 +53,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Make it look like the image has been color in with crayons. Realistic results from markers/sketches.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/line-to-photo-before.jpg",
-    "sampleBefore": "/line-to-photo-before.jpg",
-    "sampleAfter": "/line-to-photo-after.jpg"
+    "thumbnail": "/workflow-samples/line-to-photo-before.jpg",
+    "sampleBefore": "/workflow-samples/line-to-photo-before.jpg",
+    "sampleAfter": "/workflow-samples/line-to-photo-after.jpg",
+    "cost": 90
   },
   {
     "id": "remove-element",
@@ -57,9 +64,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove unwanted objects or persons from your Image seamlessly.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/remove-element-before.jpg",
-    "sampleBefore": "/remove-element-before.jpg",
-    "sampleAfter": "/remove-element-after.jpg"
+    "thumbnail": "/workflow-samples/remove-element-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-element-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-element-after.jpg",
+    "cost": 90
   },
   {
     "id": "replace-element",
@@ -67,9 +75,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Replace any object in your image with something else using AI.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/replace-element-before.jpg",
-    "sampleBefore": "/replace-element-before.jpg",
-    "sampleAfter": "/replace-element-after.jpg"
+    "thumbnail": "/workflow-samples/replace-element-before.jpg",
+    "sampleBefore": "/workflow-samples/replace-element-before.jpg",
+    "sampleAfter": "/workflow-samples/replace-element-after.jpg",
+    "cost": 90
   },
   {
     "id": "remove-watermark",
@@ -77,9 +86,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove watermark from reference image while maintaining quality.",
     "model": "Nano Banana",
-    "thumbnail": "/remove-watermark-before.jpg",
-    "sampleBefore": "/remove-watermark-before.jpg",
-    "sampleAfter": "/remove-watermark-after.jpg"
+    "thumbnail": "/workflow-samples/remove-watermark-before.jpg",
+    "sampleBefore": "/workflow-samples/remove-watermark-before.jpg",
+    "sampleAfter": "/workflow-samples/remove-watermark-after.jpg",
+    "cost": 90
   },
   {
     "id": "surprise-me",
@@ -89,7 +99,9 @@ export const WORKFLOWS_DATA = [
     "model": "AI Prompt Engine",
     "thumbnail": "/workflow-samples/surpriseme-before.jpg",
     "sampleBefore": "/workflow-samples/surpriseme-before.jpg",
-    "sampleAfter": "/workflow-samples/surpriseme-after.jpg"
+    "sampleAfter": "/workflow-samples/surpriseme-after.jpg",
+    "cost": 90,
+    "comingSoon": true
   },
   {
     "id": "people-age",
@@ -101,7 +113,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/people-age-before.png",
     "sampleAfter": "/workflow-samples/people-age-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "become-celebrity",
@@ -111,7 +124,10 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/become-celebrity-before.jpg",
     "sampleBefore": "/workflow-samples/become-celebrity-before.jpg",
-    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg"
+    "sampleAfter": "/workflow-samples/become-celebrity-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "polaroid-style",
@@ -121,7 +137,10 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/polaroid-style-before.jpg",
     "sampleBefore": "/workflow-samples/polaroid-style-before.jpg",
-    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg"
+    "sampleAfter": "/workflow-samples/polaroid-style-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "custom-stickers",
@@ -129,11 +148,12 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Create a collection of cute chibi illustration stickers and see them as mockups on notebooks or laptops.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/custom-stickers-before.jpg",
-    "sampleBefore": "/workflow-samples/custom-stickers-before.jpg",
-    "sampleAfter": "/workflow-samples/custom-stickers-after.jpg",
-    "imageFit": "object-contain",
-    "imagePosition": "object-top"
+    "thumbnail": "/workflow-samples/custom-stickers-before.png",
+    "sampleBefore": "/workflow-samples/custom-stickers-before.png",
+    "sampleAfter": "/workflow-samples/custom-stickers-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "fusion-styles",
@@ -143,9 +163,10 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana/ Qwen",
     "thumbnail": "/workflow-samples/fusion-styles-before.jpg",
     "sampleBefore": "/workflow-samples/fusion-styles-before.jpg",
-    "sampleAfter": "/workflow-samples/fusion-styles-after.jpg",
+    "sampleAfter": "/workflow-samples/fusion-styles-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "vintage-teleport",
@@ -156,8 +177,9 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/vintage-teleport-before.png",
     "sampleBefore": "/workflow-samples/vintage-teleport-before.png",
     "sampleAfter": "/workflow-samples/vintage-teleport-after.jpg",
-    "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "cctv-footage",
@@ -165,11 +187,12 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Generate photorealistic low-quality CCTV footage with timestamps and ceiling-mounted perspectives.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/cctv-footage-before.jpg",
-    "sampleBefore": "/workflow-samples/cctv-footage-before.jpg",
-    "sampleAfter": "/workflow-samples/cctv-footage-after.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-top"
+    "thumbnail": "/workflow-samples/cctv-footage.jpg",
+    "sampleBefore": "/workflow-samples/cctv-footage.jpg",
+    "sampleAfter": "/workflow-samples/cctv-footage.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "change-seasons",
@@ -181,7 +204,8 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/change-seasons-before.jpg",
     "sampleAfter": "/workflow-samples/change-seasons-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "relighting",
@@ -189,13 +213,13 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Change the lighting of any scene to Night, Golden Hour, or custom studio presets.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/relighting-before.jpg",
-    "sampleBefore": "/workflow-samples/relighting-before.jpg",
-    "sampleAfter": "/workflow-samples/relighting-after.jpg",
+    "thumbnail": "/workflow-samples/relighting-before.png",
+    "sampleBefore": "/workflow-samples/relighting-before.png",
+    "sampleAfter": "/workflow-samples/relighting-after.png",
     "imageFit": "object-cover",
-    "imagePosition": "object-center"
+    "imagePosition": "object-center",
+    "cost": 90
   },
-
   {
     "id": "selfie-video",
     "title": "Selfie Video",
@@ -204,19 +228,19 @@ export const WORKFLOWS_DATA = [
     "model": "Seadream4/ Nano Banana",
     "thumbnail": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=800&auto=format&fit=crop",
     "sampleBefore": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop"
+    "sampleAfter": "https://images.unsplash.com/photo-1522307837370-cc113a36b784?q=80&w=800&auto=format&fit=crop",
+    "cost": 200
   },
-
-
   {
     "id": "turn-into-figurine",
     "title": "Turn your self into a figurine",
     "category": "Viral Trend",
     "description": "Transform yourself into a premium 3D sculpted character figurine mockup.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1594732832278-abd644401426?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/figurine-example.jpg",
+    "sampleBefore": "/workflow-samples/figurine-example.jpg",
+    "sampleAfter": "/workflow-samples/figurine-example.jpg",
+    "cost": 90
   },
   {
     "id": "style-transfer-viral",
@@ -224,9 +248,12 @@ export const WORKFLOWS_DATA = [
     "category": "Viral Trend",
     "description": "Create photorealistic 4-panel style transfer images using the palette and style of any reference image.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/style-transfer-before.jpg",
+    "sampleBefore": "/workflow-samples/style-transfer-before.jpg",
+    "sampleAfter": "/workflow-samples/style-transfer-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
   },
   {
     "id": "3d-print-mockup",
@@ -234,8 +261,259 @@ export const WORKFLOWS_DATA = [
     "category": "Viral Trend",
     "description": "1/7 scale commercialized figurine mockup in a realistic office environment with high-quality packaging design.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=800&auto=format&fit=crop",
-    "sampleBefore": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=400&auto=format&fit=crop",
-    "sampleAfter": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=800&auto=format&fit=crop"
+    "thumbnail": "/workflow-samples/3d-print-before.jpg",
+    "sampleBefore": "/workflow-samples/3d-print-before.jpg",
+    "sampleAfter": "/workflow-samples/3d-print-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "cad-to-3d",
+    "title": "Cad plans to 3d render (Int/Ext)",
+    "category": "Architecture",
+    "description": "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/cad-to-3d-before.jpg",
+    "sampleBefore": "/workflow-samples/cad-to-3d-before.jpg",
+    "sampleAfter": "/workflow-samples/cad-to-3d-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "building-angles",
+    "title": "Building different angles",
+    "category": "Architecture",
+    "description": "Generate multiple perspectives and angles of a building from a single reference image.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/palace-angles-before.jpg",
+    "sampleBefore": "/workflow-samples/palace-angles-before.jpg",
+    "sampleAfter": "/workflow-samples/palace-angles-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "interior-refine",
+    "title": "interior refine",
+    "category": "Architecture",
+    "description": "Refine and enhance interior renders with realistic lighting, textures, and furniture placement.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/interior-refine-before.jpg",
+    "sampleBefore": "/workflow-samples/interior-refine-before.jpg",
+    "sampleAfter": "/workflow-samples/interior-refine-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "interior-product",
+    "title": "Interior product display",
+    "category": "Architecture",
+    "description": "Create professional product displays within high-end interior environments for catalog-quality renders.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/interior-product-before.jpg",
+    "sampleBefore": "/workflow-samples/interior-product-before.jpg",
+    "sampleAfter": "/workflow-samples/interior-product-grid.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "3d-isometric",
+    "title": "3D Isomatric view",
+    "category": "Architecture",
+    "description": "Generate clean, stylized 3D isometric views of architectural spaces or rooms.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/3d-isometric-before.jpg",
+    "sampleBefore": "/workflow-samples/3d-isometric-before.jpg",
+    "sampleAfter": "/workflow-samples/3d-isometric-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "replace-texture",
+    "title": "Replace texture of an element",
+    "category": "Architecture",
+    "description": "Change materials and textures (wood, marble, concrete) of specific architectural elements seamlessly.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/replace-texture-before.jpg",
+    "sampleBefore": "/workflow-samples/replace-texture-before.jpg",
+    "sampleAfter": "/workflow-samples/replace-texture-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "generate-texture",
+    "title": "Generate texture",
+    "category": "Architecture",
+    "description": "Create custom seamless PBR textures from text descriptions or reference images for architectural use.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/generate-texture-before.jpg",
+    "sampleBefore": "/workflow-samples/generate-texture-before.jpg",
+    "sampleAfter": "/workflow-samples/generate-texture-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "pose-control",
+    "title": "Pose Control",
+    "category": "Photography",
+    "description": "Control the pose of your subjects using pose reference images for precise photography compositions.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/pose-control-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/pose-control-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/pose-control-after-v2.png",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90,
+    "comingSoon": true
+
+  },
+  {
+    "id": "character-sheet",
+    "title": "Character Sheet",
+    "category": "Photography",
+    "description": "Generate comprehensive character sheets showing multiple angles and expressions of your character.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/character-sheet-before-v2.png",
+    "sampleBefore": "/workflow-samples/character-sheet-before-v2.png",
+    "sampleAfter": "/workflow-samples/character-sheet-after-v2.png",
+    "cost": 90,
+    "imageFit": "object-contain",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "expression-sheet",
+    "title": "Expression Sheet",
+    "category": "Photography",
+    "description": "Generate a detailed sheet showing a character with various facial expressions and emotions.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/expression-sheet-before.jpg",
+    "sampleBefore": "/workflow-samples/expression-sheet-before.jpg",
+    "sampleAfter": "/workflow-samples/expression-sheet-after.jpg",
+    "cost": 90,
+    "imageFit": "object-contain",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "product-photography",
+    "title": "Product Photography",
+    "category": "Photography",
+    "description": "Transform simple product snapshots into professional-grade studio photography with realistic lighting and environments.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/product-photography-before-1.jpg",
+    "sampleBefore": "/workflow-samples/product-photography-before-1.jpg",
+    "sampleBeforeReference": "/workflow-samples/product-photography-before-2.png",
+    "sampleAfter": "/workflow-samples/product-photography-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "isDualUpload": true,
+    "cost": 90
+  },
+  {
+    "id": "dynamic-camera-angle",
+    "title": "Dynamic Camera Angles",
+    "category": "Photography",
+    "description": "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/dynamic-camera-angle-before.png",
+    "sampleBefore": "/workflow-samples/dynamic-camera-angle-before.png",
+    "sampleAfter": "/workflow-samples/dynamic-camera-angle-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "create-logo",
+    "title": "Create Logo",
+    "category": "Branding",
+    "description": "Professional AI logo design from your sketches or descriptions.",
+    "model": "Logo Creator AI",
+    "thumbnail": "/workflow-samples/create-logo-before.png",
+    "sampleBefore": "/workflow-samples/create-logo-before.png",
+    "sampleAfter": "/workflow-samples/create-logo-grid.png",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "logo-variations",
+    "title": "Logo Variations",
+    "category": "Branding",
+    "description": "Generate multiple creative variations and styles for your existing logo.",
+    "model": "Logo Variation AI",
+    "thumbnail": "/workflow-samples/logo-variations-before.png",
+    "sampleBefore": "/workflow-samples/logo-variations-before.png",
+    "sampleAfter": "/workflow-samples/logo-variations-after.png",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "mockup-generation",
+    "title": "Mockup Generation",
+    "category": "Branding",
+    "description": "Generate professional product mockups for your brand and logo.",
+    "model": "Mockup Creator AI",
+    "thumbnail": "/workflow-samples/mockup-generation-before.png",
+    "sampleBefore": "/workflow-samples/mockup-generation-before.png",
+    "sampleAfter": "/workflow-samples/mockup-generation-after.png",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "business-card",
+    "title": "Business Card",
+    "category": "Branding",
+    "description": "Generate professional business card mockups from your logos or descriptions.",
+    "model": "Logo Creator AI",
+    "thumbnail": "/workflow-samples/business-card-before.png",
+    "sampleBefore": "/workflow-samples/business-card-before.png",
+    "sampleAfter": "/workflow-samples/business-card-after.png",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "id-card",
+    "title": "ID Card",
+    "category": "Branding",
+    "description": "Generate professional corporate ID cards and employee badges.",
+    "model": "Branding AI",
+    "thumbnail": "/workflow-samples/id-card-after.png",
+    "sampleBefore": "/workflow-samples/id-card-before.png",
+    "sampleAfter": "/workflow-samples/id-card-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "automotive",
+    "title": "Automotive Photography",
+    "category": "Photography",
+    "description": "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
+    "model": "AutoRender AI",
+    "thumbnail": "/workflow-samples/automotive-after.png",
+    "sampleBefore": "/workflow-samples/automotive-before.png",
+    "sampleAfter": "/workflow-samples/automotive-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center"
+  },
+  {
+    "id": "famous-photographer",
+    "title": "World Famous Photographer",
+    "category": "Photography",
+    "description": "Transform your photos into the signature style of legendary world-famous photographers.",
+    "model": "StyleRender AI",
+    "thumbnail": "/workflow-samples/famous-photographer-after.png",
+    "sampleBefore": "/workflow-samples/famous-photographer-before.png",
+    "sampleAfter": "/workflow-samples/famous-photographer-after.png",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "comingSoon": true
   }
-];
+]

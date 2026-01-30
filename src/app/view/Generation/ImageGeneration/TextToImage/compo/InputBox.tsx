@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronUp, Trash2, Edit3 } from 'lucide-react';
+import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon } from 'lucide-react';
 // HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -72,6 +72,7 @@ import AssetViewerModal from '@/components/AssetViewerModal';
 const UpscalePopup = dynamic(() => import("./UpscalePopup"), { ssr: false });
 const RemoveBgPopup = dynamic(() => import("./RemoveBgPopup"), { ssr: false });
 const EditPopup = dynamic(() => import("./EditPopup"), { ssr: false });
+const EditImageInterface = dynamic(() => import('@/app/view/EditImage/compo/EditImageInterface'), { ssr: false });
 const UploadModal = dynamic(() => import("./UploadModal"), { ssr: false });
 const CharacterModal = dynamic(() => import("./CharacterModal"), { ssr: false });
 import type { Character } from "./CharacterModal";
@@ -119,6 +120,7 @@ const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
+  const isInlineEditImagePage = (pathname || '').startsWith('/text-to-image/edit-image');
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
@@ -5362,7 +5364,7 @@ const InputBox = () => {
         }
       `}</style>
 
-      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
+      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-30 md:py-0 pt-2 md:pl-20 mr-1 backdrop-blur-lg shadow-xl ">
@@ -5391,12 +5393,34 @@ const InputBox = () => {
                 )}
 
                 <button
-                  onClick={() => router.push('/edit-image')}
-                  className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs bg-white/10 hover:bg-white/20 border  border-white/10 text-white/100 transition-all"
+                  onClick={() => router.push('/text-to-image')}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80  border border-white/10 transition-all ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  aria-label="Image"
+                >
+                  <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <span className="hidden md:block">Image</span>
+                </button>
+
+                <button
+                  onClick={() => router.push('/text-to-image/edit-image')}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
                   aria-label="Edit Image"
                 >
-                  <Edit3 size={16} className="text-white fill-black" />
+                  <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
                   <span className="hidden md:block">Edit</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
+                    window.open(url, '_blank');
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all bg-white/10 text-white/100"
+                  aria-label="Image Editor"
+                >
+                  <Edit3 size={16} className="text-white" />
+                  <span className="hidden md:block">Image editor</span>
                 </button>
               </div>
 
@@ -5586,7 +5610,7 @@ const InputBox = () => {
 
         {/* Initial loading overlay - show when loading OR before initial load attempt */}
         {/* CRITICAL FIX: Don't show full screen loader if we have active generations to show */}
-        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
+        {!isInlineEditImagePage && (loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -5596,7 +5620,7 @@ const InputBox = () => {
         )}
 
         {/* Filtering overlay - show when filtering/searching */}
-        {isFiltering && (
+        {!isInlineEditImagePage && isFiltering && (
           <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Filtering" />
@@ -5606,7 +5630,7 @@ const InputBox = () => {
         )}
 
         {/* Sorting overlay - show when sorting changes */}
-        {isSorting && (
+        {!isInlineEditImagePage && isSorting && (
           <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Sorting" />
@@ -5616,218 +5640,226 @@ const InputBox = () => {
         )}
 
         <div>
-          {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
-            <ImageGenerationGuide />
-          )}
-
-          {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
-          {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
-
-          {/* History Entries - Grouped by Date */}
-          {sortedDates.length > 0 && (
-            <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
-              {sortedDates.map((date) => (
-                <div key={date} className="space-y-2 md:-mt-2">
-                  {/* Date Header */}
-                  <div className="flex items-center md:mx-8  md:gap-2 gap-2">
-                    <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="text-white/60"
-                      >
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-medium text-white/70">
-                      {formatDate(date)}
-                    </h3>
-                  </div>
-
-                  {/* All Images for this Date - Simple Grid with stable layout */}
-                  <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
-                    {/* Local entries are now merged into history entries below, so we don't render them separately here */}
-                    {/* This prevents the "two frames" issue where local and history entries both render */}
-
-                    {/* Render all entries for this date - includes both history and merged local entries */}
-                    {(() => {
-                      // Since local entries are now merged into groupedByDate, just render all entries
-                      const allEntries = (groupedByDate as { [key: string]: HistoryEntry[] })[date] || [];
-
-                      return allEntries.flatMap((entry: HistoryEntry) => {
-                        const entryImages: any[] = Array.isArray((entry as any)?.images) ? ((entry as any).images as any[]) : [];
-                        // Check if entry has ready images
-                        const hasImages = entryImages.length > 0;
-                        const hasReadyImages = hasImages && entry.images.some((img: any) =>
-                          img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
-                        );
-
-                        return entryImages.map((image: any, imgIdx: number) => {
-                          // Generate unique key: use image.id if available, otherwise use index
-                          // This prevents duplicate keys when image.id is undefined
-                          const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
-                          const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
-                          const isImageLoaded = loadedImages.has(uniqueImageKey);
-
-                          // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
-                          // This prevents the frame from disappearing during the transition
-                          // For images that have URLs, check if they're loaded
-                          const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
-                          // Show loading if:
-                          // 1. Status is generating (always show loader)
-                          // 2. Status is completed but image hasn't loaded yet (show shimmer/loader)
-                          // 3. No image URL exists (placeholder from activeGenerations - show loader)
-                          const isGeneratingStatus = (entry.status as string) === "generating" || (entry.status as string) === "pending";
-                          const shouldShowLoading = isGeneratingStatus ||
-                            (entry.status === "completed" && hasImageUrl && !isImageLoaded) ||
-                            (!hasImageUrl && isGeneratingStatus);
-
-                          // Check if this is a newly loaded entry for animation
-                          // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
-                          // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
-                          const isNewEntry = !previousEntriesRef.current.has(entry.id);
-
-                          return (
-                            <div
-                              key={uniqueImageKey}
-                              data-image-id={uniqueImageId}
-                              onClick={() => setPreview({ entry, image })}
-                              className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
-                                }`}
-                              style={{
-                                ...(isNewEntry ? {
-                                  animation: 'fadeInUp 0.6s ease-out forwards',
-                                  opacity: 0,
-                                } : {}),
-                              }}
-                              draggable={true}
-                              onDragStart={(e) => {
-                                const url = image.thumbnailUrl || image.avifUrl || image.url;
-                                if (url) {
-                                  e.dataTransfer.setData('text/plain', url);
-                                  e.dataTransfer.setData('text/uri-list', url);
-                                  e.dataTransfer.effectAllowed = 'copy';
-                                  // Optional: Set a custom drag image if needed, but browser default is usually fine
-                                }
-                              }}
-                              onAnimationEnd={(e) => {
-                                if (isNewEntry) {
-                                  e.currentTarget.style.opacity = '1';
-                                }
-                              }}
-                            >
-                              {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
-                              {entry.status === "failed" ? (
-                                // Error frame
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                  <div className="flex flex-col items-center gap-2">
-                                    <svg
-                                      width="20"
-                                      height="20"
-                                      viewBox="0 0 24 24"
-                                      fill="currentColor"
-                                      className="text-red-400"
-                                    >
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                    </svg>
-                                    <div className="text-xs text-red-400">Failed</div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  {/* Image - always render so onLoad fires */}
-                                  {hasImageUrl && (
-                                    <div className="absolute inset-0 group">
-                                      <img
-                                        src={image.thumbnailUrl || image.avifUrl || image.url}
-                                        alt=""
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                        onLoad={() => {
-                                          setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                        }}
-                                      />
-                                      {/* Shimmer loading effect - only show if image hasn't loaded yet */}
-                                      {!isImageLoaded && (
-                                        <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                      )}
-                                      {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                                      <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                        <button
-                                          aria-label="Recreate image"
-                                          className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                          onClick={(e) => handleRecreate(e, entry)}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                        >
-                                          <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
-                                        </button>
-
-                                      </div>
-                                      <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                        <button
-                                          aria-label="Copy prompt"
-                                          className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                          onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                        >
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                        </button>
-                                        <button
-                                          aria-label="Delete image"
-                                          className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                          onClick={(e) => handleDeleteImage(e, entry)}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                        >
-                                          <Trash2 size={16} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Shimmer background for placeholders without images (persists on refresh) */}
-                                  {!hasImageUrl && isGeneratingStatus && (
-                                    <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                  )}
-
-                                  {/* Loading overlay - show on top of image while loading */}
-                                  {shouldShowLoading && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
-                                      <div className="flex flex-col items-center gap-2">
-                                        <GifLoader size={64} alt="Generating" />
-                                        <div className="text-xs text-white/60 text-center">
-                                          {isGeneratingStatus ? "Generating..." : "Loading..."}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                            </div>
-                          );
-                        });
-                      });
-                    })()}
-                  </div>
-                </div>
-              ))}
-
-              {/* Scroll pagination loading indicator */}
-              {loading && historyEntries.length > 0 && (
-                <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
-                  <div className="flex flex-col items-center md:gap-3 gap-2">
-                    <GifLoader size={80} alt="Loading more" />
-                    <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
-                  </div>
-                </div>
+          {isInlineEditImagePage ? (
+            <div className=" px-2">
+              <EditImageInterface />
+            </div>
+          ) : (
+            <>
+              {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
+              {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
+                <ImageGenerationGuide />
               )}
 
+              {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
+              {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
-            </div>
+              {/* History Entries - Grouped by Date */}
+              {sortedDates.length > 0 && (
+                <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
+                  {sortedDates.map((date) => (
+                    <div key={date} className="space-y-2 md:-mt-2">
+                      {/* Date Header */}
+                      <div className="flex items-center md:mx-8  md:gap-2 gap-2">
+                        <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="text-white/60"
+                          >
+                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-medium text-white/70">
+                          {formatDate(date)}
+                        </h3>
+                      </div>
+
+                      {/* All Images for this Date - Simple Grid with stable layout */}
+                      <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
+                        {/* Local entries are now merged into history entries below, so we don't render them separately here */}
+                        {/* This prevents the "two frames" issue where local and history entries both render */}
+
+                        {/* Render all entries for this date - includes both history and merged local entries */}
+                        {(() => {
+                          // Since local entries are now merged into groupedByDate, just render all entries
+                          const allEntries = (groupedByDate as { [key: string]: HistoryEntry[] })[date] || [];
+
+                          return allEntries.flatMap((entry: HistoryEntry) => {
+                            const entryImages: any[] = Array.isArray((entry as any)?.images) ? ((entry as any).images as any[]) : [];
+                            // Check if entry has ready images
+                            const hasImages = entryImages.length > 0;
+                            const hasReadyImages = hasImages && entry.images.some((img: any) =>
+                              img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
+                            );
+
+                            return entryImages.map((image: any, imgIdx: number) => {
+                              // Generate unique key: use image.id if available, otherwise use index
+                              // This prevents duplicate keys when image.id is undefined
+                              const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
+                              const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
+                              const isImageLoaded = loadedImages.has(uniqueImageKey);
+
+                              // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
+                              // This prevents the frame from disappearing during the transition
+                              // For images that have URLs, check if they're loaded
+                              const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
+                              // Show loading if:
+                              // 1. Status is generating (always show loader)
+                              // 2. Status is completed but image hasn't loaded yet (show shimmer/loader)
+                              // 3. No image URL exists (placeholder from activeGenerations - show loader)
+                              const isGeneratingStatus = (entry.status as string) === "generating" || (entry.status as string) === "pending";
+                              const shouldShowLoading = isGeneratingStatus ||
+                                (entry.status === "completed" && hasImageUrl && !isImageLoaded) ||
+                                (!hasImageUrl && isGeneratingStatus);
+
+                              // Check if this is a newly loaded entry for animation
+                              // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
+                              // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
+                              const isNewEntry = !previousEntriesRef.current.has(entry.id);
+
+                              return (
+                                <div
+                                  key={uniqueImageKey}
+                                  data-image-id={uniqueImageId}
+                                  onClick={() => setPreview({ entry, image })}
+                                  className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
+                                    }`}
+                                  style={{
+                                    ...(isNewEntry ? {
+                                      animation: 'fadeInUp 0.6s ease-out forwards',
+                                      opacity: 0,
+                                    } : {}),
+                                  }}
+                                  draggable={true}
+                                  onDragStart={(e) => {
+                                    const url = image.thumbnailUrl || image.avifUrl || image.url;
+                                    if (url) {
+                                      e.dataTransfer.setData('text/plain', url);
+                                      e.dataTransfer.setData('text/uri-list', url);
+                                      e.dataTransfer.effectAllowed = 'copy';
+                                      // Optional: Set a custom drag image if needed, but browser default is usually fine
+                                    }
+                                  }}
+                                  onAnimationEnd={(e) => {
+                                    if (isNewEntry) {
+                                      e.currentTarget.style.opacity = '1';
+                                    }
+                                  }}
+                                >
+                                  {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
+                                  {entry.status === "failed" ? (
+                                    // Error frame
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
+                                      <div className="flex flex-col items-center gap-2">
+                                        <svg
+                                          width="20"
+                                          height="20"
+                                          viewBox="0 0 24 24"
+                                          fill="currentColor"
+                                          className="text-red-400"
+                                        >
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                        </svg>
+                                        <div className="text-xs text-red-400">Failed</div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {/* Image - always render so onLoad fires */}
+                                      {hasImageUrl && (
+                                        <div className="absolute inset-0 group">
+                                          <img
+                                            src={image.thumbnailUrl || image.avifUrl || image.url}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                            onLoad={() => {
+                                              setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                            }}
+                                          />
+                                          {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                          {!isImageLoaded && (
+                                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                          )}
+                                          {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                                          <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                            <button
+                                              aria-label="Recreate image"
+                                              className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                              onClick={(e) => handleRecreate(e, entry)}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                            </button>
+
+                                          </div>
+                                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                            <button
+                                              aria-label="Copy prompt"
+                                              className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                            </button>
+                                            <button
+                                              aria-label="Delete image"
+                                              className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                              onClick={(e) => handleDeleteImage(e, entry)}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <Trash2 size={16} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Shimmer background for placeholders without images (persists on refresh) */}
+                                      {!hasImageUrl && isGeneratingStatus && (
+                                        <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                      )}
+
+                                      {/* Loading overlay - show on top of image while loading */}
+                                      {shouldShowLoading && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
+                                          <div className="flex flex-col items-center gap-2">
+                                            <GifLoader size={64} alt="Generating" />
+                                            <div className="text-xs text-white/60 text-center">
+                                              {isGeneratingStatus ? "Generating..." : "Loading..."}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                </div>
+                              );
+                            });
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Scroll pagination loading indicator */}
+                  {loading && historyEntries.length > 0 && (
+                    <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
+                      <div className="flex flex-col items-center md:gap-3 gap-2">
+                        <GifLoader size={80} alt="Loading more" />
+                        <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
+                      </div>
+                    </div>
+                  )}
+
+
+                </div>
+              )}
+            </>
           )}
           {/* Infinite scroll sentinel inside scroll container */}
           <div ref={sentinelRef} style={{ height: 24 }} />
@@ -5835,7 +5867,7 @@ const InputBox = () => {
       </div>
 
       {/* Mobile-only: Selected images/characters grid above input box */}
-      {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+      {!isInlineEditImagePage && (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
           <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
             {/* Combine characters and images for display */}
@@ -5920,648 +5952,538 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div
-          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
-            ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
-            : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
-            }`}
-          onMouseEnter={() => setIsInputBoxHovered(true)}
-          onMouseLeave={() => setIsInputBoxHovered(false)}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsInputBoxHovered(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsInputBoxHovered(false);
-          }}
-          onDrop={async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsInputBoxHovered(false);
+      {!isInlineEditImagePage && (
+        <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+          <div
+            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
+              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+              }`}
+            onMouseEnter={() => setIsInputBoxHovered(true)}
+            onMouseLeave={() => setIsInputBoxHovered(false)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsInputBoxHovered(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsInputBoxHovered(false);
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsInputBoxHovered(false);
 
-            // Handle Files (dragged from desktop/OS)
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-              const files = Array.from(e.dataTransfer.files);
-              const validFiles: File[] = [];
-              const maxBytes = 14 * 1024 * 1024; // 14MB limit
+              // Handle Files (dragged from desktop/OS)
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const files = Array.from(e.dataTransfer.files);
+                const validFiles: File[] = [];
+                const maxBytes = 14 * 1024 * 1024; // 14MB limit
 
-              for (const file of files) {
-                if (!file.type.startsWith('image/')) {
-                  continue;
+                for (const file of files) {
+                  if (!file.type.startsWith('image/')) {
+                    continue;
+                  }
+                  if (file.size > maxBytes) {
+                    toast.error(`Image "${file.name}" exceeds 14MB limit`);
+                    continue;
+                  }
+                  validFiles.push(file);
                 }
-                if (file.size > maxBytes) {
-                  toast.error(`Image "${file.name}" exceeds 14MB limit`);
-                  continue;
-                }
-                validFiles.push(file);
-              }
 
-              if (validFiles.length > 0) {
-                const newUrls: string[] = [];
-                for (const file of validFiles) {
-                  try {
-                    const reader = new FileReader();
-                    const dataUrl: string = await new Promise((resolve, reject) => {
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(file);
-                    });
-                    newUrls.push(dataUrl);
-                  } catch (error) {
-                    console.error("Error reading file:", file.name, error);
-                    toast.error(`Failed to read "${file.name}"`);
+                if (validFiles.length > 0) {
+                  const newUrls: string[] = [];
+                  for (const file of validFiles) {
+                    try {
+                      const reader = new FileReader();
+                      const dataUrl: string = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                      });
+                      newUrls.push(dataUrl);
+                    } catch (error) {
+                      console.error("Error reading file:", file.name, error);
+                      toast.error(`Failed to read "${file.name}"`);
+                    }
+                  }
+
+                  if (newUrls.length > 0) {
+                    dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
+                    toast.success(`Added ${newUrls.length} image(s)`);
                   }
                 }
-
-                if (newUrls.length > 0) {
-                  dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
-                  toast.success(`Added ${newUrls.length} image(s)`);
-                }
+                return;
               }
-              return;
-            }
 
-            // Handle dragged logical items (URLs from within the app)
-            const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-            if (url && (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/'))) {
-              dispatch(setUploadedImages([...uploadedImages, url].slice(0, 10)));
-              toast.success('Image added');
-            }
-          }}
-        >
-          {/* Outline Glow Effect - shows on hover or when typing */}
-          <div
-            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
-            style={{
-              opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
+              // Handle dragged logical items (URLs from within the app)
+              const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+              if (url && (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/'))) {
+                dispatch(setUploadedImages([...uploadedImages, url].slice(0, 10)));
+                toast.success('Image added');
+              }
             }}
-          ></div>
-          {/* Top row: prompt + actions */}
-          <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
-            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
-              {/* ContentEditable with inline character tags - allows typing anywhere */}
-              <div
-                ref={contentEditableRef}
-                contentEditable
-                suppressContentEditableWarning
-                data-prompt-editor="true"
-                onInput={(e) => {
-                  if (isUpdatingRef.current) return;
+          >
+            {/* Outline Glow Effect - shows on hover or when typing */}
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+              style={{
+                opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
+              }}
+            ></div>
+            {/* Top row: prompt + actions */}
+            <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
+              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
+                {/* ContentEditable with inline character tags - allows typing anywhere */}
+                <div
+                  ref={contentEditableRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  data-prompt-editor="true"
+                  onInput={(e) => {
+                    if (isUpdatingRef.current) return;
 
-                  const div = e.currentTarget;
+                    const div = e.currentTarget;
 
-                  // Extract text content (including from tags)
-                  let text = '';
-                  const walker = document.createTreeWalker(
-                    div,
-                    NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
-                    null
-                  );
+                    // Extract text content (including from tags)
+                    let text = '';
+                    const walker = document.createTreeWalker(
+                      div,
+                      NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+                      null
+                    );
 
-                  let node;
-                  while (node = walker.nextNode()) {
-                    if (node.nodeType === Node.TEXT_NODE) {
-                      text += node.textContent || '';
-                    } else if (node.nodeType === Node.ELEMENT_NODE) {
-                      const el = node as Element;
-                      if (el.classList.contains('character-tag')) {
-                        const nameSpan = el.querySelector('span');
-                        if (nameSpan) {
-                          text += nameSpan.textContent || '';
+                    let node;
+                    while (node = walker.nextNode()) {
+                      if (node.nodeType === Node.TEXT_NODE) {
+                        text += node.textContent || '';
+                      } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const el = node as Element;
+                        if (el.classList.contains('character-tag')) {
+                          const nameSpan = el.querySelector('span');
+                          if (nameSpan) {
+                            text += nameSpan.textContent || '';
+                          }
+                        } else {
+                          // For other elements, get text content
+                          text += el.textContent || '';
                         }
-                      } else {
-                        // For other elements, get text content
-                        text += el.textContent || '';
                       }
                     }
-                  }
 
-                  // Clean duplicates
-                  const cleanedText = text.replace(/(@\w+)(\s*\1)+/g, '$1');
+                    // Clean duplicates
+                    const cleanedText = text.replace(/(@\w+)(\s*\1)+/g, '$1');
 
-                  // Update state
-                  isUpdatingRef.current = true;
-                  dispatch(setPrompt(cleanedText));
+                    // Update state
+                    isUpdatingRef.current = true;
+                    dispatch(setPrompt(cleanedText));
 
-                  // Adjust height
-                  div.style.height = 'auto';
-                  div.style.height = Math.min(div.scrollHeight, 96) + 'px';
+                    // Adjust height
+                    div.style.height = 'auto';
+                    div.style.height = Math.min(div.scrollHeight, 96) + 'px';
 
-                  // Re-render tags after a short delay to ensure they're visible
-                  setTimeout(() => {
-                    isUpdatingRef.current = false;
-                    // Check if tags need to be re-rendered
-                    const hasTags = div.querySelector('.character-tag');
-                    const shouldHaveTags = selectedCharacters.length > 0 && cleanedText.match(/@\w+/);
-                    if (!hasTags && shouldHaveTags) {
-                      updateContentEditable();
+                    // Re-render tags after a short delay to ensure they're visible
+                    setTimeout(() => {
+                      isUpdatingRef.current = false;
+                      // Check if tags need to be re-rendered
+                      const hasTags = div.querySelector('.character-tag');
+                      const shouldHaveTags = selectedCharacters.length > 0 && cleanedText.match(/@\w+/);
+                      if (!hasTags && shouldHaveTags) {
+                        updateContentEditable();
+                      }
+                    }, 100);
+                  }}
+                  onKeyDown={(e) => {
+                    // Allow normal typing, but prevent deleting tags directly
+                    if (e.key === 'Backspace' || e.key === 'Delete') {
+                      const div = e.currentTarget;
+                      const selection = window.getSelection();
+                      if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        let node: Node | null = range.startContainer;
+
+                        while (node && node !== div) {
+                          if (node.nodeType === Node.ELEMENT_NODE) {
+                            const el = node as Element;
+                            if (el.classList.contains('character-tag')) {
+                              // If cursor is at start of tag, move before it
+                              if (e.key === 'Backspace') {
+                                e.preventDefault();
+                                const textNode = document.createTextNode('');
+                                div.insertBefore(textNode, el);
+                                range.setStartBefore(textNode);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                                return;
+                              }
+                              // If cursor is at end of tag, move after it
+                              if (e.key === 'Delete') {
+                                e.preventDefault();
+                                const textNode = document.createTextNode('');
+                                div.insertBefore(textNode, el.nextSibling);
+                                range.setStartAfter(textNode);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                                return;
+                              }
+                            }
+                          }
+                          node = node.parentNode;
+                        }
+                      }
                     }
-                  }, 100);
-                }}
-                onKeyDown={(e) => {
-                  // Allow normal typing, but prevent deleting tags directly
-                  if (e.key === 'Backspace' || e.key === 'Delete') {
-                    const div = e.currentTarget;
+                  }}
+                  onPaste={async (e) => {
+                    // Check for files first
+                    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                      const files = Array.from(e.clipboardData.files);
+                      const validFiles: File[] = [];
+                      const maxBytes = 14 * 1024 * 1024; // 14MB limit
+
+                      for (const file of files) {
+                        if (!file.type.startsWith('image/')) {
+                          continue;
+                        }
+                        if (file.size > maxBytes) {
+                          toast.error(`Image "${file.name}" exceeds 14MB limit`);
+                          continue;
+                        }
+                        validFiles.push(file);
+                      }
+
+                      if (validFiles.length > 0) {
+                        e.preventDefault();
+                        const newUrls: string[] = [];
+                        for (const file of validFiles) {
+                          try {
+                            const reader = new FileReader();
+                            const dataUrl: string = await new Promise((resolve, reject) => {
+                              reader.onload = () => resolve(reader.result as string);
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            newUrls.push(dataUrl);
+                          } catch (error) {
+                            console.error("Error reading pasted file:", file.name, error);
+                            toast.error(`Failed to read pasted image`);
+                          }
+                        }
+                        if (newUrls.length > 0) {
+                          dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
+                          toast.success(`Pasted ${newUrls.length} image(s)`);
+                        }
+                        return;
+                      }
+                    }
+
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text/plain');
                     const selection = window.getSelection();
                     if (selection && selection.rangeCount > 0) {
                       const range = selection.getRangeAt(0);
-                      let node: Node | null = range.startContainer;
-
-                      while (node && node !== div) {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                          const el = node as Element;
-                          if (el.classList.contains('character-tag')) {
-                            // If cursor is at start of tag, move before it
-                            if (e.key === 'Backspace') {
-                              e.preventDefault();
-                              const textNode = document.createTextNode('');
-                              div.insertBefore(textNode, el);
-                              range.setStartBefore(textNode);
-                              range.collapse(true);
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                              return;
-                            }
-                            // If cursor is at end of tag, move after it
-                            if (e.key === 'Delete') {
-                              e.preventDefault();
-                              const textNode = document.createTextNode('');
-                              div.insertBefore(textNode, el.nextSibling);
-                              range.setStartAfter(textNode);
-                              range.collapse(true);
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                              return;
-                            }
-                          }
-                        }
-                        node = node.parentNode;
-                      }
+                      range.deleteContents();
+                      const textNode = document.createTextNode(text);
+                      range.insertNode(textNode);
+                      range.setStartAfter(textNode);
+                      range.collapse(false);
+                      selection.removeAllRanges();
+                      selection.addRange(range);
                     }
-                  }
-                }}
-                onPaste={async (e) => {
-                  // Check for files first
-                  if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                    const files = Array.from(e.clipboardData.files);
-                    const validFiles: File[] = [];
-                    const maxBytes = 14 * 1024 * 1024; // 14MB limit
-
-                    for (const file of files) {
-                      if (!file.type.startsWith('image/')) {
-                        continue;
-                      }
-                      if (file.size > maxBytes) {
-                        toast.error(`Image "${file.name}" exceeds 14MB limit`);
-                        continue;
-                      }
-                      validFiles.push(file);
-                    }
-
-                    if (validFiles.length > 0) {
-                      e.preventDefault();
-                      const newUrls: string[] = [];
-                      for (const file of validFiles) {
-                        try {
-                          const reader = new FileReader();
-                          const dataUrl: string = await new Promise((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result as string);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                          });
-                          newUrls.push(dataUrl);
-                        } catch (error) {
-                          console.error("Error reading pasted file:", file.name, error);
-                          toast.error(`Failed to read pasted image`);
-                        }
-                      }
-                      if (newUrls.length > 0) {
-                        dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
-                        toast.success(`Pasted ${newUrls.length} image(s)`);
-                      }
-                      return;
-                    }
-                  }
-
-                  e.preventDefault();
-                  const text = e.clipboardData.getData('text/plain');
-                  const selection = window.getSelection();
-                  if (selection && selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    range.deleteContents();
-                    const textNode = document.createTextNode(text);
-                    range.insertNode(textNode);
-                    range.setStartAfter(textNode);
-                    range.collapse(false);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                  }
-                  // Trigger input event
-                  const inputEvent = new Event('input', { bubbles: true });
-                  e.currentTarget.dispatchEvent(inputEvent);
-                }}
-                className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}
+                    // Trigger input event
+                    const inputEvent = new Event('input', { bubbles: true });
+                    e.currentTarget.dispatchEvent(inputEvent);
+                  }}
+                  className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}
                   }`}
-                style={{
-                  minHeight: '100px',
-                  maxHeight: '96px',
-                  lineHeight: '1.2',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
-                  wordBreak: 'break-word',
-                  whiteSpace: 'pre-wrap'
-                }}
-                data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
-              />
-              {/* Enhancement overlay removed - text shines instead */}
-              {/* Fixed position buttons container */}
-              <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
-                {/* Clear prompt button - only show when there's text */}
-                {prompt.trim() && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => {
-                        // Clear prompt when user explicitly clicks the clear button
-                        dispatch(setPrompt(''));
-                        // Also clear the contentEditable element
-                        if (contentEditableRef.current) {
-                          contentEditableRef.current.textContent = '';
-                        }
-                        // Focus the input after clearing
-                        if (inputEl.current) {
-                          inputEl.current.focus();
-                        }
-                      }}
-                      className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                      aria-label="Clear prompt"
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-white/80"
+                  style={{
+                    minHeight: '100px',
+                    maxHeight: '96px',
+                    lineHeight: '1.2',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap'
+                  }}
+                  data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
+                />
+                {/* Enhancement overlay removed - text shines instead */}
+                {/* Fixed position buttons container */}
+                <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
+                  {/* Clear prompt button - only show when there's text */}
+                  {prompt.trim() && (
+                    <div className="relative group">
+                      <button
+                        onClick={() => {
+                          // Clear prompt when user explicitly clicks the clear button
+                          dispatch(setPrompt(''));
+                          // Also clear the contentEditable element
+                          if (contentEditableRef.current) {
+                            contentEditableRef.current.textContent = '';
+                          }
+                          // Focus the input after clearing
+                          if (inputEl.current) {
+                            inputEl.current.focus();
+                          }
+                        }}
+                        className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                        aria-label="Clear prompt"
                       >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
-                  </div>
-                )}
-                {/* Desktop-only: Previews just to the left of upload */}
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-white/80"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                    </div>
+                  )}
+                  {/* Desktop-only: Previews just to the left of upload */}
 
-                {/* Mobile: Single column on right | Desktop: Horizontal row */}
-                <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
-                  {/* Enhance prompt button (manual trigger) */}
-                  <div className="relative">
-                    <button
-                      onClick={handleEnhancePrompt}
-                      disabled={isEnhancing || !prompt.trim()}
-                      type="button"
-                      className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      aria-pressed={isEnhancing}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-                        <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
-                        <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
-                  </div>
+                  {/* Mobile: Single column on right | Desktop: Horizontal row */}
+                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
+                    {/* Enhance prompt button (manual trigger) */}
+                    <div className="relative">
+                      <button
+                        onClick={handleEnhancePrompt}
+                        disabled={isEnhancing || !prompt.trim()}
+                        type="button"
+                        className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        aria-pressed={isEnhancing}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                          <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
+                          <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
+                        </svg>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
+                    </div>
 
-                  <div className="relative">
-                    <button
-                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsCharacterModalOpen(true)}
-                      type="button"
-                      aria-label="Upload character"
-                    >
-                      <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
-                      <span className="text-white text-sm"> </span>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
-                  </div>
+                    <div className="relative">
+                      <button
+                        className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        onClick={() => setIsCharacterModalOpen(true)}
+                        type="button"
+                        aria-label="Upload character"
+                      >
+                        <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                        <span className="text-white text-sm"> </span>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                    </div>
 
-                  <div className="relative">
-                    <button
-                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsUploadOpen(true)}
-                      type="button"
-                      aria-label="Upload image"
-                    >
-                      <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
-                      <span className="text-white text-sm"> </span>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                    <div className="relative">
+                      <button
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        onClick={() => setIsUploadOpen(true)}
+                        type="button"
+                        aria-label="Upload image"
+                      >
+                        <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                        <span className="text-white text-sm"> </span>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Uploaded Images / Characters Preview (Moved INSIDE container to match Video Gen style) */}
-            {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-              <div className="hidden md:flex flex-wrap gap-2 px-1 pb-3 pt-2">
-                {/* Selected Characters */}
-                {selectedCharacters.map((character: any) => (
-                  <div key={character.id} className="relative group">
-                    <div
-                      className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                      title={`Character: ${character.name}`}
-                    >
-                      <img
-                        src={character.frontImageUrl}
-                        alt={character.name}
-                        decoding="async"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                        {character.name || 'Character'}
+              {/* Uploaded Images / Characters Preview (Moved INSIDE container to match Video Gen style) */}
+              {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+                <div className="hidden md:flex flex-wrap gap-2 px-1 pb-3 pt-2">
+                  {/* Selected Characters */}
+                  {selectedCharacters.map((character: any) => (
+                    <div key={character.id} className="relative group">
+                      <div
+                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                        title={`Character: ${character.name}`}
+                      >
+                        <img
+                          src={character.frontImageUrl}
+                          alt={character.name}
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                          {character.name || 'Character'}
+                        </div>
                       </div>
+                      <button
+                        aria-label="Remove character"
+                        className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          dispatch(removeSelectedCharacter(character.id));
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <button
-                      aria-label="Remove character"
-                      className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        dispatch(removeSelectedCharacter(character.id));
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                  ))}
 
-                {/* Uploaded Images */}
-                {uploadedImages.map((u: string, i: number) => (
-                  <div key={i} className="relative group">
-                    <div
-                      className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                      onClick={() => {
-                        setAssetViewer({
-                          isOpen: true,
-                          assetUrl: u,
-                          assetType: 'image',
-                          title: `Uploaded Image ${i + 1}`
-                        });
-                      }}
-                    >
-                      <img
-                        src={u}
-                        alt=""
-                        decoding="async"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                        Image {i + 1}
+                  {/* Uploaded Images */}
+                  {uploadedImages.map((u: string, i: number) => (
+                    <div key={i} className="relative group">
+                      <div
+                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                        onClick={() => {
+                          setAssetViewer({
+                            isOpen: true,
+                            assetUrl: u,
+                            assetType: 'image',
+                            title: `Uploaded Image ${i + 1}`
+                          });
+                        }}
+                      >
+                        <img
+                          src={u}
+                          alt=""
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                          Image {i + 1}
+                        </div>
                       </div>
+                      <button
+                        aria-label="Remove image"
+                        className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
+                          dispatch(setUploadedImages(next));
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <button
-                      aria-label="Remove image"
-                      className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
-                        dispatch(setUploadedImages(next));
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
 
 
-            {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
-              {error && <div className="text-red-500 text-xs">{error}</div>}
+              {/* Fixed position Generate button - Desktop only */}
+              <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
+                {/* {error && <div className="text-red-500 text-xs">{error}</div>}
               {expectedCredits > 0 && (
                 <div className="text-[11px] text-white/70">
                   Cost: {formatCredits(expectedCredits)} credits
                 </div>
-              )}
-              <button
-                onClick={async () => {
-                  try {
-                    // Check parallel generation limit (only counting running ones)
-                    if (runningGenerationsCount >= 4) {
-                      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
-                      return;
-                    }
-
-                    // Create tracking ID (visual only for now as handleGenerate manages internal state)
-                    // This allows us to show the card immediately in the panel
-                    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-                    // Add to active generations queue immediately
-                    console.log('[queue] Adding new generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
-                    dispatch(addActiveGeneration({
-                      id: generationId,
-                      prompt: prompt,
-                      model: selectedModel,
-                      status: 'pending',
-                      createdAt: Date.now(),
-                      updatedAt: Date.now(),
-                      params: {
-                        imageCount,
-                        frameSize,
-                        style,
-                        uploadedImages: getCombinedUploadedImages()
+              )} */}
+                <button
+                  onClick={async () => {
+                    try {
+                      // Check parallel generation limit (only counting running ones)
+                      if (runningGenerationsCount >= 4) {
+                        toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+                        return;
                       }
-                    }));
 
-                    // Trigger the actual generation logic (fire and forget to not block button)
-                    handleGenerate(generationId);
-                  } catch (e) {
-                    console.error('Failed to start generation:', e);
-                  }
-                }}
-                disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                aria-busy={isEnhancing}
-              >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
-              </button>
-            </div>
-          </div>
+                      // Create tracking ID (visual only for now as handleGenerate manages internal state)
+                      // This allows us to show the card immediately in the panel
+                      const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-          {/* Bottom row: pill options */}
+                      // Add to active generations queue immediately
+                      console.log('[queue] Adding new generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
+                      dispatch(addActiveGeneration({
+                        id: generationId,
+                        prompt: prompt,
+                        model: selectedModel,
+                        status: 'pending',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        params: {
+                          imageCount,
+                          frameSize,
+                          style,
+                          uploadedImages: getCombinedUploadedImages()
+                        }
+                      }));
 
-          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
-            {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
-
-            <div className="flex items-center justify-between gap-3 md:hidden w-full">
-              <div className="flex-1">
-                <ModelsDropdown />
+                      // Trigger the actual generation logic (fire and forget to not block button)
+                      handleGenerate(generationId);
+                    } catch (e) {
+                      console.error('Failed to start generation:', e);
+                    }
+                  }}
+                  disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  aria-busy={isEnhancing}
+                >
+                  {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
+                </button>
               </div>
-              {error && <div className="text-red-500 text-sm">{error}</div>}
-              {expectedCredits > 0 && (
-                <div className="text-[11px] text-white/70 whitespace-nowrap">
-                  {formatCredits(expectedCredits)} credits
+            </div>
+
+            {/* Bottom row: pill options */}
+
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
+              {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
+
+              <div className="flex items-center justify-between gap-3 md:hidden w-full">
+                <div className="flex-1">
+                  <ModelsDropdown />
                 </div>
-              )}
-              <button
-                onClick={async () => {
-                  try {
-                    // Check parallel generation limit (only counting running ones)
-                    if (runningGenerationsCount >= 4) {
-                      toast.error('Queue full (4/4 active). Please wait.');
-                      return;
-                    }
-
-                    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-                    dispatch(addActiveGeneration({
-                      id: generationId,
-                      prompt: prompt,
-                      model: selectedModel,
-                      status: 'pending',
-                      createdAt: Date.now(),
-                      updatedAt: Date.now(),
-                      params: {
-                        imageCount,
-                        frameSize,
-                        style,
-                        uploadedImages: getCombinedUploadedImages()
+                {error && <div className="text-red-500 text-sm">{error}</div>}
+                {expectedCredits > 0 && (
+                  <div className="text-[11px] text-white/70 whitespace-nowrap">
+                    {formatCredits(expectedCredits)} credits
+                  </div>
+                )}
+                <button
+                  onClick={async () => {
+                    try {
+                      // Check parallel generation limit (only counting running ones)
+                      if (runningGenerationsCount >= 4) {
+                        toast.error('Queue full (4/4 active). Please wait.');
+                        return;
                       }
-                    }));
 
-                    handleGenerate(generationId);
-                  } catch (e) {
-                    console.error('Failed to start generation:', e);
-                  }
-                }}
-                disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
-                aria-busy={isEnhancing}
-              >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
-              </button>
-            </div>
+                      const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-            {/* Mobile/Tablet: Second row - Other dropdowns */}
-            <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative" style={{ zIndex: 70 }}>
-              <ImageCountDropdown />
-              <FrameSizeDropdown />
-              <StyleSelector />
-              <LucidOriginOptions />
-              <PhoenixOptions />
-              <FileTypeDropdown />
-              {selectedModel === 'google/nano-banana-pro' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={nanoBananaProResolution}
-                    onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
-                    options={['1K', '2K', '4K']}
-                    dropdownId="nanoBananaProResolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'flux-2-pro' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={flux2ProResolution}
-                    onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
-                    options={['1K', '2K']}
-                    dropdownId="flux2ProResolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'qwen-image-edit-2512' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={qwenResolution}
-                    onResolutionChange={(val) => setQwenResolution(val as '1K' | '2K')}
-                    options={['1K', '2K']}
-                    dropdownId="qwen2512Resolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'seedream-4.5' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={seedream45Resolution}
-                    onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
-                    options={['2K', '4K']}
-                    dropdownId="seedream45Resolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'seedream-v4' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={seedreamSize}
-                    onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
-                    options={['1K', '2K', '4K', 'custom']}
-                    dropdownId="seedreamSize"
-                  />
-                  {seedreamSize === 'custom' && (
-                    <>
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamWidth}
-                        onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
-                        placeholder="Width"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamHeight}
-                        onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
-                        placeholder="Height"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-              {selectedModel === 'new-turbo-model' && (
-                <div className="flex items-center gap-2 relative">
-                  <ZTurboOutputFormatDropdown
-                    outputFormat={zTurboOutputFormat}
-                    onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
-                    dropdownId="zTurboOutputFormat"
-                  />
-                </div>
-              )}
-              {selectedModel === 'openai/gpt-image-1.5' && (
-                <>
-                  <div className="flex items-center gap-2 relative">
-                    <QualityDropdown
-                      quality={gptImage15Quality}
-                      onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
-                      dropdownId="gptImage15Quality"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 relative">
-                    <ZTurboOutputFormatDropdown
-                      outputFormat={gptImage15OutputFormat}
-                      onOutputFormatChange={(val) => setGptImage15OutputFormat(val)}
-                      dropdownId="gptImage15OutputFormat"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+                      dispatch(addActiveGeneration({
+                        id: generationId,
+                        prompt: prompt,
+                        model: selectedModel,
+                        status: 'pending',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        params: {
+                          imageCount,
+                          frameSize,
+                          style,
+                          uploadedImages: getCombinedUploadedImages()
+                        }
+                      }));
 
-            {/* Desktop: All dropdowns in one row */}
-            <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
-              <div className="flex items-center gap-3 -mb-2">
-                <ModelsDropdown />
+                      handleGenerate(generationId);
+                    } catch (e) {
+                      console.error('Failed to start generation:', e);
+                    }
+                  }}
+                  disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
+                  aria-busy={isEnhancing}
+                >
+                  {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
+                </button>
+              </div>
+
+              {/* Mobile/Tablet: Second row - Other dropdowns */}
+              <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative" style={{ zIndex: 70 }}>
                 <ImageCountDropdown />
                 <FrameSizeDropdown />
                 <StyleSelector />
@@ -6667,12 +6589,124 @@ const InputBox = () => {
                     </div>
                   </>
                 )}
-                {/* Qwen Image Edit: no extra advanced controls */}
+              </div>
+
+              {/* Desktop: All dropdowns in one row */}
+              <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
+                <div className="flex items-center gap-3 -mb-2">
+                  <ModelsDropdown />
+                  <ImageCountDropdown />
+                  <FrameSizeDropdown />
+                  <StyleSelector />
+                  <LucidOriginOptions />
+                  <PhoenixOptions />
+                  <FileTypeDropdown />
+                  {selectedModel === 'google/nano-banana-pro' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={nanoBananaProResolution}
+                        onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
+                        options={['1K', '2K', '4K']}
+                        dropdownId="nanoBananaProResolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'flux-2-pro' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={flux2ProResolution}
+                        onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
+                        options={['1K', '2K']}
+                        dropdownId="flux2ProResolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'qwen-image-edit-2512' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={qwenResolution}
+                        onResolutionChange={(val) => setQwenResolution(val as '1K' | '2K')}
+                        options={['1K', '2K']}
+                        dropdownId="qwen2512Resolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'seedream-4.5' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={seedream45Resolution}
+                        onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                        options={['2K', '4K']}
+                        dropdownId="seedream45Resolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'seedream-v4' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={seedreamSize}
+                        onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
+                        options={['1K', '2K', '4K', 'custom']}
+                        dropdownId="seedreamSize"
+                      />
+                      {seedreamSize === 'custom' && (
+                        <>
+                          <input
+                            type="number"
+                            min={1024}
+                            max={4096}
+                            value={seedreamWidth}
+                            onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
+                            placeholder="Width"
+                            className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                          />
+                          <input
+                            type="number"
+                            min={1024}
+                            max={4096}
+                            value={seedreamHeight}
+                            onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
+                            placeholder="Height"
+                            className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {selectedModel === 'new-turbo-model' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={zTurboOutputFormat}
+                        onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                        dropdownId="zTurboOutputFormat"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'openai/gpt-image-1.5' && (
+                    <>
+                      <div className="flex items-center gap-2 relative">
+                        <QualityDropdown
+                          quality={gptImage15Quality}
+                          onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
+                          dropdownId="gptImage15Quality"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 relative">
+                        <ZTurboOutputFormatDropdown
+                          outputFormat={gptImage15OutputFormat}
+                          onOutputFormatChange={(val) => setGptImage15OutputFormat(val)}
+                          dropdownId="gptImage15OutputFormat"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {/* Qwen Image Edit: no extra advanced controls */}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
       {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
@@ -6687,7 +6721,7 @@ const InputBox = () => {
       />
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isRemoveBgOpen && <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
-      {isEditOpen && (
+      {!isInlineEditImagePage && isEditOpen && (
         <EditPopup
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
@@ -6702,7 +6736,7 @@ const InputBox = () => {
       )}
 
       {/* Upload Modal - Lazy loaded */}
-      {isUploadOpen && (
+      {!isInlineEditImagePage && isUploadOpen && (
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
@@ -6717,7 +6751,7 @@ const InputBox = () => {
       )}
 
       {/* Character Modal - Lazy loaded */}
-      {isCharacterModalOpen && (
+      {!isInlineEditImagePage && isCharacterModalOpen && (
         <CharacterModal
           isOpen={isCharacterModalOpen}
           onClose={() => setIsCharacterModalOpen(false)}

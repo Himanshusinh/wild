@@ -24,6 +24,7 @@ export default function RestoreOldPhoto() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [additionalText, setAdditionalText] = useState('');
 
     // Workflow Data (Hardcoded for this specific page, matching data.js)
     const workflowData = {
@@ -31,8 +32,8 @@ export default function RestoreOldPhoto() {
         title: "Restore Old Photo",
         category: "General",
         description: "Restore and colorize this image, remove any scratches or imperfections.",
-        model: "Seadream4/ Nano Banana",
-        cost: 80 // Frontend cost display
+        // model: "Seadream4/ Nano Banana",
+        cost: 90 // Frontend cost display
     };
 
     useEffect(() => {
@@ -64,7 +65,7 @@ export default function RestoreOldPhoto() {
             return;
         }
 
-        const CREDIT_COST = 80;
+        const CREDIT_COST = 90;
         if (creditBalance < CREDIT_COST) {
             toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
             return;
@@ -77,7 +78,7 @@ export default function RestoreOldPhoto() {
             // Updated Payload structure as requested
             const payload = {
                 image: originalImage,
-                prompt: "Restore and colorize this image, remove any scratches or imperfections. [Style: none]",
+                prompt: `${additionalText ? additionalText + '. ' : ''}Restore and colorize this image, remove any scratches or imperfections. [Style: none]`,
                 model: "qwen/qwen-image-edit-2511",
                 frameSize: "match_input_image",
                 output_format: "jpg",
@@ -136,17 +137,17 @@ export default function RestoreOldPhoto() {
 
                 <div className={`relative w-full max-w-6xl h-[90vh] bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row transition-all duration-500 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
 
-                    <div className="flex w-full h-full">
+                    <div className="flex w-full h-full flex-col md:flex-row">
                         {/* Left Panel - Controls */}
-                        <div className="w-full md:w-[40%] p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
+                        <div className="w-full md:w-[40%] h-[55%] md:h-full p-8 lg:p-12 flex flex-col border-r border-white/5 bg-[#0A0A0A] relative z-20 overflow-y-auto">
                             <div className="flex-1">
                                 <div className="inline-flex items-center gap-2 mb-6">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                                 </div>
-                                <h2 className="text-3xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
+                                <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
-                                <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
+                                {/* <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div> */}
 
                                 <div className="mb-8">
                                     <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -175,6 +176,8 @@ export default function RestoreOldPhoto() {
                                     <textarea
                                         className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                                         placeholder="Add extra data or specific instructions here..."
+                                        value={additionalText}
+                                        onChange={(e) => setAdditionalText(e.target.value)}
                                     ></textarea>
                                 </div>
 
@@ -213,7 +216,7 @@ export default function RestoreOldPhoto() {
                         </div>
 
                         {/* Right Panel - Preview */}
-                        <div className="hidden md:flex flex-1 items-center justify-center bg-[#050505] relative overflow-hidden">
+                        <div className="w-full md:flex-1 h-[45%] md:h-full items-center justify-center bg-[#050505] relative overflow-hidden flex border-t md:border-t-0 md:border-l border-white/10 shrink-0">
                             {/* Background pattern */}
                             <div className="absolute inset-0 opacity-20"
                                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
@@ -241,10 +244,7 @@ export default function RestoreOldPhoto() {
                                     <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                                     {isGenerating && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                                            <div className="relative w-20 h-20 mb-4">
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                                                <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                                            </div>
+                                            <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                                             <p className="text-white font-medium text-lg animate-pulse">Restoring photo...</p>
                                         </div>
                                     )}
@@ -252,17 +252,13 @@ export default function RestoreOldPhoto() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/portrait-before.jpg"
-                                        afterImage="/portrait-after.jpg"
+                                        beforeImage="/workflow-samples/portrait-before.jpg"
+                                        afterImage="/workflow-samples/portrait-after.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10 text-white font-medium text-sm">
-                                            Try it with your own image
-                                        </div>
-                                    </div>
+
                                 </div>
                             )}
                         </div>

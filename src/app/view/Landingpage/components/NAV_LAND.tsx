@@ -70,7 +70,7 @@ const ImageEdit: FeatureItem[] = [
   { title: "Resize", href: '/view/EditImage?feature=resize', },
   { title: "Vectorize", href: '/view/EditImage?feature=vectorize', },
   { title: "Chat to Edit", href: NAV_ROUTES.LIVE_CHAT, },
-  { title: "Editor", href: process.env.NEXT_PUBLIC_CANVAS_URL || 'http://localhost:3001' },
+  { title: "Editor", href: '/edit-image/editor' },
 ]
 
 const VideoEdit: FeatureItem[] = [

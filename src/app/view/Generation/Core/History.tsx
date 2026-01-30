@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal';
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
@@ -111,12 +112,16 @@ const History = () => {
 
   // Selection states
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  const [showDownloadBar, setShowDownloadBar] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<{ x: number; y: number } | null>(null);
   const [dragBox, setDragBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const wasDraggingRef = useRef(false);
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
@@ -446,7 +451,6 @@ const History = () => {
         });
 
         setSelectedImages(newSelected);
-        setShowDownloadBar(newSelected.size > 0);
       }
     }
   };
@@ -470,7 +474,6 @@ const History = () => {
     }
 
     setSelectedImages(newSelected);
-    setShowDownloadBar(newSelected.size > 0);
   };
 
   const handleImageClick = (e: React.MouseEvent, entry: HistoryEntry, media: any, mediaIndex: number) => {
@@ -493,7 +496,6 @@ const History = () => {
       const newSelected = new Set(selectedImages);
       newSelected.delete(key);
       setSelectedImages(newSelected);
-      setShowDownloadBar(newSelected.size > 0);
       return;
     }
 
@@ -535,7 +537,6 @@ const History = () => {
 
   const clearSelection = () => {
     setSelectedImages(new Set());
-    setShowDownloadBar(false);
   };
 
   const deleteSelectedImages = async () => {
@@ -1887,7 +1888,7 @@ const History = () => {
 
 
         {/* Drag Selection Box */}
-        {isDragging && dragBox && (
+        {isMounted && isDragging && dragBox && createPortal(
           <div
             className="fixed pointer-events-none z-50 border-2 border-blue-400 bg-blue-400/20"
             style={{
@@ -1896,12 +1897,13 @@ const History = () => {
               width: dragBox.width,
               height: dragBox.height,
             }}
-          />
+          />,
+          document.body
         )}
 
         {/* Download Bar */}
 
-        {showDownloadBar && (
+        {isMounted && selectedImages.size > 0 && createPortal(
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-t border-white/10 p-4">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
               <div className="flex items-center gap-3">
@@ -1976,7 +1978,8 @@ const History = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       {/* End of scrollable content area */}
