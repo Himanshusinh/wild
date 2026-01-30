@@ -91,7 +91,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
     // Apply visibility filters
     return result.filter(wf => {
       // Logic for determining if an item is "Coming Soon"
-      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend', 'Fashion', 'Branding', 'Architecture'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
       // Hide coming soon items if they are in the 'Fun' category
       if (wf.category === 'Fun' && isComingSoon) return false;
@@ -121,10 +121,10 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       <div className="md:hidden pt-8 pb-2 px-0 bg-[#07070B]">
         <div className="mb-2">
           <h3 className="text-white text-xl font-semibold mb-0">
-            Magic Workflows
+            Explore Apps
           </h3>
           <p className="text-white/80 text-xs mt-0">
-            Discover amazing AI-generated content from our creative community
+            Explore AI tools that make your creative process easier and better
           </p>
         </div>
       </div>
@@ -237,7 +237,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
               </button>
 
               {CATEGORIES.filter(cat => cat !== 'All').map((cat) => {
-                const isCatComingSoon = !['General', 'Fun', 'Viral Trend', 'Photography'].includes(cat);
+                const isCatComingSoon = !['General', 'Fun', 'Viral Trend', 'Photography', 'Fashion', 'Branding', 'Architecture'].includes(cat);
                 return (
                   <button
                     key={cat}
@@ -295,7 +295,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
 function WorkflowCard({ wf, router }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend', 'Fashion'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
   const handleClick = () => {
     if (isComingSoon) return;
@@ -337,6 +337,8 @@ function WorkflowCard({ wf, router }) {
       router.push(`/view/workflows/fun/${wf.id}`);
     } else if (wf.category === 'Viral Trend') {
       router.push(`/view/workflows/viral-trend/${wf.id}`);
+    } else if (wf.category === 'Fashion') {
+      router.push(`/view/workflows/fashion/${wf.id}`);
     } else {
       router.push(`/view/workflows/${wf.id}`);
     }

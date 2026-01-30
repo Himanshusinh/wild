@@ -529,5 +529,83 @@ export const WORKFLOWS_DATA = [
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
+  },
+  {
+    "id": "hair-style",
+    "title": "Hair Style",
+    "category": "Fashion",
+    "description": "Try different hairstyles on your photo.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/hairstyle-before.jpg",
+    "sampleBefore": "/workflow-samples/hairstyle-before.jpg",
+    "sampleAfter": "/workflow-samples/hairstyle-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "fashion-modeling-poses",
+    "title": "Fashion Modeling Poses",
+    "category": "Fashion",
+    "description": "Generate professional fashion modeling poses from a single photo.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/fashion-modeling-before.jpg",
+    "sampleBefore": "/workflow-samples/fashion-modeling-before.jpg",
+    "sampleAfter": "/workflow-samples/fashion-modeling-after.jpg",
+    "imageFit": "object-cover",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "rampwalk",
+    "title": "Rampwalk",
+    "category": "Fashion",
+    "description": "Generate professional rampwalk videos or images from a single photo.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/rampwalk-before.jpg",
+    "sampleBefore": "/workflow-samples/rampwalk-before.jpg",
+    "sampleAfter": "/workflow-samples/rampwalk-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "makeup",
+    "title": "Makeup",
+    "category": "Fashion",
+    "description": "Apply professional makeup styles to your photos instantly.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/makeup-before.jpg",
+    "sampleBefore": "/workflow-samples/makeup-before.jpg",
+    "sampleAfter": "/workflow-samples/makeup-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "deconstruct-outfit",
+    "title": "Deconstruct an outfit",
+    "category": "Fashion",
+    "description": "Automatically separate and display individual items from a full outfit photo.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/deconstruct-outfit-before.jpg",
+    "sampleBefore": "/workflow-samples/deconstruct-outfit-before.jpg",
+    "sampleAfter": "/workflow-samples/deconstruct-outfit-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "fashion-stylist",
+    "title": "Fashion Stylist",
+    "category": "Fashion",
+    "description": "Generate professional styling suggestions and combinations.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/fashion-stylist-before.png",
+    "sampleBefore": "/workflow-samples/fashion-stylist-before.png",
+    "sampleAfter": "/workflow-samples/fashion-stylist-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
   }
 ]
