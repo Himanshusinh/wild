@@ -50,21 +50,21 @@ export default function ChromeMount() {
       if (userStr) {
         const u = JSON.parse(userStr);
         const authed = !!u?.uid;
-        
+
         setIsAuthenticated(authed);
       } else {
-        
+
         setIsAuthenticated(false);
       }
     } catch (err) {
-      
+
       setIsAuthenticated(false);
     }
   }, [pathname, reduxUser]); // Re-check when pathname or Redux user changes
 
   // Once authenticated in the browser, decide whether to show the notification permission prompt.
   useEffect(() => {
-    
+
     if (!isAuthenticated) {
       setShowNotifPrompt(false);
       return;
@@ -88,7 +88,7 @@ export default function ChromeMount() {
     if (typeof window === 'undefined') return;
 
     attachForegroundMessageListener((payload: any) => {
-      
+
 
       const title = payload?.notification?.title || 'WildMind';
       const body = payload?.notification?.body || '';
@@ -99,7 +99,7 @@ export default function ChromeMount() {
           new Notification(title, { body });
         }
       } catch (err) {
-        
+
       }
     });
   }, []);
@@ -112,7 +112,7 @@ export default function ChromeMount() {
       }
       await registerBrowserPushToken();
     } catch (err) {
-      
+
     }
   };
 
@@ -129,7 +129,7 @@ export default function ChromeMount() {
   // Hide chrome on 404 and error pages
   const is404 = pathname === '/not-found' || pathname?.includes('/404');
   const isErrorPage = pathname === '/error' || pathname?.includes('/error');
-  
+
   // Public routes - hide chrome on these
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
@@ -209,63 +209,55 @@ export default function ChromeMount() {
     return null;
   }
 
-  // For ArtStation: hide chrome if not authenticated, show if authenticated
+  // For ArtStation: allow sidebar even if not authenticated
   if (isArtStationRoute) {
-    if (isAuthenticated) {
-      return (
-        <>
-          <Nav />
-          {!isVideoEditorOpen && <SidePannelFeatures />}
-        </>
-      );
-    }
-    return null; // Hide chrome when not authenticated
+    return (
+      <>
+        <Nav />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
+      </>
+    );
   }
 
-  // For Pricing: hide chrome if not authenticated, show if authenticated
+  // For Pricing: allow sidebar even if not authenticated
   if (isPricingRoute) {
-    if (isAuthenticated) {
-      return (
-        <>
-          <Nav />
-          {!isVideoEditorOpen && <SidePannelFeatures />}
-        </>
-      );
-    }
-    return null; // Hide chrome when not authenticated
+    return (
+      <>
+        <Nav />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
+      </>
+    );
   }
 
-  // For Blog: hide chrome if not authenticated, show if authenticated
+  // For Blog: allow sidebar even if not authenticated
   if (isBlogRoute) {
-    if (isAuthenticated) {
-      return (
-        <>
-          <Nav />
-          {!isVideoEditorOpen && <SidePannelFeatures />}
-        </>
-      );
-    }
-    return null; // Hide chrome when not authenticated
+    return (
+      <>
+        <Nav />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
+      </>
+    );
   }
 
   // Canvas Projects route - always hide chrome (page manages own sidebar)
 
   // Hide chrome on all other public pages
-  const shouldHide = isRoot ||
+  // Hide chrome on all other public pages
+  const shouldHide = (isRoot && currentView === 'landing' && !isAuthenticated) ||
     isLandingRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
     isLegalRoute ||
     isProductRoute ||
     isCompanyRoute ||
-    isCanvasRoute ||
-    (isRoot && currentView === 'landing');
+    isCanvasRoute;
 
   // If should hide, return null immediately
   if (shouldHide) return null;
 
   // Show chrome only on authenticated pages
-  const shouldShow = isHomeRoute ||
+  const shouldShow = isRoot ||
+    isHomeRoute ||
     currentView === 'home' ||
     isGenerationRoute ||
     currentView === 'generation' ||

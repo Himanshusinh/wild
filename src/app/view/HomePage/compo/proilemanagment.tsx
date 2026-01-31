@@ -46,7 +46,7 @@ interface UserData {
 const ProfileManagement = () => {
   const router = useRouter();
   // const fileInputRef = useRef<HTMLInputElement>(null); // DISABLED
-  
+
   // State management
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,13 +57,13 @@ const ProfileManagement = () => {
   const [canTogglePublic, setCanTogglePublic] = useState<boolean>(false);
   const [policyMessage, setPolicyMessage] = useState<string>('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
+
   // Edit states
   // Username editing states - DISABLED
   // const [isEditingUsername, setIsEditingUsername] = useState(false);
   // const [editedUsername, setEditedUsername] = useState('');
   // const [usernameError, setUsernameError] = useState('');
-  
+
   // Upload states - DISABLED
   // const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -73,7 +73,7 @@ const ProfileManagement = () => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('authToken') || localStorage.getItem('user');
-        
+
         if (!token) {
           router.push('/view/signup');
           return;
@@ -88,17 +88,17 @@ const ProfileManagement = () => {
           // Token is already a string
         }
 
-  const api = getApiClient();
-  const userData = await getMeCached();
-        try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch {}
+        const api = getApiClient();
+        const userData = await getMeCached();
+        try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch { }
         setUserData(userData);
         // setEditedUsername(userData.username || ''); // DISABLED
-        
+
         // Get public policy from user data
         const policy = getPublicPolicyFromUser(userData);
         setCanTogglePublic(policy.canToggle);
         setPolicyMessage(policy.message);
-        
+
         // Initialize public flag (same logic as Nav.tsx)
         try {
           const stored = localStorage.getItem('isPublicGenerations');
@@ -110,7 +110,7 @@ const ProfileManagement = () => {
           } else {
             setIsPublic(next);
           }
-        } catch {}
+        } catch { }
 
         // Fetch credits
         try {
@@ -141,7 +141,7 @@ const ProfileManagement = () => {
         const creditsPayload = creditsRes.data?.data || creditsRes.data;
         const balance = Number(creditsPayload?.creditBalance);
         if (!Number.isNaN(balance)) setCreditBalance(balance);
-      } catch {}
+      } catch { }
     });
     return unsubscribe;
   }, []);
@@ -173,7 +173,7 @@ const ProfileManagement = () => {
   //   try {
   //     const api = getApiClient();
   //     await api.patch('/api/auth/me', { username: editedUsername.trim() });
-      
+
   //     setUserData(prev => prev ? { ...prev, username: editedUsername.trim() } : null);
   //     setIsEditingUsername(false);
   //     setUsernameError('');
@@ -244,7 +244,7 @@ const ProfileManagement = () => {
   //     setUserData(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
   //     setAvatarFailed(false);
   //     setPreviewUrl(null);
-      
+
   //     if (fileInputRef.current) {
   //       fileInputRef.current.value = '';
   //     }
@@ -263,14 +263,14 @@ const ProfileManagement = () => {
       setShowUpgradeModal(true);
       return;
     }
-    
+
     const next = !isPublic;
     setIsPublic(next);
     try {
       const api = getApiClient();
       await api.patch('/api/auth/me', { isPublic: next });
-    } catch {}
-    try { localStorage.setItem('isPublicGenerations', String(next)); } catch {}
+    } catch { }
+    try { localStorage.setItem('isPublicGenerations', String(next)); } catch { }
   };
 
   // Handle back navigation
@@ -289,7 +289,7 @@ const ProfileManagement = () => {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
 
       // Also sign out from Firebase to stop background token refresh
-      try { await signOut(auth) } catch {}
+      try { await signOut(auth) } catch { }
 
       // Proactively clear cookie variants on current domain and parent domain
       const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
@@ -298,7 +298,7 @@ const ProfileManagement = () => {
         document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`;
         document.cookie = `app_session=; ${expired}; SameSite=Lax`;
         document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`;
-      } catch {}
+      } catch { }
 
       // Clear history stack: prevent navigating back into the app
       if (typeof window !== 'undefined') {
@@ -307,8 +307,8 @@ const ProfileManagement = () => {
           window.addEventListener('popstate', () => {
             history.pushState(null, document.title, location.href);
           });
-        } catch {}
-        window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS');
+        } catch { }
+        window.location.replace('/view/HomePage?toast=LOGOUT_SUCCESS');
       }
     } catch (err) {
       console.error('Logout error:', err);
@@ -316,7 +316,7 @@ const ProfileManagement = () => {
       if (typeof window !== 'undefined') {
         // Still redirect even on error to prevent user from being stuck
         setTimeout(() => {
-          window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED');
+          window.location.replace('/view/HomePage?toast=LOGOUT_FAILED');
         }, 2000);
       }
     }
@@ -404,7 +404,7 @@ const ProfileManagement = () => {
                 <div className="flex-1">
                   <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-1">Make Generations Public</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-xs">
-                    {canTogglePublic 
+                    {canTogglePublic
                       ? 'Allow others to see your generated content on the public feed'
                       : '🔒 Your plan requires all generations to be public'}
                   </p>
@@ -419,13 +419,12 @@ const ProfileManagement = () => {
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTogglePublic(); } }}
                     tabIndex={0}
                     disabled={!canTogglePublic}
-                    className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${
-                      !canTogglePublic 
-                        ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60' 
-                        : isPublic 
-                          ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer' 
+                    className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${!canTogglePublic
+                        ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60'
+                        : isPublic
+                          ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer'
                           : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
-                    }`}
+                      }`}
                   >
                     <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
                   </button>
@@ -438,7 +437,7 @@ const ProfileManagement = () => {
               </div>
             </div>
           </div>
-         
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 mt-5">
             <button
@@ -457,7 +456,7 @@ const ProfileManagement = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Upgrade Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">

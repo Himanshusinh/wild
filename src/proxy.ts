@@ -150,7 +150,7 @@ export function proxy(req: NextRequest) {
   if (pathname.endsWith('.xml')) {
     res.headers.set('Content-Type', 'application/xml');
   }
-  
+
   if (pathname === '/robots.txt') {
     res.headers.set('Content-Type', 'text/plain; charset=utf-8');
   }
@@ -238,6 +238,22 @@ export function proxy(req: NextRequest) {
     pathname.startsWith('/view/forgot-password') ||
     pathname.startsWith('/view/pricing') ||
     pathname.startsWith('/view/workflows') ||
+    pathname.startsWith('/view/HomePage') ||
+    pathname.startsWith('/text-to-image') ||
+    pathname.startsWith('/image-to-image') ||
+    pathname.startsWith('/logo-generation') ||
+    pathname.startsWith('/sticker-generation') ||
+    pathname.startsWith('/inpaint-fluxapi') ||
+    pathname.startsWith('/text-to-video') ||
+    pathname.startsWith('/image-to-video') ||
+    pathname.startsWith('/text-to-music') ||
+    pathname.startsWith('/text-to-speech') ||
+    pathname.startsWith('/product-generation') ||
+    pathname.startsWith('/mockup-generation') ||
+    pathname.startsWith('/ad-generation') ||
+    pathname.startsWith('/view/Generation') ||
+    pathname.startsWith('/history') ||
+    pathname.startsWith('/bookmarks') ||
     // Canvas projects - public access (authentication handled client-side)
     pathname.startsWith('/canvas-projects') ||
     // Legal pages

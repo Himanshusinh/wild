@@ -221,10 +221,13 @@ export const useCredits = () => {
     // Computed values
     hasCredits: creditBalance > 0,
     isLowOnCredits: creditBalance < 100, // Less than 100 credits
-    
+
     // Storage
     storageUsed: credits?.storageUsed || 0,
     storageQuota: credits?.storageQuota || 0,
+
+    // Auth
+    user: authUser,
   };
 };
 

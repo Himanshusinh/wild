@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { hasSessionCookie } from '@/lib/authUtils';
+import { getSignInUrl } from '@/routes/routes';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -30,8 +31,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, fallback = nu
         const hasSession = hasSessionCookie();
         if (!mounted) return;
         if (!user && !hasSession) {
-          const nextParam = pathname && pathname !== '/' ? `?next=${encodeURIComponent(pathname)}` : '';
-          router.replace(`/view/signup${nextParam}`);
+          const target = pathname && pathname !== '/' ? pathname : '/';
+          router.replace(getSignInUrl(target));
         } else {
           setChecking(false);
         }

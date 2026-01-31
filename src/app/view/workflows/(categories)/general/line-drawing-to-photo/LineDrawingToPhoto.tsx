@@ -9,13 +9,15 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function LineDrawingToPhoto() {
     const router = useRouter();
     const {
         creditBalance,
         deductCreditsOptimisticForGeneration,
-        rollbackOptimisticDeduction
+        rollbackOptimisticDeduction,
+        user
     } = useCredits();
 
     // State
@@ -36,7 +38,7 @@ export default function LineDrawingToPhoto() {
         cost: 90
     };
 
-        const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
+    const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
     Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
     Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
     Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
@@ -69,6 +71,10 @@ export default function LineDrawingToPhoto() {
     };
 
     const handleRun = async () => {
+        if (!user) {
+            router.push(getSignInUrl());
+            return;
+        }
         if (!originalImage) {
             toast.error('Please upload an image first');
             return;

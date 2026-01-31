@@ -1,4 +1,4 @@
-  "use client"
+"use client"
 
 import { useState, type FormEvent, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
@@ -26,7 +26,7 @@ const setCookie = (name: string, value: string, days: number = 7) => {
   const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
 
   console.log("🍪 Setting cookie string:", cookieString)
-  console.log("🍪 Current cookies before setting:", document.cookie)  
+  console.log("🍪 Current cookies before setting:", document.cookie)
 
   document.cookie = cookieString
 
@@ -54,9 +54,20 @@ const clearCookie = (name: string) => {
 
 export default function SignInForm() {
   const searchParams = useSearchParams()
-  const returnUrl = searchParams?.get('returnUrl') || null
+  const rawReturnUrl = searchParams?.get('returnUrl') || searchParams?.get('next') || null
+  const returnUrl = (() => {
+    // Prevent open-redirect: only allow same-origin paths.
+    if (!rawReturnUrl) return null
+    try {
+      const trimmed = String(rawReturnUrl).trim()
+      if (!trimmed.startsWith('/')) return null
+      return trimmed
+    } catch {
+      return null
+    }
+  })()
   const showLoginParam = searchParams?.get('showLogin')
-  
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -131,7 +142,7 @@ export default function SignInForm() {
   }, [password, confirmPassword, email])
 
   // Check if form is valid (passwords match, email valid, password length >= 6)
-  const isFormValid = 
+  const isFormValid =
     password.length >= 6 &&
     password === confirmPassword &&
     isValidEmail(email) &&
@@ -203,8 +214,8 @@ export default function SignInForm() {
 
     setError("")
     setSuccess("")
-  setProcessing(true)
-  setAuthLoading(true)
+    setProcessing(true)
+    setAuthLoading(true)
 
     try {
       // Step 1: Send credentials to backend
@@ -229,14 +240,14 @@ export default function SignInForm() {
         console.log("🔑 customToken type:", typeof customToken)
         console.log("🔑 customToken length:", customToken?.length)
 
-            // Store user profile first
-        try { localStorage.setItem("user", JSON.stringify(user)) } catch {}
+        // Store user profile first
+        try { localStorage.setItem("user", JSON.stringify(user)) } catch { }
 
         // Track that email/password was used (for "Last Used" tag)
         try {
           localStorage.setItem('lastAuthMethod', 'email')
           setLastAuthMethod('email') // Update state immediately
-        } catch {}
+        } catch { }
 
         // CRITICAL: Sign into Firebase with customToken, then create session cookie
         // The login endpoint returns customToken, not passwordLoginIdToken
@@ -244,32 +255,32 @@ export default function SignInForm() {
         if (customToken && typeof customToken === 'string') {
           try {
             console.log("🔄 Signing into Firebase with customToken...")
-            
+
             // CRITICAL: Store token in a way that can be accessed across subdomains
             // We'll store it in localStorage on www, and also try to set a non-httpOnly cookie
             // as a fallback for cross-subdomain access (though httpOnly cookie is primary)
             const userCredential = await signInWithCustomToken(auth, customToken)
             const idToken = await userCredential.user.getIdToken()
-            
+
             console.log("✅ Signed into Firebase successfully")
             console.log("🔑 ID token obtained, length:", idToken.length)
-            
+
             // Store ID token for Bearer token authentication
             try {
               localStorage.setItem("authToken", idToken)
               console.log("💾 ID token stored in localStorage")
-              
+
               // CRITICAL: Also store in a way that can be accessed across subdomains
               // Store in user object for easier access
               try {
                 const userWithToken = { ...user, idToken };
                 localStorage.setItem("user", JSON.stringify(userWithToken));
-              } catch {}
-              
+              } catch { }
+
               // Also store as idToken directly for wildmindcanvas to find
               try {
                 localStorage.setItem("idToken", idToken);
-              } catch {}
+              } catch { }
             } catch (err) {
               console.error("❌ Failed to store token:", err)
             }
@@ -286,7 +297,7 @@ export default function SignInForm() {
             })
 
             console.log("🔄 Session response status:", sessionResponse.status)
-            
+
             if (sessionResponse.ok) {
               const sessionData = await sessionResponse.json().catch(() => ({}))
               console.log("✅ Session cookie created successfully", sessionData)
@@ -304,14 +315,14 @@ export default function SignInForm() {
         }
 
         // Persist toast flag for next page (faster redirect)
-        try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
+        try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch { }
         setIsRedirecting(true)
         setEmail("")
         setPassword("")
 
         // Set a short-lived hint cookie to prevent race-condition redirects in middleware
-        try { document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax' } catch {}
-        
+        try { document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax' } catch { }
+
         // Use returnUrl if present (from Canvas Studio redirect), otherwise use redirect from server or default
         let finalRedirectUrl = returnUrl || redirect || APP_ROUTES.HOME
         // Add toast parameter if not already present
@@ -320,7 +331,7 @@ export default function SignInForm() {
           urlObj.searchParams.set('toast', 'LOGIN_SUCCESS')
         }
         finalRedirectUrl = urlObj.toString().replace(window.location.origin, '') || finalRedirectUrl + '?toast=LOGIN_SUCCESS'
-        
+
         console.log("🏠 Redirecting to:", finalRedirectUrl)
         console.log("🔗 Return URL was:", returnUrl)
         window.location.href = finalRedirectUrl
@@ -338,7 +349,7 @@ export default function SignInForm() {
       // Prefer detailed validation errors when present
       const validationList = error?.response?.data?.data
       let errorMessage = 'An error occurred'
-      
+
       if (Array.isArray(validationList) && validationList.length > 0) {
         const detailedMessage = validationList
           .map((e: any) => e?.msg || e?.message)
@@ -378,8 +389,8 @@ export default function SignInForm() {
   }
 
   // Debug logging on component mount 
-  useEffect(() => { 
-    console.log("🎯 SignUp Form Component Mounted") 
+  useEffect(() => {
+    console.log("🎯 SignUp Form Component Mounted")
     console.log("🌐 Current URL:", window.location.href)
     console.log("🔧 Axios configured:", !!axios)
 
@@ -478,7 +489,7 @@ export default function SignInForm() {
 
       // Extract error message from response
       let errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to send OTP. Please try again.'
-      
+
       // Handle validation errors array
       if (error.response?.data?.data && Array.isArray(error.response.data.data)) {
         const validationErrors = error.response.data.data
@@ -591,13 +602,13 @@ export default function SignInForm() {
               // Store user profile only; rely on httpOnly cookie for auth
               const createdUser = response.data?.data?.user || response.data?.user || response.data
               localStorage.setItem("user", JSON.stringify(createdUser))
-              try { localStorage.setItem('authToken', actualIdToken) } catch {}
-              
+              try { localStorage.setItem('authToken', actualIdToken) } catch { }
+
               // Track that email/password was used (for "Last Used" tag)
               try {
                 localStorage.setItem('lastAuthMethod', 'email')
-              } catch {}
-              
+              } catch { }
+
               toast.success('OTP verified successfully! Please choose a username.', { duration: 3000 })
               setShowUsernameForm(true)
               setOtp("")
@@ -739,7 +750,7 @@ export default function SignInForm() {
         // Handle error cases
         const errorMessage = response.data?.message || "Failed to send password reset email. Please try again."
         const reason = response.data?.data?.reason
-        
+
         if (reason === 'GOOGLE_ONLY_USER') {
           toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
         } else if (reason === 'USER_NOT_FOUND') {
@@ -753,7 +764,7 @@ export default function SignInForm() {
       console.error("❌ Forgot password error:", error)
       const errorMessage = error.response?.data?.message || "Failed to send password reset email. Please try again."
       const reason = error.response?.data?.data?.reason
-      
+
       // Handle specific error cases
       if (reason === 'GOOGLE_ONLY_USER') {
         toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
@@ -778,8 +789,8 @@ export default function SignInForm() {
     console.log("🔵 Starting Google sign-in...")
     console.log("📋 Current form state - showLoginForm:", showLoginForm)
 
-  setProcessing(true)
-  setAuthLoading(true)
+    setProcessing(true)
+    setAuthLoading(true)
     setError("")
     setSuccess("")
 
@@ -795,11 +806,11 @@ export default function SignInForm() {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
-        // Track that Google was used (for "Last Used" tag)
-        try {
-          localStorage.setItem('lastAuthMethod', 'google')
-          setLastAuthMethod('google') // Update state immediately
-        } catch {}
+      // Track that Google was used (for "Last Used" tag)
+      try {
+        localStorage.setItem('lastAuthMethod', 'google')
+        setLastAuthMethod('google') // Update state immediately
+      } catch { }
 
       console.log("✅ Google popup successful!")
       console.log("👤 Google user:", user.email)
@@ -848,17 +859,17 @@ export default function SignInForm() {
             credentials: 'include',
             body: JSON.stringify({ idToken: finalIdToken })
           })
-          try { if (resp?.ok) { localStorage.setItem('authToken', finalIdToken) } } catch {}
+          try { if (resp?.ok) { localStorage.setItem('authToken', finalIdToken) } } catch { }
 
           console.log("✅ Session created, redirecting...")
-          
+
           // Don't show toast here - it will be shown on HomePage after navigation for better UX
           // Defer toast to Home page: mark a flag so Home shows a success message after redirect
-          try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch {}
+          try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch { }
 
           // Store user profile only; rely on httpOnly cookie for auth
           localStorage.setItem("user", JSON.stringify(userData))
-          try { localStorage.setItem('authToken', finalIdToken) } catch {}
+          try { localStorage.setItem('authToken', finalIdToken) } catch { }
           setIsRedirecting(true)
 
           // Use returnUrl if present (from Canvas Studio redirect), otherwise use redirect from server or default
@@ -977,12 +988,12 @@ export default function SignInForm() {
           setShowUsernameForm(false)
           setShowRedeemCodeForm(true)
           setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
-          
+
           // Track that email/password was used (for "Last Used" tag) - already set during OTP verification, but ensure it's set here too
           try {
             localStorage.setItem('lastAuthMethod', 'email')
-          } catch {}
-          
+          } catch { }
+
           toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
         }
 
@@ -1043,13 +1054,13 @@ export default function SignInForm() {
 
                 // Create session with the REAL ID token
                 console.log("🔄 Creating session with backend using ID token...")
-            // Use Next.js API route for session creation to avoid cross-domain cookie issues
-            const sessionResponse = await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ idToken: actualIdToken })
-            })
+                // Use Next.js API route for session creation to avoid cross-domain cookie issues
+                const sessionResponse = await fetch('/api/auth/session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ idToken: actualIdToken })
+                })
 
                 if (sessionResponse.status === 200) {
                   console.log("✅ Session created with ID token after username creation!")
@@ -1181,11 +1192,16 @@ export default function SignInForm() {
       if (response.data?.responseStatus === 'success') {
         setSuccess(`🎉 ${response.data.data.planName} activated! You received ${response.data.data.creditsGranted.toLocaleString()} credits.`)
 
-        // Redirect to home after successful redeem
+        // Redirect to home or returnUrl after successful redeem
         setTimeout(() => {
           setIsRedirecting(true)
           setShowRedeemCodeForm(false)
-          window.location.href = APP_ROUTES.HOME
+
+          let finalUrl = returnUrl || APP_ROUTES.HOME
+          if (!finalUrl.includes('toast=')) {
+            finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'toast=LOGIN_SUCCESS'
+          }
+          window.location.href = finalUrl
         }, 2000)
       } else {
         setError(response.data?.message || "Failed to apply redeem code")
@@ -1202,7 +1218,11 @@ export default function SignInForm() {
     setIsRedirecting(true)
     setShowRedeemCodeForm(false)
     setTimeout(() => {
-      window.location.href = APP_ROUTES.HOME
+      let finalUrl = returnUrl || APP_ROUTES.HOME
+      if (!finalUrl.includes('toast=')) {
+        finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'toast=LOGIN_SUCCESS'
+      }
+      window.location.href = finalUrl
     }, 1000)
   }
 
@@ -1219,15 +1239,15 @@ export default function SignInForm() {
         } else {
           setLastAuthMethod(null)
         }
-      } catch {}
+      } catch { }
     }
-    
+
     // Initial check
     updateLastAuthMethod()
-    
+
     // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener('storage', updateLastAuthMethod)
-    
+
     return () => {
       window.removeEventListener('storage', updateLastAuthMethod)
     }
@@ -1245,7 +1265,7 @@ export default function SignInForm() {
       {(authLoading || isRedirecting) && (
         <LoadingScreen message={isRedirecting ? 'Redirecting…' : 'Signing you in…'} subMessage={isRedirecting ? 'Just a moment while we finish up' : undefined} />
       )}
-      
+
       {/* Form Content - Centered (Krea Style) */}
       <div className="flex-1 flex items-center justify-center overflow-hidden px-6 md:px-12">
         <div className="w-full max-w-md space-y-6">
@@ -1336,11 +1356,10 @@ export default function SignInForm() {
               <button
                 onClick={handleUsernameSubmit}
                 disabled={!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                  !availability.isAvailable || hasCapitalLetters || isUsernameSubmitting
+                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting
                     ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                  }`}
               >
                 {isUsernameSubmitting ? <LoadingSpinner /> : (
                   <>
@@ -1437,11 +1456,10 @@ export default function SignInForm() {
                   <button
                     onClick={handleRedeemCodeValidation}
                     disabled={processing || !redeemCode.trim()}
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${
-                      processing || !redeemCode.trim()
+                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !redeemCode.trim()
                         ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700 text-white"
-                    }`}
+                      }`}
                   >
                     {processing ? <LoadingSpinner /> : "Validate Code"}
                   </button>
@@ -1449,11 +1467,10 @@ export default function SignInForm() {
                   <button
                     onClick={handleRedeemCodeSubmit}
                     disabled={processing}
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${
-                      processing
+                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing
                         ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                         : "bg-green-600 hover:bg-green-700 text-white"
-                    }`}
+                      }`}
                   >
                     {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
                   </button>
@@ -1630,11 +1647,10 @@ export default function SignInForm() {
               <button
                 type="submit"
                 disabled={processing || !captchaToken}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                  processing || !captchaToken
+                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !captchaToken
                     ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                  }`}
               >
                 {processing ? "Logging in..." : (
                   <>
@@ -1720,11 +1736,10 @@ export default function SignInForm() {
               <button
                 type="submit"
                 disabled={processing || otp.length < 6}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                  processing || otp.length < 6
+                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || otp.length < 6
                     ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                  }`}
               >
                 {processing ? "Verifying..." : (
                   <>
@@ -1799,9 +1814,8 @@ export default function SignInForm() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value.trim())}
                       autoComplete="email"
-                      className={`w-full pl-10 pr-4 py-3 bg-gray-800 border ${
-                        emailError ? 'border-red-500' : 'border-gray-700'
-                      } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-800 border ${emailError ? 'border-red-500' : 'border-gray-700'
+                        } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
                       required
                     />
                   </div>
@@ -1844,7 +1858,7 @@ export default function SignInForm() {
                       )}
                     </button>
                   </div>
-                  
+
                   <div>
                     <div className="relative">
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
@@ -1858,9 +1872,8 @@ export default function SignInForm() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         autoComplete="new-password"
-                        className={`w-full pl-10 pr-12 py-3 bg-gray-800 border ${
-                          passwordError ? 'border-red-500' : 'border-gray-700'
-                        } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
+                        className={`w-full pl-10 pr-12 py-3 bg-gray-800 border ${passwordError ? 'border-red-500' : 'border-gray-700'
+                          } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
                         required
                       />
                       <button
@@ -1889,7 +1902,7 @@ export default function SignInForm() {
                 {/* Terms Text (Dark) - Checkbox removed, text only */}
                 <div className="text-xs text-center text-gray-400 leading-relaxed">
                   By signing up, you agree to our{" "}
-                  <Link 
+                  <Link
                     href={LEGAL_ROUTES.TERMS_CONDITIONS}
                     className="text-blue-400 underline hover:text-blue-300 transition-colors"
                     target="_blank"
@@ -1898,7 +1911,7 @@ export default function SignInForm() {
                     Terms and Conditions
                   </Link>{" "}
                   &{" "}
-                  <Link 
+                  <Link
                     href={LEGAL_ROUTES.PRIVACY_PAGE}
                     className="text-blue-400 underline hover:text-blue-300 transition-colors"
                     target="_blank"
@@ -1931,11 +1944,10 @@ export default function SignInForm() {
                 <button
                   type="submit"
                   disabled={processing || !isFormValid || !captchaToken}
-                  className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${
-                    processing || !isFormValid || !captchaToken
+                  className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !isFormValid || !captchaToken
                       ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
+                    }`}
                 >
                   {processing ? "Sending..." : (
                     <>
@@ -2002,7 +2014,7 @@ export default function SignInForm() {
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-white">Reset Password</h2>
               <p className="text-gray-400 text-sm">
-                {forgotPasswordSent 
+                {forgotPasswordSent
                   ? "Check your email for password reset instructions."
                   : "Enter your email address and we'll send you a link to reset your password."}
               </p>
@@ -2068,11 +2080,10 @@ export default function SignInForm() {
                   <button
                     type="submit"
                     disabled={processing || !forgotPasswordEmail.trim()}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${
-                      processing || !forgotPasswordEmail.trim()
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !forgotPasswordEmail.trim()
                         ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700 text-white"
-                    }`}
+                      }`}
                   >
                     {processing ? "Sending..." : "Send Reset Link"}
                   </button>
