@@ -287,24 +287,90 @@ const PricingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* --- Pricing Plans Placeholder (no plan data exposed) --- */}
+      {/* --- Pricing Plans & Billing Access --- */}
       <div className="relative z-10 max-w-[1200px] mx-auto px-6 pb-20">
         <div className="rounded-3xl border border-[#60a5fa]/20 bg-gradient-to-br from-[#0A0A0A] via-[#0F1115] to-[#0A0A0A] p-8 md:p-12 shadow-[0_0_40px_rgba(96,165,250,0.15)]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#60a5fa]/15 border border-[#60a5fa]/30 rounded-full text-xs font-bold uppercase tracking-widest text-[#60a5fa]">
-                <Sparkles size={14} /> Pricing refresh in progress
+                <Sparkles size={14} /> Subscription Plans
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">New pricing plans are coming soon</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-white">Need more credits after your trial?</h2>
               <p className="text-slate-400 max-w-3xl">
-                We are updating our plans and will publish the full details here once finalized.
-                Until then, only the free trial is available and no plan data is embedded in this page.
+                Choose from our flexible subscription plans with higher credit limits, increased storage, 
+                and priority support. Manage your subscription, view invoices, and track your usage.
               </p>
             </div>
             
           </div>
-          <div className="mt-6 text-xs text-slate-500">
-            For security, plan definitions are no longer rendered or stored in the client bundle.
+
+          {/* Billing Access Buttons */}
+          <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            {/* View All Plans Button */}
+            <button
+              onClick={() => router.push('/account/billing')}
+              className="group relative px-8 py-4 bg-gradient-to-r from-[#60a5fa] to-[#3b82f6] text-white font-bold rounded-xl hover:from-[#3b82f6] hover:to-[#2563eb] transition-all duration-300 shadow-[0_0_30px_rgba(96,165,250,0.4)] hover:shadow-[0_0_40px_rgba(96,165,250,0.6)] transform hover:scale-105 flex items-center justify-center gap-2"
+            >
+              <span>View All Plans & Subscribe</span>
+              <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+            </button>
+
+            {/* Secondary Actions */}
+            {isAuthenticated && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => router.push('/account/invoices')}
+                  className="px-6 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 flex items-center gap-2"
+                >
+                  <span>My Invoices</span>
+                </button>
+                <button
+                  onClick={() => router.push('/account/payments')}
+                  className="px-6 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 flex items-center gap-2"
+                >
+                  <span>Payment History</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Features Grid */}
+          <div className="mt-10 pt-8 border-t border-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="p-2 bg-[#60a5fa]/20 rounded-lg flex-shrink-0">
+                  <Zap size={20} className="text-[#60a5fa]" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold mb-1">Flexible Plans</h3>
+                  <p className="text-slate-400 text-sm">Choose from Free, Basic, Pro, or Premium tiers</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="p-2 bg-[#60a5fa]/20 rounded-lg flex-shrink-0">
+                  <ImageIcon size={20} className="text-[#60a5fa]" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold mb-1">More Storage</h3>
+                  <p className="text-slate-400 text-sm">Up to 100GB storage on Premium plans</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="p-2 bg-[#60a5fa]/20 rounded-lg flex-shrink-0">
+                  <Video size={20} className="text-[#60a5fa]" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold mb-1">Monthly Credits</h3>
+                  <p className="text-slate-400 text-sm">From 500 to 10,000 credits per month</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 text-xs text-slate-500 text-center">
+            Cancel anytime • Secure payment with Razorpay • GST invoices available
           </div>
         </div>
       </div>

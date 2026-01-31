@@ -90,6 +90,33 @@ export const cancelSubscription = createAsyncThunk(
   }
 );
 
+// Change subscription plan
+export const changeSubscriptionPlan = createAsyncThunk(
+  "subscription/changePlan",
+  async (
+    { newPlanCode, immediate = true }: { newPlanCode: string; immediate?: boolean },
+    { rejectWithValue, getState }
+  ) => {
+    try {
+      const state = getState() as RootState;
+      const userId = (state.auth.user as any)?.uid; // Assuming auth slice has user.uid
+
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      const response = await api.post("/api/subscriptions/change-plan", {
+        userId,
+        newPlanCode,
+        immediate,
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message || error.message || "Failed to change subscription plan");
+    }
+  }
+);
+
 const subscriptionSlice = createSlice({
   name: "subscription",
   initialState,
@@ -129,6 +156,20 @@ const subscriptionSlice = createSlice({
       // Cancel subscription
       .addCase(cancelSubscription.fulfilled, (state, action) => {
         state.current = action.payload;
+      })
+      // Change plan
+      .addCase(changeSubscriptionPlan.pending, (state) => {
+        state.creatingSubscription = true;
+        state.error = null;
+      })
+      .addCase(changeSubscriptionPlan.fulfilled, (state) => {
+        state.creatingSubscription = false;
+        // We might want to re-fetch the subscription here to get the updated details
+        // state.current = ... (payload might need to be adjusted to return full subscription)
+      })
+      .addCase(changeSubscriptionPlan.rejected, (state, action) => {
+        state.creatingSubscription = false;
+        state.error = action.payload as string;
       });
   },
 });

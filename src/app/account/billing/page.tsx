@@ -19,10 +19,12 @@ import {
   selectCurrentSubscription,
   selectSubscriptionLoading,
   selectCreatingSubscription,
+  changeSubscriptionPlan,
 } from "@/store/slices/subscriptionSlice";
 import { fetchUserCredits, selectCredits } from "@/store/slices/creditsSlice";
 import PlanCards, { Plan, PLANS } from "./components/PlanCards";
 import CheckoutModal from "./components/CheckoutModal";
+import ActivePlanCard from "./components/ActivePlanCard";
 
 // Extend Window type for Razorpay
 declare global {
@@ -45,7 +47,10 @@ export default function BillingPage() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
     dispatch(fetchCurrentSubscription());
     dispatch(fetchUserCredits());
     
@@ -56,6 +61,8 @@ export default function BillingPage() {
       setUserName(user.displayName || user.email?.split("@")[0] || "");
     }
   }, [dispatch]);
+
+  // ... (handlers)
 
   const handleSelectPlan = (planCode: string) => {
     const plan = PLANS.find((p) => p.code === planCode);
@@ -69,6 +76,26 @@ export default function BillingPage() {
     if (!selectedPlan) return;
 
     try {
+      // Check if user has an active subscription to upgrade/downgrade
+      const status = subscription?.status?.toUpperCase();
+      if (subscription && (status === 'ACTIVE' || status === 'PAST_DUE')) {
+        // Handle Upgrade/Downgrade
+        console.log("🔄 Processing plan change to:", selectedPlan.code);
+        await dispatch(
+          changeSubscriptionPlan({
+            newPlanCode: selectedPlan.code,
+            immediate: true, // Auto-charge prorated amount
+          })
+        ).unwrap();
+
+        alert(`Plan changed to ${selectedPlan.name} successfully!`);
+        setShowCheckout(false);
+        setSelectedPlan(null);
+        dispatch(fetchCurrentSubscription()); // Refresh data
+        return;
+      }
+
+      // Handle New Subscription
       const result = await dispatch(
         createSubscription({
           planCode: selectedPlan.code,
@@ -171,7 +198,9 @@ export default function BillingPage() {
     }
   };
 
-  if (loading && !subscription) {
+  // Hydration fix: Only show loading state after component has mounted on client
+  // server renders the content view initially, so client must match for first render
+  if (isMounted && loading && !subscription) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -182,43 +211,57 @@ export default function BillingPage() {
   const currentPlan = PLANS.find((p) => p.code === subscription?.planCode);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <h1 className="text-3xl font-bold mb-8">Billing & Subscriptions</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8">
+      <div className="container mx-auto max-w-6xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Billing & Subscription
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Manage your subscription, view invoices, and track payments
+          </p>
+          
+          {/* Quick Access Links */}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => router.push('/account/invoices')}
+              className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition text-sm font-medium"
+            >
+              View Invoices
+            </button>
+            <button
+              onClick={() => router.push('/account/payments')}
+              className="px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition text-sm font-medium"
+            >
+              Payment History
+            </button>
+          </div>
+        </div>
 
       {/* Current Subscription Card */}
       {subscription && currentPlan && (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg p-6 mb-8 border-2 border-blue-200 dark:border-blue-900">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Current Plan: {currentPlan.name}</h2>
-              <div className="flex gap-6 text-sm">
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Credits:</span>
-                  <span className="font-bold ml-2">{credits?.creditBalance?.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600 dark:text-gray-400">Storage:</span>
-                  <span className="font-bold ml-2">
-                    {((credits?.storageUsed || 0) / 1024 / 1024 / 1024).toFixed(2)} GB / {currentPlan.storageGB} GB
-                  </span>
-                </div>
-              </div>
-              {subscription.nextBillingDate && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Next billing: {new Date(subscription.nextBillingDate).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-            
-            {subscription.status === "ACTIVE" && currentPlan.priceINR > 0 && (
-              <button
-                onClick={handleCancelSubscription}
-                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
-              >
-                Cancel Subscription
-              </button>
-            )}
-          </div>
+        <div className="mb-8">
+          <ActivePlanCard
+            subscription={{
+              id: subscription.id || "",
+              planCode: subscription.planCode || "",
+              status: subscription.status || "",
+              nextBillingDate: subscription.nextBillingDate,
+            }}
+            credits={{
+              creditBalance: credits?.creditBalance || 0,
+              storageUsed: credits?.storageUsed || 0,
+              storageQuota: credits?.storageQuota || 0,
+            }}
+            plan={{
+              name: currentPlan.name,
+              credits: currentPlan.credits,
+              storageGB: currentPlan.storageGB,
+              priceINR: currentPlan.priceINR,
+            }}
+            onCancelSubscription={handleCancelSubscription}
+          />
         </div>
       )}
 
@@ -226,31 +269,9 @@ export default function BillingPage() {
       <div className="mb-8">
         <h2 className="text-2xl font-semibold mb-6">Available Plans</h2>
         <PlanCards
-          currentPlanCode={subscription?.planCode}
+          currentPlanCode={subscription?.planCode || credits?.planCode}
           onSelectPlan={handleSelectPlan}
         />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button
-          onClick={() => router.push("/account/invoices")}
-          className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white font-medium py-4 px-6 rounded-lg transition flex items-center justify-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          View Invoices
-        </button>
-        <button
-          onClick={() => router.push("/account/payments")}
-          className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white font-medium py-4 px-6 rounded-lg transition flex items-center justify-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-          </svg>
-          Payment History
-        </button>
       </div>
 
       {/* Checkout Modal */}
@@ -263,9 +284,10 @@ export default function BillingPage() {
             setSelectedPlan(null);
           }}
           onConfirm={handleCheckoutConfirm}
-          loading={creatingSubscription}
+          isLoadingPlanChange={creatingSubscription}
         />
       )}
+      </div>
     </div>
   );
 }

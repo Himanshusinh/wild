@@ -7,8 +7,8 @@ interface CheckoutModalProps {
   plan: Plan;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (billingDetails: BillingDetails) => void;
-  loading?: boolean;
+  onConfirm: (billingDetails: BillingDetails) => Promise<void>;
+  isLoadingPlanChange: boolean;
 }
 
 interface BillingDetails {
@@ -63,7 +63,7 @@ export default function CheckoutModal({
   isOpen,
   onClose,
   onConfirm,
-  loading = false,
+  isLoadingPlanChange = false,
 }: CheckoutModalProps) {
   const [billingDetails, setBillingDetails] = useState<BillingDetails>({
     gstin: "",
@@ -229,10 +229,10 @@ export default function CheckoutModal({
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoadingPlanChange}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            {loading ? (
+            {isLoadingPlanChange ? (
               <>
                 <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
