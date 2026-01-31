@@ -2,6 +2,12 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { showFalErrorToast } from './falToast'
 import { clearAuthData } from './authUtils'
+import { setModalOpen } from '@/store/slices/uiSlice'
+
+let store: any = null
+export const injectStore = (_store: any) => {
+  store = _store
+}
 
 // Try to extract an ID token from localStorage in a tolerant way
 const getStoredIdToken = (): string | null => {
@@ -677,6 +683,15 @@ axiosInstance.interceptors.response.use(
     } catch { }
 
     if (status !== 401) {
+      // Handle specific error codes for modals
+      if (status === 402) {
+        // Payment Required -> No Credits
+        store.dispatch(setModalOpen({ modal: 'noCredits', isOpen: true }));
+      } else if (status === 507 || status === 413) {
+        // Insufficient Storage / Payload Too Large -> Storage Full
+        store.dispatch(setModalOpen({ modal: 'storageFull', isOpen: true }));
+      }
+
       try {
         if (isApiDebugEnabled()) console.warn('[API][error]', {
           url: original?.url,

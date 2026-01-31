@@ -92,6 +92,20 @@ export function proxy(req: NextRequest) {
     }
   }
 
+  // Proxy /api/billing requests to the backend (subscriptions, invoices, payments)
+  // Routes requests to the API Gateway which forwards to credit-service
+  if (pathname.startsWith('/api/billing')) {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/billing');
+    }
+  }
+
+
   // NOTE: Do not force non-www host here. The upstream (Cloudflare/Vercel) currently
   // forwards all traffic to Next.js using the www.* host which causes an infinite
   // redirect loop if we try to rewrite it at the edge. Canonical host enforcement

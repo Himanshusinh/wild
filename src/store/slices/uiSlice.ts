@@ -13,6 +13,10 @@ interface UIState {
     message: string;
     timestamp: number;
   }>;
+  modals: {
+    noCredits: boolean;
+    storageFull: boolean;
+  };
 }
 
 const initialState: UIState = {
@@ -22,6 +26,10 @@ const initialState: UIState = {
   sidebarExpanded: false,
   theme: 'dark',
   notifications: [],
+  modals: {
+    noCredits: false,
+    storageFull: false,
+  },
 };
 
 const uiSlice = createSlice({
@@ -67,6 +75,11 @@ const uiSlice = createSlice({
     clearNotifications: (state) => {
       state.notifications = [];
     },
+    setModalOpen: (state, action: PayloadAction<{ modal: keyof UIState['modals']; isOpen: boolean }>) => {
+      if (state.modals) {
+        state.modals[action.payload.modal] = action.payload.isOpen;
+      }
+    },
   },
 });
 
@@ -79,6 +92,7 @@ export const {
   addNotification,
   removeNotification,
   clearNotifications,
+  setModalOpen,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

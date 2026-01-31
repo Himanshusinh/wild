@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -33,9 +34,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'react-hot-toast', '@tabler/icons-react', 'motion'],
     // Enable partial prerendering for better performance
-    ppr: false, // Can enable if needed
-    // Allow importing from sibling folders (we embed `image_edit/src` under a route)
-    externalDir: true,
+    ppr: false,
   },
   // Target modern browsers to reduce legacy JavaScript polyfills (11 KiB savings)
   // Next.js 15+ uses SWC which targets modern browsers by default, but we can be explicit
@@ -104,6 +103,10 @@ const nextConfig: NextConfig = {
   // Explicitly set Turbopack root to avoid incorrect inference when multiple lockfiles exist
   turbopack: {
     root: process.cwd(),
+  },
+  webpack: (config) => {
+    config.resolve.alias['@image-edit'] = path.join(process.cwd(), 'src/image_edit');
+    return config;
   },
 };
 
