@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import Link from "next/link";
+import CameraMovementButton from "./CameraMovementButton";
+import PromptInput from "./PromptInput";
+import InputActions from "./InputActions";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
@@ -49,10 +53,21 @@ import KlingModeDropdown from "./KlingModeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
-import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
 import AssetViewerModal from '@/components/AssetViewerModal';
-import HistoryControls from './HistoryControls';
+import { 
+  toProxyPath, 
+  toFrontendProxyMediaUrl, 
+  normalizeGenerationType, 
+  isVideoType, 
+  isVideoUrl,
+  convertFrameSizeToRunwayRatio,
+  convertFrameSizeToMiniMaxResolution,
+  waitForMiniMaxVideoCompletion,
+  getCleanPrompt,
+  copyPrompt 
+} from "../utils/videoUtils";
+import HistorySection from "./HistorySection";
 
 
 interface InputBoxProps {
@@ -83,23 +98,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   });
   const inputEl = useRef<HTMLTextAreaElement>(null);
 
-  // Helper functions for proxy URLs (same as History.tsx)
-  const toProxyPath = (urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
-    // If ZATA_PREFIX is empty, startsWith('') is true for all strings (including blob:)
-    // which would incorrectly proxy local/object URLs.
-    if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
-    // Allow direct storagePath-like values (users/...)
-    if (/^users\//.test(urlOrPath)) return urlOrPath;
-    // For external URLs (fal.media, etc.), do not proxy
-    return '';
-  };
 
-  const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
-    const path = toProxyPath(urlOrPath);
-    return path ? `/api/proxy/media/${encodeURIComponent(path)}` : '';
-  };
 
   // Video generation state - persisted in localStorage
   const [prompt, setPrompt] = usePersistedGenerationState("prompt", "", "text-to-video");
@@ -238,7 +237,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] = usePersistedGenerationState("selectedMiniMaxDuration", 6, "text-to-video");
   const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false);
   const [durationDropdownOpen, setDurationDropdownOpen] = useState(false);
-  const [cameraMovementPopupOpen, setCameraMovementPopupOpen] = useState(false);
+
   const [selectedCameraMovements, setSelectedCameraMovements] = usePersistedGenerationState<string[]>("selectedCameraMovements", [], "text-to-video");
   const [lastFrameImage, setLastFrameImage] = usePersistedGenerationState("lastFrameImage", "", "text-to-video"); // For MiniMax-Hailuo-02 last frame
   const [selectedQuality, setSelectedQuality] = usePersistedGenerationState("selectedQuality", "720p", "text-to-video"); // For Veo3 quality
@@ -275,21 +274,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [closeDurationDropdown, setCloseDurationDropdown] = useState(false);
 
   // Helpers: clean prompt and copy
-  const getCleanPrompt = (text: string): string => {
-    try { return (text || '').replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim(); } catch { return text; }
-  };
-  const copyPrompt = async (e: React.MouseEvent, text: string) => {
-    try {
-      e.stopPropagation();
-      e.preventDefault();
-      await navigator.clipboard.writeText(text);
-      (await import('react-hot-toast')).default.success('Prompt copied');
-    } catch {
-      try {
-        (await import('react-hot-toast')).default.error('Failed to copy');
-      } catch { }
-    }
-  };
+
 
   // Handle manual prompt enhancement
   const handleEnhancePrompt = async () => {
@@ -314,7 +299,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (inputEl.current) {
           inputEl.current.value = enhancedPrompt;
           // Trigger height adjustment
-          adjustTextareaHeight(inputEl.current);
+    
         }
 
         toast.success('Prompt enhanced');
@@ -341,6 +326,56 @@ const InputBox = (props: InputBoxProps = {}) => {
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error('Failed to delete generation');
+    }
+  };
+
+  const processFiles = async (files: File[]) => {
+    // 1. Separate images and videos
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+    // 2. Process Images
+    if (imageFiles.length > 0) {
+      const newUrls: string[] = [];
+      for (const file of imageFiles) {
+        const reader = new FileReader();
+        const dataUrl: string = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        newUrls.push(dataUrl);
+      }
+
+      if (newUrls.length > 0) {
+        setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+        toast.success(`Added ${newUrls.length} image(s)`);
+      }
+    }
+
+    // 3. Process Videos (Take the first valid video)
+    if (videoFiles.length > 0) {
+      const file = videoFiles[0];
+      const maxBytes = 14 * 1024 * 1024; // 14MB limit
+      const allowedMimes = new Set([
+        'video/mp4', 'video/webm', 'video/ogg',
+        'video/quicktime', 'video/mov', 'video/h264'
+      ]);
+
+      if (!allowedMimes.has(file.type)) {
+        toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
+      } else if (file.size > maxBytes) {
+        toast.error('Video too large. Please upload a video ≤ 14MB');
+      } else {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          if (result) {
+            setUploadedVideo(result);
+            toast.success('Video added');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -849,6 +884,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   }, [selectedModel]);
 
   // Close dropdowns when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!event.target) return;
@@ -858,16 +894,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         setResolutionDropdownOpen(false);
         setDurationDropdownOpen(false);
       }
-
-      // Close camera movement popup
-      if (cameraMovementPopupOpen && !target.closest('.camera-movement-container')) {
-        setCameraMovementPopupOpen(false);
-      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [cameraMovementPopupOpen]);
+  }, []);
 
   // Auto-close resolution dropdown after 5 seconds
   useEffect(() => {
@@ -1220,25 +1251,8 @@ const InputBox = (props: InputBoxProps = {}) => {
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
 
-    // Helper function to normalize generationType (handle both underscore and hyphen patterns)
-    const normalizeGenerationType = (generationType: string | undefined): string => {
-      if (!generationType) return '';
-      // Convert both underscore and hyphen to a standard format for comparison
-      return generationType.replace(/[_-]/g, '-').toLowerCase();
-    };
+    // Helper functions now imported from videoUtils
 
-    // Helper function to check if an entry is a video type
-    const isVideoType = (entry: any): boolean => {
-      const normalizedType = normalizeGenerationType(entry?.generationType);
-      return normalizedType === 'text-to-video' ||
-        normalizedType === 'image-to-video' ||
-        normalizedType === 'video-to-video';
-    };
-
-    // Helper function to check if an entry has video URLs
-    const isVideoUrl = (url: string | undefined): boolean => {
-      return !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
-    };
 
     // Get entries that are explicitly declared as video types
     const declaredVideoTypes = allEntries.filter(isVideoType);
@@ -1981,120 +1995,10 @@ const InputBox = (props: InputBoxProps = {}) => {
   }, [historyEntries, hasMore, loading, dispatch, sortOrder, searchQuery]);
 
 
-  // Helper function to convert frameSize to Runway ratio format
-  const convertFrameSizeToRunwayRatio = (frameSize: string): string => {
-    const ratioMap: { [key: string]: string } = {
-      "16:9": "1280:720",
-      "9:16": "720:1280",
-      "4:3": "1104:832",
-      "3:4": "832:1104",
-      "1:1": "960:960",
-      "21:9": "1584:672",
-      "16:10": "1280:768", // gen3a_turbo specific
-      "10:16": "768:1280", // gen3a_turbo specific
-    };
-
-    return ratioMap[frameSize] || "1280:720"; // Default to 16:9 if no match
-  };
-
-  // Helper function to convert frameSize to MiniMax resolution
-  const convertFrameSizeToMiniMaxResolution = (frameSize: string): string => {
-    const resolutionMap: { [key: string]: string } = {
-      "16:9": "1080P",
-      "9:16": "1080P",
-      "4:3": "1080P",
-      "3:4": "1080P",
-      "1:1": "1080P",
-      "21:9": "1080P",
-    };
-
-    return resolutionMap[frameSize] || "1080P";
-  };
-
-  // Helper function to wait for MiniMax video completion (same pattern as Runway)
-  const waitForMiniMaxVideoCompletion = async (taskId: string, opts?: { historyId?: string }) => {
-    if (!taskId || taskId.trim() === '') {
-      throw new Error('Invalid taskId provided to waitForMiniMaxVideoCompletion');
-    }
-
-    console.log('⏳ Starting MiniMax video completion polling for task:', taskId);
-
-    const maxAttempts = 60; // 5 minutes with 5-second intervals
-    let attempts = 0;
-
-    const api = getApiClient();
-    while (attempts < maxAttempts) {
-      try {
-        console.log(`🔄 MiniMax polling attempt ${attempts + 1}/${maxAttempts}`);
-        const { data: statusEnvelope } = await api.get('/api/minimax/video/status', { params: { task_id: taskId } });
-        console.log('📊 MiniMax status check result:', statusEnvelope);
-
-        const statusData = statusEnvelope?.data || statusEnvelope;
-        const status = statusData?.result?.status || statusData?.status;
-        const fileId = statusData?.result?.file_id || statusData?.file_id;
-
-        if (status === 'Success' && fileId) {
-          console.log('✅ MiniMax video completed, retrieving file...');
-
-          try {
-            // Get the actual download URL (pass history_id if we have it later at callsite)
-            const { data: fileEnvelope } = await api.get('/api/minimax/video/file', { params: { file_id: fileId, ...(opts?.historyId ? { history_id: opts.historyId } : {}) } });
-            console.log('📁 MiniMax file result:', fileEnvelope);
-
-            const fileData = fileEnvelope?.data || fileEnvelope;
-            if (fileData?.file && (fileData.file.download_url || fileData.file.backup_download_url)) {
-              return {
-                status: 'Success',
-                download_url: fileData.file.download_url || fileData.file.backup_download_url,
-                videos: fileData.videos
-              };
-            }
-            if (Array.isArray(fileData?.videos) && fileData.videos[0]?.url) {
-              return { status: 'Success', download_url: fileData.videos[0].url, videos: fileData.videos };
-            }
-            throw new Error('No download URL found in file response');
-          } catch (fileError) {
-            console.warn('⚠️ File retrieval failed, but video generation was successful. Video should be available in database.');
-            // Return success status even if file retrieval fails - the video is already in the database
-            return {
-              status: 'Success',
-              download_url: null,
-              videos: null,
-              note: 'Video generated successfully and stored in database'
-            };
-          }
-        } else if (status === 'Fail') {
-          console.error('❌ MiniMax video generation failed:', statusData);
-          return { status: 'Fail', error: statusData?.base_resp?.status_msg || 'Generation failed' };
-        } else if (status === 'Queueing' || status === 'Preparing' || status === 'Processing' || status === 'Running') {
-          console.log(`⏳ MiniMax still processing: ${status}`);
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-          attempts++;
-        } else if (status) {
-          console.log(`⏳ MiniMax status: ${status}`);
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          attempts++;
-        } else {
-          console.warn('⚠️ Empty MiniMax status response, retrying...');
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          attempts++;
-        }
-      } catch (error) {
-        console.error('❌ MiniMax status check error:', error);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        attempts++;
-      }
-    }
-
-    console.error('⏰ MiniMax video completion timeout after', maxAttempts, 'attempts');
-    throw new Error('MiniMax video generation timeout');
-  };
+  // Helpers imported from videoUtils
 
   // Auto-adjust textarea height
-  const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
-    element.style.height = "auto";
-    element.style.height = `${Math.min(element.scrollHeight, 96)}px`;
-  };
+
 
   // PageRouter already loads initial history, so we just set up pagination state
   useEffect(() => {
@@ -2193,18 +2097,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Standardized intersection observer for video history
   // Replace IntersectionObserver with History-style bottom scroll pagination
   // Only enable pagination when there are entries to paginate (not when showing guide)
-  useBottomScrollPagination({
-    containerRef: historyScrollElement ? { current: historyScrollElement } as any : undefined,
-    hasMore,
-    loading,
-    requireUserScroll: true,
-    bottomOffset: 800,
-    throttleMs: 200,
-    enabled: historyEntries.length > 0 && sortedDates.length > 0, // Disable when showing guide (no entries to paginate)
-    loadMore: async () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      try {
+  // Extracted loadMore for HistorySection
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    try {
         // Use currentFilters from Redux to get the latest values (sync with HistoryControls)
         // This ensures consistency with search, sort, and date filters managed by HistoryControls
         const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
@@ -2239,9 +2137,8 @@ const InputBox = (props: InputBoxProps = {}) => {
           backendFilters: backendFilters,
           paginationParams: { limit: 30 } // Increased from 10 to 30 to load more items per page and reduce pagination gaps
         })).unwrap();
-      } catch {/* swallow */ }
-    }
-  });
+    } catch {/* swallow */ }
+  }, [loading, hasMore, page, currentFilters, sortOrder, searchQuery, dateRange, dispatch]);
 
   // Handle references upload
   const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -5175,396 +5072,18 @@ const InputBox = (props: InputBoxProps = {}) => {
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
 
-      {showHistory && (
-        <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
-          {/* Initial loading overlay - show only when actually loading and no entries exist */}
-          {loading && historyEntries.length === 0 && (
-            <div className="fixed top-[64px] md:top-[0px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 px-2 md:px-4">
-                <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
-                <div className="text-white text-lg text-center">Loading generations...</div>
-              </div>
-            </div>
-          )}
-
-          {/* Mobile: Search, Sort, and Date controls */}
-          {/* <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
-            <HistoryControls mode="video" />
-          </div> */}
-
-          <div className="md:space-y-8 space-y-2 pb-40">
-            {/* If there's a local preview and no row for today, render a dated block for today */}
-            {localVideoPreview && !groupedByDate.groups[todayKey] && (
-              <div className="md:space-y-4 space-y-2">
-                <div className="flex items-center md:gap-3 gap-2">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-sm font-medium text-white/70">
-                    {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                  </h3>
-                </div>
-                <div className="flex flex-wrap md:gap-3 gap-2 md:ml-2">
-                  <div className="relative w-[165px] h-[165px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
-                    {localVideoPreview.status === 'generating' ? (
-                      <div className="w-full h-full flex items-center justify-center bg-black/90">
-                        <div className="flex flex-col items-center gap-2">
-                          <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                          <div className="text-xs text-white/60">Generating...</div>
-                        </div>
-                      </div>
-                    ) : localVideoPreview.status === 'failed' ? (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                        <div className="flex flex-col items-center gap-2">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                          </svg>
-                          <div className="text-xs text-red-400">Failed</div>
-                        </div>
-                      </div>
-                    ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                      <div className="relative w-full h-full">
-                        <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                      </div>
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                        <div className="text-xs text-white/60">No preview</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Show guide when no video generations exist - ONLY after initial load attempt AND loading completes */}
-            {hasAttemptedInitialLoadRef.current && !loading && historyEntries.length === 0 && sortedDates.length === 0 && !localVideoPreview && (
-              <VideoGenerationGuide />
-            )}
-
-            {sortedDates.length > 0 && sortedDates.map((date) => (
-              <div key={date} className="md:space-y-4 space-y-1">
-                {/* Date Header */}
-                <div className="flex items-center md:gap-3 gap-2">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="text-white/60"
-                    >
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-sm font-medium text-white/70">
-                    {new Date(date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </h3>
-                </div>
-
-                {/* All Videos for this Date - Grid Layout (2 columns on mobile, flex on desktop) */}
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-1 md:mb-0 mb-4 pl-1">
-                  {/* Prepend local video preview to today's row to push existing items right */}
-                  {date === todayKey && localVideoPreview && (() => {
-                    const localEntryId = localVideoPreview.id;
-                    const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
-
-                    // Check if this local preview already exists in history
-                    const existsInRef = (localEntryId && historyEntryIdsRef.current.has(localEntryId)) ||
-                      (localFirebaseId && historyEntryIdsRef.current.has(localFirebaseId));
-                    const existsInHistory = historyEntries.some((e: HistoryEntry) => {
-                      const eId = e.id;
-                      const eFirebaseId = (e as any)?.firebaseHistoryId;
-                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                      return false;
-                    });
-                    const existsInGrouped = groupedByDate.groups[date]?.some((e: HistoryEntry) => {
-                      const eId = e.id;
-                      const eFirebaseId = (e as any)?.firebaseHistoryId;
-                      if (localEntryId && (eId === localEntryId || eFirebaseId === localEntryId)) return true;
-                      if (localFirebaseId && (eId === localFirebaseId || eFirebaseId === localFirebaseId)) return true;
-                      return false;
-                    });
-
-                    // If entry exists anywhere, don't render local preview
-                    if (existsInRef || existsInHistory || existsInGrouped) {
-                      return null;
-                    }
-
-                    // Safety check: if local preview is completed and history exists, don't show it
-                    if (localVideoPreview.status === 'completed' && (historyEntries.length > 0 || (groupedByDate.groups[date]?.length || 0) > 0)) {
-                      return null;
-                    }
-
-                    return (
-                      <div className="relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 aspect-square">
-                        {localVideoPreview.status === 'generating' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-black/90">
-                            <div className="flex flex-col items-center gap-1">
-                              <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                              <div className="text-xs text-white/60 text-center">Generating...</div>
-                            </div>
-                          </div>
-                        ) : localVideoPreview.status === 'failed' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                            <div className="flex flex-col items-center gap-2">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                              <div className="text-xs text-red-400">Failed</div>
-                            </div>
-                          </div>
-                        ) : (localVideoPreview.images && localVideoPreview.images[0]?.url) ? (
-                          <div className="relative w-full h-full">
-                            <Image src={localVideoPreview.images[0].url} alt="Video preview" fill className="object-cover" sizes="192px" />
-                          </div>
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-800/20 to-gray-900/20 flex items-center justify-center">
-                            <div className="text-xs text-white/60">No preview</div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  {(() => {
-                    // Create a set of all local preview IDs for fast lookup
-                    const localPreviewIds = new Set<string>();
-                    if (date === todayKey && localVideoPreview) {
-                      const localEntryId = localVideoPreview.id;
-                      const localFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
-                      if (localEntryId) localPreviewIds.add(localEntryId);
-                      if (localFirebaseId) localPreviewIds.add(localFirebaseId);
-                    }
-
-                    // Filter out history entries that match local preview
-                    const filteredHistoryEntries = (groupedByDate.groups[date] || []).filter((entry: HistoryEntry) => {
-                      if (localPreviewIds.size === 0) return true;
-                      const entryId = entry.id;
-                      const entryFirebaseId = (entry as any)?.firebaseHistoryId;
-                      if (entryId && localPreviewIds.has(entryId)) return false;
-                      if (entryFirebaseId && localPreviewIds.has(entryFirebaseId)) return false;
-                      return true;
-                    });
-
-                    return filteredHistoryEntries.flatMap((entry: HistoryEntry) => {
-                      // More defensive approach to get media items
-                      let mediaItems: any[] = [];
-                      if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
-                        mediaItems = entry.images;
-                      } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-                        mediaItems = entry.videos;
-                      }
-
-                      return mediaItems.map((video: any, videoIdx: number) => {
-                        const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
-                        const isVideoLoaded = loadedVideos.has(uniqueVideoKey);
-
-                        return (
-                          <div
-                            key={uniqueVideoKey}
-                            data-video-id={uniqueVideoKey}
-                            draggable={true}
-                            onDragStart={(e) => {
-                              const mediaUrl = video.firebaseUrl || video.url;
-                              if (mediaUrl) {
-                                e.dataTransfer.setData('text/plain', mediaUrl);
-                                e.dataTransfer.setData('text/uri-list', mediaUrl);
-                                e.dataTransfer.effectAllowed = 'copy';
-
-                                // Custom "minimal" drag ghost for video
-                                const ghostUrl = video.thumbnailUrl || video.avifUrl || mediaUrl;
-                                // If no thumbnail, we might be dragging a video URL directly. 
-                                // Since we can't easily snapshot a video frame synchronously, we might use a default icon or the video element itself if we clone it.
-                                // But here we try to use a thumbnail if possible.
-
-                                const ghost = document.createElement('div');
-                                ghost.style.width = '96px';
-                                ghost.style.height = '96px';
-                                ghost.style.borderRadius = '12px';
-                                if (ghostUrl) {
-                                  ghost.style.backgroundImage = `url(${ghostUrl})`;
-                                  ghost.style.backgroundSize = 'cover';
-                                  ghost.style.backgroundPosition = 'center';
-                                } else {
-                                  ghost.style.backgroundColor = '#1a1a1a';
-                                  // Add a video icon? 
-                                  ghost.textContent = 'Video';
-                                  ghost.style.display = 'flex';
-                                  ghost.style.alignItems = 'center';
-                                  ghost.style.justifyContent = 'center';
-                                  ghost.style.color = 'white';
-                                  ghost.style.fontSize = '12px';
-                                }
-
-                                ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
-                                ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
-                                ghost.style.zIndex = '-1000';
-                                ghost.style.position = 'absolute';
-                                ghost.style.top = '-9999px';
-                                document.body.appendChild(ghost);
-                                e.dataTransfer.setDragImage(ghost, 48, 48);
-                                setTimeout(() => document.body.removeChild(ghost), 0);
-                              }
-                            }}
-                            onClick={(e) => {
-                              // Don't open preview if clicking on copy button
-                              if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
-                                return;
-                              }
-                              setPreview({ entry, video });
-                            }}
-                            className="relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group aspect-square"
-                          >
-                            {entry.status === "generating" ? (
-                              // Loading frame
-                              <div className="w-full h-full flex items-center justify-center bg-black/90">
-                                <div className="flex flex-col items-center gap-2">
-                                  <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
-                                  <div className="text-xs text-white/60 text-center">
-                                    Generating...
-                                  </div>
-                                </div>
-                              </div>
-                            ) : entry.status === "failed" ? (
-                              // Error frame
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                                <div className="flex flex-col items-center gap-2">
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="text-red-400"
-                                  >
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                  </svg>
-                                  <div className="text-xs text-red-400">Failed</div>
-                                </div>
-                              </div>
-                            ) : (
-                              // Completed video thumbnail (exact same as History.tsx)
-                              <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
-                                {(video.firebaseUrl || video.url) ? (
-                                  (() => {
-                                    const mediaUrl = video.firebaseUrl || video.url;
-                                    const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                                    const vsrc = proxied || mediaUrl;
-                                    return (
-                                      <video
-                                        src={vsrc}
-                                        className="w-full h-full object-cover transition-opacity duration-200"
-                                        draggable={false}
-                                        muted
-                                        playsInline
-                                        loop
-                                        preload="metadata"
-                                        poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
-                                        onMouseEnter={async (e) => {
-                                          try {
-                                            await (e.currentTarget as HTMLVideoElement).play();
-                                          } catch { }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          const v = e.currentTarget as HTMLVideoElement;
-                                          try { v.pause(); v.currentTime = 0 } catch { }
-                                        }}
-                                        onClick={async (e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          const videoEl = e.currentTarget;
-
-                                          if (videoEl.paused) {
-                                            try {
-                                              await videoEl.play();
-                                            } catch (error) {
-                                              // silent
-                                            }
-                                          } else {
-                                            videoEl.pause();
-                                            videoEl.currentTime = 0;
-                                          }
-                                        }}
-                                        onLoadStart={() => {
-                                          setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
-                                        }}
-                                        onLoadedData={() => {
-                                          setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
-                                        }}
-                                        onCanPlay={() => {
-                                          setLoadedVideos(prev => new Set(prev).add(uniqueVideoKey));
-                                        }}
-                                      />
-                                    );
-                                  })()
-                                ) : (
-                                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                    <span className="text-gray-400 text-xs">Video not available</span>
-                                  </div>
-                                )}
-                                {/* Video play icon overlay */}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                      <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                  </div>
-                                </div>
-                                {/* Hover buttons overlay */}
-                                <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
-                                  <button
-                                    aria-label="Copy prompt"
-                                    className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                    onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                  </button>
-                                  <button
-                                    aria-label="Delete video"
-                                    className="pointer-events-auto p-1 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                    onClick={(e) => handleDeleteVideo(e, entry)}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                                {/* Video duration or other info */}
-                                {/* <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                                <span className="text-xs text-white">Video</span>
-                              </div> */}
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                          </div>
-                        );
-                      });
-                    });
-                  })()}
-                </div>
-              </div>
-            ))}
-
-            {/* Loader for scroll loading */}
-            {hasMore && loading && (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex flex-col items-center gap-3">
-                  <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
-                  <div className="text-sm text-white/60">Loading more generations...</div>
-                </div>
-              </div>
-            )}
-            {/* Sentinel for IO-based infinite scroll */}
-            <div ref={(el) => { sentinelRef.current = el; setSentinelElement(el); }} style={{ height: 1 }} />
-          </div>
-        </div>
-      )}
+      <HistorySection
+        loading={loading}
+        showHistory={showHistory}
+        historyEntries={historyEntriesForDisplay as any[]}
+        hasMore={hasMore}
+        loadMore={loadMore}
+        onDeleteVideo={handleDeleteVideo}
+        localVideoPreview={localVideoPreview}
+        onSearch={() => {}}
+        onSortChange={() => {}}
+        onDateChange={() => {}}
+      />
 
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
@@ -5606,54 +5125,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             // 1. Handle Files (dragged from desktop/OS)
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
               const files = Array.from(e.dataTransfer.files);
-
-              // Separate images and videos
-              const imageFiles = files.filter(f => f.type.startsWith('image/'));
-              const videoFiles = files.filter(f => f.type.startsWith('video/'));
-
-              // Process Images
-              if (imageFiles.length > 0) {
-                const newUrls: string[] = [];
-                for (const file of imageFiles) {
-                  const reader = new FileReader();
-                  const dataUrl: string = await new Promise((resolve) => {
-                    reader.onload = () => resolve(reader.result as string);
-                    reader.readAsDataURL(file);
-                  });
-                  newUrls.push(dataUrl);
-                }
-
-                if (newUrls.length > 0) {
-                  setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
-                  toast.success(`Added ${newUrls.length} image(s)`);
-                }
-              }
-
-              // Process Videos (Take the first valid video)
-              if (videoFiles.length > 0) {
-                const file = videoFiles[0];
-                const maxBytes = 14 * 1024 * 1024; // 14MB limit
-                const allowedMimes = new Set([
-                  'video/mp4', 'video/webm', 'video/ogg',
-                  'video/quicktime', 'video/mov', 'video/h264'
-                ]);
-
-                if (!allowedMimes.has(file.type)) {
-                  toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
-                } else if (file.size > maxBytes) {
-                  toast.error('Video too large. Please upload a video ≤ 14MB');
-                } else {
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    const result = ev.target?.result as string;
-                    if (result) {
-                      setUploadedVideo(result);
-                      toast.success('Video added');
-                    }
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }
+              await processFiles(files);
               return;
             }
 
@@ -5681,458 +5153,38 @@ const InputBox = (props: InputBoxProps = {}) => {
             }}
           ></div>
           {/* Input Row: prompt + actions */}
-          <div className="flex items-start md:gap-3 gap-0 md:p-3 p-2 md:pt-2 pt-0 relative z-10
-          ">
-            <div className="flex-1 flex items-start  gap-2 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
-              <textarea
-                ref={inputEl}
-                placeholder={placeholder}
-                value={prompt}
-                onChange={(e) => {
-                  setPrompt(e.target.value);
-                  adjustTextareaHeight(e.target);
-                }}
-                spellCheck={true}
-                lang="en"
-                autoComplete="off"
-                autoCorrect="on"
-                autoCapitalize="on"
-                className={`flex-1 mt-2  bg-transparent md:h-[4rem] h-[3rem] text-white placeholder-white/50 outline-none md:text-[15px] text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}
-                  }`}
-                rows={1}
-                style={{
-                  minHeight: '24px',
-                  maxHeight: '96px',
-                  lineHeight: '1.2',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
-                }}
-                onPaste={async (e) => {
-                  // Check for files in clipboard
-                  if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                    const files = Array.from(e.clipboardData.files);
-                    const imageFiles = files.filter(f => f.type.startsWith('image/'));
-                    const videoFiles = files.filter(f => f.type.startsWith('video/'));
-
-                    // Process Images
-                    if (imageFiles.length > 0) {
-                      e.preventDefault(); // Prevent default if we handle it
-                      const newUrls: string[] = [];
-                      for (const file of imageFiles) {
-                        const reader = new FileReader();
-                        const dataUrl: string = await new Promise((resolve) => {
-                          reader.onload = () => resolve(reader.result as string);
-                          reader.readAsDataURL(file);
-                        });
-                        newUrls.push(dataUrl);
-                      }
-                      if (newUrls.length > 0) {
-                        setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
-                        toast.success(`Pasted ${newUrls.length} image(s)`);
-                      }
-                    }
-
-                    // Process Video
-                    if (videoFiles.length > 0) {
-                      e.preventDefault();
-                      const file = videoFiles[0];
-                      const maxBytes = 14 * 1024 * 1024;
-                      const allowedMimes = new Set([
-                        'video/mp4', 'video/webm', 'video/ogg',
-                        'video/quicktime', 'video/mov', 'video/h264'
-                      ]);
-
-                      if (!allowedMimes.has(file.type)) {
-                        toast.error('Unsupported video type');
-                      } else if (file.size > maxBytes) {
-                        toast.error('Video too large (≤ 14MB)');
-                      } else {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          const result = ev.target?.result as string;
-                          if (result) {
-                            setUploadedVideo(result);
-                            toast.success('Pasted video');
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }
-                  }
-                }}
+          <PromptInput
+            prompt={prompt}
+            onChange={setPrompt}
+            onPasteFiles={processFiles}
+            isEnhancing={isEnhancing}
+            onEnhance={handleEnhancePrompt}
+            onClear={() => {
+              setPrompt("");
+              if (inputEl.current) inputEl.current.focus();
+            }}
+            placeholder={placeholder}
+            inputRef={inputEl as React.RefObject<HTMLTextAreaElement>}
+            actions={
+              <InputActions
+                generationMode={generationMode}
+                selectedModel={selectedModel}
+                activeFeature={activeFeature}
+                currentModelCapabilities={currentModelCapabilities}
+                selectedCameraMovements={selectedCameraMovements}
+                setSelectedCameraMovements={setSelectedCameraMovements}
+                onAddMovement={(text) => setPrompt(prev => prev + (prev.endsWith(' ') ? '' : ' ') + text)}
+                references={references}
+                removeReference={removeReference}
+                setUploadModalType={setUploadModalType}
+                setUploadModalTarget={setUploadModalTarget}
+                setIsUploadModalOpen={setIsUploadModalOpen}
+                uploadedImages={uploadedImages}
+                lastFrameImage={lastFrameImage}
+                selectedResolution={selectedResolution}
               />
-              {/* Fixed position buttons container */}
-              <div className="flex items-center md:gap-0 gap-0 flex-shrink-0 md:p-0 p-0">
-                {prompt.trim() && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => {
-                        setPrompt("");
-                        if (inputEl.current) {
-                          inputEl.current.focus();
-                        }
-                      }}
-                      className="md:px-2 px-1.5 md:py-1.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white md:text-sm text-[11px] font-medium transition-colors duration-200 flex items-center gap-1.5"
-                      aria-label="Clear prompt"
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-white/80"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
-                  </div>
-                )}
-                {/* Enhance Prompt Button */}
-                {prompt.trim() && (
-                  <div className="relative group ml-1">
-                    <button
-                      onClick={handleEnhancePrompt}
-                      disabled={isEnhancing}
-                      className={`md:px-2 px-1.5 md:py-1.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white md:text-sm text-[11px] font-medium transition-colors duration-200 flex items-center gap-1.5 ${isEnhancing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      aria-label="Enhance prompt"
-                    >
-                      {isEnhancing ? (
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <Sparkles size={14} className="text-yellow-300" />
-                      )}
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Enhance Prompt</div>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 h-[40px]">
-                  {/* Camera Movements - unified button for supported models and modes */}
-                  {(
-                    (generationMode === "text_to_video" && selectedModel === "T2V-01-Director") ||
-                    (generationMode === "image_to_video" && selectedModel === "I2V-01-Director")
-                  ) && (
-                      <div className="relative camera-movement-container">
-                        <button
-                          onClick={() => setCameraMovementPopupOpen(!cameraMovementPopupOpen)}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm text-white/80 hover:text-white"
-                          title="Camera Movement Options"
-                        >
-                          <span>Camera Movements</span>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                            <circle cx="12" cy="13" r="4" />
-                          </svg>
-                          {selectedCameraMovements.length > 0 && (
-                            <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">
-                              1
-                            </span>
-                          )}
-                        </button>
-
-                        {cameraMovementPopupOpen && (
-                          <div className="absolute bottom-full left-0 mb-2 p-4 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[280px]">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-sm font-medium text-white">Select One Camera Movement</h3>
-                              <button
-                                onClick={() => setCameraMovementPopupOpen(false)}
-                                className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                  <path d="M18 6L6 18M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-
-                            <div className="text-xs text-white/60 mb-3 text-center">
-                              Click a movement to select it, then add to your prompt
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 mb-3">
-                              {[
-                                "Tilt up", "Tilt down", "Pan left", "Pan right",
-                                "Zoom in", "Zoom out", "Push in", "Push out",
-                                "Rotate left", "Rotate right", "Dolly in", "Dolly out"
-                              ].map((movement) => (
-                                <button
-                                  key={movement}
-                                  onClick={() => {
-                                    // Single selection: only one movement at a time
-                                    setSelectedCameraMovements([movement]);
-                                  }}
-                                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${selectedCameraMovements.includes(movement)
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                                    }`}
-                                >
-                                  {movement}
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  if (selectedCameraMovements.length > 0) {
-                                    const movementText = `[${selectedCameraMovements[0]}]`;
-                                    setPrompt(prev => prev + (prev.endsWith(' ') ? '' : ' ') + movementText);
-                                    // Reset selection after adding to prompt
-                                    setSelectedCameraMovements([]);
-                                    setCameraMovementPopupOpen(false);
-                                  }
-                                }}
-                                disabled={selectedCameraMovements.length === 0}
-                                className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600 text-white"
-                              >
-                                Add Movement to Prompt
-                              </button>
-                              <button
-                                onClick={() => setSelectedCameraMovements([])}
-                                className="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
-                              >
-                                Clear
-                              </button>
-                            </div>
-
-                            <div className="mt-3 text-xs text-white/60">This model responds accurately to camera movement instructions for shot control</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                  {/* References Upload (for video-to-video and S2V-01 character reference) */}
-                  {(currentModelCapabilities.requiresReferenceImage) && (
-                    <div className="relative">
-                      <button
-                        className={`py-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                          (generationMode === "video_to_video" && references.length >= 4)
-                          ? 'opacity-50 cursor-not-allowed'
-                          : ''
-                          }`}
-                        onClick={() => {
-                          setUploadModalType('reference');
-                          setIsUploadModalOpen(true);
-                        }}
-                        disabled={(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                          (generationMode === "video_to_video" && references.length >= 4)}
-                      >
-                        <FilePlus2
-                          size={22}
-                          className={`transition-all duration-200 ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                            (generationMode === "video_to_video" && references.length >= 4)
-                            ? 'text-gray-400'
-                            : 'text-green-400 hover:text-green-300 hover:scale-110'
-                            }`}
-                        />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                          {generationMode === "image_to_video" && selectedModel === "S2V-01" ? 'Upload character reference (1 max)' : 'Upload references'}
-                        </div>
-
-                        {/* References Count Badge */}
-                        {references.length > 0 && (
-                          <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                            (generationMode === "video_to_video" && references.length >= 4)
-                            ? 'bg-red-500' : 'bg-green-500'
-                            }`}>
-                            <span className="text-xs text-white font-bold">{references.length}</span>
-                          </div>
-                        )}
-                      </button>
-
-                      {/* References Preview Popup */}
-                      {references.length > 0 && (
-                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
-                          <div className="text-xs text-white/60 mb-2">
-                            {generationMode === "image_to_video" && selectedModel === "S2V-01"
-                              ? `Character Reference (${references.length}/1)`
-                              : `References (${references.length}/4)`
-                            }
-                          </div>
-                          <div className="space-y-2">
-                            {references.map((ref, index) => (
-                              <div key={index} className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                                  <img
-                                    src={ref}
-                                    alt={`Reference ${index + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <span className="text-xs text-white/80 flex-1">Reference {index + 1}</span>
-                                <button
-                                  onClick={() => removeReference(index)}
-                                  className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="M18 6L6 18M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Image Upload for models that support image-to-video (but not MiniMax/S2V-01 which have separate handlers) */}
-                  {/* Seedance I2V mode can use regular image upload button */}
-                  {currentModelCapabilities.supportsImageToVideo &&
-                    !selectedModel.includes("MiniMax") &&
-                    selectedModel !== "I2V-01-Director" &&
-                    selectedModel !== "S2V-01" && (
-                      <div className="relative">
-                        <button
-                          className="md:p-2  pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                          onClick={() => {
-                            setUploadModalType('image');
-                            setUploadModalTarget('first_frame');
-                            setIsUploadModalOpen(true);
-                          }}
-                        >
-                          <div className=" relative ">
-                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> First Frame </div>
-                          </div>
-                        </button>
-                      </div>
-                    )}
-
-                  {/* MiniMax/I2V-01-Director Image Uploads - Show when model requires first frame */}
-                  {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") &&
-                    (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
-                      <div className="relative">
-                        <button
-                          className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                          onClick={() => {
-                            setUploadModalType('image');
-                            setUploadModalTarget('first_frame');
-                            setIsUploadModalOpen(true);
-                          }}
-                        >
-                          <div className="relative">
-                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
-                            <div className={newLocal}> First Frame </div>
-                          </div>
-                        </button>
-
-                        {/* Model Requirements Helper */}
-                        {/* <div className="absolute bottom-full left-0 mb-2 p-3 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[250px]">
-                    <div className="text-xs text-white/80 mb-2 font-medium">Model Requirements:</div>
-                    {selectedModel === "I2V-01-Director" && (
-                      <div className="text-xs text-white/60">• Requires first frame image</div>
-                    )}
-                    {selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && (
-                      <div className="text-xs text-white/60">• Requires first frame image for 512P resolution</div>
-                    )}
-                    {selectedModel === "MiniMax-Hailuo-02" && (selectedResolution === "768P" || selectedResolution === "1080P") && (
-                      <div className="text-xs text-white/60">• First frame image is optional</div>
-                    )}
-                  </div> */}
-                      </div>
-                    )}
-
-                  {/* Arrow icon between first and last frame uploads */}
-                  {(((selectedModel === "MiniMax-Hailuo-02") &&
-                    (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-                    selectedModel.includes("veo3.1") ||
-                    selectedModel === "kling-o1" ||
-                    (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
-                    currentModelCapabilities.supportsImageToVideo && (
-                      <div className="flex items-center justify-center">
-                        <Image
-                          src="/icons/arrow-right-left.svg"
-                          alt="Arrow"
-                          width={14}
-                          height={14}
-                          className="opacity-80 mr-0   "
-                        />
-                      </div>
-                    )}
-
-                  {/* Last Frame Image Upload for MiniMax-Hailuo-02 (768P/1080P), Veo 3.1 (fast/standard), and Seedance Pro/Lite */}
-                  {((((selectedModel === "MiniMax-Hailuo-02") &&
-                    (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-                    selectedModel.includes("veo3.1") ||
-                    selectedModel === "kling-o1" ||
-                    (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
-                    currentModelCapabilities.supportsImageToVideo) && (
-                      <div className="relative ">
-                        <button
-                          className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                          onClick={() => {
-                            setUploadModalType('image');
-                            setUploadModalTarget('last_frame');
-                            setIsUploadModalOpen(true);
-                          }}
-                        >
-                          <div className="relative">
-                            <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${lastFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> Last Frame (optional)</div>
-                          </div>
-                        </button>
-                      </div>
-                    )}
-
-
-                  {/* Video Upload (for video-to-video models) */}
-                  {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
-                    <div className="relative">
-                      <button
-                        className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                        onClick={() => {
-                          setUploadModalType('video');
-                          setIsUploadModalOpen(true);
-                        }}
-                      >
-                        <div className="relative">
-                          <FilePlay
-                            size={30}
-                            className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {selectedModel === "wan-2.2-animate-replace" && activeFeature === 'Animate' ? 'Upload video (mandatory)' : 'Upload video'}
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Character Image Upload (for WAN 2.2 Animate Replace) */}
-                  {(selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) && (
-                    <div className="relative">
-                      <button
-                        className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
-                        onClick={() => {
-                          setUploadModalType('image');
-                          setIsUploadModalOpen(true);
-                        }}
-                      >
-                        <div className="relative">
-                          <FilePlus2
-                            size={30}
-                            className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110"
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            Upload character
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-
-            </div>
-
-
-          </div>
+            }
+          />
 
           {/* Uploaded Content Display */}
           <div className="px-3 md:pb-3 pb-0">
