@@ -6,6 +6,7 @@ import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon }
 // HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 import { shallowEqual } from "react-redux";
 // RemoveBgPopup and EditPopup are now lazy loaded below
 
@@ -22,6 +23,9 @@ import {
   addActiveGeneration,
   updateActiveGeneration,
   removeActiveGeneration,
+  setImageCount,
+  setFrameSize,
+  setStyle,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
@@ -37,6 +41,7 @@ import {
 } from "@/store/slices/historySlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance, { getApiClient } from "@/lib/axiosInstance";
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 import { qlog, qwarn, qerr } from '@/lib/queueDebug';
 import toast from 'react-hot-toast';
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
@@ -119,6 +124,7 @@ const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> =
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const userData = useAppSelector((state: any) => state.auth?.user);
   const pathname = usePathname();
   const isInlineEditImagePage = (pathname || '').startsWith('/text-to-image/edit-image');
   const searchParams = useSearchParams();
@@ -146,6 +152,62 @@ const InputBox = () => {
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
+
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    if (!userData) return;
+
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'image') {
+      const { data } = intent;
+      console.log('[AutoResume] Found image intent, restoring state:', data);
+
+      if (data.prompt) dispatch(setPrompt(data.prompt));
+      if (data.model) dispatch(setSelectedModel(data.model));
+      if (data.imageCount) dispatch(setImageCount(data.imageCount));
+      if (data.frameSize) dispatch(setFrameSize(data.frameSize));
+      if (data.style) dispatch(setStyle(data.style));
+      if (data.uploadedImages) dispatch(setUploadedImages(data.uploadedImages));
+      if (data.selectedCharacters && Array.isArray(data.selectedCharacters)) {
+        data.selectedCharacters.forEach((char: any) => {
+          dispatch(addSelectedCharacter(char));
+        });
+      }
+
+      clearAutoResumeIntent();
+
+      // Auto-trigger generation after a short delay to ensure Redux state is updated
+      setTimeout(() => {
+        // Find the desktop generate button to click it, or just call handleGenerate directly
+        // handleGenerate is inside the component, so we can call it.
+        // We just need to create a generationId first as the button does.
+        const activeCount = 0; // We don't have runningGenerationsCount here yet, it's defined later
+        // Actually, runningGenerationsCount is defined via useMemo later.
+        // Let's just restore the state for now, maybe auto-triggering is too aggressive?
+        // No, the user wants it to automatically resume.
+        // I'll call handleGenerate directly.
+
+        // Wait, I need runningGenerationsCount. I'll move this useEffect after it's defined.
+      }, 1000);
+    }
+  }, [userData, dispatch]);
+
+  // If user just logged in and the URL requests opening the external image editor, do it once.
+  useEffect(() => {
+    try {
+      const shouldOpen = searchParams?.get('openImageEditor') === '1';
+      if (!shouldOpen) return;
+      if (!userData) return;
+
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
+      window.open(url, '_blank');
+
+      // Clean up the query param so refresh doesn't keep opening tabs.
+      router.replace('/text-to-image');
+    } catch { }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData]);
   // Show loader when switching back into image tab until history is ready
   const [showSwitchLoader, setShowSwitchLoader] = useState(false);
   const switchLoadInFlightRef = useRef(false);
@@ -213,6 +275,7 @@ const InputBox = () => {
     return !isVideoType;
   });
   const runningGenerationsCount = imageOnlyActiveGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+
 
   // Filter states for search, sort, and date
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -458,6 +521,11 @@ const InputBox = () => {
     try {
       e.stopPropagation();
       e.preventDefault();
+
+      if (!userData) {
+        router.push(getSignInUrl());
+        return;
+      }
 
       const qs = new URLSearchParams();
 
@@ -777,6 +845,11 @@ const InputBox = () => {
     try {
       e.stopPropagation();
       e.preventDefault();
+
+      if (!userData) {
+        router.push(getSignInUrl());
+        return;
+      }
 
       const isSingleImage = imageId && entry.images && entry.images.length > 0;
       const confirmMessage = isSingleImage
@@ -1105,6 +1178,7 @@ const InputBox = () => {
   };
 
   // Redux state
+
   const prompt = useAppSelector((state: any) => state.generation?.prompt || "");
   const selectedModel = useAppSelector(
     (state: any) => state.generation?.selectedModel || "flux-dev"
@@ -2358,6 +2432,10 @@ const InputBox = () => {
   };
 
   const handleGenerate = async (generationId?: string) => {
+    if (!userData) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!prompt.trim()) return;
 
 
@@ -2500,6 +2578,7 @@ const InputBox = () => {
     });
 
     // No local writes to global history; backend tracks persistent history
+
 
     let firebaseHistoryId: string | undefined;
     // Read isPublic from backend policy (fallbacks handled internally)
@@ -5256,6 +5335,95 @@ const InputBox = () => {
     }
   };
 
+
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    console.log('[AutoResume] ========================================');
+    console.log('[AutoResume] Effect running, userData:', !!userData, 'runningGenerationsCount:', runningGenerationsCount);
+    console.log('[AutoResume] localStorage keys:', Object.keys(localStorage));
+    console.log('[AutoResume] localStorage.wildmind_auto_resume_intent:', localStorage.getItem('wildmind_auto_resume_intent'));
+
+    // CRITICAL: Check for intent FIRST, before checking userData
+    const intent = getAutoResumeIntent();
+    console.log('[AutoResume] Checking for intent:', intent);
+    console.log('[AutoResume] Intent type:', intent?.type);
+    console.log('[AutoResume] Intent data:', intent?.data);
+
+    if (!intent || intent.type !== 'image') {
+      console.log('[AutoResume] No image intent found or wrong type');
+      return;
+    }
+
+    // Intent exists! Now check if we have userData
+    if (!userData) {
+      console.log('[AutoResume] ⏳ Intent found but waiting for userData...');
+      return; // Effect will re-run when userData becomes available
+    }
+
+    // We have both intent AND userData - proceed!
+    const { data } = intent;
+    console.log('[AutoResume] ✅ Found image intent AND userData, restoring state:', data);
+
+    if (data.prompt) {
+      console.log('[AutoResume] Restoring prompt:', data.prompt);
+      dispatch(setPrompt(data.prompt));
+    }
+    if (data.model) {
+      console.log('[AutoResume] Restoring model:', data.model);
+      dispatch(setSelectedModel(data.model));
+    }
+    if (data.imageCount) dispatch(setImageCount(data.imageCount));
+    if (data.frameSize) dispatch(setFrameSize(data.frameSize));
+    if (data.style) dispatch(setStyle(data.style));
+    if (data.uploadedImages) {
+      dispatch(setUploadedImages(data.uploadedImages));
+    }
+
+    if (data.selectedCharacters && Array.isArray(data.selectedCharacters)) {
+      data.selectedCharacters.forEach((char: any) => {
+        dispatch(addSelectedCharacter(char));
+      });
+    }
+
+    clearAutoResumeIntent();
+    console.log('[AutoResume] Intent cleared, scheduling auto-trigger in 1.5s');
+
+    // Auto-trigger generation after a short delay to ensure Redux state is updated
+    setTimeout(() => {
+      console.log('[AutoResume] Timeout fired! Checking conditions...');
+      console.log('[AutoResume] - Has prompt:', !!data.prompt);
+      console.log('[AutoResume] - Running count:', runningGenerationsCount);
+      console.log('[AutoResume] - Can trigger:', data.prompt && runningGenerationsCount < 4);
+
+      if (data.prompt && runningGenerationsCount < 4) {
+        console.log('[AutoResume] 🚀 AUTO-TRIGGERING GENERATION!');
+        const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        dispatch(addActiveGeneration({
+          id: generationId,
+          prompt: data.prompt,
+          model: data.model || selectedModel,
+          status: 'pending',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          params: {
+            imageCount: data.imageCount || imageCount,
+            frameSize: data.frameSize || frameSize,
+            style: data.style || style,
+            uploadedImages: data.uploadedImages || []
+          }
+        }));
+        // Trigger generation directly without relying on handleGenerate in dependencies
+        console.log('[AutoResume] Calling handleGenerate with ID:', generationId);
+        handleGenerate(generationId);
+      } else {
+        console.log('[AutoResume] ❌ Conditions not met for auto-trigger');
+        if (!data.prompt) console.log('[AutoResume] - Missing prompt');
+        if (runningGenerationsCount >= 4) console.log('[AutoResume] - Queue full');
+      }
+    }, 1500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData, dispatch, runningGenerationsCount]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -5367,7 +5535,7 @@ const InputBox = () => {
       <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0">
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-0 pt-2 md:pl-20 mr-1 backdrop-blur-lg shadow-xl ">
+          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 backdrop-blur-lg shadow-xl ">
             <div className="flex items-center justify-between md:mb-2 mb-0 pl-10 md:pl-0">
               <div className="flex items-center gap-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
@@ -5402,7 +5570,14 @@ const InputBox = () => {
                 </button>
 
                 <button
-                  onClick={() => router.push('/text-to-image/edit-image')}
+                  onClick={() => {
+                    console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
+                    if (!userData) {
+                      router.push(getSignInUrl('/text-to-image/edit-image'));
+                      return;
+                    }
+                    router.push('/text-to-image/edit-image');
+                  }}
                   className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
                   aria-label="Edit Image"
                 >
@@ -5412,6 +5587,10 @@ const InputBox = () => {
 
                 <button
                   onClick={() => {
+                    if (!userData) {
+                      router.push(getSignInUrl('/text-to-image?openImageEditor=1'));
+                      return;
+                    }
                     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                     const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
@@ -6385,6 +6564,19 @@ const InputBox = () => {
               )} */}
                 <button
                   onClick={async () => {
+                    if (!userData) {
+                      saveAutoResumeIntent('image', {
+                        prompt,
+                        model: selectedModel,
+                        imageCount,
+                        frameSize,
+                        style,
+                        uploadedImages: getCombinedUploadedImages(),
+                        selectedCharacters: selectedCharacters,
+                      });
+                      router.push(getSignInUrl());
+                      return;
+                    }
                     try {
                       // Check parallel generation limit (only counting running ones)
                       if (runningGenerationsCount >= 4) {
@@ -6445,6 +6637,19 @@ const InputBox = () => {
                 )}
                 <button
                   onClick={async () => {
+                    if (!userData) {
+                      saveAutoResumeIntent('image', {
+                        prompt,
+                        model: selectedModel,
+                        imageCount,
+                        frameSize,
+                        style,
+                        uploadedImages: getCombinedUploadedImages(),
+                        selectedCharacters: selectedCharacters,
+                      });
+                      router.push(getSignInUrl());
+                      return;
+                    }
                     try {
                       // Check parallel generation limit (only counting running ones)
                       if (runningGenerationsCount >= 4) {

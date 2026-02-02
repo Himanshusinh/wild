@@ -9,14 +9,17 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 export default function BusinessCard() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -66,6 +69,32 @@ export default function BusinessCard() {
     setTimeout(() => setIsOpen(true), 50);
   }, []);
 
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    if (!user) return;
+
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'workflow' && intent.data.workflowId === 'business-card') {
+      const { data } = intent;
+      console.log('[AutoResume] Found business-card intent, restoring state:', data);
+
+      if (data.companyName) setCompanyName(data.companyName);
+      if (data.personDetails) setPersonDetails(data.personDetails);
+      if (data.contactDetails) setContactDetails(data.contactDetails);
+      if (data.cardType) setCardType(data.cardType);
+      if (data.selectedColor) setSelectedColor(data.selectedColor);
+      if (data.cardStyle) setCardStyle(data.cardStyle);
+      if (data.logoImage) setLogoImage(data.logoImage);
+
+      clearAutoResumeIntent();
+
+      // Auto-trigger generation after a short delay
+      setTimeout(() => {
+        handleRun();
+      }, 1500);
+    }
+  }, [user]);
+
   const onClose = () => {
     setIsOpen(false);
     setTimeout(() => {
@@ -80,6 +109,20 @@ export default function BusinessCard() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      saveAutoResumeIntent('workflow', {
+        workflowId: 'business-card',
+        companyName,
+        personDetails,
+        contactDetails,
+        cardType,
+        selectedColor,
+        cardStyle,
+        logoImage
+      });
+      router.push(getSignInUrl());
+      return;
+    }
     if (!logoImage) {
       toast.error('Please upload your logo first');
       return;

@@ -3,38 +3,41 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toast } from 'react-hot-toast';
-import { 
-  VideoGenerationState, 
+import {
+  VideoGenerationState,
   defaultVideoGenerationState,
   ImageToVideoState,
   VideoToVideoState,
   PromptImageObject,
   ReferenceImage
 } from '@/types/videoGeneration';
-import { 
-  buildImageToVideoBody, 
+import {
+  buildImageToVideoBody,
   buildVideoToVideoBody,
   getAvailableRatios,
   getDefaultRatioForModel
 } from '@/lib/videoGenerationBuilders';
-import { 
+import {
   waitForRunwayVideoCompletion,
   validateVideoFile,
   fileToDataURI
 } from '@/lib/runwayVideoService';
 import { runwayVideo } from '@/store/slices/generationsApi';
 import { addActiveGeneration, updateActiveGeneration } from '@/store/slices/generationSlice';
+import { useRouter } from 'next/navigation';
+import { getSignInUrl } from '@/routes/routes';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 // historyService removed; backend will handle history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
-const updateHistoryEntry = async (_id: string, _updates: any) => {};
+const updateHistoryEntry = async (_id: string, _updates: any) => { };
 
 // Icons
-import { 
-  Upload, 
-  X, 
-  Play, 
-  Image as ImageIcon, 
-  Video, 
+import {
+  Upload,
+  X,
+  Play,
+  Image as ImageIcon,
+  Video,
   Settings,
   HelpCircle,
   Copy,
@@ -44,17 +47,19 @@ import { getModelCreditInfo } from '@/utils/modelCredits';
 
 const VideoGenerationInputBox = () => {
   const dispatch = useAppDispatch();
+  const router = useRouter();
+  const userData = useAppSelector((state: any) => state.auth?.user);
   const [state, setState] = useState<VideoGenerationState>(defaultVideoGenerationState);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number; status: string } | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showReferences, setShowReferences] = useState(false);
-  
+
   // File refs
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const referenceImageInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Textarea ref for auto-height
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -114,7 +119,7 @@ const VideoGenerationInputBox = () => {
 
     try {
       const dataURI = await fileToDataURI(file);
-      
+
       if (state.mode === 'image_to_video') {
         setState(prev => ({
           ...prev,
@@ -136,7 +141,7 @@ const VideoGenerationInputBox = () => {
 
     const file = files[0];
     const validation = validateVideoFile(file);
-    
+
     if (!validation.isValid) {
       toast.error(validation.error || 'Invalid video file');
       return;
@@ -205,13 +210,35 @@ const VideoGenerationInputBox = () => {
     if (referenceImageInputRef.current) referenceImageInputRef.current.value = '';
   };
 
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    if (!userData) return;
+
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'video') {
+      const { data } = intent;
+      console.log('[AutoResume] Found video intent, restoring state:', data);
+
+      if (data.state) {
+        setState(data.state);
+      }
+
+      clearAutoResumeIntent();
+
+      // Auto-trigger generation after a short delay
+      setTimeout(() => {
+        handleGenerate();
+      }, 1500);
+    }
+  }, [userData]);
+
   // Validate generation state
   const validateGeneration = (): { isValid: boolean; error?: string } => {
     if (state.mode === 'image_to_video') {
       if (!state.imageToVideo.promptImage) {
         return { isValid: false, error: 'Please upload an image for image-to-video generation' };
       }
-      
+
       // Check if "last" position is used with non-gen3a_turbo model
       if (Array.isArray(state.imageToVideo.promptImage)) {
         const hasLast = state.imageToVideo.promptImage.some(p => p.position === 'last');
@@ -233,6 +260,13 @@ const VideoGenerationInputBox = () => {
 
   // Handle generation
   const handleGenerate = async () => {
+    if (!userData) {
+      saveAutoResumeIntent('video', {
+        state: state
+      });
+      router.push(getSignInUrl());
+      return;
+    }
     const validation = validateGeneration();
     if (!validation.isValid) {
       toast.error(validation.error || 'Validation failed');
@@ -244,7 +278,7 @@ const VideoGenerationInputBox = () => {
 
     // Create generation ID for queue tracking
     const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    
+
     // Get current prompt and model
     const currentPrompt = state.mode === 'image_to_video' ? state.imageToVideo.promptText || '' : state.videoToVideo.promptText;
     const currentModel = state.mode === 'image_to_video' ? state.imageToVideo.model : state.videoToVideo.model;
@@ -314,7 +348,7 @@ const VideoGenerationInputBox = () => {
         isPublic,
         generationId,
       })).unwrap();
-      
+
       // Wait for completion
       const finalStatus = await waitForRunwayVideoCompletion(
         result.taskId,
@@ -360,7 +394,7 @@ const VideoGenerationInputBox = () => {
     } catch (error: any) {
       console.error('Video generation error:', error);
       toast.error(error.message || 'Video generation failed');
-      
+
       // Update history with error status
       if (firebaseHistoryId) {
         await updateHistoryEntry(firebaseHistoryId, {
@@ -401,25 +435,23 @@ const VideoGenerationInputBox = () => {
           <ImageIcon className="w-5 h-5 text-blue-400" />
           <span className="text-white font-medium">Mode:</span>
         </div>
-        
+
         <div className="flex bg-white/10 rounded-lg p-1">
           <button
             onClick={() => setState(prev => ({ ...prev, mode: 'image_to_video' }))}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-              state.mode === 'image_to_video'
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${state.mode === 'image_to_video'
                 ? 'bg-white text-black'
                 : 'text-white hover:bg-white/10'
-            }`}
+              }`}
           >
             Image → Video
           </button>
           <button
             onClick={() => setState(prev => ({ ...prev, mode: 'video_to_video' }))}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-              state.mode === 'video_to_video'
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${state.mode === 'video_to_video'
                 ? 'bg-white text-black'
                 : 'text-white hover:bg-white/10'
-            }`}
+              }`}
           >
             Video → Video
           </button>
@@ -434,13 +466,13 @@ const VideoGenerationInputBox = () => {
             <Settings className="w-5 h-5 text-purple-400" />
             <span className="text-white font-medium">Model:</span>
           </div>
-          
+
           <select
             value={getCurrentState().model}
             onChange={(e) => {
               const newModel = e.target.value;
               const newRatio = getDefaultRatioForModel(newModel);
-              
+
               if (state.mode === 'image_to_video') {
                 setState(prev => ({
                   ...prev,
@@ -486,7 +518,7 @@ const VideoGenerationInputBox = () => {
             <div className="w-5 h-5 text-green-400">📐</div>
             <span className="text-white font-medium">Aspect Ratio:</span>
           </div>
-          
+
           <select
             value={getCurrentState().ratio}
             onChange={(e) => {
@@ -518,7 +550,7 @@ const VideoGenerationInputBox = () => {
               <div className="w-5 h-5 text-yellow-400">⏱️</div>
               <span className="text-white font-medium">Duration:</span>
             </div>
-            
+
             <select
               value={state.imageToVideo.duration}
               onChange={(e) => setState(prev => ({
@@ -546,7 +578,7 @@ const VideoGenerationInputBox = () => {
               <span>Describe style, motion, lighting. Max 1000 chars.</span>
             </div>
           </div>
-          
+
           <textarea
             ref={promptTextareaRef}
             value={state.mode === 'image_to_video' ? state.imageToVideo.promptText : state.videoToVideo.promptText}
@@ -569,11 +601,11 @@ const VideoGenerationInputBox = () => {
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
             style={{ maxHeight: '96px' }}
           />
-          
+
           <div className="flex justify-between text-xs text-white/60">
             <span>
-              {state.mode === 'image_to_video' 
-                ? state.imageToVideo.promptText?.length || 0 
+              {state.mode === 'image_to_video'
+                ? state.imageToVideo.promptText?.length || 0
                 : state.videoToVideo.promptText?.length || 0
               } / 1000 characters
             </span>
@@ -590,7 +622,7 @@ const VideoGenerationInputBox = () => {
               <span>Use the same seed to reproduce similar results.</span>
             </div>
           </div>
-          
+
           <input
             type="number"
             min="0"
@@ -623,7 +655,7 @@ const VideoGenerationInputBox = () => {
               <ImageIcon className="w-5 h-5 text-blue-400" />
               <span className="text-white font-medium">Input Image:</span>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <input
                 ref={imageInputRef}
@@ -632,7 +664,7 @@ const VideoGenerationInputBox = () => {
                 onChange={handleImageUpload}
                 className="hidden"
               />
-              
+
               <button
                 onClick={() => imageInputRef.current?.click()}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -640,7 +672,7 @@ const VideoGenerationInputBox = () => {
                 <Upload className="w-4 h-4" />
                 Upload Image
               </button>
-              
+
               {state.imageToVideo.promptImage && (
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center">
@@ -672,7 +704,7 @@ const VideoGenerationInputBox = () => {
                   <span>≤16 MB and serve with correct Content-Type.</span>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <input
                   ref={videoInputRef}
@@ -681,7 +713,7 @@ const VideoGenerationInputBox = () => {
                   onChange={handleVideoUpload}
                   className="hidden"
                 />
-                
+
                 <button
                   onClick={() => videoInputRef.current?.click()}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -689,7 +721,7 @@ const VideoGenerationInputBox = () => {
                   <Upload className="w-4 h-4" />
                   Upload Video
                 </button>
-                
+
                 {state.videoToVideo.videoUri && (
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center">
@@ -720,7 +752,7 @@ const VideoGenerationInputBox = () => {
                   <span>Add 1–5 images to guide style/palette. Motion comes from your video.</span>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <input
                   ref={referenceImageInputRef}
@@ -729,7 +761,7 @@ const VideoGenerationInputBox = () => {
                   onChange={handleReferenceImageUpload}
                   className="hidden"
                 />
-                
+
                 <button
                   onClick={() => referenceImageInputRef.current?.click()}
                   className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
@@ -738,7 +770,7 @@ const VideoGenerationInputBox = () => {
                   Add Reference
                 </button>
               </div>
-              
+
               {/* Reference Images List */}
               {state.videoToVideo.references && state.videoToVideo.references.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -773,7 +805,7 @@ const VideoGenerationInputBox = () => {
           <Settings className="w-4 h-4" />
           <span>Advanced Settings</span>
         </button>
-        
+
         {showAdvanced && (
           <div className="p-4 bg-white/5 rounded-lg space-y-4">
             <div className="flex items-center gap-4">
@@ -815,11 +847,10 @@ const VideoGenerationInputBox = () => {
         <button
           onClick={handleGenerate}
           disabled={isGenerateDisabled() || isGenerating}
-          className={`px-8 py-3 rounded-lg font-medium text-lg transition-all ${
-            isGenerateDisabled() || isGenerating
+          className={`px-8 py-3 rounded-lg font-medium text-lg transition-all ${isGenerateDisabled() || isGenerating
               ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl'
-          }`}
+            }`}
         >
           {isGenerating ? (
             <div className="flex items-center gap-2">

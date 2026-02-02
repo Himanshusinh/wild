@@ -75,6 +75,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   const effectiveGenerationType: GenerationType = pathType ?? currentGenerationType;
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
+  const user = useAppSelector((state: any) => state.auth?.user);
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false);
 
   // Use ref to track which generation types we've already loaded history for
@@ -125,6 +126,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
     }
 
     effectTimeoutRef.current = setTimeout(() => {
+      if (!user) return; // Suppress fetching if not logged in
       if (currentView === 'generation') {
         // Prevent multiple simultaneous loads
         if (isLoadingRef.current) {

@@ -1441,7 +1441,7 @@ export default function ArtStationPage() {
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
       {/* When authenticated: add margin for sidepanel, when not: full width */}
-      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
+      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} md:ml-18`}>
         <div className="flex-1 min-w-0 px-2 sm:px-4 md:px-3 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-8 md:pt-4 ">

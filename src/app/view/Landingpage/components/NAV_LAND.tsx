@@ -343,7 +343,7 @@ const NAV_LAND = ({ onGetStarted }: NAV_LANDProps) => {
           history.pushState(null, document.title, location.href)
         })
       } catch { }
-      window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS')
+      window.location.replace('/view/HomePage?toast=LOGOUT_SUCCESS')
     }
   }
 
