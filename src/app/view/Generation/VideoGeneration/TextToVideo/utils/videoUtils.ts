@@ -182,3 +182,156 @@ export const copyPrompt = async (e: React.MouseEvent, text: string) => {
     } catch { }
   }
 };
+
+export interface ModelCapabilities {
+  supportsTextToVideo: boolean;
+  supportsImageToVideo: boolean;
+  supportsVideoToVideo: boolean;
+  requiresImage: boolean;
+  requiresFirstFrame: boolean;
+  requiresLastFrame: boolean;
+  requiresReferenceImage: boolean;
+  requiresVideo: boolean;
+}
+
+/**
+ * Helper function to determine model capabilities
+ */
+export const getModelCapabilities = (model: string): ModelCapabilities => {
+  const capabilities: ModelCapabilities = {
+    supportsTextToVideo: false,
+    supportsImageToVideo: false,
+    supportsVideoToVideo: false,
+    requiresImage: false,
+    requiresFirstFrame: false,
+    requiresLastFrame: false,
+    requiresReferenceImage: false,
+    requiresVideo: false,
+  };
+
+  // Models that support both text-to-video and image-to-video
+  if (model.includes("veo3.1") && !model.includes("i2v")) {
+    // Veo 3.1 supports both T2V and I2V (when not explicitly i2v variant)
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.includes("veo3") && !model.includes("veo3.1") && !model.includes("i2v")) {
+    // Veo3 supports both T2V and I2V (when not explicitly i2v variant)
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.includes("wan-2.5") && !model.includes("i2v")) {
+    // WAN 2.5 supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model === 'kling-2.6-pro') {
+    // Kling 2.6 Pro supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.startsWith('kling-') && model.includes('v2.5')) {
+    // Kling 2.5 Turbo Pro supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.startsWith('kling-') && model.includes('v2.1-master')) {
+    // Kling 2.1 Master supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.startsWith('kling-') && model.includes('v2.1')) {
+    // Kling 2.1 (non-master) remains image-to-video only
+    capabilities.supportsImageToVideo = true;
+    capabilities.requiresImage = true;
+  } else if (model === 'kling-o1') {
+    // Kling o1 (FAL) requires first frame, last frame is optional
+    // - If both frames: uses image-to-video model
+    // - If only first frame: uses reference-to-video model
+    capabilities.supportsImageToVideo = true;
+    capabilities.requiresImage = true;
+    capabilities.requiresFirstFrame = true;
+    capabilities.requiresLastFrame = false; // Last frame is optional
+  } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
+    // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
+    capabilities.supportsImageToVideo = true;
+    capabilities.requiresImage = true;
+  } else if (model.includes('seedance') && !model.includes('i2v')) {
+    // Seedance supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.includes('pixverse') && !model.includes('i2v')) {
+    // PixVerse supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.includes('sora2') && !model.includes('i2v') && !model.includes('v2v')) {
+    // Sora 2 supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.includes('ltx2') && !model.includes('i2v')) {
+    // LTX V2 supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  }
+
+  // Text-to-video only models
+  if (model === "T2V-01-Director") {
+    capabilities.supportsTextToVideo = true;
+  }
+
+  // Image-to-video only models (explicit i2v variants or image-only models)
+  if (model === "I2V-01-Director" ||
+    model === "S2V-01" ||
+    model === "gen4_turbo" ||
+    model === "gen3a_turbo" ||
+    (model.includes("veo3") && model.includes("i2v")) ||
+    (model.includes("wan-2.5") && model.includes("i2v")) ||
+    (model.startsWith('kling-') && model.includes('i2v')) ||
+    (model.includes('seedance') && model.includes('i2v')) ||
+    (model.includes('pixverse') && model.includes('i2v')) ||
+    (model.includes('sora2') && model.includes('i2v'))) {
+    capabilities.supportsImageToVideo = true;
+    capabilities.requiresImage = true;
+  }
+
+  // Video-to-video models
+  if (model === "kling-lip-sync") {
+    capabilities.supportsVideoToVideo = true;
+    capabilities.requiresVideo = true;
+    capabilities.supportsTextToVideo = false;
+    capabilities.supportsImageToVideo = false;
+  }
+  if (model === "wan-2.2-animate-replace") {
+    capabilities.supportsVideoToVideo = true;
+    capabilities.requiresVideo = true;
+    capabilities.requiresImage = true; // Requires character_image
+    capabilities.supportsTextToVideo = false;
+    capabilities.supportsImageToVideo = false;
+  }
+  if (model === "gen4_aleph" || model.includes('sora2-v2v')) {
+    capabilities.supportsVideoToVideo = true;
+    capabilities.requiresVideo = true;
+  }
+
+  // Models that support both text and image
+  if (model === "MiniMax-Hailuo-02") {
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+    // Image is optional for text-to-video, required for 512P resolution
+  }
+  if (model === "MiniMax-Hailuo-2.3") {
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+    // Image is optional for text-to-video
+  }
+  if (model === "MiniMax-Hailuo-2.3-Fast") {
+    capabilities.supportsImageToVideo = true;
+    capabilities.requiresImage = true;
+    // Fast model is I2V only, requires first_frame_image
+    capabilities.requiresFirstFrame = true;
+  }
+
+  // Specific requirements
+  if (model === "I2V-01-Director") {
+    capabilities.requiresFirstFrame = true;
+  }
+  if (model === "S2V-01") {
+    capabilities.requiresReferenceImage = true;
+  }
+
+  return capabilities;
+};

@@ -65,9 +65,13 @@ import {
   convertFrameSizeToMiniMaxResolution,
   waitForMiniMaxVideoCompletion,
   getCleanPrompt,
-  copyPrompt 
+  copyPrompt,
+  getModelCapabilities
 } from "../utils/videoUtils";
 import HistorySection from "./HistorySection";
+import { useFileHandler } from "../hooks/useFileHandler";
+import { useUrlParamsSync } from "../hooks/useUrlParamsSync";
+
 
 
 interface InputBoxProps {
@@ -133,91 +137,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [error, setError] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Handle image parameter from URL for image-to-video mode
-  useEffect(() => {
-    console.log('Video generation - useEffect triggered, searchParams changed');
-    const imageUrl = searchParams.get('image');
-    const promptParam = searchParams.get('prompt');
-    const modelParam = searchParams.get('model');
-    const frameParam = searchParams.get('frame') || searchParams.get('aspect') || searchParams.get('aspectRatio');
-    const durationParam = searchParams.get('duration');
-    const qualityParam = searchParams.get('quality');
-    const resolutionParam = searchParams.get('resolution');
-    console.log('Video generation - checking for image parameter:', imageUrl);
-    console.log('Video generation - all search params:', Object.fromEntries(searchParams.entries()));
-    console.log('Video generation - current uploadedImages:', uploadedImages);
-    console.log('Video generation - current generationMode:', generationMode);
 
-    // Apply remix params (prompt/model/frame/etc). IMPORTANT: this does NOT attach the generated video
-    // as input; it just pre-fills the controls.
-    if (promptParam) {
-      try { setPrompt(decodeURIComponent(promptParam)); } catch { setPrompt(promptParam); }
-    }
-    if (modelParam) {
-      try { setSelectedModel(decodeURIComponent(modelParam)); } catch { setSelectedModel(modelParam); }
-    }
-    if (frameParam) {
-      try { setFrameSize(decodeURIComponent(frameParam)); } catch { setFrameSize(frameParam); }
-    }
-    if (durationParam) {
-      const d = Number(durationParam);
-      if (Number.isFinite(d) && d > 0) setDuration(d);
-    }
-    if (qualityParam) {
-      try {
-        const q = decodeURIComponent(qualityParam).toLowerCase();
-        // Veo/Kling-style qualities: 720p / 1080p etc
-        if (q.includes('1080')) setSelectedQuality('1080p' as any);
-        else if (q.includes('720')) setSelectedQuality('720p' as any);
-        else if (q.includes('480')) setSelectedQuality('480p' as any);
-      } catch { }
-    }
-    if (resolutionParam) {
-      try {
-        const r = decodeURIComponent(resolutionParam).toLowerCase();
-        if (r.includes('1080')) setSelectedResolution('1080P' as any);
-        else if (r.includes('768')) setSelectedResolution('768P' as any);
-        else if (r.includes('720')) setSelectedResolution('720P' as any);
-        else if (r.includes('480')) setSelectedResolution('480P' as any);
-      } catch { }
-    }
-
-    if (imageUrl) {
-      // Decode the URL-encoded image parameter
-      let decodedImageUrl = decodeURIComponent(imageUrl);
-
-      // Convert proxy URL to full Zata URL if needed
-      if (decodedImageUrl.startsWith('/api/proxy/resource/')) {
-        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || '';
-        const path = decodedImageUrl.replace('/api/proxy/resource/', '');
-        decodedImageUrl = `${ZATA_PREFIX}${decodeURIComponent(path)}`;
-        console.log('Video generation - converted proxy URL to full Zata URL:', decodedImageUrl);
-      }
-
-      console.log('Loading image from URL parameter for video generation:', decodedImageUrl);
-
-      // Set generation mode to image-to-video
-      setGenerationMode("image_to_video");
-
-      // Set the image in uploaded images
-      setUploadedImages([decodedImageUrl]);
-
-      console.log('Video generation - set mode to image_to_video and loaded image');
-    } else {
-      console.log('Video generation - no image parameter found');
-    }
-
-    // Consume params once so refresh doesn't keep re-applying them.
-    try {
-      const current = new URL(window.location.href);
-      const keysToDelete = ['prompt', 'model', 'frame', 'aspect', 'aspectRatio', 'duration', 'quality', 'resolution'];
-      let changed = false;
-      keysToDelete.forEach((k) => {
-        if (current.searchParams.has(k)) { current.searchParams.delete(k); changed = true; }
-      });
-      if (changed) window.history.replaceState({}, '', current.toString());
-    } catch { }
-  }, [searchParams]);
 
   // UploadModal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -275,6 +195,19 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Helpers: clean prompt and copy
 
+  // Handle image parameter from URL for image-to-video mode (Syncs URL params with state)
+  useUrlParamsSync({
+    searchParams,
+    setPrompt,
+    setSelectedModel,
+    setFrameSize,
+    setDuration,
+    setSelectedQuality,
+    setSelectedResolution,
+    setGenerationMode,
+    setUploadedImages
+  });
+
 
   // Handle manual prompt enhancement
   const handleEnhancePrompt = async () => {
@@ -315,6 +248,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Delete handler - same logic as ImagePreviewModal
+  // Delete handler - same logic as ImagePreviewModal
   const handleDeleteVideo = async (e: React.MouseEvent, entry: HistoryEntry) => {
     try {
       e.stopPropagation();
@@ -329,55 +263,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
   };
 
-  const processFiles = async (files: File[]) => {
-    // 1. Separate images and videos
-    const imageFiles = files.filter(f => f.type.startsWith('image/'));
-    const videoFiles = files.filter(f => f.type.startsWith('video/'));
-
-    // 2. Process Images
-    if (imageFiles.length > 0) {
-      const newUrls: string[] = [];
-      for (const file of imageFiles) {
-        const reader = new FileReader();
-        const dataUrl: string = await new Promise((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        newUrls.push(dataUrl);
-      }
-
-      if (newUrls.length > 0) {
-        setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
-        toast.success(`Added ${newUrls.length} image(s)`);
-      }
-    }
-
-    // 3. Process Videos (Take the first valid video)
-    if (videoFiles.length > 0) {
-      const file = videoFiles[0];
-      const maxBytes = 14 * 1024 * 1024; // 14MB limit
-      const allowedMimes = new Set([
-        'video/mp4', 'video/webm', 'video/ogg',
-        'video/quicktime', 'video/mov', 'video/h264'
-      ]);
-
-      if (!allowedMimes.has(file.type)) {
-        toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
-      } else if (file.size > maxBytes) {
-        toast.error('Video too large. Please upload a video ≤ 14MB');
-      } else {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const result = ev.target?.result as string;
-          if (result) {
-            setUploadedVideo(result);
-            toast.success('Video added');
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
+  const { processFiles } = useFileHandler({ setUploadedImages, setUploadedVideo });
 
   // Credits management - after all state declarations
   const normalizedSelectedRes = typeof selectedResolution === 'string' ? selectedResolution.toLowerCase() : '1080p';
@@ -476,145 +362,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
   }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration, generationMode, generateAudio]);
 
-  // Helper function to determine model capabilities
-  const getModelCapabilities = (model: string) => {
-    const capabilities = {
-      supportsTextToVideo: false,
-      supportsImageToVideo: false,
-      supportsVideoToVideo: false,
-      requiresImage: false,
-      requiresFirstFrame: false,
-      requiresLastFrame: false,
-      requiresReferenceImage: false,
-      requiresVideo: false,
-    };
 
-    // Models that support both text-to-video and image-to-video
-    if (model.includes("veo3.1") && !model.includes("i2v")) {
-      // Veo 3.1 supports both T2V and I2V (when not explicitly i2v variant)
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.includes("veo3") && !model.includes("veo3.1") && !model.includes("i2v")) {
-      // Veo3 supports both T2V and I2V (when not explicitly i2v variant)
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.includes("wan-2.5") && !model.includes("i2v")) {
-      // WAN 2.5 supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model === 'kling-2.6-pro') {
-      // Kling 2.6 Pro supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.startsWith('kling-') && model.includes('v2.5')) {
-      // Kling 2.5 Turbo Pro supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.startsWith('kling-') && model.includes('v2.1-master')) {
-      // Kling 2.1 Master supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.startsWith('kling-') && model.includes('v2.1')) {
-      // Kling 2.1 (non-master) remains image-to-video only
-      capabilities.supportsImageToVideo = true;
-      capabilities.requiresImage = true;
-    } else if (model === 'kling-o1') {
-      // Kling o1 (FAL) requires first frame, last frame is optional
-      // - If both frames: uses image-to-video model
-      // - If only first frame: uses reference-to-video model
-      capabilities.supportsImageToVideo = true;
-      capabilities.requiresImage = true;
-      capabilities.requiresFirstFrame = true;
-      capabilities.requiresLastFrame = false; // Last frame is optional
-    } else if (model === 'gen4_turbo' || model === 'gen3a_turbo') {
-      // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
-      capabilities.supportsImageToVideo = true;
-      capabilities.requiresImage = true;
-    } else if (model.includes('seedance') && !model.includes('i2v')) {
-      // Seedance supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.includes('pixverse') && !model.includes('i2v')) {
-      // PixVerse supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.includes('sora2') && !model.includes('i2v') && !model.includes('v2v')) {
-      // Sora 2 supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    } else if (model.includes('ltx2') && !model.includes('i2v')) {
-      // LTX V2 supports both T2V and I2V
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-    }
-
-    // Text-to-video only models
-    if (model === "T2V-01-Director") {
-      capabilities.supportsTextToVideo = true;
-    }
-
-    // Image-to-video only models (explicit i2v variants or image-only models)
-    if (model === "I2V-01-Director" ||
-      model === "S2V-01" ||
-      model === "gen4_turbo" ||
-      model === "gen3a_turbo" ||
-      (model.includes("veo3") && model.includes("i2v")) ||
-      (model.includes("wan-2.5") && model.includes("i2v")) ||
-      (model.startsWith('kling-') && model.includes('i2v')) ||
-      (model.includes('seedance') && model.includes('i2v')) ||
-      (model.includes('pixverse') && model.includes('i2v')) ||
-      (model.includes('sora2') && model.includes('i2v'))) {
-      capabilities.supportsImageToVideo = true;
-      capabilities.requiresImage = true;
-    }
-
-    // Video-to-video models
-    if (model === "kling-lip-sync") {
-      capabilities.supportsVideoToVideo = true;
-      capabilities.requiresVideo = true;
-      capabilities.supportsTextToVideo = false;
-      capabilities.supportsImageToVideo = false;
-    }
-    if (model === "wan-2.2-animate-replace") {
-      capabilities.supportsVideoToVideo = true;
-      capabilities.requiresVideo = true;
-      capabilities.requiresImage = true; // Requires character_image
-      capabilities.supportsTextToVideo = false;
-      capabilities.supportsImageToVideo = false;
-    }
-    if (model === "gen4_aleph" || model.includes('sora2-v2v')) {
-      capabilities.supportsVideoToVideo = true;
-      capabilities.requiresVideo = true;
-    }
-
-    // Models that support both text and image
-    if (model === "MiniMax-Hailuo-02") {
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-      // Image is optional for text-to-video, required for 512P resolution
-    }
-    if (model === "MiniMax-Hailuo-2.3") {
-      capabilities.supportsTextToVideo = true;
-      capabilities.supportsImageToVideo = true;
-      // Image is optional for text-to-video
-    }
-    if (model === "MiniMax-Hailuo-2.3-Fast") {
-      capabilities.supportsImageToVideo = true;
-      capabilities.requiresImage = true;
-      // Fast model is I2V only, requires first_frame_image
-      capabilities.requiresFirstFrame = true;
-    }
-
-    // Specific requirements
-    if (model === "I2V-01-Director") {
-      capabilities.requiresFirstFrame = true;
-    }
-    if (model === "S2V-01") {
-      capabilities.requiresReferenceImage = true;
-    }
-
-    return capabilities;
-  };
 
   // Memoize current model capabilities to prevent recalculations during render
   const currentModelCapabilities = useMemo(() => {
@@ -5026,9 +4774,31 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       try { const toast = (await import('react-hot-toast')).default; toast.success('Video generated successfully!'); } catch { }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Video generation failed:', error);
-      setError(error instanceof Error ? error.message : 'Video generation failed');
+      
+      // Extract structured error info if available
+      let errorMessage = error instanceof Error ? error.message : 'Video generation failed';
+      let errorTitle = 'Generation Failed';
+      let errorCode: string | undefined;
+
+      // Handle Axios/Backend API errors
+      if (error?.response?.data) {
+        const apiData = error.response.data;
+        if (apiData.message) errorMessage = apiData.message;
+        if (apiData.data?.title) errorTitle = apiData.data.title;
+        if (apiData.data?.code) errorCode = apiData.data.code;
+      } else if (error?.message) {
+         // Fallback if no response data
+         errorMessage = error.message;
+      }
+
+      // Distinguish User Credit Errors
+      if (errorMessage.toLowerCase().includes("insufficient credits")) {
+        errorTitle = "Insufficient Credits";
+      }
+
+      setError(errorMessage);
       setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
 
       // Update queue with failed status
@@ -5037,7 +4807,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           id: generationId,
           updates: {
             status: 'failed',
-            error: error instanceof Error ? error.message : 'Video generation failed'
+            error: errorMessage
           }
         }));
       }
@@ -5054,8 +4824,34 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       try {
         const toast = (await import('react-hot-toast')).default;
-        const errorMessage = (error as any)?.payload || (error instanceof Error ? error.message : 'Video generation failed');
-        toast.error(errorMessage, { duration: 5000 });
+        
+        // Custom error toast
+        toast.error(
+          <div className="flex flex-col gap-1 min-w-[200px]">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-white">{errorTitle}</span>
+              {errorCode && (
+                <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded text-white/50 font-mono">
+                  {errorCode}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-white/80 leading-snug">
+              {errorMessage}
+            </p>
+          </div>,
+          {
+            duration: 6000,
+            style: {
+              background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(153, 27, 27, 0.15) 100%)',
+              border: '1px solid rgba(220, 38, 38, 0.3)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              backdropFilter: 'blur(10px)',
+              maxWidth: '400px',
+            },
+          } as any
+        );
       } catch { }
     } finally {
       setIsGenerating(false);
