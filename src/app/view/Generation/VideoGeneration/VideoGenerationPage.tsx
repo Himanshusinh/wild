@@ -7,7 +7,7 @@ import { getSignInUrl } from '@/routes/routes';
 import InputBox from './TextToVideo/compo/InputBox';
 import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 import VideoGenerationGuide from './TextToVideo/compo/VideoGenerationGuide';
-import HistoryControls from './TextToVideo/compo/HistoryControls';
+// HistoryControls removed
 import { usePathname } from 'next/navigation';
 import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
 
@@ -166,7 +166,7 @@ export default function VideoGenerationPage() {
                                 </div>
                                 {/* Desktop: Search, Sort, and Date controls - positioned at right end of Video Generation text */}
                                 <div className="hidden md:flex items-center pt-2">
-                                    <HistoryControls mode="video" />
+                                    {/* HistoryControls removed to avoid duplication */}
                                 </div>
                             </div>
                             <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-2">
@@ -222,7 +222,7 @@ export default function VideoGenerationPage() {
                                 ))}
                             </div>
                             <div className="flex md:hidden items-center pt-0">
-                                <HistoryControls mode="video" />
+                                {/* HistoryControls removed to avoid duplication with HistorySection */}
                             </div>
 
                         </div>

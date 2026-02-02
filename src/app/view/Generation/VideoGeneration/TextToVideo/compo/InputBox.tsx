@@ -4990,7 +4990,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               const extraLastFrame =
                 !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v')) || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
               return (displayImages.length > 0 || extraLastFrame) ? (
-                <div className="md:mb-3 -mb-6">
+                <div className="md:mb-3 mb-3">
                   <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
                   <div className="flex gap-2 flex-wrap">
                     {displayImages.map((image, index) => (
