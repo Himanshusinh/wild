@@ -20,6 +20,7 @@ import { Music4 } from 'lucide-react';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicHistory from "./MusicHistory";
+import axiosInstance from "@/lib/axiosInstance";
 
 const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
   const dispatch = useAppDispatch();
@@ -63,6 +64,87 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     rollbackOptimisticDeduction,
     refreshCredits,
   } = useCredits();
+
+  // Function to fetch and add/update a single generation instead of reloading all
+  const refreshSingleGeneration = async (historyId: string) => {
+    try {
+      const res = await axiosInstance.get(`/api/generations/${historyId}`);
+      const item = res.data?.data?.item;
+      
+      if (!item) {
+        console.warn('[refreshSingleGeneration] Music generation not found, falling back to full refresh');
+        refreshMusicHistoryImmediate();
+        return;
+      }
+
+      // Normalize the item to match HistoryEntry format
+      const normalizedEntry = {
+        ...item,
+        id: item.id || historyId,
+        timestamp: item.createdAt || item.updatedAt || item.timestamp || new Date().toISOString(),
+        createdAt: item.createdAt || item.updatedAt || new Date().toISOString(),
+      };
+
+      // Check if entry already exists in Redux
+      const currentState = store.getState();
+      const currentEntries = currentState.history?.entries || [];
+      const existing = currentEntries.find((e: any) => 
+        String(e?.id || '') === String(historyId) ||
+        String(e?.id || '') === String(normalizedEntry.id)
+      );
+
+      if (existing) {
+        // Update existing entry
+        console.log('[refreshSingleGeneration] Updating existing music generation:', existing.id);
+        dispatch(updateHistoryEntry({
+          id: existing.id,
+          updates: {
+            status: normalizedEntry.status,
+            audios: normalizedEntry.audios,
+            images: normalizedEntry.images,
+            timestamp: normalizedEntry.timestamp,
+          }
+        }));
+      } else {
+        // Add new entry
+        console.log('[refreshSingleGeneration] Adding new music generation:', normalizedEntry.id);
+        dispatch(addHistoryEntry(normalizedEntry));
+      }
+
+      // Correlate with active generation by prompt+timestamp
+      try {
+        const ne = normalizedEntry as any;
+        const nePrompt = String(ne?.prompt || '').trim().toLowerCase();
+        const neTime = ne?.createdAt ? Date.parse(ne.createdAt) : Date.now();
+        const MAX_TIME_DIFF = 120000; // 2 minutes
+
+        activeGenerations.forEach((g: any) => {
+          try {
+            const gPrompt = String(g?.prompt || '').trim().toLowerCase();
+            const gTime = typeof g?.createdAt === 'number' ? g.createdAt : Date.parse(String(g?.createdAt || '')) || Date.now();
+            const timeDiff = Math.abs(neTime - gTime);
+            
+            if (gPrompt && nePrompt && gPrompt === nePrompt && timeDiff < MAX_TIME_DIFF) {
+              console.log('[refreshSingleGeneration] Correlating active music generation:', { genId: g.id, historyId: normalizedEntry.id });
+              dispatch(updateActiveGeneration({
+                id: g.id,
+                updates: { historyId: normalizedEntry.id }
+              }));
+            }
+          } catch (e) {
+            // Continue with next generation
+          }
+        });
+      } catch (e) {
+        console.error('[refreshSingleGeneration] Failed to correlate with active generations:', e);
+      }
+
+    } catch (error) {
+      console.error('[refreshSingleGeneration] Failed to fetch music generation, falling back to full refresh:', error);
+      refreshMusicHistoryImmediate();
+    }
+  };
+
 
   const handleGenerate = async (payload: any) => {
     const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
@@ -440,16 +522,14 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       try { await refreshCredits(); } catch { }
       try { await refreshCredits(); } catch { }
 
-      // Refresh history after a short delay to ensure backend has updated
-      // For MiniMax Music 2, we already added the entry, so skip refresh to avoid duplicates
-      // For others, refresh to sync with backend
-      if (!backendHistoryId) {
-        setTimeout(() => {
-          console.log('🔄 Refreshing music history...');
-          refreshMusicHistoryImmediate();
-        }, 500);
+      // Refresh the completed generation using efficient single-entry fetch
+      const resultHistoryId = backendHistoryId || tempId;
+      if (resultHistoryId) {
+        console.log('🔄 Refreshing single music generation:', resultHistoryId);
+        await refreshSingleGeneration(resultHistoryId);
       } else {
-        console.log('✅ Skipping refresh for MiniMax Music 2 (entry already added)');
+        console.warn('⚠️ No history ID available, falling back to full refresh');
+        await refreshMusicHistoryImmediate();
       }
 
       console.log('✅ Music generation completed successfully');
@@ -474,17 +554,23 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       
       const historyIdToUpdate = backendHistoryId || tempId;
       
-      // For MiniMax Music 2, backend creates the entry, so we update it via refresh
-      // For others, update the frontend-created entry
+      // Link active generation with backend ID before refresh
+      if (generationId && historyIdToUpdate) {
+        dispatch(updateActiveGeneration({
+          id: generationId,
+          updates: { historyId: historyIdToUpdate }
+        }));
+      }
+      
+      // For MiniMax Music 2, backend creates the entry, so use refreshSingleGeneration
+      // For others, update the frontend-created entry then refresh it
       if (backendHistoryId) {
-        // Backend will handle the failed status, remove temp entry and refresh to show backend entry
+        // Backend will handle the failed status, remove temp entry
         if (tempId) {
           dispatch(removeHistoryEntry(tempId));
         }
-        // Refresh to load the backend's failed entry
-        setTimeout(() => {
-          refreshMusicHistoryImmediate();
-        }, 100);
+        // Refresh the single failed entry
+        await refreshSingleGeneration(backendHistoryId);
       } else if (tempId) {
         // Update Firebase for non-MiniMax Music 2
         try {
@@ -509,6 +595,12 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             audios: []
           }
         }));
+        
+        // Refresh the single failed entry
+        await refreshSingleGeneration(tempId);
+      } else {
+        // No ID available, fallback to full refresh
+        await refreshMusicHistoryImmediate();
       }
 
       // Update local preview to failed
@@ -516,11 +608,6 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         ...prev,
         status: 'failed'
       }) : prev);
-      
-      // Force refresh to show failed state
-      setTimeout(() => {
-        refreshMusicHistoryImmediate();
-      }, 100);
 
       setErrorMessage(error.message || 'Music generation failed');
       try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch {}

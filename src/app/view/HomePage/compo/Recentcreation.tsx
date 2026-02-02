@@ -9,7 +9,6 @@ import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal'
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview'
-import LogoImagePreview from '@/app/view/Generation/ImageGeneration/LogoGeneration/compo/LogoImagePreview'
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
 import { toMediaProxy, toThumbUrl, toDirectUrl } from '@/lib/thumb'
 import SmartImage from '@/components/media/SmartImage'
@@ -1168,13 +1167,7 @@ const Recentcreation: React.FC = () => {
         </div>
       )}
       
-      {logoPreviewEntry && (
-        <LogoImagePreview
-          isOpen={!!logoPreviewEntry}
-          onClose={() => setLogoPreviewEntry(null)}
-          entry={logoPreviewEntry}
-        />
-      )}
+      
       
       {stickerPreviewEntry && (
         <StickerImagePreview

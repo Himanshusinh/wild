@@ -25,8 +25,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@image-edit/*": [
+        "./src/image_edit/*"
       ]
-    }
+    },
+    "types": ["jest"]
   },
   "include": [
     "next-env.d.ts",

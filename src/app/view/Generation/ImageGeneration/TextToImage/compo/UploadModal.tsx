@@ -9,6 +9,9 @@ type UploadModalProps = {
   onClose: () => void;
   onAdd: (urls: string[]) => void;
   remainingSlots: number; // how many images can still be added (max 4 total)
+  initialTab?: 'library' | 'computer' | 'uploads';
+  enableCameraCapture?: boolean;
+  cameraFacingMode?: 'user' | 'environment';
   onTabChange?: (tab: 'library' | 'computer' | 'uploads') => void; // Callback when tab changes
   // Optional: allow parent to pass pre-fetched history/library entries (shape is flexible)
   historyEntries?: any[];
@@ -17,7 +20,19 @@ type UploadModalProps = {
   loading?: boolean;
 };
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots, onTabChange, historyEntries: propHistoryEntries, hasMore: propHasMore, loading: propLoading }) => {
+const UploadModal: React.FC<UploadModalProps> = ({
+  isOpen,
+  onClose,
+  onAdd,
+  remainingSlots,
+  initialTab,
+  enableCameraCapture = false,
+  cameraFacingMode = 'environment',
+  onTabChange,
+  historyEntries: propHistoryEntries,
+  hasMore: propHasMore,
+  loading: propLoading,
+}) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
   
   // State for library and uploads data
@@ -78,8 +93,77 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
   }, [tab, isOpen]); // Removed onTabChange from dependencies to prevent re-runs
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
+  const [cameraActive, setCameraActive] = React.useState(false);
+  const [cameraError, setCameraError] = React.useState<string | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+
+  const stopCamera = React.useCallback(() => {
+    try {
+      streamRef.current?.getTracks?.().forEach((t) => t.stop());
+    } catch {
+      // ignore
+    }
+    streamRef.current = null;
+    if (videoRef.current) {
+      try {
+        (videoRef.current as any).srcObject = null;
+      } catch {
+        // ignore
+      }
+    }
+    setCameraActive(false);
+  }, []);
+
+  const startCamera = React.useCallback(async () => {
+    setCameraError(null);
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error('Camera is not supported in this browser');
+      }
+      // Stop any previous stream
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: cameraFacingMode,
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        (videoRef.current as any).srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraActive(true);
+    } catch (e: any) {
+      setCameraError(e?.message || 'Failed to access camera');
+      stopCamera();
+    }
+  }, [cameraFacingMode, stopCamera]);
+
+  const captureFromCamera = React.useCallback(async () => {
+    const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
+    if (slotsLeft <= 0) return;
+    const v = videoRef.current;
+    if (!v) return;
+    const w = Math.max(1, v.videoWidth || 0);
+    const h = Math.max(1, v.videoHeight || 0);
+    if (!w || !h) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(v, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    if (dataUrl) {
+      setLocalUploads((prev) => [...prev, dataUrl].slice(0, remainingSlots));
+    }
+    stopCamera();
+  }, [localUploads.length, remainingSlots, stopCamera]);
 
   // Persist scroll positions for tabs so when the user switches tabs
   // the scrollbar returns to the same place they left it.
@@ -102,6 +186,31 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
       // ignore
     }
   }, []);
+
+  // If requested, default to initialTab when opening (without forcing it on every re-render)
+  const initialTabAppliedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isOpen) {
+      initialTabAppliedRef.current = false;
+      return;
+    }
+    if (!initialTab || initialTabAppliedRef.current) return;
+    setTab(initialTab);
+    initialTabAppliedRef.current = true;
+  }, [isOpen, initialTab]);
+
+  // Stop camera when modal closes/unmounts or leaving computer tab
+  React.useEffect(() => {
+    if (!isOpen) {
+      stopCamera();
+      setCameraError(null);
+      return;
+    }
+    if (tab !== 'computer') {
+      stopCamera();
+      setCameraError(null);
+    }
+  }, [isOpen, tab, stopCamera]);
 
   // Save previous tab scroll and restore per-tab scroll when modal opens or tab changes.
   React.useEffect(() => {
@@ -625,6 +734,62 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onAdd, remai
             ) : (
               <div>
                 <div className="text-white/70 md:text-sm text-[11px] mb-3">Choose up to {remainingSlots} image{remainingSlots === 1 ? '' : 's'}</div>
+                {enableCameraCapture && (
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="text-white/50 text-[11px]">You can upload files or capture from camera</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="md:px-3 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startCamera();
+                        }}
+                      >
+                        Use Camera
+                      </button>
+                      {cameraActive && (
+                        <button
+                          type="button"
+                          className="md:px-3 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            stopCamera();
+                          }}
+                        >
+                          Close Camera
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {enableCameraCapture && cameraError && (
+                  <div className="mb-3 text-[11px] text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                    {cameraError}
+                  </div>
+                )}
+
+                {enableCameraCapture && cameraActive && (
+                  <div className="mb-3 border border-white/10 rounded-lg overflow-hidden bg-black/40">
+                    <div className="relative w-full aspect-video bg-black">
+                      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                    </div>
+                    <div className="flex justify-end gap-2 p-3 border-t border-white/10">
+                      <button
+                        type="button"
+                        className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          captureFromCamera();
+                        }}
+                      >
+                        Capture Photo
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div
                   ref={dropRef}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}

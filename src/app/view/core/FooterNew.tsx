@@ -68,7 +68,7 @@ const FooterNew: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-6 lg:gap-8">
                 {/* Logo and Brand */}
                 <div className="lg:col-span-1 w-[100%] ">
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <Image
                       src={getImageUrl("core", "logo") || "/placeholder.svg"}
                       alt="WildMind Logo"
@@ -76,6 +76,17 @@ const FooterNew: React.FC = () => {
                       height={48}
                       className="h-8 w-auto md:h-7 lg:h-8"
                     />
+                  </div>
+
+                  <div>
+                    <Image
+              src="/core/wildmind_text.svg"
+              alt="WildMind Text Logo"
+              width={120}
+              height={22}
+              style={{ height: 22 }}
+              unoptimized
+            /> 
                   </div>
                   <p className="text-gray-400 text-sm leading-relaxed max-w-xs md:max-w-sm">
                     Imagination to Creation

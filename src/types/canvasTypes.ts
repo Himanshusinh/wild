@@ -13,6 +13,7 @@ export interface CanvasProject {
         backgroundColor?: string;
     };
     thumbnail?: string;
+    previewImages?: string[];
     createdAt: string;
     updatedAt: string;
 }

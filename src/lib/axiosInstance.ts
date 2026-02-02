@@ -52,7 +52,7 @@ const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,
   withCredentials: true,
-  timeout: 600000, // 10 minutes timeout for long-running requests like image/video generation (increased from 5min to support 7min+ generations)
+  timeout: 1200000, // 20 minutes timeout for long-running requests like video generation/upscale
   headers: {
     'Content-Type': 'application/json',
     // Suppress ngrok browser warning HTML page so API returns JSON
@@ -73,6 +73,23 @@ const isApiDebugEnabled = (): boolean => {
 // Attach device headers; rely on Bearer tokens primarily (session cookie is optional fallback)
 axiosInstance.interceptors.request.use(async (config) => {
   try {
+    // If sending FormData, do NOT force JSON content-type.
+    // Let the browser/Axios set the proper multipart boundary.
+    try {
+      const anyConfig: any = config as any;
+      const data = anyConfig?.data;
+      const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+      if (isFormData) {
+        const hdrs: any = anyConfig.headers || {};
+        // AxiosHeaders supports .delete(); plain objects use delete.
+        try { if (typeof hdrs.delete === 'function') hdrs.delete('Content-Type'); } catch {}
+        try { if (typeof hdrs.delete === 'function') hdrs.delete('content-type'); } catch {}
+        try { delete hdrs['Content-Type']; } catch {}
+        try { delete hdrs['content-type']; } catch {}
+        anyConfig.headers = hdrs;
+      }
+    } catch {}
+
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 

@@ -200,7 +200,17 @@ export const loadHistory = createAsyncThunk(
         params.search = (filtersForBackend as any).search.trim();
       }
       if (paginationParams?.limit) params.limit = paginationParams.limit;
-      if ((paginationParams as any)?.cursor?.id) params.cursor = (paginationParams as any).cursor.id;
+      // Prefer optimized pagination: backend expects `nextCursor` (createdAt millis).
+      // If a caller provided a cursor, treat it as a timestamp cursor when it looks numeric.
+      const providedCursorId = (paginationParams as any)?.cursor?.id;
+      const providedCursorTs = (paginationParams as any)?.cursor?.timestamp;
+      if (providedCursorTs) {
+        const ms = Date.parse(String(providedCursorTs));
+        if (!Number.isNaN(ms)) (params as any).nextCursor = String(ms);
+      } else if (providedCursorId !== undefined && providedCursorId !== null) {
+        const s = String(providedCursorId);
+        if (/^\d+$/.test(s)) (params as any).nextCursor = s;
+      }
   // Use optimized backend pagination defaults (createdAt DESC) by omitting sortBy/sortOrder
       // Serialize date range if present (ISO strings)
       if ((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end) {
@@ -377,7 +387,8 @@ export const loadMoreHistory = createAsyncThunk(
       
       // Debug removed to reduce noise
       
-  // Stored cursor from previous API response (can be timestamp or legacy doc id)
+  // Stored cursor from previous API response (should be createdAt millis for optimized pagination).
+  // If older code stored a legacy doc id, we will ignore it and synthesize a timestamp cursor.
   const storedNextCursor = state.history.nextCursor;
   let cursor: { timestamp: string; id: string } | undefined;
   
@@ -496,11 +507,27 @@ export const loadMoreHistory = createAsyncThunk(
 
       const wantsDateFilter = Boolean((filtersForBackend as any)?.dateRange && (filtersForBackend as any).dateRange.start && (filtersForBackend as any).dateRange.end);
 
-      // Prefer backend-provided cursor (works for both asc/desc). Fallback to last-entry id only if missing.
-      if (storedNextCursor !== undefined && storedNextCursor !== null) {
-        (params as any).cursor = String(storedNextCursor);
-      } else if (nextPageParams.cursor?.id) {
-        (params as any).cursor = String(nextPageParams.cursor.id);
+      // Use optimized pagination (`nextCursor`) consistently.
+      // - If we have a numeric cursor from backend, pass it through.
+      // - Otherwise synthesize from the last item's timestamp/createdAt.
+      const toNumericCursor = (v: any): string | null => {
+        if (v === undefined || v === null) return null;
+        const s = String(v).trim();
+        if (!s) return null;
+        if (/^\d+$/.test(s)) return s;
+        return null;
+      };
+      let nextCursorParam: string | null = toNumericCursor(storedNextCursor);
+      if (!nextCursorParam && nextPageParams.cursor?.timestamp) {
+        const ms = Date.parse(String(nextPageParams.cursor.timestamp));
+        if (!Number.isNaN(ms)) nextCursorParam = String(ms);
+      }
+      if (!nextCursorParam && nextPageParams.cursor?.id) {
+        // As a last resort, if id happens to be numeric.
+        nextCursorParam = toNumericCursor(nextPageParams.cursor.id);
+      }
+      if (nextCursorParam) {
+        (params as any).nextCursor = nextCursorParam;
       }
 
       // Serialize date range if present (ISO strings)

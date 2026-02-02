@@ -20,6 +20,9 @@ export function ProjectsView() {
 
     useEffect(() => {
         loadProjects();
+        // Reload when window gets focus (e.g. user comes back from canvas tab)
+        window.addEventListener('focus', loadProjects);
+        return () => window.removeEventListener('focus', loadProjects);
     }, []);
 
     const loadProjects = async () => {
@@ -34,12 +37,20 @@ export function ProjectsView() {
                 console.warn('[ProjectsView] User not authenticated, projects may not load', authError);
                 // Continue anyway - the API call will fail with 401 if not authenticated
             }
-            
+
             const response = await fetchCanvasProjects();
-            setProjects(response.projects || []);
+            const enrichedProjects = (response.projects || []).map(p => {
+                if (p.previewImages && p.previewImages.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * p.previewImages.length);
+                    return { ...p, thumbnail: p.previewImages[randomIndex] };
+                }
+                return p;
+            });
+            console.log('[ProjectsView] Loaded projects:', enrichedProjects);
+            setProjects(enrichedProjects);
         } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
-            
+
             // Provide specific error message for authentication issues
             if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
                 setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
@@ -71,13 +82,13 @@ export function ProjectsView() {
         } catch (e) {
             console.warn('[ProjectsView] Failed to get auth token for cross-subdomain auth', e);
         }
-        
+
         window.open(`${canvasUrl}?projectId=${projectId}${authHint}`, '_blank', 'noopener,noreferrer');
     };
 
     const handleDeleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
         e.stopPropagation(); // Prevent opening the project when clicking delete
-        
+
         if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
             return;
         }
@@ -92,8 +103,22 @@ export function ProjectsView() {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
+    const formatDate = (dateInput: any) => {
+        if (!dateInput) return '';
+        let date: Date;
+
+        if (typeof dateInput === 'string' || typeof dateInput === 'number') {
+            date = new Date(dateInput);
+        } else if (dateInput && typeof dateInput === 'object' && '_seconds' in dateInput) {
+            date = new Date(dateInput._seconds * 1000);
+        } else if (dateInput && typeof dateInput === 'object' && 'seconds' in dateInput) {
+            date = new Date(dateInput.seconds * 1000);
+        } else {
+            date = new Date(dateInput);
+        }
+
+        if (isNaN(date.getTime())) return 'Recently';
+
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -138,7 +163,7 @@ export function ProjectsView() {
                     {projects.map((p) => (
                         <div key={p.id} onClick={() => handleOpenProject(p.id)} className="group relative aspect-[4/3] bg-[#0A0A0A] rounded-2xl border border-white/5 overflow-hidden hover:border-[#60a5fa]/50 transition-all cursor-pointer">
                             {p.thumbnail ? (
-                                <Image src={p.thumbnail} fill className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-700 grayscale group-hover:grayscale-0" alt={p.name} unoptimized />
+                                <Image src={p.thumbnail} fill className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover:scale-105 transition-all duration-700" alt={p.name} unoptimized />
                             ) : (
                                 <div className="absolute inset-0 flex items-center justify-center opacity-20">
                                     <FolderOpen size={64} className="text-white" />
@@ -148,7 +173,7 @@ export function ProjectsView() {
                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent p-6 flex flex-col justify-end">
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 backdrop-blur px-2 py-1 rounded text-white">Project</span></div>
+
                                         <h3 className="text-xl font-medium text-white truncate max-w-[200px]">{p.name}</h3>
                                         <span className="text-sm text-slate-400">{formatDate(p.updatedAt)}</span>
                                     </div>

@@ -21,6 +21,19 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'ideogram-ai/ideogram-v3': 80,
   'ideogram-ai/ideogram-v3-quality': 200,
   'ideogram-3-turbo': 80,       // Ideogram 3 Turbo
+  'qwen-image-edit': 80,        // Legacy alias (keep for backward compatibility)
+  'qwen-image-edit-2511': 80,   // Replicate Qwen Image Edit 2511 (flat 80 credits)
+  'qwen-image-edit-2512': 60,   // Replicate Qwen Image Edit 2512 (flat 60 credits)
+  // Qwen Image (non-edit) variants
+  'qwen-image-2511': 80,
+  'qwen/qwen-image-2511': 80,
+  'replicate/qwen/qwen-image-2511': 80,
+  // Backend/provider may return provider-prefixed or non-edit 2512 identifiers; keep them aligned to 60 credits.
+  'qwen-image-2512': 60,
+  'qwen/qwen-image-2512': 60,
+  'replicate/qwen/qwen-image-2512': 60,
+  'qwen/qwen-image-edit-2512': 60,
+  'replicate/qwen/qwen-image-edit-2512': 60,
   // Imagen 4 family (FAL/Google)
   'imagen-4-ultra': 140,
   'imagen-4': 100,
@@ -34,7 +47,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Google Nano Banana (used by erase/replace in Edit Image)
   'google_nano_banana': 98,
   // Z-Image Turbo: Free (0 credits) for launch offer
-  'new-turbo-model': 0, // Free unlimited image generation
+  'new-turbo-model': 25, // z-image-turbo (now 25 credits)
+  // WILDMINDIMAGE: Free (0 credits)
+  'wildmindimage': 0,
   // Product Generation Models
   'flux-krea': 130,             // Similar to FLUX.1 [pro]
   'flux-kontext-dev': 90,       // Similar to FLUX.1 [dev]
@@ -306,7 +321,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate-crystal-upscaler-6k': 1620,
   'replicate-crystal-upscaler-8k': 3220,
   'replicate-crystal-upscaler-12k': 6420,
-  
+
   // GPT Image 1.5 quality variants
   'gpt-image-1.5-auto': 292,
   'gpt-image-1.5-low': 46,
@@ -412,6 +427,12 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Kling models
   if (modelValue.startsWith('kling')) {
+    // Special case: kling-o1 is a simple FAL model with only duration-based pricing (5s / 10s)
+    if (modelValue === 'kling-o1') {
+      const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const key = `kling-o1-${d >= 10 ? '10s' : '5s'}`;
+      return MODEL_CREDITS_MAPPING[key] || MODEL_CREDITS_MAPPING['kling-o1'] || null;
+    }
     // Kling 2.6 Pro: duration and audio-based
     if (modelValue === 'kling-2.6-pro') {
       const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
@@ -445,6 +466,21 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Seedance models
   if (modelValue.includes('seedance')) {
+    // Seedance 1.5: priced by exact duration (2-12s) and audio on/off.
+    // Source of truth is creditDistributionData rows like:
+    // "Seedance 1.5 T2V/I2V Audio On 2s" / "Seedance 1.5 T2V/I2V Audio Off 2s".
+    if (modelValue.includes('seedance-1.5')) {
+      const dRaw = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const d = Math.max(2, Math.min(12, Math.round(dRaw)));
+      // Backend defaults generate_audio to false if omitted, so default to Audio Off on frontend too.
+      const hasAudio = generateAudio === true;
+      const audioLabel = hasAudio ? 'Audio On' : 'Audio Off';
+      const modelName = `Seedance 1.5 T2V/I2V ${audioLabel} ${d}s`;
+      const row = creditDistributionData.find((m: any) => m?.modelName === modelName);
+      const credits = row?.creditsPerGeneration;
+      return typeof credits === 'number' ? credits : null;
+    }
+
     const isI2V = modelValue.includes('i2v');
     const modelType = isI2V ? 'i2v' : 't2v';
     const isProFast = modelValue.includes('pro-fast');

@@ -135,7 +135,7 @@ export default function ChromeMount() {
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
   const isForgotPasswordRoute = pathnameLower.startsWith('/view/forgot-password');
   const isPricingRoute = pathnameLower.startsWith('/view/pricing');
-  const isWorkflowsRoute = pathnameLower.startsWith('/view/workflows');
+  // Workflows route is now always visible, so isWorkflowsRoute is removed.
   const isArtStationRoute = pathnameLower.startsWith('/view/artstation');
   const isLegalRoute = pathnameLower.startsWith('/legal/');
   const isProductRoute = pathnameLower.startsWith('/product/');
@@ -174,6 +174,7 @@ export default function ChromeMount() {
   const isEditVideoRoute = pathnameLower.startsWith('/view/editvideo');
   const isBlogRoute = pathnameLower.startsWith('/blog');
   const isCanvasRoute = pathnameLower.startsWith('/canvas-projects');
+  const isWorkflowsRoute = pathnameLower.startsWith('/view/workflows');
 
   // Check if pathname matches any known valid route
   // This is used to detect 404 pages (invalid routes)
@@ -182,7 +183,6 @@ export default function ChromeMount() {
     isSignupRoute ||
     isForgotPasswordRoute ||
     isPricingRoute ||
-    isWorkflowsRoute ||
     isArtStationRoute ||
     isLegalRoute ||
     isProductRoute ||
@@ -255,7 +255,6 @@ export default function ChromeMount() {
     isLandingRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
-    isWorkflowsRoute ||
     isLegalRoute ||
     isProductRoute ||
     isCompanyRoute ||
@@ -270,6 +269,7 @@ export default function ChromeMount() {
     currentView === 'home' ||
     isGenerationRoute ||
     currentView === 'generation' ||
+    isWorkflowsRoute ||
     isHistoryRoute ||
     currentView === 'history' ||
     isBookmarksRoute ||

@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronUp } from 'lucide-react';
-import { Trash2 } from 'lucide-react';
+import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon } from 'lucide-react';
+// HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
@@ -36,7 +36,8 @@ import {
   clearHistory,
 } from "@/store/slices/historySlice";
 import useHistoryLoader from '@/hooks/useHistoryLoader';
-import axiosInstance from "@/lib/axiosInstance";
+import axiosInstance, { getApiClient } from "@/lib/axiosInstance";
+import { qlog, qwarn, qerr } from '@/lib/queueDebug';
 import toast from 'react-hot-toast';
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
 // History sync helpers (backend supports PATCH /api/generations/:historyId)
@@ -71,6 +72,7 @@ import AssetViewerModal from '@/components/AssetViewerModal';
 const UpscalePopup = dynamic(() => import("./UpscalePopup"), { ssr: false });
 const RemoveBgPopup = dynamic(() => import("./RemoveBgPopup"), { ssr: false });
 const EditPopup = dynamic(() => import("./EditPopup"), { ssr: false });
+const EditImageInterface = dynamic(() => import('@/app/view/EditImage/compo/EditImageInterface'), { ssr: false });
 const UploadModal = dynamic(() => import("./UploadModal"), { ssr: false });
 const CharacterModal = dynamic(() => import("./CharacterModal"), { ssr: false });
 import type { Character } from "./CharacterModal";
@@ -78,6 +80,7 @@ import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
+import { getImageGenerationCreditCost, formatCredits } from '@/utils/creditValidation';
 import Image from "next/image";
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
@@ -117,6 +120,7 @@ const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
+  const isInlineEditImagePage = (pathname || '').startsWith('/text-to-image/edit-image');
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
@@ -150,7 +154,7 @@ const InputBox = () => {
   const upsertLocalGeneratingEntry = useCallback((entry: HistoryEntry) => {
     const id = String((entry as any)?.id || (entry as any)?.firebaseHistoryId || '');
     if (!id) return;
-    console.log('[queue] Upserting local generating entry:', { id, status: (entry as any)?.status });
+    qlog('Upserting local generating entry', { id, status: (entry as any)?.status });
     setLocalGeneratingEntries((prev) => {
       const filtered = prev.filter((e: any) => {
         const eId = String(e?.id || '');
@@ -164,7 +168,7 @@ const InputBox = () => {
   const removeLocalGeneratingEntry = useCallback((idOrIds?: string | string[]) => {
     const ids = (Array.isArray(idOrIds) ? idOrIds : [idOrIds]).filter(Boolean).map(String);
     if (ids.length === 0) return;
-    console.log('[queue] Removing local generating entries:', ids);
+    qlog('Removing local generating entries', { ids });
     setLocalGeneratingEntries((prev) =>
       prev.filter((e: any) => {
         const eId = String(e?.id || '');
@@ -188,6 +192,15 @@ const InputBox = () => {
 
   // Redux selector for parallel generation support
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
+  // Ensure active generations have startedAt set promptly so watchdog & persistence work
+  useEffect(() => {
+    activeGenerations.forEach((g: any) => {
+      if ((g.status === 'pending' || g.status === 'generating') && !g.startedAt) {
+        dispatch(updateActiveGeneration({ id: g.id, updates: { startedAt: Date.now() } }));
+      }
+    });
+  }, [activeGenerations, dispatch]);
+
   // Filter out video generations - only count image generations towards the limit (limit is 4)
   // This allows completed/failed items to be auto-replaced by new ones
   const normalizeGenType = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
@@ -245,7 +258,7 @@ const InputBox = () => {
       setIsFiltering(false);
     }
   }, [searchQuery, dateRange]);
-  
+
   // Track sort order changes separately to show loader
   const [isSorting, setIsSorting] = useState(false);
   const prevSortOrderRef = useRef<'desc' | 'asc' | null>(null);
@@ -399,7 +412,7 @@ const InputBox = () => {
 
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
-  
+
   // Unified initial load (single guarded request) via custom hook
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({
     generationType: 'text-to-image',
@@ -760,18 +773,38 @@ const InputBox = () => {
   };
 
   // Delete handler - same logic as ImagePreviewModal
-  const handleDeleteImage = async (e: React.MouseEvent, entry: HistoryEntry) => {
+  const handleDeleteImage = async (e: React.MouseEvent, entry: HistoryEntry, imageId?: string) => {
     try {
       e.stopPropagation();
       e.preventDefault();
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
-      await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch { }
-      // Clear/reset document title when image is deleted
+
+      const isSingleImage = imageId && entry.images && entry.images.length > 0;
+      const confirmMessage = isSingleImage
+        ? 'Delete this image permanently? This cannot be undone.'
+        : 'Delete this generation permanently? This cannot be undone.';
+
+      if (!window.confirm(confirmMessage)) return;
+
+      const response = await axiosInstance.delete(`/api/generations/${entry.id}`, {
+        params: imageId ? { imageId } : undefined
+      });
+
+      const updatedItem = response.data?.data?.item;
+
+      if (updatedItem && !updatedItem.isDeleted) {
+        // Partial deletion - update entry with new images
+        dispatch(updateHistoryEntry({ id: entry.id, updates: { images: updatedItem.images } as any }));
+        toast.success('Image deleted');
+      } else {
+        // Full deletion
+        try { dispatch(removeHistoryEntry(entry.id)); } catch { }
+        toast.success('Generation deleted');
+      }
+
+      // Clear/reset document title when image/generation is deleted
       if (typeof document !== 'undefined') {
         document.title = 'WildMind';
       }
-      toast.success('Image deleted');
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error('Failed to delete generation');
@@ -866,7 +899,7 @@ const InputBox = () => {
 
       // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
       // This ensures we can check it in the same render cycle
-      console.log('[DEBUG refreshSingleGeneration] Tracking entry IDs:', {
+      qlog('[DEBUG refreshSingleGeneration] Tracking entry IDs:', {
         historyId,
         normalizedEntryId: normalizedEntry.id,
         firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
@@ -881,14 +914,16 @@ const InputBox = () => {
         historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
       }
 
-      console.log('[DEBUG refreshSingleGeneration] After adding to ref:', {
+      qlog('[DEBUG refreshSingleGeneration] After adding to ref:', {
         newRefSize: historyEntryIdsRef.current.size,
         newRefContents: Array.from(historyEntryIdsRef.current)
       });
 
       if (existing) {
         // Update existing entry - only update changed fields to avoid overwriting
-        console.log('[DEBUG refreshSingleGeneration] Updating existing entry:', existing.id);
+        qlog('[DEBUG refreshSingleGeneration] Updating existing entry:', existing.id);
+        const extraUpdates: any = {};
+        if (Array.isArray((normalizedEntry as any)?.inputImages)) extraUpdates.inputImages = (normalizedEntry as any).inputImages;
         dispatch(updateHistoryEntry({
           id: existing.id,
           updates: {
@@ -896,29 +931,170 @@ const InputBox = () => {
             images: normalizedEntry.images,
             imageCount: normalizedEntry.imageCount,
             timestamp: normalizedEntry.timestamp,
+            ...extraUpdates,
           }
         }));
-        console.log('[refreshSingleGeneration] Updated existing generation:', existing.id);
+        qlog('[refreshSingleGeneration] Updated existing generation:', existing.id);
       } else {
         // Add new entry at the beginning
-        console.log('[DEBUG refreshSingleGeneration] Adding new entry to Redux:', {
+        qlog('[DEBUG refreshSingleGeneration] Adding new entry to Redux:', {
           historyId: resolvedId || historyId,
           entryId: normalizedEntry.id,
           firebaseHistoryId: (normalizedEntry as any)?.firebaseHistoryId,
           status: normalizedEntry.status,
-          imageCount: normalizedEntry.images?.length || 0
+          imageCount: normalizedEntry.images?.length || 0,
+          params: (normalizedEntry as any)?.params || {}
         });
         dispatch(addHistoryEntry(normalizedEntry));
-        console.log('[refreshSingleGeneration] Added new generation:', resolvedId || historyId);
+        qlog('[refreshSingleGeneration] Added new generation:', resolvedId || historyId);
+
+        // Attempt to correlate newly added history with any active generation that has a matching provider requestId
+        try {
+          const candidateReqIds = new Set<string>();
+          const pushIf = (v: any) => { if (v) candidateReqIds.add(String(v)); };
+          const ne = normalizedEntry as any;
+          pushIf(ne?.params?.requestId);
+          pushIf(ne?.requestId);
+          pushIf(ne?.request_id);
+          pushIf(ne?.idempotencyKey);
+          pushIf(ne?.providerRequestId);
+          pushIf((ne?.provider || {})?.requestId);
+
+          if (candidateReqIds.size > 0) {
+            activeGenerations.forEach((g: any) => {
+              const gReq = String((g?.params || {})?.requestId || '');
+              if (!gReq) return;
+              if (candidateReqIds.has(gReq)) {
+                console.log('[queue] Correlating active generation by requestId', { generationId: g.id, historyId: normalizedEntry.id, requestId: gReq });
+                // Attach canonical historyId to the active generation so future syncs match by id
+                dispatch(updateActiveGeneration({ id: g.id, updates: { historyId: normalizedEntry.id } }));
+                // Also remove local preview entries associated with this generation
+                removeLocalGeneratingEntry([g.id, normalizedEntry.id]);
+              }
+            });
+          }
+
+          // If we didn't find a requestId-based match, try a safe prompt+timestamp correlation
+          try {
+            const nePrompt = String((normalizedEntry as any)?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const neModel = String((normalizedEntry as any)?.model || '');
+            const createdRaw = (normalizedEntry as any)?.createdAt || (normalizedEntry as any)?.timestamp || (normalizedEntry as any)?.updatedAt;
+            const neTime = typeof createdRaw === 'number' ? createdRaw : Date.parse(String(createdRaw || '')) || Date.now();
+            const MAX_TIME_DIFF = 120000; // 2 minutes
+
+            activeGenerations.forEach((g: any) => {
+              try {
+                const gPrompt = String(g?.prompt || '').replace(/\s*\[Style:.*?\]\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const gModel = String(g?.model || '');
+                const gTimeRaw = g?.startedAt || g?.createdAt || 0;
+                const gTime = typeof gTimeRaw === 'number' ? gTimeRaw : Date.parse(String(gTimeRaw || '')) || 0;
+                const timeDiff = Math.abs(neTime - gTime);
+                const promptMatch = gPrompt && nePrompt && (gPrompt === nePrompt || gPrompt.startsWith(nePrompt) || nePrompt.startsWith(gPrompt));
+                const modelMatch = gModel && neModel && gModel === neModel;
+
+                if ((promptMatch && timeDiff < MAX_TIME_DIFF) || (promptMatch && modelMatch && timeDiff < MAX_TIME_DIFF)) {
+                  console.log('[queue] Correlating active generation by prompt+time', { generationId: g.id, historyId: normalizedEntry.id, promptMatch: gPrompt.slice(0, 50), timeDiff });
+                  dispatch(updateActiveGeneration({ id: g.id, updates: { historyId: normalizedEntry.id } }));
+                  removeLocalGeneratingEntry([g.id, normalizedEntry.id]);
+                }
+              } catch (e) {
+                // continue
+              }
+            });
+          } catch (e) {
+            // ignore
+          }
+        } catch (e) {
+          qerr('Failed to correlate new history entry with active generations by requestId:', e);
+        }
       }
 
       // Clear any local preview entries that match this generation.
       removeLocalGeneratingEntry(idsToMatch);
     } catch (error) {
-      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
+      qerr('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       // Fallback to full refresh if single fetch fails
       refreshHistory();
     }
+  };
+
+  // Poll for a new history entry matching this generation's prompt/requestId and attach it to the active generation
+  const pollForMatchingHistory = async (opts: {
+    generationId?: string;
+    tempEntryId?: string;
+    model?: string;
+    prompt?: string;
+    requestId?: string;
+    startedAt?: number;
+    timeoutMs?: number;
+  }) => {
+    const { generationId } = opts;
+    // Ensure generation has a startedAt so adaptive watchdog and persistence work
+    const ensureStartedAt = (id?: string) => {
+      if (!id) return;
+      const g = activeGenerations.find((x: any) => x.id === id);
+      if (g && !g.startedAt) {
+        dispatch(updateActiveGeneration({ id, updates: { startedAt: Date.now() } }));
+      }
+    };
+    ensureStartedAt(generationId);
+
+    const { generationId: _gid, tempEntryId, model, prompt, requestId, startedAt = Date.now(), timeoutMs = 120000 } = opts;
+    const api = axiosInstance;
+    const normalize = (s = '') => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const target = normalize((prompt || '').slice(0, 100));
+    const deadline = Date.now() + timeoutMs;
+    let attempt = 0;
+
+    qlog('Starting pollForMatchingHistory', { generationId: _gid, tempEntryId, model, requestId, startedAt, timeoutMs });
+
+    while (Date.now() < deadline) {
+      attempt++;
+      try {
+        const res = await api.get('/api/generations', { params: { limit: 30, sortBy: 'createdAt', mode: 'image' }, timeout: 10000 });
+        const items: any[] = res.data?.data?.items || res.data?.items || [];
+        qlog('pollForMatchingHistory: fetched items', { attempt, itemsFound: items.length });
+
+        // Try to find exact historyId match first (if requestId looks like a history id)
+        for (const it of items) {
+          if (!it) continue;
+          // If requestId shows up anywhere in the raw item, treat as match
+          const raw = JSON.stringify(it || '');
+          if (requestId && String(raw || '').includes(String(requestId))) {
+            qlog('pollForMatchingHistory: matched via requestId in item', { matchedId: it.id, requestId });
+            await refreshSingleGeneration(it.id);
+            if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { historyId: it.id } }));
+            return it.id;
+          }
+        }
+
+        // Otherwise, attempt fuzzy prompt + timestamp match
+        for (const it of items) {
+          try {
+            if (!it || !it.prompt) continue;
+            const p = normalize((it.prompt || '').slice(0, 100));
+            const t = Date.parse(String(it.createdAt || it.timestamp || it.updatedAt || 0)) || 0;
+            const age = Math.abs(t - (startedAt || Date.now()));
+            // Accept matches created within +/- 90s and with prompt substring match
+            if (target && p.includes(target) && age < 90000) {
+              qlog('pollForMatchingHistory: fuzzy matched item', { matchedId: it.id, promptMatch: p.slice(0, 100), age });
+              await refreshSingleGeneration(it.id);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { historyId: it.id } }));
+              return it.id;
+            }
+          } catch (e) { /* continue */ }
+        }
+      } catch (err: any) {
+        qwarn('pollForMatchingHistory: fetch failed', { attempt, err: err?.message || err });
+      }
+
+      // Backoff: 1s -> 2s -> 3s -> 4s up to 5s
+      const delay = Math.min(5000, 500 + attempt * 500);
+      await new Promise(res => setTimeout(res, delay));
+    }
+
+    qwarn('pollForMatchingHistory: timeout, no matching history found', { generationId, tempEntryId, model, requestId });
+    return undefined;
   };
 
   const refreshHistory = () => {
@@ -982,12 +1158,13 @@ const InputBox = () => {
         const normalizedModel = normalize(entry.model);
         const isSeedream = normalizedModel.includes('seedream');
         const isTextToImage = normalizedType === 'text-to-image';
+        const isImageToImage = normalizedType === 'image-to-image';
 
         // Explicitly exclude video types - video entries should NOT appear in image generation
         const isVideoType = normalizedType === 'text-to-video' ||
           normalizedType === 'image-to-video' ||
           normalizedType === 'video-to-video';
-        
+
         if (isVideoType) {
           return false;
         }
@@ -1020,6 +1197,7 @@ const InputBox = () => {
 
         return (
           normalizedType === 'text-to-image' ||
+          isImageToImage ||
           normalizedType === 'image-upscale' ||
           normalizedType === 'image-to-svg' ||
           normalizedType === 'image-edit' ||
@@ -1121,6 +1299,7 @@ const InputBox = () => {
   const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
+  const [qwenResolution, setQwenResolution] = useState<'1K' | '2K'>('1K');
   const [zTurboOutputFormat, setZTurboOutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
   const [gptImage15Quality, setGptImage15Quality] = useState<'low' | 'medium' | 'high' | 'auto'>('low');
   const [gptImage15OutputFormat, setGptImage15OutputFormat] = useState<'png' | 'jpg' | 'webp'>('jpg');
@@ -1145,7 +1324,7 @@ const InputBox = () => {
       console.log('[queue] Sync: No history entries loaded yet, waiting...');
       return;
     }
-    
+
     // OPTIMIZED: Early exit if no in-progress generations need syncing
     const hasInProgress = activeGenerations.some((gen: any) => {
       const status = String(gen?.status || '').toLowerCase();
@@ -1161,173 +1340,173 @@ const InputBox = () => {
         return; // Nothing to sync
       }
     }
-    
+
     // OPTIMIZED: Debounce sync to avoid running on every Redux update
     const timeoutId = setTimeout(() => {
       console.log('[queue] Sync: Running with', activeGenerations.length, 'active generations and', historyEntries.length, 'history entries');
 
-    // Build a quick lookup of history items by id (including firebaseHistoryId for matching)
-    const historyMap = new Map<string, any>();
-    historyEntries.forEach((e: any) => {
-      const id = String(e?.id || '');
-      const fbId = String((e as any)?.firebaseHistoryId || '');
-      if (id) historyMap.set(id, e);
-      if (fbId) historyMap.set(fbId, e);
-    });
+      // Build a quick lookup of history items by id (including firebaseHistoryId for matching)
+      const historyMap = new Map<string, any>();
+      historyEntries.forEach((e: any) => {
+        const id = String(e?.id || '');
+        const fbId = String((e as any)?.firebaseHistoryId || '');
+        if (id) historyMap.set(id, e);
+        if (fbId) historyMap.set(fbId, e);
+      });
 
-    activeGenerations.forEach((gen: any) => {
-      const genId = String(gen?.id || '');
-      const backendId = String(gen?.historyId || '');
-      const candidateIds = [backendId, genId].filter(Boolean);
-      let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
-      
-      // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
-      // CRITICAL: Only use fallback matching for generations that already have a historyId OR were created very recently
-      // This prevents new generations from being incorrectly matched to old completed entries
-      // Only match if:
-      // 1. Generation already has a historyId (being refreshed/synced)
-      // 2. OR generation was created within 10 seconds (likely a refresh scenario)
-      // This ensures brand new generations with the same prompt/config can still generate
-      if (!match && gen.prompt) {
-        const genTime = typeof gen.createdAt === 'number' ? gen.createdAt : new Date(gen.createdAt).getTime();
-        const now = Date.now();
-        const ageInSeconds = (now - genTime) / 1000;
-        
-        // Only use fallback if generation already has historyId OR is very recent (within 10 seconds)
-        // This prevents matching brand new generations to old completed ones
-        const shouldUseFallback = backendId || ageInSeconds < 10;
-        
-        if (shouldUseFallback && !isNaN(genTime)) {
-          console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', { 
-            genId, 
-            prompt: gen.prompt.slice(0, 30), 
-            genCreatedAt: gen.createdAt,
-            hasHistoryId: !!backendId,
-            ageInSeconds: ageInSeconds.toFixed(1)
-          });
-          
-          // Use a much smaller time window for fallback matching (30 seconds)
-          // This is only for refresh scenarios, not for matching new generations to old ones
-          const TIME_WINDOW = 30000; // 30 second window (only for refresh scenarios)
-          
-          // OPTIMIZED: Pre-normalize prompt once instead of in loop
-          const normalizePrompt = (p: string) => {
-            return String(p || '')
-              .replace(/\s*\[Style:.*?\]\s*$/i, '') // Remove [Style: ...] suffix
-              .replace(/\s+/g, ' ') // Normalize whitespace
-              .trim()
-              .toLowerCase();
-          };
-          const genPromptNormalized = normalizePrompt(gen.prompt);
-          const genModel = String(gen.model || '');
-          
-          // OPTIMIZED: Filter by time window first to reduce iterations
-          const recentEntries = historyEntries.filter((e: any) => {
-            const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
-            const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
-            if (isNaN(eTime)) return false;
-            return Math.abs(genTime - eTime) < TIME_WINDOW;
-          });
-          
-          // OPTIMIZED: Only search through recent entries (much smaller set)
-          match = recentEntries.find((e: any) => {
-            const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
-            const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
-            const timeDiff = Math.abs(genTime - eTime);
-            
-            const ePromptNormalized = normalizePrompt(e.prompt);
-            
-            // Check if prompts match (exact or one contains the other for truncation cases)
-            const promptMatch = genPromptNormalized === ePromptNormalized || 
-                                genPromptNormalized.startsWith(ePromptNormalized) ||
-                                ePromptNormalized.startsWith(genPromptNormalized);
-            
-            const modelMatch = String(e.model || '') === genModel;
-            
-            // Only log close matches (within time window)
-            if (timeDiff < TIME_WINDOW) {
-              console.log('[queue] Comparing with history entry:', { 
-                historyId: e.id, 
-                timeDiff, 
-                promptMatch, 
-                modelMatch,
-                genPrompt: genPromptNormalized.slice(0, 50),
-                historyPrompt: ePromptNormalized.slice(0, 50)
-              });
+      activeGenerations.forEach((gen: any) => {
+        const genId = String(gen?.id || '');
+        const backendId = String(gen?.historyId || '');
+        const candidateIds = [backendId, genId].filter(Boolean);
+        let match = candidateIds.map((id) => historyMap.get(id)).find(Boolean);
+
+        // Fallback: If no ID match, try matching by prompt + timestamp (for refresh scenarios where historyId isn't saved)
+        // CRITICAL: Only use fallback matching for generations that already have a historyId OR were created very recently
+        // This prevents new generations from being incorrectly matched to old completed entries
+        // Only match if:
+        // 1. Generation already has a historyId (being refreshed/synced)
+        // 2. OR generation was created within 10 seconds (likely a refresh scenario)
+        // This ensures brand new generations with the same prompt/config can still generate
+        if (!match && gen.prompt) {
+          const genTime = typeof gen.createdAt === 'number' ? gen.createdAt : new Date(gen.createdAt).getTime();
+          const now = Date.now();
+          const ageInSeconds = (now - genTime) / 1000;
+
+          // Only use fallback if generation already has historyId OR is very recent (within 10 seconds)
+          // This prevents matching brand new generations to old completed ones
+          const shouldUseFallback = backendId || ageInSeconds < 10;
+
+          if (shouldUseFallback && !isNaN(genTime)) {
+            console.log('[queue] No ID match found, trying prompt+timestamp fallback for:', {
+              genId,
+              prompt: gen.prompt.slice(0, 30),
+              genCreatedAt: gen.createdAt,
+              hasHistoryId: !!backendId,
+              ageInSeconds: ageInSeconds.toFixed(1)
+            });
+
+            // Use a much smaller time window for fallback matching (30 seconds)
+            // This is only for refresh scenarios, not for matching new generations to old ones
+            const TIME_WINDOW = 30000; // 30 second window (only for refresh scenarios)
+
+            // OPTIMIZED: Pre-normalize prompt once instead of in loop
+            const normalizePrompt = (p: string) => {
+              return String(p || '')
+                .replace(/\s*\[Style:.*?\]\s*$/i, '') // Remove [Style: ...] suffix
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .trim()
+                .toLowerCase();
+            };
+            const genPromptNormalized = normalizePrompt(gen.prompt);
+            const genModel = String(gen.model || '');
+
+            // OPTIMIZED: Filter by time window first to reduce iterations
+            const recentEntries = historyEntries.filter((e: any) => {
+              const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
+              const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
+              if (isNaN(eTime)) return false;
+              return Math.abs(genTime - eTime) < TIME_WINDOW;
+            });
+
+            // OPTIMIZED: Only search through recent entries (much smaller set)
+            match = recentEntries.find((e: any) => {
+              const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
+              const eTime = typeof eTimeRaw === 'number' ? eTimeRaw : new Date(eTimeRaw).getTime();
+              const timeDiff = Math.abs(genTime - eTime);
+
+              const ePromptNormalized = normalizePrompt(e.prompt);
+
+              // Check if prompts match (exact or one contains the other for truncation cases)
+              const promptMatch = genPromptNormalized === ePromptNormalized ||
+                genPromptNormalized.startsWith(ePromptNormalized) ||
+                ePromptNormalized.startsWith(genPromptNormalized);
+
+              const modelMatch = String(e.model || '') === genModel;
+
+              // Only log close matches (within time window)
+              if (timeDiff < TIME_WINDOW) {
+                console.log('[queue] Comparing with history entry:', {
+                  historyId: e.id,
+                  timeDiff,
+                  promptMatch,
+                  modelMatch,
+                  genPrompt: genPromptNormalized.slice(0, 50),
+                  historyPrompt: ePromptNormalized.slice(0, 50)
+                });
+              }
+
+              return promptMatch && modelMatch;
+            });
+
+            if (match) {
+              console.log('[queue] ✅ Matched by prompt+timestamp fallback:', { genId, historyId: match.id, prompt: gen.prompt.slice(0, 30) });
+              // Update the active generation with the found historyId for future syncs
+              dispatch(updateActiveGeneration({
+                id: genId,
+                updates: { historyId: match.id }
+              }));
+            } else {
+              console.log('[queue] ❌ No match found via fallback for:', genId);
             }
-            
-            return promptMatch && modelMatch;
-          });
-          
-          if (match) {
-            console.log('[queue] ✅ Matched by prompt+timestamp fallback:', { genId, historyId: match.id, prompt: gen.prompt.slice(0, 30) });
-            // Update the active generation with the found historyId for future syncs
-            dispatch(updateActiveGeneration({
-              id: genId,
-              updates: { historyId: match.id }
-            }));
           } else {
-            console.log('[queue] ❌ No match found via fallback for:', genId);
+            console.log('[queue] Skipping fallback matching for new generation:', {
+              genId,
+              hasHistoryId: !!backendId,
+              ageInSeconds: ageInSeconds.toFixed(1),
+              reason: !backendId && ageInSeconds >= 10 ? 'too old for fallback' : 'other'
+            });
           }
-        } else {
-          console.log('[queue] Skipping fallback matching for new generation:', { 
-            genId, 
-            hasHistoryId: !!backendId, 
-            ageInSeconds: ageInSeconds.toFixed(1),
-            reason: !backendId && ageInSeconds >= 10 ? 'too old for fallback' : 'other'
-          });
         }
-      }
-      
-      console.log('[queue] Sync check for generation:', { genId, backendId, hasMatch: !!match, matchStatus: match?.status });
-      
-      if (!match) return;
 
-      const status = String(match?.status || '').toLowerCase();
-      if (status !== 'completed' && status !== 'failed') return;
+        console.log('[queue] Sync check for generation:', { genId, backendId, hasMatch: !!match, matchStatus: match?.status });
 
-      // If queue item is still "pending/generating" or is missing media, bring it up to date.
-      const queueStatus = String(gen?.status || '').toLowerCase();
-      const hasImages = Array.isArray(gen?.images) && gen.images.length > 0;
-      const hasVideos = Array.isArray(gen?.videos) && gen.videos.length > 0;
-      const hasAudios = Array.isArray(gen?.audios) && gen.audios.length > 0;
-      const historyImages = Array.isArray(match?.images) ? match.images : [];
-      const historyVideos = Array.isArray(match?.videos) ? match.videos : [];
-      const historyAudios = Array.isArray(match?.audios) ? match.audios : [];
+        if (!match) return;
 
-      // Update if status changed or if we have new media (images/videos/audio)
-      const needsUpdate = queueStatus !== status || 
-        (!hasImages && historyImages.length > 0) ||
-        (!hasVideos && historyVideos.length > 0) ||
-        (!hasAudios && historyAudios.length > 0);
-      
-      if (needsUpdate) {
-        const mediaCount = historyImages.length + historyVideos.length + historyAudios.length;
-        console.log('[queue] Updating active generation:', { genId, oldStatus: queueStatus, newStatus: status, mediaCount });
-        dispatch(updateActiveGeneration({
-          id: genId,
-          updates: {
-            status: status as any,
-            images: historyImages.length > 0 ? historyImages : gen.images,
-            videos: historyVideos.length > 0 ? historyVideos : gen.videos,
-            audios: historyAudios.length > 0 ? historyAudios : gen.audios,
-            error: match?.error || gen?.error,
-            historyId: backendId || match?.id || gen?.historyId,
-          }
-        }));
-      }
+        const status = String(match?.status || '').toLowerCase();
+        if (status !== 'completed' && status !== 'failed') return;
 
-      // Clear any local preview for this generation once the history item is final.
-      removeLocalGeneratingEntry([genId, backendId, String(match?.id || '')].filter(Boolean) as any);
+        // If queue item is still "pending/generating" or is missing media, bring it up to date.
+        const queueStatus = String(gen?.status || '').toLowerCase();
+        const hasImages = Array.isArray(gen?.images) && gen.images.length > 0;
+        const hasVideos = Array.isArray(gen?.videos) && gen.videos.length > 0;
+        const hasAudios = Array.isArray(gen?.audios) && gen.audios.length > 0;
+        const historyImages = Array.isArray(match?.images) ? match.images : [];
+        const historyVideos = Array.isArray(match?.videos) ? match.videos : [];
+        const historyAudios = Array.isArray(match?.audios) ? match.audios : [];
 
-      // IMPORTANT: Don't remove from queue here - let useQueueManagement hook handle it
-      // The hook will:
-      // - Show success toast and remove after 5 seconds for completed
-      // - Show error (already shown by error handlers) and remove after 3 seconds for failed
-      console.log('[queue] Generation status synced, queue management hook will handle removal:', { genId, status });
-    });
+        // Update if status changed or if we have new media (images/videos/audio)
+        const needsUpdate = queueStatus !== status ||
+          (!hasImages && historyImages.length > 0) ||
+          (!hasVideos && historyVideos.length > 0) ||
+          (!hasAudios && historyAudios.length > 0);
+
+        if (needsUpdate) {
+          const mediaCount = historyImages.length + historyVideos.length + historyAudios.length;
+          console.log('[queue] Updating active generation:', { genId, oldStatus: queueStatus, newStatus: status, mediaCount });
+          dispatch(updateActiveGeneration({
+            id: genId,
+            updates: {
+              status: status as any,
+              images: historyImages.length > 0 ? historyImages : gen.images,
+              videos: historyVideos.length > 0 ? historyVideos : gen.videos,
+              audios: historyAudios.length > 0 ? historyAudios : gen.audios,
+              error: match?.error || gen?.error,
+              historyId: backendId || match?.id || gen?.historyId,
+            }
+          }));
+        }
+
+        // Clear any local preview for this generation once the history item is final.
+        removeLocalGeneratingEntry([genId, backendId, String(match?.id || '')].filter(Boolean) as any);
+
+        // IMPORTANT: Don't remove from queue here - let useQueueManagement hook handle it
+        // The hook will:
+        // - Show success toast and remove after 5 seconds for completed
+        // - Show error (already shown by error handlers) and remove after 3 seconds for failed
+        console.log('[queue] Generation status synced, queue management hook will handle removal:', { genId, status });
+      });
     }, 300); // OPTIMIZED: Debounce sync by 300ms to batch updates and reduce excessive runs
-    
+
     return () => clearTimeout(timeoutId);
   }, [activeGenerations, historyEntries, dispatch, removeLocalGeneratingEntry]);
 
@@ -1348,7 +1527,7 @@ const InputBox = () => {
       if (inProgressGens.length > 0) {
         console.log('[queue] Refreshing history to check', inProgressGens.length, 'in-progress generations');
         try {
-          await dispatch(loadHistory({ 
+          await dispatch(loadHistory({
             paginationParams: { limit: 20 },
             forceRefresh: true,
             debugTag: 'queue-check'
@@ -1841,6 +2020,28 @@ const InputBox = () => {
     return result;
   };
 
+  const expectedCredits = useMemo(() => {
+    try {
+      const resolution = selectedModel === 'google/nano-banana-pro'
+        ? nanoBananaProResolution
+        : (selectedModel === 'flux-2-pro' ? flux2ProResolution : (selectedModel === 'qwen-image-edit-2512' ? qwenResolution : undefined));
+      return getImageGenerationCreditCost(selectedModel, imageCount, frameSize, style, resolution, getCombinedUploadedImages());
+    } catch {
+      return 0;
+    }
+  }, [
+    selectedModel,
+    imageCount,
+    frameSize,
+    style,
+    nanoBananaProResolution,
+    flux2ProResolution,
+    qwenResolution,
+    prompt,
+    uploadedImages,
+    selectedCharacters,
+  ]);
+
   // Function to remove character reference (removes from selectedCharacters)
   const removeCharacterReference = (characterName: string) => {
     // Remove the character from selectedCharacters and clean up any @mentions
@@ -1933,7 +2134,7 @@ const InputBox = () => {
     frameSize,
     count: imageCount,
     style,
-    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : undefined),
+    resolution: selectedModel === 'google/nano-banana-pro' ? nanoBananaProResolution : (selectedModel === 'flux-2-pro' ? flux2ProResolution : (selectedModel === 'qwen-image-edit-2512' ? qwenResolution : undefined)),
     quality: selectedModel === 'openai/gpt-image-1.5' ? gptImage15Quality : undefined
   });
 
@@ -1989,28 +2190,28 @@ const InputBox = () => {
         const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
         const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
         const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
-        
+
         const paginationFilters: any = { mode: 'image', sortOrder: currentSortOrder };
         if (currentSearch) paginationFilters.search = currentSearch;
         if (currentDateRange?.start && currentDateRange?.end) {
-          paginationFilters.dateRange = { 
-            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
-            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+          paginationFilters.dateRange = {
+            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
           };
         }
-        
-        const backendFilters: any = { 
-          mode: 'image', 
+
+        const backendFilters: any = {
+          mode: 'image',
           sortOrder: currentSortOrder,
           ...(currentSearch ? { search: currentSearch } : {}),
-          ...(currentDateRange?.start && currentDateRange?.end ? { 
-            dateRange: { 
-              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
-              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
-            } 
+          ...(currentDateRange?.start && currentDateRange?.end ? {
+            dateRange: {
+              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
+            }
           } : {})
         };
-        
+
         await (dispatch as any)(loadMoreHistory({
           filters: paginationFilters,
           backendFilters: backendFilters,
@@ -2040,12 +2241,12 @@ const InputBox = () => {
   const handleFalError = async (error: any, context: { generationId?: string; tempEntryId: string; tempEntry?: HistoryEntry; transactionId?: string; modelName?: string }) => {
     const { extractFalErrorDetails, showFalErrorToast } = await import('@/lib/falToast');
     const errorDetails = extractFalErrorDetails(error);
-    
+
     // Get user-friendly error message
-    const errorMessage = errorDetails?.message || 
-                        (typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
-                        'Failed to generate images';
-    
+    const errorMessage = errorDetails?.message ||
+      (typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
+      'Failed to generate images';
+
     // Update loading entry to show failed state
     try {
       const baseEntry = context.tempEntry || {
@@ -2066,12 +2267,12 @@ const InputBox = () => {
         error: errorMessage,
       } as any;
       upsertLocalGeneratingEntry(failedEntry);
-      
+
       if (context.generationId) {
         dispatch(updateActiveGeneration({
           id: context.generationId,
-          updates: { 
-            status: 'failed', 
+          updates: {
+            status: 'failed',
             error: errorMessage,
           }
         }));
@@ -2100,12 +2301,12 @@ const InputBox = () => {
   const handleReplicateError = async (error: any, context: { generationId?: string; tempEntryId: string; tempEntry?: HistoryEntry; transactionId?: string; modelName?: string }) => {
     const { extractReplicateErrorDetails, showReplicateErrorToast } = await import('@/lib/replicateToast');
     const errorDetails = extractReplicateErrorDetails(error);
-    
+
     // Get user-friendly error message
-    const errorMessage = errorDetails?.message || 
-                        (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
-                        'Failed to generate images';
-    
+    const errorMessage = errorDetails?.message ||
+      (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
+      'Failed to generate images';
+
     // Update loading entry to show failed state
     try {
       const baseEntry = context.tempEntry || {
@@ -2126,12 +2327,12 @@ const InputBox = () => {
         error: errorMessage,
       } as any;
       upsertLocalGeneratingEntry(failedEntry);
-      
+
       if (context.generationId) {
         dispatch(updateActiveGeneration({
           id: context.generationId,
-          updates: { 
-            status: 'failed', 
+          updates: {
+            status: 'failed',
             error: errorMessage,
           }
         }));
@@ -2232,14 +2433,14 @@ const InputBox = () => {
       // Don't wipe other in-flight jobs; only remove this generation's local entry if present
       if (generationId) removeLocalGeneratingEntry(generationId);
       postGenerationBlockRef.current = false;
-      
+
       // If we have a generation ID, marks it as failed so it doesn't get stuck in the queue
       if (generationId) {
         dispatch(updateActiveGeneration({
           id: generationId,
-          updates: { 
-            status: 'failed', 
-            error: creditError.message || 'Insufficient credits' 
+          updates: {
+            status: 'failed',
+            error: creditError.message || 'Insufficient credits'
           }
         }));
       }
@@ -2754,10 +2955,10 @@ const InputBox = () => {
           })));
 
           if (generationId) {
-             dispatch(updateActiveGeneration({
-               id: generationId,
-               updates: { status: 'failed', error: 'Runway generation failed' }
-             }));
+            dispatch(updateActiveGeneration({
+              id: generationId,
+              updates: { status: 'failed', error: 'Runway generation failed' }
+            }));
           }
         }
 
@@ -2860,6 +3061,147 @@ const InputBox = () => {
             isPublic,
           })).unwrap();
 
+          // Handle queued submission fallback (FAL may return requestId + submitted)
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result as any)?.requestId)) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('FAL queued submission detected', { model: result.model, reqId, generationId });
+
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+
+                // Start polling for server history to attach canonical historyId
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            // Poll FAL queue for completion
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/fal/queue/status', {
+                    params: { model: result.model, requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  qlog('FAL poll status (flux-2-pro)', { model: result.model, requestId: reqId, attempt: attempts + 1, status: status?.status, statusObj: status });
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/fal/queue/result', {
+                      params: { model: result.model, requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Flux 2 Pro generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    qwarn(`Flux 2 Pro - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS})`, errorMsg);
+                  } else {
+                    qerr(`Flux 2 Pro - Error (${attempts + 1}/360)`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Flux 2 Pro queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Flux 2 Pro: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Flux 2 Pro: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return;
+            } catch (queueErr) {
+              qerr('Flux 2 Pro queue polling failed', queueErr);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Flux 2 Pro generation failed' } }));
+              await handleFalError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Flux 2 Pro',
+              });
+              return;
+            }
+          }
+
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
@@ -2873,17 +3215,17 @@ const InputBox = () => {
             } as any;
             upsertLocalGeneratingEntry(completedEntry);
 
-          if (generationId) {
-            console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
-            dispatch(updateActiveGeneration({
-              id: generationId,
-              updates: {
-                status: 'completed',
-                images: completedEntry.images,
-                historyId: (result as any)?.historyId
-              }
-            }));
-          }
+            if (generationId) {
+              console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: completedEntry.images,
+                  historyId: (result as any)?.historyId
+                }
+              }));
+            }
           } catch { }
 
           // Toast removed - useQueueManagement handles success toasts
@@ -2930,6 +3272,144 @@ const InputBox = () => {
             isPublic,
           })).unwrap();
 
+          // If server returned a queued submission (requestId) instead of images, poll the FAL queue
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result as any)?.requestId)) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('FAL queued submission detected (Gemini/Nano Banana)', { model: result.model, reqId, generationId });
+
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/fal/queue/status', {
+                    params: { model: result.model, requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/fal/queue/result', {
+                      params: { model: result.model, requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Gemini generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    console.warn(`[queue] Gemini/Nano Banana - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                  } else {
+                    console.error(`[queue] Gemini/Nano Banana - Error (${attempts + 1}/360):`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Gemini queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Gemini: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Gemini: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return;
+            } catch (queueErr) {
+              console.error('[queue] Gemini queue polling failed:', queueErr);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Gemini generation failed' } }));
+              await handleFalError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Google Nano Banana',
+              });
+              return;
+            }
+          }
+
           // Update the local loading entry with completed images
           try {
             const completedEntry: HistoryEntry = {
@@ -2943,17 +3423,17 @@ const InputBox = () => {
             } as any;
             upsertLocalGeneratingEntry(completedEntry);
 
-          if (generationId) {
-            console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
-            dispatch(updateActiveGeneration({
-              id: generationId,
-              updates: {
-                status: 'completed',
-                images: completedEntry.images,
-                historyId: (result as any)?.historyId
-              }
-            }));
-          }
+            if (generationId) {
+              console.log('[queue] Generation completed, updating active generation:', { generationId, historyId: (result as any)?.historyId, imageCount: completedEntry.images?.length });
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: completedEntry.images,
+                  historyId: (result as any)?.historyId
+                }
+              }));
+            }
           } catch { }
 
           // Toast removed - useQueueManagement handles success toasts
@@ -3012,7 +3492,7 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             upsertLocalGeneratingEntry(completedEntry);
- 
+
             if (generationId) {
               dispatch(updateActiveGeneration({
                 id: generationId,
@@ -3093,6 +3573,152 @@ const InputBox = () => {
           }
           const result = await dispatch(replicateGenerate(payload)).unwrap();
 
+          // If provider returned a queued submission (requestId) instead of immediate images,
+          // fall back to queue polling behavior used by video flows.
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result.requestId || (result as any)?.requestId))) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('Seedream v4 queued submission detected', { model: result.model, reqId, generationId });
+
+            // Keep local card visible as a 'generating' entry
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    // store requestId on params for diagnostics
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+
+                // Start history matching poll
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            // Poll for completion using Replicate queue endpoints
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
+                try {
+                  const statusRes = await api.get('/api/replicate/queue/status', {
+                    params: { requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/replicate/queue/result', {
+                      params: { requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    // Refresh and handle credits/transaction if present
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Seedream generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    console.warn(`[queue] Seedream v4 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                  } else {
+                    console.error(`[queue] Seedream v4 - Error (${attempts + 1}/360):`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    // Mark generation as failed in UI
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Seedream queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Seedream v4: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Seedream v4: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return; // Exit the normal flow since queue result handled
+            } catch (queueErr) {
+              console.error('[queue] Seedream v4 queue polling failed:', queueErr);
+              // Mirror failure into activeGenerations so the shared UI reflects the error
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Seedream generation failed' } }));
+              await handleReplicateError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Seedream v4',
+              });
+              return;
+            }
+          }
+
           try {
             const completedEntry: HistoryEntry = {
               ...tempEntry,
@@ -3156,7 +3782,7 @@ const InputBox = () => {
         try {
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
           const combinedImages = getCombinedUploadedImages();
-          
+
           // Map frame size to Seedream 4.5 enum values (square_hd, portrait_4_3, landscape_16_9, etc.)
           const frameSizeToEnum: Record<string, string> = {
             '1:1': 'square_hd',
@@ -3166,7 +3792,7 @@ const InputBox = () => {
             '16:9': 'landscape_16_9',
             '9:16': 'portrait_16_9',
           };
-          
+
           // Always use the proper frame size enum based on selected aspect ratio
           const imageSizeEnum = frameSizeToEnum[frameSize] || 'square_hd';
 
@@ -3188,6 +3814,148 @@ const InputBox = () => {
             uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
             isPublic,
           })).unwrap();
+
+          // Fallback: if backend returned a queued submission instead of images
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result as any)?.requestId)) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('Seedream 4.5 queued submission detected', { model: result.model, reqId, generationId });
+
+            try {
+              const queuedEntry: HistoryEntry = {
+                ...tempEntry,
+                id: tempEntryId,
+                images: [],
+                status: 'generating',
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                imageCount: imageCount,
+              } as any;
+              const startedAt = Date.now();
+              upsertLocalGeneratingEntry(queuedEntry);
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'generating', startedAt, historyId: (result as any)?.historyId || generationId, params: { ...(activeGenerations.find(g => g.id === generationId)?.params || {}), requestId: reqId } } }));
+
+                // Begin matching server history for canonical attach
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+              }
+            } catch { }
+
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              const MAX_CONSECUTIVE_ERRORS = 5;
+
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/fal/queue/status', {
+                    params: { model: 'seedream-4.5', requestId: reqId },
+                    timeout: 15000
+                  });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/fal/queue/result', {
+                      params: { model: 'seedream-4.5', requestId: reqId },
+                      timeout: 15000
+                    });
+                    finalResult = resultRes.data?.data || resultRes.data;
+
+                    // Mark completed
+                    try {
+                      const completedEntry: HistoryEntry = {
+                        ...tempEntry,
+                        id: tempEntryId,
+                        images: (finalResult.images || []),
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        imageCount: (finalResult.images?.length || imageCount),
+                      } as any;
+                      upsertLocalGeneratingEntry(completedEntry);
+
+                      if (generationId) {
+                        dispatch(updateActiveGeneration({
+                          id: generationId,
+                          updates: {
+                            status: 'completed',
+                            images: finalResult.images || [],
+                            historyId: finalResult.historyId || (result as any)?.historyId
+                          }
+                        }));
+                      }
+                    } catch { }
+
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) {
+                      await refreshSingleGeneration(resultHistoryId);
+                    } else {
+                      await refreshHistory();
+                    }
+
+                    if (transactionId) {
+                      await handleGenerationSuccess(transactionId);
+                    }
+
+                    break;
+                  }
+
+                  if (s === 'failed' || s === 'error') {
+                    throw new Error('Seedream 4.5 generation failed (queue)');
+                  }
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  const errorMsg = statusError?.message || String(statusError);
+                  const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+                  if (isNetworkError) {
+                    console.warn(`[queue] Seedream 4.5 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                  } else {
+                    console.error(`[queue] Seedream 4.5 - Error (${attempts + 1}/360):`, errorMsg);
+                  }
+
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: `Seedream 4.5 queue polling failed: ${errorMsg}` } }));
+                    }
+                    throw new Error(`Seedream 4.5: Too many network errors. ${errorMsg}`);
+                  }
+                  if (attempts === 359) throw new Error(`Seedream 4.5: Timeout after 360 attempts. ${errorMsg}`);
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+
+              return;
+            } catch (queueErr) {
+              console.error('[queue] Seedream 4.5 queue polling failed:', queueErr);
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Seedream 4.5 generation failed' } }));
+              await handleReplicateError(queueErr, {
+                generationId,
+                tempEntryId,
+                tempEntry,
+                transactionId,
+                modelName: 'Seedream 4.5',
+              });
+              return;
+            }
+          }
 
           try {
             const completedEntry: HistoryEntry = {
@@ -3672,6 +4440,18 @@ const InputBox = () => {
               imageCount: (result.images?.length || imageCount),
             } as any;
             upsertLocalGeneratingEntry(completedEntry);
+
+            // CRITICAL: Update active generation with backend historyId for queue sync
+            if (generationId) {
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: result.images || [],
+                  historyId: (result as any)?.historyId || firebaseHistoryId
+                }
+              }));
+            }
           } catch { }
 
           // Toast removed - useQueueManagement handles success toasts
@@ -3861,7 +4641,8 @@ const InputBox = () => {
               }
             } catch { }
 
-            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            // Suppress explicit success toast here — centralized queue manager will show a single success toast
+            console.log('[image] Generation completed; success toast suppressed (queue will show a single toast)');
             clearInputs();
 
             const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
@@ -3957,7 +4738,8 @@ const InputBox = () => {
               }
             } catch { }
 
-            toast.success(`Generated ${result.images?.length || 1} image(s) successfully!`);
+            // Suppress explicit success toast here — centralized queue manager will show a single success toast
+            console.log('[image] Generation completed; success toast suppressed (queue will show a single toast)');
             clearInputs();
 
             const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
@@ -4233,9 +5015,65 @@ const InputBox = () => {
             console.log(`Model type: ${selectedModel} - using width/height parameters for BFL API`);
           }
 
+          const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit' || selectedModel === 'qwen-image-edit-2512';
+
+          // Qwen image-edit specific parameters
+          if (isQwenImageEdit) {
+            generationPayload.aspect_ratio = frameSize;
+            // FileTypeDropdown stores 'jpeg' but Qwen schema uses 'jpg'
+            generationPayload.output_format = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+            if (selectedModel === 'qwen-image-edit-2512') {
+              generationPayload.resolution = qwenResolution; // '1K' or '2K'
+
+              // Explicit width/height mapping for QWEN 2512
+              const QWEN_MAP: Record<string, Record<string, { w: number, h: number }>> = {
+                '1K': {
+                  '1:1': { w: 1024, h: 1024 },
+                  '16:9': { w: 1024, h: 576 },
+                  '9:16': { w: 576, h: 1024 },
+                  '4:3': { w: 1024, h: 768 },
+                  '3:4': { w: 768, h: 1024 },
+                  '3:2': { w: 1024, h: 683 },
+                  '2:3': { w: 683, h: 1024 },
+                },
+                '2K': {
+                  '1:1': { w: 2048, h: 2048 },
+                  '16:9': { w: 2048, h: 1152 },
+                  '9:16': { w: 1152, h: 2048 },
+                  '4:3': { w: 2048, h: 1536 },
+                  '3:4': { w: 1536, h: 2048 },
+                  '3:2': { w: 2048, h: 1365 },
+                  '2:3': { w: 1365, h: 2048 },
+                }
+              };
+
+              if (QWEN_MAP[qwenResolution]?.[frameSize]) {
+                const dims = QWEN_MAP[qwenResolution][frameSize];
+                generationPayload.width = dims.w;
+                generationPayload.height = dims.h;
+                generationPayload.aspect_ratio = 'custom';
+              }
+            }
+          }
+
           const result = await dispatch(
             generateImages(generationPayload)
           ).unwrap();
+
+          // Persist source uploads for Qwen image-edit so the Preview Modal can show the input image(s)
+          try {
+            const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+            if (isQwenImageEdit && resultHistoryId && Array.isArray(combinedImages) && combinedImages.length > 0) {
+              const inputImages = combinedImages.map((u: string, idx: number) => {
+                const p = toZataPath(u);
+                if (p) return { id: `input-${idx + 1}`, storagePath: p, url: toDirectUrl(p) };
+                return { id: `input-${idx + 1}`, url: u };
+              });
+              await updateFirebaseHistory(resultHistoryId, { inputImages });
+            }
+          } catch {
+            // best-effort only
+          }
 
           // Update the local loading entry with completed images
           try {
@@ -4286,7 +5124,7 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
-      
+
       // Check if this is a FAL or Replicate error (has structured error details)
       const { extractFalErrorDetails } = await import('@/lib/falToast');
       const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
@@ -4294,13 +5132,13 @@ const InputBox = () => {
       const replicateErrorDetails = extractReplicateErrorDetails(error);
       const isFalError = falErrorDetails !== null;
       const isReplicateError = replicateErrorDetails !== null;
-      
+
       // Get error message
-      const errorMessage = falErrorDetails?.message || 
-                          replicateErrorDetails?.message ||
-                          (error && typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
-                          (error instanceof Error ? error.message : 'Failed to generate images');
-      
+      const errorMessage = falErrorDetails?.message ||
+        replicateErrorDetails?.message ||
+        (error && typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' ? error.message : undefined) ||
+        (error instanceof Error ? error.message : 'Failed to generate images');
+
       // Clear ONLY this generation's local entry on error (don't wipe other in-flight jobs)
       removeLocalGeneratingEntry(generationId || tempEntryId);
       setIsGeneratingLocally(false);
@@ -4339,13 +5177,13 @@ const InputBox = () => {
           toast.error(errorMessage);
         }
       }
-      
+
       // Update active generation status on failure
       if (generationId) {
         dispatch(updateActiveGeneration({
           id: generationId,
-          updates: { 
-            status: 'failed', 
+          updates: {
+            status: 'failed',
             error: errorMessage,
           }
         }));
@@ -4526,13 +5364,16 @@ const InputBox = () => {
         }
       `}</style>
 
-      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6   pb-6 overflow-y-auto no-scrollbar z-0">
-        <div className="md:py-0  py-0 md:pl-4  ">
+      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0">
+        <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-30 md:py-0 py-2 md:ml-18 mr-1 backdrop-blur-lg shadow-xl md:pl-6 pl-12">
-            <div className="flex items-center justify-between md:mb-2 mb-0">
+          <div className="fixed top-0 left-0 right-0 z-30 md:py-0 pt-2 md:pl-20 mr-1 backdrop-blur-lg shadow-xl ">
+            <div className="flex items-center justify-between md:mb-2 mb-0 pl-10 md:pl-0">
               <div className="flex items-center gap-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+
+                {/* Edit Button - Styled like Recent/Oldest */}
+
                 {/* Info button - only show when there are generations */}
                 {historyEntries.length > 0 && sortedDates.length > 0 && (
                   <button
@@ -4540,30 +5381,65 @@ const InputBox = () => {
                     className="relative group w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
                     aria-label="Show guide"
                   >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M10.9199 10.4384C10.9199 9.84191 11.4034 9.3584 11.9999 9.3584C12.5963 9.3584 13.0798 9.84191 13.0798 10.4384C13.0798 10.804 12.8988 11.1275 12.6181 11.3241C12.3474 11.5136 12.0203 11.7667 11.757 12.0846C11.4909 12.406 11.2499 12.8431 11.2499 13.3846C11.2499 13.7988 11.5857 14.1346 11.9999 14.1346C12.4141 14.1346 12.7499 13.7988 12.7499 13.3846C12.7499 13.3096 12.7806 13.2004 12.9123 13.0413C13.047 12.8786 13.2441 12.7169 13.4784 12.5528C14.1428 12.0876 14.5798 11.3141 14.5798 10.4384C14.5798 9.01348 13.4247 7.8584 11.9999 7.8584C10.575 7.8584 9.41992 9.01348 9.41992 10.4384C9.41992 10.8526 9.75571 11.1884 10.1699 11.1884C10.5841 11.1884 10.9199 10.8526 10.9199 10.4384Z" fill="#ffffff"/>
-                          <path d="M11.9991 14.6426C11.5849 14.6426 11.2491 14.9783 11.2491 15.3926C11.2491 15.8068 11.5849 16.1426 11.9991 16.1426C12.4134 16.1426 12.7499 15.8068 12.7499 15.3926C12.7499 14.9783 12.4134 14.6426 11.9991 14.6426Z" fill="#ffffff"/>
-                          <path fillRule="evenodd" clipRule="evenodd" d="M12 4C7.58172 4 4 7.58172 4 12V20H12C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12C21.5 17.2467 17.2467 21.5 12 21.5H3.25C2.83579 21.5 2.5 21.1642 2.5 20.75V12Z" fill="#ffffff"/>
-                      </svg>
-                      <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-sm text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity z-50">
-                          How To Use
-                      </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10.9199 10.4384C10.9199 9.84191 11.4034 9.3584 11.9999 9.3584C12.5963 9.3584 13.0798 9.84191 13.0798 10.4384C13.0798 10.804 12.8988 11.1275 12.6181 11.3241C12.3474 11.5136 12.0203 11.7667 11.757 12.0846C11.4909 12.406 11.2499 12.8431 11.2499 13.3846C11.2499 13.7988 11.5857 14.1346 11.9999 14.1346C12.4141 14.1346 12.7499 13.7988 12.7499 13.3846C12.7499 13.3096 12.7806 13.2004 12.9123 13.0413C13.047 12.8786 13.2441 12.7169 13.4784 12.5528C14.1428 12.0876 14.5798 11.3141 14.5798 10.4384C14.5798 9.01348 13.4247 7.8584 11.9999 7.8584C10.575 7.8584 9.41992 9.01348 9.41992 10.4384C9.41992 10.8526 9.75571 11.1884 10.1699 11.1884C10.5841 11.1884 10.9199 10.8526 10.9199 10.4384Z" fill="#ffffff" />
+                      <path d="M11.9991 14.6426C11.5849 14.6426 11.2491 14.9783 11.2491 15.3926C11.2491 15.8068 11.5849 16.1426 11.9991 16.1426C12.4134 16.1426 12.7499 15.8068 12.7499 15.3926C12.7499 14.9783 12.4134 14.6426 11.9991 14.6426Z" fill="#ffffff" />
+                      <path fillRule="evenodd" clipRule="evenodd" d="M12 4C7.58172 4 4 7.58172 4 12V20H12C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12C21.5 17.2467 17.2467 21.5 12 21.5H3.25C2.83579 21.5 2.5 21.1642 2.5 20.75V12Z" fill="#ffffff" />
+                    </svg>
+                    <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-sm text-white/80 text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity z-50">
+                      How To Use
+                    </div>
                   </button>
                 )}
+
+                <button
+                  onClick={() => router.push('/text-to-image')}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80  border border-white/10 transition-all ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  aria-label="Image"
+                >
+                  <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <span className="hidden md:block">Image</span>
+                </button>
+
+                <button
+                  onClick={() => router.push('/text-to-image/edit-image')}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  aria-label="Edit Image"
+                >
+                  <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <span className="hidden md:block">Edit</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
+                    window.open(url, '_blank');
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all bg-white/10 text-white/100"
+                  aria-label="Image Editor"
+                >
+                  <Edit3 size={16} className="text-white" />
+                  <span className="hidden md:block">Image editor</span>
+                </button>
               </div>
 
               {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
               <div className="hidden md:flex items-center pt-4 pr-4">
                 <HistoryControls mode="image" />
               </div>
+
+
             </div>
 
+            <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
+              <HistoryControls mode="image" />
+            </div>
           </div>
 
+
           {/* Mobile: Search, Sort, and Date controls */}
-          <div className="flex md:hidden items-center justify-start px-2 gap-2 pb-0 mt-0">
-            <HistoryControls mode="image" />
-          </div>
+
         </div>
 
         {/* <div className="hidden md:flex items-center justify-end gap-2 md:mt-5 -mb-4">
@@ -4734,7 +5610,7 @@ const InputBox = () => {
 
         {/* Initial loading overlay - show when loading OR before initial load attempt */}
         {/* CRITICAL FIX: Don't show full screen loader if we have active generations to show */}
-        {(loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
+        {!isInlineEditImagePage && (loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -4744,7 +5620,7 @@ const InputBox = () => {
         )}
 
         {/* Filtering overlay - show when filtering/searching */}
-        {isFiltering && (
+        {!isInlineEditImagePage && isFiltering && (
           <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Filtering" />
@@ -4754,7 +5630,7 @@ const InputBox = () => {
         )}
 
         {/* Sorting overlay - show when sorting changes */}
-        {isSorting && (
+        {!isInlineEditImagePage && isSorting && (
           <div className="fixed top-[64px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Sorting" />
@@ -4764,208 +5640,226 @@ const InputBox = () => {
         )}
 
         <div>
-          {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-          {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
-            <ImageGenerationGuide />
-          )}
+          {isInlineEditImagePage ? (
+            <div className=" px-2">
+              <EditImageInterface />
+            </div>
+          ) : (
+            <>
+              {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
+              {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
+                <ImageGenerationGuide />
+              )}
 
-          {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
-          {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
+              {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
+              {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
-          {/* History Entries - Grouped by Date */}
-          {sortedDates.length > 0 && (
-          <div className=" space-y-4 md:px-0 px-2 md:mt-4 ">
-            {sortedDates.map((date) => (
-              <div key={date} className="space-y-2 md:-mt-2">
-                {/* Date Header */}
-                <div className="flex items-center md:mx-8  md:gap-2 gap-2">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="text-white/60"
-                    >
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-sm font-medium text-white/70">
-                    {formatDate(date)}
-                  </h3>
-                </div>
-
-                {/* All Images for this Date - Simple Grid with stable layout */}
-                <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
-                  {/* Local entries are now merged into history entries below, so we don't render them separately here */}
-                  {/* This prevents the "two frames" issue where local and history entries both render */}
-
-                  {/* Render all entries for this date - includes both history and merged local entries */}
-                  {(() => {
-                    // Since local entries are now merged into groupedByDate, just render all entries
-                    const allEntries = (groupedByDate as { [key: string]: HistoryEntry[] })[date] || [];
-
-                    return allEntries.flatMap((entry: HistoryEntry) => {
-                      const entryImages: any[] = Array.isArray((entry as any)?.images) ? ((entry as any).images as any[]) : [];
-                      // Check if entry has ready images
-                      const hasImages = entryImages.length > 0;
-                      const hasReadyImages = hasImages && entry.images.some((img: any) =>
-                        img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
-                      );
-
-                      return entryImages.map((image: any, imgIdx: number) => {
-                        // Generate unique key: use image.id if available, otherwise use index
-                        // This prevents duplicate keys when image.id is undefined
-                        const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
-                        const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
-                        const isImageLoaded = loadedImages.has(uniqueImageKey);
-
-                        // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
-                        // This prevents the frame from disappearing during the transition
-                        // For images that have URLs, check if they're loaded
-                        const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
-                        // Show loading if:
-                        // 1. Status is generating (always show loader)
-                        // 2. Status is completed but image hasn't loaded yet (show shimmer/loader)
-                        // 3. No image URL exists (placeholder from activeGenerations - show loader)
-                        const isGeneratingStatus = (entry.status as string) === "generating" || (entry.status as string) === "pending";
-                        const shouldShowLoading = isGeneratingStatus ||
-                          (entry.status === "completed" && hasImageUrl && !isImageLoaded) ||
-                          (!hasImageUrl && isGeneratingStatus);
-
-                        // Check if this is a newly loaded entry for animation
-                        // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
-                        // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
-                        const isNewEntry = !previousEntriesRef.current.has(entry.id);
-
-                        return (
-                          <div
-                            key={uniqueImageKey}
-                            data-image-id={uniqueImageId}
-                            onClick={() => setPreview({ entry, image })}
-                            className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
-                              }`}
-                            style={{
-                              ...(isNewEntry ? {
-                                animation: 'fadeInUp 0.6s ease-out forwards',
-                                opacity: 0,
-                              } : {}),
-                            }}
-                            onAnimationEnd={(e) => {
-                              if (isNewEntry) {
-                                e.currentTarget.style.opacity = '1';
-                              }
-                            }}
+              {/* History Entries - Grouped by Date */}
+              {sortedDates.length > 0 && (
+                <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
+                  {sortedDates.map((date) => (
+                    <div key={date} className="space-y-2 md:-mt-2">
+                      {/* Date Header */}
+                      <div className="flex items-center md:mx-8  md:gap-2 gap-2">
+                        <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="text-white/60"
                           >
-                            {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
-                            {entry.status === "failed" ? (
-                              // Error frame
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
-                                <div className="flex flex-col items-center gap-2">
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="text-red-400"
-                                  >
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                  </svg>
-                                  <div className="text-xs text-red-400">Failed</div>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                {/* Image - always render so onLoad fires */}
-                                {hasImageUrl && (
-                                  <div className="absolute inset-0 group">
-                                    <img
-                                      src={image.thumbnailUrl || image.avifUrl || image.url}
-                                      alt=""
-                                      loading="lazy"
-                                      decoding="async"
-                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                      onLoad={() => {
-                                        setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
-                                      }}
-                                    />
-                                    {/* Shimmer loading effect - only show if image hasn't loaded yet */}
-                                    {!isImageLoaded && (
-                                      <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                    )}
-                                    {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                                    <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                      <button
-                                        aria-label="Recreate image"
-                                        className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                        onClick={(e) => handleRecreate(e, entry)}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                      >
-                                        <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
-                                      </button>
+                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-medium text-white/70">
+                          {formatDate(date)}
+                        </h3>
+                      </div>
 
-                                    </div>
-                                    <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                      <button
-                                        aria-label="Copy prompt"
-                                        className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                      >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                      </button>
-                                      <button
-                                        aria-label="Delete image"
-                                        className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                        onClick={(e) => handleDeleteImage(e, entry)}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
+                      {/* All Images for this Date - Simple Grid with stable layout */}
+                      <div className="image-grid md:ml-9 ml-0" key={`grid-${date}`}>
+                        {/* Local entries are now merged into history entries below, so we don't render them separately here */}
+                        {/* This prevents the "two frames" issue where local and history entries both render */}
 
-                                {/* Shimmer background for placeholders without images (persists on refresh) */}
-                                {!hasImageUrl && isGeneratingStatus && (
-                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                )}
+                        {/* Render all entries for this date - includes both history and merged local entries */}
+                        {(() => {
+                          // Since local entries are now merged into groupedByDate, just render all entries
+                          const allEntries = (groupedByDate as { [key: string]: HistoryEntry[] })[date] || [];
 
-                                {/* Loading overlay - show on top of image while loading */}
-                                {shouldShowLoading && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
-                                    <div className="flex flex-col items-center gap-2">
-                                      <GifLoader size={64} alt="Generating" />
-                                      <div className="text-xs text-white/60 text-center">
-                                        {isGeneratingStatus ? "Generating..." : "Loading..."}
+                          return allEntries.flatMap((entry: HistoryEntry) => {
+                            const entryImages: any[] = Array.isArray((entry as any)?.images) ? ((entry as any).images as any[]) : [];
+                            // Check if entry has ready images
+                            const hasImages = entryImages.length > 0;
+                            const hasReadyImages = hasImages && entry.images.some((img: any) =>
+                              img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl
+                            );
+
+                            return entryImages.map((image: any, imgIdx: number) => {
+                              // Generate unique key: use image.id if available, otherwise use index
+                              // This prevents duplicate keys when image.id is undefined
+                              const uniqueImageKey = image?.id ? `${entry.id}-${image.id}` : `${entry.id}-img-${imgIdx}`;
+                              const uniqueImageId = image?.id || `${entry.id}-img-${imgIdx}`;
+                              const isImageLoaded = loadedImages.has(uniqueImageKey);
+
+                              // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
+                              // This prevents the frame from disappearing during the transition
+                              // For images that have URLs, check if they're loaded
+                              const hasImageUrl = image?.thumbnailUrl || image?.avifUrl || image?.url;
+                              // Show loading if:
+                              // 1. Status is generating (always show loader)
+                              // 2. Status is completed but image hasn't loaded yet (show shimmer/loader)
+                              // 3. No image URL exists (placeholder from activeGenerations - show loader)
+                              const isGeneratingStatus = (entry.status as string) === "generating" || (entry.status as string) === "pending";
+                              const shouldShowLoading = isGeneratingStatus ||
+                                (entry.status === "completed" && hasImageUrl && !isImageLoaded) ||
+                                (!hasImageUrl && isGeneratingStatus);
+
+                              // Check if this is a newly loaded entry for animation
+                              // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
+                              // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
+                              const isNewEntry = !previousEntriesRef.current.has(entry.id);
+
+                              return (
+                                <div
+                                  key={uniqueImageKey}
+                                  data-image-id={uniqueImageId}
+                                  onClick={() => setPreview({ entry, image })}
+                                  className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${isNewEntry ? 'animate-fade-in-up' : ''
+                                    }`}
+                                  style={{
+                                    ...(isNewEntry ? {
+                                      animation: 'fadeInUp 0.6s ease-out forwards',
+                                      opacity: 0,
+                                    } : {}),
+                                  }}
+                                  draggable={true}
+                                  onDragStart={(e) => {
+                                    const url = image.thumbnailUrl || image.avifUrl || image.url;
+                                    if (url) {
+                                      e.dataTransfer.setData('text/plain', url);
+                                      e.dataTransfer.setData('text/uri-list', url);
+                                      e.dataTransfer.effectAllowed = 'copy';
+                                      // Optional: Set a custom drag image if needed, but browser default is usually fine
+                                    }
+                                  }}
+                                  onAnimationEnd={(e) => {
+                                    if (isNewEntry) {
+                                      e.currentTarget.style.opacity = '1';
+                                    }
+                                  }}
+                                >
+                                  {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
+                                  {entry.status === "failed" ? (
+                                    // Error frame
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/90" style={{ width: '100%', height: '100%' }}>
+                                      <div className="flex flex-col items-center gap-2">
+                                        <svg
+                                          width="20"
+                                          height="20"
+                                          viewBox="0 0 24 24"
+                                          fill="currentColor"
+                                          className="text-red-400"
+                                        >
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                        </svg>
+                                        <div className="text-xs text-red-400">Failed</div>
                                       </div>
                                     </div>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                          </div>
-                        );
-                      });
-                    });
-                  })()}
+                                  ) : (
+                                    <>
+                                      {/* Image - always render so onLoad fires */}
+                                      {hasImageUrl && (
+                                        <div className="absolute inset-0 group">
+                                          <img
+                                            src={image.thumbnailUrl || image.avifUrl || image.url}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                            onLoad={() => {
+                                              setLoadedImages(prev => new Set(prev).add(uniqueImageKey));
+                                            }}
+                                          />
+                                          {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                          {!isImageLoaded && (
+                                            <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                          )}
+                                          {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
+                                          <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                            <button
+                                              aria-label="Recreate image"
+                                              className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                              onClick={(e) => handleRecreate(e, entry)}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <Image src="/icons/recreate.svg" alt="Recreate" width={18} height={18} className="w-5 h-5" />
+                                            </button>
+
+                                          </div>
+                                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                            <button
+                                              aria-label="Copy prompt"
+                                              className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                              onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                            </button>
+                                            <button
+                                              aria-label="Delete image"
+                                              className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                              onClick={(e) => handleDeleteImage(e, entry)}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <Trash2 size={16} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Shimmer background for placeholders without images (persists on refresh) */}
+                                      {!hasImageUrl && isGeneratingStatus && (
+                                        <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                      )}
+
+                                      {/* Loading overlay - show on top of image while loading */}
+                                      {shouldShowLoading && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10" style={{ width: '100%', height: '100%' }}>
+                                          <div className="flex flex-col items-center gap-2">
+                                            <GifLoader size={64} alt="Generating" />
+                                            <div className="text-xs text-white/60 text-center">
+                                              {isGeneratingStatus ? "Generating..." : "Loading..."}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                </div>
+                              );
+                            });
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Scroll pagination loading indicator */}
+                  {loading && historyEntries.length > 0 && (
+                    <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
+                      <div className="flex flex-col items-center md:gap-3 gap-2">
+                        <GifLoader size={80} alt="Loading more" />
+                        <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
+                      </div>
+                    </div>
+                  )}
+
+
                 </div>
-              </div>
-            ))}
-
-            {/* Scroll pagination loading indicator */}
-            {loading && historyEntries.length > 0 && (
-              <div className="flex items-center justify-center pt-8 pb-48 md:pb-48">
-                <div className="flex flex-col items-center md:gap-3 gap-2">
-                  <GifLoader size={80} alt="Loading more" />
-                  <div className="text-white/70 md:text-lg text-sm">Loading more generations...</div>
-                </div>
-              </div>
-            )}
-
-
-          </div>
+              )}
+            </>
           )}
           {/* Infinite scroll sentinel inside scroll container */}
           <div ref={sentinelRef} style={{ height: 24 }} />
@@ -4973,7 +5867,7 @@ const InputBox = () => {
       </div>
 
       {/* Mobile-only: Selected images/characters grid above input box */}
-      {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+      {!isInlineEditImagePage && (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
           <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
             {/* Combine characters and images for display */}
@@ -5058,527 +5952,538 @@ const InputBox = () => {
           </div>
         </div>
       )}
-      <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
-        <div 
-          className="relative rounded-lg md:rounded-b-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)] transition-all duration-300"
-          onMouseEnter={() => setIsInputBoxHovered(true)}
-          onMouseLeave={() => setIsInputBoxHovered(false)}
-        >
-          {/* Outline Glow Effect - shows on hover or when typing */}
-          <div 
-            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
-            style={{
-              opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
+      {!isInlineEditImagePage && (
+        <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+          <div
+            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
+              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+              }`}
+            onMouseEnter={() => setIsInputBoxHovered(true)}
+            onMouseLeave={() => setIsInputBoxHovered(false)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsInputBoxHovered(true);
             }}
-          ></div>
-          {/* Top row: prompt + actions */}
-          <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
-            <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
-              {/* ContentEditable with inline character tags - allows typing anywhere */}
-              <div
-                ref={contentEditableRef}
-                contentEditable
-                suppressContentEditableWarning
-                data-prompt-editor="true"
-                onInput={(e) => {
-                  if (isUpdatingRef.current) return;
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsInputBoxHovered(false);
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsInputBoxHovered(false);
 
-                  const div = e.currentTarget;
+              // Handle Files (dragged from desktop/OS)
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const files = Array.from(e.dataTransfer.files);
+                const validFiles: File[] = [];
+                const maxBytes = 14 * 1024 * 1024; // 14MB limit
 
-                  // Extract text content (including from tags)
-                  let text = '';
-                  const walker = document.createTreeWalker(
-                    div,
-                    NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
-                    null
-                  );
+                for (const file of files) {
+                  if (!file.type.startsWith('image/')) {
+                    continue;
+                  }
+                  if (file.size > maxBytes) {
+                    toast.error(`Image "${file.name}" exceeds 14MB limit`);
+                    continue;
+                  }
+                  validFiles.push(file);
+                }
 
-                  let node;
-                  while (node = walker.nextNode()) {
-                    if (node.nodeType === Node.TEXT_NODE) {
-                      text += node.textContent || '';
-                    } else if (node.nodeType === Node.ELEMENT_NODE) {
-                      const el = node as Element;
-                      if (el.classList.contains('character-tag')) {
-                        const nameSpan = el.querySelector('span');
-                        if (nameSpan) {
-                          text += nameSpan.textContent || '';
-                        }
-                      } else {
-                        // For other elements, get text content
-                        text += el.textContent || '';
-                      }
+                if (validFiles.length > 0) {
+                  const newUrls: string[] = [];
+                  for (const file of validFiles) {
+                    try {
+                      const reader = new FileReader();
+                      const dataUrl: string = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                      });
+                      newUrls.push(dataUrl);
+                    } catch (error) {
+                      console.error("Error reading file:", file.name, error);
+                      toast.error(`Failed to read "${file.name}"`);
                     }
                   }
 
-                  // Clean duplicates
-                  const cleanedText = text.replace(/(@\w+)(\s*\1)+/g, '$1');
+                  if (newUrls.length > 0) {
+                    dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
+                    toast.success(`Added ${newUrls.length} image(s)`);
+                  }
+                }
+                return;
+              }
 
-                  // Update state
-                  isUpdatingRef.current = true;
-                  dispatch(setPrompt(cleanedText));
+              // Handle dragged logical items (URLs from within the app)
+              const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+              if (url && (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/'))) {
+                dispatch(setUploadedImages([...uploadedImages, url].slice(0, 10)));
+                toast.success('Image added');
+              }
+            }}
+          >
+            {/* Outline Glow Effect - shows on hover or when typing */}
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+              style={{
+                opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
+              }}
+            ></div>
+            {/* Top row: prompt + actions */}
+            <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
+              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
+                {/* ContentEditable with inline character tags - allows typing anywhere */}
+                <div
+                  ref={contentEditableRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  data-prompt-editor="true"
+                  onInput={(e) => {
+                    if (isUpdatingRef.current) return;
 
-                  // Adjust height
-                  div.style.height = 'auto';
-                  div.style.height = Math.min(div.scrollHeight, 96) + 'px';
-
-                  // Re-render tags after a short delay to ensure they're visible
-                  setTimeout(() => {
-                    isUpdatingRef.current = false;
-                    // Check if tags need to be re-rendered
-                    const hasTags = div.querySelector('.character-tag');
-                    const shouldHaveTags = selectedCharacters.length > 0 && cleanedText.match(/@\w+/);
-                    if (!hasTags && shouldHaveTags) {
-                      updateContentEditable();
-                    }
-                  }, 100);
-                }}
-                onKeyDown={(e) => {
-                  // Allow normal typing, but prevent deleting tags directly
-                  if (e.key === 'Backspace' || e.key === 'Delete') {
                     const div = e.currentTarget;
+
+                    // Extract text content (including from tags)
+                    let text = '';
+                    const walker = document.createTreeWalker(
+                      div,
+                      NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+                      null
+                    );
+
+                    let node;
+                    while (node = walker.nextNode()) {
+                      if (node.nodeType === Node.TEXT_NODE) {
+                        text += node.textContent || '';
+                      } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const el = node as Element;
+                        if (el.classList.contains('character-tag')) {
+                          const nameSpan = el.querySelector('span');
+                          if (nameSpan) {
+                            text += nameSpan.textContent || '';
+                          }
+                        } else {
+                          // For other elements, get text content
+                          text += el.textContent || '';
+                        }
+                      }
+                    }
+
+                    // Clean duplicates
+                    const cleanedText = text.replace(/(@\w+)(\s*\1)+/g, '$1');
+
+                    // Update state
+                    isUpdatingRef.current = true;
+                    dispatch(setPrompt(cleanedText));
+
+                    // Adjust height
+                    div.style.height = 'auto';
+                    div.style.height = Math.min(div.scrollHeight, 96) + 'px';
+
+                    // Re-render tags after a short delay to ensure they're visible
+                    setTimeout(() => {
+                      isUpdatingRef.current = false;
+                      // Check if tags need to be re-rendered
+                      const hasTags = div.querySelector('.character-tag');
+                      const shouldHaveTags = selectedCharacters.length > 0 && cleanedText.match(/@\w+/);
+                      if (!hasTags && shouldHaveTags) {
+                        updateContentEditable();
+                      }
+                    }, 100);
+                  }}
+                  onKeyDown={(e) => {
+                    // Allow normal typing, but prevent deleting tags directly
+                    if (e.key === 'Backspace' || e.key === 'Delete') {
+                      const div = e.currentTarget;
+                      const selection = window.getSelection();
+                      if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        let node: Node | null = range.startContainer;
+
+                        while (node && node !== div) {
+                          if (node.nodeType === Node.ELEMENT_NODE) {
+                            const el = node as Element;
+                            if (el.classList.contains('character-tag')) {
+                              // If cursor is at start of tag, move before it
+                              if (e.key === 'Backspace') {
+                                e.preventDefault();
+                                const textNode = document.createTextNode('');
+                                div.insertBefore(textNode, el);
+                                range.setStartBefore(textNode);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                                return;
+                              }
+                              // If cursor is at end of tag, move after it
+                              if (e.key === 'Delete') {
+                                e.preventDefault();
+                                const textNode = document.createTextNode('');
+                                div.insertBefore(textNode, el.nextSibling);
+                                range.setStartAfter(textNode);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                                return;
+                              }
+                            }
+                          }
+                          node = node.parentNode;
+                        }
+                      }
+                    }
+                  }}
+                  onPaste={async (e) => {
+                    // Check for files first
+                    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                      const files = Array.from(e.clipboardData.files);
+                      const validFiles: File[] = [];
+                      const maxBytes = 14 * 1024 * 1024; // 14MB limit
+
+                      for (const file of files) {
+                        if (!file.type.startsWith('image/')) {
+                          continue;
+                        }
+                        if (file.size > maxBytes) {
+                          toast.error(`Image "${file.name}" exceeds 14MB limit`);
+                          continue;
+                        }
+                        validFiles.push(file);
+                      }
+
+                      if (validFiles.length > 0) {
+                        e.preventDefault();
+                        const newUrls: string[] = [];
+                        for (const file of validFiles) {
+                          try {
+                            const reader = new FileReader();
+                            const dataUrl: string = await new Promise((resolve, reject) => {
+                              reader.onload = () => resolve(reader.result as string);
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            newUrls.push(dataUrl);
+                          } catch (error) {
+                            console.error("Error reading pasted file:", file.name, error);
+                            toast.error(`Failed to read pasted image`);
+                          }
+                        }
+                        if (newUrls.length > 0) {
+                          dispatch(setUploadedImages([...uploadedImages, ...newUrls].slice(0, 10)));
+                          toast.success(`Pasted ${newUrls.length} image(s)`);
+                        }
+                        return;
+                      }
+                    }
+
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text/plain');
                     const selection = window.getSelection();
                     if (selection && selection.rangeCount > 0) {
                       const range = selection.getRangeAt(0);
-                      let node: Node | null = range.startContainer;
-
-                      while (node && node !== div) {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                          const el = node as Element;
-                          if (el.classList.contains('character-tag')) {
-                            // If cursor is at start of tag, move before it
-                            if (e.key === 'Backspace') {
-                              e.preventDefault();
-                              const textNode = document.createTextNode('');
-                              div.insertBefore(textNode, el);
-                              range.setStartBefore(textNode);
-                              range.collapse(true);
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                              return;
-                            }
-                            // If cursor is at end of tag, move after it
-                            if (e.key === 'Delete') {
-                              e.preventDefault();
-                              const textNode = document.createTextNode('');
-                              div.insertBefore(textNode, el.nextSibling);
-                              range.setStartAfter(textNode);
-                              range.collapse(true);
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                              return;
-                            }
-                          }
-                        }
-                        node = node.parentNode;
-                      }
+                      range.deleteContents();
+                      const textNode = document.createTextNode(text);
+                      range.insertNode(textNode);
+                      range.setStartAfter(textNode);
+                      range.collapse(false);
+                      selection.removeAllRanges();
+                      selection.addRange(range);
                     }
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const text = e.clipboardData.getData('text/plain');
-                  const selection = window.getSelection();
-                  if (selection && selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    range.deleteContents();
-                    const textNode = document.createTextNode(text);
-                    range.insertNode(textNode);
-                    range.setStartAfter(textNode);
-                    range.collapse(false);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                  }
-                  // Trigger input event
-                  const inputEvent = new Event('input', { bubbles: true });
-                  e.currentTarget.dispatchEvent(inputEvent);
-                }}
-                className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}
+                    // Trigger input event
+                    const inputEvent = new Event('input', { bubbles: true });
+                    e.currentTarget.dispatchEvent(inputEvent);
+                  }}
+                  className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}
                   }`}
-                style={{
-                  minHeight: '100px',
-                  maxHeight: '96px',
-                  lineHeight: '1.2',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
-                  wordBreak: 'break-word',
-                  whiteSpace: 'pre-wrap'
-                }}
-                data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
-              />
-              {/* Enhancement overlay removed - text shines instead */}
-              {/* Fixed position buttons container */}
-              <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
-                {/* Clear prompt button - only show when there's text */}
-                {prompt.trim() && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => {
-                        // Clear prompt when user explicitly clicks the clear button
-                        dispatch(setPrompt(''));
-                        // Also clear the contentEditable element
-                        if (contentEditableRef.current) {
-                          contentEditableRef.current.textContent = '';
-                        }
-                        // Focus the input after clearing
-                        if (inputEl.current) {
-                          inputEl.current.focus();
-                        }
-                      }}
-                      className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                      aria-label="Clear prompt"
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-white/80"
+                  style={{
+                    minHeight: '100px',
+                    maxHeight: '96px',
+                    lineHeight: '1.2',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap'
+                  }}
+                  data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
+                />
+                {/* Enhancement overlay removed - text shines instead */}
+                {/* Fixed position buttons container */}
+                <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
+                  {/* Clear prompt button - only show when there's text */}
+                  {prompt.trim() && (
+                    <div className="relative group">
+                      <button
+                        onClick={() => {
+                          // Clear prompt when user explicitly clicks the clear button
+                          dispatch(setPrompt(''));
+                          // Also clear the contentEditable element
+                          if (contentEditableRef.current) {
+                            contentEditableRef.current.textContent = '';
+                          }
+                          // Focus the input after clearing
+                          if (inputEl.current) {
+                            inputEl.current.focus();
+                          }
+                        }}
+                        className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                        aria-label="Clear prompt"
                       >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-white/80"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
+                    </div>
+                  )}
+                  {/* Desktop-only: Previews just to the left of upload */}
+
+                  {/* Mobile: Single column on right | Desktop: Horizontal row */}
+                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
+                    {/* Enhance prompt button (manual trigger) */}
+                    <div className="relative">
+                      <button
+                        onClick={handleEnhancePrompt}
+                        disabled={isEnhancing || !prompt.trim()}
+                        type="button"
+                        className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        aria-pressed={isEnhancing}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                          <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
+                          <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
+                        </svg>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        onClick={() => setIsCharacterModalOpen(true)}
+                        type="button"
+                        aria-label="Upload character"
+                      >
+                        <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                        <span className="text-white text-sm"> </span>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        onClick={() => setIsUploadOpen(true)}
+                        type="button"
+                        aria-label="Upload image"
+                      >
+                        <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                        <span className="text-white text-sm"> </span>
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Uploaded Images / Characters Preview (Moved INSIDE container to match Video Gen style) */}
+              {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+                <div className="hidden md:flex flex-wrap gap-2 px-1 pb-3 pt-2">
+                  {/* Selected Characters */}
+                  {selectedCharacters.map((character: any) => (
+                    <div key={character.id} className="relative group">
+                      <div
+                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                        title={`Character: ${character.name}`}
+                      >
+                        <img
+                          src={character.frontImageUrl}
+                          alt={character.name}
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                          {character.name || 'Character'}
+                        </div>
+                      </div>
+                      <button
+                        aria-label="Remove character"
+                        className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          dispatch(removeSelectedCharacter(character.id));
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Uploaded Images */}
+                  {uploadedImages.map((u: string, i: number) => (
+                    <div key={i} className="relative group">
+                      <div
+                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                        onClick={() => {
+                          setAssetViewer({
+                            isOpen: true,
+                            assetUrl: u,
+                            assetType: 'image',
+                            title: `Uploaded Image ${i + 1}`
+                          });
+                        }}
+                      >
+                        <img
+                          src={u}
+                          alt=""
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                          Image {i + 1}
+                        </div>
+                      </div>
+                      <button
+                        aria-label="Remove image"
+                        className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
+                          dispatch(setUploadedImages(next));
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+
+
+              {/* Fixed position Generate button - Desktop only */}
+              <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
+                {/* {error && <div className="text-red-500 text-xs">{error}</div>}
+              {expectedCredits > 0 && (
+                <div className="text-[11px] text-white/70">
+                  Cost: {formatCredits(expectedCredits)} credits
+                </div>
+              )} */}
+                <button
+                  onClick={async () => {
+                    try {
+                      // Check parallel generation limit (only counting running ones)
+                      if (runningGenerationsCount >= 4) {
+                        toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+                        return;
+                      }
+
+                      // Create tracking ID (visual only for now as handleGenerate manages internal state)
+                      // This allows us to show the card immediately in the panel
+                      const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+                      // Add to active generations queue immediately
+                      console.log('[queue] Adding new generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
+                      dispatch(addActiveGeneration({
+                        id: generationId,
+                        prompt: prompt,
+                        model: selectedModel,
+                        status: 'pending',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        params: {
+                          imageCount,
+                          frameSize,
+                          style,
+                          uploadedImages: getCombinedUploadedImages()
+                        }
+                      }));
+
+                      // Trigger the actual generation logic (fire and forget to not block button)
+                      handleGenerate(generationId);
+                    } catch (e) {
+                      console.error('Failed to start generation:', e);
+                    }
+                  }}
+                  disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  aria-busy={isEnhancing}
+                >
+                  {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom row: pill options */}
+
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
+              {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
+
+              <div className="flex items-center justify-between gap-3 md:hidden w-full">
+                <div className="flex-1">
+                  <ModelsDropdown />
+                </div>
+                {error && <div className="text-red-500 text-sm">{error}</div>}
+                {expectedCredits > 0 && (
+                  <div className="text-[11px] text-white/70 whitespace-nowrap">
+                    {formatCredits(expectedCredits)} credits
                   </div>
                 )}
-                {/* Desktop-only: Previews just to the left of upload */}
-
-                {/* Mobile: Single column on right | Desktop: Horizontal row */}
-                <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
-                  {/* Enhance prompt button (manual trigger) */}
-                  <div className="relative">
-                    <button
-                      onClick={handleEnhancePrompt}
-                      disabled={isEnhancing || !prompt.trim()}
-                      type="button"
-                      className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      aria-pressed={isEnhancing}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-                        <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
-                        <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
-                      </svg>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsCharacterModalOpen(true)}
-                      type="button"
-                      aria-label="Upload character"
-                    >
-                      <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
-                      <span className="text-white text-sm"> </span>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
-                      onClick={() => setIsUploadOpen(true)}
-                      type="button"
-                      aria-label="Upload image"
-                    >
-                      <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
-                      <span className="text-white text-sm"> </span>
-                    </button>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Fixed position Generate button - Desktop only */}
-            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
-              {error && <div className="text-red-500 text-xs">{error}</div>}
-              <button
-                onClick={async () => {
-                  try {
-                    // Check parallel generation limit (only counting running ones)
-                    if (runningGenerationsCount >= 4) {
-                      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
-                      return;
-                    }
-
-                    // Create tracking ID (visual only for now as handleGenerate manages internal state)
-                    // This allows us to show the card immediately in the panel
-                    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                    
-                    // Add to active generations queue immediately
-                    console.log('[queue] Adding new generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
-                    dispatch(addActiveGeneration({
-                      id: generationId,
-                      prompt: prompt,
-                      model: selectedModel,
-                      status: 'pending',
-                      createdAt: Date.now(),
-                      updatedAt: Date.now(),
-                      params: {
-                        imageCount,
-                        frameSize,
-                        style,
-                        uploadedImages: getCombinedUploadedImages()
+                <button
+                  onClick={async () => {
+                    try {
+                      // Check parallel generation limit (only counting running ones)
+                      if (runningGenerationsCount >= 4) {
+                        toast.error('Queue full (4/4 active). Please wait.');
+                        return;
                       }
-                    }));
-                    
-                    // Trigger the actual generation logic (fire and forget to not block button)
-                    handleGenerate(generationId);
-                  } catch (e) {
-                    console.error('Failed to start generation:', e);
-                  }
-                }}
-                disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                aria-busy={isEnhancing}
-              >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
-              </button>
-            </div>
-          </div>
 
-          {/* Bottom row: pill options */}
-          {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-            <div className="hidden md:flex items-center gap-1.5 overflow-x-auto overflow-y-hidden max-w-[100vw] md:max-w-none pr-1 no-scrollbar mb-1">
-              {/* Selected Characters Preview */}
-              {selectedCharacters.map((character: any) => (
-                <div
-                  key={character.id}
-                  className="relative w-12 h-12 rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
-                  title={`Character: ${character.name}`}
+                      const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+                      dispatch(addActiveGeneration({
+                        id: generationId,
+                        prompt: prompt,
+                        model: selectedModel,
+                        status: 'pending',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        params: {
+                          imageCount,
+                          frameSize,
+                          style,
+                          uploadedImages: getCombinedUploadedImages()
+                        }
+                      }));
+
+                      handleGenerate(generationId);
+                    } catch (e) {
+                      console.error('Failed to start generation:', e);
+                    }
+                  }}
+                  disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
+                  aria-busy={isEnhancing}
                 >
-                  <img
-                    src={character.frontImageUrl}
-                    alt={character.name}
-                    aria-hidden="true"
-                    decoding="async"
-                    className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                  />
-                  <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                    <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                      C
-                    </div>
-                  </div>
-                  <button
-                    aria-label={`Remove character ${character.name}`}
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dispatch(removeSelectedCharacter(character.id));
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              {/* Uploaded Images Preview */}
-              {uploadedImages.map((u: string, i: number) => {
-                const count = uploadedImages.length;
-                const sizeClass = count >= 9 ? 'w-12 h-12' : count >= 6 ? 'w-12 h-12' : 'w-12 h-12';
-                return (
-                  <div
-                    key={i}
-                    data-image-index={i}
-                    title={`Image ${i + 1} (index ${i})`}
-                    className={`relative ${sizeClass} rounded-md overflow-hidden ring-1 ring-white/20 group flex-shrink-0 transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer`}
-                    onClick={() => {
-                      setAssetViewer({
-                        isOpen: true,
-                        assetUrl: u,
-                        assetType: 'image',
-                        title: `Uploaded Image ${i + 1}`
-                      });
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={u}
-                      alt=""
-                      aria-hidden="true"
-                      decoding="async"
-                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                    />
-                    {/* Number badge (1-based display, zero-based in payload order) */}
-                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                        {i + 1}
-                      </div>
-                    </div>
-                    <button
-                      aria-label="Remove reference"
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const next = uploadedImages.filter(
-                          (_: string, idx: number) => idx !== i
-                        );
-                        dispatch(setUploadedImages(next));
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
-            {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
-
-            <div className="flex items-center justify-between gap-3 md:hidden w-full">
-              <div className="flex-1">
-                <ModelsDropdown />
+                  {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
+                </button>
               </div>
-              {error && <div className="text-red-500 text-sm">{error}</div>}
-              <button
-                onClick={async () => {
-                  try {
-                    // Check parallel generation limit (only counting running ones)
-                    if (runningGenerationsCount >= 4) {
-                      toast.error('Queue full (4/4 active). Please wait.');
-                      return;
-                    }
 
-                    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                    
-                    dispatch(addActiveGeneration({
-                      id: generationId,
-                      prompt: prompt,
-                      model: selectedModel,
-                      status: 'pending',
-                      createdAt: Date.now(),
-                      updatedAt: Date.now(),
-                      params: {
-                        imageCount,
-                        frameSize,
-                        style,
-                        uploadedImages: getCombinedUploadedImages()
-                      }
-                    }));
-                    
-                    handleGenerate(generationId);
-                  } catch (e) {
-                    console.error('Failed to start generation:', e);
-                  }
-                }}
-                disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
-                aria-busy={isEnhancing}
-              >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
-              </button>
-            </div>
-
-            {/* Mobile/Tablet: Second row - Other dropdowns */}
-            <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative" style={{ zIndex: 70 }}>
-              <ImageCountDropdown />
-              <FrameSizeDropdown />
-              <StyleSelector />
-              <LucidOriginOptions />
-              <PhoenixOptions />
-              <FileTypeDropdown />
-              {selectedModel === 'google/nano-banana-pro' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={nanoBananaProResolution}
-                    onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
-                    options={['1K', '2K', '4K']}
-                    dropdownId="nanoBananaProResolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'flux-2-pro' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={flux2ProResolution}
-                    onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
-                    options={['1K', '2K']}
-                    dropdownId="flux2ProResolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'seedream-4.5' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={seedream45Resolution}
-                    onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
-                    options={['2K', '4K']}
-                    dropdownId="seedream45Resolution"
-                  />
-                </div>
-              )}
-              {selectedModel === 'seedream-v4' && (
-                <div className="flex items-center gap-2 relative">
-                  <ResolutionDropdown
-                    resolution={seedreamSize}
-                    onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
-                    options={['1K', '2K', '4K', 'custom']}
-                    dropdownId="seedreamSize"
-                  />
-                  {seedreamSize === 'custom' && (
-                    <>
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamWidth}
-                        onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
-                        placeholder="Width"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                      <input
-                        type="number"
-                        min={1024}
-                        max={4096}
-                        value={seedreamHeight}
-                        onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
-                        placeholder="Height"
-                        className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-              {selectedModel === 'new-turbo-model' && (
-                <div className="flex items-center gap-2 relative">
-                  <ZTurboOutputFormatDropdown
-                    outputFormat={zTurboOutputFormat}
-                    onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
-                    dropdownId="zTurboOutputFormat"
-                  />
-                </div>
-              )}
-              {selectedModel === 'openai/gpt-image-1.5' && (
-                <>
-                  <div className="flex items-center gap-2 relative">
-                    <QualityDropdown
-                      quality={gptImage15Quality}
-                      onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
-                      dropdownId="gptImage15Quality"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 relative">
-                    <ZTurboOutputFormatDropdown
-                      outputFormat={gptImage15OutputFormat}
-                      onOutputFormatChange={(val) => setGptImage15OutputFormat(val)}
-                      dropdownId="gptImage15OutputFormat"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Desktop: All dropdowns in one row */}
-            <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
-              <div className="flex items-center gap-3 -mb-2">
-                <ModelsDropdown />
+              {/* Mobile/Tablet: Second row - Other dropdowns */}
+              <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative" style={{ zIndex: 70 }}>
                 <ImageCountDropdown />
                 <FrameSizeDropdown />
                 <StyleSelector />
@@ -5602,6 +6507,16 @@ const InputBox = () => {
                       onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
                       options={['1K', '2K']}
                       dropdownId="flux2ProResolution"
+                    />
+                  </div>
+                )}
+                {selectedModel === 'qwen-image-edit-2512' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={qwenResolution}
+                      onResolutionChange={(val) => setQwenResolution(val as '1K' | '2K')}
+                      options={['1K', '2K']}
+                      dropdownId="qwen2512Resolution"
                     />
                   </div>
                 )}
@@ -5675,10 +6590,123 @@ const InputBox = () => {
                   </>
                 )}
               </div>
+
+              {/* Desktop: All dropdowns in one row */}
+              <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
+                <div className="flex items-center gap-3 -mb-2">
+                  <ModelsDropdown />
+                  <ImageCountDropdown />
+                  <FrameSizeDropdown />
+                  <StyleSelector />
+                  <LucidOriginOptions />
+                  <PhoenixOptions />
+                  <FileTypeDropdown />
+                  {selectedModel === 'google/nano-banana-pro' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={nanoBananaProResolution}
+                        onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
+                        options={['1K', '2K', '4K']}
+                        dropdownId="nanoBananaProResolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'flux-2-pro' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={flux2ProResolution}
+                        onResolutionChange={(val) => setFlux2ProResolution(val as '1K' | '2K')}
+                        options={['1K', '2K']}
+                        dropdownId="flux2ProResolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'qwen-image-edit-2512' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={qwenResolution}
+                        onResolutionChange={(val) => setQwenResolution(val as '1K' | '2K')}
+                        options={['1K', '2K']}
+                        dropdownId="qwen2512Resolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'seedream-4.5' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={seedream45Resolution}
+                        onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
+                        options={['2K', '4K']}
+                        dropdownId="seedream45Resolution"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'seedream-v4' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={seedreamSize}
+                        onResolutionChange={(val) => setSeedreamSize(val as '1K' | '2K' | '4K' | 'custom')}
+                        options={['1K', '2K', '4K', 'custom']}
+                        dropdownId="seedreamSize"
+                      />
+                      {seedreamSize === 'custom' && (
+                        <>
+                          <input
+                            type="number"
+                            min={1024}
+                            max={4096}
+                            value={seedreamWidth}
+                            onChange={(e) => setSeedreamWidth(Number(e.target.value) || 2048)}
+                            placeholder="Width"
+                            className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                          />
+                          <input
+                            type="number"
+                            min={1024}
+                            max={4096}
+                            value={seedreamHeight}
+                            onChange={(e) => setSeedreamHeight(Number(e.target.value) || 2048)}
+                            placeholder="Height"
+                            className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {selectedModel === 'new-turbo-model' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={zTurboOutputFormat}
+                        onOutputFormatChange={(val) => setZTurboOutputFormat(val)}
+                        dropdownId="zTurboOutputFormat"
+                      />
+                    </div>
+                  )}
+                  {selectedModel === 'openai/gpt-image-1.5' && (
+                    <>
+                      <div className="flex items-center gap-2 relative">
+                        <QualityDropdown
+                          quality={gptImage15Quality}
+                          onQualityChange={(val) => setGptImage15Quality(val as 'low' | 'medium' | 'high' | 'auto')}
+                          dropdownId="gptImage15Quality"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 relative">
+                        <ZTurboOutputFormatDropdown
+                          outputFormat={gptImage15OutputFormat}
+                          onOutputFormatChange={(val) => setGptImage15OutputFormat(val)}
+                          dropdownId="gptImage15OutputFormat"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {/* Qwen Image Edit: no extra advanced controls */}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       {/* sentinel moved inside scroll container */}
       {/* Lazy loaded modals - only render when needed for better performance */}
       {preview && <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />}
@@ -5693,7 +6721,7 @@ const InputBox = () => {
       />
       {isUpscaleOpen && <UpscalePopup isOpen={isUpscaleOpen} onClose={() => setIsUpscaleOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
       {isRemoveBgOpen && <RemoveBgPopup isOpen={isRemoveBgOpen} onClose={() => setIsRemoveBgOpen(false)} defaultImage={uploadedImages[0] || null} onCompleted={refreshAllHistory} />}
-      {isEditOpen && (
+      {!isInlineEditImagePage && isEditOpen && (
         <EditPopup
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
@@ -5708,7 +6736,7 @@ const InputBox = () => {
       )}
 
       {/* Upload Modal - Lazy loaded */}
-      {isUploadOpen && (
+      {!isInlineEditImagePage && isUploadOpen && (
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
@@ -5723,7 +6751,7 @@ const InputBox = () => {
       )}
 
       {/* Character Modal - Lazy loaded */}
-      {isCharacterModalOpen && (
+      {!isInlineEditImagePage && isCharacterModalOpen && (
         <CharacterModal
           isOpen={isCharacterModalOpen}
           onClose={() => setIsCharacterModalOpen(false)}
@@ -5746,7 +6774,7 @@ const InputBox = () => {
       {isGuideModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop with blur */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-md"
             onClick={() => setIsGuideModalOpen(false)}
           />

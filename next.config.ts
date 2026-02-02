@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', 'react-hot-toast', '@tabler/icons-react', 'motion'],
     // Enable partial prerendering for better performance
     ppr: false, // Can enable if needed
+    // Allow importing from sibling folders (we embed `image_edit/src` under a route)
+    externalDir: true,
   },
   // Target modern browsers to reduce legacy JavaScript polyfills (11 KiB savings)
   // Next.js 15+ uses SWC which targets modern browsers by default, but we can be explicit
@@ -64,7 +66,7 @@ const nextConfig: NextConfig = {
     if (!isDev) {
       headers.push(
         {
-          source: '/:path*.(js|css|woff|woff2|ttf|otf|jpg|jpeg|png|gif|svg|webp|avif|mp4|webm)',
+          source: '/:path*.(woff|woff2|ttf|otf|jpg|jpeg|png|gif|svg|webp|avif|mp4|webm)',
           headers: [
             { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
           ],
@@ -93,6 +95,11 @@ const nextConfig: NextConfig = {
     removeConsole: {
       exclude: ['error', 'warn']
     }
+  },
+  // Force fresh build ID on every deployment to prevent chunk name collisions 
+  // and force CDNs to recognize new assets.
+  generateBuildId: async () => {
+    return new Date().getTime().toString();
   },
   // Explicitly set Turbopack root to avoid incorrect inference when multiple lockfiles exist
   turbopack: {

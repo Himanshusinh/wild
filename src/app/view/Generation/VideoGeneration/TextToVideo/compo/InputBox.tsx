@@ -20,7 +20,7 @@ const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 const getHistoryEntries = async (_filters?: any, _pag?: any) => ({ data: [] } as any);
 import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
 import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
-import { uploadGeneratedVideo } from "@/lib/videoUpload";
+import { uploadGeneratedVideo, uploadLocalVideoFile } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
@@ -57,7 +57,7 @@ import HistoryControls from './HistoryControls';
 
 interface InputBoxProps {
   placeholder?: string;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate';
+  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
   showHistory?: boolean; // Control whether to show the history section
 }
 
@@ -87,7 +87,9 @@ const InputBox = (props: InputBoxProps = {}) => {
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
     const ZATA_PREFIX = process.env.NEXT_PUBLIC_ZATA_PREFIX || '';
-    if (urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
+    // If ZATA_PREFIX is empty, startsWith('') is true for all strings (including blob:)
+    // which would incorrectly proxy local/object URLs.
+    if (ZATA_PREFIX && urlOrPath.startsWith(ZATA_PREFIX)) return urlOrPath.substring(ZATA_PREFIX.length);
     // Allow direct storagePath-like values (users/...)
     if (/^users\//.test(urlOrPath)) return urlOrPath;
     // For external URLs (fal.media, etc.), do not proxy
@@ -118,6 +120,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     console.log('Video generation - uploadedImages changed:', uploadedImages);
   }, [uploadedImages]);
   const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState("uploadedVideo", "", "text-to-video");
+  const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = usePersistedGenerationState<number>("uploadedVideoDurationSec", 0, "text-to-video");
+  // Local device-selected videos (blob: URL -> File). Used to upload at Generate-time.
+  const [localVideoFilesByUrl, setLocalVideoFilesByUrl] = useState<Record<string, File>>({});
+  const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<Record<string, string>>({});
   // Backup of uploaded video specifically for Gen-4 Aleph (V2V)
   const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState("alephVideoBackup", "", "text-to-video");
   const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState("uploadedAudio", "", "text-to-video"); // For WAN models audio file
@@ -344,9 +350,9 @@ const InputBox = (props: InputBoxProps = {}) => {
     selectedModel.includes("MiniMax") ? selectedResolution :
       (selectedModel.includes("wan-2.5") ? (frameSize.includes("480") ? "480p" : (frameSize.includes("720") ? "720p" : "1080p")) :
         (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') :
-          (selectedModel.includes('seedance') ? seedanceResolution :
+          (selectedModel.includes('seedance-1.5') ? undefined : (selectedModel.includes('seedance') ? seedanceResolution :
             (selectedModel.includes('ltx2') ? normalizedSelectedRes :
-              (selectedModel.includes('pixverse') ? pixverseQuality : undefined)))))
+              (selectedModel.includes('pixverse') ? pixverseQuality : undefined))))))
   );
   const {
     validateAndReserveCredits,
@@ -356,13 +362,61 @@ const InputBox = (props: InputBoxProps = {}) => {
     clearCreditsError,
   } = useGenerationCredits('video', selectedModel, {
     resolution: creditsResolution,
-    duration: selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration,
+    duration: selectedModel.includes("MiniMax")
+      ? selectedMiniMaxDuration
+      : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration),
   });
+
+  const loadVideoDurationSeconds = useCallback(async (url: string): Promise<number> => {
+    return await new Promise((resolve, reject) => {
+      if (!url) return resolve(0);
+      const video = document.createElement('video');
+      let done = false;
+
+      const cleanup = () => {
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        } catch { }
+      };
+
+      const finish = (value: number, err?: any) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        if (err) reject(err);
+        else resolve(value);
+      };
+
+      const t = window.setTimeout(() => finish(0, new Error('Timed out loading video metadata')), 15000);
+      video.preload = 'metadata';
+      (video as any).crossOrigin = 'anonymous';
+      video.onloadedmetadata = () => {
+        window.clearTimeout(t);
+        const d = Number(video.duration);
+        if (Number.isFinite(d) && d > 0) return finish(d);
+        return finish(0, new Error('Invalid video duration'));
+      };
+      video.onerror = () => {
+        window.clearTimeout(t);
+        finish(0, new Error('Failed to load video metadata'));
+      };
+      try {
+        video.src = url;
+      } catch (e) {
+        window.clearTimeout(t);
+        finish(0, e);
+      }
+    });
+  }, []);
 
   // Live credit preview for current selections
   const liveCreditCost = useMemo(() => {
     try {
-      const dur = selectedModel.includes("MiniMax") ? selectedMiniMaxDuration : duration;
+      const dur = selectedModel.includes("MiniMax")
+        ? selectedMiniMaxDuration
+        : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration);
       const res = typeof creditsResolution === 'string' ? creditsResolution : undefined;
 
       // Normalize Kling 2.1/2.1 Master to i2v variant when in image_to_video mode
@@ -377,8 +431,10 @@ const InputBox = (props: InputBoxProps = {}) => {
         return selectedModel;
       })();
 
-      // For Kling 2.6 Pro, pass generateAudio parameter
-      const audioParam = normalizedModelForCredits === 'kling-2.6-pro' ? generateAudio : undefined;
+      // Pass generateAudio only for models whose pricing depends on it
+      const audioParam = (normalizedModelForCredits === 'kling-2.6-pro' || normalizedModelForCredits.includes('seedance-1.5'))
+        ? generateAudio
+        : undefined;
       return Math.max(0, Number(getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam)) || 0);
     } catch {
       return 0;
@@ -944,10 +1000,17 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5);
           setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
-          // Seedance models: duration default 5s (only 5s and 10s supported), resolution default 1080p, aspect ratio default 16:9
-          setDuration(5);
-          setSeedanceResolution("1080p");
-          setFrameSize("16:9"); // For T2V aspect ratio
+          // Seedance models
+          if (newModel.includes('seedance-1.5')) {
+            setDuration(4);
+            setFrameSize('16:9');
+            setGenerateAudio(false);
+          } else {
+            // Seedance 1.0: frontend pricing uses 5s/10s buckets and resolution
+            setDuration(5);
+            setSeedanceResolution("1080p");
+            setFrameSize("16:9");
+          }
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
@@ -1063,11 +1126,17 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5);
           setFrameSize("16:9");
         } else if (newModel.includes('seedance')) {
-          // Seedance models: duration default 5s (only 5s and 10s supported), resolution default 1080p
-          setDuration(5);
-          setSeedanceResolution("1080p");
-          // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
-          setFrameSize("16:9");
+          // Seedance models
+          if (newModel.includes('seedance-1.5')) {
+            setDuration(4);
+            setGenerateAudio(false);
+            setFrameSize("16:9");
+          } else {
+            setDuration(5);
+            setSeedanceResolution("1080p");
+            // Note: aspect_ratio is ignored for I2V, but we still set it for consistency
+            setFrameSize("16:9");
+          }
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
@@ -1126,7 +1195,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
-  
+
   // Read search, sort, and date filters from Redux (managed by HistoryControls)
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
   const sortOrder = currentFilters.sortOrder || 'desc';
@@ -1135,10 +1204,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     start: currentFilters.dateRange.start ? new Date(currentFilters.dateRange.start) : null,
     end: currentFilters.dateRange.end ? new Date(currentFilters.dateRange.end) : null,
   } : { start: null, end: null };
-  
+
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
-  
+
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1686,7 +1755,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 10 },
+          paginationParams: { limit: 20 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1750,7 +1819,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
       dispatch(loadHistory({
         filters: { mode: 'video' } as any,
-        paginationParams: { limit: 10 },
+        paginationParams: { limit: 20 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -1766,7 +1835,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (historyEntries.length === 0) {
       return;
     }
-    
+
     let isMounted = true;
     (async () => {
       try {
@@ -1902,11 +1971,11 @@ const InputBox = (props: InputBoxProps = {}) => {
     const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
     if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
-      // Use consistent limit of 10 for all requests
+      // Use consistent limit of 20 for all requests
       dispatch(loadMoreHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
-        paginationParams: { limit: 10 }
+        paginationParams: { limit: 20 }
       }));
     }
   }, [historyEntries, hasMore, loading, dispatch, sortOrder, searchQuery]);
@@ -2048,17 +2117,17 @@ const InputBox = (props: InputBoxProps = {}) => {
     const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
     const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
     const isVideoType = ['text-to-video', 'image-to-video', 'video-to-video'].includes(normalizedCurrentUI);
-    
+
     // Check if user switched to video generation from another feature
     const switchedToVideo = isVideoType && normalizedLastUI !== normalizedCurrentUI;
-    
+
     // Check if filters are for a different type (e.g., image filters when we're on video page)
     const currentFilterMode = currentFilters?.mode;
     const currentFilterSort = (currentFilters as any)?.sortOrder;
     const filtersAreForVideo = currentFilterMode === 'video';
     const filtersAreForDifferentType = currentFilterMode && currentFilterMode !== 'video';
     const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
-    
+
     // Reset initial load flag if user switched to video generation or filters don't match
     if (switchedToVideo || (isVideoType && filtersAreForDifferentType) || (isVideoType && sortMismatch)) {
       console.log('[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag', {
@@ -2072,26 +2141,26 @@ const InputBox = (props: InputBoxProps = {}) => {
       });
       didInitialLoadRef.current = false;
     }
-    
+
     // Always update the last UI type ref to track changes
     lastUIGenerationTypeRef.current = currentUIGenerationType;
-    
+
     // Only load if we haven't loaded yet, or if user just switched to video, or filters don't match
     if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType && !sortMismatch) {
       return;
     }
-    
+
     // Only proceed if we're on a video generation page
     if (!isVideoType) {
       return;
     }
-    
+
     // Load all video types using mode: 'video' (backend handles this correctly)
     didInitialLoadRef.current = true;
-    
+
     try {
-      console.log('[VideoInputBox] Loading video history', { 
-        switchedToVideo, 
+      console.log('[VideoInputBox] Loading video history', {
+        switchedToVideo,
         filtersAreForDifferentType,
         currentUIGenerationType,
         currentFilterMode,
@@ -2101,7 +2170,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       dispatch(loadHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        paginationParams: { limit: 10 },
+        paginationParams: { limit: 20 },
         requestOrigin: 'page',
         expectedType: 'text-to-video',
         debugTag: `InputBox:video-mode:${Date.now()}`,
@@ -2141,30 +2210,30 @@ const InputBox = (props: InputBoxProps = {}) => {
         const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
         const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
         const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
-        
+
         // Use mode: 'video' which backend converts to all video types including video-to-video
         // Use consistent limit of 10 for all requests
         const filters: any = { mode: 'video', sortOrder: currentSortOrder };
         if (currentSearch) filters.search = currentSearch;
         if (currentDateRange?.start && currentDateRange?.end) {
-          filters.dateRange = { 
-            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
-            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
+          filters.dateRange = {
+            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
           };
         }
-        
-        const backendFilters: any = { 
-          mode: 'video', 
+
+        const backendFilters: any = {
+          mode: 'video',
           sortOrder: currentSortOrder,
           ...(currentSearch ? { search: currentSearch } : {}),
-          ...(currentDateRange?.start && currentDateRange?.end ? { 
-            dateRange: { 
-              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(), 
-              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString() 
-            } 
+          ...(currentDateRange?.start && currentDateRange?.end ? {
+            dateRange: {
+              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
+            }
           } : {})
         };
-        
+
         await (dispatch as any)(loadMoreHistory({
           filters: filters,
           backendFilters: backendFilters,
@@ -2214,7 +2283,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   // Handle image/video upload from UploadModal
-  const handleImageUploadFromModal = (urls: string[], entries?: any[]) => {
+  const handleImageUploadFromModal = (urls: string[], entries?: any[], filesByUrl?: Record<string, File>) => {
     if (uploadModalType === 'image') {
       if (uploadModalTarget === 'last_frame') {
         // Handle last frame image
@@ -2232,7 +2301,23 @@ const InputBox = (props: InputBoxProps = {}) => {
     } else if (uploadModalType === 'reference') {
       setReferences(prev => [...prev, ...urls]);
     } else if (uploadModalType === 'video') {
-      setUploadedVideo(urls[0] || "");
+      const url = urls[0] || "";
+      setUploadedVideo(url);
+      setUploadedVideoDurationSec(0);
+      if (filesByUrl && Object.keys(filesByUrl).length) {
+        setLocalVideoFilesByUrl(prev => ({ ...prev, ...filesByUrl }));
+      }
+      if (url) {
+        (async () => {
+          try {
+            const d = await loadVideoDurationSeconds(url);
+            setUploadedVideoDurationSec(d);
+          } catch (e) {
+            console.warn('[VideoInputBox] Failed to read video duration', e);
+            setUploadedVideoDurationSec(0);
+          }
+        })();
+      }
       // For Sora 2 Remix, use the entry ID from the modal if provided
       if (urls[0] && selectedModel.includes('sora2-v2v')) {
         if (entries && entries.length > 0 && entries[0]?.id) {
@@ -2484,7 +2569,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Create tracking ID for queue
     const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    
+
     // Add to active generations queue immediately
     console.log('[queue] Adding new video generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
     dispatch(addActiveGeneration({
@@ -2648,15 +2733,29 @@ const InputBox = (props: InputBoxProps = {}) => {
       }));
     }
 
-    // Validate and reserve credits before generation
-    let transactionId: string;
+    // Validate credits before generation
+    // NOTE: WAN 2.2 Animate models are debited by backend only after successful completion.
+    // Avoid any frontend reservation to prevent double-charging.
+    let transactionId: string | null = null;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
         (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
-          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse')) ? 'replicate' : 'runway';
-      const creditResult = await validateAndReserveCredits(provider);
-      transactionId = creditResult.transactionId;
-      console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
+
+      if (selectedModel === 'wan-2.2-animate-replace') {
+        if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+          throw new Error('Could not determine input video duration. Please re-upload the video.');
+        }
+        const required = Math.ceil(uploadedVideoDurationSec * 8);
+        if (Number(creditBalance) < required) {
+          throw new Error(`Insufficient credits. You need ${required} credits but have ${creditBalance}.`);
+        }
+        console.log('✅ Credits validated (no reservation):', required);
+      } else {
+        const creditResult = await validateAndReserveCredits(provider);
+        transactionId = creditResult.transactionId;
+        console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+      }
     } catch (creditError: any) {
       console.error('❌ Credit validation failed:', creditError);
       setError(creditError.message || 'Insufficient credits for generation');
@@ -2833,7 +2932,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'text-to-video';
           apiEndpoint = '/api/replicate/kling-t2v/submit';
         } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
-          // Seedance T2V - supports first and last frame images (Pro and Lite only, not Pro Fast)
+          // Seedance T2V
+          const isSeedance15 = selectedModel.includes('seedance-1.5');
+          // Seedance 1.0: supports first/last frame only for Pro/Lite (not Pro Fast)
           const isLite = selectedModel.includes('lite');
           const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
@@ -2842,32 +2943,43 @@ const InputBox = (props: InputBoxProps = {}) => {
           const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : (!isProFast && uploadedImages.length > 1 ? uploadedImages[1] : null);
           const hasFirstFrame = Boolean(firstFrame);
           const hasLastFrame = Boolean(lastFrame);
-          
-          let modelName = 'bytedance/seedance-1-pro';
-          if (isLite) {
-            modelName = 'bytedance/seedance-1-lite';
-          } else if (isProFast) {
-            modelName = 'bytedance/seedance-1-pro-fast';
+
+          if (isSeedance15) {
+            requestBody = {
+              model: 'bytedance/seedance-1.5-pro',
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              duration,
+              aspect_ratio: frameSize,
+              generate_audio: generateAudio,
+              generationType: 'text-to-video',
+              isPublic,
+              ...(hasFirstFrame ? { image: firstFrame } : {}),
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+            };
+          } else {
+            let modelName = 'bytedance/seedance-1-pro';
+            if (isLite) {
+              modelName = 'bytedance/seedance-1-lite';
+            } else if (isProFast) {
+              modelName = 'bytedance/seedance-1-pro-fast';
+            }
+            requestBody = {
+              model: modelName,
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              duration,
+              resolution: seedanceResolution,
+              aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
+              generationType: 'text-to-video',
+              isPublic,
+              ...(hasFirstFrame ? { image: firstFrame } : {}),
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+              ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
+                reference_images: references.slice(0, 4)
+              } : {}),
+            };
           }
-          requestBody = {
-            model: modelName,
-            prompt: apiPrompt,
-            originalPrompt: prompt, // Store original prompt for display
-            duration,
-            resolution: seedanceResolution,
-            aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
-            generationType: 'text-to-video',
-            isPublic,
-            // First frame image (optional, but required if last_frame_image is provided)
-            ...(hasFirstFrame ? { image: firstFrame } : {}),
-            // Last frame image (optional, only works if first frame image is also provided)
-            ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
-            // Reference images (1-4 images) - only include if first/last frame images are NOT used
-            // reference_images cannot be used with first/last frame images or 1080p resolution
-            ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
-              reference_images: references.slice(0, 4)
-            } : {}),
-          };
           generationType = 'text-to-video';
           apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-t2v/submit' : '/api/replicate/seedance-t2v/submit';
         } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
@@ -3157,15 +3269,15 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           const firstFrame = uploadedImages[0];
           const lastFrame = uploadedImages[1] || lastFrameImage || null;
-          
+
           if (!firstFrame) {
             setError("Kling o1 requires a first frame image");
             return;
           }
-          
+
           // Duration must be "5" or "10" as string
           const durationStr = duration === 5 ? '5' : duration === 10 ? '10' : '5';
-          
+
           // Check if both frames are provided
           if (lastFrame) {
             // Both frames provided - use image-to-video model
@@ -3179,7 +3291,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (!formattedPrompt.includes('@Image2')) {
               formattedPrompt += ' @Image2';
             }
-            
+
             requestBody = {
               prompt: formattedPrompt,
               originalPrompt: prompt,
@@ -3201,7 +3313,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (!formattedPrompt.includes('@Image') && !formattedPrompt.includes('@Element')) {
               formattedPrompt += ' @Image1';
             }
-            
+
             // Map aspect ratio to valid values
             const aspectRatioMap: Record<string, string> = {
               '16:9': '16:9',
@@ -3211,7 +3323,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               '3:4': '9:16',
             };
             const aspectRatio = aspectRatioMap[frameSize] || '16:9';
-            
+
             requestBody = {
               prompt: formattedPrompt,
               originalPrompt: prompt,
@@ -3294,42 +3406,55 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'image-to-video';
           apiEndpoint = '/api/replicate/kling-i2v/submit';
         } else if (selectedModel.includes('seedance')) {
-          // Seedance I2V - Image-to-video mode (supports first frame image and optional last frame for Pro/Lite)
+          // Seedance I2V - Image-to-video mode
           if (uploadedImages.length === 0) {
             setError("Seedance image-to-video requires an input image");
             return;
           }
+          const isSeedance15 = selectedModel.includes('seedance-1.5');
           const isLite = selectedModel.includes('lite');
           const isProFast = selectedModel.includes('pro-fast');
           const apiPrompt = getApiPrompt(prompt);
           // Last frame support (Pro and Lite only, not Pro Fast)
           const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : null;
           const hasLastFrame = Boolean(lastFrame);
-          
-          let modelName = 'bytedance/seedance-1-pro';
-          if (isLite) {
-            modelName = 'bytedance/seedance-1-lite';
-          } else if (isProFast) {
-            modelName = 'bytedance/seedance-1-pro-fast';
+
+          if (isSeedance15) {
+            requestBody = {
+              model: 'bytedance/seedance-1.5-pro',
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              image: uploadedImages[0],
+              duration,
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              generate_audio: generateAudio,
+              generationType: 'image-to-video',
+              isPublic,
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+            } as any;
+          } else {
+            let modelName = 'bytedance/seedance-1-pro';
+            if (isLite) {
+              modelName = 'bytedance/seedance-1-lite';
+            } else if (isProFast) {
+              modelName = 'bytedance/seedance-1-pro-fast';
+            }
+            requestBody = {
+              model: modelName,
+              prompt: apiPrompt,
+              originalPrompt: prompt, // Store original prompt for display
+              image: uploadedImages[0], // First frame image for I2V
+              duration,
+              resolution: seedanceResolution,
+              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              generationType: 'image-to-video',
+              isPublic,
+              ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
+              ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
+                reference_images: references.slice(0, 4)
+              } : {}),
+            } as any;
           }
-          requestBody = {
-            model: modelName,
-            prompt: apiPrompt,
-            originalPrompt: prompt, // Store original prompt for display
-            image: uploadedImages[0], // First frame image for I2V
-            duration,
-            resolution: seedanceResolution,
-            // aspect_ratio is ignored for I2V, but we can include it for consistency
-            generationType: 'image-to-video',
-            isPublic,
-            // Optional: Add last_frame_image if provided (for Seedance Pro/Lite)
-            ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
-            // Reference images (1-4 images) - only include if last_frame_image is NOT used
-            // reference_images cannot be used with first/last frame images or 1080p resolution
-            ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
-              reference_images: references.slice(0, 4)
-            } : {}),
-          } as any;
           generationType = 'image-to-video';
           apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-i2v/submit' : '/api/replicate/seedance-i2v/submit';
         } else if (selectedModel.includes('pixverse')) {
@@ -3567,13 +3692,57 @@ const InputBox = (props: InputBoxProps = {}) => {
             setIsGenerating(false);
             return;
           }
+          if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
+            toast.error("Could not determine input video duration. Please re-upload the video.");
+            setIsGenerating(false);
+            return;
+          }
 
           const characterImage = uploadedCharacterImage || uploadedImages[0];
 
+          // IMPORTANT: blob: URLs are NOT valid outside the browser.
+          // Upload local device-selected video on Generate so backend/Replicate can access it.
+          let videoForRequest = uploadedVideo;
+          if (videoForRequest.startsWith('blob:')) {
+            const cached = uploadedUrlByLocalUrl[videoForRequest];
+            if (cached) {
+              videoForRequest = cached;
+            } else {
+              const file = localVideoFilesByUrl[videoForRequest];
+              if (!file) {
+                throw new Error('Selected local video is not available. Please re-select the video from device.');
+              }
+              const uploaded = await uploadLocalVideoFile(file);
+              if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+              const remoteUrl = uploaded.url;
+              setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
+              setUploadedVideo(remoteUrl);
+              try { URL.revokeObjectURL(videoForRequest); } catch { }
+              videoForRequest = remoteUrl;
+            }
+          } else if (videoForRequest.startsWith('data:video')) {
+            // Fallback for legacy flows that store the video as a data URI.
+            const match = /^data:([^;]+);base64,(.*)$/.exec(videoForRequest);
+            if (!match) throw new Error('Invalid local video data');
+            const contentType = match[1] || 'video/mp4';
+            const base64 = match[2] || '';
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: contentType });
+            const ext = contentType.includes('webm') ? 'webm' : contentType.includes('ogg') ? 'ogg' : contentType.includes('quicktime') ? 'mov' : 'mp4';
+            const file = new File([blob], `upload.${ext}`, { type: contentType });
+            const uploaded = await uploadLocalVideoFile(file);
+            if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+            setUploadedVideo(uploaded.url);
+            videoForRequest = uploaded.url;
+          }
+
           requestBody = {
             model: 'wan-video/wan-2.2-animate-replace',
-            video: uploadedVideo,
+            video: videoForRequest,
             character_image: characterImage,
+            video_duration: uploadedVideoDurationSec,
             resolution: wanAnimateResolution,
             refert_num: wanAnimateRefertNum,
             go_fast: wanAnimateGoFast,
@@ -3843,26 +4012,58 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000 // 20 minute timeout
             });
             const status = statusRes.data?.data || statusRes.data;
             const s = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0; // Reset on success
+
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
-              const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
-              });
-              videoResult = resultRes.data?.data || resultRes.data;
+              try {
+                const resultRes = await api.get('/api/fal/queue/result', {
+                  params: { model: result.model, requestId: result.requestId },
+                  timeout: 1200000
+                });
+                videoResult = resultRes.data?.data || resultRes.data;
+                // CRITICAL: Update queue status immediately to mark as completed
+                if (generationId) {
+                  dispatch(updateActiveGeneration({
+                    id: generationId,
+                    updates: { status: 'completed', historyId: result.historyId }
+                  }));
+                  console.log('[queue] Kling o1 marked as completed in queue');
+                }
+              } catch (resultErr: any) {
+                console.error('[queue] Kling o1 - Failed to fetch result:', resultErr?.message);
+                throw resultErr;
+              }
               break;
             }
             if (s === 'failed' || s === 'error') {
               throw new Error('Kling o1 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (isNetworkError) {
+              console.warn(`[queue] Kling o1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Kling o1 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Kling o1: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Kling o1: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3885,27 +4086,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Veo 3.1 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Veo 3.1 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (isNetworkError) {
+              console.warn(`[queue] Veo 3.1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Veo 3.1 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Veo 3.1: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Veo 3.1: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3924,26 +4151,53 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
+
             const s = String(status?.status || '').toLowerCase();
             if (s === 'completed' || s === 'success' || s === 'succeeded') {
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] LTX V2 marked as completed in queue');
+              }
               break;
             }
             if (s === 'failed' || s === 'error') {
               throw new Error('LTX V2 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (isNetworkError) {
+              console.warn(`[queue] LTX V2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] LTX V2 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`LTX V2: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`LTX V2: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -3974,27 +4228,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Veo3 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Veo3 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (isNetworkError) {
+              console.warn(`[queue] Veo3 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Veo3 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Veo3: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Veo3: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4014,27 +4294,53 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using FAL queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
           try {
             const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             if (status?.status === 'COMPLETED' || status?.status === 'completed') {
               // Get the result
               const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 15000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Sora2 marked as completed in queue');
+              }
               break;
             }
             if (status?.status === 'FAILED' || status?.status === 'failed') {
               throw new Error('Sora 2 video generation failed');
             }
-          } catch (statusError) {
-            console.error('Status check failed:', statusError);
-            if (attempts === 359) throw statusError;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (isNetworkError) {
+              console.warn(`[queue] Sora2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Sora2 - Error (${attempts + 1}/360):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Sora2: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === 359) throw new Error(`Sora2: Timeout after 360 attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4100,6 +4406,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models (they can take longer)
         console.log(`🎬 Starting WAN 2.5 polling with ${maxAttempts} attempts (15 minutes max)`);
 
@@ -4108,10 +4416,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 WAN 2.5 polling attempt ${attempts + 1}/${maxAttempts}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             console.log(`🎬 WAN 2.5 status check result:`, status);
             // Normalize status for robust comparisons
@@ -4120,10 +4430,19 @@ const InputBox = (props: InputBoxProps = {}) => {
               console.log('✅ WAN 2.5 generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ WAN 2.5 result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] WAN 2.5 marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4148,7 +4467,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               if (attempts >= 120 && result.historyId) {
                 try {
                   console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
+                    timeout: 20000
+                  });
                   const historyData = historyRes.data?.data || historyRes.data;
 
                   if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
@@ -4164,11 +4485,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
               }
             }
-          } catch (statusError) {
-            console.error('❌ WAN 2.5 status check failed:', statusError);
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            // Log less frequently for long-polling (every 10 attempts)
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] WAN 2.5 - Network error (${attempts + 1}/${maxAttempts}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] WAN 2.5 - Error (${attempts + 1}/${maxAttempts}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`WAN 2.5: Too many network errors. ${errorMsg}`);
+            }
             if (attempts === maxAttempts - 1) {
-              console.error('❌ WAN 2.5 polling exhausted all attempts');
-              throw statusError;
+              throw new Error(`WAN 2.5: Timeout after ${maxAttempts} attempts. ${errorMsg}`);
             }
           }
           await new Promise(res => setTimeout(res, 1000));
@@ -4203,6 +4538,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models
         console.log(`🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`);
 
@@ -4211,10 +4548,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 20000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
 
             console.log(`🎬 WAN 2.2 Animate Replace status check result:`, status);
             // Normalize status for robust comparisons
@@ -4223,10 +4562,19 @@ const InputBox = (props: InputBoxProps = {}) => {
               console.log('✅ WAN 2.2 Animate Replace generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 20000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ WAN 2.2 Animate Replace result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] WAN 2.2 marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4251,7 +4599,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               if (attempts >= 120 && result.historyId) {
                 try {
                   console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`);
+                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
+                    timeout: 20000
+                  });
                   const historyData = historyRes.data?.data || historyRes.data;
 
                   if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
@@ -4306,25 +4656,52 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         let videoResult: any;
         const maxAttemptsK = 900; // up to 15 minutes
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
         for (let attempts = 0; attempts < maxAttemptsK; attempts++) {
           try {
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 1200000
             });
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
+
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Kling marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
               throw new Error('Kling video generation failed');
             }
-          } catch (e) {
-            if (attempts === maxAttemptsK - 1) throw e;
+          } catch (e: any) {
+            consecutiveErrors++;
+            const errorMsg = e?.message || String(e);
+            const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            if (isNetwork) {
+              console.warn(`[queue] Kling - Network error (${attempts + 1}/${maxAttemptsK}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+            } else {
+              console.error(`[queue] Kling - Error (${attempts + 1}/${maxAttemptsK}):`, errorMsg);
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Kling: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsK - 1) throw new Error(`Kling: Timeout after ${maxAttemptsK} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4353,6 +4730,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsSeedance = 900; // up to 15 minutes (same as WAN/Kling)
         console.log(`🎬 Starting Seedance polling with ${maxAttemptsSeedance} attempts (15 minutes max)`);
 
@@ -4361,21 +4740,32 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 Seedance polling attempt ${attempts + 1}/${maxAttemptsSeedance}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 1200000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             console.log(`🎬 Seedance status check result:`, status);
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ Seedance generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ Seedance result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] Seedance marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4387,9 +4777,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(`🎬 Seedance still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
             }
-          } catch (e) {
-            console.error('❌ Seedance status check failed:', e);
-            if (attempts === maxAttemptsSeedance - 1) throw e;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] Seedance - Network error (${attempts + 1}/${maxAttemptsSeedance}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] Seedance - Error (${attempts + 1}/${maxAttemptsSeedance}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`Seedance: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsSeedance - 1) throw new Error(`Seedance: Timeout after ${maxAttemptsSeedance} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4418,6 +4822,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         console.log('🎬 History ID:', result.historyId);
 
         let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsPixverse = 900; // up to 15 minutes (same as WAN/Kling/Seedance)
         console.log(`🎬 Starting PixVerse polling with ${maxAttemptsPixverse} attempts (15 minutes max)`);
 
@@ -4426,21 +4832,32 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log(`🎬 PixVerse polling attempt ${attempts + 1}/${maxAttemptsPixverse}`);
             console.log(`🎬 Checking status for requestId: ${result.requestId}`);
             const statusRes = await api.get('/api/replicate/queue/status', {
-              params: { requestId: result.requestId }
+              params: { requestId: result.requestId },
+              timeout: 1200000
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
 
             console.log(`🎬 PixVerse status check result:`, status);
             if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
               console.log('✅ PixVerse generation completed, fetching result...');
               // Get the result
               const resultRes = await api.get('/api/replicate/queue/result', {
-                params: { requestId: result.requestId }
+                params: { requestId: result.requestId },
+                timeout: 1200000
               });
               videoResult = resultRes.data?.data || resultRes.data;
               console.log('✅ PixVerse result fetched:', videoResult);
+              // CRITICAL: Update queue status immediately to mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+                console.log('[queue] PixVerse marked as completed in queue');
+              }
               break;
             }
             if (statusValue === 'failed' || statusValue === 'error') {
@@ -4452,9 +4869,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(`🎬 PixVerse still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
             }
-          } catch (e) {
-            console.error('❌ PixVerse status check failed:', e);
-            if (attempts === maxAttemptsPixverse - 1) throw e;
+          } catch (statusError: any) {
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+
+            if (attempts % 10 === 0 || isNetworkError) {
+              if (isNetworkError) {
+                console.warn(`[queue] PixVerse - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              } else {
+                console.error(`[queue] PixVerse - Error (${attempts + 1}/${maxAttemptsPixverse}):`, errorMsg);
+              }
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(`PixVerse: Too many network errors. ${errorMsg}`);
+            }
+            if (attempts === maxAttemptsPixverse - 1) throw new Error(`PixVerse: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`);
           }
           await new Promise(res => setTimeout(res, 1000));
         }
@@ -4594,7 +5025,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.warn('[queue] Failed to fetch entry for storagePath:', e);
           }
         }
-        
+
         // Extract storagePath from Zata URL if not available
         if (!storagePath && firebaseVideo?.url) {
           const zataMatch = firebaseVideo.url.match(/devstoragev1\/(.+)$/i);
@@ -4603,7 +5034,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             console.log('[queue] Extracted storagePath from URL:', storagePath);
           }
         }
-        
+
         const videoArray = firebaseVideo?.url ? [{
           id: firebaseVideo.id || generationId,
           url: firebaseVideo.url,
@@ -4634,9 +5065,11 @@ const InputBox = (props: InputBoxProps = {}) => {
         } as any) : prev);
       } catch { }
 
-      // Confirm credit transaction as successful
-      await handleGenerationSuccess(transactionId);
-      console.log('✅ Credits confirmed for successful generation');
+      // Confirm credit transaction as successful (skip for WAN 2.2 Animate Replace)
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+        console.log('✅ Credits confirmed for successful generation');
+      }
 
       // Clear all inputs and configurations
       clearInputs();
@@ -4649,7 +5082,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         dispatch(clearFilters());
         dispatch(loadHistory({
           filters: { mode: 'video' } as any,
-          paginationParams: { limit: 10 },
+          paginationParams: { limit: 20 },
           requestOrigin: 'page',
           expectedType: 'text-to-video',
           debugTag: `InputBox:refresh:video-mode:${Date.now()}`
@@ -4712,12 +5145,14 @@ const InputBox = (props: InputBoxProps = {}) => {
         }));
       }
 
-      // Handle credit transaction failure
-      try {
-        await handleGenerationFailure(transactionId);
-        console.log('✅ Credits rolled back for failed generation');
-      } catch (creditError) {
-        console.error('❌ Failed to rollback credits:', creditError);
+      // Handle credit transaction failure (skip for WAN 2.2 Animate Replace)
+      if (transactionId) {
+        try {
+          await handleGenerationFailure(transactionId);
+          console.log('✅ Credits rolled back for failed generation');
+        } catch (creditError) {
+          console.error('❌ Failed to rollback credits:', creditError);
+        }
       }
 
       try {
@@ -4739,13 +5174,13 @@ const InputBox = (props: InputBoxProps = {}) => {
     <React.Fragment>
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
-      
+
       {showHistory && (
         <div ref={(el) => { historyScrollRef.current = el; setHistoryScrollElement(el); }} className=" inset-0  pl-[0] pr-0   overflow-y-auto no-scrollbar z-0 ">
           {/* Initial loading overlay - show only when actually loading and no entries exist */}
           {loading && historyEntries.length === 0 && (
             <div className="fixed top-[64px] md:top-[0px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 px-4">
+              <div className="flex flex-col items-center gap-4 px-2 md:px-4">
                 <Image src="/styles/Logo.gif" alt="Loading" width={72} height={72} className="mx-auto" unoptimized />
                 <div className="text-white text-lg text-center">Loading generations...</div>
               </div>
@@ -4753,9 +5188,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           )}
 
           {/* Mobile: Search, Sort, and Date controls */}
-          <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
+          {/* <div className="flex md:hidden items-center justify-start px-0 gap-2 pb-0 pt-4">
             <HistoryControls mode="video" />
-          </div>
+          </div> */}
 
           <div className="md:space-y-8 space-y-2 pb-40">
             {/* If there's a local preview and no row for today, render a dated block for today */}
@@ -4834,7 +5269,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
 
                 {/* All Videos for this Date - Grid Layout (2 columns on mobile, flex on desktop) */}
-                <div className="grid grid-cols-2 gap-2 md:gap-3 md:ml-1 ml-0 md:mb-0 mb-4 md:flex md:flex-wrap">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-1 md:mb-0 mb-4 pl-1">
                   {/* Prepend local video preview to today's row to push existing items right */}
                   {date === todayKey && localVideoPreview && (() => {
                     const localEntryId = localVideoPreview.id;
@@ -4869,10 +5304,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }
 
                     return (
-                      <div className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-64 md:h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10">
+                      <div className="relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 aspect-square">
                         {localVideoPreview.status === 'generating' ? (
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
-                            <div className="flex flex-col items-center gap-2">
+                            <div className="flex flex-col items-center gap-1">
                               <img src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" />
                               <div className="text-xs text-white/60 text-center">Generating...</div>
                             </div>
@@ -4935,6 +5370,49 @@ const InputBox = (props: InputBoxProps = {}) => {
                           <div
                             key={uniqueVideoKey}
                             data-video-id={uniqueVideoKey}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              const mediaUrl = video.firebaseUrl || video.url;
+                              if (mediaUrl) {
+                                e.dataTransfer.setData('text/plain', mediaUrl);
+                                e.dataTransfer.setData('text/uri-list', mediaUrl);
+                                e.dataTransfer.effectAllowed = 'copy';
+
+                                // Custom "minimal" drag ghost for video
+                                const ghostUrl = video.thumbnailUrl || video.avifUrl || mediaUrl;
+                                // If no thumbnail, we might be dragging a video URL directly. 
+                                // Since we can't easily snapshot a video frame synchronously, we might use a default icon or the video element itself if we clone it.
+                                // But here we try to use a thumbnail if possible.
+
+                                const ghost = document.createElement('div');
+                                ghost.style.width = '96px';
+                                ghost.style.height = '96px';
+                                ghost.style.borderRadius = '12px';
+                                if (ghostUrl) {
+                                  ghost.style.backgroundImage = `url(${ghostUrl})`;
+                                  ghost.style.backgroundSize = 'cover';
+                                  ghost.style.backgroundPosition = 'center';
+                                } else {
+                                  ghost.style.backgroundColor = '#1a1a1a';
+                                  // Add a video icon? 
+                                  ghost.textContent = 'Video';
+                                  ghost.style.display = 'flex';
+                                  ghost.style.alignItems = 'center';
+                                  ghost.style.justifyContent = 'center';
+                                  ghost.style.color = 'white';
+                                  ghost.style.fontSize = '12px';
+                                }
+
+                                ghost.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+                                ghost.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                                ghost.style.zIndex = '-1000';
+                                ghost.style.position = 'absolute';
+                                ghost.style.top = '-9999px';
+                                document.body.appendChild(ghost);
+                                e.dataTransfer.setDragImage(ghost, 48, 48);
+                                setTimeout(() => document.body.removeChild(ghost), 0);
+                              }
+                            }}
                             onClick={(e) => {
                               // Don't open preview if clicking on copy button
                               if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
@@ -4942,7 +5420,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                               }
                               setPreview({ entry, video });
                             }}
-                            className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64 md:max-h-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                            className="relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group aspect-square"
                           >
                             {entry.status === "generating" ? (
                               // Loading frame
@@ -4982,6 +5460,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                                       <video
                                         src={vsrc}
                                         className="w-full h-full object-cover transition-opacity duration-200"
+                                        draggable={false}
                                         muted
                                         playsInline
                                         loop
@@ -5091,8 +5570,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            } hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}
+          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1  shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
+            } ${isInputBoxHovered
+              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+            }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
           onClick={(e) => {
@@ -5106,9 +5588,93 @@ const InputBox = (props: InputBoxProps = {}) => {
               setTimeout(() => setCloseDurationDropdown(false), 0);
             }
           }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsInputBoxHovered(false);
+
+            // 1. Handle Files (dragged from desktop/OS)
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const files = Array.from(e.dataTransfer.files);
+
+              // Separate images and videos
+              const imageFiles = files.filter(f => f.type.startsWith('image/'));
+              const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+              // Process Images
+              if (imageFiles.length > 0) {
+                const newUrls: string[] = [];
+                for (const file of imageFiles) {
+                  const reader = new FileReader();
+                  const dataUrl: string = await new Promise((resolve) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                  });
+                  newUrls.push(dataUrl);
+                }
+
+                if (newUrls.length > 0) {
+                  setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                  toast.success(`Added ${newUrls.length} image(s)`);
+                }
+              }
+
+              // Process Videos (Take the first valid video)
+              if (videoFiles.length > 0) {
+                const file = videoFiles[0];
+                const maxBytes = 14 * 1024 * 1024; // 14MB limit
+                const allowedMimes = new Set([
+                  'video/mp4', 'video/webm', 'video/ogg',
+                  'video/quicktime', 'video/mov', 'video/h264'
+                ]);
+
+                if (!allowedMimes.has(file.type)) {
+                  toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
+                } else if (file.size > maxBytes) {
+                  toast.error('Video too large. Please upload a video ≤ 14MB');
+                } else {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const result = ev.target?.result as string;
+                    if (result) {
+                      setUploadedVideo(result);
+                      toast.success('Video added');
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }
+              return;
+            }
+
+            // 2. Handle Dragged URLs (e.g. from History)
+            const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            if (url) {
+              // Check if Video
+              if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.startsWith('data:video/')) {
+                setUploadedVideo(url);
+                toast.success('Video added from URL');
+              }
+              // Check if Image
+              else if (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/')) {
+                setUploadedImages(prev => [...prev, url].slice(0, 4));
+                toast.success('Image added from URL');
+              }
+            }
+          }}
         >
           {/* Outline Glow Effect - shows on hover or when typing */}
-          <div 
+          <div
             className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
             style={{
               opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0
@@ -5140,6 +5706,59 @@ const InputBox = (props: InputBoxProps = {}) => {
                   lineHeight: '1.2',
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+                }}
+                onPaste={async (e) => {
+                  // Check for files in clipboard
+                  if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    const files = Array.from(e.clipboardData.files);
+                    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+                    const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+                    // Process Images
+                    if (imageFiles.length > 0) {
+                      e.preventDefault(); // Prevent default if we handle it
+                      const newUrls: string[] = [];
+                      for (const file of imageFiles) {
+                        const reader = new FileReader();
+                        const dataUrl: string = await new Promise((resolve) => {
+                          reader.onload = () => resolve(reader.result as string);
+                          reader.readAsDataURL(file);
+                        });
+                        newUrls.push(dataUrl);
+                      }
+                      if (newUrls.length > 0) {
+                        setUploadedImages(prev => [...prev, ...newUrls].slice(0, 4));
+                        toast.success(`Pasted ${newUrls.length} image(s)`);
+                      }
+                    }
+
+                    // Process Video
+                    if (videoFiles.length > 0) {
+                      e.preventDefault();
+                      const file = videoFiles[0];
+                      const maxBytes = 14 * 1024 * 1024;
+                      const allowedMimes = new Set([
+                        'video/mp4', 'video/webm', 'video/ogg',
+                        'video/quicktime', 'video/mov', 'video/h264'
+                      ]);
+
+                      if (!allowedMimes.has(file.type)) {
+                        toast.error('Unsupported video type');
+                      } else if (file.size > maxBytes) {
+                        toast.error('Video too large (≤ 14MB)');
+                      } else {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const result = ev.target?.result as string;
+                          if (result) {
+                            setUploadedVideo(result);
+                            toast.success('Pasted video');
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }
+                  }
                 }}
               />
               {/* Fixed position buttons container */}
@@ -5290,7 +5909,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(currentModelCapabilities.requiresReferenceImage) && (
                     <div className="relative">
                       <button
-                        className={`p-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
+                        className={`py-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                           (generationMode === "video_to_video" && references.length >= 4)
                           ? 'opacity-50 cursor-not-allowed'
                           : ''
@@ -5389,7 +6008,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
                       <div className="relative">
                         <button
-                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                           onClick={() => {
                             setUploadModalType('image');
                             setUploadModalTarget('first_frame');
@@ -5429,9 +6048,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <Image
                           src="/icons/arrow-right-left.svg"
                           alt="Arrow"
-                          width={16}
-                          height={16}
-                          className="opacity-80 mr-1 -ml-1  "
+                          width={14}
+                          height={14}
+                          className="opacity-80 mr-0   "
                         />
                       </div>
                     )}
@@ -5445,7 +6064,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     currentModelCapabilities.supportsImageToVideo) && (
                       <div className="relative ">
                         <button
-                          className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                          className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                           onClick={() => {
                             setUploadModalType('image');
                             setUploadModalTarget('last_frame');
@@ -5465,7 +6084,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
                     <div className="relative">
                       <button
-                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                         onClick={() => {
                           setUploadModalType('video');
                           setIsUploadModalOpen(true);
@@ -5488,7 +6107,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   {(selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) && (
                     <div className="relative">
                       <button
-                        className="p-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                        className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
                         onClick={() => {
                           setUploadModalType('image');
                           setIsUploadModalOpen(true);
@@ -5723,6 +6342,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 />
                 {/* Audio toggle button for models that support it (mobile only) */}
                 {(selectedModel === 'kling-2.6-pro' ||
+                  selectedModel.includes('seedance-1.5') ||
                   (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
                   selectedModel.includes('ltx2') ||
                   (selectedModel.includes("veo3.1") && !(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1"))) ||
@@ -6415,24 +7035,26 @@ const InputBox = (props: InputBoxProps = {}) => {
                           onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                         />
                       )}
-                      {/* Quality - Always shown for Seedance models */}
-                      <QualityDropdown
-                        selectedModel={selectedModel}
-                        selectedQuality={seedanceResolution}
-                        onQualityChange={setSeedanceResolution}
-                        onCloseOtherDropdowns={() => {
-                          // Close models dropdown
-                          setCloseModelsDropdown(true);
-                          setTimeout(() => setCloseModelsDropdown(false), 0);
-                          // Close frame size dropdown
-                          setCloseFrameSizeDropdown(true);
-                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          // Close duration dropdown
-                          setCloseDurationDropdown(true);
-                          setTimeout(() => setCloseDurationDropdown(false), 0);
-                        }}
-                        onCloseThisDropdown={undefined}
-                      />
+                      {/* Quality - Seedance 1.0 only (Seedance 1.5 doesn't use resolution) */}
+                      {!selectedModel.includes('seedance-1.5') && (
+                        <QualityDropdown
+                          selectedModel={selectedModel}
+                          selectedQuality={seedanceResolution}
+                          onQualityChange={setSeedanceResolution}
+                          onCloseOtherDropdowns={() => {
+                            // Close models dropdown
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            // Close frame size dropdown
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            // Close duration dropdown
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={undefined}
+                        />
+                      )}
                       {/* Duration - Always shown for Seedance models */}
                       <VideoDurationDropdown
                         selectedDuration={duration}
@@ -6451,6 +7073,23 @@ const InputBox = (props: InputBoxProps = {}) => {
                         }}
                         onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
                       />
+                      {/* Audio toggle - Seedance 1.5 only */}
+                      {selectedModel.includes('seedance-1.5') && (
+                        <button
+                          onClick={() => setGenerateAudio(v => !v)}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                            ? 'bg-transparent text-white '
+                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                            }`}
+                        >
+                          <div className="relative">
+                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            </div>
+                          </div>
+                        </button>
+                      )}
                     </div>
                   );
                 }

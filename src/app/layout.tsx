@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
+import MixpanelProvider from "@/components/providers/MixpanelProvider";
 import AuthBootstrap from "@/components/providers/AuthBootstrap";
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
@@ -13,6 +14,7 @@ import ConsoleSilencer from "@/components/ConsoleSilencer";
 import ChromeMount from './chrome-mount'
 import AiCompanion from "@/components/AiCompanion";
 import DownloadStatusIndicator from "@/components/DownloadStatusIndicator";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -149,13 +151,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
         {/* Google Tag Manager - DNS prefetch only (deferred loading) */}
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        {/* Preload hero video for LCP - Static link in head for immediate discovery with fetchpriority=high */}
-        <link
-          rel="preload"
-          as="video"
-          href="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/homepageimageshimanshu%2FKLING_Ultra_Real_Text_to_Video_Model%20(1).mp4?alt=media&token=e1312e5a-cdf5-4df2-8f4f-1c0bc5195382"
-          fetchPriority="high"
-        />
         {/* Google Tag Manager - Deferred to reduce blocking */}
         <Script id="google-tag-manager" strategy="lazyOnload">
           {`
@@ -196,6 +191,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* End Google Tag Manager (noscript) */}
 
         <ReduxProvider>
+          <MixpanelProvider />
           <AuthBootstrap />
           <ConsoleSilencer />
           {/* App chrome (Nav + SidePanel) mounted conditionally; hidden on landing page */}
@@ -211,7 +207,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               error: { duration: 4000 },
             }}
           />
-          <SonnerToaster 
+          <SonnerToaster
             position="bottom-right"
             richColors
             closeButton

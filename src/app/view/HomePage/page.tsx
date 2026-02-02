@@ -40,6 +40,8 @@ import { ViewType, GenerationType } from '@/types/generation';
 import PromotionalBanner2 from './compo/PromotionalBanner2';
 import AIToolsSection from './compo/AIToolsSection';
 
+import CompactFeatureStrip from './CompactFeatureStrip';
+
 const HomePage: React.FC = () => {
   const router = useRouter();
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -204,6 +206,7 @@ const HomePage: React.FC = () => {
           <PromotionalBanner2 />
 
           <Recentcreation />
+          <CompactFeatureStrip />
 
           <AIToolsSection />
           <main className="min-h-screen bg-[#07070B] text-white  md:px-8  ">

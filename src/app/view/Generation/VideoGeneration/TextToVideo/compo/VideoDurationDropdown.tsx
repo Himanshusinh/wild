@@ -113,8 +113,22 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Long video" }
       ];
     }
+    if (selectedModel?.includes("seedance-1.5")) {
+      // Seedance 1.5 supports exact 4–12 seconds (2s/3s removed)
+      return [
+        { value: 4, label: "4 seconds", description: "Quick video" },
+        { value: 5, label: "5 seconds", description: "Standard" },
+        { value: 6, label: "6 seconds", description: "Medium" },
+        { value: 7, label: "7 seconds", description: "Medium long" },
+        { value: 8, label: "8 seconds", description: "Long" },
+        { value: 9, label: "9 seconds", description: "Very long" },
+        { value: 10, label: "10 seconds", description: "Maximum" },
+        { value: 11, label: "11 seconds", description: "Maximum" },
+        { value: 12, label: "12 seconds", description: "Maximum" }
+      ];
+    }
     if (selectedModel?.includes("seedance")) {
-      // Seedance supports only 5s and 10s for all variants (Lite, Pro, Pro Fast)
+      // Seedance 1.0 pricing is bucketed on the frontend (5s/10s)
       return [
         { value: 5, label: "5 seconds", description: "Standard" },
         { value: 10, label: "10 seconds", description: "Long" }

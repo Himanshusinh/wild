@@ -20,6 +20,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const uploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInputImage = uploadedImages.length > 0;
 
   let models = [
     { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
@@ -46,9 +47,13 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
     { name: "P-Image", value: "prunaai/p-image" },
+    { name: "Qwen Image 2511", value: "qwen-image-2511" },
+    { name: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
+    { name: "Qwen Image  2512", value: "qwen-image-edit-2512" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
+    { name: "WILDMINDIMAGE", value: "wildmindimage" },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -65,7 +70,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // User can see actual credits per quality in the quality dropdown
     const quality = model.value === 'openai/gpt-image-1.5' ? 'low' : undefined;
     const creditInfo = getModelCreditInfo(model.value, undefined, undefined, undefined, quality);
-    const isFree = model.value === "new-turbo-model";
+    const isFree = model.value === 'wildmindimage';
     const creditLabel = isFree
       ? 'Free (0 credits)'
       : (creditInfo.displayText || (creditInfo.credits != null ? `${creditInfo.credits} credits` : null));
@@ -74,14 +79,14 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       ...model,
       credits: creditInfo.credits,
       displayText: creditInfo.displayText,
-      isFree: model.value === "new-turbo-model", // Mark z-image-turbo as special
+      isFree,
       displayName: model.name,
     };
   });
 
   // If imageOnly or user uploaded images, restrict to models which support image inputs
   let filteredModels = modelsWithCredits;
-  const restrictForImages = imageOnly || uploadedImages.length > 0;
+  const restrictForImages = imageOnly || hasInputImage;
   if (restrictForImages) {
     filteredModels = modelsWithCredits.filter(m =>
       m.value.startsWith('flux-kontext') ||
@@ -93,6 +98,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-4.5' ||
       m.value === 'flux-2-pro' ||
       m.value === 'prunaai/p-image' ||
+      m.value === 'qwen-image-edit-2511' ||
+      // m.value === 'qwen-image-edit-2512' ||
       m.value === 'openai/gpt-image-1.5'
     );
   }
@@ -117,15 +124,24 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
     const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
     const isZImageTurbo = typeof selectedModel === 'string' && (selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo');
-    
+    const isWildmindImage = typeof selectedModel === 'string' && selectedModel === 'wildmindimage';
+    const isQwenNonEdit = typeof selectedModel === 'string' && (selectedModel === 'qwen-image-2511' || selectedModel === 'qwen-image-2512');
+
+    // If a non-edit Qwen Image model is selected while an input image is attached, switch to the matching Edit variant.
+    if (hasInputImage && isQwenNonEdit) {
+      const preferred = selectedModel === 'qwen-image-2512' ? 'qwen-image-edit-2512' : 'qwen-image-edit-2511';
+      const exists = filteredModels.find(m => m.value === preferred);
+      dispatch(setSelectedModel(exists?.value || preferred));
+      return;
+    }
     // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
-    if (isZImageTurbo || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
+    if (isZImageTurbo || isWildmindImage || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
       // Prefer nano banana (gemini-25-flash-image) for image-to-image
       const nanoBanana = filteredModels.find(m => m.value === 'gemini-25-flash-image');
       const fallback = nanoBanana?.value || filteredModels[0]?.value || 'gemini-25-flash-image';
       dispatch(setSelectedModel(fallback));
     }
-  }, [restrictForImages, selectedModel, filteredModels, dispatch]);
+  }, [restrictForImages, hasInputImage, selectedModel, filteredModels, dispatch]);
 
   const handleDropdownClick = () => {
     dispatch(toggleDropdown('models'));
@@ -138,7 +154,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 5 seconds
       timeoutRef.current = setTimeout(() => {
         dispatch(toggleDropdown(''));
@@ -187,20 +203,19 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
         className="Z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
       >
         {selectedModel === "new-turbo-model" ? (
-          <InfinityIcon className="w-4 h-4 mr-1" />
+          <Cpu className="w-4 h-4 mr-1" />
         ) : (
           <Cpu className="w-4 h-4 mr-1" />
         )}
         {filteredModels.find((m) => m.value === selectedModel)?.name || "Models"}
         <ChevronUp
-          className={`w-4 h-4 transition-transform duration-200 ${
-            activeDropdown === "models" ? "rotate-180" : ""
-          }`}
+          className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === "models" ? "rotate-180" : ""
+            }`}
         />
       </button>
 
-      
-      {activeDropdown === 'models' && ( 
+
+      {activeDropdown === 'models' && (
         <div className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}>
           {(() => {
             // Priority models moved to LEFT column and marked with crown
@@ -210,7 +225,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'prunaai/p-image', // z-image-turbo - should be first
               'google/nano-banana-pro',
               'gemini-25-flash-image', // Google Nano Banana
-              
+              'qwen-image-edit-2511',
+              'qwen-image-edit-2512',
               'z-image-turbo',
               'flux-kontext-max',
               'flux-kontext-pro',
@@ -224,11 +240,11 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               .filter(m => leftSet.has(m.value))
               .sort((a, b) => leftValues.indexOf(a.value) - leftValues.indexOf(b.value));
             const rightModels = filteredModels.filter(m => !leftSet.has(m.value));
-            
+
             // On mobile: single column with all models combined
             // On desktop: two columns
             const allModels = [...leftModels, ...rightModels];
-            
+
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                 {/* Mobile: Single column with all models */}
@@ -240,15 +256,14 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
-                          ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
-                            : "bg-white text-black"
-                          : model.isFree
+                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
+                        ? model.isFree
+                          ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
+                          : "bg-white text-black"
+                        : model.isFree
                           ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
                           : "text-white/90 hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col mb-0">
                         <span className="flex items-center gap-2">
@@ -259,12 +274,11 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           {leftSet.has(model.value) && !model.isFree && (
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
-                          
+
                         </span>
                         {!model.isFree && (
-                          <span className={`md:text-[11px] text-[9px] -mt-0.5 font-normal ${
-                            selectedModel === model.value ? 'text-black/70' : 'opacity-80'
-                          }`}>
+                          <span className={`md:text-[11px] text-[9px] -mt-0.5 font-normal ${selectedModel === model.value ? 'text-black/70' : 'opacity-80'
+                            }`}>
                             {model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}
                           </span>
                         )}
@@ -275,7 +289,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                     </button>
                   ))}
                 </div>
-                
+
                 {/* Desktop: Two columns */}
                 {/* Left column (priority models with crown) */}
                 <div className="hidden md:block divide-y divide-white/10">
@@ -286,44 +300,41 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
-                          ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white "
-                            : "bg-white text-black"
-                          : model.isFree
+                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
+                        ? model.isFree
+                          ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white "
+                          : "bg-white text-black"
+                        : model.isFree
                           ? "text-white/90 hover:bg-[#60a5fa]/10  "
                           : "text-white/90 hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col mb-0">
                         <span className="flex items-center gap-2">
                           {model.isFree && (
                             <span className="text-xs text-white/50">
-                            <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
+                              <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
                             </span>
                           )}
-                          
+
                           {model.name}
 
-                          
-                          
+
+
                           {!model.isFree && (
-                            
+
                             <img src="/icons/crown.svg" alt="pro" className="w-4 h-4" />
                           )}
                         </span>
                         {model.isFree && (
-                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
-                            selectedModel === model.value ? 'text-white/70' : 'opacity-80'
-                          }`}>
+                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${selectedModel === model.value ? 'text-white/70' : 'opacity-80'
+                            }`}>
                             {model.displayText || (model.credits != null ? `${model.credits} credits` : '0 credits ')}
                           </span>
                         )}
                         {!model.isFree && (
-                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
-                            selectedModel === model.value ? 'text-black/70' : 'opacity-80'
-                          }`}>
+                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${selectedModel === model.value ? 'text-black/70' : 'opacity-80'
+                            }`}>
                             {model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}
                           </span>
                         )}
@@ -343,15 +354,14 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                         e.stopPropagation();
                         handleModelSelect(model.value);
                       }}
-                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
-                          ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
-                            : "bg-white text-black"
-                          : model.isFree
+                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedModel === model.value
+                        ? model.isFree
+                          ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
+                          : "bg-white text-black"
+                        : model.isFree
                           ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
                           : "text-white/90 hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col -mb-0">
                         <span className="flex items-center gap-2">
@@ -361,9 +371,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                           {model.name}
                         </span>
                         {!model.isFree && (
-                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
-                            selectedModel === model.value ? 'text-black/70' : 'opacity-80'
-                          }`}>
+                          <span className={`md:text-[11px] text-xs -mt-0.5 font-normal ${selectedModel === model.value ? 'text-black/70' : 'opacity-80'
+                            }`}>
                             {model.displayText || (model.credits != null ? `${model.credits} credits` : 'credits unavailable')}
                           </span>
                         )}

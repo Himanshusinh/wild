@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
-import LogoGenerationInputBox from '../ImageGeneration/LogoGeneration/compo/InputBox';
 import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
 import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
@@ -30,22 +29,21 @@ const generators: GeneratorComponentMap = {
   // Image Generation Features
   'text-to-image': TextToImageInputBox,
   'image-to-image': TextToImageInputBox, // Uses same component as text-to-image (supports image uploads)
-  'logo': LogoGenerationInputBox,
   'sticker-generation': StickerGenerationInputBox,
-  
+
   // Video Generation Features
   'text-to-video': VideoGenerationPage,
   'image-to-video': VideoGenerationPage, // Uses same component as text-to-video (supports image-to-video mode)
-  
+
   // Music Generation Features
   'text-to-music': MusicGenerationPage,
-  
+
   // Branding Kit Features
   'mockup-generation': MockupGenerationInputBox,
   'product-generation': ProductGenerationInputBox,
   'ad-generation': AdGenerationInputBox,
   'live-chat': LiveChatInputBox,
-  
+
   // Image Editing Features
   'edit-image': EditImageInterface,
   'edit-video': EditVideoInterface,
@@ -61,6 +59,11 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   const pathname = usePathname();
   const pathType: GenerationType | undefined = React.useMemo(() => {
     const p = pathname || '';
+    // Handle nested edit routes first for specificity
+    if (p.startsWith('/text-to-image/edit-image')) return 'text-to-image';
+    if (p.startsWith('/text-to-video/edit-video')) return 'text-to-video';
+
+    // Standard routes
     if (p.startsWith('/text-to-image') || p.startsWith('/image-to-image')) return 'text-to-image';
     if (p.startsWith('/text-to-video')) return 'text-to-video';
     if (p.startsWith('/image-to-video')) return 'image-to-video';
@@ -73,7 +76,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false);
-  
+
   // Use ref to track which generation types we've already loaded history for
   const loadedTypesRef = useRef<Set<string>>(new Set());
   const previousGenerationTypeRef = useRef<string>(currentGenerationType);
@@ -85,7 +88,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   const fetchFirstPage = async (filtersObj: any) => {
     try {
       if (isHistoryLoading) {
-        try { console.log('[PageRouter] fetchFirstPage.skip: store already loading'); } catch {}
+        try { console.log('[PageRouter] fetchFirstPage.skip: store already loading'); } catch { }
         return;
       }
       const isVideoMode = !!(filtersObj && (filtersObj.mode === 'video'));
@@ -93,11 +96,11 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
       const limit = isVideoMode ? 50 : (isTextToImage ? 50 : 50);
       const debugTag = `central:${Date.now()}`;
       console.log('[PageRouter] fetchFirstPage', { filtersObj, limit, debugTag, currentGenerationType });
-      const expectedType = (filtersObj?.generationType 
-        || (isVideoMode ? 'text-to-video' 
-        : ((currentGenerationType === 'image-to-image') ? 'text-to-image' : currentGenerationType)));
-      const result: any = await (dispatch as any)(loadHistory({ 
-        filters: filtersObj, 
+      const expectedType = (filtersObj?.generationType
+        || (isVideoMode ? 'text-to-video'
+          : ((currentGenerationType === 'image-to-image') ? 'text-to-image' : currentGenerationType)));
+      const result: any = await (dispatch as any)(loadHistory({
+        filters: filtersObj,
         paginationParams: { limit },
         requestOrigin: 'central',
         expectedType,
@@ -106,7 +109,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
       console.log('[PageRouter] fetchFirstPage.fulfilled', { received: result?.entries?.length, hasMore: result?.hasMore, debugTag });
     } catch (e: any) {
       if (e && e.name === 'ConditionError') {
-        try { console.log('[PageRouter] fetchFirstPage.skip: condition aborted'); } catch {}
+        try { console.log('[PageRouter] fetchFirstPage.skip: condition aborted'); } catch { }
         return;
       }
       console.error('[PageRouter] fetchFirstPage.error', e);
@@ -120,14 +123,14 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
     if (effectTimeoutRef.current) {
       clearTimeout(effectTimeoutRef.current);
     }
-    
+
     effectTimeoutRef.current = setTimeout(() => {
       if (currentView === 'generation') {
         // Prevent multiple simultaneous loads
         if (isLoadingRef.current) {
           return;
         }
-        
+
         // Normalize type for history filters (history doesn't track 'image-to-image' separately)
         const historyGenerationType = (currentGenerationType === 'image-to-image') ? 'text-to-image' : currentGenerationType;
 
@@ -152,26 +155,26 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
           previousGenerationTypeRef.current = currentGenerationType;
           return;
         }
-        
+
         // Check if generation type changed
         const generationTypeChanged = previousGenerationTypeRef.current !== currentGenerationType;
-        
+
         // Check if we already have entries for this generation type
         const hasEntriesForType = historyEntries.some((entry: any) => entry.generationType === currentGenerationType);
         const alreadyLoaded = loadedTypesRef.current.has(currentGenerationType);
-        
+
         // Only clear history if this is NOT the initial load and generation type actually changed
         if (generationTypeChanged && !isInitialLoadRef.current) {
           // Only clear if we actually have entries for the previous type
           const previousType = previousGenerationTypeRef.current;
           const hasPreviousEntries = historyEntries.some((entry: any) => entry.generationType === previousType);
-          
+
           if (hasPreviousEntries) {
             // Clear any existing timeout
             if (clearTimeoutRef.current) {
               clearTimeout(clearTimeoutRef.current);
             }
-            
+
             // Debounce the history clearing to prevent rapid clearing
             clearTimeoutRef.current = setTimeout(() => {
               if (previousType && previousType !== currentGenerationType) {
@@ -185,21 +188,21 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
           } else {
             // no-op
           }
-          
+
           loadedTypesRef.current.clear();
           previousGenerationTypeRef.current = currentGenerationType;
         }
-        
+
         // Mark that initial load is complete
         if (isInitialLoadRef.current) {
           isInitialLoadRef.current = false;
         }
-        
+
         // Only load history if we haven't loaded it for this type before
         if (!loadedTypesRef.current.has(currentGenerationType)) {
           isLoadingRef.current = true;
           const isVideoPage = ['text-to-video', 'image-to-video', 'video-to-video'].includes(historyGenerationType);
-          const filters = isVideoPage 
+          const filters = isVideoPage
             ? ({ mode: 'video' } as any)
             : ({ generationType: historyGenerationType as any } as any);
           fetchFirstPage(filters)
@@ -217,7 +220,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
           // If we've loaded before but don't have entries, reload (but not on initial load or while loading)
           isLoadingRef.current = true;
           const isVideoPage = ['text-to-video', 'image-to-video', 'video-to-video'].includes(historyGenerationType);
-          const filters = isVideoPage 
+          const filters = isVideoPage
             ? ({ mode: 'video' } as any)
             : ({ generationType: historyGenerationType as any } as any);
           fetchFirstPage(filters)
@@ -229,7 +232,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
         }
       }
     }, 50); // 50ms debounce for the entire effect
-    
+
     // Cleanup function
     return () => {
       if (effectTimeoutRef.current) {
@@ -255,7 +258,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   // Handle different views
   if (currentView === 'history') {
     return (
-      <div className="min-h-screen md:p-6 p-0">
+      <div className="min-h-screen md:px-6 p-0">
         <History />
       </div>
     );
@@ -271,7 +274,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
 
   // Handle generation features
   const GeneratorComponent = generators[effectiveGenerationType] || TextToImageInputBox;
-  
+
   return (
     <div className="relative min-h-screen">
       <GeneratorComponent />
