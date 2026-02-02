@@ -124,7 +124,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       )}
 
       {/* Desktop: Search, Sort, and Date controls (Fixed Header) */}
-      <div className="sticky top-[100px] md:top-[70px] z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-4 py-3">
+      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-4 py-3">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white/90">Generation History</h2>
