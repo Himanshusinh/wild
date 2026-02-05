@@ -16,8 +16,8 @@ import Bookmarks from './Bookmarks';
 import { loadHistory, clearHistoryByType, loadMoreHistory } from '@/store/slices/historySlice';
 import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
 import dynamic from 'next/dynamic';
-import EditImageInterface from '../../EditImage/compo/EditImageInterface';
-import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
+const EditImageInterface = dynamic(() => import('../../EditImage/compo/EditImageInterface'), { ssr: false });
+const EditVideoInterface = dynamic(() => import('../../EditVideo/compo/EditVideoInterface'), { ssr: false });
 
 
 type ViewType = 'generation' | 'history' | 'bookmarks';
