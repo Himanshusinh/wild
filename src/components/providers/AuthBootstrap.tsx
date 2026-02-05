@@ -1,5 +1,5 @@
 "use client"
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useDispatch } from 'react-redux'
 import { getMeCached } from '@/lib/me'
 import { setUser } from '@/store/slices/authSlice'
@@ -7,10 +7,19 @@ import { auth } from '@/lib/firebase'
 
 // Prefetches the authenticated user once per app mount and stores it in Redux.
 // Also warms the storage-backed cache so subsequent pages don't refetch.
+// FIXED: Prevent redirect loops by letting axios interceptor handle 401 errors
 export default function AuthBootstrap() {
   const dispatch = useDispatch()
+  const hasAttemptedAuth = useRef(false)
 
   useEffect(() => {
+    // CIRCUIT BREAKER: Only attempt auth check once to prevent loops
+    if (hasAttemptedAuth.current) {
+      console.log('[AuthBootstrap] Skipping duplicate auth check')
+      return
+    }
+    hasAttemptedAuth.current = true
+
     let mounted = true
       ; (async () => {
         try {
@@ -92,52 +101,21 @@ export default function AuthBootstrap() {
             dispatch(setUser(null))
           }
         } catch (error: any) {
-          // CRITICAL FIX: If /api/auth/me returns 401, clear user state
-          // This handles the case where cookie exists but is expired/invalid
+          if (!mounted) return
+
+          // CRITICAL FIX: Don't redirect on 401 - let axios interceptor handle it
+          // This prevents redirect loops
           if (error?.response?.status === 401) {
-            const errorMessage = error?.response?.data?.message || error?.message || '';
-
-            // Check if error is due to cookie not being sent (domain issue)
-            const isDomainIssue = errorMessage.includes('Cookie not sent') ||
-              errorMessage.includes('No session token');
-
-            if (isDomainIssue) {
-              console.warn('[AuthBootstrap] 401 due to cookie domain issue - NOT clearing user state to prevent flash of logout', {
-                hasCookie: typeof document !== 'undefined' ? document.cookie.includes('app_session=') : false,
-                error: errorMessage
-              });
-              // Don't clear user state immediately - let the user stay "logged in" on frontend
-              // They will be redirected to login eventually if they try to do something that requires auth
-              // But this prevents the "flash of logout" when just browsing
-            } else {
-              console.warn('[AuthBootstrap] 401 Unauthorized - clearing user state', {
-                hasCookie: typeof document !== 'undefined' ? document.cookie.includes('app_session=') : false
-              });
-              dispatch(setUser(null))
-
-              // CRITICAL FIX: Redirect to signup with toast if session is invalid
-              // This ensures the user knows why they were logged out
-              if (typeof window !== 'undefined') {
-                const currentPath = window.location.pathname;
-                // Don't redirect if already on public pages
-                const isPublic = currentPath === '/' ||
-                  currentPath.startsWith('/view/Landingpage') ||
-                  currentPath.startsWith('/view/signup') ||
-                  currentPath.startsWith('/view/signin') ||
-                  currentPath.startsWith('/canvas-projects') ||
-                  currentPath.startsWith('/blog') ||
-                  currentPath.startsWith('/view/pricing') ||
-                  currentPath.startsWith('/view/ArtStation') ||
-                  currentPath.startsWith('/legal/');
-
-                if (!isPublic) {
-                  console.warn('[AuthBootstrap] Redirecting to signup due to 401...');
-                  window.location.href = `/view/signup?next=${encodeURIComponent(currentPath)}&toast=SESSION_EXPIRED`;
-                }
-              }
-            }
+            console.warn('[AuthBootstrap] 401 Unauthorized - clearing user state', {
+              hasCookie: typeof document !== 'undefined' ? document.cookie.includes('app_session=') : false,
+              note: 'Axios interceptor will handle redirect after max retries'
+            });
+            dispatch(setUser(null))
+            // DO NOT REDIRECT - let axios interceptor's circuit breaker handle it
+          } else {
+            // ignore other errors; anonymous users are valid
+            console.log('[AuthBootstrap] Non-401 error during auth check (expected for anonymous users):', error?.message)
           }
-          // ignore other errors; anonymous users are valid
         }
       })()
     return () => { mounted = false }

@@ -35,26 +35,27 @@ const WildCanvasProjectsModal: React.FC<WildCanvasProjectsModalProps> = ({ isOpe
     }, [isOpen]);
 
     const loadProjects = async () => {
+        // Prevent multiple simultaneous load attempts
+        if (loading) {
+            console.log('[WildCanvasProjectsModal] Already loading, skipping duplicate request')
+            return
+        }
+
         setLoading(true);
         setError(null);
         try {
-            // Check if user is authenticated first
-            const { getMeCached } = await import('@/lib/me');
-            try {
-                await getMeCached();
-            } catch (authError) {
-                console.warn('[WildCanvasProjectsModal] User not authenticated, projects may not load', authError);
-                // Continue anyway - the API call will fail with 401 if not authenticated
-            }
-
+            // Let the API layer and axios interceptor handle authentication
+            // No need for redundant getMeCached() call here
             const response = await fetchCanvasProjects();
             setProjects(response.projects || []);
         } catch (err: any) {
             console.error('Failed to load canvas projects:', err);
 
-            // Provide specific error message for authentication issues
-            if (err?.message?.includes('Authentication required') || err?.message?.includes('Unauthorized')) {
-                setError('Please log in to view your projects. If you are already logged in, try refreshing the page or logging in again.');
+            // Provide user-friendly error message
+            if (err?.message?.includes('Authentication required') ||
+                err?.message?.includes('Unauthorized') ||
+                err?.message?.includes('401')) {
+                setError('Please log in to view your projects.');
             } else {
                 setError('Failed to load projects. Please try again.');
             }

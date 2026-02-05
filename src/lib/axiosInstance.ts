@@ -66,7 +66,7 @@ const isApiDebugEnabled = (): boolean => {
     if (typeof window !== 'undefined' && (window as any).__API_DEBUG === true) return true
     const flag = localStorage.getItem('api_debug')
     if (flag && flag.toLowerCase() === 'true') return true
-  } catch {}
+  } catch { }
   return process.env.NEXT_PUBLIC_API_DEBUG === 'true'
 }
 
@@ -82,24 +82,24 @@ axiosInstance.interceptors.request.use(async (config) => {
       if (isFormData) {
         const hdrs: any = anyConfig.headers || {};
         // AxiosHeaders supports .delete(); plain objects use delete.
-        try { if (typeof hdrs.delete === 'function') hdrs.delete('Content-Type'); } catch {}
-        try { if (typeof hdrs.delete === 'function') hdrs.delete('content-type'); } catch {}
-        try { delete hdrs['Content-Type']; } catch {}
-        try { delete hdrs['content-type']; } catch {}
+        try { if (typeof hdrs.delete === 'function') hdrs.delete('Content-Type'); } catch { }
+        try { if (typeof hdrs.delete === 'function') hdrs.delete('content-type'); } catch { }
+        try { delete hdrs['Content-Type']; } catch { }
+        try { delete hdrs['content-type']; } catch { }
         anyConfig.headers = hdrs;
       }
-    } catch {}
+    } catch { }
 
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
 
-  // For backend data endpoints (credits, generations, engagement, auth/me), attach Bearer id token so backend accepts without cookies
-  if (
-    url.startsWith('/api/credits/') ||
-    url.startsWith('/api/generations') ||
-    url.startsWith('/api/engagement') ||
-    url === '/api/auth/me'
-  ) {
+    // For backend data endpoints (credits, generations, engagement, auth/me), attach Bearer id token so backend accepts without cookies
+    if (
+      url.startsWith('/api/credits/') ||
+      url.startsWith('/api/generations') ||
+      url.startsWith('/api/engagement') ||
+      url === '/api/auth/me'
+    ) {
       // Gentle delay if session cookie is racing to be set after auth
       try {
         const hasHint = document.cookie.includes('auth_hint=')
@@ -108,8 +108,8 @@ axiosInstance.interceptors.request.use(async (config) => {
           if (isApiDebugEnabled()) console.log('[API][request-delay] auth_hint present, delaying 100ms for session cookie')
           await new Promise((r) => setTimeout(r, 100))
         }
-      } catch {}
-      
+      } catch { }
+
       // CRITICAL FIX: Try to get fresh token from Firebase first, fallback to stored token
       // This prevents using expired tokens from localStorage
       let token: string | null = null;
@@ -120,7 +120,7 @@ axiosInstance.interceptors.request.use(async (config) => {
             // Get token without forcing refresh (Firebase SDK automatically refreshes if needed)
             token = await auth.currentUser.getIdToken(false);
             if (isApiDebugEnabled()) {
-              console.log('[API][request] Got fresh token from Firebase', { 
+              console.log('[API][request] Got fresh token from Firebase', {
                 hasToken: !!token,
                 tokenPrefix: token ? token.substring(0, 20) : 'N/A'
               });
@@ -146,7 +146,7 @@ axiosInstance.interceptors.request.use(async (config) => {
           console.warn('[API][request] Error getting token, using stored token:', error?.message);
         }
       }
-      
+
       if (token) {
         const headers: any = config.headers || {}
         headers['Authorization'] = `Bearer ${token}`
@@ -161,7 +161,7 @@ axiosInstance.interceptors.request.use(async (config) => {
           headers['Expires'] = '0'
           config.headers = headers
         }
-      } catch {}
+      } catch { }
       // Leave baseURL pointing to external backend (default)
     }
 
@@ -196,13 +196,13 @@ axiosInstance.interceptors.request.use(async (config) => {
         config.baseURL = resolvedBaseUrl
         if (isApiDebugEnabled()) console.log('[API][auth-route]', { url: rawUrl, baseURL: config.baseURL })
       }
-    } catch {}
+    } catch { }
 
     // Attach bearer token for protected backend routes (primary auth path); cookie is optional fallback
     try {
       const raw = typeof config.url === 'string' ? config.url : ''
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL || ''
-      
+
       // Determine the path - handle both relative and absolute URLs
       let path = ''
       if (raw.startsWith('http://') || raw.startsWith('https://')) {
@@ -225,7 +225,7 @@ axiosInstance.interceptors.request.use(async (config) => {
           path = raw.startsWith('/') ? raw : `/${raw}`
         }
       }
-      
+
       // Treat most backend routes as protected to reduce 401s in early post-auth; allow session creation route to go without bearer
       const isProtectedApi = path.startsWith('/api/') && path !== '/api/auth/session'
       // Gentle delay for protected APIs when auth just completed and Set-Cookie may lag
@@ -237,7 +237,7 @@ axiosInstance.interceptors.request.use(async (config) => {
             if (isApiDebugEnabled()) console.log('[API][request-delay] protected call while auth_hint present, delaying 100ms', { path })
             await new Promise((r) => setTimeout(r, 100))
           }
-        } catch {}
+        } catch { }
       }
       if (isProtectedApi) {
         let idToken = getStoredIdToken()
@@ -263,7 +263,7 @@ axiosInstance.interceptors.request.use(async (config) => {
       }
     } catch (err) {
       // Log error instead of silently failing
-      console.error('[API][attach-bearer] Error determining path or attaching token:', err, { 
+      console.error('[API][attach-bearer] Error determining path or attaching token:', err, {
         url: typeof config.url === 'string' ? config.url : 'unknown',
         baseURL: (config.baseURL as string) || axiosInstance.defaults.baseURL || 'unknown'
       })
@@ -274,7 +274,7 @@ axiosInstance.interceptors.request.use(async (config) => {
       const base = (config.baseURL as string) || axiosInstance.defaults.baseURL
       const authHeader = (headers as any)?.Authorization || (config.headers as any)?.Authorization
       const hasAuth = Boolean(authHeader)
-      
+
       if (isApiDebugEnabled()) {
         console.log('[API][request]', {
           method: (config.method || 'get').toUpperCase(),
@@ -292,10 +292,10 @@ axiosInstance.interceptors.request.use(async (config) => {
           baseURL: base,
         })
       }
-    } catch {}
+    } catch { }
 
     config.headers = headers
-  } catch {}
+  } catch { }
   return config
 })
 
@@ -310,14 +310,14 @@ export default axiosInstance
 export function isUserAuthenticated(): boolean {
   try {
     if (typeof document === 'undefined') return false
-    
+
     // Check if we have a session cookie
     const hasSession = document.cookie.includes('app_session=')
     if (hasSession) {
       console.log('[isUserAuthenticated] Session cookie exists')
       return true
     }
-    
+
     // Check if user is authenticated in Firebase
     if (auth?.currentUser) {
       console.log('[isUserAuthenticated] Firebase user authenticated')
@@ -330,7 +330,7 @@ export function isUserAuthenticated(): boolean {
       }
       return true
     }
-    
+
     console.log('[isUserAuthenticated] No authentication found')
     return false
   } catch (error) {
@@ -344,15 +344,15 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
   try {
     // Check if we're in browser environment
     if (typeof document === 'undefined') return false
-    
+
     console.log('[ensureSessionReady] Starting session check...')
-    
+
     const hasSession = document.cookie.includes('app_session=')
     if (hasSession) {
       console.log('[ensureSessionReady] Session already exists')
       return true
     }
-    
+
     // If we have a token path (either cached token or firebase user), proceed without creating a session
     const stored = getStoredIdToken()
     if (stored) {
@@ -363,7 +363,7 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       console.error('[ensureSessionReady] No authenticated user found')
       return false
     }
-    
+
     // Verify user is actually authenticated
     console.log('[ensureSessionReady] User authentication status:', {
       uid: auth.currentUser.uid,
@@ -371,25 +371,25 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       emailVerified: auth.currentUser.emailVerified,
       isAnonymous: auth.currentUser.isAnonymous
     })
-    
+
     // Hint cookie to help middleware if needed
     try {
       document.cookie = 'auth_hint=1; Max-Age=120; Path=/; SameSite=Lax'
-    } catch {}
-    
+    } catch { }
+
     // Always get a fresh token from Firebase to ensure validity
     let idToken: string | null = null
     try {
       console.log('[ensureSessionReady] Getting fresh token from Firebase...')
       idToken = await auth.currentUser.getIdToken(true) // Force refresh
       console.log('[ensureSessionReady] Fresh token obtained:', !!idToken)
-      
+
       // Validate token format (should be a JWT with 3 parts separated by dots)
       if (idToken && !idToken.includes('.')) {
         console.error('[ensureSessionReady] Invalid token format - not a JWT')
         idToken = null
       }
-      
+
       // Additional validation - check if token has proper JWT structure
       if (idToken && idToken.split('.').length !== 3) {
         console.error('[ensureSessionReady] Invalid JWT structure')
@@ -397,13 +397,13 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
       }
     } catch (error) {
       console.error('[ensureSessionReady] Failed to get fresh token:', error)
-      
+
       // If token refresh fails, try to clear stored tokens and retry
       try {
         console.log('[ensureSessionReady] Clearing stored tokens and retrying...')
         localStorage.removeItem('authToken')
         localStorage.removeItem('user')
-        
+
         // Try one more time with a clean slate
         idToken = await auth.currentUser.getIdToken(true)
         console.log('[ensureSessionReady] Retry token obtained:', !!idToken)
@@ -412,19 +412,19 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
         return false
       }
     }
-    
+
     if (!idToken) {
       console.error('[ensureSessionReady] No valid ID token available')
       return false
     }
-    
+
     // Log token info for debugging (without exposing the actual token)
     console.log('[ensureSessionReady] Token info:', {
       length: idToken.length,
       startsWith: idToken.substring(0, 20) + '...',
       parts: idToken.split('.').length
     })
-    
+
     // Do NOT create a session here; rely on Bearer token path
     return true
   } catch (error) {
@@ -434,11 +434,21 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
 }
 
 // Response interceptor: on 401, try to refresh session cookie once
+// CIRCUIT BREAKER: Prevent infinite 401 loops
 let isRefreshing = false
 let pendingRequests: Array<() => void> = []
 let lastSessionCreateAt = 0
 const SESSION_CREATE_COOLDOWN_MS = 2 * 60 * 1000 // 2 minutes
+
+// Circuit breaker state for 401 errors
+let authFailureCount = 0
+let lastAuthFailureTime = 0
+const MAX_AUTH_RETRIES = 3 // Maximum consecutive 401 failures before giving up
+const AUTH_FAILURE_RESET_WINDOW_MS = 60 * 1000 // Reset failure count after 1 minute of no failures
+const AUTH_RETRY_BACKOFF_MS = [500, 1000, 2000] // Exponential backoff: 500ms, 1s, 2s
+
 const getNow = () => Date.now()
+
 const canCreateSession = (): boolean => {
   try {
     const fromStorage = Number(sessionStorage.getItem('session_last_create') || '0')
@@ -446,9 +456,44 @@ const canCreateSession = (): boolean => {
     return getNow() - last > SESSION_CREATE_COOLDOWN_MS
   } catch { return getNow() - lastSessionCreateAt > SESSION_CREATE_COOLDOWN_MS }
 }
+
 const markSessionCreated = () => {
   lastSessionCreateAt = getNow()
-  try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch {}
+  try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch { }
+}
+
+// Track auth failures to prevent infinite loops
+const recordAuthFailure = () => {
+  const now = getNow()
+  // Reset counter if last failure was more than 1 minute ago
+  if (now - lastAuthFailureTime > AUTH_FAILURE_RESET_WINDOW_MS) {
+    authFailureCount = 0
+  }
+  authFailureCount++
+  lastAuthFailureTime = now
+  console.warn(`[API][circuit-breaker] Auth failure ${authFailureCount}/${MAX_AUTH_RETRIES}`, {
+    timestamp: new Date(now).toISOString()
+  })
+}
+
+// Check if we've exceeded max retries
+const hasExceededMaxRetries = (): boolean => {
+  return authFailureCount >= MAX_AUTH_RETRIES
+}
+
+// Reset auth failure counter (call on successful auth)
+const resetAuthFailures = () => {
+  if (authFailureCount > 0) {
+    console.log('[API][circuit-breaker] Resetting failure count after successful auth')
+  }
+  authFailureCount = 0
+  lastAuthFailureTime = 0
+}
+
+// Get backoff delay based on failure count
+const getAuthRetryDelay = (): number => {
+  const index = Math.min(authFailureCount - 1, AUTH_RETRY_BACKOFF_MS.length - 1)
+  return AUTH_RETRY_BACKOFF_MS[index] || 0
 }
 
 // Session refresh state management
@@ -530,7 +575,7 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
         error: tokenError?.message,
         uid: currentUser?.uid
       });
-      
+
       // Try to use stored token as fallback
       const storedToken = getStoredIdToken();
       if (storedToken) {
@@ -547,7 +592,7 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
 
     if (!freshIdToken) {
       if (isApiDebugEnabled()) console.warn('[API][session-refresh] Failed to get fresh ID token');
-      
+
       // CRITICAL FIX: If we can't get a fresh token, it might be a temporary network issue
       // or the user's refresh token is revoked.
       // We should NOT logout immediately. The session cookie might still be valid.
@@ -562,12 +607,12 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
     const refreshResponse = await axios.post(
       `${backendBase}/api/auth/session/refresh`,
       { idToken: freshIdToken },
-      { 
-        withCredentials: true, 
-        headers: { 
+      {
+        withCredentials: true,
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${freshIdToken}`
-        } 
+        }
       }
     );
 
@@ -591,7 +636,7 @@ const refreshSessionIfNeeded = async (): Promise<void> => {
       timestamp: new Date().toISOString(),
       note: 'Session cookie may still be valid even if refresh fails'
     });
-    
+
     // CRITICAL FIX: If refresh fails, don't clear the session - let the user continue with existing session
     // The session cookie should still be valid even if refresh fails
     // Only clear session if we get a 401 from the refresh endpoint itself
@@ -612,10 +657,13 @@ axiosInstance.interceptors.response.use(
         console.log('[API][logout][response]', { status: response?.status, url: response?.config?.url })
       }
 
+      // CIRCUIT BREAKER: Reset failure count on successful response
+      resetAuthFailures()
+
       // Check for session refresh header (automatic refresh when session expires within 3 days)
       // Axios normalizes headers to lowercase, but check both cases for safety
-      const refreshHeader = response.headers['x-session-refresh-needed'] || 
-                           response.headers['X-Session-Refresh-Needed'];
+      const refreshHeader = response.headers['x-session-refresh-needed'] ||
+        response.headers['X-Session-Refresh-Needed'];
       const refreshNeeded = refreshHeader === 'true';
       if (refreshNeeded && typeof window !== 'undefined') {
         // Refresh session in background (non-blocking)
@@ -623,21 +671,21 @@ axiosInstance.interceptors.response.use(
           // Silently fail - non-critical
         });
       }
-    } catch {}
+    } catch { }
     return response
   },
   async (error) => {
     const original = error?.config || {}
     const status = error?.response?.status
     const errorData = error?.response?.data
-    
+
     // Check if request was cancelled (user navigated away, component unmounted, etc.)
-    const isCancelled = error?.code === 'ERR_CANCELED' || 
-                       error?.name === 'CanceledError' || 
-                       error?.name === 'AbortError' ||
-                       error?.message?.includes('canceled') ||
-                       error?.message?.includes('aborted');
-    
+    const isCancelled = error?.code === 'ERR_CANCELED' ||
+      error?.name === 'CanceledError' ||
+      error?.name === 'AbortError' ||
+      error?.message?.includes('canceled') ||
+      error?.message?.includes('aborted');
+
     if (isCancelled) {
       // Request was cancelled - this is expected when user navigates away
       // Don't show generic error toast, but we'll handle it in generation slice
@@ -653,9 +701,9 @@ axiosInstance.interceptors.response.use(
       (cancelError as any).code = 'ERR_CANCELED';
       return Promise.reject(cancelError);
     }
-    
+
     // Generic error toast (only for non-cancelled errors)
-    try { await showFalErrorToast(error); } catch {}
+    try { await showFalErrorToast(error); } catch { }
     try {
       const urlStr = String(error?.config?.url || '')
       if (urlStr.includes('/api/auth/logout')) {
@@ -667,7 +715,7 @@ axiosInstance.interceptors.response.use(
           baseURL: error?.config?.baseURL,
         })
       }
-    } catch {}
+    } catch { }
 
     if (status !== 401) {
       try {
@@ -676,15 +724,58 @@ axiosInstance.interceptors.response.use(
           status: error?.response?.status,
           data: error?.response?.data,
         })
-      } catch {}
+      } catch { }
       return Promise.reject(error)
     }
 
-    // Avoid infinite loops
+    // CIRCUIT BREAKER: Check if we've exceeded max retries
+    recordAuthFailure()
+    if (hasExceededMaxRetries()) {
+      console.error('[API][circuit-breaker] Max auth retries exceeded - logging out user', {
+        failureCount: authFailureCount,
+        maxRetries: MAX_AUTH_RETRIES,
+        url: original?.url
+      })
+
+      // Clear auth data and redirect to login
+      try {
+        clearAuthData()
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          // Don't redirect if already on public pages
+          const isPublic = currentPath === '/' ||
+            currentPath.startsWith('/view/Landingpage') ||
+            currentPath.startsWith('/view/signup') ||
+            currentPath.startsWith('/view/signin') ||
+            currentPath.startsWith('/blog') ||
+            currentPath.startsWith('/view/pricing') ||
+            currentPath.startsWith('/legal/')
+
+          if (!isPublic) {
+            console.warn('[API][circuit-breaker] Redirecting to signup after max retries')
+            window.location.href = `/view/signup?next=${encodeURIComponent(currentPath)}&toast=AUTH_LOOP_DETECTED`
+          }
+        }
+      } catch (cleanupErr) {
+        console.error('[API][circuit-breaker] Error during cleanup:', cleanupErr)
+      }
+
+      return Promise.reject(new Error('Maximum authentication retries exceeded. Please log in again.'))
+    }
+
+    // Avoid infinite loops - don't retry if already retried
     if (original.__isRetry) {
+      console.warn('[API][401] Request already retried once, not retrying again')
       return Promise.reject(error)
     }
     original.__isRetry = true
+
+    // Apply exponential backoff before retry
+    const backoffDelay = getAuthRetryDelay()
+    if (backoffDelay > 0) {
+      console.log(`[API][401] Applying backoff delay: ${backoffDelay}ms before retry ${authFailureCount}/${MAX_AUTH_RETRIES}`)
+      await new Promise(resolve => setTimeout(resolve, backoffDelay))
+    }
 
     // Queue requests while a refresh is in progress
     if (isRefreshing) {
@@ -695,7 +786,7 @@ axiosInstance.interceptors.response.use(
     try {
       isRefreshing = true
       if (isApiDebugEnabled()) console.log('[API][401][refresh] starting')
-      
+
       // CRITICAL FIX: Wait for Firebase auth state to initialize
       // Firebase auth state might not be ready immediately after page load
       let currentUser = auth.currentUser
@@ -715,7 +806,7 @@ axiosInstance.interceptors.response.use(
         await authStateReady;
         currentUser = auth.currentUser;
       }
-      
+
       if (!currentUser) {
         // CRITICAL FIX: If Firebase user is null, try stored token as fallback
         const storedToken = getStoredIdToken();
@@ -732,13 +823,13 @@ axiosInstance.interceptors.response.use(
             // Fall through to session creation
           }
         }
-        
+
         // If no stored token either, try retry once (session cookie might still work)
         if (isApiDebugEnabled()) console.warn('[API][401][refresh] no currentUser and no stored token - retry once without session create')
         await new Promise((r) => setTimeout(r, 200))
         return axiosInstance(original)
       }
-      
+
       // Refresh ID token and retry WITHOUT creating a session
       let freshIdToken: string | null = null;
       try {
@@ -755,13 +846,13 @@ axiosInstance.interceptors.response.use(
           return axiosInstance(original);
         }
       }
-      
+
       if (!freshIdToken) {
         if (isApiDebugEnabled()) console.warn('[API][401][refresh] No ID token available - retry once');
         await new Promise((r) => setTimeout(r, 200));
         return axiosInstance(original);
       }
-      
+
       original.headers = original.headers || {}
       original.headers['Authorization'] = `Bearer ${freshIdToken}`
       try {
@@ -773,11 +864,11 @@ axiosInstance.interceptors.response.use(
       } catch (retryErr: any) {
         // CRITICAL FIX: Only create session if we haven't done so recently
         // But also check if the error is truly a session issue vs other 401 errors
-        const isSessionError = retryErr?.response?.status === 401 && 
-                               (retryErr?.response?.data?.message?.includes('session') ||
-                                retryErr?.response?.data?.message?.includes('Unauthorized') ||
-                                retryErr?.response?.data?.message?.includes('token'));
-        
+        const isSessionError = retryErr?.response?.status === 401 &&
+          (retryErr?.response?.data?.message?.includes('session') ||
+            retryErr?.response?.data?.message?.includes('Unauthorized') ||
+            retryErr?.response?.data?.message?.includes('token'));
+
         if (isSessionError && canCreateSession()) {
           try {
             // Use the same resolved backend base URL as the axios instance
@@ -787,7 +878,7 @@ axiosInstance.interceptors.response.use(
               { idToken: freshIdToken },
               { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
             )
-            
+
             if (sessionResponse.status === 200) {
               markSessionCreated()
               if (isApiDebugEnabled()) console.log('[API][401][session-create] created (throttled), retrying original')
@@ -817,7 +908,7 @@ axiosInstance.interceptors.response.use(
         throw retryErr
       }
     } catch (e) {
-      try { if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) } catch {}
+      try { if (isApiDebugEnabled()) console.error('[API][401][refresh] failed', e) } catch { }
       return Promise.reject(error)
     } finally {
       isRefreshing = false
