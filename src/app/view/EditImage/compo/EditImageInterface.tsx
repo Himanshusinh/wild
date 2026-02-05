@@ -16,12 +16,16 @@ import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { getCreditsForModel } from '@/utils/modelCredits';
 import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
 import { toast } from 'react-hot-toast';
-import { EditImageEraseFrame } from './EditImageEraseFrame';
-import { EditImageEraseControls } from './EditImageEraseControls';
-import { EditImageExpandFrame } from './EditImageExpandFrame';
-import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
 import { useCredits } from '@/hooks/useCredits';
+import dynamic from 'next/dynamic';
+
+
+// Controls kept static as they are small UI components, but could be dynamic if needed
+import { EditImageEraseControls } from './EditImageEraseControls';
+import { EditImageExpandControls } from './EditImageExpandControls';
+import { EditImageEraseFrame } from './EditImageEraseFrame';
+import { EditImageExpandFrame } from './EditImageExpandFrame';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
