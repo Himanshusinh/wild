@@ -25,13 +25,7 @@ import { fetchUserCredits, selectCredits } from "@/store/slices/creditsSlice";
 import PlanCards, { Plan, PLANS } from "./components/PlanCards";
 import CheckoutModal from "./components/CheckoutModal";
 import ActivePlanCard from "./components/ActivePlanCard";
-
-// Extend Window type for Razorpay
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+import CelebrationModal from "./components/CelebrationModal";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -44,6 +38,7 @@ export default function BillingPage() {
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false); // New State
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
 
@@ -61,8 +56,6 @@ export default function BillingPage() {
       setUserName(user.displayName || user.email?.split("@")[0] || "");
     }
   }, [dispatch]);
-
-  // ... (handlers)
 
   const handleSelectPlan = (planCode: string) => {
     const plan = PLANS.find((p) => p.code === planCode);
@@ -88,9 +81,9 @@ export default function BillingPage() {
           })
         ).unwrap();
 
-        alert(`Plan changed to ${selectedPlan.name} successfully!`);
+        // Show celebration for upgrade too!
         setShowCheckout(false);
-        setSelectedPlan(null);
+        setShowCelebration(true);
         dispatch(fetchCurrentSubscription()); // Refresh data
         return;
       }
@@ -146,18 +139,21 @@ export default function BillingPage() {
         image: "/icons/icon-512x512.png",
         handler: function (response: any) {
           console.log("✅ Payment successful:", response);
-          alert("Payment successful! Your subscription is now active.");
+          // Alert removed, replaced with Celebration Modal
           setShowCheckout(false);
-          setSelectedPlan(null);
+          setShowCelebration(true); 
+          
           // Refresh subscription data
           dispatch(fetchCurrentSubscription());
-          window.location.href = "/account/billing?payment=success";
+          // Optional: Remove query params cleanly
+           window.history.replaceState({}, document.title, window.location.pathname);
         },
         modal: {
           ondismiss: function () {
             console.log("Payment modal closed by user");
             setShowCheckout(false);
-            setSelectedPlan(null);
+            // Don't clear selected plan immediately so they can try again if they just closed it by mistake
+            // But if they cancel, maybe we should? Let's leave it for better UX.
           },
         },
         theme: {
@@ -173,7 +169,7 @@ export default function BillingPage() {
         console.error("❌ Payment failed:", response.error);
         alert(`Payment failed: ${response.error.description}`);
         setShowCheckout(false);
-        setSelectedPlan(null);
+        // setSelectedPlan(null); // Keep plan selected for retry
       });
 
       rzp.open();
@@ -212,6 +208,20 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8">
+       {/* Celebration Modal */}
+       <CelebrationModal 
+        isOpen={showCelebration} 
+        onClose={() => {
+          setShowCelebration(false);
+          setSelectedPlan(null); 
+          // Redirect to clear URL params if success payment was in URL
+          if (window.location.search.includes('payment=success')) {
+             router.replace('/account/billing');
+          }
+        }}
+        planName={selectedPlan?.name || currentPlan?.name || "Premium"}
+      />
+
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
