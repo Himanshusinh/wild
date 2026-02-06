@@ -159,6 +159,11 @@ export default function BillingPage() {
         theme: {
           color: "#3b82f6",
         },
+        prefill: {
+          name: billingDetails?.name || userName,
+          email: billingDetails?.email || userEmail,
+          contact: billingDetails?.phone,
+        },
       };
 
       // Open Razorpay checkout modal
