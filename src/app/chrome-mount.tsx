@@ -50,21 +50,21 @@ export default function ChromeMount() {
       if (userStr) {
         const u = JSON.parse(userStr);
         const authed = !!u?.uid;
-        
+
         setIsAuthenticated(authed);
       } else {
-        
+
         setIsAuthenticated(false);
       }
     } catch (err) {
-      
+
       setIsAuthenticated(false);
     }
   }, [pathname, reduxUser]); // Re-check when pathname or Redux user changes
 
   // Once authenticated in the browser, decide whether to show the notification permission prompt.
   useEffect(() => {
-    
+
     if (!isAuthenticated) {
       setShowNotifPrompt(false);
       return;
@@ -88,7 +88,7 @@ export default function ChromeMount() {
     if (typeof window === 'undefined') return;
 
     attachForegroundMessageListener((payload: any) => {
-      
+
 
       const title = payload?.notification?.title || 'WildMind';
       const body = payload?.notification?.body || '';
@@ -99,7 +99,7 @@ export default function ChromeMount() {
           new Notification(title, { body });
         }
       } catch (err) {
-        
+
       }
     });
   }, []);
@@ -112,7 +112,7 @@ export default function ChromeMount() {
       }
       await registerBrowserPushToken();
     } catch (err) {
-      
+
     }
   };
 
@@ -129,7 +129,7 @@ export default function ChromeMount() {
   // Hide chrome on 404 and error pages
   const is404 = pathname === '/not-found' || pathname?.includes('/404');
   const isErrorPage = pathname === '/error' || pathname?.includes('/error');
-  
+
   // Public routes - hide chrome on these
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
@@ -175,11 +175,13 @@ export default function ChromeMount() {
   const isBlogRoute = pathnameLower.startsWith('/blog');
   const isCanvasRoute = pathnameLower.startsWith('/canvas-projects');
   const isWorkflowsRoute = pathnameLower.startsWith('/view/workflows');
+  const isComingSoonRoute = pathnameLower === '/coming-soon' || pathnameLower.startsWith('/coming-soon/');
 
   // Check if pathname matches any known valid route
   // This is used to detect 404 pages (invalid routes)
   const isValidRoute = isRoot ||
     isLandingRoute ||
+    isComingSoonRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
     isPricingRoute ||
@@ -253,6 +255,7 @@ export default function ChromeMount() {
   // Hide chrome on all other public pages
   const shouldHide = isRoot ||
     isLandingRoute ||
+    isComingSoonRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
     isLegalRoute ||

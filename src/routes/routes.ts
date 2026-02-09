@@ -1,7 +1,7 @@
 
 // Authentication Routes
 export const AUTH_ROUTES = {
-  SIGN_IN: '/view/signin',
+  SIGN_IN: '/view/signup',
   SIGN_UP: '/view/signup',
   FORGOT_PASSWORD: '/view/forgot-password',
 } as const;
@@ -10,7 +10,7 @@ export const AUTH_ROUTES = {
 export const APP_ROUTES = {
   HOME: '/view/HomePage',
   LANDING: '/',
-  SIGNUP:'/view/signup',
+  SIGNUP: '/view/signup',
   LOGIN: '/view/signup', // Login uses the same page with different form state
   ACCOUNT_MANAGEMENT: '/view/account-management'
 } as const;
@@ -61,8 +61,8 @@ export const NAV_ROUTES = {
   CONTACT: '/view/Landingpage?section=contact',
   SUPPORT: '/view/Landingpage?section=support',
   ABOUT: '/view/Landingpage?section=about',
-  BOOKMARK:'/bookmarks',
-  LANDING:'/view/Landingpage',
+  BOOKMARK: '/bookmarks',
+  LANDING: '/view/Landingpage',
   LIVE_CHAT: '/view/Generation/wildmindskit/LiveChat',
   ACCOUNT_MANAGEMENT: '/view/account-management',
   WORKFLOWS: '/view/workflows',
@@ -147,13 +147,26 @@ export type RouteParams = {
 // Helper function to generate dynamic routes
 export const generateRoute = (route: string, params?: RouteParams): string => {
   if (!params) return route;
-  
+
   let generatedRoute = route;
   Object.entries(params).forEach(([key, value]) => {
     generatedRoute = generatedRoute.replace(`:${key}`, String(value));
   });
-  
+
   return generatedRoute;
+};
+
+/**
+ * Returns the sign-in URL with an optional returnUrl parameter.
+ * Also adds showLogin=true to ensure the login form is shown instead of signup.
+ */
+export const getSignInUrl = (returnUrl?: string): string => {
+  const params = new URLSearchParams();
+  if (returnUrl) {
+    params.set('returnUrl', returnUrl);
+  }
+  params.set('showLogin', 'true');
+  return `${AUTH_ROUTES.SIGN_IN}?${params.toString()}`;
 };
 
 // Export all routes as a single object for easy access
