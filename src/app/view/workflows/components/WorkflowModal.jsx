@@ -726,9 +726,9 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                 </div>
               </div>
             ) : (
-              <div className={`w-full h-full ${workflowData.id === 'id-card' ? '' : 'p-8'} flex flex-col items-center justify-center`}>
+              <div className={`w-full h-full ${['id-card', 'storyboard'].includes(workflowData.id) ? '' : 'p-8'} flex flex-col items-center justify-center`}>
                 <div className="w-full h-full rounded-2xl overflow-hidden border border-white/5 bg-black/40 relative">
-                  {['business-card', 'id-card'].includes(workflowData.id) ? (
+                  {['business-card', 'id-card', 'storyboard'].includes(workflowData.id) ? (
                     <img
                       src={workflowData.sampleAfter}
                       className={`w-full h-full ${workflowData.id === 'id-card' ? 'object-cover' : 'object-contain'}`}

@@ -10,7 +10,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/creatively-upscale-before.png",
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
     "sampleAfter": "/workflow-samples/creatively-upscale-after.png",
-    "imageFit": "object-cover",
+    "imageFit": "object-contain",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -42,9 +42,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Turn this image into a simple coloring book line drawing, black and white.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/workflow-samples/photo-to-line-before.jpg",
-    "sampleBefore": "/workflow-samples/photo-to-line-before.jpg",
-    "sampleAfter": "/workflow-samples/photo-to-line-after.jpg",
+    "thumbnail": "/workflow-samples/photo-to-line-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/photo-to-line-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/photo-to-line-after-v2.jpg",
+    "imageFit": "object-cover",
     "cost": 90
   },
   {
@@ -53,9 +54,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Make it look like the image has been color in with crayons. Realistic results from markers/sketches.",
     "model": "Seadream4/ Nano Banana",
-    "thumbnail": "/workflow-samples/line-to-photo-before.jpg",
-    "sampleBefore": "/workflow-samples/line-to-photo-before.jpg",
-    "sampleAfter": "/workflow-samples/line-to-photo-after.jpg",
+    "thumbnail": "/workflow-samples/line-to-photo-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/line-to-photo-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/line-to-photo-after-v2.jpg",
+    "imageFit": "object-cover",
     "cost": 90
   },
   {
@@ -75,9 +77,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Replace any object in your image with something else using AI.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/replace-element-before.jpg",
-    "sampleBefore": "/workflow-samples/replace-element-before.jpg",
-    "sampleAfter": "/workflow-samples/replace-element-after.jpg",
+    "thumbnail": "/workflow-samples/replace-element-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/replace-element-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/replace-element-after-v2.jpg",
+    "imageFit": "object-cover",
     "cost": 90
   },
   {
@@ -86,9 +89,10 @@ export const WORKFLOWS_DATA = [
     "category": "General",
     "description": "Remove watermark from reference image while maintaining quality.",
     "model": "Nano Banana",
-    "thumbnail": "/workflow-samples/remove-watermark-before.jpg",
-    "sampleBefore": "/workflow-samples/remove-watermark-before.jpg",
-    "sampleAfter": "/workflow-samples/remove-watermark-after.jpg",
+    "thumbnail": "/workflow-samples/remove-watermark-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/remove-watermark-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/remove-watermark-after-v2.jpg",
+    "imageFit": "object-cover",
     "cost": 90
   },
   {
@@ -274,9 +278,9 @@ export const WORKFLOWS_DATA = [
     "category": "Architecture",
     "description": "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/cad-to-3d-before.png",
-    "sampleBefore": "/workflow-samples/cad-to-3d-before.png",
-    "sampleAfter": "/workflow-samples/cad-to-3d-after.jpg",
+    "thumbnail": "/workflow-samples/cad-to-3d-before-v2.png",
+    "sampleBefore": "/workflow-samples/cad-to-3d-before-v2.png",
+    "sampleAfter": "/workflow-samples/cad-to-3d-after-v2.jpg",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -604,6 +608,19 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/fashion-stylist-before.png",
     "sampleBefore": "/workflow-samples/fashion-stylist-before.png",
     "sampleAfter": "/workflow-samples/fashion-stylist-after.jpg",
+    "imageFit": "object-contain",
+    "imagePosition": "object-center",
+    "cost": 90
+  },
+  {
+    "id": "storyboard",
+    "title": "Storyboard",
+    "category": "Film Industry",
+    "description": "Generate a storyboard for your film or video project. Use the example to see a student life journey.",
+    "model": "Seadream4/ Nano Banana/ Qwen",
+    "thumbnail": "/workflow-samples/storyboard-student-journey.jpg",
+    "sampleBefore": "/workflow-samples/storyboard-student-journey.jpg",
+    "sampleAfter": "/workflow-samples/storyboard-student-journey.jpg",
     "imageFit": "object-contain",
     "imagePosition": "object-center",
     "cost": 90

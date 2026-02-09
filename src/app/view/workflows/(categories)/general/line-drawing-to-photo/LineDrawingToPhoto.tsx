@@ -36,7 +36,7 @@ export default function LineDrawingToPhoto() {
         cost: 90
     };
 
-        const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
+    const DETAILED_PROMPT = `Convert the attached black-and-white line art into a fully photorealistic image.
     Preserve the exact subject, pose, proportions, composition, and perspective from the reference image.
     Replace all sketch and outline lines with realistic textures, materials, and natural details while maintaining structural accuracy.
     Render lifelike surface details (texture, depth, shading, highlights), realistic lighting, natural color tones, and believable shadows.
@@ -238,7 +238,7 @@ export default function LineDrawingToPhoto() {
                                         afterImage={generatedImage}
                                         beforeLabel="Line Drawing"
                                         afterLabel="Photorealistic"
-                                        imageFit="object-contain"
+                                        imageFit="object-cover"
                                     />
                                     <button
                                         onClick={handleDownload}
@@ -261,11 +261,11 @@ export default function LineDrawingToPhoto() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/workflow-samples/line-to-photo-before.jpg"
-                                        afterImage="/workflow-samples/line-to-photo-after.jpg"
-                                        beforeLabel="Before"
+                                        beforeImage="/workflow-samples/line-to-photo-before-v2.jpg"
+                                        afterImage="/workflow-samples/line-to-photo-after-v2.jpg"
+                                        beforeLabel="Line Drawing"
                                         afterLabel="Photorealistic"
-                                        imageFit="object-contain"
+                                        imageFit="object-cover"
                                     />
 
                                 </div>

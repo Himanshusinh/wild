@@ -91,7 +91,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
     // Apply visibility filters
     return result.filter(wf => {
       // Logic for determining if an item is "Coming Soon"
-      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend', 'Fashion', 'Branding', 'Architecture'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
       // Hide coming soon items if they are in the 'Fun' category
       if (wf.category === 'Fun' && isComingSoon) return false;
@@ -237,7 +237,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
               </button>
 
               {CATEGORIES.filter(cat => cat !== 'All').map((cat) => {
-                const isCatComingSoon = !['General', 'Fun', 'Viral Trend', 'Photography', 'Fashion', 'Branding', 'Architecture'].includes(cat);
+                const isCatComingSoon = !['General', 'Fun', 'Viral Trend', 'Photography', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(cat);
                 return (
                   <button
                     key={cat}
@@ -295,53 +295,17 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
 function WorkflowCard({ wf, router }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend', 'Fashion'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend', 'Fashion', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
   const handleClick = () => {
     if (isComingSoon) return;
 
-    // Route to custom pages logic
-    if (wf.id === 'selfie-video') {
-      router.push('/view/workflows/viral-trend/selfie-video');
-    } else if (wf.id === 'remove-background') {
-      router.push('/view/workflows/general/remove-background');
-    } else if (wf.id === 'restore-old-photo') {
-      router.push('/view/workflows/general/restore-old-photo');
-    } else if (wf.id === 'photo-to-line-drawing') {
-      router.push('/view/workflows/general/photo-to-line-drawing');
-    } else if (wf.id === 'line-drawing-to-photo') {
-      router.push('/view/workflows/general/line-drawing-to-photo');
-    } else if (wf.id === 'become-celebrity') {
-      router.push('/view/workflows/fun/become-celebrity');
-    } else if (wf.id === 'remove-element') {
-      router.push('/view/workflows/general/remove-element');
-    } else if (wf.id === 'remove-watermark') {
-      router.push('/view/workflows/general/remove-watermark');
-    } else if (wf.id === 'creatively-upscale') {
-      router.push('/view/workflows/general/creatively-upscale');
-    } else if (wf.id === 'replace-element') {
-      router.push('/view/workflows/general/replace-element');
-    } else if (wf.id === 'create-logo') {
-      router.push('/view/workflows/branding/create-logo');
-    } else if (wf.id === 'business-card') {
-      router.push('/view/workflows/branding/business-card');
-    } else if (wf.id === 'logo-variations') {
-      router.push('/view/workflows/branding/logo-variations');
-    } else if (wf.id === 'mockup-generation') {
-      router.push('/view/workflows/branding/mockup-generation');
-    } else if (wf.category === 'Photography') {
-      router.push(`/view/workflows/photography/${wf.id}`);
-    } else if (wf.category === 'Architecture') {
-      router.push(`/view/workflows/architecture/${wf.id}`);
-    } else if (wf.category === 'Fun') {
-      router.push(`/view/workflows/fun/${wf.id}`);
-    } else if (wf.category === 'Viral Trend') {
-      router.push(`/view/workflows/viral-trend/${wf.id}`);
-    } else if (wf.category === 'Fashion') {
-      router.push(`/view/workflows/fashion/${wf.id}`);
-    } else {
-      router.push(`/view/workflows/${wf.id}`);
-    }
+    // Use a unified routing strategy based on category slugs
+    // This ensures coverage for ALL categories (Film Industry, Social Media, etc.)
+    // and matches the directory structure: /view/workflows/[category-slug]/[workflow-id]
+
+    const categorySlug = wf.category.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '');
+    router.push(`/view/workflows/${categorySlug}/${wf.id}`);
   };
 
   return (
