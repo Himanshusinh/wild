@@ -8,6 +8,10 @@ import { getIsPublic } from '@/lib/publicFlag';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
 import { useCredits } from '@/hooks/useCredits';
+import { useAppSelector } from '@/store/hooks';
+import { useRouter } from 'next/navigation';
+import { getSignInUrl } from '@/routes/routes';
+import toast from 'react-hot-toast';
 
 interface UpscalePopupProps {
   isOpen: boolean;
@@ -26,6 +30,8 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [fullscreenTitle, setFullscreenTitle] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const user = useAppSelector((state) => state.auth.user);
 
   const {
     creditBalance,
@@ -67,18 +73,18 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const [esrganScale, setEsrganScale] = useState<number>(4);
   const [esrganFaceEnhance, setEsrganFaceEnhance] = useState<boolean>(false);
   // Swin2SR
-  const [swinTask, setSwinTask] = useState<'classical_sr'|'real_sr'|'compressed_sr'>('real_sr');
+  const [swinTask, setSwinTask] = useState<'classical_sr' | 'real_sr' | 'compressed_sr'>('real_sr');
   const [mask, setMask] = useState<string>('');
   const [steps, setSteps] = useState<number>(20);
-  const [mirScheduler, setMirScheduler] = useState<'DDIM'|'DPMSolverMultistep'|'K_EULER_ANCESTRAL'|'K_EULER'>('DDIM');
+  const [mirScheduler, setMirScheduler] = useState<'DDIM' | 'DPMSolverMultistep' | 'K_EULER_ANCESTRAL' | 'K_EULER'>('DDIM');
   const [mirCreativity, setMirCreativity] = useState<number>(0.25);
   const [guessMode, setGuessMode] = useState<boolean>(false);
-  const [resolution, setResolution] = useState<'original'|'1024'|'2048'>('original');
+  const [resolution, setResolution] = useState<'original' | '1024' | '2048'>('original');
   const [mirResemblance, setMirResemblance] = useState<number>(0.75);
   const [guidanceScale, setGuidanceScale] = useState<number>(7);
   const [mirNegative, setMirNegative] = useState<string>('');
   // Crystal Upscaler
-  const [crystalResolution, setCrystalResolution] = useState<'1080p'|'1440p'|'2160p'|'6K'|'8K'|'12K'>('1080p');
+  const [crystalResolution, setCrystalResolution] = useState<'1080p' | '1440p' | '2160p' | '6K' | '8K' | '12K'>('1080p');
 
   const crystalEstimate = React.useMemo(() => {
     if (model !== 'philz1337x/crystal-upscaler') return null;
@@ -97,7 +103,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
         event.target.value = "";
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         setUploadedImage(e.target?.result as string);
@@ -109,6 +115,14 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
 
   const handleUpscale = async () => {
     if (!uploadedImage) return;
+
+    // Auth guard: redirect to sign-in if not authenticated
+    if (!user) {
+      toast('Please sign in to use the upscale feature', { icon: '🔒' });
+      router.push(getSignInUrl());
+      return;
+    }
+
     setIsUpscaling(true);
     let optimisticDebit = 0;
     try {
@@ -167,7 +181,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           num_inference_steps: numInferenceSteps,
           downscaling_resolution: downscalingResolution,
         };
-  } else if (model === 'fermatresearch/magic-image-refiner') {
+      } else if (model === 'fermatresearch/magic-image-refiner') {
         // magic-image-refiner
         payload = {
           ...payload,
@@ -313,7 +327,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-white">Model</label>
-                    <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
+                    <select value={model} onChange={(e) => setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
                       <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
                       <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
                       <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
@@ -323,17 +337,17 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-white">Prompt (optional)</label>
-                    <input value={prompt} onChange={(e)=>setPrompt(e.target.value)} placeholder="Describe what to enhance or focus on..." className="w-full  text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y" />
+                    <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe what to enhance or focus on..." className="w-full  text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y" />
                   </div>
                   {model === 'philz1337x/clarity-upscaler' ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-white/80">Scale factor</label>
-                        <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e)=>setScaleFactor(Number(e.target.value)||2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value) || 2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Output</label>
-                        <select value={outputFormat} onChange={(e)=>setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
                           <option value="png">PNG</option>
                           <option value="jpg">JPG</option>
                           <option value="webp">WEBP</option>
@@ -341,18 +355,18 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Dynamic</label>
-                        <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e)=>setDynamic(Number(e.target.value)||6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e) => setDynamic(Number(e.target.value) || 6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Sharpen</label>
-                        <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e)=>setSharpen(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e) => setSharpen(Number(e.target.value) || 0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-white/80">Resolution</label>
-                        <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <select value={resolution} onChange={(e) => setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
                           <option className='bg-black/80' value="original">Original</option>
                           <option className='bg-black/80' value="1024">1024</option>
                           <option className='bg-black/80' value="2048">2048</option>
@@ -360,11 +374,11 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Guidance scale</label>
-                        <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e)=>setGuidanceScale(Number(e.target.value)||7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e) => setGuidanceScale(Number(e.target.value) || 7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                       <div className="col-span-2">
                         <label className="text-xs text-white/80">Negative prompt</label>
-                        <input value={mirNegative} onChange={(e)=>setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input value={mirNegative} onChange={(e) => setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
                     </div>
                   )}
@@ -412,10 +426,10 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   return (
     <>
       {/* Backdrop (no outside click to close) */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 "
       />
-      
+
       {/* Main Popup */}
       <div className="fixed inset-0 z-70 flex items-center justify-center p-4 py-auto">
         <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/20 max-w-4xl w-full max-h-auto overflow-y-auto">
@@ -469,7 +483,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                     {/* Model */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-white">Model</label>
-                        <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
+                      <select value={model} onChange={(e) => setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
                         <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
                         <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
                         <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
@@ -488,31 +502,31 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       />
                     </div>
                     {model === 'philz1337x/clarity-upscaler' ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-white/80">Scale factor</label>
-                        <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e)=>setScaleFactor(Number(e.target.value)||2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-white/80">Scale factor</label>
+                          <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value) || 2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/80">Output</label>
+                          <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="webp">WEBP</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/80">Dynamic</label>
+                          <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e) => setDynamic(Number(e.target.value) || 6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/80">Sharpen</label>
+                          <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e) => setSharpen(Number(e.target.value) || 0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs text-white/80">Output</label>
-                        <select value={outputFormat} onChange={(e)=>setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
-                          <option value="png">PNG</option>
-                          <option value="jpg">JPG</option>
-                          <option value="webp">WEBP</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-white/80">Dynamic</label>
-                        <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e)=>setDynamic(Number(e.target.value)||6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-white/80">Sharpen</label>
-                        <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e)=>setSharpen(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
-                      </div>
-                    </div>
                     ) : model === 'fermatresearch/magic-image-refiner' ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* <div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* <div>
                         <label className="text-xs text-white/80">HDR</label>
                         <input type="number" min={0} max={1} step={0.05} value={hdr} onChange={(e)=>setHdr(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div>
@@ -541,68 +555,68 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         <input id="guess" type="checkbox" checked={guessMode} onChange={(e)=>setGuessMode(e.target.checked)} />
                         <label htmlFor="guess" className="text-xs text-white/80">Guess mode</label>
                       </div> */}
-                      <div>
-                        <label className="text-xs text-white/80">Resolution</label>
-                          <select value={resolution} onChange={(e)=>setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                          <option className='bg-black/80' value="original">Original</option>
-                          <option className='bg-black/80' value="1024">1024</option>
-                          <option className='bg-black/80' value="2048">2048</option>
-                        </select>
-                      </div>
-                      {/* <div>
+                        <div>
+                          <label className="text-xs text-white/80">Resolution</label>
+                          <select value={resolution} onChange={(e) => setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                            <option className='bg-black/80' value="original">Original</option>
+                            <option className='bg-black/80' value="1024">1024</option>
+                            <option className='bg-black/80' value="2048">2048</option>
+                          </select>
+                        </div>
+                        {/* <div>
                         <label className="text-xs text-white/80">Resemblance</label>
                         <input type="number" min={0} max={1} step={0.05} value={mirResemblance} onChange={(e)=>setMirResemblance(Number(e.target.value)||0.75)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div> */}
-                      <div>
-                        <label className="text-xs text-white/80">Guidance scale</label>
-                        <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e)=>setGuidanceScale(Number(e.target.value)||7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <div>
+                          <label className="text-xs text-white/80">Guidance scale</label>
+                          <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e) => setGuidanceScale(Number(e.target.value) || 7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs text-white/80">Negative prompt</label>
+                          <input value={mirNegative} onChange={(e) => setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
                       </div>
-                      <div className="col-span-2">
-                        <label className="text-xs text-white/80">Negative prompt</label>
-                        <input value={mirNegative} onChange={(e)=>setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
-                      </div>
-                    </div>
                     ) : model === 'nightmareai/real-esrgan' ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-white/80">Scale</label>
-                        <input type="number" min={0} max={10} step={1} value={esrganScale} onChange={(e)=>setEsrganScale(Number(e.target.value)||4)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-white/80">Scale</label>
+                          <input type="number" min={0} max={10} step={1} value={esrganScale} onChange={(e) => setEsrganScale(Number(e.target.value) || 4)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <input id="fe" type="checkbox" checked={esrganFaceEnhance} onChange={(e) => setEsrganFaceEnhance(e.target.checked)} />
+                          <label htmlFor="fe" className="text-xs text-white/80">Face enhance</label>
+                        </div>
                       </div>
-                      <div className="flex items-end gap-2">
-                        <input id="fe" type="checkbox" checked={esrganFaceEnhance} onChange={(e)=>setEsrganFaceEnhance(e.target.checked)} />
-                        <label htmlFor="fe" className="text-xs text-white/80">Face enhance</label>
-                      </div>
-                    </div>
                     ) : model === 'mv-lab/swin2sr' ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-white/80">Task</label>
-                        <select value={swinTask} onChange={(e)=>setSwinTask(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                          <option value="classical_sr">classical_sr</option>
-                          <option value="real_sr">real_sr</option>
-                          <option value="compressed_sr">compressed_sr</option>
-                        </select>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-white/80">Task</label>
+                          <select value={swinTask} onChange={(e) => setSwinTask(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                            <option value="classical_sr">classical_sr</option>
+                            <option value="real_sr">real_sr</option>
+                            <option value="compressed_sr">compressed_sr</option>
+                          </select>
+                        </div>
                       </div>
-                    </div>
                     ) : model === 'philz1337x/crystal-upscaler' ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-white/80">Scale factor</label>
-                        <input type="number" min={1} max={6} step={1} value={scaleFactor} onChange={(e)=>setScaleFactor(Number(e.target.value)||2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-white/80">Scale factor</label>
+                          <input type="number" min={1} max={6} step={1} value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value) || 2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/80">Output</label>
+                          <select value={crystalOutput} onChange={(e) => setCrystalOutput(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                          </select>
+                        </div>
+                        <div className="col-span-2 text-[11px] text-white/60">
+                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
+                          {' '}
+                          · Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs text-white/80">Output</label>
-                        <select value={crystalOutput} onChange={(e)=>setCrystalOutput(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
-                          <option value="png">PNG</option>
-                          <option value="jpg">JPG</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2 text-[11px] text-white/60">
-                        Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
-                        {' '}
-                        · Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
-                      </div>
-                    </div>
                     ) : null}
                   </div>
 

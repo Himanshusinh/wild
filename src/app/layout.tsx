@@ -6,6 +6,7 @@ import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
 import MixpanelProvider from "@/components/providers/MixpanelProvider";
 import AuthBootstrap from "@/components/providers/AuthBootstrap";
+import SubscriptionBootstrap from "@/components/providers/SubscriptionBootstrap";
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import { Toaster as SonnerToaster } from 'sonner'
@@ -14,6 +15,7 @@ import ConsoleSilencer from "@/components/ConsoleSilencer";
 import ChromeMount from './chrome-mount'
 import AiCompanion from "@/components/AiCompanion";
 import DownloadStatusIndicator from "@/components/DownloadStatusIndicator";
+import ModalsContainer from "@/components/modals/ModalsContainer";
 
 
 const geistSans = Geist({
@@ -167,6 +169,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://www.googletagmanager.com/gtag/js?id=G-S8H5QSFV5Z"
           strategy="lazyOnload"
         />
+        <Script id="mixpanel-init" strategy="afterInteractive">
+        {`
+          if (window.mixpanel) {
+            window.mixpanel.init('${process.env.NEXT_PUBLIC_MIXPANEL_TOKEN}', {
+              debug: ${process.env.NODE_ENV === 'development'},
+              track_pageview: true,
+              persistence: 'localStorage',
+              record_sessions_percent: 100
+            });
+          }
+        `}
+      </Script>
+
+      {/* Razorpay SDK - Load before page interactive */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="beforeInteractive"
+      />
         <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
@@ -193,6 +213,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ReduxProvider>
           <MixpanelProvider />
           <AuthBootstrap />
+          <SubscriptionBootstrap />
           <ConsoleSilencer />
           {/* App chrome (Nav + SidePanel) mounted conditionally; hidden on landing page */}
           <ChromeMount />
@@ -222,6 +243,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastMount />
           <DownloadStatusIndicator />
           <AiCompanion />
+          <ModalsContainer />
         </ReduxProvider>
       </body>
     </html>

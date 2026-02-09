@@ -49,7 +49,7 @@ const getCandidateDomains = (override?: string): string[] => {
       const rootHost = host?.startsWith('.') ? host : `.${host}`;
       if (rootHost && !domains.includes(rootHost)) domains.push(rootHost);
     }
-  } catch {}
+  } catch { }
   return domains;
 };
 
@@ -67,21 +67,21 @@ export function clearAuthData(): void {
       'app_session.sig',
     ];
     keys.forEach((key) => {
-      try { localStorage.removeItem(key); } catch {}
-      try { sessionStorage.removeItem(key); } catch {}
+      try { localStorage.removeItem(key); } catch { }
+      try { sessionStorage.removeItem(key); } catch { }
     });
-  } catch {}
+  } catch { }
 
   // Clear caches (best-effort; may not be available)
   try {
     if (typeof caches !== 'undefined') {
       caches.keys().then((names) => {
         names.forEach((name) => {
-          caches.delete(name).catch(() => {});
+          caches.delete(name).catch(() => { });
         });
-      }).catch(() => {});
+      }).catch(() => { });
     }
-  } catch {}
+  } catch { }
 }
 
 /**
@@ -143,7 +143,7 @@ export function hasSessionCookie(): boolean {
  */
 export async function performLogout(options: PerformLogoutOptions = {}): Promise<void> {
   const {
-    redirectTo = '/view/Landingpage?toast=LOGOUT_SUCCESS',
+    redirectTo = '/view/HomePage?toast=LOGOUT_SUCCESS',
     router,
     skipBackend = false,
     hardReload = false,

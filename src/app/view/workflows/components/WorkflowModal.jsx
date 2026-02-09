@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, UploadCloud, Zap, Sparkles, Wand2, Layers, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 import ImageComparisonSlider from './ImageComparisonSlider';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 const CAMERA_ANGLES = [
   'Eye-Level', 'Low Angle', 'High Angle', 'Top-Down', 'Side Angle',
@@ -11,6 +15,8 @@ const CAMERA_ANGLES = [
 ];
 
 export default function WorkflowModal({ isOpen, onClose, workflowData }) {
+  const router = useRouter();
+  const { user } = useCredits();
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [promptText, setPromptText] = useState("");
@@ -103,12 +109,85 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
       setDesignation("");
       setEmployeeId("");
       setDepartment("");
+      setDepartment("");
     }
   }, [isOpen, workflowData]);
+
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    if (!user || !isOpen) return;
+
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'workflow') {
+      const { data } = intent;
+      if (data.workflowId !== workflowData.id) return; // Only resume if same workflow
+
+      console.log('[AutoResume] Found workflow intent, restoring state:', data);
+
+      if (data.promptText !== undefined) setPromptText(data.promptText);
+      if (data.selectedAge !== undefined) setSelectedAge(data.selectedAge);
+      if (data.uploadedImage !== undefined) setUploadedImage(data.uploadedImage);
+      if (data.poseReferenceImage !== undefined) setPoseReferenceImage(data.poseReferenceImage);
+      if (data.productType !== undefined) setProductType(data.productType);
+      if (data.selectedElements !== undefined) setSelectedElements(data.selectedElements);
+      if (data.selectedAngle !== undefined) setSelectedAngle(data.selectedAngle);
+      if (data.companyName !== undefined) setCompanyName(data.companyName);
+      if (data.personDetails !== undefined) setPersonDetails(data.personDetails);
+      if (data.contactDetails !== undefined) setContactDetails(data.contactDetails);
+      if (data.logoImage !== undefined) setLogoImage(data.logoImage);
+      if (data.cardType !== undefined) setCardType(data.cardType);
+      if (data.selectedColor !== undefined) setSelectedColor(data.selectedColor);
+      if (data.cardStyle !== undefined) setCardStyle(data.cardStyle);
+      if (data.personPhoto !== undefined) setPersonPhoto(data.personPhoto);
+      if (data.personName !== undefined) setPersonName(data.personName);
+      if (data.designation !== undefined) setDesignation(data.designation);
+      if (data.employeeId !== undefined) setEmployeeId(data.employeeId);
+      if (data.department !== undefined) setDepartment(data.department);
+      if (data.selectedBackground !== undefined) setSelectedBackground(data.selectedBackground);
+      if (data.selectedLighting !== undefined) setSelectedLighting(data.selectedLighting);
+      if (data.motionBlur !== undefined) setMotionBlur(data.motionBlur);
+
+      clearAutoResumeIntent();
+
+      // Auto-trigger generation after a short delay
+      setTimeout(() => {
+        handleRunWorkflow();
+      }, 1500);
+    }
+  }, [user, isOpen, workflowData]);
 
   if (!workflowData) return null;
 
   const handleRunWorkflow = () => {
+    if (!user) {
+      saveAutoResumeIntent('workflow', {
+        workflowId: workflowData.id,
+        promptText,
+        selectedAge,
+        uploadedImage,
+        poseReferenceImage,
+        productType,
+        selectedElements,
+        selectedAngle,
+        companyName,
+        personDetails,
+        contactDetails,
+        logoImage,
+        cardType,
+        selectedColor,
+        cardStyle,
+        personPhoto,
+        personName,
+        designation,
+        employeeId,
+        department,
+        selectedBackground,
+        selectedLighting,
+        motionBlur
+      });
+      router.push(getSignInUrl());
+      return;
+    }
     if (isGenerating) return;
 
     if (workflowData.id === 'business-card') {

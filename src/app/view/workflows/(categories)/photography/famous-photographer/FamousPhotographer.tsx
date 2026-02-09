@@ -9,6 +9,7 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
 
 const PHOTOGRAPHER_STYLES = [
   { id: 'steve-mccurry', label: 'Steve McCurry', description: 'Vibrant, humanistic, National Geographic style.', icon: <Sparkles size={14} /> },
@@ -23,7 +24,8 @@ export default function FamousPhotographer() {
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -66,6 +68,10 @@ export default function FamousPhotographer() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!sourceImage) {
       toast.error('Please upload your photo first');
       return;

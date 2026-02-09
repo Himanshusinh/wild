@@ -1,7 +1,7 @@
 
 // Authentication Routes
 export const AUTH_ROUTES = {
-  SIGN_IN: '/view/signin',
+  SIGN_IN: '/view/signup?showLogin=true',
   SIGN_UP: '/view/signup',
   FORGOT_PASSWORD: '/view/forgot-password',
 } as const;
@@ -10,7 +10,7 @@ export const AUTH_ROUTES = {
 export const APP_ROUTES = {
   HOME: '/view/HomePage',
   LANDING: '/',
-  SIGNUP:'/view/signup',
+  SIGNUP: '/view/signup',
   LOGIN: '/view/signup', // Login uses the same page with different form state
   ACCOUNT_MANAGEMENT: '/view/account-management'
 } as const;
@@ -61,8 +61,8 @@ export const NAV_ROUTES = {
   CONTACT: '/view/Landingpage?section=contact',
   SUPPORT: '/view/Landingpage?section=support',
   ABOUT: '/view/Landingpage?section=about',
-  BOOKMARK:'/bookmarks',
-  LANDING:'/view/Landingpage',
+  BOOKMARK: '/bookmarks',
+  LANDING: '/view/Landingpage',
   LIVE_CHAT: '/view/Generation/wildmindskit/LiveChat',
   ACCOUNT_MANAGEMENT: '/view/account-management',
   WORKFLOWS: '/view/workflows',
@@ -147,12 +147,12 @@ export type RouteParams = {
 // Helper function to generate dynamic routes
 export const generateRoute = (route: string, params?: RouteParams): string => {
   if (!params) return route;
-  
+
   let generatedRoute = route;
   Object.entries(params).forEach(([key, value]) => {
     generatedRoute = generatedRoute.replace(`:${key}`, String(value));
   });
-  
+
   return generatedRoute;
 };
 
@@ -170,3 +170,22 @@ export const ROUTES = {
   ...VIDEOGENERATION,
   ...MUSICGENERATION,
 } as const;
+
+/**
+ * Generates the sign-in URL with an optional returnUrl parameter.
+ * If no returnUrl is provided and we're in the browser, it defaults to the current path.
+ */
+export const getSignInUrl = (returnUrl?: string): string => {
+  let targetReturnUrl = returnUrl;
+
+  if (!targetReturnUrl && typeof window !== 'undefined') {
+    targetReturnUrl = window.location.pathname + window.location.search;
+  }
+
+  if (targetReturnUrl) {
+    // AUTH_ROUTES.SIGN_IN already has ?showLogin=true, so append with &
+    return `${AUTH_ROUTES.SIGN_IN}&returnUrl=${encodeURIComponent(targetReturnUrl)}`;
+  }
+
+  return AUTH_ROUTES.SIGN_IN;
+};

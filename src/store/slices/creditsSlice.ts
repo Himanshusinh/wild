@@ -7,6 +7,8 @@ import { RootState } from '@/store';
 export interface UserCredits {
   creditBalance: number;
   planCode: string;
+  storageUsed: number;
+  storageQuota: number;
   lastSync?: string;
 }
 
@@ -58,6 +60,8 @@ export const fetchUserCredits = createAsyncThunk(
         const creditsData = creditsResponse.data?.data || creditsResponse.data;
         const creditBalance = creditsData?.creditBalance ?? 0;
         const planCode = creditsData?.planCode || 'free';
+        const storageUsed = Number(creditsData?.storageUsedBytes || 0);
+        const storageQuota = Number(creditsData?.storageQuotaBytes || 0);
 
         console.log('[CREDITS_FRONTEND] Credits endpoint response:', {
           creditBalance,
@@ -77,6 +81,8 @@ export const fetchUserCredits = createAsyncThunk(
         return {
           creditBalance,
           planCode,
+          storageUsed,
+          storageQuota,
           lastSync: new Date().toISOString(),
         } as UserCredits;
       } catch (creditsError: any) {
@@ -112,6 +118,8 @@ export const fetchUserCredits = createAsyncThunk(
           return {
             creditBalance: fallbackBalance,
             planCode: (authUser as any)?.planCode || 'free',
+            storageUsed: 0,
+            storageQuota: 0,
             lastSync: new Date().toISOString(),
           } as UserCredits;
         }
@@ -126,6 +134,8 @@ export const fetchUserCredits = createAsyncThunk(
         return {
           creditBalance: cachedBalance,
           planCode: userData?.planCode || 'free',
+          storageUsed: 0,
+          storageQuota: 0,
           lastSync: new Date().toISOString(),
         } as UserCredits;
       }
@@ -317,6 +327,8 @@ const creditsSlice = createSlice({
         state.credits = {
           creditBalance: 0,
           planCode: 'free',
+          storageUsed: 0,
+          storageQuota: 0,
           ...action.payload,
         };
       }

@@ -120,18 +120,43 @@ export default function AuthBootstrap() {
               if (typeof window !== 'undefined') {
                 const currentPath = window.location.pathname;
                 // Don't redirect if already on public pages
-                const isPublic = currentPath === '/' ||
-                  currentPath.startsWith('/view/Landingpage') ||
-                  currentPath.startsWith('/view/signup') ||
-                  currentPath.startsWith('/view/signin') ||
-                  currentPath.startsWith('/canvas-projects') ||
-                  currentPath.startsWith('/blog') ||
-                  currentPath.startsWith('/view/pricing') ||
-                  currentPath.startsWith('/view/ArtStation') ||
-                  currentPath.startsWith('/legal/');
+                const PUBLIC_PREFIXES = [
+                  '/',
+                  '/view/Landingpage',
+                  '/view/signup',
+                  '/view/signin',
+                  '/view/forgot-password',
+                  '/canvas-projects',
+                  '/blog',
+                  '/view/pricing',
+                  '/view/ArtStation',
+                  '/text-to-image',
+                  '/image-to-image',
+                  '/logo-generation',
+                  '/sticker-generation',
+                  '/inpaint-fluxapi',
+                  '/text-to-video',
+                  '/image-to-video',
+                  '/text-to-music',
+                  '/text-to-speech',
+                  '/product-generation',
+                  '/mockup-generation',
+                  '/ad-generation',
+                  '/view/Generation',
+                  '/legal/',
+                  '/history',
+                  '/bookmarks',
+                  '/view/workflows',
+                  '/view/HomePage',
+                  '/view/Generation/wildmindskit/LiveChat',
+                ];
+
+                const isPublic = PUBLIC_PREFIXES.some(prefix =>
+                  currentPath === prefix || currentPath.startsWith(prefix)
+                );
 
                 if (!isPublic) {
-                  console.warn('[AuthBootstrap] Redirecting to signup due to 401...');
+                  console.warn('[AuthBootstrap] Redirecting to signup due to 401...', { currentPath });
                   window.location.href = `/view/signup?next=${encodeURIComponent(currentPath)}&toast=SESSION_EXPIRED`;
                 }
               }
