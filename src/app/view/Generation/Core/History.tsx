@@ -16,6 +16,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { setCurrentView } from '@/store/slices/uiSlice';
 import { Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 import HistoryControls from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls';
 // Replaced custom loader with Logo.gif
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
@@ -123,6 +124,15 @@ const History = () => {
     setIsMounted(true);
   }, []);
 
+  // Redirect unauthenticated users - REMOVED to allow "No generations yet" view and fix back button loops
+  /*
+  useEffect(() => {
+    if (isMounted && !user) {
+      window.location.href = getSignInUrl();
+    }
+  }, [isMounted, user]);
+  */
+
   // Helper function to get clean prompt without style
   const getCleanPrompt = (promptText: string): string => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
@@ -145,6 +155,10 @@ const History = () => {
 
   // Delete handler - same logic as ImagePreviewModal
   const handleDeleteGeneration = async (e: React.MouseEvent, entry: HistoryEntry) => {
+    if (!user) {
+      if (typeof window !== 'undefined') window.location.href = getSignInUrl();
+      return;
+    }
     try {
       e.stopPropagation();
       e.preventDefault();
@@ -164,6 +178,7 @@ const History = () => {
   // IMPORTANT: Use forceRefresh so backend ordering is preserved and we don't merge into stale entries.
   const loadFirstPage = async (filtersObj: any) => {
     try {
+      if (!user) return; // Suppress fetching if not logged in
       if (loadLockRef.current) return; // prevent duplicate initial loads
       loadLockRef.current = true;
       const initialLimit = computeDynamicLimit(0);
@@ -254,6 +269,8 @@ const History = () => {
   useEffect(() => {
     const run = async () => {
       try {
+        if (!user) return; // Do not attempt to load history if unauthenticated
+
         // Reset history to ensure a clean initial load on refresh
         dispatch(clearHistory());
         if (viewMode === 'global') {
@@ -540,6 +557,10 @@ const History = () => {
   };
 
   const deleteSelectedImages = async () => {
+    if (!user) {
+      if (typeof window !== 'undefined') window.location.href = getSignInUrl();
+      return;
+    }
     try {
       if (!window.confirm(`Delete ${selectedImages.size} selected item${selectedImages.size !== 1 ? 's' : ''} permanently? This cannot be undone.`)) {
         return;
@@ -772,6 +793,10 @@ const History = () => {
   };
 
   const downloadSelectedImages = async () => {
+    if (!user) {
+      if (typeof window !== 'undefined') window.location.href = getSignInUrl();
+      return;
+    }
     try {
       const selectedItems: Array<{
         key: string;
@@ -1070,17 +1095,20 @@ const History = () => {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-red-500">Error: {error}</div>
-      </div>
-    );
+    // Suppress 401 error display for unauthenticated users - we want them to see the empty state instead
+    if (user && error) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-red-500">Error: {error}</div>
+        </div>
+      );
+    }
   }
 
   return (
     <div className="min-h-full bg-[#07070B] text-white md:p-2 select-none">
       {/* Fixed Header with title and controls */}
-      <div className="fixed top-0 left-0 right-0 z-30 bg-[#07070B] backdrop-blur-xl shadow-xl px-3">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#07070B] backdrop-blur-xl shadow-xl px-3">
         <div className="pt-10 md:pt-4  md:px-3">
           <div className="flex  md:items-center gap-4 md:pl-14 pb-2">
             <div>
@@ -1157,46 +1185,46 @@ const History = () => {
         {/* Mobile-only: Search, Sort buttons, and Date Picker below filter buttons */}
         <div className="flex md:hidden flex-col gap-1 mt-2 w-full pb-1 mx-0">
           <div className="flex md:hidden flex-wrap gap-2 -mt-6">
-              {([
-                { key: 'all', label: 'All' },
-                { key: 'images', label: 'Images' },
-                { key: 'videos', label: 'Videos' },
-                { key: 'music', label: 'Music' },
-                { key: 'user-uploads', label: 'Your Uploads' },
-              ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={async () => {
-                    setQuickFilter(key);
-                    setPillLoading(true);
-                    setOverlayLoading(true);
-                    let f: any = {};
-                    switch (key) {
-                      case 'images': f = { mode: 'image' }; break;
-                      case 'videos': f = { mode: 'video' }; break;
-                      case 'music': f = { generationType: 'text-to-music' }; break;
-                      case 'user-uploads': f = { isUserUpload: true }; break;
-                      default: f = {};
-                    }
-                    if (sortOrder) (f as any).sortOrder = sortOrder;
-                    if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
-                    setLocalFilters(f);
-                    dispatch(setFilters(f));
-                    dispatch(clearHistory());
-                    await loadFirstPage(f);
-                    setPage(1);
-                    setPillLoading(false);
-                    setOverlayLoading(false);
-                  }}
-                  className={`inline-flex items-center md:gap-1 md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
-                    ? 'bg-white border-white/5 text-black shadow-sm'
-                    : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {([
+              { key: 'all', label: 'All' },
+              { key: 'images', label: 'Images' },
+              { key: 'videos', label: 'Videos' },
+              { key: 'music', label: 'Music' },
+              { key: 'user-uploads', label: 'Your Uploads' },
+            ] as Array<{ key: any; label: string }>).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={async () => {
+                  setQuickFilter(key);
+                  setPillLoading(true);
+                  setOverlayLoading(true);
+                  let f: any = {};
+                  switch (key) {
+                    case 'images': f = { mode: 'image' }; break;
+                    case 'videos': f = { mode: 'video' }; break;
+                    case 'music': f = { generationType: 'text-to-music' }; break;
+                    case 'user-uploads': f = { isUserUpload: true }; break;
+                    default: f = {};
+                  }
+                  if (sortOrder) (f as any).sortOrder = sortOrder;
+                  if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                  setLocalFilters(f);
+                  dispatch(setFilters(f));
+                  dispatch(clearHistory());
+                  await loadFirstPage(f);
+                  setPage(1);
+                  setPillLoading(false);
+                  setOverlayLoading(false);
+                }}
+                className={`inline-flex items-center md:gap-1 md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
+                  ? 'bg-white border-white/5 text-black shadow-sm'
+                  : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {/* First row: Search and Date Picker */}
           <div className="flex items-center gap-1 w-auto">
             {/* Search Input */}
@@ -1986,7 +2014,7 @@ const History = () => {
 
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />
-      
+
       {stickerPreviewEntry && (
         <StickerImagePreview isOpen={true} onClose={() => setStickerPreviewEntry(null)} entry={stickerPreviewEntry} />
       )}

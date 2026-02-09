@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
+import { getSignInUrl } from '@/routes/routes';
 import InputBox from './TextToVideo/compo/InputBox';
 import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 import VideoGenerationGuide from './TextToVideo/compo/VideoGenerationGuide';
@@ -18,6 +19,27 @@ export default function VideoGenerationPage() {
     const pathname = usePathname();
     const [activeFeature, setActiveFeature] = useState<VideoFeature>('Video');
     const isInlineEditVideoPage = pathname?.startsWith('/text-to-video/edit-video');
+    const authUser = useAppSelector((state: any) => state.auth?.user);
+
+    // If user just logged in and the URL requests opening the external video editor, do it once.
+    useEffect(() => {
+        try {
+            const shouldOpen = searchParams?.get('openVideoEditor') === '1';
+            if (!shouldOpen) return;
+            if (!authUser) return;
+
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                window.open('http://localhost:3001', '_blank');
+            } else {
+                window.open('https://editor-video.wildmindai.com/', '_blank');
+            }
+
+            // Clean up the query param so refresh doesn't keep opening tabs.
+            router.replace('/text-to-video');
+        } catch { }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authUser]);
 
     useEffect(() => {
         if (isInlineEditVideoPage) {
@@ -68,7 +90,7 @@ export default function VideoGenerationPage() {
             <div className="flex">
                 <div className="flex-1 min-w-0 px-2 sm:px-6 md:px-8">
                     {/* Sticky header + filters (pinned under navbar) */}
-                    <div className="sticky top-0 z-20 bg-[#07070B]">
+                    <div className="sticky top-0 z-50 bg-[#07070B]">
                         <div className="mb-0 md:mb-1 pt-8 md:pt-2">
                             <div className="flex items-center justify-between gap-4 mb-0">
                                 <div className="flex items-center gap-2">
@@ -99,10 +121,18 @@ export default function VideoGenerationPage() {
                                                 key={feature}
                                                 onClick={() => {
                                                     if (feature === 'Edit') {
+                                                        if (!authUser) {
+                                                            router.push(getSignInUrl('/text-to-video/edit-video?feature=upscale'));
+                                                            return;
+                                                        }
                                                         router.push('/text-to-video/edit-video?feature=upscale');
                                                         return;
                                                     }
                                                     if (feature === 'Video editor') {
+                                                        if (!authUser) {
+                                                            router.push(getSignInUrl('/text-to-video?openVideoEditor=1'));
+                                                            return;
+                                                        }
                                                         const hostname = window.location.hostname;
                                                         if (hostname === 'localhost' || hostname === '127.0.0.1') {
                                                             window.open('http://localhost:3001', '_blank');
@@ -150,10 +180,18 @@ export default function VideoGenerationPage() {
                                         key={feature + '-mobile'}
                                         onClick={() => {
                                             if (feature === 'Edit') {
+                                                if (!authUser) {
+                                                    router.push(getSignInUrl('/text-to-video/edit-video?feature=upscale'));
+                                                    return;
+                                                }
                                                 router.push('/text-to-video/edit-video?feature=upscale');
                                                 return;
                                             }
                                             if (feature === 'Video editor') {
+                                                if (!authUser) {
+                                                    router.push(getSignInUrl('/text-to-video?openVideoEditor=1'));
+                                                    return;
+                                                }
                                                 const hostname = window.location.hostname;
                                                 if (hostname === 'localhost' || hostname === '127.0.0.1') {
                                                     window.open('http://localhost:3001', '_blank');
