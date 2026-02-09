@@ -9,7 +9,11 @@ import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
 import VideoGenerationGuide from './TextToVideo/compo/VideoGenerationGuide';
 import HistoryControls from './TextToVideo/compo/HistoryControls';
 import { usePathname } from 'next/navigation';
-import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
+import dynamic from 'next/dynamic';
+
+const EditVideoInterface = dynamic(() => import('../../EditVideo/compo/EditVideoInterface'), {
+    ssr: false,
+});
 
 type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
 

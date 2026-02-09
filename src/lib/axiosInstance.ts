@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { auth } from './firebase'
 import { showFalErrorToast } from './falToast'
-import { clearAuthData } from './authUtils'
 
 // Try to extract an ID token from localStorage in a tolerant way
 const getStoredIdToken = (): string | null => {
@@ -739,7 +738,14 @@ axiosInstance.interceptors.response.use(
 
       // Clear auth data and redirect to login
       try {
-        clearAuthData()
+        // IMPORTANT: avoid importing auth utils (and thus the Redux store) at module init time,
+        // which can create circular dependencies during Next.js prerender/export.
+        if (typeof window !== 'undefined') {
+          try {
+            const mod = await import('./authUtils')
+            mod.clearAuthData()
+          } catch { }
+        }
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname
           // Don't redirect if already on public pages
