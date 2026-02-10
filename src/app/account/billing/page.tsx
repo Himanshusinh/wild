@@ -48,7 +48,7 @@ export default function BillingPage() {
     setIsMounted(true);
     dispatch(fetchCurrentSubscription());
     dispatch(fetchUserCredits());
-    
+
     // Get real user email from Firebase Auth
     const user = auth.currentUser;
     if (user) {
@@ -71,7 +71,13 @@ export default function BillingPage() {
     try {
       // Check if user has an active subscription to upgrade/downgrade
       const status = subscription?.status?.toUpperCase();
-      if (subscription && (status === 'ACTIVE' || status === 'PAST_DUE')) {
+      const currentPlanCodeFromCredits = credits?.planCode?.toUpperCase();
+
+      // If we have an active/past_due subscription, OR if credits slice shows they are on a paid plan (not FREE)
+      const isPaidUser = (subscription && (status === 'ACTIVE' || status === 'PAST_DUE')) ||
+        (currentPlanCodeFromCredits && currentPlanCodeFromCredits !== 'FREE');
+
+      if (isPaidUser) {
         // Handle Upgrade/Downgrade
         console.log("🔄 Processing plan change to:", selectedPlan.code);
         await dispatch(
@@ -120,13 +126,13 @@ export default function BillingPage() {
         const script = document.createElement("script");
         script.src = "https://checkout.razorpay.com/v1/checkout.js";
         script.async = true;
-        
+
         await new Promise((resolve, reject) => {
           script.onload = resolve;
           script.onerror = reject;
           document.body.appendChild(script);
         });
-        
+
         console.log("✅ Razorpay SDK loaded");
       }
 
@@ -141,12 +147,12 @@ export default function BillingPage() {
           console.log("✅ Payment successful:", response);
           // Alert removed, replaced with Celebration Modal
           setShowCheckout(false);
-          setShowCelebration(true); 
-          
+          setShowCelebration(true);
+
           // Refresh subscription data
           dispatch(fetchCurrentSubscription());
           // Optional: Remove query params cleanly
-           window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState({}, document.title, window.location.pathname);
         },
         modal: {
           ondismiss: function () {
@@ -169,7 +175,7 @@ export default function BillingPage() {
       // Open Razorpay checkout modal
       console.log("🚀 Opening Razorpay checkout modal");
       const rzp = new window.Razorpay(options);
-      
+
       rzp.on("payment.failed", function (response: any) {
         console.error("❌ Payment failed:", response.error);
         alert(`Payment failed: ${response.error.description}`);
@@ -178,7 +184,7 @@ export default function BillingPage() {
       });
 
       rzp.open();
-      
+
     } catch (error: any) {
       console.error("Checkout error:", error);
       alert(`Error: ${error.message || "Failed to create subscription"}`);
@@ -213,15 +219,15 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8">
-       {/* Celebration Modal */}
-       <CelebrationModal 
-        isOpen={showCelebration} 
+      {/* Celebration Modal */}
+      <CelebrationModal
+        isOpen={showCelebration}
         onClose={() => {
           setShowCelebration(false);
-          setSelectedPlan(null); 
+          setSelectedPlan(null);
           // Redirect to clear URL params if success payment was in URL
           if (window.location.search.includes('payment=success')) {
-             router.replace('/account/billing');
+            router.replace('/account/billing');
           }
         }}
         planName={selectedPlan?.name || currentPlan?.name || "Premium"}
@@ -236,7 +242,7 @@ export default function BillingPage() {
           <p className="text-gray-600 dark:text-gray-400">
             Manage your subscription, view invoices, and track payments
           </p>
-          
+
           {/* Quick Access Links */}
           <div className="flex gap-3 mt-4">
             <button
@@ -254,54 +260,54 @@ export default function BillingPage() {
           </div>
         </div>
 
-      {/* Current Subscription Card */}
-      {subscription && currentPlan && (
+        {/* Current Subscription Card */}
+        {subscription && currentPlan && (
+          <div className="mb-8">
+            <ActivePlanCard
+              subscription={{
+                id: subscription.id || "",
+                planCode: subscription.planCode || "",
+                status: subscription.status || "",
+                nextBillingDate: subscription.nextBillingDate,
+              }}
+              credits={{
+                creditBalance: credits?.creditBalance || 0,
+                storageUsed: credits?.storageUsed || 0,
+                storageQuota: credits?.storageQuota || 0,
+              }}
+              plan={{
+                name: currentPlan.name,
+                credits: currentPlan.credits,
+                storageGB: currentPlan.storageGB,
+                priceINR: currentPlan.priceINR,
+              }}
+              onCancelSubscription={handleCancelSubscription}
+            />
+          </div>
+        )}
+
+        {/* Available Plans */}
         <div className="mb-8">
-          <ActivePlanCard
-            subscription={{
-              id: subscription.id || "",
-              planCode: subscription.planCode || "",
-              status: subscription.status || "",
-              nextBillingDate: subscription.nextBillingDate,
-            }}
-            credits={{
-              creditBalance: credits?.creditBalance || 0,
-              storageUsed: credits?.storageUsed || 0,
-              storageQuota: credits?.storageQuota || 0,
-            }}
-            plan={{
-              name: currentPlan.name,
-              credits: currentPlan.credits,
-              storageGB: currentPlan.storageGB,
-              priceINR: currentPlan.priceINR,
-            }}
-            onCancelSubscription={handleCancelSubscription}
+          <h2 className="text-2xl font-semibold mb-6">Available Plans</h2>
+          <PlanCards
+            currentPlanCode={subscription?.planCode || credits?.planCode}
+            onSelectPlan={handleSelectPlan}
           />
         </div>
-      )}
 
-      {/* Available Plans */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold mb-6">Available Plans</h2>
-        <PlanCards
-          currentPlanCode={subscription?.planCode || credits?.planCode}
-          onSelectPlan={handleSelectPlan}
-        />
-      </div>
-
-      {/* Checkout Modal */}
-      {selectedPlan && (
-        <CheckoutModal
-          plan={selectedPlan}
-          isOpen={showCheckout}
-          onClose={() => {
-            setShowCheckout(false);
-            setSelectedPlan(null);
-          }}
-          onConfirm={handleCheckoutConfirm}
-          isLoadingPlanChange={creatingSubscription}
-        />
-      )}
+        {/* Checkout Modal */}
+        {selectedPlan && (
+          <CheckoutModal
+            plan={selectedPlan}
+            isOpen={showCheckout}
+            onClose={() => {
+              setShowCheckout(false);
+              setSelectedPlan(null);
+            }}
+            onConfirm={handleCheckoutConfirm}
+            isLoadingPlanChange={creatingSubscription}
+          />
+        )}
       </div>
     </div>
   );
