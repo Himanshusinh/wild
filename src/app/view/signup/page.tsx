@@ -15,13 +15,16 @@ interface ImageData {
 export default function SignUp() {
   const [image, setImage] = useState<ImageData | null>(null)
   const [isLoadingImage, setIsLoadingImage] = useState(true)
-  
+
   // Proxy function to avoid 429 errors from Google
   const getProxiedImageUrl = (url: string | undefined): string | undefined => {
     if (!url) return undefined
     // If it's a Google profile image, use proxy
     if (url.includes('googleusercontent.com') || url.includes('googleapis.com')) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || ''
+      let apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || ''
+      if (!apiBase && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        apiBase = 'http://localhost:5000'
+      }
       return `${apiBase.replace(/\/$/, '')}/api/proxy/external?url=${encodeURIComponent(url)}`
     }
     return url
@@ -32,7 +35,7 @@ export default function SignUp() {
   useEffect(() => {
     // Check if we're on desktop (width >= 1024px)
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024
-    
+
     if (!isDesktop) {
       setIsLoadingImage(false)
       return
@@ -40,7 +43,7 @@ export default function SignUp() {
 
     const fetchRandomImage = async () => {
       const startTime = performance.now()
-      
+
       try {
         // Use Next.js API route with caching instead of direct backend call
         // This route caches responses for 5 minutes and uses in-memory cache for instant responses
@@ -62,13 +65,13 @@ export default function SignUp() {
             hasData: !!data?.data,
             imageUrl: data?.data?.imageUrl ? 'present' : 'missing'
           })
-          
+
           if (data?.responseStatus === 'success' && data?.data) {
             setImage(data.data)
             setIsLoadingImage(false)
             const duration = performance.now() - startTime
             console.log(`[Signup] ✅ Image loaded in ${duration.toFixed(0)}ms`)
-            
+
             // Preload the actual image for instant display
             if (data.data.imageUrl) {
               const img = new window.Image()
@@ -95,7 +98,7 @@ export default function SignUp() {
             console.error('[Signup] Failed to read error response:', e)
             errorData = { message: 'Unknown error' }
           }
-          
+
           console.error('[Signup] ❌ API error:', {
             status: response.status,
             statusText: response.statusText,
@@ -104,38 +107,41 @@ export default function SignUp() {
             url: response.url,
             headers: Object.fromEntries(response.headers.entries())
           })
-          
+
           // Log detailed error if available
           if (errorData?.error) {
             console.error('[Signup] Detailed error:', errorData.error)
           }
-          
+
           setImage(null)
           setIsLoadingImage(false)
         }
       } catch (error: any) {
         console.error('❌ Failed to fetch random image from Next.js API:', error)
-        
+
         // Fallback: Try direct backend call if Next.js route fails
         try {
           console.log('[Signup] 🔄 Trying direct backend call as fallback...')
-          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || ''
+          let apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || ''
+          if (!apiBase && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            apiBase = 'http://localhost:5000'
+          }
           const apiUrl = `${apiBase.replace(/\/$/, '')}/api/feed/random/high-scored`
-          
+
           const fallbackResponse = await fetch(apiUrl, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
             },
           })
-          
+
           if (fallbackResponse.ok) {
             const fallbackData = await fallbackResponse.json()
             if (fallbackData?.responseStatus === 'success' && fallbackData?.data) {
               console.log('[Signup] ✅ Fallback backend call succeeded')
               setImage(fallbackData.data)
               setIsLoadingImage(false)
-              
+
               // Preload the actual image
               if (fallbackData.data.imageUrl) {
                 const img = new window.Image()
@@ -147,7 +153,7 @@ export default function SignUp() {
         } catch (fallbackError: any) {
           console.error('❌ Fallback backend call also failed:', fallbackError)
         }
-        
+
         setImage(null)
         setIsLoadingImage(false)
       }
@@ -158,7 +164,7 @@ export default function SignUp() {
 
   // Default image URL (fallback)
   const defaultImageUrl = "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsignup%2F3.png?alt=media&token=e67afc08-10e0-4710-b251-d9031ef14026"
-  
+
   // Get image data
   const imageSrc = image?.imageUrl || defaultImageUrl
   const creatorInfo = image?.creator || null
@@ -197,7 +203,7 @@ export default function SignUp() {
               </div> */}
             </div>
           )}
-          
+
           {/* Attribution Text - Bottom Right Corner (Krea Style) */}
           {creatorInfo && (creatorInfo.username || creatorInfo.photoURL) && (
             <div className="absolute bottom-6 right-6 text-white-900 z-20 pointer-events-auto">

@@ -451,7 +451,7 @@ export default function SignInForm() {
       const requestData = {
         email: email.trim()
       }
-      console.log("📤 Sending request to:", "http://localhost:5000/api/auth/email/start")
+      console.log("📤 Sending request to:", "/api/auth/email/start")
       console.log("📤 Request data:", requestData)
 
       // Call backend API to start email OTP
@@ -541,7 +541,7 @@ export default function SignInForm() {
         code: otp.trim(), // Backend expects 'code' field, not 'otp'
         password: password
       }
-      console.log("📤 Sending verification request to:", "http://localhost:5000/api/auth/email/verify")
+      console.log("📤 Sending verification request to:", "/api/auth/email/verify")
       console.log("📤 Request data:", requestData)
 
       // Call backend API to verify OTP and create user
@@ -680,13 +680,11 @@ export default function SignInForm() {
       const requestData = {
         email: email.trim()
       }
-      console.log("📤 Resending OTP to:", "http://localhost:5000/api/auth/email/start")
+      console.log("📤 Resending OTP to:", "/api/auth/email/start")
       console.log("📤 Resend request data:", requestData)
 
       // Call backend API to resend OTP
-      const response = await axios.post("http://localhost:5000/api/auth/email/start", requestData, {
-        withCredentials: true // Include cookies
-      })
+      const response = await axiosInstance.post("/api/auth/email/start", requestData)
 
       console.log("📥 Resend response status:", response.status)
       console.log("📥 Resend response data:", response.data)
@@ -1013,7 +1011,7 @@ export default function SignInForm() {
             username: username.trim(),
             email: email
           }
-          console.log("📤 Sending username request to:", "http://localhost:5000/api/auth/email/username")
+          console.log("📤 Sending username request to:", "/api/auth/email/username")
           console.log("📤 Request data:", requestData)
 
           // Set username for the user
@@ -1357,8 +1355,8 @@ export default function SignInForm() {
                 onClick={handleUsernameSubmit}
                 disabled={!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
               >
                 {isUsernameSubmitting ? <LoadingSpinner /> : (
@@ -1457,8 +1455,8 @@ export default function SignInForm() {
                     onClick={handleRedeemCodeValidation}
                     disabled={processing || !redeemCode.trim()}
                     className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !redeemCode.trim()
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                   >
                     {processing ? <LoadingSpinner /> : "Validate Code"}
@@ -1468,8 +1466,8 @@ export default function SignInForm() {
                     onClick={handleRedeemCodeSubmit}
                     disabled={processing}
                     className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-green-600 hover:bg-green-700 text-white"
+                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-700 text-white"
                       }`}
                   >
                     {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
@@ -1648,8 +1646,8 @@ export default function SignInForm() {
                 type="submit"
                 disabled={processing || !captchaToken}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !captchaToken
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
               >
                 {processing ? "Logging in..." : (
@@ -1737,8 +1735,8 @@ export default function SignInForm() {
                 type="submit"
                 disabled={processing || otp.length < 6}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || otp.length < 6
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
               >
                 {processing ? "Verifying..." : (
@@ -1945,8 +1943,8 @@ export default function SignInForm() {
                   type="submit"
                   disabled={processing || !isFormValid || !captchaToken}
                   className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !isFormValid || !captchaToken
-                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
                     }`}
                 >
                   {processing ? "Sending..." : (
@@ -2081,8 +2079,8 @@ export default function SignInForm() {
                     type="submit"
                     disabled={processing || !forgotPasswordEmail.trim()}
                     className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !forgotPasswordEmail.trim()
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                   >
                     {processing ? "Sending..." : "Send Reset Link"}

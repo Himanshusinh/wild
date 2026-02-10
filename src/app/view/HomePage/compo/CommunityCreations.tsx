@@ -57,28 +57,42 @@ export default function CommunityCreations({
       try {
         setError(null)
         // Hardcoded fallback for now to ensure it works
-        const apiBase = API_BASE || 'https://wildmindai.com'
+        let apiBase = API_BASE
+        // Smart fallback logic
+        if (!apiBase) {
+          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            apiBase = 'http://localhost:5000'
+          } else {
+            apiBase = 'https://wildmindai.com'
+          }
+        }
+
+        console.log('[CommunityCreations] Fetching items...', {
+          API_BASE,
+          apiBase,
+          NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL
+        });
         // Direct fetch to backend
         const res = await fetch(`${apiBase}/api/feed?mode=image&limit=50`, {
-           method: 'GET',
-           headers: {
-             'Content-Type': 'application/json'
-           }
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         })
-        
+
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`)
         }
-        
+
         const json = await res.json()
         const itemsList = json?.data?.items || json?.items || []
-        
+
         if (Array.isArray(itemsList)) {
           // Validate and filter items locally since we are bypassing the proxy cache
           const validItems = itemsList.filter((item: any) => {
             // Basic validation
             if (!item?.id) return false
-            
+
             // Filter non-images
             const type = (item.generationType || '').toLowerCase()
             const isImage = type === 'text-to-image' || type === 'image-upscale' || type === 'logo' || type === 'product-generation' || type === 'sticker-generation'
@@ -86,20 +100,20 @@ export default function CommunityCreations({
 
             // Exclude video/audio
             if (item.videos?.length > 0 || item.audios?.length > 0) return false
-            
+
             // Check for valid image URL (relaxed check)
             const hasValidImage = resolveMediaUrl(item) || (Array.isArray(item.images) && item.images.some((img: any) => resolveMediaUrl(img)))
-            
+
             return !!hasValidImage
           }).map((item: any) => {
-              // Normalize structure to PublicItem if needed
-              return {
-                  ...item,
-                  // Ensure basic fields exists
-                  images: Array.isArray(item.images) ? item.images : []
-              } as PublicItem
+            // Normalize structure to PublicItem if needed
+            return {
+              ...item,
+              // Ensure basic fields exists
+              images: Array.isArray(item.images) ? item.images : []
+            } as PublicItem
           })
-          
+
           setItems(validItems)
         } else {
           console.warn('[CommunityCreations] Invalid data format from backend', json)
@@ -123,7 +137,7 @@ export default function CommunityCreations({
         // Find the best image with valid URL
         let img = item.images?.[0]
         let mediaUrl = resolveMediaUrl(img)
-        
+
         // If no valid image in array, try root level
         if (!mediaUrl) {
           mediaUrl = resolveMediaUrl(item)
@@ -131,10 +145,10 @@ export default function CommunityCreations({
             img = { id: item.id || '0', url: mediaUrl }
           }
         }
-        
+
         // Only include if we have a valid URL
         if (!mediaUrl || !img) return null
-        
+
         return {
           item,
           media: {
@@ -182,7 +196,7 @@ export default function CommunityCreations({
               if (!media?.url || typeof media.url !== 'string' || media.url.length === 0) {
                 return null
               }
-              
+
               return (
                 <div
                   key={`${item.id}-${idx}`}
@@ -203,7 +217,7 @@ export default function CommunityCreations({
                       console.warn('[CommunityCreations] Image failed to load:', media.url)
                     }}
                   />
-                  
+
                   {/* Hover Overlay (ArtStation style) */}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none rounded-xl" />
                 </div>
@@ -233,23 +247,23 @@ export default function CommunityCreations({
         // Resolve preview URL safely
         const previewImage = preview.images?.[0]
         const previewUrl = previewImage ? resolveMediaUrl(previewImage) : resolveMediaUrl(preview)
-        
+
         // Only render if we have a valid URL
         if (!previewUrl) {
           console.warn('[CommunityCreations] Preview item has no valid image URL:', preview.id)
           return null
         }
-        
+
         return (
           <ArtStationPreview
             preview={{ kind: 'image', url: previewUrl, item: preview }}
             onClose={() => setPreview(null)}
-            onConfirmDelete={async () => {}} // Read-only view
+            onConfirmDelete={async () => { }} // Read-only view
             currentUid={null} // Read-only view
             currentUser={null}
             cards={cards} // Allow navigation through the set
             likedCards={new Set()} // No interaction in this view
-            toggleLike={() => {}}
+            toggleLike={() => { }}
           />
         )
       })()}

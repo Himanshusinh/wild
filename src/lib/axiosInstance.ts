@@ -53,7 +53,13 @@ const getStoredIdToken = (): string | null => {
 
 // Centralized axios instance configured to send cookies and optional Authorization header
 // Uses NEXT_PUBLIC_API_BASE_URL (must be set in environment variables)
-const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
+let resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim()
+
+// Smart fallback for localhost development if env var is missing
+if (!resolvedBaseUrl && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  resolvedBaseUrl = 'http://localhost:5000'
+  console.log('[axiosInstance] Using localhost fallback:', resolvedBaseUrl)
+}
 
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,
@@ -196,12 +202,19 @@ axiosInstance.interceptors.request.use(async (config) => {
 
     // Do NOT set X-Forwarded-* headers from the browser. Proxies (ngrok/Vercel) will set them.
 
-    // Route auth endpoints through backend baseURL (do not proxy via Next.js)
+    // Route auth endpoints through backend baseURL (do not proxy via Next.js), EXCEPT for /api/auth/google which IS a proxy route
     try {
       const rawUrl = typeof config.url === 'string' ? config.url : ''
-      if (rawUrl.startsWith('/api/auth/')) {
+
+      // Special case: /api/auth/google MUST go to the Next.js server (same origin) to use the proxy
+      if (rawUrl.includes('/api/auth/google')) {
+        config.baseURL = window.location.origin
+        if (isApiDebugEnabled()) console.log('[API][auth-route][proxy]', { url: rawUrl, baseURL: config.baseURL })
+      }
+      // Other auth routes go directly to backend
+      else if (rawUrl.startsWith('/api/auth/')) {
         config.baseURL = resolvedBaseUrl
-        if (isApiDebugEnabled()) console.log('[API][auth-route]', { url: rawUrl, baseURL: config.baseURL })
+        if (isApiDebugEnabled()) console.log('[API][auth-route][direct]', { url: rawUrl, baseURL: config.baseURL })
       }
     } catch { }
 
