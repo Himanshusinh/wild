@@ -37,16 +37,21 @@ export const normalizeGenerationType = (generationType: string | undefined): str
  */
 export const isVideoType = (entry: any): boolean => {
   const normalizedType = normalizeGenerationType(entry?.generationType);
-  return normalizedType === 'text-to-video' ||
-    normalizedType === 'image-to-video' ||
-    normalizedType === 'video-to-video';
+  return [
+    'text-to-video',
+    'image-to-video',
+    'video-to-video',
+    'video',
+    'video-generation',
+    'video-edit'
+  ].includes(normalizedType);
 };
 
 /**
  * Check if a URL points to a video file
  */
 export const isVideoUrl = (url: string | undefined): boolean => {
-  return !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
+  return !!url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg|\.mov|\.m4v)(\?|$)/i.test(url));
 };
 
 /**

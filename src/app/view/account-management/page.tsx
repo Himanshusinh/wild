@@ -11,18 +11,14 @@ const AccountManagementPage = () => {
 
   useEffect(() => {
     // Redirect if no user found (unauthenticated)
-    // Small delay to allow Redux to hydrate if needed, though usually it's fast enough
-    const timer = setTimeout(() => {
-      if (!user) {
-        router.replace('/');
-      }
-    }, 100);
-    return () => clearTimeout(timer);
+    if (!user) {
+      router.replace('/');
+    }
   }, [user, router]);
 
   if (!user) return null; // Prevent flash of content
 
-  return <ProfileManagement />;
+  return <ProfileManagement initialUserData={user} />;
 };
 
 export default AccountManagementPage;

@@ -24,7 +24,7 @@ import {
   validateCredits,
   getInsufficientCreditsMessage,
 } from '@/utils/creditValidation';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 let creditsBootstrapInFlight: Promise<any> | null = null;
 let creditsBootstrapCompleted = false;
@@ -66,7 +66,7 @@ export const useCredits = () => {
       });
   }, [dispatch, authUser, credits]);
 
-  const validateVideoCredits = async (
+  const validateVideoCredits = useCallback(async (
     provider: 'minimax' | 'runway' | 'fal' | 'replicate',
     model: string,
     resolution?: string,
@@ -88,9 +88,9 @@ export const useCredits = () => {
     }
 
     return { requiredCredits, validation: result.payload };
-  };
+  }, [dispatch, creditBalance]);
 
-  const validateImageCredits = async (
+  const validateImageCredits = useCallback(async (
     model: string,
     count: number = 1,
     frameSize?: string,
@@ -119,9 +119,9 @@ export const useCredits = () => {
     }
 
     return { requiredCredits, validation: result.payload };
-  };
+  }, [dispatch, creditBalance]);
 
-  const validateMusicCredits = async (
+  const validateMusicCredits = useCallback(async (
     model: string,
     duration?: number,
     inputs?: any[],
@@ -143,9 +143,9 @@ export const useCredits = () => {
     }
 
     return { requiredCredits, validation: result.payload };
-  };
+  }, [dispatch, creditBalance]);
 
-  const reserveCreditsForGeneration = async (
+  const reserveCreditsForGeneration = useCallback(async (
     requiredCredits: number,
     reason: string,
     metadata?: Record<string, any>
@@ -161,41 +161,41 @@ export const useCredits = () => {
     }
 
     return result.payload;
-  };
+  }, [dispatch]);
 
-  const confirmGenerationSuccess = async (transactionId: string) => {
+  const confirmGenerationSuccess = useCallback(async (transactionId: string) => {
     await dispatch(confirmCreditTransaction({ transactionId, success: true }));
-  };
+  }, [dispatch]);
 
-  const confirmGenerationFailure = async (transactionId: string) => {
+  const confirmGenerationFailure = useCallback(async (transactionId: string) => {
     await dispatch(confirmCreditTransaction({ transactionId, success: false }));
     // Rollback the optimistic deduction
     const transaction = transactions.find(t => t.id === transactionId);
     if (transaction) {
       dispatch(rollbackCreditsOptimistic(Math.abs(transaction.amount)));
     }
-  };
+  }, [dispatch, transactions]);
 
-  const refreshCredits = async () => {
+  const refreshCredits = useCallback(async () => {
     await dispatch(syncCreditsWithBackend());
-  };
+  }, [dispatch]);
 
-  const clearCreditsError = () => {
+  const clearCreditsError = useCallback(() => {
     dispatch(clearError());
-  };
+  }, [dispatch]);
 
-  const clearCreditsValidation = () => {
+  const clearCreditsValidation = useCallback(() => {
     dispatch(clearValidation());
-  };
+  }, [dispatch]);
 
   // Optimistic credit deduction for immediate UI feedback
-  const deductCreditsOptimisticForGeneration = (amount: number) => {
+  const deductCreditsOptimisticForGeneration = useCallback((amount: number) => {
     dispatch(deductCreditsOptimistic(amount));
-  };
+  }, [dispatch]);
 
-  const rollbackOptimisticDeduction = (amount: number) => {
+  const rollbackOptimisticDeduction = useCallback((amount: number) => {
     dispatch(rollbackCreditsOptimistic(amount));
-  };
+  }, [dispatch]);
 
   return {
     // State

@@ -4,15 +4,10 @@ import React, { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { Trash2 } from "lucide-react";
-import { getCleanPrompt, copyPrompt } from "../utils/videoUtils";
+import { getCleanPrompt, copyPrompt, isVideoUrl, normalizeGenerationType } from "../utils/videoUtils";
 import VideoGenerationGuide from "./VideoGenerationGuide";
 import HistoryControls from "./HistoryControls";
-
-// Local helper to normalize generation type
-const normalizeGenerationType = (type: string | undefined): string => {
-  if (!type) return "";
-  return type.replace(/[_-]/g, "-").toLowerCase();
-};
+import { useAppSelector } from "@/store/hooks";
 
 interface HistorySectionProps {
   loading: boolean;
@@ -21,7 +16,8 @@ interface HistorySectionProps {
   hasMore: boolean;
   loadMore: () => void;
   // External handlers
-  onDeleteVideo: (e: React.MouseEvent, entry: HistoryEntry) => void;
+  onDeleteVideo?: (e: React.MouseEvent, entry: HistoryEntry) => void;
+  onVideoClick?: (entry: HistoryEntry, video: any) => void;
   // Local state/ref passed down if strictly necessary, or internalize
   // We'll internalize scrolling refs as much as possible, or accept props if parent controls scroll
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
@@ -44,6 +40,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   hasMore,
   loadMore,
   onDeleteVideo,
+  onVideoClick,
   localVideoPreview,
   onSearch,
   onSortChange,
@@ -55,6 +52,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
   // Auto-grouping logic
   const todayKey = new Date().toDateString();
+  const sortOrder = useAppSelector((state: any) => state.history?.filters?.sortOrder || "desc");
 
   const { groupedByDate, sortedDates } = useMemo(() => {
     const groups: Record<string, HistoryEntry[]> = {};
@@ -66,13 +64,14 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       groups[date].push(entry);
     });
 
-    // Sort dates descending
+    // Sort dates based on active sort order
     const sorted = Object.keys(groups).sort((a, b) => {
-      return new Date(b).getTime() - new Date(a).getTime();
+      const diff = new Date(a).getTime() - new Date(b).getTime();
+      return sortOrder === "asc" ? diff : -diff;
     });
 
     return { groupedByDate: { groups }, sortedDates: sorted };
-  }, [historyEntries]);
+  }, [historyEntries, sortOrder]);
 
 
   // Track loaded videos for metadata
@@ -185,71 +184,77 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
                 // Check duplicates against history
                 const exists = historyEntries.some(
-                    e => e.id === localEntryId || (e as any).firebaseHistoryId === localFirebaseId
+                  e => e.id === localEntryId || (e as any).firebaseHistoryId === localFirebaseId
                 );
 
                 if (exists) return null; // Don't show local if it's already in history
 
                 return (
-                 <div className="aspect-video relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50">
+                  <div className="aspect-video relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50">
                     <div className="absolute inset-0 flex items-center justify-center">
-                         <span className="text-xs text-blue-200">Processing...</span>
+                      <span className="text-xs text-blue-200">Processing...</span>
                     </div>
-                 </div>
+                  </div>
                 );
               })()}
-            
+
             {/* History Items */}
             {(groupedByDate.groups[date] || []).map((entry) => {
-                 let mediaItems: any[] = [];
-                 if (entry.images && Array.isArray(entry.images) && entry.images.length > 0) {
-                   mediaItems = entry.images;
-                 } else if (entry.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-                   mediaItems = entry.videos;
-                 }
+              // Priority: Use videos array if available
+              let mediaItems: any[] = [];
+              if (Array.isArray(entry.videos) && entry.videos.length > 0) {
+                mediaItems = entry.videos;
+              } else if (Array.isArray(entry.images) && entry.images.length > 0) {
+                // Fallback: Check images array for items that look like videos
+                mediaItems = entry.images.filter(m => isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl));
+              }
 
-                 return mediaItems.map((video, videoIdx) => {
-                     const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
-                     const videoUrl = video.firebaseUrl || video.url;
-                     if (!videoUrl) return null;
+              return mediaItems.map((video, videoIdx) => {
+                const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
+                const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+                if (!videoUrl) return null;
 
-                     return (
-                         <div key={uniqueVideoKey} className="relative group aspect-video bg-gray-900 rounded-lg overflow-hidden border border-white/10">
-                              <video 
-                                src={videoUrl}
-                                className="w-full h-full object-cover"
-                                loop
-                                muted
-                                playsInline
-                                onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.pause();
-                                    e.currentTarget.currentTime = 0;
-                                }}
-                              />
-                              {/* Controls Overlay */}
-                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
-                                    onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
-                                    className="p-1.5 bg-black/60 rounded-md hover:bg-black/80 text-white"
-                                  >
-                                      {/* Copy Icon */}
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                  </button>
-                                  <button 
-                                    onClick={(e) => onDeleteVideo(e, entry)}
-                                    className="p-1.5 bg-red-500/80 rounded-md hover:bg-red-600 text-white"
-                                  >
-                                      <Trash2 size={14} />
-                                  </button>
-                              </div>
-                              {/* Prompt overlay at bottom */}
-                              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                  <p className="text-[10px] text-white/90 line-clamp-2">{entry.prompt}</p>
-                              </div>
-                         </div>
-                     );
-                 });
+                return (
+                  <div
+                    key={uniqueVideoKey}
+                    onClick={() => onVideoClick?.(entry, video)}
+                    className="relative group aspect-video bg-gray-900 rounded-lg overflow-hidden border border-white/10 cursor-pointer"
+                  >
+                    <video
+                      src={videoUrl}
+                      className="w-full h-full object-cover"
+                      loop
+                      muted
+                      playsInline
+                      onMouseEnter={(e) => e.currentTarget.play().catch(() => { })}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.pause();
+                        e.currentTarget.currentTime = 0;
+                      }}
+                    />
+                    {/* Controls Overlay */}
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                        className="p-1.5 bg-black/60 rounded-md hover:bg-black/80 text-white"
+                      >
+                        {/* Copy Icon */}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                      </button>
+                      <button
+                        onClick={(e) => onDeleteVideo?.(e, entry)}
+                        className="p-1.5 bg-red-500/80 rounded-md hover:bg-red-600 text-white"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    {/* Prompt overlay at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <p className="text-[10px] text-white/90 line-clamp-2">{entry.prompt}</p>
+                    </div>
+                  </div>
+                );
+              });
             })}
           </div>
         </div>

@@ -337,6 +337,7 @@ const InputBox = () => {
   }, [sortOrder]);
 
   const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null } }) => {
+    if (!userData) return;
     const order = next?.sortOrder || sortOrder;
     const dr = next?.dateRange || dateRange;
 
@@ -2256,6 +2257,7 @@ const InputBox = () => {
     loading,
     enabled: historyEntries.length > 0 && sortedDates.length > 0,
     loadMore: async () => {
+      if (!userData) return;
       const nextPage = page + 1;
       setPage(nextPage);
       try {
@@ -5605,14 +5607,14 @@ const InputBox = () => {
 
               {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
               <div className="hidden md:flex items-center pt-4 pr-4">
-                <HistoryControls mode="image" />
+                {userData && <HistoryControls mode="image" />}
               </div>
 
 
             </div>
 
             <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
-              <HistoryControls mode="image" />
+              {userData && <HistoryControls mode="image" />}
             </div>
           </div>
 
@@ -5789,7 +5791,7 @@ const InputBox = () => {
 
         {/* Initial loading overlay - show when loading OR before initial load attempt */}
         {/* CRITICAL FIX: Don't show full screen loader if we have active generations to show */}
-        {!isInlineEditImagePage && (loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
+        {userData && !isInlineEditImagePage && (loading || !hasAttemptedInitialLoadRef.current) && historyEntries.length === 0 && activeGenerations.length === 0 && (
           <div className="fixed top-[64px] md:top-[64px]  left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 px-4">
               <GifLoader size={72} alt="Loading" />
@@ -5826,7 +5828,7 @@ const InputBox = () => {
           ) : (
             <>
               {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-              {hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
+              {(!userData || (hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
                 <ImageGenerationGuide />
               )}
 
@@ -5834,7 +5836,7 @@ const InputBox = () => {
               {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
               {/* History Entries - Grouped by Date */}
-              {sortedDates.length > 0 && (
+              {userData && sortedDates.length > 0 && (
                 <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
                   {sortedDates.map((date) => (
                     <div key={date} className="space-y-2 md:-mt-2">

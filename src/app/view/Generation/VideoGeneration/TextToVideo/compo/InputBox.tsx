@@ -55,11 +55,11 @@ import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
 import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
 import AssetViewerModal from '@/components/AssetViewerModal';
-import { 
-  toProxyPath, 
-  toFrontendProxyMediaUrl, 
-  normalizeGenerationType, 
-  isVideoType, 
+import {
+  toProxyPath,
+  toFrontendProxyMediaUrl,
+  normalizeGenerationType,
+  isVideoType,
   isVideoUrl,
   convertFrameSizeToRunwayRatio,
   convertFrameSizeToMiniMaxResolution,
@@ -85,6 +85,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const user = useAppSelector((state: any) => state.auth?.user);
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     video: any;
@@ -232,7 +233,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (inputEl.current) {
           inputEl.current.value = enhancedPrompt;
           // Trigger height adjustment
-    
+
         }
 
         toast.success('Prompt enhanced');
@@ -1719,26 +1720,18 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
-    const normalizeGenerationType = (generationType: string | undefined): string => {
-      if (!generationType) return '';
-      return generationType.replace(/[_-]/g, '-').toLowerCase();
-    };
+    // Check if we have ANY video types (including T2V, I2V, etc.)
+    // We use the inclusive isVideoType helper to prevent infinite loading references
+    const hasVideos = (historyEntries || []).some(isVideoType);
 
-    const counts = (historyEntries || []).reduce((acc: any, e: any) => {
-      const normalized = normalizeGenerationType(e.generationType);
-      acc[normalized] = (acc[normalized] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const hasNonTextVideos = (counts['image-to-video'] || 0) + (counts['video-to-video'] || 0) > 0;
-    if (!hasNonTextVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
+    if (!hasVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
       // Use consistent limit of 20 for all requests
       dispatch(loadMoreHistory({
         filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
         backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
         paginationParams: { limit: 20 }
-      }));
+      }) as any);
     }
   }, [historyEntries, hasMore, loading, dispatch, sortOrder, searchQuery]);
 
@@ -1847,46 +1840,50 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Only enable pagination when there are entries to paginate (not when showing guide)
   // Extracted loadMore for HistorySection
   const loadMore = useCallback(async () => {
-    if (loading || !hasMore) return;
-    const nextPage = page + 1;
-    setPage(nextPage);
+    if (loading || !hasMore || !user) return;
+    // Use functional update to avoid 'page' dependency
+    setPage(prev => prev + 1);
     try {
-        // Use currentFilters from Redux to get the latest values (sync with HistoryControls)
-        // This ensures consistency with search, sort, and date filters managed by HistoryControls
-        const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
-        const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
-        const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
+      // Use currentFilters from Redux to get the latest values (sync with HistoryControls)
+      // This ensures consistency with search, sort, and date filters managed by HistoryControls
+      const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
+      const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
+      const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
 
-        // Use mode: 'video' which backend converts to all video types including video-to-video
-        // Use consistent limit of 10 for all requests
-        const filters: any = { mode: 'video', sortOrder: currentSortOrder };
-        if (currentSearch) filters.search = currentSearch;
-        if (currentDateRange?.start && currentDateRange?.end) {
-          filters.dateRange = {
+      // Use mode: 'video' which backend converts to all video types including video-to-video
+      // Use consistent limit of 10 for all requests
+      const filters: any = { mode: 'video', sortOrder: currentSortOrder };
+      if (currentSearch) filters.search = currentSearch;
+      if (currentDateRange?.start && currentDateRange?.end) {
+        filters.dateRange = {
+          start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
+          end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
+        };
+      }
+
+      const backendFilters: any = {
+        mode: 'video',
+        sortOrder: currentSortOrder,
+        ...(currentSearch ? { search: currentSearch } : {}),
+        ...(currentDateRange?.start && currentDateRange?.end ? {
+          dateRange: {
             start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
             end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
-          };
-        }
+          }
+        } : {})
+      };
 
-        const backendFilters: any = {
-          mode: 'video',
-          sortOrder: currentSortOrder,
-          ...(currentSearch ? { search: currentSearch } : {}),
-          ...(currentDateRange?.start && currentDateRange?.end ? {
-            dateRange: {
-              start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
-              end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
-            }
-          } : {})
-        };
-
-        await (dispatch as any)(loadMoreHistory({
-          filters: filters,
-          backendFilters: backendFilters,
-          paginationParams: { limit: 30 } // Increased from 10 to 30 to load more items per page and reduce pagination gaps
-        })).unwrap();
+      await (dispatch as any)(loadMoreHistory({
+        filters: filters,
+        backendFilters: backendFilters,
+        paginationParams: { limit: 30 } // Increased from 10 to 30 to load more items per page and reduce pagination gaps
+      })).unwrap();
     } catch {/* swallow */ }
-  }, [loading, hasMore, page, currentFilters, sortOrder, searchQuery, dateRange, dispatch]);
+  }, [loading, hasMore, user, currentFilters, sortOrder, searchQuery, dateRange, dispatch]);
+
+  const handleVideoClick = useCallback((entry: HistoryEntry, video: any) => {
+    setPreview({ entry, video });
+  }, []);
 
   // Handle references upload
   const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -4776,7 +4773,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     } catch (error: any) {
       console.error('❌ Video generation failed:', error);
-      
+
       // Extract structured error info if available
       let errorMessage = error instanceof Error ? error.message : 'Video generation failed';
       let errorTitle = 'Generation Failed';
@@ -4789,8 +4786,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (apiData.data?.title) errorTitle = apiData.data.title;
         if (apiData.data?.code) errorCode = apiData.data.code;
       } else if (error?.message) {
-         // Fallback if no response data
-         errorMessage = error.message;
+        // Fallback if no response data
+        errorMessage = error.message;
       }
 
       // Distinguish User Credit Errors
@@ -4824,7 +4821,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       try {
         const toast = (await import('react-hot-toast')).default;
-        
+
         // Custom error toast
         toast.error(
           <div className="flex flex-col gap-1 min-w-[200px]">
@@ -4868,18 +4865,23 @@ const InputBox = (props: InputBoxProps = {}) => {
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
 
-      <HistorySection
-        loading={loading}
-        showHistory={showHistory}
-        historyEntries={historyEntriesForDisplay as any[]}
-        hasMore={hasMore}
-        loadMore={loadMore}
-        onDeleteVideo={handleDeleteVideo}
-        localVideoPreview={localVideoPreview}
-        onSearch={() => {}}
-        onSortChange={() => {}}
-        onDateChange={() => {}}
-      />
+      {user ? (
+        <HistorySection
+          loading={loading}
+          showHistory={showHistory}
+          historyEntries={historyEntriesForDisplay as any[]}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          onDeleteVideo={handleDeleteVideo}
+          onVideoClick={handleVideoClick}
+          localVideoPreview={localVideoPreview}
+          onSearch={() => { }}
+          onSortChange={() => { }}
+          onDateChange={() => { }}
+        />
+      ) : (
+        <VideoGenerationGuide />
+      )}
 
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
