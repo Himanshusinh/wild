@@ -213,13 +213,13 @@ export async function getSignupImages(): Promise<PublicItem[]> {
         // But exclude video/audio explicitly
         if (item.videos?.length > 0 || item.audios?.length > 0) return false
 
-        // 2. Strict 1:1 aspect ratio
+        // 2. Strict 1:1 aspect ratio (Relaxed in dev)
         const ratio = item.aspectRatio || item.aspect_ratio || item.frameSize
-        if (ratio !== '1:1') return false
+        if (ratio !== '1:1' && process.env.NODE_ENV !== 'development') return false
 
-        // 3. Score >= 9
+        // 3. Score >= 9 (Relaxed in dev)
         const score = typeof item.aestheticScore === 'number' ? item.aestheticScore : (typeof item.score === 'number' ? item.score : 0)
-        if (score < 9) return false
+        if (score < 9 && process.env.NODE_ENV !== 'development') return false
 
         // 4. Must have optimized URL
         // Check root or any image in the array
