@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { getApiClient } from '@/lib/axiosInstance';
 import { getMeCached } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
+import { useCredits } from '@/hooks/useCredits';
 import { ArrowLeft } from 'lucide-react';
 import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy';
 import { signOut } from 'firebase/auth';
@@ -43,15 +44,21 @@ interface UserData {
   };
 }
 
-const ProfileManagement = () => {
+const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) => {
   const router = useRouter();
   // const fileInputRef = useRef<HTMLInputElement>(null); // DISABLED
 
+  const { creditBalance: hookCreditBalance, refreshCredits: hookRefreshCredits, loading: creditsLoading } = useCredits();
+
   // State management
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<UserData | null>(initialUserData || null);
+  const [loading, setLoading] = useState(!initialUserData);
   const [saving, setSaving] = useState(false);
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  // Use hook balance if available, otherwise fallback to initialUserData
+  const [creditBalance, setCreditBalance] = useState<number | null>(() => {
+    if (hookCreditBalance !== undefined && hookCreditBalance !== null) return hookCreditBalance;
+    return initialUserData?.credits ?? null;
+  });
   const [isPublic, setIsPublic] = useState<boolean>(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [canTogglePublic, setCanTogglePublic] = useState<boolean>(false);
@@ -68,83 +75,67 @@ const ProfileManagement = () => {
   // const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+
   // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('authToken') || localStorage.getItem('user');
 
-        if (!token) {
+        if (!token && !initialUserData) {
           router.push('/view/signup');
           return;
         }
 
-        // Parse token if needed
-        let authToken = token;
-        try {
-          const userObj = JSON.parse(token);
-          authToken = userObj.token || userObj.idToken;
-        } catch {
-          // Token is already a string
-        }
-
         const api = getApiClient();
-        const userData = await getMeCached();
-        try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch { }
-        setUserData(userData);
-        // setEditedUsername(userData.username || ''); // DISABLED
 
-        // Get public policy from user data
-        const policy = getPublicPolicyFromUser(userData);
-        setCanTogglePublic(policy.canToggle);
-        setPolicyMessage(policy.message);
+        // Fetch user data and credits in parallel
+        // useCredits hook handles credit fetching, but we can call refreshCredits to be sure
+        const [meData] = await Promise.all([
+          getMeCached(),
+          hookRefreshCredits().catch(() => null)
+        ]);
 
-        // Initialize public flag (same logic as Nav.tsx)
-        try {
-          const stored = localStorage.getItem('isPublicGenerations');
-          const server = userData && (userData as any).isPublic;
-          const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false);
-          // If user is restricted (cannot toggle), force to true
-          if (!policy.canToggle) {
-            setIsPublic(true);
-          } else {
-            setIsPublic(next);
-          }
-        } catch { }
+        if (meData) {
+          try { console.log('[PublicGen][me] plan:', meData?.plan, 'canTogglePublicGenerations:', (meData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (meData as any)?.forcePublicGenerations) } catch { }
+          setUserData(meData);
 
-        // Fetch credits
-        try {
-          const creditsRes = await api.get('/api/credits/me');
-          const creditsPayload = creditsRes.data?.data || creditsRes.data;
-          const balance = Number(creditsPayload?.creditBalance);
-          if (!Number.isNaN(balance)) setCreditBalance(balance);
-        } catch (e) {
-          // silent fail
+          // Get public policy from user data
+          const policy = getPublicPolicyFromUser(meData);
+          setCanTogglePublic(policy.canToggle);
+          setPolicyMessage(policy.message);
+
+          // Initialize public flag
+          try {
+            const stored = localStorage.getItem('isPublicGenerations');
+            const server = meData && (meData as any).isPublic;
+            const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false);
+            if (!policy.canToggle) {
+              setIsPublic(true);
+            } else {
+              setIsPublic(next);
+            }
+          } catch { }
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
-        router.push('/view/signup');
+        if (!initialUserData) {
+          router.push('/view/signup');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserData();
-  }, [router]);
+  }, [router, initialUserData, hookRefreshCredits]);
 
-  // Listen for credits refresh
+  // Handle credits sync
   useEffect(() => {
-    const api = getApiClient();
-    const unsubscribe = onCreditsRefresh(async () => {
-      try {
-        const creditsRes = await api.get('/api/credits/me');
-        const creditsPayload = creditsRes.data?.data || creditsRes.data;
-        const balance = Number(creditsPayload?.creditBalance);
-        if (!Number.isNaN(balance)) setCreditBalance(balance);
-      } catch { }
-    });
-    return unsubscribe;
-  }, []);
+    if (hookCreditBalance !== undefined && hookCreditBalance !== null) {
+      setCreditBalance(hookCreditBalance);
+    }
+  }, [hookCreditBalance]);
 
   // Handle username editing - DISABLED
   // const handleEditUsername = () => {
@@ -361,9 +352,12 @@ const ProfileManagement = () => {
                 <div className="text-white/70 text-xs md:text-sm truncate">{userData?.email || 'user@example.com'}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10">Plan: {userData?.plan || 'Free'}</span>
-                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1 min-w-[45px] justify-center">
                     <Image src="/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
                     {creditBalance ?? userData?.credits ?? 0}
+                    {creditsLoading && (
+                      <div className="w-2.5 h-2.5 border-2 border-white/20 border-t-white/80 rounded-full animate-spin ml-0.5" />
+                    )}
                   </span>
                 </div>
               </div>
@@ -420,10 +414,10 @@ const ProfileManagement = () => {
                     tabIndex={0}
                     disabled={!canTogglePublic}
                     className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${!canTogglePublic
-                        ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60'
-                        : isPublic
-                          ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer'
-                          : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
+                      ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60'
+                      : isPublic
+                        ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer'
+                        : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
                       }`}
                   >
                     <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />

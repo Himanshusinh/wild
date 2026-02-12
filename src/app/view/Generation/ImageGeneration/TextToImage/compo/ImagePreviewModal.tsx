@@ -1373,10 +1373,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
 
   const navigateToEdit = (feature: 'upscale' | 'remove-bg' | 'resize') => {
-    if (!user) {
-      router.push(getSignInUrl());
-      return;
-    }
     try {
       const storagePath = (selectedImage as any)?.storagePath || (() => {
         try {
@@ -1402,10 +1398,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   };
 
   const handleEditInLiveCanvas = () => {
-    if (!user) {
-      router.push(getSignInUrl());
-      return;
-    }
     try {
       // Navigate to Live Canvas with the current image
       const storagePath = (selectedImage as any)?.storagePath || (() => {
@@ -1430,10 +1422,6 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   };
 
   const handleCreateVideo = () => {
-    if (!user) {
-      router.push(getSignInUrl());
-      return;
-    }
     try {
       // Navigate to Video Generation with the current image as input
       // Use the same approach as Remix button - use storagePath to construct direct Zata URL
