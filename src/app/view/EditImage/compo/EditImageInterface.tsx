@@ -22,6 +22,8 @@ import { EditImageExpandFrame } from './EditImageExpandFrame';
 import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
 import { useCredits } from '@/hooks/useCredits';
+import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
 
@@ -523,6 +525,19 @@ const EditImageInterface: React.FC = () => {
 
 
   const handleLiveGenerate = async () => {
+    if (!user) {
+      saveAutoResumeIntent('image', {
+        isEditImage: true,
+        selectedFeature: 'live-chat',
+        inputs,
+        livePrompt,
+        liveModel,
+        liveFrameSize,
+        liveResolution,
+      });
+      router.push(getSignInUrl('/text-to-image/edit-image'));
+      return;
+    }
     let optimisticDebit = 0;
     try {
       const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex]?.url : null);
@@ -998,6 +1013,41 @@ const EditImageInterface: React.FC = () => {
       setExpandBottomPx(0);
     }
   }, [selectedFeature, model, inputNaturalSize]);
+
+  // State restoration for auto-resume
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'image' && intent.data?.isEditImage) {
+      console.log('[EditImage] Auto-resuming editor state:', intent.data);
+      const data = intent.data;
+      if (data.selectedFeature) setSelectedFeature(data.selectedFeature);
+      if (data.inputs) setInputs(data.inputs);
+      if (data.model) setModel(data.model);
+      if (data.prompt) setPrompt(data.prompt);
+      if (data.scaleFactor) setScaleFactor(data.scaleFactor);
+      if (data.faceEnhance !== undefined) setFaceEnhance(data.faceEnhance);
+      if (data.swinTask) setSwinTask(data.swinTask);
+      if (data.expandBounds) setExpandBounds(data.expandBounds);
+      if (data.expandAspectRatio) setExpandAspectRatio(data.expandAspectRatio);
+      if (data.eraseBrushSize) setEraseBrushSize(data.eraseBrushSize);
+      if (data.eraseActionMode) setEraseActionMode(data.eraseActionMode);
+      if (data.erasePrompt) setErasePrompt(data.erasePrompt);
+      if (data.reimaginePrompt) setReimaginePrompt(data.reimaginePrompt);
+      if (data.reimagineModel) setReimagineModel(data.reimagineModel);
+      if (data.reimagineSelectionMode) setReimagineSelectionMode(data.reimagineSelectionMode);
+      if (data.topazModel) setTopazModel(data.topazModel);
+      if (data.topazUpscaleFactor) setTopazUpscaleFactor(data.topazUpscaleFactor);
+      if (data.seedvrUpscaleFactor) setSeedvrUpscaleFactor(data.seedvrUpscaleFactor);
+      if (data.resizeAspectRatio) setResizeAspectRatio(data.resizeAspectRatio);
+      if (data.livePrompt) setLivePrompt(data.livePrompt);
+      if (data.liveModel) setLiveModel(data.liveModel);
+      if (data.liveFrameSize) setLiveFrameSize(data.liveFrameSize);
+      if (data.liveResolution) setLiveResolution(data.liveResolution);
+
+      clearAutoResumeIntent();
+    }
+  }, [user]);
 
   // Auto-detect input image dimensions and prefill Bria fields
   // Ensure we always know the natural dimensions of the input image so any mask
@@ -2079,6 +2129,32 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      saveAutoResumeIntent('image', {
+        isEditImage: true,
+        selectedFeature,
+        inputs,
+        model,
+        prompt,
+        scaleFactor,
+        faceEnhance,
+        swinTask,
+        expandBounds,
+        expandAspectRatio,
+        eraseBrushSize,
+        eraseActionMode,
+        erasePrompt,
+        reimaginePrompt,
+        reimagineModel,
+        reimagineSelectionMode,
+        topazModel,
+        topazUpscaleFactor,
+        seedvrUpscaleFactor,
+        resizeAspectRatio,
+      });
+      router.push(getSignInUrl('/text-to-image/edit-image'));
+      return;
+    }
     if (processing[selectedFeature]) return;
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
       if (!url) return url as any;

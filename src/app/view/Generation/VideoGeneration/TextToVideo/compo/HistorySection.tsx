@@ -100,12 +100,12 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   return (
     <div
       ref={scrollRef}
-      className="inset-0 pl-[0] pr-0 overflow-y-auto no-scrollbar z-0"
+      className="relative inset-0 pl-[0] pr-0 overflow-y-auto no-scrollbar z-0"
       style={{ height: 'calc(100vh - 80px)' }} // Adjust height as needed or let parent control layout
     >
       {/* Initial loading overlay - show only when actually loading and no entries exist */}
       {loading && historyEntries.length === 0 && (
-        <div className="fixed top-[64px] md:top-[0px] left-0 right-0 md:left-[4.5rem] bottom-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+        <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-4 px-2 md:px-4">
             <Image
               src="/styles/Logo.gif"

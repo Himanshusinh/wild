@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
 import { clearMeCache } from '../../../../lib/me'
@@ -41,6 +41,12 @@ const Nav = () => {
   // Use Redux credits state
   const { creditBalance, refreshCredits, loading: creditsLoading, error: creditsError } = useCredits()
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Hide Nav on specific pages where it interferes with the UI
+  if (pathname === '/text-to-music' || pathname?.includes('text-to-music')) {
+    return null;
+  }
 
   // Debug logging removed
 
@@ -106,9 +112,9 @@ const Nav = () => {
   }
 
   return (
-    <div className='fixed top-4 md:left-18 left-4 md:right-4 right-0 z-[60]'>
+    <div className='fixed top-0 md:left-18 left-4 md:right-4 right-0 z-[60] pointer-events-none'>
       <div className='flex justify-between items-center'>
-        <div className=''>
+        <div className='pointer-events-auto'>
           {/* <Image src="/core/logosquare.png" alt='logo' width={25} height={25} /> */}
         </div>
 
@@ -118,12 +124,14 @@ const Nav = () => {
 
           {/* Profile trigger removed for signed-in users */}
           {!userData && (
-            <button
-              onClick={() => router.push(getSignInUrl())}
-              className='flex items-center gap-2 bg-white/10 mt-2 backdrop-blur-xl border border-white/20 text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-white/20 hover:border-white/30 transition-all duration-200 shadow-lg'
-            >
-              Sign In
-            </button>
+            <div className="pointer-events-auto">
+              <button
+                onClick={() => router.push(getSignInUrl())}
+                className='flex items-center gap-2 bg-white/10 mt-2 backdrop-blur-xl border border-white/20 text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-white/20 hover:border-white/30 transition-all duration-200 shadow-lg'
+              >
+                Sign In
+              </button>
+            </div>
           )}
         </div>
       </div>

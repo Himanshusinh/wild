@@ -18,6 +18,7 @@ import { Trash2 } from 'lucide-react';
 import { addNotification } from "@/store/slices/uiSlice";
 import ActiveGenerationsPanel from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
 import { useSearchParams, useRouter } from "next/navigation";
+import { getSignInUrl } from '@/routes/routes';
 // historyService removed; backend owns history persistence
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
 const updateFirebaseHistory = async (_id: string, _updates: any) => { };
@@ -2198,6 +2199,13 @@ const InputBox = (props: InputBoxProps = {}) => {
   const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
 
   const handleGenerate = async () => {
+    // CRITICAL: Check authentication FIRST before any other validation
+    if (!user) {
+      console.log('[VideoGeneration] User not authenticated, redirecting to sign-in');
+      router.push(getSignInUrl());
+      return;
+    }
+
     if (!prompt.trim()) {
       toast.error('Please enter a prompt');
       return;

@@ -11,6 +11,8 @@ import VideoUploadModal from '@/app/view/Generation/VideoGeneration/TextToVideo/
 import { loadMoreHistory } from '@/store/slices/historySlice';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { getSignInUrl } from '@/routes/routes';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 type EditFeature = 'upscale' | 'remove-bg';
 
@@ -144,6 +146,26 @@ const EditVideoInterface: React.FC = () => {
     // Only run once on mount for initial hydration from URL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // State restoration for auto-resume
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'video' && intent.data?.isEditVideo) {
+      console.log('[EditVideo] Auto-resuming editor state:', intent.data);
+      const data = intent.data;
+      if (data.selectedFeature) setSelectedFeature(data.selectedFeature);
+      if (data.inputs) setInputs(data.inputs);
+      if (data.model) setModel(data.model);
+      if (data.seedvrUpscaleMode) setSeedvrUpscaleMode(data.seedvrUpscaleMode);
+      if (data.seedvrUpscaleFactor) setSeedvrUpscaleFactor(data.seedvrUpscaleFactor);
+      if (data.seedvrTargetResolution) setSeedvrTargetResolution(data.seedvrTargetResolution);
+      if (data.birefModel) setBirefModel(data.birefModel);
+      if (data.birefOperatingResolution) setBirefOperatingResolution(data.birefOperatingResolution);
+
+      clearAutoResumeIntent();
+    }
+  }, [user]);
 
   // BiRefNet (video remove bg) params
   const [birefModel, setBirefModel] = useState<'General Use (Light)' | 'General Use (Light 2K)' | 'General Use (Heavy)' | 'Matting' | 'Portrait' | 'General Use (Dynamic)'>('General Use (Light)');
@@ -534,6 +556,23 @@ const EditVideoInterface: React.FC = () => {
     const currentInputRaw = inputs[selectedFeature];
     const currentInput = toAbsoluteProxyUrl(currentInputRaw) as any;
     if (!currentInput) return;
+
+    if (!user) {
+      saveAutoResumeIntent('video', {
+        isEditVideo: true,
+        selectedFeature,
+        inputs,
+        model,
+        seedvrUpscaleMode,
+        seedvrUpscaleFactor,
+        seedvrTargetResolution,
+        birefModel,
+        birefOperatingResolution,
+      });
+      router.push(getSignInUrl());
+      return;
+    }
+
     setErrorMsg('');
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));

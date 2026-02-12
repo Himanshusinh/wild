@@ -5574,10 +5574,6 @@ const InputBox = () => {
                 <button
                   onClick={() => {
                     console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
-                    if (!userData) {
-                      router.push(getSignInUrl('/text-to-image/edit-image'));
-                      return;
-                    }
                     router.push('/text-to-image/edit-image');
                   }}
                   className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
@@ -5589,10 +5585,6 @@ const InputBox = () => {
 
                 <button
                   onClick={() => {
-                    if (!userData) {
-                      router.push(getSignInUrl('/text-to-image?openImageEditor=1'));
-                      return;
-                    }
                     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                     const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
