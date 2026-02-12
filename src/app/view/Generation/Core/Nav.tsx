@@ -43,11 +43,6 @@ const Nav = () => {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Hide Nav on specific pages where it interferes with the UI
-  if (pathname === '/text-to-music' || pathname?.includes('text-to-music')) {
-    return null;
-  }
-
   // Debug logging removed
 
   useOutsideClick(dropdownRef, () => setShowDropdown(false))
@@ -109,6 +104,11 @@ const Nav = () => {
   const handlePurchaseCredits = () => {
     router.push('/view/pricing')
     setShowDropdown(false)
+  }
+
+  // Return based on pathname AFTER all hooks to follow Rules of Hooks
+  if (pathname === '/text-to-music' || pathname?.includes('text-to-music')) {
+    return null;
   }
 
   return (

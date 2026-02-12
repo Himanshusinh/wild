@@ -19,12 +19,12 @@ export default function MusicGenerationPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const featureParam = (searchParams?.get('feature') || '').toLowerCase();
-    const { user } = useAppSelector((state) => state.auth);
+    const { user } = useAppSelector((state: any) => state?.auth || { user: null });
 
-    // Set UI generation type immediately to prevent showing wrong page on refresh
-    useMemo(() => {
-        try { (dispatch as any)(setCurrentGenerationType('text-to-music' as any)); } catch { }
-    }, [dispatch]);
+    // Debug logging to verify auth state
+    useEffect(() => {
+        console.log('MusicGenerationPage: User state:', user);
+    }, [user]);
 
     const validFeatures: MusicFeature[] = ['Music', 'Voice (TTS)', 'SFX', 'Voice Cloning', 'Dialogue'];
 
