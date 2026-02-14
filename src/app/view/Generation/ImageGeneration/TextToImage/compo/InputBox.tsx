@@ -6044,7 +6044,7 @@ const InputBox = () => {
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
           <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
             {/* Combine characters and images for display */}
-            {[...selectedCharacters.map((char: any, idx: number) => ({ type: 'character', data: char, index: idx })), ...uploadedImages.map((img: string, idx: number) => ({ type: 'image', data: img, index: idx }))].slice(0, 10).map((item: any, idx: number) => {
+            {[...selectedCharacters.map((char: any, idx: number) => ({ type: 'character', data: char, index: idx })), ...uploadedImages.map((img: string, idx: number) => ({ type: 'image', data: img, index: idx }))].slice(0, 10).map((item: any) => {
               if (item.type === 'character') {
                 return (
                   <div
@@ -6122,6 +6122,83 @@ const InputBox = () => {
                 );
               }
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop-only: Selected images/characters single-row above input box */}
+      {!isInlineEditImagePage && (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+        <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[51] px-2 py-4 overflow-x-auto no-scrollbar">
+          <div className="flex flex-row gap-3 py-1">
+            {selectedCharacters.map((character: any) => (
+              <div key={character.id} className="relative group flex-shrink-0">
+                <div
+                  className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
+                  title={`Character: ${character.name}`}
+                >
+                  <img
+                    src={character.frontImageUrl}
+                    alt={character.name}
+                    decoding="async"
+                    className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                  />
+                  <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                    <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                      C
+                    </div>
+                  </div>
+                </div>
+                <button
+                  aria-label="Remove character"
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dispatch(removeSelectedCharacter(character.id));
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            {uploadedImages.map((u: string, i: number) => (
+              <div key={i} className="relative group flex-shrink-0">
+                <div
+                  className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
+                  onClick={() => {
+                    setAssetViewer({
+                      isOpen: true,
+                      assetUrl: u,
+                      assetType: 'image',
+                      title: `Uploaded Image ${i + 1}`
+                    });
+                  }}
+                >
+                  <img
+                    src={u}
+                    alt=""
+                    decoding="async"
+                    className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                  />
+                  <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                    <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                      {i + 1}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  aria-label="Remove image"
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
+                    dispatch(setUploadedImages(next));
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -6473,78 +6550,7 @@ const InputBox = () => {
                 </div>
               </div>
 
-              {/* Uploaded Images / Characters Preview (Moved INSIDE container to match Video Gen style) */}
-              {(uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-                <div className="hidden md:flex flex-wrap gap-2 px-1 pb-3 pt-2">
-                  {/* Selected Characters */}
-                  {selectedCharacters.map((character: any) => (
-                    <div key={character.id} className="relative group">
-                      <div
-                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                        title={`Character: ${character.name}`}
-                      >
-                        <img
-                          src={character.frontImageUrl}
-                          alt={character.name}
-                          decoding="async"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                          {character.name || 'Character'}
-                        </div>
-                      </div>
-                      <button
-                        aria-label="Remove character"
-                        className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          dispatch(removeSelectedCharacter(character.id));
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
 
-                  {/* Uploaded Images */}
-                  {uploadedImages.map((u: string, i: number) => (
-                    <div key={i} className="relative group">
-                      <div
-                        className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
-                        onClick={() => {
-                          setAssetViewer({
-                            isOpen: true,
-                            assetUrl: u,
-                            assetType: 'image',
-                            title: `Uploaded Image ${i + 1}`
-                          });
-                        }}
-                      >
-                        <img
-                          src={u}
-                          alt=""
-                          decoding="async"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                          Image {i + 1}
-                        </div>
-                      </div>
-                      <button
-                        aria-label="Remove image"
-                        className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const next = uploadedImages.filter((_: string, idx: number) => idx !== i);
-                          dispatch(setUploadedImages(next));
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
 
 
 

@@ -54,37 +54,13 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   const todayKey = new Date().toDateString();
   const sortOrder = useAppSelector((state: any) => state.history?.filters?.sortOrder || "desc");
 
-  // Track loaded videos for metadata and corrected aspect ratios
-  const [correctedAspectRatios, setCorrectedRatios] = useState<Record<string, string>>({});
-
   const { groupedByDate, sortedDates } = useMemo(() => {
-    const groups: Record<string, Record<string, Array<{ entry: HistoryEntry; video: any }>>> = {};
-
-    const getAspectRatioCategory = (entry: HistoryEntry, video: any): 'landscape' | 'portrait' | 'square' => {
-      // Priority 1: Corrected ratio from actual video metadata
-      const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
-      const corrected = correctedAspectRatios[videoUrl];
-      if (corrected) return corrected as any;
-
-      // Priority 2: frameSize metadata
-      const fs = entry.frameSize?.toLowerCase() || '';
-      if (fs.includes('9:16') || fs.includes('portrait')) return 'portrait';
-      if (fs.includes('1:1') || fs.includes('square')) return 'square';
-      // Check for width x height patterns
-      const match = fs.match(/(\d+)\D+(\d+)/);
-      if (match) {
-        const w = parseInt(match[1]);
-        const h = parseInt(match[2]);
-        if (h > w) return 'portrait';
-        if (w === h) return 'square';
-      }
-      return 'landscape';
-    };
+    const groups: Record<string, Array<{ entry: HistoryEntry; video: any }>> = {};
 
     historyEntries.forEach((entry) => {
       const date = new Date(entry.timestamp || entry.createdAt).toDateString();
       if (!groups[date]) {
-        groups[date] = { landscape: [], portrait: [], square: [] };
+        groups[date] = [];
       }
 
       let mediaItems: any[] = [];
@@ -95,8 +71,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       }
 
       mediaItems.forEach(video => {
-        const category = getAspectRatioCategory(entry, video);
-        groups[date][category].push({ entry, video });
+        groups[date].push({ entry, video });
       });
     });
 
@@ -106,24 +81,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
     });
 
     return { groupedByDate: groups, sortedDates: sorted };
-  }, [historyEntries, sortOrder, correctedAspectRatios]);
-
-  const handleVideoMetadata = (e: React.SyntheticEvent<HTMLVideoElement>, videoUrl: string) => {
-    const video = e.currentTarget;
-    const { videoWidth, videoHeight } = video;
-    if (!videoWidth || !videoHeight) return;
-
-    const ratio = videoHeight / videoWidth;
-    let detectedCategory: 'landscape' | 'portrait' | 'square' = 'landscape';
-    if (ratio > 1.2) detectedCategory = 'portrait';
-    else if (ratio >= 0.9 && ratio <= 1.1) detectedCategory = 'square';
-
-    // If detected differs from current state, update it
-    setCorrectedRatios(prev => {
-      if (prev[videoUrl] === detectedCategory) return prev;
-      return { ...prev, [videoUrl]: detectedCategory };
-    });
-  };
+  }, [historyEntries, sortOrder]);
 
   // Infinite Scroll Observer
   React.useEffect(() => {
@@ -153,7 +111,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
     >
       {/* Initial loading overlay - show only when actually loading and no entries exist */}
       {loading && historyEntries.length === 0 && (
-        <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+        <div className="absolute inset-0 z-40 bg-black/50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4 px-2 md:px-4">
             <Image
               src="/styles/Logo.gif"
@@ -220,85 +178,70 @@ const HistorySection: React.FC<HistorySectionProps> = ({
             </h3>
           </div>
 
-          {/* Aspect Ratio Groups */}
-          {(['portrait', 'square', 'landscape'] as const).map((category) => {
-            const items = groupedByDate[date][category] || [];
-            if (items.length === 0 && (category !== 'landscape' || date !== todayKey || !localVideoPreview)) return null;
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 pl-0">
+            {/* Local Preview Logic */}
+            {date === todayKey && localVideoPreview && (() => {
+              const localEntryId = localVideoPreview.id;
+              const localFirebaseId = localVideoPreview.firebaseHistoryId;
+              const exists = historyEntries.some(e => e.id === localEntryId || (e as any).firebaseHistoryId === localFirebaseId);
+              if (exists) return null;
 
-            const gridCols = category === 'portrait'
-              ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
-              : "grid-cols-2 md:grid-cols-4 lg:grid-cols-6";
+              return (
+                <div className="aspect-square relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs text-blue-200">Processing...</span>
+                  </div>
+                </div>
+              );
+            })()}
 
-            const aspectClass = category === 'portrait' ? "aspect-[9/16]" : category === 'square' ? "aspect-square" : "aspect-video";
+            {/* History Items */}
+            {groupedByDate[date].map(({ entry, video }, videoIdx) => {
+              const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
+              const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+              if (!videoUrl) return null;
 
-            return (
-              <div key={`${date}-${category}`} className={`grid ${gridCols} gap-2 pl-0`}>
-                {/* Local Preview Logic (only in landscape for now or matching prompt params) */}
-                {date === todayKey && category === 'landscape' && localVideoPreview && (() => {
-                  const localEntryId = localVideoPreview.id;
-                  const localFirebaseId = localVideoPreview.firebaseHistoryId;
-                  const exists = historyEntries.some(e => e.id === localEntryId || (e as any).firebaseHistoryId === localFirebaseId);
-                  if (exists) return null;
-
-                  return (
-                    <div className={`${aspectClass} relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50`}>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs text-blue-200">Processing...</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* History Items */}
-                {items.map(({ entry, video }, videoIdx) => {
-                  const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
-                  const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
-                  if (!videoUrl) return null;
-
-                  return (
-                    <div
-                      key={uniqueVideoKey}
-                      onClick={() => onVideoClick?.(entry, video)}
-                      className={`relative group ${aspectClass} bg-gray-900 rounded-lg overflow-hidden border border-white/10 cursor-pointer`}
+              return (
+                <div
+                  key={uniqueVideoKey}
+                  onClick={() => onVideoClick?.(entry, video)}
+                  className="relative group aspect-square bg-gray-900 rounded-lg overflow-hidden border border-white/10 cursor-pointer"
+                >
+                  <video
+                    src={videoUrl}
+                    className="w-full h-full object-cover"
+                    loop
+                    muted
+                    playsInline
+                    onMouseEnter={(e) => e.currentTarget.play().catch(() => { })}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.pause();
+                      e.currentTarget.currentTime = 0;
+                    }}
+                  />
+                  {/* Controls Overlay */}
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                      className="p-1.5 bg-black/60 rounded-md hover:bg-black/80 text-white"
                     >
-                      <video
-                        src={videoUrl}
-                        className="w-full h-full object-cover"
-                        loop
-                        muted
-                        playsInline
-                        onLoadedMetadata={(e) => handleVideoMetadata(e, videoUrl)}
-                        onMouseEnter={(e) => e.currentTarget.play().catch(() => { })}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.pause();
-                          e.currentTarget.currentTime = 0;
-                        }}
-                      />
-                      {/* Controls Overlay */}
-                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
-                          className="p-1.5 bg-black/60 rounded-md hover:bg-black/80 text-white"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                        </button>
-                        <button
-                          onClick={(e) => onDeleteVideo?.(e, entry)}
-                          className="p-1.5 bg-red-500/80 rounded-md hover:bg-red-600 text-white"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      {/* Prompt overlay at bottom */}
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        <p className="text-[10px] text-white/90 line-clamp-2">{entry.prompt}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                    </button>
+                    <button
+                      onClick={(e) => onDeleteVideo?.(e, entry)}
+                      className="p-1.5 bg-red-500/80 rounded-md hover:bg-red-600 text-white"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {/* Prompt overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <p className="text-[10px] text-white/90 line-clamp-2">{entry.prompt}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
 
