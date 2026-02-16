@@ -10,6 +10,7 @@ import VideoGenerationGuide from './TextToVideo/compo/VideoGenerationGuide';
 // HistoryControls removed
 import { usePathname } from 'next/navigation';
 import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
+import HistoryControls from './TextToVideo/compo/HistoryControls';
 
 type VideoFeature = 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
 
@@ -194,6 +195,7 @@ export default function VideoGenerationPage() {
 
                                 {/* Desktop: Search, Sort, and Date controls - positioned at right end of Video Generation text */}
                                 <div className="hidden md:flex items-center pt-2">
+                                    <HistoryControls mode="video" />
                                     {/* HistoryControls removed to avoid duplication */}
                                 </div>
                             </div>

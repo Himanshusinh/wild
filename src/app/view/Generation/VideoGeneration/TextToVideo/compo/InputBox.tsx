@@ -29,7 +29,6 @@ import { uploadGeneratedVideo, uploadLocalVideoFile } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
-import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import { getApiClient } from "@/lib/axiosInstance";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
@@ -138,6 +137,35 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [generationMode, setGenerationMode] = usePersistedGenerationState<"text_to_video" | "image_to_video" | "video_to_video">("generationMode", "text_to_video", "text-to-video");
   const [error, setError] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
+
+  // Auto-detect aspect ratio for uploaded images
+  useEffect(() => {
+    if (uploadedImages.length > 0) {
+      const firstImage = uploadedImages[0];
+      // Only auto-detect if frameSize is at its default or "auto"
+      // to avoid overriding intentional user choices
+      if (frameSize === "16:9" || frameSize === "auto") {
+        const img = new window.Image();
+        img.onload = () => {
+          const { width, height } = img;
+          const ratio = height / width;
+
+          if (ratio > 1.2) {
+            // Strong portrait - suggest 9:16
+            console.log("Detecting portrait image, suggesting 9:16");
+            setFrameSize("9:16");
+          } else if (ratio < 0.8) {
+            // Strong landscape - stay at 16:9 (already default)
+          } else if (ratio >= 0.9 && ratio <= 1.1) {
+            // Square-ish - suggest 1:1 if supported
+            console.log("Detecting square image, suggesting 1:1");
+            setFrameSize("1:1");
+          }
+        };
+        img.src = firstImage;
+      }
+    }
+  }, [uploadedImages, frameSize, setFrameSize]);
 
 
 
