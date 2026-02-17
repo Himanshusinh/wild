@@ -28,6 +28,8 @@ interface HistorySectionProps {
     status: string; // Added status for types
     images?: any[];
   } | null;
+  // Multiple active generations from Redux
+  activeGenerations?: any[];
   onSearch: (query: string) => void;
   onSortChange: (sort: any) => void;
   onDateChange: (range: any) => void;
@@ -42,6 +44,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   onDeleteVideo,
   onVideoClick,
   localVideoPreview,
+  activeGenerations = [],
   onSearch,
   onSortChange,
   onDateChange
@@ -53,6 +56,12 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   // Auto-grouping logic
   const todayKey = new Date().toDateString();
   const sortOrder = useAppSelector((state: any) => state.history?.filters?.sortOrder || "desc");
+
+  console.log('[HistorySection DEBUG] Render:', {
+    activeGenerationsLength: activeGenerations?.length,
+    activeGenerations: activeGenerations,
+    todayKey
+  });
 
   const { groupedByDate, sortedDates } = useMemo(() => {
     const groups: Record<string, Array<{ entry: HistoryEntry; video: any }>> = {};
@@ -80,8 +89,28 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       return sortOrder === "asc" ? diff : -diff;
     });
 
+    // CRITICAL: If there are active generations but no history entries for today yet,
+    // we MUST ensure todayKey is in sortedDates so the loading cards have a place to render.
+    const hasActiveGens = activeGenerations.some(gen => gen.status === 'pending' || gen.status === 'generating');
+
+    console.log('[HistorySection DEBUG] useMemo:', {
+      hasActiveGens,
+      todayKeyExistsInGroups: !!groups[todayKey],
+      sortedDatesBefore: [...sorted]
+    });
+
+    if (hasActiveGens && !groups[todayKey]) {
+      groups[todayKey] = [];
+      if (sortOrder === 'desc') {
+        sorted.unshift(todayKey);
+      } else {
+        sorted.push(todayKey);
+      }
+      console.log('[HistorySection DEBUG] Inserted todayKey into sorted dates');
+    }
+
     return { groupedByDate: groups, sortedDates: sorted };
-  }, [historyEntries, sortOrder]);
+  }, [historyEntries, sortOrder, activeGenerations, todayKey]);
 
   // Infinite Scroll Observer
   React.useEffect(() => {
@@ -109,25 +138,6 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       className="relative inset-0 pl-[0] pr-0 overflow-y-auto no-scrollbar z-0"
       style={{ height: 'calc(100vh - 80px)' }} // Adjust height as needed or let parent control layout
     >
-      {/* Initial loading overlay - show only when actually loading and no entries exist */}
-      {loading && historyEntries.length === 0 && (
-        <div className="absolute inset-0 z-40 bg-black/50 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4 px-2 md:px-4">
-            <Image
-              src="/styles/Logo.gif"
-              alt="Loading"
-              width={72}
-              height={72}
-              className="mx-auto"
-              unoptimized
-            />
-            <div className="text-white text-lg text-center">
-              Loading generations...
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Desktop: Search, Sort, and Date controls (Fixed Header) */}
       {/* <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-4 py-3">
         <div className="flex flex-col gap-4">
@@ -149,7 +159,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       </div> */}
 
       {/* Guide when empty */}
-      {!loading && historyEntries.length === 0 && sortedDates.length === 0 && !localVideoPreview && (
+      {!loading && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
         <VideoGenerationGuide />
       )}
 
@@ -179,21 +189,38 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 pl-0">
-            {/* Local Preview Logic */}
-            {date === todayKey && localVideoPreview && (() => {
-              const localEntryId = localVideoPreview.id;
-              const localFirebaseId = localVideoPreview.firebaseHistoryId;
-              const exists = historyEntries.some(e => e.id === localEntryId || (e as any).firebaseHistoryId === localFirebaseId);
-              if (exists) return null;
+            {/* Active Generations (Loading Cards) */}
+            {(() => {
+              const shouldRenderActiveGens = date === todayKey && activeGenerations?.length > 0;
+              const filteredGens = activeGenerations?.filter(gen => gen.status === 'pending' || gen.status === 'generating') || [];
+              console.log('[HistorySection DEBUG] Rendering check:', {
+                date,
+                todayKey,
+                dateMatchesToday: date === todayKey,
+                activeGenerationsLength: activeGenerations?.length,
+                filteredGensLength: filteredGens.length,
+                shouldRenderActiveGens,
+                filteredGens
+              });
+              return shouldRenderActiveGens && filteredGens.map(gen => {
+                // Refined exists check: Only skip if a COMPLETED history entry exists
+                const existingEntry = historyEntries.find(e => e.id === gen.id || (e as any).firebaseHistoryId === gen.historyId);
+                const isActuallyDone = existingEntry && existingEntry.status === 'completed' && (existingEntry.videos?.length || 0) > 0;
+                console.log('[HistorySection DEBUG] Gen card check:', { genId: gen.id, existingEntry: !!existingEntry, isActuallyDone });
+                if (isActuallyDone) return null;
 
-              return (
-                <div className="aspect-square relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs text-blue-200">Processing...</span>
+                return (
+                  <div key={gen.id} className="aspect-square relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50 flex flex-col items-center justify-center p-4">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <div className="w-8 h-8 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
+                      <span className="text-[10px] text-blue-300 font-medium uppercase tracking-wider">{gen.model || 'Generating'}</span>
+                      <p className="text-[10px] text-white/40 line-clamp-2 px-2">{gen.prompt}</p>
+                    </div>
                   </div>
-                </div>
-              );
+                );
+              });
             })()}
+
 
             {/* History Items */}
             {groupedByDate[date].map(({ entry, video }, videoIdx) => {
@@ -246,19 +273,19 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       ))}
 
 
-      {/* Loader for scroll loading */}
+      {/* Loader for scroll loading - centered in viewport */}
       {hasMore && loading && (
-        <div className="flex items-center justify-center py-8">
-          <div className="flex flex-col items-center gap-3">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
             <Image
               src="/styles/Logo.gif"
               alt="Generating"
-              width={56}
-              height={56}
+              width={80}
+              height={80}
               className="mx-auto"
               unoptimized
             />
-            <div className="text-sm text-white/60">
+            <div className="text-xl text-white/80 font-medium">
               Loading more generations...
             </div>
           </div>

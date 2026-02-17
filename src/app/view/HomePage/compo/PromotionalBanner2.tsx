@@ -17,7 +17,7 @@ import {
 
 export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 4;
+  const totalSlides = 3;
 
   // Auto-advance slides every 6 seconds
   useEffect(() => {
@@ -44,23 +44,18 @@ export default function HeroCarousel() {
 
       {/* --- Slider Container --- */}
       <div className="relative md:h-[650px] h-[250px] w-full">
-        {/* SLIDE 0: Promotional Banner Image */}
+        {/* SLIDE 0: TURBO ENGINE */}
         <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${currentSlide === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-          <PromotionalBannerImage />
-        </div>
-
-        {/* SLIDE 1: TURBO ENGINE (From your image) */}
-        <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${currentSlide === 1 ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
           <SlideOneContent />
         </div>
 
-        {/* SLIDE 2: THE MODELS */}
-        <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${currentSlide === 2 ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+        {/* SLIDE 1: THE MODELS */}
+        <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${currentSlide === 1 ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
           <SlideTwoContent />
         </div>
 
-        {/* SLIDE 3: INDUSTRY SOLUTIONS */}
-        <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${currentSlide === 3 ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+        {/* SLIDE 2: INDUSTRY SOLUTIONS */}
+        <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${currentSlide === 2 ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
           <SlideThreeContent />
         </div>
 
@@ -70,7 +65,7 @@ export default function HeroCarousel() {
       <div className="absolute md:bottom-8 bottom-4 left-0 right-0 z-30 flex items-center justify-center gap-6">
         <button onClick={prevSlide} className="md:p-2 p-1 rounded-full border border-white/10 bg-black/50 hover:bg-white hover:text-black transition-all backdrop-blur-md"><ChevronLeft size={20} /></button>
         <div className="flex md:gap-3 gap-2">
-          {[0, 1, 2, 3].map((idx) => (
+          {[0, 1, 2].map((idx) => (
             <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-1.5 rounded-full transition-all duration-500 ${currentSlide === idx ? 'w-12 bg-[#60a5fa] shadow-[0_0_10px_#60a5fa]' : 'w-2 bg-white/20'}`} />
           ))}
         </div>
@@ -305,7 +300,7 @@ function SlideThreeContent() {
                   <img src={imageUrl} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" alt={item.label} />
                   <div className="absolute md:top-2 top-1 md:right-2 right-1 bg-black/50 backdrop-blur md:p-1.5 p-0 rounded-full"><item.icon size={12} className="md:size-12 size-2 text-white" /></div>
                 </div>
-                 <div className="md:px-2 px-1"><span className="md:text-sm text-[8px] leading-tight font-medium text-slate-100">{item.label}</span></div>
+                <div className="md:px-2 px-1"><span className="md:text-sm text-[8px] leading-tight font-medium text-slate-100">{item.label}</span></div>
               </div>
             );
           })}
