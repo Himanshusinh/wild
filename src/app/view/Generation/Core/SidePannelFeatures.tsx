@@ -71,15 +71,13 @@ const SidebarItem = ({
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onAuxClick={handleAuxClick}
-      className={`group relative flex items-center justify-start md:flex-col md:items-center md:justify-center py-2.5 md:pl-1 pl-3 pr-0 transition-all duration-300 cursor-pointer
-        ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
+      className={`group relative flex items-center justify-start md:flex-col md:justify-center py-2 px-2 md:px-2 mx-2 md:mx-1 rounded-xl transition-all duration-200 cursor-pointer mb-1
+        ${isActive
+          ? 'bg-white/10 ring-1 ring-white/20 text-white shadow-sm'
+          : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+        }`}
     >
-      {/* Refined Active Indicator */}
-      {isActive && (
-        <div className="absolute left-0 top-[20%] bottom-[20%]  w-[2px] bg-[#60a5fa] shadow-[0_0_12px_#60a5fa] rounded-r-full" />
-      )}
-
-      <div className={`transition-all duration-300  ${isActive ? 'scale-105 text-[#60a5fa]' : 'text-white'}`}>
+      <div className={`transition-all duration-300 ${isActive ? 'text-white' : 'text-current'}`}>
         {/* Clone icon to enforce small size and thicker stroke for readability */}
         {React.isValidElement(icon) && React.cloneElement(icon, {
           size: 18,
@@ -87,8 +85,13 @@ const SidebarItem = ({
         })}
       </div>
 
-      <span className={`ml-2 md:ml-0 md:mt-1 mt-0 text-[9px] uppercase font-black tracking-[0.12em] transition-colors duration-300
-        ${isActive ? 'text-[#60a5fa]' : 'text-slate-100 '}`}>
+      <span className={`ml-3 md:ml-0 md:mt-1.5 mt-0 text-[9px] uppercase font-bold tracking-wider transition-colors duration-300
+        ${isActive ? 'text-white' : 'text-current'}`}>
+        {label}
+      </span>
+
+      {/* Tablet/Desktop Label (hidden by default in this layout, relying on tooltip or similar if exists, but keeping structure) */}
+      <span className="hidden md:block md:mt-1 text-[9px] uppercase font-bold tracking-widest scale-0 group-hover:scale-100 transition-all duration-300 absolute left-full ml-2 bg-black/80 px-2 py-1 rounded border border-white/10 whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100">
         {label}
       </span>
     </div>
@@ -100,6 +103,7 @@ const SidePannelFeatures = () => {
   const router = useRouter();
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+  const [imgError, setImgError] = React.useState(false);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
 
@@ -278,8 +282,13 @@ const SidePannelFeatures = () => {
               onClick={() => nav(NAV_ROUTES.ACCOUNT_MANAGEMENT)}
             >
               <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-slate-900 to-slate-800 border border-white/10 overflow-hidden group-hover:border-[#60a5fa]/50 transition-all">
-                {userData?.photoURL ? (
-                  <img src={userData.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                {userData?.photoURL && !imgError ? (
+                  <img
+                    src={userData.photoURL}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    onError={() => setImgError(true)}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">
                     {userData?.username?.charAt(0).toUpperCase() || 'U'}
@@ -299,22 +308,22 @@ const SidePannelFeatures = () => {
               <div className="bg-[#60a5fa]/10 border border-[#60a5fa]/20 text-[#60a5fa] text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg hover:bg-[#60a5fa]/20 transition-colors mb-1 text-center">
                 {creditsLoading ? '...' : (creditBalance ?? 0)}
               </div>
-              
+
               {/* Storage Display */}
               {userData && (
-                 <div className="flex flex-col gap-0.5 w-full min-w-[60px]">
-                   <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                     <div 
-                       className="h-full bg-emerald-500 rounded-full"
-                       style={{ 
-                         width: `${Math.min(100, (((credits?.storageUsed || 0) / (credits?.storageQuota || 1)) * 100))}%` 
-                       }}
-                     />
-                   </div>
-                   <div className="text-[7px] text-slate-400 text-center font-mono">
-                     {((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB
-                   </div>
-                 </div>
+                <div className="flex flex-col gap-0.5 w-full min-w-[60px]">
+                  <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full"
+                      style={{
+                        width: `${Math.min(100, (((credits?.storageUsed || 0) / (credits?.storageQuota || 1)) * 100))}%`
+                      }}
+                    />
+                  </div>
+                  <div className="text-[7px] text-slate-400 text-center font-mono">
+                    {((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB
+                  </div>
+                </div>
               )}
             </div>
           </div>

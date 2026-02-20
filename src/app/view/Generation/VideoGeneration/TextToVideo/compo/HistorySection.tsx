@@ -4,10 +4,25 @@ import React, { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { Trash2 } from "lucide-react";
-import { getCleanPrompt, copyPrompt, isVideoUrl, normalizeGenerationType } from "../utils/videoUtils";
+import { getCleanPrompt, copyPrompt, isVideoUrl, normalizeGenerationType, isVideoType } from "../utils/videoUtils";
 import VideoGenerationGuide from "./VideoGenerationGuide";
 import HistoryControls from "./HistoryControls";
 import { useAppSelector } from "@/store/hooks";
+
+const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> = ({ size = 64, alt = 'Loading', className }) => {
+  return (
+    <div className={`relative flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
+      <Image
+        src="/styles/Logo.gif"
+        alt={alt}
+        width={size}
+        height={size}
+        className="object-contain"
+        unoptimized
+      />
+    </div>
+  );
+};
 
 interface HistorySectionProps {
   loading: boolean;
@@ -66,6 +81,12 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   const { groupedByDate, sortedDates } = useMemo(() => {
     const groups: Record<string, Array<{ entry: HistoryEntry; video: any }>> = {};
 
+    console.log('[HistorySection DEBUG] useMemo start:', {
+      historyEntriesCount: historyEntries.length,
+      activeGenerationsCount: activeGenerations?.length
+    });
+
+    // 1. Process History Entries
     historyEntries.forEach((entry) => {
       const date = new Date(entry.timestamp || entry.createdAt).toDateString();
       if (!groups[date]) {
@@ -79,9 +100,64 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         mediaItems = entry.images.filter(m => isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl));
       }
 
-      mediaItems.forEach(video => {
-        groups[date].push({ entry, video });
-      });
+      if (mediaItems.length === 0) {
+        // If it's a "generating" history entry with no media yet, add it as a placeholder
+        if (entry.status === 'generating') {
+          groups[date].push({ entry, video: null });
+        }
+      } else {
+        mediaItems.forEach(video => {
+          groups[date].push({ entry, video });
+        });
+      }
+    });
+
+    // 2. Process Active Generations (Deduplicate against History)
+    activeGenerations?.forEach(gen => {
+      // Keep only pending/generating
+      if (gen.status !== 'pending' && gen.status !== 'generating') return;
+
+      // Type-Safety: Only show video types on this page
+      if (!isVideoType(gen)) return;
+
+      const genId = String(gen.id);
+      const historyId = String(gen.historyId || '');
+      const idsToMatch = [genId, historyId].filter(id => id && id !== 'undefined');
+
+      // Skip if already represented in history
+      const alreadyInHistory = historyEntries.some(e =>
+        idsToMatch.includes(String(e.id)) ||
+        (e as any).firebaseHistoryId && idsToMatch.includes(String((e as any).firebaseHistoryId))
+      );
+
+      if (alreadyInHistory) return;
+
+      const genDate = new Date(gen.createdAt || Date.now()).toDateString();
+      if (!groups[genDate]) {
+        groups[genDate] = [];
+      }
+
+      // Create a dummy HistoryEntry for the placeholder card
+      const placeholderEntry: HistoryEntry = {
+        id: genId,
+        prompt: gen.prompt,
+        model: gen.model,
+        status: 'generating',
+        timestamp: new Date(gen.createdAt || Date.now()).toISOString(),
+        createdAt: new Date(gen.createdAt || Date.now()).toISOString(),
+        generationType: 'text-to-video' as any,
+        images: [],
+        videos: [],
+        imageCount: 1,
+        generationProgress: gen.progress ? {
+          current: Math.round(gen.progress * 100),
+          total: 100,
+          status: gen.status
+        } : undefined
+      };
+
+      groups[genDate].unshift({ entry: placeholderEntry, video: null });
+      console.log('[HistorySection DEBUG] Added active gen placeholder (unshifted):', genId);
     });
 
     const sorted = Object.keys(groups).sort((a, b) => {
@@ -89,28 +165,10 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       return sortOrder === "asc" ? diff : -diff;
     });
 
-    // CRITICAL: If there are active generations but no history entries for today yet,
-    // we MUST ensure todayKey is in sortedDates so the loading cards have a place to render.
-    const hasActiveGens = activeGenerations.some(gen => gen.status === 'pending' || gen.status === 'generating');
-
-    console.log('[HistorySection DEBUG] useMemo:', {
-      hasActiveGens,
-      todayKeyExistsInGroups: !!groups[todayKey],
-      sortedDatesBefore: [...sorted]
-    });
-
-    if (hasActiveGens && !groups[todayKey]) {
-      groups[todayKey] = [];
-      if (sortOrder === 'desc') {
-        sorted.unshift(todayKey);
-      } else {
-        sorted.push(todayKey);
-      }
-      console.log('[HistorySection DEBUG] Inserted todayKey into sorted dates');
-    }
+    console.log('[HistorySection DEBUG] Final sortedDates:', sorted);
 
     return { groupedByDate: groups, sortedDates: sorted };
-  }, [historyEntries, sortOrder, activeGenerations, todayKey]);
+  }, [historyEntries, sortOrder, activeGenerations]);
 
   // Infinite Scroll Observer
   React.useEffect(() => {
@@ -179,52 +237,62 @@ const HistorySection: React.FC<HistorySectionProps> = ({
               </svg>
             </div>
             <h3 className="text-sm font-medium text-white/70">
-              {new Date(date).toLocaleDateString("en-US", {
-                weekday: "short",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
+              {(() => {
+                const dateObj = new Date(date);
+                const isToday = dateObj.toDateString() === new Date().toDateString();
+                const formattedDate = dateObj.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                });
+                return isToday ? `Today, ${formattedDate}` : `${dateObj.toLocaleDateString("en-US", { weekday: 'short' })}, ${formattedDate}`;
+              })()}
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 pl-0">
-            {/* Active Generations (Loading Cards) */}
-            {(() => {
-              const shouldRenderActiveGens = date === todayKey && activeGenerations?.length > 0;
-              const filteredGens = activeGenerations?.filter(gen => gen.status === 'pending' || gen.status === 'generating') || [];
-              console.log('[HistorySection DEBUG] Rendering check:', {
-                date,
-                todayKey,
-                dateMatchesToday: date === todayKey,
-                activeGenerationsLength: activeGenerations?.length,
-                filteredGensLength: filteredGens.length,
-                shouldRenderActiveGens,
-                filteredGens
-              });
-              return shouldRenderActiveGens && filteredGens.map(gen => {
-                // Refined exists check: Only skip if a COMPLETED history entry exists
-                const existingEntry = historyEntries.find(e => e.id === gen.id || (e as any).firebaseHistoryId === gen.historyId);
-                const isActuallyDone = existingEntry && existingEntry.status === 'completed' && (existingEntry.videos?.length || 0) > 0;
-                console.log('[HistorySection DEBUG] Gen card check:', { genId: gen.id, existingEntry: !!existingEntry, isActuallyDone });
-                if (isActuallyDone) return null;
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 pl-1">
+            {/* Combined History Items and Active Placeholders */}
+            {groupedByDate[date].map(({ entry, video }, videoIdx) => {
+              const uniqueVideoKey = video?.id
+                ? `${entry.id}-${video.id}`
+                : `${entry.id}-item-${videoIdx}`;
 
+              // Handle Placeholder (Generating/Pending)
+              if (!video) {
+                console.log('[HistorySection DEBUG] Rendering placeholder card in grid:', entry.id);
                 return (
-                  <div key={gen.id} className="aspect-square relative rounded-lg overflow-hidden bg-gray-800 animate-pulse ring-1 ring-blue-500/50 flex flex-col items-center justify-center p-4">
-                    <div className="flex flex-col items-center gap-2 text-center">
-                      <div className="w-8 h-8 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
-                      <span className="text-[10px] text-blue-300 font-medium uppercase tracking-wider">{gen.model || 'Generating'}</span>
-                      <p className="text-[10px] text-white/40 line-clamp-2 px-2">{gen.prompt}</p>
+                  <div
+                    key={uniqueVideoKey}
+                    className="aspect-square relative rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-blue-500/50 flex flex-col items-center justify-center p-4 group transition-all duration-300"
+                  >
+                    <div className="shimmer absolute inset-0 opacity-30" />
+                    <div className="relative z-10 flex flex-col items-center gap-3 text-center">
+                      <GifLoader size={64} alt="Generating" />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                          <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">
+                            {entry.model || 'Generating'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/60 line-clamp-2 px-2 italic font-medium">
+                          {entry.prompt}
+                        </p>
+                      </div>
+                      {entry.status === 'generating' && entry.generationProgress && (
+                        <div className="w-20 bg-white/10 rounded-full h-1 mt-1">
+                          <div
+                            className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                            style={{ width: `${entry.generationProgress.current}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
-              });
-            })()}
+              }
 
-
-            {/* History Items */}
-            {groupedByDate[date].map(({ entry, video }, videoIdx) => {
-              const uniqueVideoKey = video?.id ? `${entry.id}-${video.id}` : `${entry.id}-video-${videoIdx}`;
+              // Handle Completed Video
               const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
               if (!videoUrl) return null;
 

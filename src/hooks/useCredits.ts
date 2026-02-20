@@ -262,6 +262,7 @@ export const useGenerationCredits = (
     let validation: any;
 
     try {
+      console.log('[DEBUG validateAndReserveCredits] START', { generationType, model, provider, options });
       switch (generationType) {
         case 'video':
           if (!provider) throw new Error('Provider required for video generation');
@@ -271,6 +272,7 @@ export const useGenerationCredits = (
           break;
 
         case 'image':
+          console.log('[DEBUG validateAndReserveCredits] Validating image credits...', { model, count: options?.count });
           const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution, (options as any)?.uploadedImages);
           requiredCredits = imageResult.requiredCredits;
           validation = imageResult.validation;
@@ -285,6 +287,7 @@ export const useGenerationCredits = (
         default:
           throw new Error(`Unsupported generation type: ${generationType}`);
       }
+      console.log('[DEBUG validateAndReserveCredits] Validation successful, required:', requiredCredits);
 
       // Reserve credits
       const reservation = await reserveCreditsForGeneration(

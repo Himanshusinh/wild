@@ -15,6 +15,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'minimax-image-01': 17,       // Minimax Image-01 (17 credits per creditDistribution)
   'gemini-25-flash-image': 98,  // Google nano banana (T2I)
   'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
+  'gpt-5-nano': 1,              // GPT-5 Nano (Assistant)
   'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
   'seedream-4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)

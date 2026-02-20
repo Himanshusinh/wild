@@ -22,6 +22,7 @@ export interface ActiveGeneration {
   videos?: GeneratedVideo[];
   audios?: GeneratedAudio[];
   historyId?: string;
+  generationType?: 'text-to-image' | 'text-to-video' | 'image-to-video' | 'video-to-video' | 'music' | 'sfx' | 'text-to-dialogue';
   startedAt?: number;
   createdAt: number;
   updatedAt: number;
@@ -79,7 +80,7 @@ export function loadGenerations(): ActiveGeneration[] {
     }
 
     const generations: ActiveGeneration[] = JSON.parse(stored);
-    
+
     // Validate structure
     if (!Array.isArray(generations)) {
       console.warn('[generationPersistence] Invalid stored data, resetting');
@@ -126,7 +127,7 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
 
   // CRITICAL: Filter out completed/failed/cancelled BEFORE batching to reduce data size
   const activeOnly = generations.filter(g => g.status === 'pending' || g.status === 'generating');
-  
+
   // If no active generations, clear storage and return early
   if (activeOnly.length === 0) {
     try {
@@ -139,20 +140,20 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
 
   // OPTIMIZED: Batch writes - store pending and schedule async write
   pendingGenerations = activeOnly.slice(0, MAX_CONCURRENT_GENERATIONS);
-  
+
   // Clear existing timeout
   if (saveTimeout) {
     clearTimeout(saveTimeout);
   }
-  
+
   // Schedule write after a short delay to batch multiple rapid updates
   saveTimeout = setTimeout(() => {
     if (!pendingGenerations) return;
-    
+
     // Store in local variable before clearing to use in error handler
     const generationsToSave = pendingGenerations;
     pendingGenerations = null;
-    
+
     try {
       // Double-check: only save pending/generating (should already be filtered, but be safe)
       const toSave = generationsToSave.filter(g => g.status === 'pending' || g.status === 'generating');
@@ -176,12 +177,12 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
           // Don't persist media arrays - they're too large and not needed for persistence
           // Media will be loaded from history when needed
         }));
-        
+
         localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
       }
     } catch (error) {
       console.error('[generationPersistence] Error saving generations:', error);
-      
+
       // Handle quota exceeded - try to save even less data
       if (error instanceof Error && error.name === 'QuotaExceededError' && generationsToSave) {
         try {
@@ -198,7 +199,7 @@ export function saveGenerations(generations: ActiveGeneration[]): void {
               imageCount: g.params?.imageCount,
             }
           }));
-          
+
           if (minimal.length === 0) {
             localStorage.removeItem(STORAGE_KEY);
           } else {
@@ -231,7 +232,7 @@ export function addGeneration(generation: ActiveGeneration): void {
   }
 
   const current = loadGenerations();
-  
+
   // Check if already exists
   const exists = current.some(g => g.id === generation.id);
   if (exists) {
@@ -296,7 +297,7 @@ export function updateGeneration(
 export function removeGeneration(id: string): void {
   const current = loadGenerations();
   const filtered = current.filter(g => g.id !== id);
-  
+
   if (filtered.length === current.length) {
     console.warn('[generationPersistence] Generation not found:', id);
     return;
@@ -311,7 +312,7 @@ export function removeGeneration(id: string): void {
 export function clearOldGenerations(): ActiveGeneration[] {
   const current = loadGenerations();
   const now = Date.now();
-  
+
   const active = current.filter(gen => gen.status === 'pending' || gen.status === 'generating');
 
   if (active.length !== current.length) {
@@ -354,7 +355,7 @@ export function cleanupCompletedGenerations(): void {
 
     // Filter out completed/failed/cancelled
     const activeOnly = generations.filter((gen: ActiveGeneration) => gen.status === 'pending' || gen.status === 'generating');
-    
+
     if (activeOnly.length !== generations.length) {
       console.log(`[generationPersistence] Cleanup: Removed ${generations.length - activeOnly.length} completed/failed/cancelled items`);
       if (activeOnly.length === 0) {

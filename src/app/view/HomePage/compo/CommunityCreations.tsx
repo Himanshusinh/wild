@@ -152,7 +152,7 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className="text-xl md:text-4xl font-medium text-white md:mb-5 mb-1">
+      <h2 className="text-xl md:text-2xl font-medium text-white md:mb-5 mb-1 md:mt-4">
         Community Creations
       </h2>
 
@@ -175,7 +175,7 @@ export default function CommunityCreations({
             <p className="text-white/60 text-lg">No community creations to display</p>
           </div>
         ) : (
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-2 space-y-2">
+          <div className="columns-2 md:columns-4 lg:columns-5 gap-2 space-y-2">
             {limitedCards.map((card, idx) => {
               const { item, media } = card
               // Double-check we have a valid URL before rendering

@@ -112,6 +112,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [frameSize, setFrameSize] = usePersistedGenerationState("frameSize", "16:9", "text-to-video");
   const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
   const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
   const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
 
@@ -121,6 +122,50 @@ const InputBox = (props: InputBoxProps = {}) => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
+
+  // State restoration for auto-resume (e.g. from Home Page)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const intent = getAutoResumeIntent();
+    console.log('[Video InputBox] Checking for auto-resume intent...', !!intent);
+    // Handle both 'video' (Animate) and general prompt intents
+    if (intent && (intent.type === 'video' || intent.type === 'image')) {
+      console.log('[Video InputBox] Found intent, restoring state:', intent);
+      const data = intent.data;
+      if (data.prompt) {
+        console.log('[Video InputBox] Restoring prompt:', data.prompt);
+        setPrompt(data.prompt);
+      }
+      if (data.selectedModel) {
+        console.log('[Video InputBox] Restoring model:', data.selectedModel);
+        setSelectedModel(data.selectedModel);
+      }
+
+      // Clear intent and trigger generation after a short delay
+      clearAutoResumeIntent();
+      console.log('[Video InputBox] Intent cleared, scheduling auto-generation...');
+      setTimeout(() => {
+        console.log('[Video InputBox] Timer expired, setting shouldAutoGenerate=true');
+        setShouldAutoGenerate(true);
+      }, 1000);
+    }
+  }, [user]);
+
+  // Handle auto-triggering generation
+  useEffect(() => {
+    console.log('[Video InputBox] Auto-trigger watchdog:', { shouldAutoGenerate, isGenerating, promptLength: prompt?.length });
+    if (shouldAutoGenerate && !isGenerating && prompt) {
+      console.log('[Video InputBox] CONDITIONS MET: Auto-triggering handleGenerate()');
+      setShouldAutoGenerate(false);
+      handleGenerate();
+    } else if (shouldAutoGenerate) {
+      console.log('[Video InputBox] CONDITIONS NOT MET for auto-trigger:', {
+        isGenerating,
+        hasPrompt: !!prompt,
+        reason: !prompt ? 'Missing prompt' : (isGenerating ? 'Already generating' : 'Unknown')
+      });
+    }
+  }, [shouldAutoGenerate, isGenerating, prompt]);
 
   // Debug uploadedImages changes
   useEffect(() => {
@@ -2286,6 +2331,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
 
   const handleGenerate = async () => {
+    console.log('[DEBUG VideoGeneration InputBox] handleGenerate triggered');
     // CRITICAL: Check authentication FIRST before any other validation
     if (!user) {
       console.log('[VideoGeneration] User not authenticated, saving intent and redirecting to sign-in');
@@ -2321,6 +2367,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       prompt: prompt.trim(),
       model: selectedModel,
       status: 'pending',
+      generationType: 'text-to-video',
       createdAt: Date.now(),
       updatedAt: Date.now(),
       params: {
