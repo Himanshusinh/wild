@@ -22,6 +22,10 @@ import {
 import WSolid from '@/components/icons/WSolid';
 import { useCredits } from '@/hooks/useCredits';
 import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
+import { ImagePopout } from './ImagePopout';
+import { VideoPopout } from './VideoPopout';
+import { AudioPopout } from './AudioPopout';
+import { AppsPopout } from './AppsPopout';
 
 // --- Updated Sidebar Item: High Density & Max Readability ---
 const SidebarItem = ({
@@ -30,14 +34,18 @@ const SidebarItem = ({
   isActive,
   onClick,
   url,
-  setIsSidebarHovered
+  setIsSidebarHovered,
+  id,
+  onMouseEnterItem
 }: {
   icon: React.ReactElement<{ size?: number; strokeWidth?: number }>,
   label: string,
   isActive: boolean,
   onClick: (e: React.MouseEvent) => void,
   url: string,
-  setIsSidebarHovered: (val: boolean) => void
+  setIsSidebarHovered: (val: boolean) => void,
+  id?: string,
+  onMouseEnterItem?: (id: string) => void
 }) => {
   const handleMouseDown = (e: React.MouseEvent) => {
     // Middle click (button 1) or Ctrl+Left click
@@ -67,7 +75,10 @@ const SidebarItem = ({
 
   return (
     <div
-      onMouseEnter={() => setIsSidebarHovered(true)}
+      onMouseEnter={() => {
+        setIsSidebarHovered(true);
+        if (id && onMouseEnterItem) onMouseEnterItem(id);
+      }}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onAuxClick={handleAuxClick}
@@ -90,8 +101,8 @@ const SidebarItem = ({
         {label}
       </span>
 
-      {/* Tablet/Desktop Label (hidden by default in this layout, relying on tooltip or similar if exists, but keeping structure) */}
-      <span className="hidden md:block md:mt-1 text-[9px] uppercase font-bold tracking-widest scale-0 group-hover:scale-100 transition-all duration-300 absolute left-full ml-2 bg-black/80 px-2 py-1 rounded border border-white/10 whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100">
+      {/* Tablet/Desktop Label */}
+      <span className="hidden md:block md:mt-1 text-[9px] uppercase font-bold tracking-widest scale-0 group-hover:scale-100 transition-all duration-300 absolute left-full ml-2 bg-black/80 px-2 py-1 rounded border border-white/10 whitespace-nowrap z-[120] pointer-events-none opacity-0 group-hover:opacity-100">
         {label}
       </span>
     </div>
@@ -104,8 +115,22 @@ const SidePannelFeatures = () => {
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
+  const [activePopout, setActivePopout] = React.useState<string | null>(null);
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
+
+  const handleMouseEnterItem = (id: string) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setActivePopout(id);
+  };
+
+  const handleMouseLeaveSidebar = () => {
+    setIsSidebarHovered(false);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setActivePopout(null);
+    }, 150);
+  };
 
   const nav = (url: string) => {
     setIsMobileSidebarOpen(false);
@@ -145,7 +170,7 @@ const SidePannelFeatures = () => {
 
       {/* Main Sidebar Container */}
       <div
-        onMouseLeave={() => setIsSidebarHovered(false)}
+        onMouseLeave={handleMouseLeaveSidebar}
         className={`fixed top-0 bottom-0 left-0 flex flex-col transition-all duration-500 ease-in-out  bg-[#050505]/95 backdrop-blur-2xl
           ${isMobileSidebarOpen ? 'w-56 translate-x-0 z-[110]' : '-translate-x-full md:translate-x-0 z-[110] md:w-20'}`}
       >
@@ -226,6 +251,8 @@ const SidePannelFeatures = () => {
             setIsSidebarHovered={setIsSidebarHovered}
             url={NAV_ROUTES.WORKFLOWS}
             onClick={() => nav(NAV_ROUTES.WORKFLOWS)}
+            id="apps"
+            onMouseEnterItem={handleMouseEnterItem}
           />
 
           <SidebarItem
@@ -235,6 +262,8 @@ const SidePannelFeatures = () => {
             setIsSidebarHovered={setIsSidebarHovered}
             url="/text-to-image"
             onClick={() => nav('/text-to-image')}
+            id="image"
+            onMouseEnterItem={handleMouseEnterItem}
           />
 
           <SidebarItem
@@ -244,6 +273,8 @@ const SidePannelFeatures = () => {
             setIsSidebarHovered={setIsSidebarHovered}
             url="/text-to-video"
             onClick={() => nav('/text-to-video')}
+            id="video"
+            onMouseEnterItem={handleMouseEnterItem}
           />
 
           <SidebarItem
@@ -253,6 +284,8 @@ const SidePannelFeatures = () => {
             setIsSidebarHovered={setIsSidebarHovered}
             url="/text-to-music"
             onClick={() => nav('/text-to-music')}
+            id="audio"
+            onMouseEnterItem={handleMouseEnterItem}
           />
 
 
@@ -337,6 +370,28 @@ const SidePannelFeatures = () => {
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
+
+      {/* Render Desktop Portals for Hover Popouts */}
+      <ImagePopout
+        isVisible={activePopout === 'image'}
+        onMouseEnter={() => handleMouseEnterItem('image')}
+        onMouseLeave={handleMouseLeaveSidebar}
+      />
+      <VideoPopout
+        isVisible={activePopout === 'video'}
+        onMouseEnter={() => handleMouseEnterItem('video')}
+        onMouseLeave={handleMouseLeaveSidebar}
+      />
+      <AudioPopout
+        isVisible={activePopout === 'audio'}
+        onMouseEnter={() => handleMouseEnterItem('audio')}
+        onMouseLeave={handleMouseLeaveSidebar}
+      />
+      <AppsPopout
+        isVisible={activePopout === 'apps'}
+        onMouseEnter={() => handleMouseEnterItem('apps')}
+        onMouseLeave={handleMouseLeaveSidebar}
+      />
     </>
   );
 };

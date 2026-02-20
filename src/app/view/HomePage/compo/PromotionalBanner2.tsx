@@ -538,7 +538,7 @@ export default function PromotionalBanner2() {
                                 ))}
                               </div>
 
-                              <div className="px-3 pb-3 grid grid-cols-3 gap-2 max-h-52 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                              <div className="px-3 pb-3 pt-2 grid grid-cols-3 gap-2 max-h-52 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                                 {filteredModels.map((model) => (
                                   <button key={model.id} type="button" onClick={() => handleModelSelect(model)}
                                     className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all group ${selectedModelId === model.id
