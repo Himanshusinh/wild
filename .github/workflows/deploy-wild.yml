@@ -31,7 +31,15 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Write .env.production
-        run: echo "${{ secrets.WILD_ENV_PRODUCTION }}" > .env.production
+        env:
+          WILD_ENV_PRODUCTION: ${{ secrets.WILD_ENV_PRODUCTION }}
+        run: |
+          if [ -z "$WILD_ENV_PRODUCTION" ]; then
+            echo "❌ ERROR: WILD_ENV_PRODUCTION secret is empty or not set!"
+            exit 1
+          fi
+          printf '%s' "$WILD_ENV_PRODUCTION" > .env.production
+          echo "✅ .env.production written ($(wc -l < .env.production) lines)"
 
       - name: Build & Push to ECR
         run: |

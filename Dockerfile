@@ -11,12 +11,7 @@ COPY . .
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build-time environment variables
-ARG NEXT_PUBLIC_CANVAS_URL
-ENV NEXT_PUBLIC_CANVAS_URL=$NEXT_PUBLIC_CANVAS_URL
-ARG NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-
+# Build-time env vars come from .env.production (written by CI before docker build)
 RUN npm run build
 
 # --- Runner ---
