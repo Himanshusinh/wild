@@ -153,44 +153,9 @@ const InputBox = () => {
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
 
-  // Check for auto-resume intent on mount
-  useEffect(() => {
-    if (!userData) return;
 
-    const intent = getAutoResumeIntent();
-    if (intent && intent.type === 'image') {
-      const { data } = intent;
-      console.log('[AutoResume] Found image intent, restoring state:', data);
 
-      if (data.prompt) dispatch(setPrompt(data.prompt));
-      if (data.model) dispatch(setSelectedModel(data.model));
-      if (data.imageCount) dispatch(setImageCount(data.imageCount));
-      if (data.frameSize) dispatch(setFrameSize(data.frameSize));
-      if (data.style) dispatch(setStyle(data.style));
-      if (data.uploadedImages) dispatch(setUploadedImages(data.uploadedImages));
-      if (data.selectedCharacters && Array.isArray(data.selectedCharacters)) {
-        data.selectedCharacters.forEach((char: any) => {
-          dispatch(addSelectedCharacter(char));
-        });
-      }
 
-      clearAutoResumeIntent();
-
-      // Auto-trigger generation after a short delay to ensure Redux state is updated
-      setTimeout(() => {
-        // Find the desktop generate button to click it, or just call handleGenerate directly
-        // handleGenerate is inside the component, so we can call it.
-        // We just need to create a generationId first as the button does.
-        const activeCount = 0; // We don't have runningGenerationsCount here yet, it's defined later
-        // Actually, runningGenerationsCount is defined via useMemo later.
-        // Let's just restore the state for now, maybe auto-triggering is too aggressive?
-        // No, the user wants it to automatically resume.
-        // I'll call handleGenerate directly.
-
-        // Wait, I need runningGenerationsCount. I'll move this useEffect after it's defined.
-      }, 1000);
-    }
-  }, [userData, dispatch]);
 
   // If user just logged in and the URL requests opening the external image editor, do it once.
   useEffect(() => {
@@ -241,8 +206,7 @@ const InputBox = () => {
   }, []);
 
   // Local state setter kept for backward compatibility (parallel generation uses Redux `activeGenerations`)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [, setIsGeneratingLocally] = useState(false);
+  const [isGeneratingLocally, setIsGeneratingLocally] = useState(false);
 
   // Track which images have loaded to hide shimmer effect
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
@@ -251,6 +215,9 @@ const InputBox = () => {
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
+
+  // Sync ref for handleGenerate to avoid stale closure issues in timeouts/effects
+  const handleGenerateRef = useRef<any>(null);
 
   // Redux selector for parallel generation support
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
@@ -444,6 +411,7 @@ const InputBox = () => {
           // Normalize known backend → UI mappings
           if (m === 'bytedance/seedream-4') return 'seedream-v4';
           if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
+          if (m === 'z-image-turbo') return 'new-turbo-model';
           return m;
         };
         dispatch(setSelectedModel(mapIncomingModel(mdl)));
@@ -2443,7 +2411,9 @@ const InputBox = () => {
 
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
     // This ensures the loader shows instantly when the button is clicked
+    console.log('[DEBUG handleGenerate] START', { generationId, model: selectedModel, prompt: prompt.slice(0, 30) });
     setIsGeneratingLocally(true);
+    postGenerationBlockRef.current = true;
 
     // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
     postGenerationBlockRef.current = true;
@@ -2505,8 +2475,10 @@ const InputBox = () => {
     // Validate and reserve credits before generation
     let transactionId: string;
     try {
+      console.log('[DEBUG handleGenerate] Validating credits for:', selectedModel);
       const creditResult = await validateAndReserveCredits();
       transactionId = creditResult.transactionId;
+      console.log('[DEBUG handleGenerate] Credits reserved, transactionId:', transactionId);
     } catch (creditError: any) {
       toast.error(creditError.message || 'Insufficient credits for generation');
       setIsGeneratingLocally(false);
@@ -2578,7 +2550,6 @@ const InputBox = () => {
         });
       });
     });
-
     // No local writes to global history; backend tracks persistent history
 
 
@@ -3335,7 +3306,7 @@ const InputBox = () => {
           });
           return;
         }
-      } else if (selectedModel === 'gemini-25-flash-image') {
+      } else if (selectedModel === 'gemini-25-flash-image' || selectedModel === 'google/nano-banana-pro') {
         // FAL Gemini (Nano Banana) immediate generate flow (align with BFL)
         try {
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
@@ -3349,6 +3320,7 @@ const InputBox = () => {
             aspect_ratio: frameSize as any,
             uploadedImages: combinedImages.map((u: string) => toAbsoluteFromProxy(u)),
             output_format: 'jpeg',
+            resolution: nanoBananaProResolution,
             generationType: 'text-to-image',
             isPublic,
           })).unwrap();
@@ -4850,10 +4822,13 @@ const InputBox = () => {
       } else if (selectedModel === 'new-turbo-model') {
         // New Turbo Model via replicate generate endpoint - single request with num_images
         try {
+          console.log('[DEBUG handleGenerate] new-turbo-model branch started');
           const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
 
           // Calculate dimensions based on frame size, keeping under 1MP and divisible by 16
+          console.log('[DEBUG handleGenerate] Calculating dimensions for frameSize:', frameSize);
           const dimensions = convertFrameSizeToZTurboDimensions(frameSize || '1:1');
+          console.log('[DEBUG handleGenerate] Dimensions:', dimensions);
           const width = dimensions.width;
           const height = dimensions.height;
 
@@ -4870,7 +4845,9 @@ const InputBox = () => {
             num_images: Math.min(imageCount, 4), // Cap at 4 like other models
           };
 
+          console.log('[DEBUG handleGenerate] Dispatching replicateGenerate with payload:', payload);
           const result = await dispatch(replicateGenerate(payload)).unwrap();
+          console.log('[DEBUG handleGenerate] replicateGenerate result:', result);
 
           // All images should be in the result.images array from single request
           const allImages = result.images || [];
@@ -5137,9 +5114,11 @@ const InputBox = () => {
             }
           }
 
+          console.log('[DEBUG handleGenerate] Dispatching generateImages with payload:', generationPayload);
           const result = await dispatch(
             generateImages(generationPayload)
           ).unwrap();
+          console.log('[DEBUG handleGenerate] generateImages SUCCESS:', result);
 
           // Persist source uploads for Qwen image-edit so the Preview Modal can show the input image(s)
           try {
@@ -5336,6 +5315,14 @@ const InputBox = () => {
       setIsEnhancing(false);
     }
   };
+  handleGenerateRef.current = handleGenerate;
+
+  // Mark that we've attempted initial load once loading starts or completes
+  useEffect(() => {
+    if (loading || historyEntries.length > 0) {
+      hasAttemptedInitialLoadRef.current = true;
+    }
+  }, [loading, historyEntries.length]);
 
 
   // Check for auto-resume intent on mount
@@ -5398,8 +5385,10 @@ const InputBox = () => {
       console.log('[AutoResume] - Can trigger:', data.prompt && runningGenerationsCount < 4);
 
       if (data.prompt && runningGenerationsCount < 4) {
-        console.log('[AutoResume] 🚀 AUTO-TRIGGERING GENERATION!');
+        console.log('[AutoResume] 🚀 AUTO-TRIGGERING GENERATION WITH QUEUE FEEDBACK!');
         const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+        // Ensure imageOnlyActiveGenerations will include this by adding proper metadata
         dispatch(addActiveGeneration({
           id: generationId,
           prompt: data.prompt,
@@ -5407,16 +5396,23 @@ const InputBox = () => {
           status: 'pending',
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          generationType: 'text-to-image', // Top-level for filtering
           params: {
             imageCount: data.imageCount || imageCount,
             frameSize: data.frameSize || frameSize,
             style: data.style || style,
-            uploadedImages: data.uploadedImages || []
+            uploadedImages: data.uploadedImages || [],
+            generationType: 'text-to-image'
           }
         }));
-        // Trigger generation directly without relying on handleGenerate in dependencies
-        console.log('[AutoResume] Calling handleGenerate with ID:', generationId);
-        handleGenerate(generationId);
+
+        // Trigger generation directly via Ref (avoids stale closure)
+        console.log('[AutoResume] Calling handleGenerate with ID via Ref:', generationId);
+        if (handleGenerateRef.current) {
+          handleGenerateRef.current(generationId);
+        } else {
+          handleGenerate(generationId);
+        }
       } else {
         console.log('[AutoResume] ❌ Conditions not met for auto-trigger');
         if (!data.prompt) console.log('[AutoResume] - Missing prompt');
@@ -6077,6 +6073,7 @@ const InputBox = () => {
                   </div>
                 );
               } else {
+
                 return (
                   <div
                     key={`img-${item.index}`}
@@ -6597,6 +6594,7 @@ const InputBox = () => {
                         status: 'pending',
                         createdAt: Date.now(),
                         updatedAt: Date.now(),
+                        generationType: 'text-to-image', // Added at top level
                         params: {
                           imageCount,
                           frameSize,
@@ -6606,9 +6604,10 @@ const InputBox = () => {
                       }));
 
                       // Trigger the actual generation logic (fire and forget to not block button)
+                      console.log('[DEBUG handleGenerate] Triggering handleGenerate (Desktop) for:', generationId);
                       handleGenerate(generationId);
                     } catch (e) {
-                      console.error('Failed to start generation:', e);
+                      console.error('Failed to start generation (Desktop):', e);
                     }
                   }}
                   disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
@@ -6666,6 +6665,7 @@ const InputBox = () => {
                         status: 'pending',
                         createdAt: Date.now(),
                         updatedAt: Date.now(),
+                        generationType: 'text-to-image', // Added at top level
                         params: {
                           imageCount,
                           frameSize,
@@ -6674,6 +6674,7 @@ const InputBox = () => {
                         }
                       }));
 
+                      console.log('[DEBUG handleGenerate] Triggering handleGenerate for:', generationId);
                       handleGenerate(generationId);
                     } catch (e) {
                       console.error('Failed to start generation:', e);
@@ -6695,7 +6696,7 @@ const InputBox = () => {
                 <LucidOriginOptions />
                 <PhoenixOptions />
                 <FileTypeDropdown />
-                {selectedModel === 'google/nano-banana-pro' && (
+                {(selectedModel === 'google/nano-banana-pro' || selectedModel === 'gemini-25-flash-image') && (
                   <div className="flex items-center gap-2 relative">
                     <ResolutionDropdown
                       resolution={nanoBananaProResolution}
@@ -6806,7 +6807,7 @@ const InputBox = () => {
                   <LucidOriginOptions />
                   <PhoenixOptions />
                   <FileTypeDropdown />
-                  {selectedModel === 'google/nano-banana-pro' && (
+                  {(selectedModel === 'google/nano-banana-pro' || selectedModel === 'gemini-25-flash-image') && (
                     <div className="flex items-center gap-2 relative">
                       <ResolutionDropdown
                         resolution={nanoBananaProResolution}

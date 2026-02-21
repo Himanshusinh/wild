@@ -115,6 +115,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [libraryVideoLoading, setLibraryVideoLoading] = useState<boolean>(false);
   const libraryVideoNextCursorRef = useRef<string | undefined>(undefined);
   const libraryVideoInitRef = useRef<boolean>(false);
+  const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
 
   // State restoration for auto-resume
   useEffect(() => {
@@ -136,6 +137,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       if (data.runwayActTwoCharacterType) setRunwayActTwoCharacterType(data.runwayActTwoCharacterType);
 
       clearAutoResumeIntent();
+
+      // Auto-trigger generation after a short delay
+      setTimeout(() => {
+        setShouldAutoGenerate(true);
+      }, 500);
     }
   }, [user]);
 
@@ -1187,6 +1193,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
   // Handle generate
   const handleGenerate = useCallback(async () => {
+    console.log('[DEBUG AnimateInputBox] handleGenerate triggered');
     if (!user) {
       saveAutoResumeIntent('video', {
         isAnimate: true,
@@ -1243,7 +1250,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     setIsGenerating(true);
     setError("");
-
+    console.log('[DEBUG AnimateInputBox] state before API call:', {
+      selectedModel,
+      isRunwayModel,
+      uploadedVideo,
+      uploadedCharacterImage,
+      liveCreditCost
+    });
     try {
       const api = getApiClient();
 
@@ -1726,6 +1739,30 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     runwayActTwoBodyControl,
     runwayActTwoExpressionIntensity,
   ]);
+
+  // Effect to trigger auto-generation when flag is set
+  // Effect to trigger auto-generation when flag is set
+  useEffect(() => {
+    if (shouldAutoGenerate && !isGenerating) {
+      console.log('[AnimateInputBox] Auto-triggering generation...');
+      setShouldAutoGenerate(false);
+
+      // Set initial loading state for UI feedback immediately
+      setLocalVideoPreview({
+        id: `auto-gen-pending-${Date.now()}`,
+        prompt: prompt || "Auto generation",
+        model: selectedModel,
+        generationType: "video-to-video",
+        images: [],
+        status: 'generating',
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 1
+      } as any);
+
+      handleGenerate();
+    }
+  }, [shouldAutoGenerate, isGenerating, handleGenerate, prompt, selectedModel]);
 
   return (
     <React.Fragment>

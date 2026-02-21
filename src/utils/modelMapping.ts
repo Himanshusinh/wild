@@ -6,7 +6,7 @@
 export interface ModelMapping {
   frontendValue: string;
   creditModelName: string;
-  generationType: 'image' | 'video' | 'music' | 'sfx' | 'text-to-dialogue' ;
+  generationType: 'image' | 'video' | 'music' | 'sfx' | 'text-to-dialogue';
   provider: string;
   options?: {
     [key: string]: string[] | number[] | undefined;
@@ -28,6 +28,12 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'FLUX.1 Kontext [pro]',
     generationType: 'image',
     provider: 'bfl'
+  },
+  {
+    frontendValue: 'gpt-5-nano',
+    creditModelName: 'GPT-5 Nano',
+    generationType: 'image', // It's text/chat but mapped as image/generic for now or new type 'text'
+    provider: 'openai'
   },
   {
     frontendValue: 'flux-kontext-max',
@@ -231,7 +237,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
   // TODO: Update model identifier and credit model name with actual values
   {
     frontendValue: 'new-turbo-model',
-    creditModelName: 'New Turbo Model', // TODO: Update with actual credit model name from creditDistribution.ts
+    creditModelName: 'Z Image Turbo',
     generationType: 'image',
     provider: 'replicate'
   },
@@ -460,7 +466,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: 'video',
     provider: 'fal'
   },
-  
+
   // WAN 2.5 Standard Models
   {
     frontendValue: 'wan-2.5-t2v',
@@ -482,7 +488,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
       duration: [5, 10]
     }
   },
-  
+
   // Kling Models (Replicate)
   {
     frontendValue: 'kling-2.6-pro',
@@ -562,7 +568,7 @@ export const MODEL_MAPPING: ModelMapping[] = [
       frames_per_second: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60]
     }
   },
-  
+
   // WAN 2.5 Fast Models
   {
     frontendValue: 'wan-2.5-t2v-fast',
@@ -751,28 +757,28 @@ export const MODEL_MAPPING: ModelMapping[] = [
     creditModelName: 'LTX V2 Pro T2V', // priced dynamically via getCreditsForModel
     generationType: 'video',
     provider: 'fal',
-    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+    options: { resolution: ['1080p', '1440p', '2160p'], duration: [6, 8, 10] }
   },
   {
     frontendValue: 'ltx2-fast-t2v',
     creditModelName: 'LTX V2 Fast T2V',
     generationType: 'video',
     provider: 'fal',
-    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+    options: { resolution: ['1080p', '1440p', '2160p'], duration: [6, 8, 10] }
   },
   {
     frontendValue: 'ltx2-pro-i2v',
     creditModelName: 'LTX V2 Pro I2V',
     generationType: 'video',
     provider: 'fal',
-    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+    options: { resolution: ['1080p', '1440p', '2160p'], duration: [6, 8, 10] }
   },
   {
     frontendValue: 'ltx2-fast-i2v',
     creditModelName: 'LTX V2 Fast I2V',
     generationType: 'video',
     provider: 'fal',
-    options: { resolution: ['1080p','1440p','2160p'], duration: [6,8,10] }
+    options: { resolution: ['1080p', '1440p', '2160p'], duration: [6, 8, 10] }
   },
 
   // MUSIC GENERATION MODELS
@@ -1094,7 +1100,7 @@ export const buildCreditModelName = (
     const isPro = mapping.frontendValue.includes('pro');
     const isV2V = mapping.frontendValue.includes('v2v');
     const isI2V = mapping.frontendValue.includes('i2v');
-    
+
     if (isV2V) {
       // V2V Remix uses source video's duration and resolution (handled by backend)
       // No duration/resolution needed for credit model name
@@ -1158,7 +1164,7 @@ export const buildCreditModelName = (
   else if (mapping.frontendValue === 'flux-2-pro') {
     const hasImages = options?.frameSize !== undefined && (options as any).uploadedImages?.length > 0;
     const isI2I = hasImages || (options as any).hasUploadedImages === true;
-    
+
     // Special case: 9:16 portrait defaults to 1024x2048 (costs $0.05) unless 2K is explicitly selected
     if (options?.frameSize === '9:16' && options?.resolution !== '2K') {
       modelName = isI2I ? 'FLUX.2 [pro] I2I 1080p' : 'Flux 2 Pro 1024x2048';

@@ -35,6 +35,7 @@ import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo
 import VideoUploadModal from "./VideoUploadModal";
 import { getVideoCreditCost } from "@/utils/creditValidation";
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 // Extend window interface for temporary video data storage
 declare global {
@@ -111,13 +112,60 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [frameSize, setFrameSize] = usePersistedGenerationState("frameSize", "16:9", "text-to-video");
   const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
   const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
   const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
+
+
 
   // Reset scroll to top when entering Video Generation (prevents landing mid-feed on tab switch)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
+
+  // State restoration for auto-resume (e.g. from Home Page)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const intent = getAutoResumeIntent();
+    console.log('[Video InputBox] Checking for auto-resume intent...', !!intent);
+    // Handle both 'video' (Animate) and general prompt intents
+    if (intent && (intent.type === 'video' || intent.type === 'image')) {
+      console.log('[Video InputBox] Found intent, restoring state:', intent);
+      const data = intent.data;
+      if (data.prompt) {
+        console.log('[Video InputBox] Restoring prompt:', data.prompt);
+        setPrompt(data.prompt);
+      }
+      if (data.selectedModel) {
+        console.log('[Video InputBox] Restoring model:', data.selectedModel);
+        setSelectedModel(data.selectedModel);
+      }
+
+      // Clear intent and trigger generation after a short delay
+      clearAutoResumeIntent();
+      console.log('[Video InputBox] Intent cleared, scheduling auto-generation...');
+      setTimeout(() => {
+        console.log('[Video InputBox] Timer expired, setting shouldAutoGenerate=true');
+        setShouldAutoGenerate(true);
+      }, 1000);
+    }
+  }, [user]);
+
+  // Handle auto-triggering generation
+  useEffect(() => {
+    console.log('[Video InputBox] Auto-trigger watchdog:', { shouldAutoGenerate, isGenerating, promptLength: prompt?.length });
+    if (shouldAutoGenerate && !isGenerating && prompt) {
+      console.log('[Video InputBox] CONDITIONS MET: Auto-triggering handleGenerate()');
+      setShouldAutoGenerate(false);
+      handleGenerate();
+    } else if (shouldAutoGenerate) {
+      console.log('[Video InputBox] CONDITIONS NOT MET for auto-trigger:', {
+        isGenerating,
+        hasPrompt: !!prompt,
+        reason: !prompt ? 'Missing prompt' : (isGenerating ? 'Already generating' : 'Unknown')
+      });
+    }
+  }, [shouldAutoGenerate, isGenerating, prompt]);
 
   // Debug uploadedImages changes
   useEffect(() => {
@@ -1004,6 +1052,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loading = useAppSelector((state: any) => state.history?.loading || false);
   const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
   const [page, setPage] = useState(1);
+
+  // Redux & Filter State
+  const activeGenerations = useAppSelector((state: any) => state.generation?.activeGenerations || []);
+  const runningGenerationsCount = activeGenerations.filter((g: any) => g.status === 'pending' || g.status === 'generating').length;
+
+  console.log('[InputBox DEBUG] activeGenerations:', activeGenerations.length, activeGenerations);
 
   // Read search, sort, and date filters from Redux (managed by HistoryControls)
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
@@ -2221,40 +2275,99 @@ const InputBox = (props: InputBoxProps = {}) => {
     // setError("");
   };
 
+  // Filter Handlers for HistorySection
+  const onSearchChange = (query: string) => {
+    // Local state removed, relying on Redux
+    dispatch(setFilters({
+      ...currentFilters,
+      search: query,
+      mode: 'video'
+    }));
+  };
+
+  const onSortOrderChange = (sort: any) => {
+    const order = typeof sort === 'string' ? sort : sort?.value || 'desc';
+    dispatch(setFilters({
+      ...currentFilters,
+      sortOrder: order,
+      mode: 'video'
+    }));
+
+    dispatch(loadHistory({
+      filters: { mode: 'video', sortOrder: order, ...(searchQuery ? { search: searchQuery } : {}) } as any,
+      paginationParams: { limit: 20 },
+      requestOrigin: 'sort_change',
+      expectedType: 'text-to-video'
+    } as any));
+  };
+
+  const onDateRangeChange = (range: any) => {
+    // Local state removed, relying on Redux
+    const dateFilter = range?.start && range?.end ? {
+      start: range.start.toISOString(),
+      end: range.end.toISOString()
+    } : undefined;
+
+    dispatch(setFilters({
+      ...currentFilters,
+      dateRange: dateFilter,
+      mode: 'video'
+    }));
+
+    dispatch(loadHistory({
+      filters: {
+        mode: 'video',
+        sortOrder: currentFilters?.sortOrder || 'desc',
+        ...(dateFilter ? { dateRange: dateFilter } : {}),
+        ...(searchQuery ? { search: searchQuery } : {})
+      } as any,
+      paginationParams: { limit: 20 },
+      requestOrigin: 'date_change',
+      expectedType: 'text-to-video'
+    } as any));
+  };
+
   // Handle video generation
-  // Redux selector for parallel generation support
-  const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
-  const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
+
 
   const handleGenerate = async () => {
+    console.log('[DEBUG VideoGeneration InputBox] handleGenerate triggered');
     // CRITICAL: Check authentication FIRST before any other validation
     if (!user) {
-      console.log('[VideoGeneration] User not authenticated, redirecting to sign-in');
-      router.push(getSignInUrl());
+      console.log('[VideoGeneration] User not authenticated, saving intent and redirecting to sign-in');
+      saveAutoResumeIntent('video', {
+        isTextToVideo: true,
+        prompt,
+        model: selectedModel,
+        aspectRatio: frameSize
+      });
+      router.push('/login?redirect=/text-to-video');
       return;
     }
 
     if (!prompt.trim()) {
-      toast.error('Please enter a prompt');
+      setError("Please enter a prompt");
       return;
     }
 
-    // Check parallel generation limit (only counting running ones)
-    if (runningGenerationsCount >= 4) {
-      toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+    // Check if we already have too many running generations
+    if (runningGenerationsCount >= 3) {
+      setError("You have reached the maximum number of concurrent generations (3). Please wait for one to finish.");
       return;
     }
 
-    // Create tracking ID for queue
-    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setIsGenerating(true);
+    setError("");
 
-    // Add to active generations queue immediately
-    console.log('[queue] Adding new video generation to queue:', { generationId, model: selectedModel, prompt: prompt.slice(0, 50) });
+    const optimisticId = `gen-${Date.now()}`;
+    let generationId = optimisticId;
+    // Optimistic active generation
     dispatch(addActiveGeneration({
-      id: generationId,
-      prompt: prompt,
+      id: optimisticId,
+      prompt: prompt.trim(),
       model: selectedModel,
       status: 'pending',
+      generationType: 'text-to-video',
       createdAt: Date.now(),
       updatedAt: Date.now(),
       params: {
@@ -2266,13 +2379,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     }));
 
-    console.log('🚀 Starting video generation with:');
-    console.log('🚀 - Selected model:', selectedModel);
-    console.log('🚀 - Generation mode:', generationMode);
-    console.log('🚀 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
-    console.log('🚀 - Is Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
+    // Variables for generation logic
+    let apiEndpoint = '';
+    let requestBody: any = {};
+    let generationType: any = 'text-to-video';
 
-    // Get current model capabilities
+    // Continue with validation and API call logic...
     const caps = currentModelCapabilities;
 
     // Validate I2V-only models require image (Kling 2.1 non-master, Gen-4 Turbo, Gen-3a Turbo)
@@ -4910,10 +5022,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           loadMore={loadMore}
           onDeleteVideo={handleDeleteVideo}
           onVideoClick={handleVideoClick}
-          localVideoPreview={localVideoPreview}
-          onSearch={() => { }}
-          onSortChange={() => { }}
-          onDateChange={() => { }}
+          activeGenerations={activeGenerations}
+          onSearch={onSearchChange}
+          onSortChange={onSortOrderChange}
+          onDateChange={onDateRangeChange}
         />
       ) : (
         <VideoGenerationGuide />

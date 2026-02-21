@@ -36,7 +36,7 @@ export const normalizeGenerationType = (generationType: string | undefined): str
  * Check if the entry is a video generation type
  */
 export const isVideoType = (entry: any): boolean => {
-  const normalizedType = normalizeGenerationType(entry?.generationType);
+  const normalizedType = normalizeGenerationType(entry?.generationType || entry?.params?.generationType);
   return [
     'text-to-video',
     'image-to-video',

@@ -260,6 +260,7 @@ const VideoGenerationInputBox = () => {
 
   // Handle generation
   const handleGenerate = async () => {
+    console.log('[DEBUG VideoGenerationInputBox] handleGenerate triggered');
     if (!userData) {
       saveAutoResumeIntent('video', {
         state: state
@@ -290,6 +291,7 @@ const VideoGenerationInputBox = () => {
       prompt: currentPrompt,
       model: currentModel,
       status: 'pending',
+      generationType: 'text-to-video',
       createdAt: Date.now(),
       updatedAt: Date.now(),
       params: {
@@ -440,8 +442,8 @@ const VideoGenerationInputBox = () => {
           <button
             onClick={() => setState(prev => ({ ...prev, mode: 'image_to_video' }))}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${state.mode === 'image_to_video'
-                ? 'bg-white text-black'
-                : 'text-white hover:bg-white/10'
+              ? 'bg-white text-black'
+              : 'text-white hover:bg-white/10'
               }`}
           >
             Image → Video
@@ -449,8 +451,8 @@ const VideoGenerationInputBox = () => {
           <button
             onClick={() => setState(prev => ({ ...prev, mode: 'video_to_video' }))}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${state.mode === 'video_to_video'
-                ? 'bg-white text-black'
-                : 'text-white hover:bg-white/10'
+              ? 'bg-white text-black'
+              : 'text-white hover:bg-white/10'
               }`}
           >
             Video → Video
@@ -848,8 +850,8 @@ const VideoGenerationInputBox = () => {
           onClick={handleGenerate}
           disabled={isGenerateDisabled() || isGenerating}
           className={`px-8 py-3 rounded-lg font-medium text-lg transition-all ${isGenerateDisabled() || isGenerating
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl'
+            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl'
             }`}
         >
           {isGenerating ? (
