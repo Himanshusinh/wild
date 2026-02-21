@@ -25,7 +25,7 @@ export const bflGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           (payload as any).isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       const res = await api.post('/api/bfl/generate', payload);
       return res.data?.data || res.data;
@@ -47,7 +47,7 @@ export const runwayGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           body.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       const res = await api.post('/api/runway/generate', body);
       return res.data?.data || res.data;
@@ -92,7 +92,7 @@ export const minimaxGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           payload.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       const res = await api.post('/api/minimax/generate', payload);
       return res.data?.data || res.data;
@@ -138,7 +138,7 @@ export const falGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           payload.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       // FAL generate can take up to 7+ minutes for some models, so use extended timeout
       const res = await api.post('/api/fal/generate', payload, {
@@ -149,7 +149,7 @@ export const falGenerate = createAsyncThunk(
       // Extract structured error information
       const { extractFalErrorDetails } = await import('@/lib/falToast');
       const errorDetails = extractFalErrorDetails(e);
-      
+
       // Return structured error with all details
       const errorPayload: any = {
         message: errorDetails?.message || e?.response?.data?.message || e?.message || 'FAL generate failed',
@@ -160,7 +160,7 @@ export const falGenerate = createAsyncThunk(
         url: errorDetails?.detail?.[0]?.url,
         raw: e,
       };
-      
+
       return rejectWithValue(errorPayload);
     }
   }
@@ -199,20 +199,24 @@ export const replicateGenerate = createAsyncThunk(
   'generations/replicateGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
+      console.log('[replicateGenerate] START', payload);
       try {
         if (typeof payload?.isPublic !== 'boolean') {
           const mod = await import('@/lib/publicFlag');
           payload.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
+      console.log('[replicateGenerate] POST /api/replicate/generate', payload);
       const res = await api.post('/api/replicate/generate', payload);
+      console.log('[replicateGenerate] RESPONSE', res.data);
       return res.data?.data || res.data;
     } catch (e: any) {
+      console.error('[replicateGenerate] ERROR', e);
       // Extract structured error information
       const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
       const errorDetails = extractReplicateErrorDetails(e);
-      
+
       // Return structured error with all details
       const errorPayload: any = {
         message: errorDetails?.message || e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Replicate generate failed',
@@ -221,7 +225,7 @@ export const replicateGenerate = createAsyncThunk(
         retryable: errorDetails?.retryable,
         raw: e,
       };
-      
+
       return rejectWithValue(errorPayload);
     }
   }

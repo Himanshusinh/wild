@@ -14,25 +14,28 @@ import { getImageUrl, API_BASE, imageRoutes } from './routes'
 import dynamic from 'next/dynamic'
 
 const Second = dynamic(() => import('./compo/Second'), {
-  loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+    loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
 })
 const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
-  loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
+    loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
 const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
-  ssr: false
+    ssr: false
 })
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
-  loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
+    loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
 const CommunityCreations = dynamic(() => import('./compo/CommunityCreations').then(mod => ({ default: mod.default })), {
-  loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+    loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
+})
+const TopCreators = dynamic(() => import('./compo/TopCreators'), {
+    loading: () => <div className="h-32 animate-pulse bg-white/5 rounded-lg" />
 })
 const WobbleCard = dynamic(() => import('../Landingpage/components/wobble-card').then(mod => ({ default: mod.WobbleCard })), {
-  loading: () => <div className="h-[500px] animate-pulse bg-white/5 rounded-lg" />
+    loading: () => <div className="h-[500px] animate-pulse bg-white/5 rounded-lg" />
 })
 const FooterNew = dynamic(() => import('../core/FooterNew'), {
-  loading: () => <div className="h-32 animate-pulse bg-white/5 rounded-lg" />
+    loading: () => <div className="h-32 animate-pulse bg-white/5 rounded-lg" />
 })
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
@@ -41,332 +44,347 @@ import PromotionalBanner2 from './compo/PromotionalBanner2';
 import AIToolsSection from './compo/AIToolsSection';
 
 import CompactFeatureStrip from './CompactFeatureStrip';
+import AllFeatures from './compo/AllFeatures';
+import AllModels from './compo/AllModels';
+import WildMindAIAPPS from './compo/WildMindAIAPPS';
+
+
 
 const HomePage: React.FC = () => {
-  const router = useRouter();
-  const [currentView, setCurrentView] = useState<ViewType>('home');
-  const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
-  const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const router = useRouter();
+    const [currentView, setCurrentView] = useState<ViewType>('home');
+    const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
+    const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-  const onViewChange = (view: ViewType) => {
-    setCurrentView(view);
-    switch (view) {
-      case 'landing':
-        router.push('/view/Landingpage');
-        break;
-      case 'home':
-        router.push('/view/HomePage');
-        break;
-      case 'history':
-        router.push('/history');
-        break;
-      case 'bookmarks':
-        router.push('/bookmarks');
-        break;
-      case 'generation':
-      default:
-        router.push('/text-to-image');
-        break;
-    }
-  };
-
-  const onGenerationTypeChange = (type: GenerationType) => {
-    setCurrentGenerationType(type);
-    router.push(`/${type}`);
-  };
-
-  // Check for first-time user and show welcome modal
-  useEffect(() => {
-    const checkFirstTimeUser = () => {
-      // Check if user has seen the welcome modal before
-      const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
-
-      if (!hasSeenWelcome) {
-        // Show welcome modal after a short delay
-        const timer = setTimeout(() => {
-          setShowWelcomeModal(true);
-          // Mark as seen
-          localStorage.setItem('hasSeenWelcomeModal', 'true');
-        }, 2000); // 2 second delay
-
-        return () => clearTimeout(timer);
-      }
+    const onViewChange = (view: ViewType) => {
+        setCurrentView(view);
+        switch (view) {
+            case 'landing':
+                router.push('/view/Landingpage');
+                break;
+            case 'home':
+                router.push('/view/HomePage');
+                break;
+            case 'history':
+                router.push('/history');
+                break;
+            case 'bookmarks':
+                router.push('/bookmarks');
+                break;
+            case 'generation':
+            default:
+                router.push('/text-to-image');
+                break;
+        }
     };
 
-    checkFirstTimeUser();
-  }, []);
+    const onGenerationTypeChange = (type: GenerationType) => {
+        setCurrentGenerationType(type);
+        router.push(`/${type}`);
+    };
 
-  // Show deferred toast from login (set in signup/signin flow)
-  useEffect(() => {
-    try {
-      const msg = localStorage.getItem('toastMessage');
-      if (msg === 'LOGIN_SUCCESS') {
-        // Clear the flag immediately to prevent duplicate toasts
-        localStorage.removeItem('toastMessage');
-        const t = setTimeout(() => {
-          try { toast.success('Welcome back! You\'re logged in successfully.', { duration: 3000 }) } catch {}
-        }, 500);
-        return () => clearTimeout(t);
-      }
-    } catch {}
-  }, []);
+    // Check for first-time user and show welcome modal
+    useEffect(() => {
+        const checkFirstTimeUser = () => {
+            // Check if user has seen the welcome modal before
+            const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
 
-  const CARDS: WorkflowCard[] = [
-    {
-      id: "Designing",
-      title: "Designing",
-      description:
-        "Boost your creative workflow with AI-powered design tools and premium digital assets that save time and maximize productivity. Eliminate repetitive tasks, customize designs instantly, and ensure every project stays consistent, secure, and on-brand. Whether you’re a designer, marketer, or business owner, our smart tools help you work faster, focus on what matters, and deliver high-quality results – without extra effort",
-      subtitle: "Keep Every Asset On-Brand with Wild Mind’s Branding Kit",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'designing'),
-    },
-    {
-      id: "Film Making",
-      title: "Film Making",
-      description:
-        "Accelerate your filmmaking process with AI-powered video tools built for creators by Wild Mind. Upscale footage instantly for streaming, presentations, or final delivery without expensive setups. Generate realistic voiceovers to test edits or polish trailers—no studio required. Quickly create storyboards, shot mockups, and concept art to plan scenes and visualize ideas faster. With AI handling the technical heavy lifting, filmmakers can focus on storytelling and creativity.",
-      subtitle: "From Concept to Final Cut",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'filmMaking'),
-    },
-    {
-      id: "Printing",
-      title: "Printing",
-      description:
-        "Prepare flawless, print-ready designs in seconds with AI. Automatically resize, retouch, and format images for business cards, posters, packaging, or merchandise—all while preserving quality. Eliminate manual prep with tools that generate high-resolution outputs optimized for print, ensuring colors, details, and layouts stay sharp and professional. Whether you’re producing marketing collateral or creative projects, our AI helps you move from concept to final print seamlessly.",
-      subtitle: "Print-Ready Visuals Without the Hassle",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'printing'),
-    },
-    {
-      id: "Branding",
-      title: "Branding",
-      description:
-        "Strengthen your identity with AI-powered branding tools that ensure consistency across every campaign. Instantly generate logos, brand mockups, and style assets tailored to your guidelines. Use Wild Mind’s Branding Kit to keep fonts, colors, and design elements unified across marketing visuals, social media posts, and presentations. From fresh brand concepts to polished assets, our AI keeps every creation aligned, recognizable, and professional—without extra effort.",
-      subtitle: "Creative workfloKeep Every Asset On-Brand with Wild Mind’s Branding Kit",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'branding'),
-    },
-    {
-      id: "Content Creation",
-      title: "Content Creation",
-      description:
-        "Stand out on every platform with AI-powered content creation tools designed for YouTube, TikTok, Reels, and beyond. Animate images, add AI-generated voiceovers, and create professional intros in seconds. Upscale visuals, design eye-catching graphics, and generate on-brand assets that match your unique style. With assistive tools built for speed and creativity, you can focus on engaging your audience while AI handles the heavy lifting.",
-      subtitle: "Make Scroll-Stopping Content Instantly",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'contentCreation'),
-    },
-    {
-      id: "Art Direction",
-      title: "Art Direction",
-      description:
-        "Turn ideas into visuals instantly with AI-powered comic generation, film scene creation, and storyboard design from simple text prompts. Explore creative directions faster, experiment with styles, and bring concepts to life without long manual processes. From drafting storyboards to generating cinematic frames or comic panels, our tools give art directors full creative control while cutting production time. Secondary assistive features let you refine details, adjust compositions, and adapt outputs for campaigns—ensuring every project moves smoothly from concept to final delivery.",
-      subtitle: "Creative Control at Every Stage for Art Directors",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'artDirection'),
-    },
-    {
-      id: "Marketing",
-      title: "Marketing",
-      description:
-        "Create impactful marketing campaign visuals in seconds with AI. From generating realistic AI models for product shoots and ads to producing ready-to-use mockups across platforms, our tools help marketers scale faster without compromising creativity. Whether you’re preparing ads, social posts, or promotional content, every asset is campaign-ready, on-brand, and designed to capture attention—all powered by Wild Mind.",
-      subtitle: "Create Stunning Visuals in Seconds for your Marketing Campaigns with Wild Mind",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'marketing'),
-    },
-    {
-      id: "Photography",
-      title: "Photography",
-      description:
-        "Elevate your photography with AI-powered photo enhancement and retouching tools by Wild Mind. Instantly correct details, remove imperfections, and enhance image quality—without complex editing software. Optimize a single shot for large prints, portfolios, social media, or client delivery with just one click. From color correction to fine-tuned detail adjustments, our AI tools help photographers save time, stay consistent, and deliver professional-quality results every time.",
-      subtitle: "Perfect Every Shot in Seconds",
-      subtitleClassName: "text-white/70 font-medium text-lg",
-      ctaText: "Explore",
-      image: getImageUrl('workflow', 'photography'),
-    },
-  ];
+            if (!hasSeenWelcome) {
+                // Show welcome modal after a short delay
+                const timer = setTimeout(() => {
+                    setShowWelcomeModal(true);
+                    // Mark as seen
+                    localStorage.setItem('hasSeenWelcomeModal', 'true');
+                }, 2000); // 2 second delay
+
+                return () => clearTimeout(timer);
+            }
+        };
+
+        checkFirstTimeUser();
+    }, []);
+
+    // Show deferred toast from login (set in signup/signin flow)
+    useEffect(() => {
+        try {
+            const msg = localStorage.getItem('toastMessage');
+            if (msg === 'LOGIN_SUCCESS') {
+                // Clear the flag immediately to prevent duplicate toasts
+                localStorage.removeItem('toastMessage');
+                const t = setTimeout(() => {
+                    try { toast.success('Welcome back! You\'re logged in successfully.', { duration: 3000 }) } catch { }
+                }, 500);
+                return () => clearTimeout(t);
+            }
+        } catch { }
+    }, []);
+
+    const CARDS: WorkflowCard[] = [
+        {
+            id: "Designing",
+            title: "Designing",
+            description:
+                "Boost your creative workflow with AI-powered design tools and premium digital assets that save time and maximize productivity. Eliminate repetitive tasks, customize designs instantly, and ensure every project stays consistent, secure, and on-brand. Whether you’re a designer, marketer, or business owner, our smart tools help you work faster, focus on what matters, and deliver high-quality results – without extra effort",
+            subtitle: "Keep Every Asset On-Brand with Wild Mind’s Branding Kit",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'designing'),
+        },
+        {
+            id: "Film Making",
+            title: "Film Making",
+            description:
+                "Accelerate your filmmaking process with AI-powered video tools built for creators by Wild Mind. Upscale footage instantly for streaming, presentations, or final delivery without expensive setups. Generate realistic voiceovers to test edits or polish trailers—no studio required. Quickly create storyboards, shot mockups, and concept art to plan scenes and visualize ideas faster. With AI handling the technical heavy lifting, filmmakers can focus on storytelling and creativity.",
+            subtitle: "From Concept to Final Cut",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'filmMaking'),
+        },
+        {
+            id: "Printing",
+            title: "Printing",
+            description:
+                "Prepare flawless, print-ready designs in seconds with AI. Automatically resize, retouch, and format images for business cards, posters, packaging, or merchandise—all while preserving quality. Eliminate manual prep with tools that generate high-resolution outputs optimized for print, ensuring colors, details, and layouts stay sharp and professional. Whether you’re producing marketing collateral or creative projects, our AI helps you move from concept to final print seamlessly.",
+            subtitle: "Print-Ready Visuals Without the Hassle",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'printing'),
+        },
+        {
+            id: "Branding",
+            title: "Branding",
+            description:
+                "Strengthen your identity with AI-powered branding tools that ensure consistency across every campaign. Instantly generate logos, brand mockups, and style assets tailored to your guidelines. Use Wild Mind’s Branding Kit to keep fonts, colors, and design elements unified across marketing visuals, social media posts, and presentations. From fresh brand concepts to polished assets, our AI keeps every creation aligned, recognizable, and professional—without extra effort.",
+            subtitle: "Creative workfloKeep Every Asset On-Brand with Wild Mind’s Branding Kit",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'branding'),
+        },
+        {
+            id: "Content Creation",
+            title: "Content Creation",
+            description:
+                "Stand out on every platform with AI-powered content creation tools designed for YouTube, TikTok, Reels, and beyond. Animate images, add AI-generated voiceovers, and create professional intros in seconds. Upscale visuals, design eye-catching graphics, and generate on-brand assets that match your unique style. With assistive tools built for speed and creativity, you can focus on engaging your audience while AI handles the heavy lifting.",
+            subtitle: "Make Scroll-Stopping Content Instantly",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'contentCreation'),
+        },
+        {
+            id: "Art Direction",
+            title: "Art Direction",
+            description:
+                "Turn ideas into visuals instantly with AI-powered comic generation, film scene creation, and storyboard design from simple text prompts. Explore creative directions faster, experiment with styles, and bring concepts to life without long manual processes. From drafting storyboards to generating cinematic frames or comic panels, our tools give art directors full creative control while cutting production time. Secondary assistive features let you refine details, adjust compositions, and adapt outputs for campaigns—ensuring every project moves smoothly from concept to final delivery.",
+            subtitle: "Creative Control at Every Stage for Art Directors",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'artDirection'),
+        },
+        {
+            id: "Marketing",
+            title: "Marketing",
+            description:
+                "Create impactful marketing campaign visuals in seconds with AI. From generating realistic AI models for product shoots and ads to producing ready-to-use mockups across platforms, our tools help marketers scale faster without compromising creativity. Whether you’re preparing ads, social posts, or promotional content, every asset is campaign-ready, on-brand, and designed to capture attention—all powered by Wild Mind.",
+            subtitle: "Create Stunning Visuals in Seconds for your Marketing Campaigns with Wild Mind",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'marketing'),
+        },
+        {
+            id: "Photography",
+            title: "Photography",
+            description:
+                "Elevate your photography with AI-powered photo enhancement and retouching tools by Wild Mind. Instantly correct details, remove imperfections, and enhance image quality—without complex editing software. Optimize a single shot for large prints, portfolios, social media, or client delivery with just one click. From color correction to fine-tuned detail adjustments, our AI tools help photographers save time, stay consistent, and deliver professional-quality results every time.",
+            subtitle: "Perfect Every Shot in Seconds",
+            subtitleClassName: "text-white/70 font-medium text-lg",
+            ctaText: "Explore",
+            image: getImageUrl('workflow', 'photography'),
+        },
+    ];
 
 
-  return (
-    <div className="min-h-screen bg-[#07070B]">
-      <div className="flex  md:ml-[68px] pt-2">
-        <div className="flex-1 min-w-0">
-          {/* <Header /> */}
-          
-          {/* Promotional Banner */}
-          <PromotionalBanner2 />
+    return (
+        <div className="min-h-screen bg-[#07070B]">
+            <div className="flex  md:ml-[68px] pt-2">
+                <div className="flex-1 min-w-0">
+                    {/* <Header /> */}
 
-          <Recentcreation />
-          <CompactFeatureStrip />
+                    {/* Promotional Banner */}
+                    <PromotionalBanner2 />
 
-          <AIToolsSection />
-          <main className="min-h-screen bg-[#07070B] text-white  md:px-8  ">
-            <div className="w-full px-4 md:pl-4">
-              <CommunityCreations />
-            </div>
-          </main>
+                    <AllFeatures />
+                    <AllModels />
 
-    
-          <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
-            <div className="w-full px-4 md:px-8 lg:px-12">
-              <div className="w-full">
-                <WobbleCard
-                  containerClassName="w-full bg-[#002933] md:min-h-[400px] h-96 lg:min-h-[500px]"
-                  className="!p-0 !py-0 !h-full !min-h-full"
-                >
-                  <div
-                    className="flex w-full md:h-full h-96 relative"
-                   
-                  >
-                  
-                    <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
-                      <div className="w-full">
-                        <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
-                          Plans That Grow With You
-                        </h2>
-                        <p className="mt-2 md:mt-3 lg:mt-4 max-w-[20rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-xs md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
-                          Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
-                        </p>
-                      </div>
 
-                
-                      <button className="font-poppins md:text-lg text-xs bg-white text-[#1C303D] font-semibold md:px-6 px-2 md:py-3 py-1 rounded-full transition-all duration-200 shadow-lg w-fit">
-                        Pricing Plans
-                      </button>
+                    <Recentcreation />
+                    <WildMindAIAPPS />
+
+                    {/* <CompactFeatureStrip /> */}
+
+                    {/* <AIToolsSection /> */}
+                    <main className="bg-[#07070B] text-white  md:px-8 ">
+                        <div className="w-full px-4 md:pl-2">
+                            <CommunityCreations />
+                        </div>
+                    </main>
+                    <div className='md:px-2 px-2'>
+                        <TopCreators />
                     </div>
 
-                 
+
+
+                    <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
+                        <div className="w-full px-4 md:px-8 lg:px-12">
+                            <div className="w-full">
+                                <WobbleCard
+                                    containerClassName="w-full bg-[#002933] md:min-h-[400px] h-96 lg:min-h-[500px]"
+                                    className="!p-0 !py-0 !h-full !min-h-full"
+                                >
+                                    <div
+                                        className="flex w-full md:h-full h-96 relative"
+
+                                    >
+
+                                        <div className="flex-1 flex flex-col justify-between p-6 md:p-8 lg:p-10 z-10">
+                                            <div className="w-full">
+                                                <h2 className="max-w-sm md:max-w-lg text-left text-balance text-sm md:text-2xl lg:text-4xl font-semibold tracking-[-0.015em] text-white font-poppins">
+                                                    Plans That Grow With You
+                                                </h2>
+                                                <p className="mt-2 md:mt-3 lg:mt-4 max-w-[20rem] md:max-w-[30rem] lg:max-w-[40rem] text-left text-xs md:text-base lg:text-lg text-neutral-200 mr-2 font-medium">
+                                                    Whether you’re a designer, marketer, filmmaker, or content creator, our pricing is built to match your workflow. Get unlimited generations, exclusive access to advanced AI models, and essential creative tools like storyboard generation, mockup design, and campaign visuals—all included with no extra fees. From individual projects to large-scale campaigns, our plans offer the perfect balance of affordability and professional-grade features. With us, you don’t just save money—you unlock endless creative possibilities.
+                                                </p>
+                                            </div>
+
+
+                                            <button className="font-poppins md:text-lg text-xs bg-white text-[#1C303D] font-semibold md:px-6 px-2 md:py-3 py-1 rounded-full transition-all duration-200 shadow-lg w-fit">
+                                                Pricing Plans
+                                            </button>
+                                        </div>
+
+
+                                        <div
+                                            className="absolute right-0 top-0 w-1/2 h-full"
+                                            style={{ height: '100%', minHeight: '500px' }}
+                                        >
+                                            <Image
+                                                src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
+                                                alt="Pricing plans artwork"
+                                                fill
+                                                className="object-cover rounded-r-2xl"
+                                                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
+                                                priority
+                                                quality={85}
+                                                loading="eager"
+                                                unoptimized
+                                            />
+                                        </div>
+                                    </div>
+                                </WobbleCard>
+                            </div>
+                        </div>
+                    </main>
+
+                    <FooterNew />
+                </div>
+            </div>
+            {/* Wildmind Skit Popup */}
+            {showWildmindSkitPopup && (
+                <>
+                    {/* Overlay */}
                     <div
-                      className="absolute right-0 top-0 w-1/2 h-full"
-                      style={{ height: '100%', minHeight: '500px' }}
+                        className="fixed inset-0 bg-black z-[200] flex items-center justify-center"
+                        onClick={() => setShowWildmindSkitPopup(false)}
                     >
-                      <Image
-                        src="https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250830_1122_Abstract%20Nautical%20Scene_remix_01k3wres6ye27s4wtw945t05dz.png?alt=media&token=14f642d0-2e5b-4daf-b3bb-388b374a55d5"
-                        alt="Pricing plans artwork"
-                        fill
-                        className="object-cover rounded-r-2xl"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 40vw, 30vw"
-                        priority
-                        quality={85}
-                        loading="eager"
-                        unoptimized
-                      />
-                    </div>
-                  </div>
-                </WobbleCard>
-              </div>
-            </div>
-          </main>
+                        {/* Popup Content */}
+                        <div
+                            className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="flex justify-between items-center mb-8">
+                                <h2 className="text-white text-3xl font-bold">Choose Style</h2>
+                                <button
+                                    onClick={() => setShowWildmindSkitPopup(false)}
+                                    className="text-white hover:text-gray-300 transition-colors"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
 
-          <FooterNew />
+                            {/* Features Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {/* Video Ads - Available */}
+                                <div
+                                    onClick={() => {
+                                        onGenerationTypeChange('ad-generation');
+                                        setShowWildmindSkitPopup(false);
+                                    }}
+                                    className="relative group cursor-pointer"
+                                >
+                                    <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+                                        <div className="absolute top-4 right-4">
+                                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div className="text-4xl mb-4">📹</div>
+                                    </div>
+                                    <h3 className="text-white text-lg font-semibold mt-4">Video Ads</h3>
+                                </div>
+
+                                {/* Jewelry - Coming Soon */}
+                                <div className="relative group cursor-not-allowed opacity-60">
+                                    <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
+                                        <div className="text-4xl mb-4">💎</div>
+                                    </div>
+                                    <h3 className="text-white text-lg font-semibold mt-4">Jewelry</h3>
+                                    <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
+                                </div>
+
+                                {/* Live Chat - Available */}
+                                <div
+                                    onClick={() => {
+                                        router.push('/view/Generation/wildmindskit/LiveChat');
+                                        setShowWildmindSkitPopup(false);
+                                    }}
+                                    className="relative group cursor-pointer"
+                                >
+                                    <div className="bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+                                        <div className="absolute top-4 right-4">
+                                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div className="text-4xl mb-4">💬</div>
+                                    </div>
+                                    <h3 className="text-white text-lg font-semibold mt-4">Live Chat</h3>
+                                </div>
+
+                                {/* Virtual Try-On - Coming Soon */}
+                                <div className="relative group cursor-not-allowed opacity-60">
+                                    <div className="bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
+                                        <div className="text-4xl mb-4">👗</div>
+                                    </div>
+                                    <h3 className="text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
+                                    <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Welcome Modal */}
+            <WelcomeModal
+                isOpen={showWelcomeModal}
+                onClose={() => setShowWelcomeModal(false)}
+            />
         </div>
-      </div>
-      {/* Wildmind Skit Popup */}
-      {showWildmindSkitPopup && (
-        <>
-          {/* Overlay */}
-          <div
-            className="fixed inset-0 bg-black z-[200] flex items-center justify-center"
-            onClick={() => setShowWildmindSkitPopup(false)}
-          >
-            {/* Popup Content */}
-            <div
-              className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-white text-3xl font-bold">Choose Style</h2>
-                <button
-                  onClick={() => setShowWildmindSkitPopup(false)}
-                  className="text-white hover:text-gray-300 transition-colors"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Features Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {/* Video Ads - Available */}
-                <div
-                  onClick={() => {
-                    onGenerationTypeChange('ad-generation');
-                    setShowWildmindSkitPopup(false);
-                  }}
-                  className="relative group cursor-pointer"
-                >
-                  <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
-                    <div className="absolute top-4 right-4">
-                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="text-4xl mb-4">📹</div>
-                  </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Video Ads</h3>
-                </div>
-
-                {/* Jewelry - Coming Soon */}
-                <div className="relative group cursor-not-allowed opacity-60">
-                  <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
-                    <div className="text-4xl mb-4">💎</div>
-                  </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Jewelry</h3>
-                  <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
-                </div>
-
-                {/* Live Chat - Available */}
-                <div
-                  onClick={() => {
-                    router.push('/view/Generation/wildmindskit/LiveChat');
-                    setShowWildmindSkitPopup(false);
-                  }}
-                  className="relative group cursor-pointer"
-                >
-                  <div className="bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
-                    <div className="absolute top-4 right-4">
-                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="text-4xl mb-4">💬</div>
-                  </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Live Chat</h3>
-                </div>
-
-                {/* Virtual Try-On - Coming Soon */}
-                <div className="relative group cursor-not-allowed opacity-60">
-                  <div className="bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl p-8 h-48 flex flex-col items-center justify-center text-center">
-                    <div className="text-4xl mb-4">👗</div>
-                  </div>
-                  <h3 className="text-white text-lg font-semibold mt-4">Virtual Try-On</h3>
-                  <span className="absolute top-2 right-2 bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-semibold">Soon</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Welcome Modal */}
-      <WelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
-      />
-    </div>
-  )
+    )
 }
 
 export default HomePage

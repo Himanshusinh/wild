@@ -25,11 +25,15 @@ export const useUrlParamsSync = ({
   setUploadedImages
 }: UseUrlParamsSyncProps) => {
   const router = useRouter();
-  const processedRef = useRef(false);
+  const lastProcessedStr = useRef('');
 
   useEffect(() => {
     // Prevent double processing or processing empty params
-    if (processedRef.current || !searchParams || Array.from(searchParams.keys()).length === 0) return;
+    const searchString = searchParams?.toString();
+    if (!searchString) return;
+
+    if (lastProcessedStr.current === searchString) return;
+    lastProcessedStr.current = searchString;
 
     console.log('Video generation - syncing URL params');
     let hasUpdates = false;
@@ -99,9 +103,25 @@ export const useUrlParamsSync = ({
     }
 
     if (hasUpdates) {
-      processedRef.current = true;
-      // Clean up URL
-      router.replace('/generation/video', { scroll: false });
+      // Clean up URL without hardcoding the path
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('image');
+        url.searchParams.delete('prompt');
+        url.searchParams.delete('model');
+        url.searchParams.delete('frame');
+        url.searchParams.delete('aspect');
+        url.searchParams.delete('aspectRatio');
+        url.searchParams.delete('duration');
+        url.searchParams.delete('quality');
+        url.searchParams.delete('resolution');
+
+        const next = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '');
+        router.replace(next, { scroll: false });
+      } else {
+        // Fallback for SSR if somehow executed there
+        router.replace('/text-to-video', { scroll: false });
+      }
     }
   }, [searchParams, router, setPrompt, setSelectedModel, setFrameSize, setDuration, setSelectedQuality, setSelectedResolution, setGenerationMode, setUploadedImages]);
 };

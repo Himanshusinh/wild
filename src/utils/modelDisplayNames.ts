@@ -7,6 +7,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   // Image Generation Models
   'gemini-25-flash-image': 'Google Nano Banana',
   'fal-ai/gemini-25-flash-image': 'Google Nano Banana',
+  'gpt-5-nano': 'GPT-5 Nano',
   'flux-kontext-pro': 'Flux Kontext Pro',
   'flux-kontext-max': 'Flux Kontext Max',
   'flux-pro-1.1': 'Flux Pro 1.1',

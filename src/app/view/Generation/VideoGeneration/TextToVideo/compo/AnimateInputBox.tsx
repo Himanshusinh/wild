@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
+import { useRouter } from 'next/navigation';
 import { HistoryEntry } from "@/types/history";
 import { FilePlay, FilePlus2, Trash2, ChevronUp, Monitor } from 'lucide-react';
 import { getApiClient } from "@/lib/axiosInstance";
@@ -18,6 +19,8 @@ import { shallowEqual } from "react-redux";
 import Image from "next/image";
 import { toThumbUrl } from '@/lib/thumb';
 import useHistoryLoader from '@/hooks/useHistoryLoader';
+import { getSignInUrl } from '@/routes/routes';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 interface AnimateInputBoxProps {
   placeholder?: string;
@@ -27,8 +30,10 @@ interface AnimateInputBoxProps {
 const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const { placeholder = "Type your video prompt...", showHistory = true } = props;
   const dispatch = useAppDispatch();
+  const router = useRouter();
+  const user = useAppSelector((state: any) => state.auth?.user);
   const inputEl = useRef<HTMLTextAreaElement>(null);
-  
+
   // Helper functions for proxy URLs (same as History.tsx)
   const toProxyPath = (urlOrPath: string | undefined) => {
     if (!urlOrPath) return '';
@@ -62,7 +67,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     entry: HistoryEntry;
     video: any;
   } | null>(null);
-  
+
   // Local, ephemeral preview entry for video generations (shows generating state)
   const [localVideoPreview, setLocalVideoPreview] = useState<HistoryEntry | null>(null);
 
@@ -73,14 +78,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = useState<boolean>(true);
   const [wanAnimateFps, setWanAnimateFps] = useState<number>(24);
   const [wanAnimateSeed, setWanAnimateSeed] = useState<number | undefined>(undefined);
-  
+
   // Runway Act-Two (act_two) parameters
   const [runwayActTwoRatio, setRunwayActTwoRatio] = useState<"1280:720" | "720:1280" | "960:960" | "1104:832" | "832:1104" | "1584:672">("1280:720");
   const [runwayActTwoCharacterType, setRunwayActTwoCharacterType] = useState<"image" | "video">("image");
   const [runwayActTwoSeed, setRunwayActTwoSeed] = useState<number | undefined>(undefined);
   const [runwayActTwoBodyControl, setRunwayActTwoBodyControl] = useState<boolean>(false);
   const [runwayActTwoExpressionIntensity, setRunwayActTwoExpressionIntensity] = useState<number>(3);
-  
+
   // Dropdown states
   const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false);
   const [refFramesDropdownOpen, setRefFramesDropdownOpen] = useState(false);
@@ -110,11 +115,40 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   const [libraryVideoLoading, setLibraryVideoLoading] = useState<boolean>(false);
   const libraryVideoNextCursorRef = useRef<string | undefined>(undefined);
   const libraryVideoInitRef = useRef<boolean>(false);
+  const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
+
+  // State restoration for auto-resume
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const intent = getAutoResumeIntent();
+    if (intent && intent.type === 'video' && intent.data?.isAnimate) {
+      console.log('[AnimateInputBox] Auto-resuming animate state:', intent.data);
+      const data = intent.data;
+      if (data.prompt) setPrompt(data.prompt);
+      if (data.selectedModel) setSelectedModel(data.selectedModel);
+      if (data.uploadedVideo) setUploadedVideo(data.uploadedVideo);
+      if (data.uploadedCharacterImage) setUploadedCharacterImage(data.uploadedCharacterImage);
+      if (data.wanAnimateResolution) setWanAnimateResolution(data.wanAnimateResolution);
+      if (data.wanAnimateRefertNum) setWanAnimateRefertNum(data.wanAnimateRefertNum);
+      if (data.wanAnimateGoFast !== undefined) setWanAnimateGoFast(data.wanAnimateGoFast);
+      if (data.wanAnimateMergeAudio !== undefined) setWanAnimateMergeAudio(data.wanAnimateMergeAudio);
+      if (data.wanAnimateFps) setWanAnimateFps(data.wanAnimateFps);
+      if (data.runwayActTwoRatio) setRunwayActTwoRatio(data.runwayActTwoRatio);
+      if (data.runwayActTwoCharacterType) setRunwayActTwoCharacterType(data.runwayActTwoCharacterType);
+
+      clearAutoResumeIntent();
+
+      // Auto-trigger generation after a short delay
+      setTimeout(() => {
+        setShouldAutoGenerate(true);
+      }, 500);
+    }
+  }, [user]);
 
   // History - ALL video entries (for VideoUploadModal)
   const allVideoHistoryEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
-    
+
     // Helper function to normalize generationType (handle both underscore and hyphen patterns)
     const normalizeGenerationType = (generationType: string | undefined): string => {
       if (!generationType) return '';
@@ -181,7 +215,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   // History - Show ONLY animate-related video entries (for history display on page)
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
-    
+
     // Debug: Log total entries count and show some sample entries
     console.log('[AnimateInputBox] Total entries in Redux:', allEntries.length);
     if (allEntries.length > 0) {
@@ -196,7 +230,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       }));
       console.log('[AnimateInputBox] Sample entries from Redux:', sampleEntries);
     }
-    
+
     // Helper function to normalize generationType (handle both underscore and hyphen patterns)
     const normalizeGenerationType = (generationType: string | undefined): string => {
       if (!generationType) return '';
@@ -221,9 +255,9 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     // Also includes Runway Act-Two (act_two) model
     const isAnimateEntry = (entry: any): boolean => {
       const model = String(entry?.model || '').toLowerCase();
-      
+
       // Check for Runway Act-Two (act_two) model
-      const isRunwayActTwo = 
+      const isRunwayActTwo =
         model === 'act_two' ||
         model === 'runway_act_two' ||
         model === 'runway-act-two' ||
@@ -231,14 +265,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         model.includes('act-two') ||
         model.includes('character-performance') ||
         model.includes('character_performance');
-      
+
       if (isRunwayActTwo) {
         console.log('[AnimateInputBox] ✅ Runway act_two match found:', { id: entry.id, model: entry.model });
         return true;
       }
-      
+
       // Primary check: exact matches for the animate models (backend saves as "wan-video/wan-2.2-animate-replace" or "wan-video/wan-2.2-animate-animation")
-      const exactMatches = 
+      const exactMatches =
         model === 'wan-2.2-animate-replace' ||
         model === 'wan-video/wan-2.2-animate-replace' ||
         model.includes('wan-2.2-animate-replace') ||
@@ -247,35 +281,35 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         model === 'wan-video/wan-2.2-animate-animation' ||
         model.includes('wan-2.2-animate-animation') ||
         model.includes('wan-video/wan-2.2-animate-animation');
-      
+
       if (exactMatches) {
         console.log('[AnimateInputBox] ✅ Exact match found:', { id: entry.id, model: entry.model });
         return true;
       }
-      
+
       // Secondary check: partial matches that indicate animate model
-      const hasAnimateModel = 
+      const hasAnimateModel =
         (model.includes('wan-2.2') && (model.includes('animate') || model.includes('replace') || model.includes('animation'))) ||
         (model.includes('wan-video') && model.includes('wan-2.2') && (model.includes('animate') || model.includes('replace') || model.includes('animation')));
-      
+
       // Also check if it's a video-to-video entry with wan-2.2 and animate/replace/animation
       const isVideoToVideo = normalizeGenerationType(entry?.generationType) === 'video-to-video';
       const hasWan22AndAnimate = model.includes('wan-2.2') && (model.includes('animate') || model.includes('replace') || model.includes('animation'));
-      
+
       // Also check: if model contains "wan" and "animate" or "replace" or "animation" (very lenient)
       const hasWanAndAnimate = model.includes('wan') && (model.includes('animate') || model.includes('replace') || model.includes('animation'));
-      
+
       const result = exactMatches || hasAnimateModel || (isVideoToVideo && hasWan22AndAnimate) || (isVideoToVideo && hasWanAndAnimate);
-      
+
       if (result && entry?.model) {
-        console.log('[AnimateInputBox] ✅ Animate entry matched:', { 
-          id: entry.id, 
+        console.log('[AnimateInputBox] ✅ Animate entry matched:', {
+          id: entry.id,
           model: entry.model,
           generationType: entry.generationType,
           matchReason: exactMatches ? 'exact' : hasAnimateModel ? 'partial' : isVideoToVideo ? 'video-to-video' : 'lenient'
         });
       }
-      
+
       return result;
     };
 
@@ -293,14 +327,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     const animateEntriesDirect = allEntries.filter((entry: any) => {
       const isAnimate = isAnimateEntry(entry);
       if (!isAnimate) return false;
-      
+
       // If it's clearly an animate entry, include it regardless of video structure
       // (the video might be in images, videos, or other fields)
       const hasVideoInImages = entry.images && Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url));
       const hasVideoInVideos = entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl));
       const isVideoTypeEntry = isVideoType(entry);
       const hasVideo = isVideoTypeEntry || hasVideoInImages || hasVideoInVideos;
-      
+
       // Include if it's an animate entry AND (has video OR is a video type OR has any media)
       // This is very lenient to catch all animate entries
       return hasVideo || isVideoTypeEntry || (entry.images && entry.images.length > 0) || (entry.videos && entry.videos.length > 0);
@@ -314,41 +348,41 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     const mergedEntries = Object.values(byId);
 
-      // Filter to only show animate-related entries (double-check)
-      // IMPORTANT: Check ALL entries, not just mergedEntries, to catch entries that might have been filtered out earlier
-      const allAnimateEntries = allEntries.filter((entry: any) => {
-        const isAnimate = isAnimateEntry(entry);
-        return isAnimate;
+    // Filter to only show animate-related entries (double-check)
+    // IMPORTANT: Check ALL entries, not just mergedEntries, to catch entries that might have been filtered out earlier
+    const allAnimateEntries = allEntries.filter((entry: any) => {
+      const isAnimate = isAnimateEntry(entry);
+      return isAnimate;
+    });
+
+    // Also check mergedEntries for animate entries
+    const animateEntriesFromMerged = mergedEntries.filter((entry: any) => {
+      const isAnimate = isAnimateEntry(entry);
+      return isAnimate;
+    });
+
+    // Merge both sets (allAnimateEntries and animateEntriesFromMerged) to ensure we don't miss any
+    const animateById: Record<string, any> = {};
+    [...allAnimateEntries, ...animateEntriesFromMerged].forEach((e: any) => {
+      animateById[e.id] = e;
+    });
+
+    const animateEntries = Object.values(animateById);
+
+    // Debug: Log what we found
+    if (allAnimateEntries.length > 0 || animateEntriesFromMerged.length > 0) {
+      console.log('[AnimateInputBox] Animate entries found:', {
+        fromAllEntries: allAnimateEntries.length,
+        fromMergedEntries: animateEntriesFromMerged.length,
+        finalCount: animateEntries.length,
+        sample: animateEntries.slice(0, 2).map((e: any) => ({
+          id: e.id,
+          model: e.model,
+          generationType: e.generationType,
+          status: e.status
+        }))
       });
-      
-      // Also check mergedEntries for animate entries
-      const animateEntriesFromMerged = mergedEntries.filter((entry: any) => {
-        const isAnimate = isAnimateEntry(entry);
-        return isAnimate;
-      });
-      
-      // Merge both sets (allAnimateEntries and animateEntriesFromMerged) to ensure we don't miss any
-      const animateById: Record<string, any> = {};
-      [...allAnimateEntries, ...animateEntriesFromMerged].forEach((e: any) => {
-        animateById[e.id] = e;
-      });
-      
-      const animateEntries = Object.values(animateById);
-      
-      // Debug: Log what we found
-      if (allAnimateEntries.length > 0 || animateEntriesFromMerged.length > 0) {
-        console.log('[AnimateInputBox] Animate entries found:', {
-          fromAllEntries: allAnimateEntries.length,
-          fromMergedEntries: animateEntriesFromMerged.length,
-          finalCount: animateEntries.length,
-          sample: animateEntries.slice(0, 2).map((e: any) => ({
-            id: e.id,
-            model: e.model,
-            generationType: e.generationType,
-            status: e.status
-          }))
-        });
-      }
+    }
 
     // Filter out entries that are stuck in "generating" status without a valid video URL
     const filteredEntries = animateEntries.filter((entry: any) => {
@@ -369,13 +403,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     });
 
     // Apply search query filter if provided
-    const searchFilteredEntries = searchQuery.trim() 
+    const searchFilteredEntries = searchQuery.trim()
       ? filteredEntries.filter((entry: any) => {
-          const query = searchQuery.toLowerCase();
-          const promptMatch = entry.prompt?.toLowerCase().includes(query);
-          const modelMatch = entry.model?.toLowerCase().includes(query);
-          return promptMatch || modelMatch;
-        })
+        const query = searchQuery.toLowerCase();
+        const promptMatch = entry.prompt?.toLowerCase().includes(query);
+        const modelMatch = entry.model?.toLowerCase().includes(query);
+        return promptMatch || modelMatch;
+      })
       : filteredEntries;
 
     // Sort by timestamp (newest first)
@@ -423,7 +457,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   // Get image history entries from Redux (fallback only - we use local state for modal)
   const imageHistoryEntries = useAppSelector((state: any) => {
     const entries = state.history?.entries || [];
-    return entries.filter((entry: HistoryEntry) => 
+    return entries.filter((entry: HistoryEntry) =>
       entry.generationType === 'text-to-image'
     );
   }, shallowEqual);
@@ -448,7 +482,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       }
       libraryImageLoadingRef.current = true;
       setLibraryImageLoading(true);
-      
+
       const api = getApiClient();
       const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
       // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
@@ -473,7 +507,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         });
       }
       params.sortBy = 'createdAt';
-      
+
       // PAGINATION DEBUG: Log request details
       const reqCursorVal: any = (params as any).nextCursor ?? (params as any).cursor;
       const cursorStr = reqCursorVal ? (typeof reqCursorVal === 'string' ? `${reqCursorVal.substring(0, 30)}...` : String(reqCursorVal)) : 'none';
@@ -482,12 +516,12 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         cursor: cursorStr,
         currentEntriesCount: libraryImageEntries.length
       });
-      
+
       const res = await api.get('/api/generations', { params });
       const payload = res.data?.data || res.data || {};
       const items: any[] = Array.isArray(payload.items) ? payload.items : [];
       const nextCursor: string | number | undefined = payload.nextCursor;
-      
+
       // PAGINATION DEBUG: Log response details
       const nextCursorStr = nextCursor ? (typeof nextCursor === 'string' ? `${nextCursor.substring(0, 30)}...` : String(nextCursor)) : 'null';
       const reqCur: any = (params as any).nextCursor ?? (params as any).cursor;
@@ -506,7 +540,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       const normalizedItems = items.map((item: any) => {
         // Clone the item to avoid mutating the original
         const normalized = { ...item };
-        
+
         // If item doesn't have images array, try to extract from other properties
         if (!Array.isArray(normalized.images) || normalized.images.length === 0) {
           // Some APIs might return images in a different structure
@@ -518,7 +552,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         if (!Array.isArray(normalized.images)) {
           normalized.images = [];
         }
-        
+
         // Ensure each image has required properties
         // Match InputBox.tsx implementation - don't filter out images, let UploadModal handle it
         if (Array.isArray(normalized.images)) {
@@ -531,7 +565,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             return img;
           });
         }
-        
+
         return normalized;
       });
 
@@ -547,13 +581,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           });
           return [...sorted];
         }
-        
+
         // For pagination loads, merge with existing entries
         // IMPORTANT: Check if items are actually new by comparing IDs
         const existingIds = new Set(prevEntries.map((e: any) => e?.id).filter(Boolean));
         const newItems = normalizedItems.filter((item: any) => item?.id && !existingIds.has(item.id));
         const existingItems = normalizedItems.filter((item: any) => item?.id && existingIds.has(item.id));
-        
+
         // PAGINATION DEBUG: Check if we're getting duplicates
         console.log('[PAGINATION] Duplicate Check:', {
           previousCount: prevEntries.length,
@@ -565,23 +599,23 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           duplicateItemIds: existingItems.slice(0, 5).map((e: any) => e.id),
           isSameItems: existingItems.length === normalizedItems.length && normalizedItems.length > 0
         });
-        
+
         if (newItems.length === 0) {
           console.warn('[PAGINATION] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.');
           return [...prevEntries];
         }
-        
+
         const existingById: Record<string, any> = {};
         // Add existing entries first
-        prevEntries.forEach((e: any) => { 
+        prevEntries.forEach((e: any) => {
           if (e?.id) {
-            existingById[e.id] = e; 
+            existingById[e.id] = e;
           }
         });
         // Then add only NEW entries (avoid unnecessary updates)
-        newItems.forEach((e: any) => { 
+        newItems.forEach((e: any) => {
           if (e?.id) {
-            existingById[e.id] = e; 
+            existingById[e.id] = e;
           }
         });
         // Create a new array and sort by createdAt (newest first)
@@ -600,7 +634,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
         return [...merged];
       });
-      
+
       // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
       // This ensures the cursor is available for the next pagination request
       const previousCursor = libraryImageNextCursorRef.current;
@@ -609,7 +643,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       // IMPORTANT: Store the cursor immediately so it's available for the next request
       const newCursor = nextCursor ? (typeof nextCursor === 'string' ? nextCursor : String(nextCursor)) : undefined;
       libraryImageNextCursorRef.current = newCursor;
-      
+
       // Log cursor update immediately
       console.log('[AnimateInputBox] 📥 Cursor updated in ref:', {
         previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
@@ -618,7 +652,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         itemsReceived: items.length
       });
       const hasMoreItems = Boolean(nextCursor);
-      
+
       // PAGINATION DEBUG: Log cursor update
       const prevCursorStr = previousCursor ? (typeof previousCursor === 'string' ? `${previousCursor.substring(0, 30)}...` : String(previousCursor)) : 'none';
       const newCursorStr = newCursor ? (typeof newCursor === 'string' ? `${newCursor.substring(0, 30)}...` : String(newCursor)) : 'null';
@@ -632,12 +666,12 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         hasMore: hasMoreItems,
         itemsReceived: items.length
       });
-      
+
       // If cursor didn't change and we got items, it means we're getting duplicates
       if (!initial && previousCursor === newCursor && items.length > 0) {
         console.warn('[AnimateInputBox] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.');
       }
-      
+
       setLibraryImageHasMore(hasMoreItems);
     } catch (e) {
       console.error('[AnimateInputBox] Failed to fetch library images:', e);
@@ -707,10 +741,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       setLibraryVideoLoading(true);
       const api = getApiClient();
       // Fetch all video types: text-to-video, image-to-video, video-to-video
-      const params: any = { 
+      const params: any = {
         mode: 'video', // Backend converts this to ['text-to-video', 'image-to-video', 'video-to-video']
-        limit: 30, 
-        sortBy: 'createdAt' 
+        limit: 30,
+        sortBy: 'createdAt'
       };
       if (!initial && libraryVideoNextCursorRef.current) {
         // Use correct backend pagination parameter
@@ -742,15 +776,15 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         .map((item: any) => {
           // Clone the item to avoid mutating the original
           const normalized = { ...item };
-          
+
           // Ensure videos array exists
           if (!Array.isArray(normalized.videos)) {
             normalized.videos = [];
           }
-          
+
           // Collect all videos from both videos and images arrays
           const allVideos: any[] = [];
-          
+
           // First, add videos from videos array (if exists)
           if (normalized.videos && Array.isArray(normalized.videos)) {
             normalized.videos.forEach((video: any) => {
@@ -771,7 +805,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               }
             });
           }
-          
+
           // Then, add videos from images array (if they're actually videos)
           if (normalized.images && Array.isArray(normalized.images)) {
             normalized.images.forEach((img: any) => {
@@ -780,7 +814,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 // Check if this is a video
                 if (url && (url.startsWith('data:video') || /(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url))) {
                   // Check if we already have this video (avoid duplicates)
-                  const existingVideo = allVideos.find((v: any) => 
+                  const existingVideo = allVideos.find((v: any) =>
                     (v.url === url) || (v.firebaseUrl === url) || (v.originalUrl === url)
                   );
                   if (!existingVideo) {
@@ -802,10 +836,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               }
             });
           }
-          
+
           // Update normalized entry with all collected videos
           normalized.videos = allVideos;
-          
+
           // Also preserve images array for backward compatibility (but filter out videos)
           if (normalized.images && Array.isArray(normalized.images)) {
             normalized.images = normalized.images.filter((img: any) => {
@@ -814,7 +848,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               return !url || (!url.startsWith('data:video') && !/(\.mp4|\.webm|\.ogg)(\?|$)/i.test(url));
             });
           }
-          
+
           return normalized;
         });
 
@@ -844,15 +878,15 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       setLibraryVideoEntries((prevEntries) => {
         const existingById: Record<string, any> = {};
         // Add existing entries first
-        prevEntries.forEach((e: any) => { 
+        prevEntries.forEach((e: any) => {
           if (e?.id) {
-            existingById[e.id] = e; 
+            existingById[e.id] = e;
           }
         });
         // Add/update with new items
-        normalizedItems.forEach((e: any) => { 
+        normalizedItems.forEach((e: any) => {
           if (e?.id) {
-            existingById[e.id] = e; 
+            existingById[e.id] = e;
           }
         });
         // Create a new array and sort by createdAt (newest first)
@@ -884,16 +918,16 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         // Always return a new array reference (even if contents are the same)
         return [...merged];
       });
-      
+
       // Update cursor and hasMore after state update
       libraryVideoNextCursorRef.current = nextCursor;
       // Set hasMore: if there's a nextCursor, we definitely have more items to load
       // The presence of nextCursor is the definitive indicator from the backend
       const hasMoreItems = Boolean(nextCursor);
-      console.log('[AnimateInputBox] fetchLibraryVideos result:', { 
-        itemsCount: items.length, 
-        requested: params.limit || 30, 
-        nextCursor: nextCursor ? 'present' : 'null', 
+      console.log('[AnimateInputBox] fetchLibraryVideos result:', {
+        itemsCount: items.length,
+        requested: params.limit || 30,
+        nextCursor: nextCursor ? 'present' : 'null',
         hasMoreItems
       });
       setLibraryVideoHasMore(hasMoreItems);
@@ -1049,7 +1083,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     const uploaded = await uploadLocalVideoFile(file);
     const remoteUrl = uploaded?.url || url;
     setUploadedUrlByLocalUrl(prev => ({ ...prev, [url]: remoteUrl }));
-    try { URL.revokeObjectURL(url); } catch {}
+    try { URL.revokeObjectURL(url); } catch { }
     return remoteUrl;
   }, [localVideoFilesByUrl, uploadedUrlByLocalUrl]);
 
@@ -1086,14 +1120,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   // Load history on mount using mode: 'video' (same as InputBox and History.tsx)
   // This ensures we get ALL video types including video-to-video (animate entries)
   const didInitialLoadRef = useRef(false);
-  
+
   useEffect(() => {
     if (didInitialLoadRef.current) return;
     // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
     didInitialLoadRef.current = true;
     try {
-      dispatch(loadHistory({ 
-        filters: { mode: 'video' } as any, 
+      dispatch(loadHistory({
+        filters: { mode: 'video' } as any,
         paginationParams: { limit: 50 },
         requestOrigin: 'page',
         expectedType: 'video-to-video',
@@ -1103,7 +1137,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       // swallow
     }
   }, [dispatch]);
-  
+
   // Also refresh when component becomes visible (e.g., after tab switch)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1111,8 +1145,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         // Page became visible, refresh history using mode: 'video'
         setTimeout(() => {
           try {
-            dispatch(loadHistory({ 
-              filters: { mode: 'video' } as any, 
+            dispatch(loadHistory({
+              filters: { mode: 'video' } as any,
               paginationParams: { limit: 50 },
               requestOrigin: 'page',
               expectedType: 'video-to-video',
@@ -1133,19 +1167,19 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!event.target) return;
       const target = event.target as Element;
-      
+
       if (resolutionDropdownRef.current && !resolutionDropdownRef.current.contains(target)) {
         setResolutionDropdownOpen(false);
       }
-      
+
       if (refFramesDropdownRef.current && !refFramesDropdownRef.current.contains(target)) {
         setRefFramesDropdownOpen(false);
       }
-      
+
       if (runwayRatioDropdownRef.current && !runwayRatioDropdownRef.current.contains(target)) {
         setRunwayRatioDropdownOpen(false);
       }
-      
+
       if (runwayCharacterTypeDropdownRef.current && !runwayCharacterTypeDropdownRef.current.contains(target)) {
         setRunwayCharacterTypeDropdownOpen(false);
       }
@@ -1159,13 +1193,33 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
   // Handle generate
   const handleGenerate = useCallback(async () => {
+    console.log('[DEBUG AnimateInputBox] handleGenerate triggered');
+    if (!user) {
+      saveAutoResumeIntent('video', {
+        isAnimate: true,
+        prompt,
+        selectedModel,
+        uploadedVideo,
+        uploadedCharacterImage,
+        wanAnimateResolution,
+        wanAnimateRefertNum,
+        wanAnimateGoFast,
+        wanAnimateMergeAudio,
+        wanAnimateFps,
+        runwayActTwoRatio,
+        runwayActTwoCharacterType,
+      });
+      router.push(getSignInUrl());
+      return;
+    }
+
     if (!uploadedVideo) {
       toast.error("Video upload is mandatory");
       return;
     }
 
     const isRunwayModel = selectedModel === 'runway-act-two';
-    
+
     // For Runway Act-Two, character can be image or video
     if (isRunwayModel) {
       if (runwayActTwoCharacterType === 'image' && !uploadedCharacterImage) {
@@ -1196,7 +1250,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
     setIsGenerating(true);
     setError("");
-
+    console.log('[DEBUG AnimateInputBox] state before API call:', {
+      selectedModel,
+      isRunwayModel,
+      uploadedVideo,
+      uploadedCharacterImage,
+      liveCreditCost
+    });
     try {
       const api = getApiClient();
 
@@ -1213,7 +1273,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           setUploadedCharacterImage(resolvedCharacterUri);
         }
       }
-      
+
       // Handle Runway Act-Two model
       if (isRunwayModel) {
         const requestBody = {
@@ -1242,7 +1302,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
         if (result?.taskId) {
           toast.success("Generation started! Polling for results...");
-          
+
           // Create local preview entry
           setLocalVideoPreview({
             id: `runway-act-two-loading-${Date.now()}`,
@@ -1255,7 +1315,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             imageCount: 1,
             status: 'generating',
           } as any);
-          
+
           // Poll for results using Runway status endpoint
           let pollCount = 0;
           const maxPolls = 900; // 15 minutes max
@@ -1272,7 +1332,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 // Check for videos array first (from history), then outputs/output (from task)
                 let outputs = status?.videos || status?.outputs || status?.output || [];
                 let videoUrl = '';
-                
+
                 // If outputs is an array of objects, extract the URL
                 if (Array.isArray(outputs) && outputs.length > 0) {
                   const firstOutput = outputs[0];
@@ -1292,7 +1352,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 if (videoUrl) {
                   setIsGenerating(false);
                   toast.success("Generation completed!");
-                  
+
                   // Update local preview to completed state
                   setLocalVideoPreview(prev => prev ? ({
                     ...prev,
@@ -1301,13 +1361,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     timestamp: new Date().toISOString(),
                     createdAt: new Date().toISOString(),
                   } as any) : prev);
-                  
+
                   // Fetch the actual entry from backend
                   if (result.historyId) {
                     try {
                       const historyRes = await api.get(`/api/generations/${result.historyId}`);
                       const historyData = historyRes.data?.data || historyRes.data;
-                      
+
                       if (historyData) {
                         const backendEntry: HistoryEntry = {
                           ...historyData,
@@ -1315,11 +1375,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           prompt: historyData.prompt || "Act-Two generation",
                           model: historyData.model || 'runway_act_two',
                           frameSize: historyData.frameSize || "16:9",
-                          images: historyData.images || historyData.videos || [{ 
-                            id: `video-${Date.now()}`, 
-                            url: videoUrl, 
-                            originalUrl: videoUrl, 
-                            firebaseUrl: videoUrl 
+                          images: historyData.images || historyData.videos || [{
+                            id: `video-${Date.now()}`,
+                            url: videoUrl,
+                            originalUrl: videoUrl,
+                            firebaseUrl: videoUrl
                           }],
                           videos: historyData.videos || [],
                           status: historyData.status || "completed",
@@ -1328,14 +1388,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           imageCount: historyData.imageCount || (historyData.images?.length || historyData.videos?.length || 1),
                           generationType: historyData.generationType || "video-to-video",
                         } as any;
-                        
+
                         dispatch(addHistoryEntry(backendEntry));
-                        
+
                         // Refresh history
                         setTimeout(() => {
                           try {
-                            dispatch(loadHistory({ 
-                              filters: { mode: 'video' } as any, 
+                            dispatch(loadHistory({
+                              filters: { mode: 'video' } as any,
                               paginationParams: { limit: 50 },
                               requestOrigin: 'page',
                               expectedType: 'video-to-video',
@@ -1350,7 +1410,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       console.error("Failed to fetch history entry from backend:", fetchError);
                     }
                   }
-                  
+
                   setUploadedVideo("");
                   setUploadedCharacterImage("");
                   return;
@@ -1389,11 +1449,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         }
         return;
       }
-      
+
       // Handle WAN models (existing logic)
       // Determine API endpoint and model name based on selected model
       const isAnimationModel = selectedModel === 'wan-2.2-animate-animation';
-      const apiEndpoint = isAnimationModel 
+      const apiEndpoint = isAnimationModel
         ? '/api/replicate/wan-2-2-animate-animation/submit'
         : '/api/replicate/wan-2-2-animate-replace/submit';
       const modelName = isAnimationModel
@@ -1433,7 +1493,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
       if (result?.requestId) {
         toast.success("Generation started! Polling for results...");
-        
+
         // Create local preview entry (history-style) to show generating tile in today's row
         setLocalVideoPreview({
           id: `animate-loading-${Date.now()}`,
@@ -1446,7 +1506,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
           imageCount: 1,
           status: 'generating',
         } as any);
-        
+
         // Poll for results (same logic as InputBox)
         let pollCount = 0;
         const maxPolls = 900; // 15 minutes max
@@ -1470,7 +1530,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 timeout: 20000
               });
               const videoResult = resultRes.data?.data || resultRes.data;
-              
+
               let videoUrl = '';
               if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
                 videoUrl = videoResult.videos[0].url;
@@ -1485,7 +1545,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               if (videoUrl) {
                 setIsGenerating(false);
                 toast.success("Generation completed!");
-                
+
                 // Update local preview to completed state
                 setLocalVideoPreview(prev => prev ? ({
                   ...prev,
@@ -1494,13 +1554,13 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   timestamp: new Date().toISOString(),
                   createdAt: new Date().toISOString(),
                 } as any) : prev);
-                
+
                 // Fetch the actual entry from backend to ensure it matches backend structure
                 if (result.historyId) {
                   try {
                     const historyRes = await api.get(`/api/generations/${result.historyId}`, { timeout: 20000 });
                     const historyData = historyRes.data?.data || historyRes.data;
-                    
+
                     if (historyData) {
                       // Use the backend's version of the entry (it has the correct structure)
                       // Preserve all fields from backend, especially generationType which might be "video-to-video"
@@ -1510,11 +1570,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         prompt: historyData.prompt || (isAnimationModel ? "Animate Animation generation" : "Animate Replace generation"),
                         model: historyData.model || modelName,
                         frameSize: historyData.frameSize || "16:9",
-                        images: historyData.images || historyData.videos || [{ 
-                          id: `video-${Date.now()}`, 
-                          url: videoUrl, 
-                          originalUrl: videoUrl, 
-                          firebaseUrl: videoUrl 
+                        images: historyData.images || historyData.videos || [{
+                          id: `video-${Date.now()}`,
+                          url: videoUrl,
+                          originalUrl: videoUrl,
+                          firebaseUrl: videoUrl
                         }],
                         videos: historyData.videos || [],
                         status: historyData.status || "completed",
@@ -1524,14 +1584,14 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         // Preserve backend's generationType (might be "video-to-video" or "text-to-video")
                         generationType: historyData.generationType || "text-to-video",
                       } as any;
-                      
+
                       dispatch(addHistoryEntry(backendEntry));
-                      
+
                       // Refresh history using mode: 'video' to ensure the new entry appears
                       setTimeout(() => {
                         try {
-                          dispatch(loadHistory({ 
-                            filters: { mode: 'video' } as any, 
+                          dispatch(loadHistory({
+                            filters: { mode: 'video' } as any,
                             paginationParams: { limit: 50 },
                             requestOrigin: 'page',
                             expectedType: 'video-to-video',
@@ -1548,11 +1608,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
                         model: modelName,
                         frameSize: "16:9",
-                        images: [{ 
-                          id: `video-${Date.now()}`, 
-                          url: videoUrl, 
-                          originalUrl: videoUrl, 
-                          firebaseUrl: videoUrl 
+                        images: [{
+                          id: `video-${Date.now()}`,
+                          url: videoUrl,
+                          originalUrl: videoUrl,
+                          firebaseUrl: videoUrl
                         }],
                         status: "completed",
                         timestamp: new Date().toISOString(),
@@ -1570,11 +1630,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
                       model: modelName,
                       frameSize: "16:9",
-                      images: [{ 
-                        id: `video-${Date.now()}`, 
-                        url: videoUrl, 
-                        originalUrl: videoUrl, 
-                        firebaseUrl: videoUrl 
+                      images: [{
+                        id: `video-${Date.now()}`,
+                        url: videoUrl,
+                        originalUrl: videoUrl,
+                        firebaseUrl: videoUrl
                       }],
                       status: "completed",
                       timestamp: new Date().toISOString(),
@@ -1591,11 +1651,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     prompt: isAnimationModel ? "Animate Animation generation" : "Animate Replace generation",
                     model: modelName,
                     frameSize: "16:9",
-                    images: [{ 
-                      id: `video-${Date.now()}`, 
-                      url: videoUrl, 
-                      originalUrl: videoUrl, 
-                      firebaseUrl: videoUrl 
+                    images: [{
+                      id: `video-${Date.now()}`,
+                      url: videoUrl,
+                      originalUrl: videoUrl,
+                      firebaseUrl: videoUrl
                     }],
                     status: "completed",
                     timestamp: new Date().toISOString(),
@@ -1605,7 +1665,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   } as any;
                   dispatch(addHistoryEntry(historyEntry));
                 }
-                
+
                 setUploadedVideo("");
                 setUploadedCharacterImage("");
                 return;
@@ -1613,10 +1673,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             } else if (statusValue === 'failed' || statusValue === 'error') {
               setIsGenerating(false);
               toast.error(status?.error || "Generation failed");
-              
+
               // Update local preview to failed state
               setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
-              
+
               return;
             }
 
@@ -1626,7 +1686,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             } else {
               setIsGenerating(false);
               toast.error("Generation timed out. Please check your history.");
-              
+
               // Update local preview to failed state
               setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
             }
@@ -1638,7 +1698,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             } else {
               setIsGenerating(false);
               toast.error("Failed to check generation status");
-              
+
               // Update local preview to failed state
               setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
             }
@@ -1655,7 +1715,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       const errorMessage = err?.response?.data?.message || err?.message || "Generation failed";
       setError(errorMessage);
       toast.error(errorMessage);
-      
+
       // Update local preview to failed state
       setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
     }
@@ -1679,6 +1739,30 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
     runwayActTwoBodyControl,
     runwayActTwoExpressionIntensity,
   ]);
+
+  // Effect to trigger auto-generation when flag is set
+  // Effect to trigger auto-generation when flag is set
+  useEffect(() => {
+    if (shouldAutoGenerate && !isGenerating) {
+      console.log('[AnimateInputBox] Auto-triggering generation...');
+      setShouldAutoGenerate(false);
+
+      // Set initial loading state for UI feedback immediately
+      setLocalVideoPreview({
+        id: `auto-gen-pending-${Date.now()}`,
+        prompt: prompt || "Auto generation",
+        model: selectedModel,
+        generationType: "video-to-video",
+        images: [],
+        status: 'generating',
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        imageCount: 1
+      } as any);
+
+      handleGenerate();
+    }
+  }, [shouldAutoGenerate, isGenerating, handleGenerate, prompt, selectedModel]);
 
   return (
     <React.Fragment>
@@ -1851,126 +1935,126 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         const hasVideoUrl = !!(video.firebaseUrl || video.url);
                         // If video has URL but status is "generating", treat as completed (old entries might not have status updated)
                         const effectiveStatus = hasVideoUrl && entry.status === "generating" ? "completed" : entry.status;
-                        
+
                         return (
-                        <div
-                          key={`${entry.id}-${video.id}`}
-                          data-video-id={`${entry.id}-${video.id}`}
-                          onClick={(e) => {
-                            // Don't open preview if clicking on copy button
-                            if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
-                              return;
-                            }
-                            setPreview({ entry, video });
-                          }}
-                          className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
-                        >
-                          {effectiveStatus === "generating" ? (
-                            // Loading frame
-                            <div className="w-full h-full flex items-center justify-center bg-black/90">
-                              <div className="flex flex-col items-center gap-2">
-                                <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
-                                <div className="text-xs text-white/60 text-center">
-                                  Generating...
+                          <div
+                            key={`${entry.id}-${video.id}`}
+                            data-video-id={`${entry.id}-${video.id}`}
+                            onClick={(e) => {
+                              // Don't open preview if clicking on copy button
+                              if ((e.target as HTMLElement).closest('button[aria-label="Copy prompt"]')) {
+                                return;
+                              }
+                              setPreview({ entry, video });
+                            }}
+                            className="relative w-auto h-auto max-w-[200px] max-h-[200px] md:w-auto md:h-auto md:max-w-64 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 transition-all duration-200 cursor-pointer group flex-shrink-0"
+                          >
+                            {effectiveStatus === "generating" ? (
+                              // Loading frame
+                              <div className="w-full h-full flex items-center justify-center bg-black/90">
+                                <div className="flex flex-col items-center gap-2">
+                                  <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
+                                  <div className="text-xs text-white/60 text-center">
+                                    Generating...
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ) : effectiveStatus === "failed" ? (
-                            // Error frame
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
-                              <div className="flex flex-col items-center gap-2">
-                                <svg
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="text-red-400"
-                                >
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                </svg>
-                                <div className="text-xs text-red-400">Failed</div>
-                              </div>
-                            </div>
-                          ) : (
-                            // Completed video thumbnail (exact same as History.tsx)
-                            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
-                              {(video.firebaseUrl || video.url) ? (
-                                (() => {
-                                  const mediaUrl = video.firebaseUrl || video.url;
-                                  const proxied = toFrontendProxyMediaUrl(mediaUrl);
-                                  const vsrc = proxied || mediaUrl;
-                                  return (
-                                    <video 
-                                      src={vsrc} 
-                                      className="w-full h-full object-cover transition-opacity duration-200" 
-                                      muted 
-                                      playsInline 
-                                      loop 
-                                      preload="metadata"
-                                      poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
-                                      onMouseEnter={async (e) => { 
-                                        try { 
-                                          await (e.currentTarget as HTMLVideoElement).play();
-                                        } catch { } 
-                                      }}
-                                      onMouseLeave={(e) => { 
-                                        const v = e.currentTarget as HTMLVideoElement; 
-                                        try { v.pause(); v.currentTime = 0 } catch { }
-                                      }}
-                                      onClick={async (e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const videoEl = e.currentTarget;
-                                        
-                                        if (videoEl.paused) {
-                                          try {
-                                            await videoEl.play();
-                                          } catch (error) {
-                                            // silent
-                                          }
-                                        } else {
-                                          videoEl.pause();
-                                          videoEl.currentTime = 0;
-                                        }
-                                      }}
-                                      onLoadStart={() => { /* silent */ }}
-                                      onLoadedData={() => { /* silent */ }}
-                                      onCanPlay={() => { /* silent */ }}
-                                    />
-                                  );
-                                })()
-                              ) : (
-                                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                  <span className="text-gray-400 text-xs">Video not available</span>
-                                </div>
-                              )}
-                              {/* Video play icon overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                    <path d="M8 5v14l11-7z" />
+                            ) : effectiveStatus === "failed" ? (
+                              // Error frame
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/20 to-red-800/20">
+                                <div className="flex flex-col items-center gap-2">
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="text-red-400"
+                                  >
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                                   </svg>
+                                  <div className="text-xs text-red-400">Failed</div>
                                 </div>
                               </div>
-                              {/* Hover buttons overlay */}
-                              <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
-                                <button
-                                  aria-label="Copy prompt"
-                                  className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    const cleanPrompt = entry.prompt?.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim() || '';
-                                    navigator.clipboard.writeText(cleanPrompt);
-                                  }}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                </button>
+                            ) : (
+                              // Completed video thumbnail (exact same as History.tsx)
+                              <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-purple-900/20 flex items-center justify-center relative group">
+                                {(video.firebaseUrl || video.url) ? (
+                                  (() => {
+                                    const mediaUrl = video.firebaseUrl || video.url;
+                                    const proxied = toFrontendProxyMediaUrl(mediaUrl);
+                                    const vsrc = proxied || mediaUrl;
+                                    return (
+                                      <video
+                                        src={vsrc}
+                                        className="w-full h-full object-cover transition-opacity duration-200"
+                                        muted
+                                        playsInline
+                                        loop
+                                        preload="metadata"
+                                        poster={(video as any).thumbnailUrl || (video as any).avifUrl || undefined}
+                                        onMouseEnter={async (e) => {
+                                          try {
+                                            await (e.currentTarget as HTMLVideoElement).play();
+                                          } catch { }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          const v = e.currentTarget as HTMLVideoElement;
+                                          try { v.pause(); v.currentTime = 0 } catch { }
+                                        }}
+                                        onClick={async (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const videoEl = e.currentTarget;
+
+                                          if (videoEl.paused) {
+                                            try {
+                                              await videoEl.play();
+                                            } catch (error) {
+                                              // silent
+                                            }
+                                          } else {
+                                            videoEl.pause();
+                                            videoEl.currentTime = 0;
+                                          }
+                                        }}
+                                        onLoadStart={() => { /* silent */ }}
+                                        onLoadedData={() => { /* silent */ }}
+                                        onCanPlay={() => { /* silent */ }}
+                                      />
+                                    );
+                                  })()
+                                ) : (
+                                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                    <span className="text-gray-400 text-xs">Video not available</span>
+                                  </div>
+                                )}
+                                {/* Video play icon overlay */}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                                      <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                {/* Hover buttons overlay */}
+                                <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
+                                  <button
+                                    aria-label="Copy prompt"
+                                    className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const cleanPrompt = entry.prompt?.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim() || '';
+                                      navigator.clipboard.writeText(cleanPrompt);
+                                    }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                        </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          </div>
                         );
                       });
                     })}
@@ -2040,8 +2124,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110"
                   />
                   <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video' 
-                      ? 'Upload character video' 
+                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video'
+                      ? 'Upload character video'
                       : 'Upload character'}
                   </div>
                 </div>
@@ -2062,28 +2146,28 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   <div className="relative group">
                     <div
                       className="w-auto  h-18 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer relative"
-                      // onClick={() => {
-                      //   const previewEntry: HistoryEntry = {
-                      //     id: "preview-video",
-                      //     prompt: "Uploaded Video",
-                      //     model: "preview",
-                      //     frameSize: "16:9",
-                      //     images: [{ id: "video-1", url: uploadedVideo, originalUrl: uploadedVideo, firebaseUrl: uploadedVideo }],
-                      //     status: "completed",
-                      //     timestamp: new Date().toISOString(),
-                      //     createdAt: new Date().toISOString(),
-                      //     imageCount: 1,
-                      //     generationType: "text-to-video",
-                      //   };
-                      //   setPreview({ entry: previewEntry, video: uploadedVideo });
-                      // }}
+                    // onClick={() => {
+                    //   const previewEntry: HistoryEntry = {
+                    //     id: "preview-video",
+                    //     prompt: "Uploaded Video",
+                    //     model: "preview",
+                    //     frameSize: "16:9",
+                    //     images: [{ id: "video-1", url: uploadedVideo, originalUrl: uploadedVideo, firebaseUrl: uploadedVideo }],
+                    //     status: "completed",
+                    //     timestamp: new Date().toISOString(),
+                    //     createdAt: new Date().toISOString(),
+                    //     imageCount: 1,
+                    //     generationType: "text-to-video",
+                    //   };
+                    //   setPreview({ entry: previewEntry, video: uploadedVideo });
+                    // }}
                     >
                       {/* Video element with hover play */}
                       {(() => {
                         // Use proxy URL if it's a storage path, otherwise use the URL directly
                         const proxied = toFrontendProxyMediaUrl(uploadedVideo);
                         const videoSrc = proxied || (uploadedVideo && (uploadedVideo.startsWith('http://') || uploadedVideo.startsWith('https://')) ? uploadedVideo : uploadedVideo);
-                        
+
                         return (
                           <video
                             src={videoSrc}
@@ -2139,8 +2223,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
               {uploadedCharacterImage && (
                 <div className="flex-shrink-0">
                   <div className="text-xs text-white/60 md:mb-2 mb-1">
-                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video' 
-                      ? 'Character Video' 
+                    {selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video'
+                      ? 'Character Video'
                       : 'Character Image'}
                   </div>
                   <div className="relative group">
@@ -2208,16 +2292,16 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-2 md:px-3 px-0">
           {/* Mobile First Row: Model Dropdown and Generate Button */}
           <div className="flex flex-row items-center justify-between gap-2 md:hidden md:mb-0 ">
-            
+
             <div className="w-full md:mb-0  -mb-10">
-            <VideoModelsDropdown
-              selectedModel={selectedModel}
-              onModelChange={handleModelChange}
-              generationMode="video_to_video"
-              selectedDuration="5s"
-              activeFeature="Animate"
-              onCloseOtherDropdowns={() => {}}
-            /></div>
+              <VideoModelsDropdown
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
+                generationMode="video_to_video"
+                selectedDuration="5s"
+                activeFeature="Animate"
+                onCloseOtherDropdowns={() => { }}
+              /></div>
             <div className="flex flex-col items-end gap-2 ">
               <div className="text-white/80 text-xs">
                 Total credits:{' '}
@@ -2248,92 +2332,88 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   generationMode="video_to_video"
                   selectedDuration="5s"
                   activeFeature="Animate"
-                  onCloseOtherDropdowns={() => {}}
+                  onCloseOtherDropdowns={() => { }}
                 />
-                
+
                 {/* WAN 2.2 Animate Parameters - Only show for WAN models */}
                 {selectedModel !== 'runway-act-two' && (
                   <>
                     {/* Resolution Dropdown - 480 or 720 ONLY */}
                     <div className="relative" ref={resolutionDropdownRef}>
-                  <button
-                    onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
-                    className="md:h-[32px] h-[28px] px-4 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
-                  >
-                    <Monitor className="w-4 h-4 mr-1" />
-                    {wanAnimateResolution}p
-                    <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {resolutionDropdownOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 md:w-32 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 md:pt-2 pt-1 z-50">
                       <button
-                        onClick={() => {
-                          setWanAnimateResolution("720");
-                          setResolutionDropdownOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                          wanAnimateResolution === "720" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
+                        onClick={() => setResolutionDropdownOpen(!resolutionDropdownOpen)}
+                        className="md:h-[32px] h-[28px] px-4 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                       >
-                        <span>720p</span>
-                        {wanAnimateResolution === "720" && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                        <Monitor className="w-4 h-4 mr-1" />
+                        {wanAnimateResolution}p
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${resolutionDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
-                      <button
-                        onClick={() => {
-                          setWanAnimateResolution("480");
-                          setResolutionDropdownOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                          wanAnimateResolution === "480" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
-                      >
-                        <span>480p</span>
-                        {wanAnimateResolution === "480" && <div className="w-2 h-2 bg-black rounded-full"></div>}
-                      </button>
+                      {resolutionDropdownOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 md:w-32 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 md:pt-2 pt-1 z-50">
+                          <button
+                            onClick={() => {
+                              setWanAnimateResolution("720");
+                              setResolutionDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${wanAnimateResolution === "720" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              }`}
+                          >
+                            <span>720p</span>
+                            {wanAnimateResolution === "720" && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setWanAnimateResolution("480");
+                              setResolutionDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${wanAnimateResolution === "480" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              }`}
+                          >
+                            <span>480p</span>
+                            {wanAnimateResolution === "480" && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {/* Refert Num - 1 or 5 */}
-                <div className="relative" ref={refFramesDropdownRef}>
-                  <button
-                    onClick={() => setRefFramesDropdownOpen(!refFramesDropdownOpen)}
-                    className="md:h-[32px] h-[28px] px-4 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
-                  >
-                    <span>Ref Frames: {wanAnimateRefertNum}</span>
-                    <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${refFramesDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {refFramesDropdownOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                    {/* Refert Num - 1 or 5 */}
+                    <div className="relative" ref={refFramesDropdownRef}>
                       <button
-                        onClick={() => {
-                          setWanAnimateRefertNum(1);
-                          setRefFramesDropdownOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                          wanAnimateRefertNum === 1 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
+                        onClick={() => setRefFramesDropdownOpen(!refFramesDropdownOpen)}
+                        className="md:h-[32px] h-[28px] px-4 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl text-white cursor-pointer"
                       >
-                        <span>Ref Frames: 1</span>
-                        {wanAnimateRefertNum === 1 && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                        <span>Ref Frames: {wanAnimateRefertNum}</span>
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${refFramesDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
-                      <button
-                        onClick={() => {
-                          setWanAnimateRefertNum(5);
-                          setRefFramesDropdownOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                          wanAnimateRefertNum === 5 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
-                      >
-                        <span>Ref Frames: 5</span>
-                        {wanAnimateRefertNum === 5 && <div className="w-2 h-2 bg-black rounded-full"></div>}
-                      </button>
+                      {refFramesDropdownOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
+                          <button
+                            onClick={() => {
+                              setWanAnimateRefertNum(1);
+                              setRefFramesDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${wanAnimateRefertNum === 1 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              }`}
+                          >
+                            <span>Ref Frames: 1</span>
+                            {wanAnimateRefertNum === 1 && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setWanAnimateRefertNum(5);
+                              setRefFramesDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${wanAnimateRefertNum === 5 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                              }`}
+                          >
+                            <span>Ref Frames: 5</span>
+                            {wanAnimateRefertNum === 5 && <div className="w-2 h-2 bg-black rounded-full"></div>}
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
                   </>
                 )}
-                
+
                 {/* Runway Act-Two Parameters - Only show for Runway model */}
                 {selectedModel === 'runway-act-two' && (
                   <>
@@ -2362,11 +2442,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                                 setRunwayActTwoRatio(ratio.value as any);
                                 setRunwayRatioDropdownOpen(false);
                               }}
-                              className={`w-full px-4 py-2 text-left transition-all duration-200  flex items-center justify-between ${
-                                runwayActTwoRatio === ratio.value
-                                  ? 'bg-white'
-                                  : 'hover:bg-white/10'
-                              }`}
+                              className={`w-full px-4 py-2 text-left transition-all duration-200  flex items-center justify-between ${runwayActTwoRatio === ratio.value
+                                ? 'bg-white'
+                                : 'hover:bg-white/10'
+                                }`}
                             >
                               <div className="flex flex-col items-start">
                                 <span className={`font-medium md:text-sm text-[11px] ${runwayActTwoRatio === ratio.value ? 'text-black' : 'text-white/90'}`}>{ratio.label}</span>
@@ -2380,7 +2459,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Character Type Dropdown */}
                     <div className="relative" ref={runwayCharacterTypeDropdownRef}>
                       <button
@@ -2403,9 +2482,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                                 setRunwayActTwoCharacterType(type);
                                 setRunwayCharacterTypeDropdownOpen(false);
                               }}
-                              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                                runwayActTwoCharacterType === type ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                              }`}
+                              className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${runwayActTwoCharacterType === type ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                                }`}
                             >
                               <span>{type === 'image' ? 'Image' : 'Video'}</span>
                               {runwayActTwoCharacterType === type && <div className="w-2 h-2 bg-black rounded-full"></div>}
@@ -2417,138 +2495,138 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                   </>
                 )}
               </div>
-              
+
               {/* WAN 2.2 Animate Checkboxes and FPS - Only show for WAN models */}
               {selectedModel !== 'runway-act-two' && (
                 <>
-                 <div className="flex flex-row gap-2">
-                  {/* FPS Input with Slider */}
-                  <div className="flex flex-col gap-2  mb-2">
-                    <div className="flex items-center gap-2">
-                      <label className="md:text-sm text-xs text-white/80">Frames per second:</label>
-                       <input
-                         type="number"
-                         min={5}
-                         max={60}
-                         value={wanAnimateFps}
-                         onChange={(e) => {
-                           const val = parseInt(e.target.value, 10);
-                           if (!isNaN(val) && val >= 5 && val <= 60) {
-                             setWanAnimateFps(val);
-                           }
-                         }}
-                         className="md:h-[28px] h-[24px] rounded-lg md:text-[13px] text-[11px] font-medium border border-white/10 bg-transparwnr text-white/80 w-16 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-                       />
+                  <div className="flex flex-row gap-2">
+                    {/* FPS Input with Slider */}
+                    <div className="flex flex-col gap-2  mb-2">
+                      <div className="flex items-center gap-2">
+                        <label className="md:text-sm text-xs text-white/80">Frames per second:</label>
+                        <input
+                          type="number"
+                          min={5}
+                          max={60}
+                          value={wanAnimateFps}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            if (!isNaN(val) && val >= 5 && val <= 60) {
+                              setWanAnimateFps(val);
+                            }
+                          }}
+                          className="md:h-[28px] h-[24px] rounded-lg md:text-[13px] text-[11px] font-medium border border-white/10 bg-transparwnr text-white/80 w-16 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                        />
+                      </div>
+                      <input
+                        type="range"
+                        min={5}
+                        max={60}
+                        value={wanAnimateFps}
+                        onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
+                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                        style={{
+                          background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                        }}
+                      />
                     </div>
-                    <input
-                      type="range"
-                      min={5}
-                      max={60}
-                      value={wanAnimateFps}
-                      onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
-                      style={{
-                        background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
-                      }}
-                    />
+                    {/* Go Fast Checkbox */}
+                    <div className="flex flex-row gap-4 pt-6">
+                      <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity">
+                        <div className="relative flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={wanAnimateGoFast}
+                            onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                            className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
+                          />
+                          {wanAnimateGoFast && (
+                            <svg
+                              className="absolute w-3 h-3 text-black pointer-events-none"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="3"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="md:text-sm text-[11px] font-medium text-white/90 group-hover:text-white transition-colors">Go fast </span>
+                        </div>
+                      </label>
+                      {/* Merge Audio Checkbox */}
+                      <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity">
+                        <div className="relative flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={wanAnimateMergeAudio}
+                            onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                            className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
+                          />
+                          {wanAnimateMergeAudio && (
+                            <svg
+                              className="absolute w-3 h-3 text-black pointer-events-none"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="3"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="md:text-sm text-[11px] font-medium text-white/90 group-hover:text-white transition-colors">Merge audio </span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
-                  {/* Go Fast Checkbox */}
-                  <div className="flex flex-row gap-4 pt-6">
-                  <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity">
-                      <div className="relative flex items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={wanAnimateGoFast}
-                          onChange={(e) => setWanAnimateGoFast(e.target.checked)}
-                          className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
-                        />
-                        {wanAnimateGoFast && (
-                          <svg
-                            className="absolute w-3 h-3 text-black pointer-events-none"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="3"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path d="M5 13l4 4L19 7"></path>
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="md:text-sm text-[11px] font-medium text-white/90 group-hover:text-white transition-colors">Go fast </span>
-                      </div>
-                    </label>
-                    {/* Merge Audio Checkbox */}
-                    <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity">
-                      <div className="relative flex items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={wanAnimateMergeAudio}
-                          onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
-                          className="w-5 h-5 rounded border-2 border-white/30 bg-white/10 text-white cursor-pointer appearance-none checked:bg-white checked:border-white transition-all duration-200"
-                        />
-                        {wanAnimateMergeAudio && (
-                          <svg
-                            className="absolute w-3 h-3 text-black pointer-events-none"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="3"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path d="M5 13l4 4L19 7"></path>
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="md:text-sm text-[11px] font-medium text-white/90 group-hover:text-white transition-colors">Merge audio </span>
-                      </div>
-                    </label>
-                    </div>
-                    </div>
                 </>
               )}
-              
+
               {/* Runway Act-Two Checkboxes and Slider - Only show for Runway model */}
               {selectedModel === 'runway-act-two' && (
                 <>
                   <div className="flex flex-row gap-5">
-                  {/* Expression Intensity Slider */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <label className="md:text-sm text-[11px] text-white/80">Expression Intensity:</label>
+                    {/* Expression Intensity Slider */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <label className="md:text-sm text-[11px] text-white/80">Expression Intensity:</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={5}
+                          value={runwayActTwoExpressionIntensity}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            if (!isNaN(val) && val >= 1 && val <= 5) {
+                              setRunwayActTwoExpressionIntensity(val);
+                            }
+                          }}
+                          className="md:h-[28px] h-[24px] rounded-lg md:text-[13px] text-[11px] font-medium border border-white/10 bg-transparent text-white/80 w-14 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                        />
+                      </div>
                       <input
-                        type="number"
+                        type="range"
                         min={1}
                         max={5}
                         value={runwayActTwoExpressionIntensity}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val) && val >= 1 && val <= 5) {
-                            setRunwayActTwoExpressionIntensity(val);
-                          }
+                        onChange={(e) => setRunwayActTwoExpressionIntensity(parseInt(e.target.value, 10))}
+                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
+                        style={{
+                          background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((runwayActTwoExpressionIntensity - 1) / (5 - 1)) * 100}%, rgba(255,255,255,0.1) ${((runwayActTwoExpressionIntensity - 1) / (5 - 1)) * 100}%, rgba(255,255,255,0.1) 100%)`
                         }}
-                        className="md:h-[28px] h-[24px] rounded-lg md:text-[13px] text-[11px] font-medium border border-white/10 bg-transparent text-white/80 w-14 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                     </div>
-                    <input
-                      type="range"
-                      min={1}
-                      max={5}
-                      value={runwayActTwoExpressionIntensity}
-                      onChange={(e) => setRunwayActTwoExpressionIntensity(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
-                      style={{
-                        background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((runwayActTwoExpressionIntensity - 1) / (5 - 1)) * 100}%, rgba(255,255,255,0.1) ${((runwayActTwoExpressionIntensity - 1) / (5 - 1)) * 100}%, rgba(255,255,255,0.1) 100%)`
-                      }}
-                    />
-                  </div>
 
-                   {/* Body Control Checkbox */}
-                   <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity pt-7">
+                    {/* Body Control Checkbox */}
+                    <label className="flex items-center gap-1 cursor-pointer group hover:opacity-90 transition-opacity pt-7">
                       <div className="relative flex items-center justify-center">
                         <input
                           type="checkbox"
@@ -2575,7 +2653,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
 
                       </div>
                     </label>
-                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -2603,9 +2681,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           setWanAnimateResolution("720");
                           setResolutionDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                          wanAnimateResolution === "720" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
+                        className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${wanAnimateResolution === "720" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                          }`}
                       >
                         <span>720p</span>
                         {wanAnimateResolution === "720" && <div className="w-2 h-2 bg-black rounded-full"></div>}
@@ -2615,9 +2692,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           setWanAnimateResolution("480");
                           setResolutionDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                          wanAnimateResolution === "480" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
+                        className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${wanAnimateResolution === "480" ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                          }`}
                       >
                         <span>480p</span>
                         {wanAnimateResolution === "480" && <div className="w-2 h-2 bg-black rounded-full"></div>}
@@ -2641,9 +2717,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           setWanAnimateRefertNum(1);
                           setRefFramesDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                          wanAnimateRefertNum === 1 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${wanAnimateRefertNum === 1 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                          }`}
                       >
                         <span>Ref Frames: 1</span>
                         {wanAnimateRefertNum === 1 && <div className="w-2 h-2 bg-black rounded-full"></div>}
@@ -2653,9 +2728,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           setWanAnimateRefertNum(5);
                           setRefFramesDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${
-                          wanAnimateRefertNum === 5 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                        }`}
+                        className={`w-full px-4 py-2 text-left transition text-[13px] flex items-center justify-between ${wanAnimateRefertNum === 5 ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                          }`}
                       >
                         <span>Ref Frames: 5</span>
                         {wanAnimateRefertNum === 5 && <div className="w-2 h-2 bg-black rounded-full"></div>}
@@ -2665,7 +2739,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 </div>
               </>
             )}
-            
+
             {/* Runway Act-Two Parameters - Only show for Runway model */}
             {selectedModel === 'runway-act-two' && (
               <>
@@ -2694,11 +2768,10 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                             setRunwayActTwoRatio(ratio.value as any);
                             setRunwayRatioDropdownOpen(false);
                           }}
-                          className={`w-full px-4 py-2 text-left transition-all duration-200  flex items-center justify-between ${
-                            runwayActTwoRatio === ratio.value
-                              ? 'bg-white'
-                              : 'hover:bg-white/10'
-                          }`}
+                          className={`w-full px-4 py-2 text-left transition-all duration-200  flex items-center justify-between ${runwayActTwoRatio === ratio.value
+                            ? 'bg-white'
+                            : 'hover:bg-white/10'
+                            }`}
                         >
                           <div className="flex flex-col items-start">
                             <span className={`font-medium text-sm ${runwayActTwoRatio === ratio.value ? 'text-black' : 'text-white/90'}`}>{ratio.label}</span>
@@ -2712,7 +2785,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Character Type Dropdown */}
                 <div className="relative" ref={runwayCharacterTypeDropdownRef}>
                   <button
@@ -2735,9 +2808,8 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                             setRunwayActTwoCharacterType(type);
                             setRunwayCharacterTypeDropdownOpen(false);
                           }}
-                          className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                            runwayActTwoCharacterType === type ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                          }`}
+                          className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${runwayActTwoCharacterType === type ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                            }`}
                         >
                           <span>{type === 'image' ? 'Image' : 'Video'}</span>
                           {runwayActTwoCharacterType === type && <div className="w-2 h-2 bg-black rounded-full"></div>}
@@ -2842,7 +2914,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                 </div>
               </>
             )}
-            
+
             {/* Runway Act-Two Checkboxes and Slider - Only show for Runway model */}
             {selectedModel === 'runway-act-two' && (
               <>
@@ -2939,37 +3011,37 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
       )}
 
       {/* UploadModal for character image uploads - only show when character type is image for Runway model */}
-      {uploadModalType === 'image' && 
-       !(selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video') && 
-       (() => {
-        // When modal is open, always use libraryImageEntries (even if empty initially)
-        // This ensures we show the fetched data once it loads
-        // Only fall back to imageHistoryEntries if modal is closed (shouldn't happen, but safety check)
-        const modalHistoryEntries = isUploadModalOpen 
-          ? [...libraryImageEntries] 
-          : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
-        
-        
-        return (
-          <UploadModal
-            isOpen={isUploadModalOpen}
-            onClose={() => {
-              setIsUploadModalOpen(false);
-            }}
-            onAdd={handleCharacterImageUploadFromModal}
-            remainingSlots={1}
-          />
-        );
-      })()}
+      {uploadModalType === 'image' &&
+        !(selectedModel === 'runway-act-two' && runwayActTwoCharacterType === 'video') &&
+        (() => {
+          // When modal is open, always use libraryImageEntries (even if empty initially)
+          // This ensures we show the fetched data once it loads
+          // Only fall back to imageHistoryEntries if modal is closed (shouldn't happen, but safety check)
+          const modalHistoryEntries = isUploadModalOpen
+            ? [...libraryImageEntries]
+            : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
+
+
+          return (
+            <UploadModal
+              isOpen={isUploadModalOpen}
+              onClose={() => {
+                setIsUploadModalOpen(false);
+              }}
+              onAdd={handleCharacterImageUploadFromModal}
+              remainingSlots={1}
+            />
+          );
+        })()}
 
       {/* VideoUploadModal for video uploads */}
       {uploadModalType === 'video' && (() => {
         // Use libraryVideoEntries if available, otherwise fall back to allVideoHistoryEntries
         // Create a new array reference to ensure React detects changes
-        const modalHistoryEntries = libraryVideoEntries.length > 0 
-          ? [...libraryVideoEntries] 
+        const modalHistoryEntries = libraryVideoEntries.length > 0
+          ? [...libraryVideoEntries]
           : [...allVideoHistoryEntries];
-        
+
         // Log what's being passed to the modal (only when modal is open to avoid spam)
         if (isUploadModalOpen && libraryVideoEntries.length > 0) {
           console.log('[AnimateInputBox] VideoUploadModal historyEntries prop:', {
@@ -2993,7 +3065,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
             }))
           });
         }
-        
+
         return (
           <VideoUploadModal
             isOpen={isUploadModalOpen}

@@ -298,6 +298,12 @@ export default function ArtStationPage() {
   }, [])
 
   const toggleLike = async (generationId: string) => {
+    // Redirect unauthenticated users to signup
+    if (!currentUid) {
+      if (typeof window !== 'undefined') window.location.href = '/signup'
+      return
+    }
+
     // Determine previous state once so we can use it for optimistic update + API action
     const prevState = engagement[generationId] || {
       likesCount: 0,
@@ -409,6 +415,12 @@ export default function ArtStationPage() {
   }
 
   const toggleBookmark = async (generationId: string) => {
+    // Redirect unauthenticated users to signup
+    if (!currentUid) {
+      if (typeof window !== 'undefined') window.location.href = '/signup'
+      return
+    }
+
     const prevState = engagement[generationId] || {
       likesCount: 0,
       bookmarksCount: 0,

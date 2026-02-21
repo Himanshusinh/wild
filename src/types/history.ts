@@ -113,6 +113,11 @@ export interface HistoryFilters {
     end: Date;
   };
   status?: 'generating' | 'completed' | 'failed';
+  // Search and Sort (handled as 'any' in some places, but good to have typed)
+  search?: string;
+  query?: string;
+  sortOrder?: 'asc' | 'desc';
+  sortBy?: string;
 }
 
 // Live Chat specific types
