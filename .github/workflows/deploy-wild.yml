@@ -1,37 +1,52 @@
-name: Deploy Wild Frontend
+name: Build & Deploy — Wild Frontend
 
 on:
   push:
     branches:
       - staging
 
+env:
+  ECR_REGISTRY: 213128717650.dkr.ecr.ap-south-1.amazonaws.com
+  ECR_REPOSITORY: wild
+  IMAGE_TAG: staging
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment: staging
+
     steps:
-      - name: Trigger Deployment
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push to ECR
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_CANVAS_URL=${{ secrets.NEXT_PUBLIC_CANVAS_URL }} \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "✅ Pushed $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: SSH Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.CONTABO_HOST }}
-          username: ${{ secrets.CONTABO_USER }}
-          key: ${{ secrets.CONTABO_SSH_KEY }}
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           port: 22
           script: |
-            # 1. Go to the main deployment folder (where the orchestration happens)
-            cd wildmind-staging/api-gateway-services-wildmind/deployment || exit 1
-            
-            # 2. Update the specific submodule/folder for this service
-            # Assuming the server has the repo cloned at ../../wild or similar
-            # Ideally, if you are using submodules or separate folders:
-            # 2. Update source code
-            cd ../../wild
-            git fetch origin staging
-            git reset --hard origin/staging
-            git pull origin staging
-            
-            # 3. Return to deployment folder and redeploy
-            cd ../api-gateway-services-wildmind/deployment
-            
-            # 4. Run the deploy script from here
+            cd ~/wildmind-staging/api-gateway-services-wildmind/deployment
             chmod +x deploy.sh
             ./deploy.sh wild
