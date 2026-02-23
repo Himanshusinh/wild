@@ -57,24 +57,41 @@ const ModelItem = ({ href, tag, tagColor, name, desc, onClick }: any) => (
 
 export const AudioPopout = ({
     isVisible,
+    anchorTop = 0,
     onMouseEnter,
     onMouseLeave
 }: {
     isVisible: boolean;
+    anchorTop?: number;
     onMouseEnter: () => void;
     onMouseLeave: () => void;
 }) => {
     const [mounted, setMounted] = useState(false);
+    const popupRef = React.useRef<HTMLDivElement>(null);
+    const [posTop, setPosTop] = useState<number | string>('50%');
+
     useEffect(() => setMounted(true), []);
+
+    useEffect(() => {
+        if (isVisible && anchorTop && popupRef.current) {
+            const half = popupRef.current.clientHeight / 2;
+            let t = anchorTop;
+            if (t - half < 16) t = half + 16;
+            else if (t + half > window.innerHeight - 16) t = window.innerHeight - half - 16;
+            setPosTop(t);
+        }
+    }, [isVisible, anchorTop]);
 
     if (!mounted) return null;
 
     return createPortal(
         <div
+            ref={popupRef}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-            className={`fixed left-[80px] top-1/2 -translate-y-1/2 z-[99999] flex max-h-[92vh] max-w-[740px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl origin-left transition-all duration-300 ease-out font-[family-name:var(--font-poppins)]
+            className={`fixed left-[80px] z-[99999] flex max-h-[92vh] w-[640px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl origin-left transition-all duration-300 ease-out font-[family-name:var(--font-poppins)]
             ${isVisible ? 'opacity-100 pointer-events-auto scale-100 translate-x-0' : 'opacity-0 pointer-events-none scale-95 -translate-x-2'}`}
+            style={{ top: typeof posTop === 'number' ? `${posTop}px` : posTop, transform: 'translateY(-50%)' }}
         >
             <div className="flex-1 bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden flex flex-col h-full shadow-[0_0_40px_rgba(0,0,0,0.5)]">
                 <div className="border-b border-white/10 p-4 shrink-0 bg-[#0a0a0a]">
