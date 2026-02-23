@@ -1773,9 +1773,9 @@ const InputBox = () => {
   const updateContentEditable = React.useCallback(() => {
     if (!contentEditableRef.current) return;
 
-    // If currently handling an update, retry shortly to ensure Redux state changes aren't lost
+    // If currently handling an user typing update via onInput, bail out completely.
+    // Retrying here causes a race condition that destroys the user's cursor position.
     if (isUpdatingRef.current) {
-      setTimeout(updateContentEditable, 60);
       return;
     }
 
