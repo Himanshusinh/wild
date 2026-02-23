@@ -662,10 +662,18 @@ axiosInstance.interceptors.response.use(
     }
 
     // Generic error toast (only for non-cancelled errors)
-    // Suppress 401 toasts if user is not authenticated (prevents noise on public pages)
+    // Suppress toasts if user is not authenticated (prevents noise on public pages)
     try {
-      const isUnauth401 = status === 401 && !localStorage.getItem('user');
-      if (!isUnauth401) {
+      const isUnauth = !localStorage.getItem('user');
+      const isGetRequest = original?.method?.toLowerCase() === 'get';
+      const errorMessage = error?.response?.data?.message || error?.message || '';
+      const isNoSessionTokenError = errorMessage.includes('No session token') || errorMessage.includes('Cookie not sent');
+
+      // Suppress 401s when unauth. Also suppress ALL GET request errors when unauth (e.g. 429 rate limits on public feeds)
+      // And explicitly suppress "No session token" errors which often happen right after logout or cookie expiry
+      const shouldSuppress = isUnauth && (status === 401 || status === 403 || status === 429 || isGetRequest) || (status === 401 && isNoSessionTokenError);
+
+      if (!shouldSuppress) {
         await showFalErrorToast(error);
       }
     } catch { }

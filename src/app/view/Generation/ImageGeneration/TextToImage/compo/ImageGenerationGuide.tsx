@@ -26,18 +26,18 @@ const ImageGenerationGuide = () => {
     const [activeTab, setActiveTab] = useState('image');
 
     return (
-        <section className="h-auto  text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-10 pb-40">
+        <section className="h-auto  text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-24 pb-40">
 
             {/* --- Ambient Background (Matches WildCanvas) --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div> */}
-                {/* Abstract Grid */}
-                {/* <div className="absolute inset-0" style={{
+            {/* Abstract Grid */}
+            {/* <div className="absolute inset-0" style={{
                     backgroundImage: 'linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px)',
                     backgroundSize: '100px 100px'
                 }}></div> */}
-                {/* Deep Blue Glows */}
-                {/* <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/[0.08] rounded-full blur-[120px]" />
+            {/* Deep Blue Glows */}
+            {/* <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/[0.08] rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/[0.08] rounded-full blur-[100px]" />
             </div> */}
 
@@ -134,17 +134,17 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 
 function StepCard({ number, title, desc, children, color }: { number: string; title: string; desc: string; children: React.ReactNode; color: string }) {
     // Determine glow colors based on step number
-    const glowGradient = number === "01" 
-        ? "from-purple-500/20 to-blue-500/20" 
-        : number === "02" 
-        ? "from-blue-500/20 to-cyan-500/20" 
-        : "from-indigo-500/20 to-purple-500/20";
-    
+    const glowGradient = number === "01"
+        ? "from-purple-500/20 to-blue-500/20"
+        : number === "02"
+            ? "from-blue-500/20 to-cyan-500/20"
+            : "from-indigo-500/20 to-purple-500/20";
+
     return (
         <div className={`group relative h-[28rem] md:max-h-[28rem] rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-[#60a5fa]/40 transition-all duration-500 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}>
             {/* Outline Glow Effect */}
             <div className={`absolute inset-0 bg-gradient-to-br ${glowGradient} opacity-0 group-hover:opacity-20 transition-opacity duration-700 blur-xl pointer-events-none`}></div>
-            
+
             {children}
             <div className="absolute top-2 md:top-2 left-2 md:left-2 w-8 h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-xs font-mono font-bold text-white/70 z-20 group-hover:bg-white group-hover:text-black transition-colors">{number}</div>
             <div className="absolute bottom-0 left-0 right-0 h-[35%] p-2 pl-4 flex flex-col justify-end pointer-events-none z-20">
@@ -333,9 +333,9 @@ function Step3_GenerateProcess() {
             <div className="absolute inset-0 h-[60%] md:max-h-[60%] overflow-hidden ">
                 {/* Result Image */}
                 <div className={`absolute inset-0 z-10 transition-opacity duration-1000 ${genState === 4 ? 'opacity-100' : 'opacity-0'}`}>
-                    <img 
-                        src="https://www.wildmindai.com/api/proxy/media/users%2Fwildchild%2Fimage%2F2iHcApu42QmYEftiQWyA%2F2iHcApu42QmYEftiQWyA-image-1_optimized.avif" 
-                        alt="Generated image" 
+                    <img
+                        src="https://www.wildmindai.com/api/proxy/media/users%2Fwildchild%2Fimage%2F2iHcApu42QmYEftiQWyA%2F2iHcApu42QmYEftiQWyA-image-1_optimized.avif"
+                        alt="Generated image"
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute top-4 right-4 px-3 py-1 bg-[#60a5fa] text-black text-[10px] font-bold rounded-full animate-in fade-in zoom-in shadow-lg">IMAGE GENERATED</div>

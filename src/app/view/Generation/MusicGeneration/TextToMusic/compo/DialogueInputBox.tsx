@@ -6,13 +6,13 @@ import { addHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice
 import { falElevenTts } from '@/store/slices/generationsApi';
 import { useCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
-const updateFirebaseHistory = async (_id: string, _updates: any) => {};
+const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 import DialogueHistory from './DialogueHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
 
-const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
+const DialogueInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
   const dispatch = useAppDispatch();
   // Include 'text-to-music' for legacy dialogue generations created under Music tab
   const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-dialogue', generationTypes: ['text-to-dialogue', 'text_to_dialogue', 'dialogue', 'text-to-music'] });
@@ -56,7 +56,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     const hasSession = document.cookie.includes('app_session');
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
-    
+
     if (!hasSession && !hasToken) {
       setErrorMessage('Please sign in to generate dialogue');
       window.location.href = '/view/signup?next=/text-to-music';
@@ -91,7 +91,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
     const modelName = payload.model || 'elevenlabs-dialogue';
     const dialogueText = validInputs.map((input: any) => input.text).join(' | ');
     const fileName = payload.fileName || '';
-    
+
     const tempId = `dialogue-loading-${Date.now()}`;
     const loadingEntry = {
       id: tempId,
@@ -106,15 +106,15 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
       imageCount: 1,
       fileName: fileName
     };
-    
+
     // Add to Redux immediately to show loading animation
     dispatch(addHistoryEntry(loadingEntry));
-    
+
     setLocalMusicPreview(loadingEntry);
 
     try {
       const result: any = await dispatch(falElevenTts(payload)).unwrap();
-      
+
       const audioObj = result.audio || result.audios?.[0] || result.images?.[0];
       const audioUrl = audioObj?.url || audioObj?.firebaseUrl || audioObj?.originalUrl;
 
@@ -144,7 +144,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
       // Update the loading entry in Redux (use tempId first, then historyId if different)
       dispatch(updateHistoryEntry({ id: tempId, updates: updateData }));
-      
+
       // If we have a real historyId that's different from tempId, also update that entry
       if (result.historyId && result.historyId !== tempId) {
         dispatch(updateHistoryEntry({ id: result.historyId, updates: updateData }));
@@ -191,7 +191,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
     audio: any;
   } | null>(null);
 
-  const showHistoryOnly = props?.showHistoryOnly || false;
+  // const showHistoryOnly = props?.showHistoryOnly || false;
 
   return (
     <>
@@ -219,7 +219,7 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
               isGenerating={isGenerating}
               resultUrl={resultUrl}
               errorMessage={errorMessage}
-              defaultModel="elevenlabs-dialogue"
+              defaultModel={selectedModel || "elevenlabs-dialogue"}
               isDialogueMode={true}
             />
           </div>
@@ -237,11 +237,11 @@ const DialogueInputBox = (props?: { showHistoryOnly?: boolean }) => {
                 className="text-white/60 hover:text-white transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <CustomAudioPlayer 
+            <CustomAudioPlayer
               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}

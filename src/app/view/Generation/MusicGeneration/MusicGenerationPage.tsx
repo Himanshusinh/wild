@@ -19,6 +19,7 @@ export default function MusicGenerationPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const featureParam = (searchParams?.get('feature') || '').toLowerCase();
+    const modelParam = searchParams?.get('model') || undefined;
     const { user } = useAppSelector((state: any) => state?.auth || { user: null });
 
     // Debug logging to verify auth state
@@ -203,11 +204,11 @@ export default function MusicGenerationPage() {
                         <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 h-full flex flex-col">
                             <div className="flex-1 overflow-y-auto input-scrollbar pr-2 py-4">
                                 <div className="space-y-6 pb-32">
-                                    {activeFeature === 'Music' && <MusicGenerationInputBox />}
-                                    {activeFeature === 'Voice (TTS)' && <TextToSpeechInputBox />}
-                                    {activeFeature === 'Dialogue' && <DialogueInputBox />}
-                                    {activeFeature === 'SFX' && <SFXInputBox />}
-                                    {activeFeature === 'Voice Cloning' && <AudioCloningInputBox />}
+                                    {activeFeature === 'Music' && <MusicGenerationInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'Voice (TTS)' && <TextToSpeechInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'Dialogue' && <DialogueInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'SFX' && <SFXInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'Voice Cloning' && <AudioCloningInputBox selectedModel={modelParam} />}
                                 </div>
                             </div>
                         </div>
