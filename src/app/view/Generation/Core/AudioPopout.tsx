@@ -5,13 +5,15 @@ import {
     Music,
     Volume2,
     Mic,
-    Radio
+    MessageSquare,
+    UserRound
 } from 'lucide-react';
 import WSolid from '@/components/icons/WSolid';
 
-const FeatureItem = ({ href, icon: Icon, title, desc }: any) => (
+const FeatureItem = ({ href, icon: Icon, title, desc, onClick }: any) => (
     <Link
         href={href}
+        onClick={onClick}
         className="group/item flex w-full cursor-pointer items-center gap-3 rounded-lg border border-transparent p-2 transition-colors hover:bg-white/10 hover:border-white/20"
     >
         <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white p-2">
@@ -24,9 +26,10 @@ const FeatureItem = ({ href, icon: Icon, title, desc }: any) => (
     </Link>
 );
 
-const ModelItem = ({ href, tag, tagColor, name, desc }: any) => (
+const ModelItem = ({ href, tag, tagColor, name, desc, onClick }: any) => (
     <Link
         href={href}
+        onClick={onClick}
         className="group/item flex w-full cursor-pointer items-center gap-3 rounded-lg border border-transparent p-2 transition-colors hover:bg-white/10 hover:border-white/20"
     >
         <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border text-white p-2`} style={{ borderColor: tagColor || 'rgba(255,255,255,0.1)', backgroundColor: tagColor ? `${tagColor}15` : 'rgba(255,255,255,0.05)' }}>
@@ -85,10 +88,11 @@ export const AudioPopout = ({
                         <div className="flex flex-col gap-2">
                             <div className="text-[10px] font-bold text-zinc-500 tracking-[0.2em] uppercase pl-1">Features</div>
                             <div className="flex flex-col gap-0.5">
-                                <FeatureItem href="/text-to-music" icon={Music} title="AI Music Generation" desc="Create original music from vibes" />
-                                <FeatureItem href="/text-to-music?type=sfx" icon={Volume2} title="Sound Effects" desc="Generate cinematic SFX" />
-                                <FeatureItem href="/text-to-music?type=tts" icon={Mic} title="Text to Speech" desc="Ultra realistic voiceovers" />
-                                <FeatureItem href="/editvideo?tool=lipsync" icon={Radio} title="AI Lip Sync" desc="Sync audio to video characters" />
+                                <FeatureItem href="/text-to-music?type=tts&feature=music" icon={Music} title="AI Music Generation" desc="Create original music from vibes" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-music?type=tts&feature=tts" icon={Mic} title="Text to Speech" desc="Ultra realistic voiceovers" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-music?type=tts&feature=dialogue" icon={MessageSquare} title="AI Dialogue" desc="Generate conversational audio" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-music?type=tts&feature=sfx" icon={Volume2} title="Sound Effects" desc="Generate cinematic SFX" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-music?type=tts&feature=audio-cloning" icon={UserRound} title="AI Voice Cloning" desc="Clone any voice accurately" onClick={onMouseLeave} />
                             </div>
                         </div>
 
@@ -96,10 +100,10 @@ export const AudioPopout = ({
                         <div className="flex flex-col gap-2">
                             <div className="text-[10px] font-bold text-zinc-500 tracking-[0.2em] uppercase pl-1">Models</div>
                             <div className="flex flex-col gap-0.5 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
-                                <ModelItem href="/text-to-music?model=minimax-music-2" tag="TOP PICK" tagColor="#9D4EDD" name="MiniMax Music 2" desc="High quality full tracks" />
-                                <ModelItem href="/text-to-music?model=elevenlabs-tts" tag="ULTRA" tagColor="#3A86FF" name="ElevenLabs TTS v3" desc="World's best voice AI" />
-                                <ModelItem href="/text-to-music?model=chatterbox-multilingual" tag="QUICK" tagColor="#00B4D8" name="Chatterbox" desc="Multilingual expressive voices" />
-                                <ModelItem href="/text-to-music?model=maya-tts" tag="" name="Maya TTS" desc="Fast and emotional TTS" />
+                                <ModelItem href="/text-to-music?type=tts&feature=music&model=minimax-music-2" tag="TOP PICK" tagColor="#9D4EDD" name="MiniMax Music 2" desc="High quality full tracks" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=elevenlabs-tts" tag="ULTRA" tagColor="#3A86FF" name="ElevenLabs TTS v3" desc="World's best voice AI" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=chatterbox-multilingual" tag="QUICK" tagColor="#00B4D8" name="Chatterbox" desc="Multilingual expressive voices" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=maya-tts" tag="" name="Maya TTS" desc="Fast and emotional TTS" onClick={onMouseLeave} />
                             </div>
                         </div>
 

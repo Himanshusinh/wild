@@ -347,7 +347,13 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     });
   }, [selectedUploadedAudio]);
 
-  // Ensure model is set correctly based on mode on mount
+  // Ensure model is set correctly based on mode on mount or when defaultModel changes
+  useEffect(() => {
+    if (defaultModel && defaultModel !== model) {
+      setModel(defaultModel);
+    }
+  }, [defaultModel]);
+
   useEffect(() => {
     if (isSFXMode && model !== 'elevenlabs-sfx') {
       setModel('elevenlabs-sfx');
@@ -1000,9 +1006,8 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               <button
                 key={option.value}
                 onClick={() => { setModel(option.value); setModelOpen(false); }}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex flex-col ${
-                  model === option.value ? "bg-white text-black hover:bg-white/90" : "text-white/90 hover:bg-white/10"
-                }`}
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex flex-col ${model === option.value ? "bg-white text-black hover:bg-white/90" : "text-white/90 hover:bg-white/10"
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <span>{option.label}</span>
@@ -1455,7 +1460,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           </div> */}
         </div>
         <div className="space-y-0">
-          <RangeControl  label="Exaggeration" value={elevenlabsExaggeration} min={0.25} max={2.0} step={0.01} onChange={setElevenlabsExaggeration} />
+          <RangeControl label="Exaggeration" value={elevenlabsExaggeration} min={0.25} max={2.0} step={0.01} onChange={setElevenlabsExaggeration} />
           <RangeControl label="Temperature" value={elevenlabsTemperature} min={0.05} max={5.0} step={0.01} onChange={setElevenlabsTemperature} />
           <RangeControl label="CFG Scale" value={elevenlabsCfgScale} min={0.0} max={1.0} step={0.01} onChange={setElevenlabsCfgScale} />
         </div>

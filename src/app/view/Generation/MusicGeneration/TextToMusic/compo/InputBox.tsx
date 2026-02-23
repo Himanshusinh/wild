@@ -12,7 +12,7 @@ import { getModelCreditInfo } from '@/utils/modelCredits';
 import ActiveGenerationsPanel from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
 // historyService removed; backend persists history
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
-const updateFirebaseHistory = async (_id: string, _updates: any) => {};
+const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 import MusicInputBox from './MusicInputBox';
 import { toast } from 'react-hot-toast';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
@@ -22,17 +22,17 @@ import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicHistory from "./MusicHistory";
 import axiosInstance from "@/lib/axiosInstance";
 
-const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
+const MusicGenerationInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
   const dispatch = useAppDispatch();
   // Self-manage history loads for music to avoid central duplicate requests
   const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-music' });
-  
+
   // Redux selector for parallel generation support
   const activeGenerations = useAppSelector(state => state.generation.activeGenerations);
   // Only count running generations towards the limit (limit is 4)
   // This allows completed/failed items to be auto-replaced by new ones
   const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
-  
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -70,7 +70,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     try {
       const res = await axiosInstance.get(`/api/generations/${historyId}`);
       const item = res.data?.data?.item;
-      
+
       if (!item) {
         console.warn('[refreshSingleGeneration] Music generation not found, falling back to full refresh');
         refreshMusicHistoryImmediate();
@@ -88,7 +88,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       // Check if entry already exists in Redux
       const currentState = store.getState();
       const currentEntries = currentState.history?.entries || [];
-      const existing = currentEntries.find((e: any) => 
+      const existing = currentEntries.find((e: any) =>
         String(e?.id || '') === String(historyId) ||
         String(e?.id || '') === String(normalizedEntry.id)
       );
@@ -123,7 +123,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             const gPrompt = String(g?.prompt || '').trim().toLowerCase();
             const gTime = typeof g?.createdAt === 'number' ? g.createdAt : Date.parse(String(g?.createdAt || '')) || Date.now();
             const timeDiff = Math.abs(neTime - gTime);
-            
+
             if (gPrompt && nePrompt && gPrompt === nePrompt && timeDiff < MAX_TIME_DIFF) {
               console.log('[refreshSingleGeneration] Correlating active music generation:', { genId: g.id, historyId: normalizedEntry.id });
               dispatch(updateActiveGeneration({
@@ -164,7 +164,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     // Create tracking ID for queue
     const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    
+
     // Add to active generations queue immediately
     console.log('[queue] Adding new music generation to queue:', { generationId, model: payload?.model, prompt: normalizedText.slice(0, 50) });
     dispatch(addActiveGeneration({
@@ -193,7 +193,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     // Check authentication before allowing generation
     const hasSession = document.cookie.includes('app_session');
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
-    
+
     if (!hasSession && !hasToken) {
       setErrorMessage('Please sign in to generate music');
       // Redirect to signup page
@@ -244,22 +244,22 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       }));
     }
 
-      // Get file name from payload or use default
-      const fileName = payload.fileName || '';
-      
-      // Create local preview immediately for UI feedback
-      setLocalMusicPreview({
-        id: `music-loading-${Date.now()}`,
-        prompt: normalizedText,
-        model: payload.model,
-        generationType: 'text-to-music',
-        images: [{ id: 'music-loading', url: '', originalUrl: '' }],
-        timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        imageCount: 1,
-        status: 'generating',
-        fileName: fileName
-      });
+    // Get file name from payload or use default
+    const fileName = payload.fileName || '';
+
+    // Create local preview immediately for UI feedback
+    setLocalMusicPreview({
+      id: `music-loading-${Date.now()}`,
+      prompt: normalizedText,
+      model: payload.model,
+      generationType: 'text-to-music',
+      images: [{ id: 'music-loading', url: '', originalUrl: '' }],
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      imageCount: 1,
+      status: 'generating',
+      fileName: fileName
+    });
 
     // For MiniMax Music 2, the backend creates the history entry, so we'll use that historyId
     // For other models, we create a loading entry first
@@ -267,7 +267,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     let tempId: string | null = null;
     let backendHistoryId: string | null = null;
 
-      if (!isMiniMaxMusic2) {
+    if (!isMiniMaxMusic2) {
       // Create loading history entry for Redux (with temporary ID) - only for non-MiniMax Music 2
       tempId = Date.now().toString();
       const fileName = payload.fileName || '';
@@ -285,13 +285,13 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         imageCount: 1, // For music, this represents audio count
         fileName: fileName
       };
-      
+
       // Force immediate refresh to show loading animation
       console.log('🎵 Adding loading entry to Redux:', loadingEntry);
 
       // Add to Redux with temporary ID
       dispatch(addHistoryEntry(loadingEntry));
-      
+
       // Force immediate UI update to show loading animation
       // Use requestAnimationFrame to ensure the entry is visible
       requestAnimationFrame(() => {
@@ -312,7 +312,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         tempId = firebaseHistoryId;
       } catch (firebaseError) {
         console.error('❌ Firebase save failed:', firebaseError);
-        try { const toast = (await import('react-hot-toast')).default; toast.error('Failed to save generation to history'); } catch {}
+        try { const toast = (await import('react-hot-toast')).default; toast.error('Failed to save generation to history'); } catch { }
       }
     } else {
       // For MiniMax Music 2, create a temporary loading entry that will be replaced by backend entry
@@ -333,7 +333,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
         imageCount: 1,
         fileName: fileName
       };
-      
+
       console.log('🎵 Adding loading entry for MiniMax Music 2:', loadingEntry);
       dispatch(addHistoryEntry(loadingEntry));
       // Force UI update without refreshing from backend
@@ -348,7 +348,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       const isPublic = await getIsPublic();
       console.log('🎵 Calling music API with payload via thunk:', { ...payload, isPublic });
       const requestPayload = { ...payload, isPublic, prompt: payload.prompt || normalizedText };
-      
+
       // Use MiniMax API for MiniMax Music 2, otherwise use existing endpoints
       let result: any;
       if (requestPayload.model === 'minimax-music-2') {
@@ -385,7 +385,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       // Extract audio data - prefer audios array from backend, fallback to audio object
       let audioItem: any;
       let audiosArray: any[] = [];
-      
+
       if (isTtsModel) {
         if (Array.isArray(result.audios) && result.audios.length > 0) {
           audiosArray = result.audios;
@@ -421,7 +421,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
       // Use backend's historyId if available, otherwise use frontend-created one
       const historyIdToUpdate = backendHistoryId || tempId;
-      
+
       // Update the history entry with the audio URL from backend
       // Store in both audios and images fields for compatibility
       const fileName = payload.fileName || '';
@@ -513,7 +513,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       }) : prev);
 
       // Show success notification
-      try { const toast = (await import('react-hot-toast')).default; toast.success('Music generated successfully!'); } catch {}
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Music generated successfully!'); } catch { }
 
       // Handle credit success
       if (transactionId) {
@@ -536,7 +536,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
 
     } catch (error: any) {
       console.error('❌ Music generation failed:', error);
-      
+
       // Update queue with failed status
       if (generationId) {
         dispatch(updateActiveGeneration({
@@ -547,13 +547,13 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
           }
         }));
       }
-      
+
       if (optimisticDebit > 0) {
         try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
       }
-      
+
       const historyIdToUpdate = backendHistoryId || tempId;
-      
+
       // Link active generation with backend ID before refresh
       if (generationId && historyIdToUpdate) {
         dispatch(updateActiveGeneration({
@@ -561,7 +561,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
           updates: { historyId: historyIdToUpdate }
         }));
       }
-      
+
       // For MiniMax Music 2, backend creates the entry, so use refreshSingleGeneration
       // For others, update the frontend-created entry then refresh it
       if (backendHistoryId) {
@@ -595,7 +595,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
             audios: []
           }
         }));
-        
+
         // Refresh the single failed entry
         await refreshSingleGeneration(tempId);
       } else {
@@ -610,8 +610,8 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
       }) : prev);
 
       setErrorMessage(error.message || 'Music generation failed');
-      try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch {}
-      
+      try { const toast = (await import('react-hot-toast')).default; toast.error('Music generation failed'); } catch { }
+
       // Handle credit failure
       if (transactionId) {
         await handleGenerationFailure(transactionId);
@@ -626,13 +626,13 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
     audio: any;
   } | null>(null);
 
-  const showHistoryOnly = props?.showHistoryOnly || false;
+  // const showHistoryOnly = props?.showHistoryOnly || false;
 
   return (
     <>
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
-      
+
       {showHistoryOnly ? (
         <MusicHistory
           generationType="text-to-music"
@@ -659,6 +659,7 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
               isGenerating={isGenerating}
               resultUrl={resultUrl}
               errorMessage={errorMessage}
+              defaultModel={selectedModel || "minimax-music-2"}
             />
           </div>
         </>
@@ -675,11 +676,11 @@ const MusicGenerationInputBox = (props?: { showHistoryOnly?: boolean }) => {
                 className="text-white/60 hover:text-white transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <CustomAudioPlayer 
+            <CustomAudioPlayer
               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
               prompt={selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}
