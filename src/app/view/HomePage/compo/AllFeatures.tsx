@@ -118,8 +118,8 @@ export default function AllFeatures() {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <h2 className="text-2xl text-white font-medium">All features</h2>
 
-                    <div dir="ltr" className="mx-auto md:mx-0 w-fit">
-                        <div role="tablist" className="inline-flex items-center justify-start gap-2 bg-zinc-900/50 p-1 rounded-xl border border-white/5">
+                    <div dir="ltr" className="w-full md:w-fit overflow-x-auto no-scrollbar">
+                        <div role="tablist" className="inline-flex items-center justify-start gap-2 bg-zinc-900/50 p-1 rounded-xl border border-white/5 min-w-full md:min-w-0 flex-nowrap">
                             <TabButton
                                 active={activeTab === 'explore'}
                                 onClick={() => setActiveTab('explore')}
