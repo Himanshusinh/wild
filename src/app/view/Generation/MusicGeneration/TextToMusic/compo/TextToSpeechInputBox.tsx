@@ -17,11 +17,14 @@ interface TextToSpeechInputBoxProps {
   selectedModel?: string;
 }
 
-const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = ({ showHistoryOnly = false, selectedModel }) => {
+const TTS_GENERATION_TYPES = ['text-to-speech', 'text_to_speech', 'tts'];
+
+const TextToSpeechInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
+  const [activeTab, setActiveTab] = useState('tts');
   const dispatch = useAppDispatch();
   // Include 'text-to-music' for backward compatibility with earlier mis-labeled TTS generations
   // But use only text-to-speech for new generations to avoid mixing with music entries
-  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: ['text-to-speech', 'text_to_speech', 'tts'] });
+  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: TTS_GENERATION_TYPES });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();

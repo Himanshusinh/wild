@@ -469,13 +469,13 @@ export default function PromotionalBanner2() {
 
                   {/* Normal tabs */}
                   {!isAssistMode && (
-                    <>
-                      <div role="tablist" className="inline-flex items-center gap-0.5 bg-zinc-800 p-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[calc(100vw-120px)] md:max-w-none">
+                      <div role="tablist" className="inline-flex items-center gap-0.5 bg-zinc-800 p-1 rounded-lg flex-nowrap min-w-fit">
                         {(['image', 'video', 'assist'] as const).map((tab) => (
                           <button key={tab} type="button" role="tab"
                             aria-selected={activeTab === tab}
                             onClick={() => handleTabClick(tab)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${activeTab === tab ? 'bg-zinc-600 text-white shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
+                            className={`inline-flex items-center gap-1.5 px-2 md:px-3 py-1.5 text-[10px] md:text-xs font-medium rounded-md transition-all duration-200 ${activeTab === tab ? 'bg-zinc-600 text-white shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
                               }`}>
                             {tab === 'image' && <ImageIcon size={13} />}
                             {tab === 'video' && <Video size={13} />}
@@ -485,10 +485,10 @@ export default function PromotionalBanner2() {
                         ))}
                       </div>
                       <button type="button" onClick={handleShufflePrompt}
-                        className="size-8 inline-flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+                        className="size-8 shrink-0 inline-flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
                         <Shuffle size={15} />
                       </button>
-                    </>
+                    </div>
                   )}
 
                   {/* Assist mode controls */}

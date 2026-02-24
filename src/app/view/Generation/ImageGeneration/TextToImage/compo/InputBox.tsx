@@ -446,9 +446,10 @@ const InputBox = () => {
   const hasAttemptedInitialLoadRef = useRef(false);
 
   // Unified initial load (single guarded request) via custom hook
+  const fallbackGenerationTypes = useMemo(() => ['text-to-image', 'image-to-image'], []);
   const { refresh: refreshHistoryDebounced, refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({
     generationType: 'text-to-image',
-    generationTypes: ['text-to-image', 'image-to-image'],
+    generationTypes: fallbackGenerationTypes,
     initialLimit: 60,
     mode: 'image',
     skipBackendGenerationFilter: true,
@@ -1770,7 +1771,13 @@ const InputBox = () => {
 
   // Function to update contentEditable with tags
   const updateContentEditable = React.useCallback(() => {
-    if (!contentEditableRef.current || isUpdatingRef.current) return;
+    if (!contentEditableRef.current) return;
+
+    // If currently handling an user typing update via onInput, bail out completely.
+    // Retrying here causes a race condition that destroys the user's cursor position.
+    if (isUpdatingRef.current) {
+      return;
+    }
 
     const div = contentEditableRef.current;
     const selection = window.getSelection();
@@ -5356,6 +5363,14 @@ const InputBox = () => {
     if (data.prompt) {
       console.log('[AutoResume] Restoring prompt:', data.prompt);
       dispatch(setPrompt(data.prompt));
+
+      // Fallback: visually update the contentEditable immediately in case the 
+      // React state -> DOM update cycle misses it during the initial mount
+      setTimeout(() => {
+        if (contentEditableRef.current && contentEditableRef.current.textContent?.trim() === '') {
+          contentEditableRef.current.textContent = data.prompt;
+        }
+      }, 100);
     }
     if (data.model) {
       console.log('[AutoResume] Restoring model:', data.model);
