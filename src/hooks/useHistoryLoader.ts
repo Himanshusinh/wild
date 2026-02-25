@@ -186,17 +186,13 @@ export const useHistoryLoader = ({
       : entries.some((e: any) => wantedTypes.some(w => norm(e.generationType || '') === norm(String(w))));
     const mustLoadDueToNoEntries = !hasTypeEntries;
 
-    // If mounted but we have no entries or filters don't match, reset mounted state to force load
-    if (mountedRef.current && !generationTypeChanged && !switchedToThisFeature && !filtersAreForDifferentType && !mustLoadDueToNoEntries) {
+    // If mounted and no type/filter change, skip initial load. Don't force load just because there are no entries
+    // (the backend might genuinely have returned 0 entries).
+    if (mountedRef.current && !forceInitial && !generationTypeChanged && !switchedToThisFeature && !filtersAreForDifferentType) {
       console.log('[useHistoryLoader] ⚠️ Already mounted and no type/filter change, skipping initial load');
       return; // only once per mount unless type changed or filters don't match
     }
 
-    // If we have no entries, always reset mounted state to ensure we load
-    if (mustLoadDueToNoEntries && mountedRef.current) {
-      console.log('[useHistoryLoader] ⚠️ No entries found, resetting mounted state to force load');
-      mountedRef.current = false;
-    }
     mountedRef.current = true;
     lastGenerationTypeRef.current = generationType;
     console.log('[useHistoryLoader] ✅ Mounted, proceeding with initial load check...');

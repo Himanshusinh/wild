@@ -136,6 +136,7 @@ const SidePannelFeatures = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
   const [activePopout, setActivePopout] = React.useState<string | null>(null);
+  const [popoutAnchor, setPopoutAnchor] = React.useState<number>(0);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
@@ -150,17 +151,16 @@ const SidePannelFeatures = () => {
   // ── Drag state ──
   const [draggingId, setDraggingId] = React.useState<string | null>(null);
   const [insertBeforeId, setInsertBeforeId] = React.useState<string | null>(null); // null = insert at end
-  const [ghostPos, setGhostPos] = React.useState({ x: 0, y: 0 });
-  const [ghostLabel, setGhostLabel] = React.useState('');
-  const [ghostIcon, setGhostIcon] = React.useState<React.ReactElement | null>(null);
   const draggingIdRef = React.useRef<string | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const isDraggingRef = React.useRef(false);
-  const didMoveRef = React.useRef(false);
 
   // ── Popout hover ──
-  const handleMouseEnterItem = (id: string | null) => {
+  const handleMouseEnterItem = (id: string | null, e?: React.MouseEvent) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setPopoutAnchor(rect.top + rect.height / 2);
+    }
     setActivePopout(id);
   };
 
@@ -187,75 +187,52 @@ const SidePannelFeatures = () => {
     return null; // means: append at end
   }, []);
 
-  // ── Mouse drag handlers ──
-  const handleMouseDown = (item: NavItemDef, e: React.MouseEvent) => {
-    // Only left button + not ctrl/meta (those open new tab)
-    if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
-    e.preventDefault();
-
+  const handleDragStart = (e: React.DragEvent<HTMLAnchorElement>, item: NavItemDef) => {
     draggingIdRef.current = item.id;
-    isDraggingRef.current = false;
-    didMoveRef.current = false;
+    setDraggingId(item.id);
 
-    const startX = e.clientX;
-    const startY = e.clientY;
+    const fullUrl = new URL(item.url, window.location.origin).toString();
+    e.dataTransfer.setData('text/uri-list', fullUrl);
+    e.dataTransfer.setData('text/plain', fullUrl);
+    e.dataTransfer.effectAllowed = 'copyMove';
+  };
 
-    const onMouseMove = (me: MouseEvent) => {
-      const dx = me.clientX - startX;
-      const dy = me.clientY - startY;
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingIdRef.current) return;
+    e.dataTransfer.dropEffect = 'move';
+    setInsertBeforeId(computeInsertBeforeId(e.clientY));
+  };
 
-      // Start actual drag only after 4px movement to avoid killing clicks
-      if (!isDraggingRef.current && Math.hypot(dx, dy) < 4) return;
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingIdRef.current) return;
 
-      if (!isDraggingRef.current) {
-        isDraggingRef.current = true;
-        didMoveRef.current = true;
-        setDraggingId(item.id);
-        setGhostLabel(item.label);
-        setGhostIcon(item.renderIcon());
+    const fromId = draggingIdRef.current;
+    const toBeforeId = computeInsertBeforeId(e.clientY);
+
+    setOrder((prev) => {
+      const next = prev.filter((id) => id !== fromId);
+      if (toBeforeId === null) {
+        next.push(fromId);
+      } else {
+        const toIdx = next.indexOf(toBeforeId);
+        if (toIdx === -1) next.push(fromId);
+        else next.splice(toIdx, 0, fromId);
       }
+      saveOrder(next);
+      return next;
+    });
 
-      setGhostPos({ x: me.clientX, y: me.clientY });
-      setInsertBeforeId(computeInsertBeforeId(me.clientY));
-    };
+    setDraggingId(null);
+    draggingIdRef.current = null;
+    setInsertBeforeId(null);
+  };
 
-    const onMouseUp = (me: MouseEvent) => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-
-      if (!isDraggingRef.current) {
-        // Was a click, not a drag — navigate
-        nav(item.url);
-        draggingIdRef.current = null;
-        return;
-      }
-
-      // Commit reorder
-      const fromId = draggingIdRef.current!;
-      const toBeforeId = computeInsertBeforeId(me.clientY);
-
-      setOrder((prev) => {
-        if (!fromId) return prev;
-        const next = prev.filter((id) => id !== fromId);
-        if (toBeforeId === null) {
-          next.push(fromId);
-        } else {
-          const toIdx = next.indexOf(toBeforeId);
-          if (toIdx === -1) next.push(fromId);
-          else next.splice(toIdx, 0, fromId);
-        }
-        saveOrder(next);
-        return next;
-      });
-
-      isDraggingRef.current = false;
-      draggingIdRef.current = null;
-      setDraggingId(null);
-      setInsertBeforeId(null);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    draggingIdRef.current = null;
+    setInsertBeforeId(null);
   };
 
   // Prevent ghost from flickering when re-rendering
@@ -283,15 +260,24 @@ const SidePannelFeatures = () => {
       const isBeingDragged = draggingId === item.id;
 
       result.push(
-        <div
+        <a
+          href={item.url}
           key={item.id}
           data-navid={item.id}
-          onMouseEnter={() => {
+          draggable
+          onDragStart={(e) => handleDragStart(e, item)}
+          onDragEnd={handleDragEnd}
+          onClick={(e) => {
+            if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              nav(item.url);
+            }
+          }}
+          onMouseEnter={(e) => {
             if (isDragging) return;
             setIsSidebarHovered(true);
-            handleMouseEnterItem(item.popoutId || null);
+            handleMouseEnterItem(item.popoutId || null, e);
           }}
-          onMouseDown={(e) => handleMouseDown(item, e)}
           style={{
             opacity: isBeingDragged ? 0.2 : 1,
             transition: isDragging ? 'none' : 'opacity 0.15s',
@@ -318,7 +304,7 @@ const SidePannelFeatures = () => {
               })}
           </div>
 
-          <span className={`ml-3 md:ml-0 md:mt-1.5 mt-0 text-[9px] uppercase font-bold tracking-wider transition-colors duration-300 pointer-events-none
+          <span className={`ml-3 md:ml-0 md:mt-1.5 mt-0 text-[9px] uppercase font-bold tracking-wider transition-colors duration-300 pointer-events-none whitespace-nowrap
             ${isActive ? 'text-white' : 'text-current'}`}>
             {item.label}
           </span>
@@ -327,7 +313,7 @@ const SidePannelFeatures = () => {
           <span className="hidden md:block md:mt-1 text-[9px] uppercase font-bold tracking-widest scale-0 group-hover:scale-100 transition-all duration-300 absolute left-full ml-2 bg-black/80 px-2 py-1 rounded border border-white/10 whitespace-nowrap z-[120] pointer-events-none opacity-0 group-hover:opacity-100">
             {item.label}
           </span>
-        </div>
+        </a>
       );
     }
 
@@ -367,7 +353,7 @@ const SidePannelFeatures = () => {
         {/* Logo */}
         <div
           onClick={() => nav(APP_ROUTES.LANDING)}
-          onMouseEnter={() => handleMouseEnterItem(null)}
+          onMouseEnter={(e) => handleMouseEnterItem(null, e)}
           className="group relative flex items-center justify-start md:flex-col md:items-center md:justify-center pt-2 py-0 md:pl-3 pl-2 pr-3 transition-all duration-300 cursor-pointer opacity-100"
         >
           <div className="relative w-[40px] h-[40px] md:w-[40px] md:h-[40px] flex items-center justify-center">
@@ -376,7 +362,12 @@ const SidePannelFeatures = () => {
         </div>
 
         {/* Nav Items */}
-        <div ref={listRef} className="flex flex-col gap-0.5 flex-1 overflow-y-auto no-scrollbar mx-1 md:pt-3 pt-1">
+        <div
+          ref={listRef}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          className="flex flex-col gap-0.5 flex-1 overflow-y-auto no-scrollbar mx-1 md:pt-3 pt-1"
+        >
           {renderNavItems()}
         </div>
 
@@ -384,7 +375,7 @@ const SidePannelFeatures = () => {
         <div className="mt-auto py-5 flex flex-col items-start md:items-center pl-3 md:pl-0 border-t border-white/5">
           <div
             className="relative group flex flex-col items-start md:items-center gap-1.5"
-            onMouseEnter={() => handleMouseEnterItem(null)}
+            onMouseEnter={(e) => handleMouseEnterItem(null, e)}
           >
             <div className="relative cursor-pointer" onClick={() => nav(NAV_ROUTES.ACCOUNT_MANAGEMENT)}>
               <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-slate-900 to-slate-800 border border-white/10 overflow-hidden group-hover:border-[#60a5fa]/50 transition-all">
@@ -423,26 +414,7 @@ const SidePannelFeatures = () => {
         </div>
       </div>
 
-      {/* ── Floating Drag Ghost ── */}
-      {isDragging && (
-        <div
-          className="fixed z-[9999] pointer-events-none"
-          style={{
-            left: ghostPos.x + 14,
-            top: ghostPos.y - 20,
-            transform: 'rotate(-4deg) scale(1.08)',
-            transition: 'none',
-          }}
-        >
-          <div className="flex md:flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-2xl text-white"
-            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.15)', minWidth: 60 }}>
-            <div className="pointer-events-none">
-              {ghostIcon && React.cloneElement(ghostIcon as React.ReactElement<{ size?: number; strokeWidth?: number }>, { size: 20, strokeWidth: 2 })}
-            </div>
-            <span className="text-[9px] uppercase font-black tracking-wider mt-0.5">{ghostLabel}</span>
-          </div>
-        </div>
-      )}
+      {/* ── Floating Drag Ghost removed ── */}
 
       {/* Mobile Overlay */}
       {isMobileSidebarOpen && (
@@ -450,10 +422,10 @@ const SidePannelFeatures = () => {
       )}
 
       {/* Popouts */}
-      <ImagePopout isVisible={activePopout === 'image'} onMouseEnter={() => handleMouseEnterItem('image')} onMouseLeave={handleMouseLeaveSidebar} />
-      <VideoPopout isVisible={activePopout === 'video'} onMouseEnter={() => handleMouseEnterItem('video')} onMouseLeave={handleMouseLeaveSidebar} />
-      <AudioPopout isVisible={activePopout === 'audio'} onMouseEnter={() => handleMouseEnterItem('audio')} onMouseLeave={handleMouseLeaveSidebar} />
-      <AppsPopout isVisible={activePopout === 'apps'} onMouseEnter={() => handleMouseEnterItem('apps')} onMouseLeave={handleMouseLeaveSidebar} />
+      <ImagePopout isVisible={activePopout === 'image'} anchorTop={popoutAnchor} onMouseEnter={() => handleMouseEnterItem('image')} onMouseLeave={handleMouseLeaveSidebar} />
+      <VideoPopout isVisible={activePopout === 'video'} anchorTop={popoutAnchor} onMouseEnter={() => handleMouseEnterItem('video')} onMouseLeave={handleMouseLeaveSidebar} />
+      <AudioPopout isVisible={activePopout === 'audio'} anchorTop={popoutAnchor} onMouseEnter={() => handleMouseEnterItem('audio')} onMouseLeave={handleMouseLeaveSidebar} />
+      <AppsPopout isVisible={activePopout === 'apps'} anchorTop={popoutAnchor} onMouseEnter={() => handleMouseEnterItem('apps')} onMouseLeave={handleMouseLeaveSidebar} />
     </>
   );
 };

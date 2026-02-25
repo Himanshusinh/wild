@@ -21,12 +21,14 @@ const ALLOWED_TYPES = [
   'audio/x-mpeg-3'
 ];
 
+const VOICE_CLONING_GENERATION_TYPES = ['voicecloning', 'voice-cloning'];
+
 const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
   const dispatch = useAppDispatch();
   // const showHistoryOnly = props?.showHistoryOnly || false;
   const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({
     generationType: 'voicecloning',
-    generationTypes: ['voicecloning', 'voice-cloning']
+    generationTypes: VOICE_CLONING_GENERATION_TYPES
   });
   const [audioFileName, setAudioFileName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -410,8 +412,8 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
             onClick={handleCloneAudio}
             disabled={isCloning || !audioFileName.trim() || !selectedFile}
             className={`w-full py-2 rounded-lg text-sm font-semibold transition ${isCloning || !audioFileName.trim() || !selectedFile
-                ? 'bg-white/20 text-white/60 cursor-not-allowed'
-                : 'bg-white text-black hover:bg-white/90'
+              ? 'bg-white/20 text-white/60 cursor-not-allowed'
+              : 'bg-white text-black hover:bg-white/90'
               }`}
           >
             {isCloning ? 'Cloning...' : 'Clone Audio'}

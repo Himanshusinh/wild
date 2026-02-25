@@ -12,10 +12,12 @@ import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
 
+const DIALOGUE_GENERATION_TYPES = ['text-to-dialogue', 'text_to_dialogue', 'dialogue', 'text-to-music'];
+
 const DialogueInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
   const dispatch = useAppDispatch();
   // Include 'text-to-music' for legacy dialogue generations created under Music tab
-  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-dialogue', generationTypes: ['text-to-dialogue', 'text_to_dialogue', 'dialogue', 'text-to-music'] });
+  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-dialogue', generationTypes: DIALOGUE_GENERATION_TYPES });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
