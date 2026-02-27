@@ -246,6 +246,7 @@ export function proxy(req: NextRequest) {
   // Allow public pages
   const isPublic = (
     pathname === '/' ||
+    pathname === '/coming-soon' ||
     // SEO assets must be public and unprotected
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
