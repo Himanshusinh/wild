@@ -6138,7 +6138,7 @@ const InputBox = () => {
 
       {/* Desktop-only: Selected images/characters single-row above input box */}
       {!isInlineEditImagePage && (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-        <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[51] px-2 py-4 overflow-x-auto no-scrollbar">
+        <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] px-2 py-4 overflow-x-auto no-scrollbar justify-end">
           <div className="flex flex-row gap-3 py-1">
             {selectedCharacters.map((character: any) => (
               <div key={character.id} className="relative group flex-shrink-0">
