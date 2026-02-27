@@ -87,6 +87,9 @@ export default function SignInForm() {
   const [showForgotPassword, setShowForgotPassword] = useState(false) // Forgot password modal
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("") // Email for forgot password
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false) // Track if email was sent
+  const [forgotPasswordError, setForgotPasswordError] = useState("") // Isolated error for forgot password modal
+  const [isGoogleOnlyUser, setIsGoogleOnlyUser] = useState(false) // True when user signed up via Google
+  const [resendCooldown, setResendCooldown] = useState(0) // Seconds remaining before resend is allowed
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
   const [showPassword, setShowPassword] = useState(false) // Password visibility toggle (synced for both fields)
@@ -721,6 +724,21 @@ export default function SignInForm() {
     }
   }
 
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
   // Handle forgot password
   const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -733,7 +751,8 @@ export default function SignInForm() {
     }
 
     setProcessing(true)
-    setError("")
+    setForgotPasswordError("")
+    setIsGoogleOnlyUser(false)
 
     try {
       const response = await axiosInstance.post("/api/auth/forgot-password", {
@@ -743,37 +762,38 @@ export default function SignInForm() {
       console.log("📥 Forgot password response:", response.data)
 
       if (response.data?.responseStatus === 'success') {
-        // Success - email sent
+        // Success - email sent — start 60-second resend cooldown
         setForgotPasswordSent(true)
+        setResendCooldown(60)
         toast.success(response.data?.message || "Password reset link has been sent to your email.", { duration: 5000 })
       } else {
-        // Handle error cases
-        const errorMessage = response.data?.message || "Failed to send password reset email. Please try again."
         const reason = response.data?.data?.reason
+        const errorMessage = response.data?.message || "Failed to send password reset email. Please try again."
 
         if (reason === 'GOOGLE_ONLY_USER') {
-          toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
+          setIsGoogleOnlyUser(true)
         } else if (reason === 'USER_NOT_FOUND') {
-          toast.error("No account found with this email address.", { duration: 4000 })
+          setForgotPasswordError("No account found with this email address.")
+        } else if (reason === 'TOO_MANY_REQUESTS') {
+          const retryAfter = response.data?.data?.retryAfterSeconds || 60
+          setResendCooldown(retryAfter)
+          setForgotPasswordSent(true) // Show the success/cooldown panel
         } else {
-          toast.error(errorMessage, { duration: 4000 })
+          setForgotPasswordError(errorMessage)
         }
-        setError(errorMessage)
       }
     } catch (error: any) {
       console.error("❌ Forgot password error:", error)
-      const errorMessage = error.response?.data?.message || "Failed to send password reset email. Please try again."
       const reason = error.response?.data?.data?.reason
+      const errorMessage = error.response?.data?.message || "Failed to send password reset email. Please try again."
 
-      // Handle specific error cases
       if (reason === 'GOOGLE_ONLY_USER') {
-        toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
+        setIsGoogleOnlyUser(true)
       } else if (reason === 'USER_NOT_FOUND') {
-        toast.error("No account found with this email address.", { duration: 4000 })
+        setForgotPasswordError("No account found with this email address.")
       } else {
-        toast.error(errorMessage, { duration: 4000 })
+        setForgotPasswordError(errorMessage)
       }
-      setError(errorMessage)
     } finally {
       setProcessing(false)
     }
@@ -2010,85 +2030,217 @@ export default function SignInForm() {
       {showForgotPassword && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md p-6 space-y-6">
-            {/* Header */}
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-white">Reset Password</h2>
-              <p className="text-gray-400 text-sm">
-                {forgotPasswordSent
-                  ? "Check your email for password reset instructions."
-                  : "Enter your email address and we'll send you a link to reset your password."}
-              </p>
-            </div>
 
-            {/* Success Message */}
-            {forgotPasswordSent ? (
-              <div className="space-y-4">
-                <div className="rounded-lg p-4 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm">
-                    If an account exists with this email, a password reset link has been sent to <strong>{forgotPasswordEmail}</strong>
+            {/* Google-only user panel */}
+            {isGoogleOnlyUser ? (
+              <>
+                {/* Header */}
+                <div className="text-center space-y-2">
+                  <div className="flex justify-center mb-3">
+                    <div className="w-14 h-14 rounded-full bg-blue-900/40 border border-blue-700 flex items-center justify-center">
+                      {/* Google icon */}
+                      <svg className="w-7 h-7" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">Google Account</h2>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    This email is linked to a <strong className="text-white">Google account</strong>. Password reset is not available for Google sign-ins.
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowForgotPassword(false)
-                    setForgotPasswordSent(false)
-                    setForgotPasswordEmail("")
-                  }}
-                  className="w-full py-3 px-4 rounded-lg font-medium text-base bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                {/* Error Message */}
-                {error && (
-                  <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                    <p className="text-red-300 text-sm">{error}</p>
-                  </div>
-                )}
 
-                {/* Email Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={forgotPasswordEmail}
-                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                    required
-                    autoFocus
-                  />
+                {/* Info box */}
+                <div className="rounded-xl p-4 bg-blue-900/20 border border-blue-800/60 space-y-2">
+                  <p className="text-blue-300 text-sm font-medium">What you can do instead:</p>
+                  <ul className="text-blue-200/80 text-sm space-y-1 list-disc list-inside">
+                    <li>Sign in using the <strong>Continue with Google</strong> button</li>
+                    <li>If you've forgotten your Google password, reset it at <a href="https://accounts.google.com" target="_blank" rel="noopener noreferrer" className="underline text-blue-400 hover:text-blue-300">accounts.google.com</a></li>
+                  </ul>
                 </div>
 
-                {/* Buttons */}
-                <div className="flex gap-3">
+                {/* Actions */}
+                <div className="space-y-3">
                   <button
                     type="button"
                     onClick={() => {
                       setShowForgotPassword(false)
+                      setIsGoogleOnlyUser(false)
+                      setForgotPasswordError("")
                       setForgotPasswordEmail("")
-                      setError("")
+                      // Make sure we go to the login form and trigger Google sign-in
+                      setShowLoginForm(true)
                     }}
-                    className="flex-1 py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                    className="w-full py-3 px-4 rounded-lg font-medium text-base bg-white hover:bg-gray-100 text-gray-900 transition-colors flex items-center justify-center gap-3"
                   >
-                    Cancel
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                    Continue with Google
                   </button>
                   <button
-                    type="submit"
-                    disabled={processing || !forgotPasswordEmail.trim()}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !forgotPasswordEmail.trim()
-                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                      }`}
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setIsGoogleOnlyUser(false)
+                      setForgotPasswordError("")
+                      setForgotPasswordEmail("")
+                    }}
+                    className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
                   >
-                    {processing ? "Sending..." : "Send Reset Link"}
+                    Close
                   </button>
                 </div>
-              </form>
+              </>
+            ) : (
+              <>
+                {/* Header */}
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-bold text-white">Reset Password</h2>
+                  <p className="text-gray-400 text-sm">
+                    {forgotPasswordSent
+                      ? "Check your email for password reset instructions."
+                      : "Enter your email address and we'll send you a link to reset your password."}
+                  </p>
+                </div>
+
+                {/* Success Message */}
+                {forgotPasswordSent ? (
+                  <div className="space-y-5">
+                    {/* Sent confirmation */}
+                    <div className="rounded-lg p-4 bg-green-900/30 border border-green-800">
+                      <p className="text-green-300 text-sm">
+                        A password reset link has been sent to <strong>{forgotPasswordEmail}</strong>. Check your inbox (and spam folder).
+                      </p>
+                    </div>
+
+                    {/* Cooldown timer */}
+                    <div className="flex flex-col items-center gap-3">
+                      {resendCooldown > 0 ? (
+                        <>
+                          {/* Circular countdown ring */}
+                          <div className="relative w-16 h-16">
+                            <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                              <circle cx="32" cy="32" r="28" fill="none" stroke="#374151" strokeWidth="4" />
+                              <circle
+                                cx="32" cy="32" r="28"
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="4"
+                                strokeDasharray={`${2 * Math.PI * 28}`}
+                                strokeDashoffset={`${2 * Math.PI * 28 * (1 - resendCooldown / 60)}`}
+                                strokeLinecap="round"
+                                style={{ transition: 'stroke-dashoffset 1s linear' }}
+                              />
+                            </svg>
+                            <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-sm">
+                              {resendCooldown}s
+                            </span>
+                          </div>
+                          <p className="text-gray-400 text-xs text-center">
+                            Didn't receive it? You can resend in <span className="text-blue-400 font-medium">{resendCooldown}s</span>
+                          </p>
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full py-2.5 px-4 rounded-lg font-medium text-sm bg-gray-700 text-gray-500 cursor-not-allowed transition-colors"
+                          >
+                            Resend Email ({resendCooldown}s)
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-gray-400 text-xs text-center">Didn't receive it?</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForgotPasswordSent(false)
+                              setForgotPasswordError("")
+                            }}
+                            className="w-full py-2.5 px-4 rounded-lg font-medium text-sm bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                          >
+                            Resend Email
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Close */}
+                    <button
+                      onClick={() => {
+                        setShowForgotPassword(false)
+                        setForgotPasswordSent(false)
+                        setForgotPasswordEmail("")
+                        setForgotPasswordError("")
+                        setResendCooldown(0)
+                      }}
+                      className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    {/* Error Message */}
+                    {forgotPasswordError && (
+                      <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
+                        <p className="text-red-300 text-sm">{forgotPasswordError}</p>
+                      </div>
+                    )}
+
+                    {/* Email Input */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => {
+                          setForgotPasswordEmail(e.target.value)
+                          setForgotPasswordError("")
+                        }}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                        required
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgotPassword(false)
+                          setForgotPasswordEmail("")
+                          setForgotPasswordError("")
+                          setIsGoogleOnlyUser(false)
+                        }}
+                        className="flex-1 py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={processing || !forgotPasswordEmail.trim()}
+                        className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !forgotPasswordEmail.trim()
+                          ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                          }`}
+                      >
+                        {processing ? "Sending..." : "Send Reset Link"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </>
             )}
           </div>
         </div>
