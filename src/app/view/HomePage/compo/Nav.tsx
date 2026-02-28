@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOutsideClick } from '../../../hooks/use-outside-click'
 import { getApiClient } from '../../../../lib/axiosInstance'
-import { getMeCached } from '../../../../lib/me'
+import { getMeCached, clearMeCache } from '../../../../lib/me'
 import { onCreditsRefresh } from '../../../../lib/creditsBus'
 import { NAV_ROUTES } from '../../../../routes/routes'
 import Image from 'next/image'
@@ -135,6 +135,8 @@ const Nav = () => {
       // Clear local storage
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
+      localStorage.removeItem('me_cache')
+      clearMeCache()
 
       // Call Next.js logout proxy to clear server and client cookies robustly
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })

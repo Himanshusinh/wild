@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getApiClient } from '@/lib/axiosInstance';
-import { getMeCached } from '@/lib/me';
+import { getMeCached, clearMeCache } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
 import { useCredits } from '@/hooks/useCredits';
 import { ArrowLeft } from 'lucide-react';
@@ -275,6 +275,8 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
       // Clear local storage
       localStorage.removeItem('user');
       localStorage.removeItem('authToken');
+      localStorage.removeItem('me_cache');
+      clearMeCache();
 
       // Call Next.js logout proxy to clear server and client cookies robustly
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
