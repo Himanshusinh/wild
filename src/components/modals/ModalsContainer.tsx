@@ -5,12 +5,15 @@ import dynamic from "next/dynamic";
 
 const StorageFullModal = dynamic(() => import("./StorageFullModal"), { ssr: false });
 const NoCreditsModal = dynamic(() => import("./NoCreditsModal"), { ssr: false });
+const ModerationBlockModal = dynamic(() => import("./ModerationBlockModal"), { ssr: false });
 
 export default function ModalsContainer() {
   return (
     <>
       <StorageFullModal />
       <NoCreditsModal />
+      <ModerationBlockModal />
     </>
   );
 }
+
