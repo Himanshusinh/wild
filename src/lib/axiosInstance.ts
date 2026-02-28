@@ -3,6 +3,7 @@ import { auth } from "./firebase";
 import { showFalErrorToast } from "./falToast";
 import { clearAuthData } from "./authUtils";
 import { setModalOpen } from "@/store/slices/uiSlice";
+import { getDeviceHash } from "./deviceHash";
 
 let store: any = null;
 export const injectStore = (_store: any) => {
@@ -237,6 +238,11 @@ axiosInstance.interceptors.request.use(async (config) => {
     headers["X-Device-Id"] = deviceId;
     headers["X-Device-Name"] = platform;
     headers["X-Device-Info"] = JSON.stringify(deviceInfo);
+
+    // Add strong FingerprintJS device hash for backend risk scoring
+    try {
+      headers["X-Device-Hash"] = await getDeviceHash();
+    } catch {}
 
     // Do NOT set X-Forwarded-* headers from the browser. Proxies (ngrok/Vercel) will set them.
 
@@ -845,6 +851,7 @@ axiosInstance.interceptors.response.use(
         "ACCOUNT_SUSPENDED",
         "IP_BLOCKED",
         "DEVICE_BLOCKED",
+        "ACCOUNT_UNDER_REVIEW",
       ];
       const errorCode = errorData?.code as string | undefined;
       if (status === 403 && errorCode && MODERATION_CODES.includes(errorCode)) {
@@ -861,7 +868,13 @@ axiosInstance.interceptors.response.use(
             }),
           );
           store.dispatch(
-            setModalOpen({ modal: "accountBlocked", isOpen: true }),
+            setModalOpen({
+              modal:
+                errorCode === "ACCOUNT_UNDER_REVIEW"
+                  ? "accountUnderReview"
+                  : "accountBlocked",
+              isOpen: true,
+            }),
           );
         } catch {}
         // Do NOT show the generic error toast for moderation blocks

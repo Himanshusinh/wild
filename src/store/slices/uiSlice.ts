@@ -14,9 +14,11 @@ interface UIState {
     timestamp: number;
   }>;
   modals: {
-    noCredits: boolean;
-    storageFull: boolean;
-    accountBlocked: boolean;
+    storageFull?: boolean;
+    noCredits?: boolean;
+    auth?: boolean;
+    accountBlocked?: boolean;
+    accountUnderReview?: boolean;
   };
   moderationInfo: {
     code:
@@ -24,7 +26,7 @@ interface UIState {
       | "ACCOUNT_SUSPENDED"
       | "IP_BLOCKED"
       | "DEVICE_BLOCKED"
-      | null;
+      | "ACCOUNT_UNDER_REVIEW";
     message: string;
     reason?: string;
     suspendedUntil?: string;
@@ -39,9 +41,11 @@ const initialState: UIState = {
   theme: "dark",
   notifications: [],
   modals: {
-    noCredits: false,
     storageFull: false,
+    noCredits: false,
+    auth: false,
     accountBlocked: false,
+    accountUnderReview: false,
   },
   moderationInfo: null,
 };
