@@ -130,7 +130,7 @@ export const ImagePopout = ({
                                 <ModelItem href="/text-to-image?model=google/nano-banana-pro" tag="TRENDING" tagColor="#FF7A00" name="Nano Banana Pro" desc="Google's best image Gen model" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=flux-2-pro" tag="TOP PICK" tagColor="#9D4EDD" name="Flux.2 Pro" desc="Extreme detailing in ultra-detail" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=imagen-4-ultra" tag="LATEST" tagColor="#00E5FF" name="Imagen 4 Ultra" desc="Incredible Prompt adherence" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=flux-pro-1.1-ultra" tag="ULTRA" tagColor="#3A86FF" name="Flux Pro 1.1 Ultra" desc="Top tier text to image model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=seedream-5-lite" tag="LATEST" tagColor="#00E5FF" name="Seedream 5 Lite" desc="Top tier text to image model" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=seedream-4.5" tag="LATEST" tagColor="#00E5FF" name="Seedream v4.5" desc="Advanced image creation" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=imagen-4" tag="" name="Imagen 4" desc="Incredible Prompt adherence" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=gemini-25-flash-image" tag="" name="Nano Banana" desc="Gemini 2.5 image Gen model" onClick={onMouseLeave} />

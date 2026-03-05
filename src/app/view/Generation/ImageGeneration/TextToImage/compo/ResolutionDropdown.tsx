@@ -6,7 +6,7 @@ import { ChevronUp } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { toggleDropdown } from '@/store/slices/uiSlice';
 
-type ResolutionType = '1K' | '2K' | '4K' | 'custom';
+type ResolutionType = '1K' | '2K' | '3K' | '4K' | 'custom';
 
 type ResolutionDropdownProps = {
   openDirection?: 'up' | 'down';
@@ -16,7 +16,7 @@ type ResolutionDropdownProps = {
   dropdownId: string; // 'flux2ProResolution' | 'nanoBananaProResolution' | 'seedreamSize'
 };
 
-const ResolutionDropdown = ({ 
+const ResolutionDropdown = ({
   openDirection = 'up',
   resolution,
   onResolutionChange,
@@ -50,27 +50,27 @@ const ResolutionDropdown = ({
         const isDisplayed = computedStyle.display !== 'none';
         const isVisible = computedStyle.visibility !== 'hidden';
         const hasOpacity = parseFloat(computedStyle.opacity) > 0;
-        
+
         // Check if element has dimensions (not collapsed)
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const hasDimensions = buttonRect.width > 0 && buttonRect.height > 0;
-        
+
         // Only create dropdown if button is actually visible
         if (!isDisplayed || !isVisible || !hasOpacity || !hasDimensions) {
           setDropdownPosition(null);
           return;
         }
-        
+
         const dropdownWidth = 72; // w-18 = 4.5rem = 72px
         const spaceAbove = buttonRect.top;
         const spaceBelow = window.innerHeight - buttonRect.bottom;
-        
+
         let top: number;
         let left: number;
-        
+
         // Determine if we should open up or down based on available space
         const shouldOpenUp = openDirection === 'up' || (spaceAbove > spaceBelow && openDirection !== 'down');
-        
+
         if (shouldOpenUp) {
           // Position top of dropdown at button top, then translate up by 100% to make it grow upward
           top = buttonRect.top;
@@ -80,7 +80,7 @@ const ResolutionDropdown = ({
           top = buttonRect.bottom + 8; // mt-2 = 8px
           left = buttonRect.left;
         }
-        
+
         // Ensure dropdown doesn't go off screen horizontally
         if (left + dropdownWidth > window.innerWidth) {
           left = window.innerWidth - dropdownWidth - 8;
@@ -88,7 +88,7 @@ const ResolutionDropdown = ({
         if (left < 8) {
           left = 8;
         }
-        
+
         // If opening up and dropdown would go off screen, switch to opening down
         let finalOpenUp = shouldOpenUp;
         if (shouldOpenUp && top < 8) {
@@ -96,7 +96,7 @@ const ResolutionDropdown = ({
           top = buttonRect.bottom + 8;
           finalOpenUp = false;
         }
-        
+
         setDropdownPosition({ top, left, openUp: finalOpenUp });
       } else {
         setDropdownPosition(null);
@@ -104,11 +104,11 @@ const ResolutionDropdown = ({
     };
 
     updateDropdownPosition();
-    
+
     if (activeDropdown === dropdownId) {
       window.addEventListener('scroll', updateDropdownPosition, true);
       window.addEventListener('resize', updateDropdownPosition);
-      
+
       // Close dropdown when clicking outside
       // Use mousedown instead of click to avoid conflicts with React's onClick
       const handleClickOutside = (event: MouseEvent) => {
@@ -116,7 +116,7 @@ const ResolutionDropdown = ({
         if (buttonJustClickedRef.current || shouldCloseRef.current || selectingRef.current) {
           return;
         }
-        
+
         const target = event.target as HTMLElement;
         // Don't close if clicking the button itself
         if (buttonRef.current && buttonRef.current.contains(target)) {
@@ -130,11 +130,11 @@ const ResolutionDropdown = ({
         setIsActiveInstance(false);
         dispatch(toggleDropdown(''));
       };
-      
+
       // Use mousedown event with capture phase to catch events early
       // This ensures we can check before React's onClick handlers run
       document.addEventListener('mousedown', handleClickOutside, true);
-      
+
       return () => {
         window.removeEventListener('scroll', updateDropdownPosition, true);
         window.removeEventListener('resize', updateDropdownPosition);
@@ -146,13 +146,13 @@ const ResolutionDropdown = ({
   const handleDropdownClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent click outside handler from firing
-    
+
     // Mark that button was just clicked - do this immediately and synchronously
     buttonJustClickedRef.current = true;
-    
+
     // Check current state and toggle accordingly
     const isCurrentlyOpen = activeDropdown === dropdownId && isActiveInstance;
-    
+
     if (isCurrentlyOpen) {
       // Close the dropdown immediately
       setIsActiveInstance(false);
@@ -164,7 +164,7 @@ const ResolutionDropdown = ({
       dispatch(toggleDropdown(dropdownId));
       shouldCloseRef.current = false;
     }
-    
+
     // Reset the flag after a short delay
     setTimeout(() => {
       buttonJustClickedRef.current = false;
@@ -175,11 +175,11 @@ const ResolutionDropdown = ({
   const handleResolutionSelect = (opt: ResolutionType) => {
     // Mark that we're selecting to prevent click outside handler from interfering
     selectingRef.current = true;
-    
+
     onResolutionChange(opt);
     setIsActiveInstance(false);
     dispatch(toggleDropdown(''));
-    
+
     // Reset the flag after a short delay
     setTimeout(() => {
       selectingRef.current = false;
@@ -187,7 +187,7 @@ const ResolutionDropdown = ({
   };
 
   const dropdownContent = activeDropdown === dropdownId && isActiveInstance && dropdownPosition ? (
-    <div 
+    <div
       data-dropdown={dropdownId}
       className="fixed w-18 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-[9999] md:max-h-150 max-h-100 overflow-y-auto dropdown-scrollbar"
       style={{

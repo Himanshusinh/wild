@@ -201,7 +201,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isLucidOrigin = selectedModel === 'leonardoai/lucid-origin';
   const isPhoenix = selectedModel === 'leonardoai/phoenix-1.0';
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
-  const isSeedream = selectedModel === 'seedream-v4';
+  const isSeedream = selectedModel === 'seedream-v4' || selectedModel === 'seedream-5-lite';
   const isSeedream45 = selectedModel === 'seedream-4.5';
   const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image' || selectedModel === 'google/nano-banana-pro' || selectedModel === 'nano-banana-pro';
   const isFlux2Pro = selectedModel === 'flux-2-pro';
@@ -262,6 +262,20 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isSeedream) {
+      if (selectedModel === 'seedream-5-lite') {
+        const allowed = [
+          { name: 'Match Input Image', value: 'match_input_image', icon: 'square' },
+          { name: 'Square', value: '1:1', icon: 'square' },
+          { name: 'Landscape', value: '4:3', icon: 'landscape' },
+          { name: 'Portrait', value: '3:4', icon: 'portrait' },
+          { name: 'Wide', value: '16:9', icon: 'landscape' },
+          { name: 'Vertical', value: '9:16', icon: 'portrait' },
+          { name: 'Landscape Wide', value: '3:2', icon: 'landscape' },
+          { name: 'Portrait Tall', value: '2:3', icon: 'portrait' },
+          { name: 'Ultra Wide', value: '21:9', icon: 'ultrawide' },
+        ];
+        return allowed;
+      }
       // Seedream v4: follow schema exactly, include match_input_image
       // Supported: match_input_image,1:1,4:3,3:4,16:9,9:16,3:2,2:3,21:9 (from validateImageGenerate)
       const allowed = [

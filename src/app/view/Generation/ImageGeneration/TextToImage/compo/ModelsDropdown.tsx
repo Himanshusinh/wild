@@ -27,11 +27,11 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: 'Flux 2 Pro', value: 'flux-2-pro' },
     { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Seedream 4.5 4K', value: 'seedream-4.5' },
+    { name: 'Seedream 5 Lite ', value: 'seedream-5-lite' },
 
     { name: "Flux Kontext Pro", value: "flux-kontext-pro" },
     { name: "Flux Kontext Max", value: "flux-kontext-max" },
     { name: "Flux Pro 1.1", value: "flux-pro-1.1" },
-    { name: "Flux Pro 1.1 Ultra", value: "flux-pro-1.1-ultra" },
     { name: "FLUX.1 Pro", value: "flux-pro" },
     // { name: 'FLUX.1 Dev', value: 'flux-dev' },
     { name: "Runway Gen4 Image", value: "gen4_image" },
@@ -96,6 +96,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'google/nano-banana-pro' ||
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
+      m.value === 'seedream-5-lite' ||
       m.value === 'flux-2-pro' ||
       m.value === 'prunaai/p-image' ||
       m.value === 'qwen-image-edit-2511' ||

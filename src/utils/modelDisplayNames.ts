@@ -22,6 +22,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'replicate-851-labs-remove-bg': '851 Labs Remove BG - 10 credits',
   'seedream-v4': 'Seedream v4 4k',
   'seedream-4.5': 'Seedream 4.5 4K',
+  'seedream-5-lite': 'Seedream 5 Lite 2K/3K',
   'ideogram-ai/ideogram-v3': 'Ideogram v3',
   'ideogram-ai/ideogram-v3-quality': 'Ideogram v3 Quality',
   'leonardoai/lucid-origin': 'Lucid Origin',

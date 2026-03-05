@@ -999,6 +999,21 @@ export const creditDistributionData: ModelCreditInfo[] = [
     },
   },
   {
+    srNo: 37.1,
+    modelName: "replicate/bytedance/seedream-5-lite",
+    priceToPay: 0.038, // approximate based on 100 credits
+    overCharge: 0.012,
+    userCost: 0.05,
+    creditsPerGeneration: 100,
+    plans: {
+      planA: 123.6,
+      planB: 247.2,
+      planC: 618,
+      planD: 1977.6,
+      free: 20,
+    },
+  },
+  {
     srNo: 38,
     modelName: "replicate/ideogram-ai/ideogram-v3-turbo",
     priceToPay: 0.03,

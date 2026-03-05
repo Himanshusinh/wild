@@ -1341,6 +1341,7 @@ const InputBox = () => {
   const [seedreamHeight, setSeedreamHeight] = useState<number>(2048);
   // Seedream 4.5-specific UI state (FAL image_size auto_2K/auto_4K)
   const [seedream45Resolution, setSeedream45Resolution] = useState<'2K' | '4K'>('2K');
+  const [seedream5LiteResolution, setSeedream5LiteResolution] = useState<'2K' | '3K'>('2K');
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<'1K' | '2K' | '4K'>('2K');
   const [flux2ProResolution, setFlux2ProResolution] = useState<'1K' | '2K'>('1K');
   const [qwenResolution, setQwenResolution] = useState<'1K' | '2K'>('1K');
@@ -5121,6 +5122,27 @@ const InputBox = () => {
             }
           }
 
+          if (selectedModel === 'seedream-v4') {
+            generationPayload.size = seedreamSize;
+            generationPayload.aspect_ratio = frameSize;
+            if (seedreamSize === 'custom') {
+              generationPayload.width = seedreamWidth;
+              generationPayload.height = seedreamHeight;
+            }
+          }
+          if (selectedModel === 'seedream-5-lite') {
+            generationPayload.size = seedream5LiteResolution;
+            generationPayload.aspect_ratio = frameSize;
+          }
+
+          // Both Seedream v4 and v5-lite use image_input for image-to-image
+          if (selectedModel === 'seedream-v4' || selectedModel === 'seedream-5-lite') {
+            if (combinedImages && combinedImages.length > 0) {
+              const seedreamImageInput = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+              generationPayload.image_input = seedreamImageInput;
+            }
+          }
+
           console.log('[DEBUG handleGenerate] Dispatching generateImages with payload:', generationPayload);
           const result = await dispatch(
             generateImages(generationPayload)
@@ -6781,6 +6803,16 @@ const InputBox = () => {
                     )}
                   </div>
                 )}
+                {selectedModel === 'seedream-5-lite' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={seedream5LiteResolution}
+                      onResolutionChange={(val) => setSeedream5LiteResolution(val as '2K' | '3K')}
+                      options={['2K', '3K']}
+                      dropdownId="seedream5LiteResolution"
+                    />
+                  </div>
+                )}
                 {selectedModel === 'new-turbo-model' && (
                   <div className="flex items-center gap-2 relative">
                     <ZTurboOutputFormatDropdown
@@ -6890,6 +6922,16 @@ const InputBox = () => {
                           />
                         </>
                       )}
+                    </div>
+                  )}
+                  {selectedModel === 'seedream-5-lite' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={seedream5LiteResolution}
+                        onResolutionChange={(val) => setSeedream5LiteResolution(val as '2K' | '3K')}
+                        options={['2K', '3K']}
+                        dropdownId="seedream5LiteResolutionDesk"
+                      />
                     </div>
                   )}
                   {selectedModel === 'new-turbo-model' && (
