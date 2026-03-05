@@ -39,6 +39,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     { name: "MiniMax Image-01", value: "minimax-image-01" },
     { name: "Nano Banana", value: "gemini-25-flash-image" },
     { name: "Nano Banana Pro", value: "google/nano-banana-pro" },
+    { name: "Nano Banana 2", value: "google/nano-banana-2" },
     { name: "Ideogram v3", value: "ideogram-ai/ideogram-v3" },
     { name: "Ideogram v3 Quality", value: "ideogram-ai/ideogram-v3-quality" },
     // { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
@@ -94,6 +95,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'gen4_image_turbo' ||
       m.value === 'gemini-25-flash-image' ||
       m.value === 'google/nano-banana-pro' ||
+      m.value === 'google/nano-banana-2' ||
       m.value === 'seedream-v4' ||
       m.value === 'seedream-4.5' ||
       m.value === 'seedream-5-lite' ||
@@ -225,6 +227,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
               'new-turbo-model',
               'prunaai/p-image', // z-image-turbo - should be first
               'google/nano-banana-pro',
+              'google/nano-banana-2',
               'gemini-25-flash-image', // Google Nano Banana
               'qwen-image-edit-2511',
               'qwen-image-edit-2512',

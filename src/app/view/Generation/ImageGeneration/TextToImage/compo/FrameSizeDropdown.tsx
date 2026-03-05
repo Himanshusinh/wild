@@ -186,6 +186,11 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     { name: 'Portrait 1:2', value: '1:2', icon: 'portrait', hideValue: true },
     { name: 'Ultra Wide 3:1', value: '3:1', icon: 'ultrawide', hideValue: true },
     { name: 'Portrait 1:3', value: '1:3', icon: 'portrait', hideValue: true },
+    // 1:4, 1:8, 4:1, 8:1 for Nano Banana 2
+    { name: 'Portrait 1:4', value: '1:4', icon: 'portrait', hideValue: true },
+    { name: 'Portrait 1:8', value: '1:8', icon: 'portrait', hideValue: true },
+    { name: 'Landscape 4:1', value: '4:1', icon: 'landscape', hideValue: true },
+    { name: 'Landscape 8:1', value: '8:1', icon: 'landscape', hideValue: true },
     // Additional ratios for Ideogram and BFL Flux
     { name: 'Portrait 10:16', value: '10:16', icon: 'portrait', hideValue: true },
     { name: 'Landscape 16:10', value: '16:10', icon: 'landscape', hideValue: true },
@@ -203,7 +208,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isImagen = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
   const isSeedream = selectedModel === 'seedream-v4' || selectedModel === 'seedream-5-lite';
   const isSeedream45 = selectedModel === 'seedream-4.5';
-  const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image' || selectedModel === 'google/nano-banana-pro' || selectedModel === 'nano-banana-pro';
+  const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image' || selectedModel === 'google/nano-banana-pro' || selectedModel === 'nano-banana-pro' || selectedModel === 'google/nano-banana-2';
   const isFlux2Pro = selectedModel === 'flux-2-pro';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';
@@ -251,9 +256,9 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isGoogleNanoBanana) {
-      // Google Nano Banana: only these aspect ratios are supported according to official schema
-      // Supported: 21:9, 1:1, 4:3, 3:2, 2:3, 5:4, 4:5, 3:4, 16:9, 9:16
-      const allowed = new Set(['21:9', '1:1', '4:3', '3:2', '2:3', '5:4', '4:5', '3:4', '16:9', '9:16']);
+      // Google Nano Banana family (including 2): official schema supported ratios
+      // Supported: 21:9, 1:1, 4:3, 3:2, 2:3, 5:4, 4:5, 3:4, 16:9, 9:16, 1:4, 1:8, 4:1, 8:1, match_input_image
+      const allowed = new Set(['21:9', '1:1', '4:3', '3:2', '2:3', '5:4', '4:5', '3:4', '16:9', '9:16', '1:4', '1:8', '4:1', '8:1', 'match_input_image']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isImagen) {

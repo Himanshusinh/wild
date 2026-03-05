@@ -102,6 +102,17 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'fal'
   },
   {
+    frontendValue: 'google/nano-banana-2',
+    creditModelName: 'Google nano banana 2 1K', // Default to 1K, resolved by backend
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      resolution: ['1K', '2K', '4K'],
+      aspect_ratio: ['match_input_image', '1:1', '1:4', '1:8', '2:3', '3:2', '3:4', '4:1', '4:3', '4:5', '5:4', '8:1', '9:16', '16:9', '21:9'],
+      output_format: ['jpg', 'png']
+    }
+  },
+  {
     frontendValue: 'google/nano-banana-pro',
     creditModelName: 'Nano banana Pro 2K', // Default to 2K, will be resolved based on resolution
     generationType: 'image',

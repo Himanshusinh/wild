@@ -26,6 +26,9 @@ import {
   setImageCount,
   setFrameSize,
   setStyle,
+  setNanoBananaResolution,
+  setNanoBananaGoogleSearch,
+  setNanoBananaImageSearch,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
@@ -1171,6 +1174,9 @@ const InputBox = () => {
   const phoenixContrast = useAppSelector((state: any) => state.generation?.phoenixContrast || 'medium');
   const phoenixMode = useAppSelector((state: any) => state.generation?.phoenixMode || 'fast');
   const phoenixPromptEnhance = useAppSelector((state: any) => state.generation?.phoenixPromptEnhance || false);
+  const nanoBananaResolution = useAppSelector((state: any) => state.generation?.nanoBananaResolution || '1K');
+  const nanoBananaGoogleSearch = useAppSelector((state: any) => state.generation?.nanoBananaGoogleSearch || false);
+  const nanoBananaImageSearch = useAppSelector((state: any) => state.generation?.nanoBananaImageSearch || false);
   const outputFormat = useAppSelector((state: any) => state.generation?.outputFormat || 'jpeg');
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector(
@@ -4544,6 +4550,114 @@ const InputBox = () => {
           });
           return;
         }
+      } else if (selectedModel === 'google/nano-banana-2') {
+        // Google Nano Banana 2 via Replicate
+        try {
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const combinedImages = getCombinedUploadedImages();
+          const payload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            model: 'google/nano-banana-2',
+            aspect_ratio: frameSize,
+            num_images: imageCount,
+            resolution: nanoBananaResolution,
+            google_search: nanoBananaGoogleSearch,
+            image_search: nanoBananaImageSearch,
+            isPublic,
+          };
+
+          if (combinedImages && combinedImages.length > 0) {
+            payload.image_input = combinedImages.map((u: string) => toAbsoluteFromProxy(u));
+          }
+
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+          if ((!result.images || result.images.length === 0) && (result.status === 'submitted' || (result.requestId || (result as any)?.requestId))) {
+            const reqId = result.requestId || (result as any)?.requestId;
+            qlog('Nano Banana 2 queued submission detected', { model: result.model, reqId, generationId });
+
+            try {
+              const startedAt = Date.now();
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: 'generating',
+                    startedAt,
+                    historyId: (result as any)?.historyId || generationId,
+                    params: {
+                      ...(activeGenerations.find(g => g.id === generationId)?.params || {}),
+                      requestId: reqId
+                    }
+                  }
+                }));
+                void pollForMatchingHistory({ generationId, tempEntryId, model: result.model, prompt: finalPrompt, requestId: reqId, startedAt });
+              }
+            } catch { }
+
+            // Poll Replicate queue
+            try {
+              const api = getApiClient();
+              let finalResult: any;
+              let consecutiveErrors = 0;
+              for (let attempts = 0; attempts < 360; attempts++) {
+                try {
+                  const statusRes = await api.get('/api/replicate/queue/status', { params: { requestId: reqId }, timeout: 15000 });
+                  const status = statusRes.data?.data || statusRes.data;
+                  consecutiveErrors = 0;
+                  const s = String(status?.status || '').toLowerCase();
+                  if (s === 'completed' || s === 'success' || s === 'succeeded') {
+                    const resultRes = await api.get('/api/replicate/queue/result', { params: { requestId: reqId }, timeout: 15000 });
+                    finalResult = resultRes.data?.data || resultRes.data;
+                    if (generationId) {
+                      dispatch(updateActiveGeneration({
+                        id: generationId,
+                        updates: {
+                          status: 'completed',
+                          images: finalResult.images || [],
+                          historyId: finalResult.historyId || (result as any)?.historyId
+                        }
+                      }));
+                    }
+                    const resultHistoryId = (finalResult as any)?.historyId || (result as any)?.historyId || firebaseHistoryId || generationId;
+                    if (resultHistoryId) await refreshSingleGeneration(resultHistoryId);
+                    if (transactionId) await handleGenerationSuccess(transactionId);
+                    break;
+                  }
+                  if (s === 'failed' || s === 'error') throw new Error('Nano Banana 2 generation failed (queue)');
+                } catch (statusError: any) {
+                  consecutiveErrors++;
+                  if (consecutiveErrors >= 5) throw statusError;
+                }
+                await new Promise(res => setTimeout(res, 1000));
+              }
+              return;
+            } catch (queueErr) {
+              if (generationId) dispatch(updateActiveGeneration({ id: generationId, updates: { status: 'failed', error: (queueErr as any)?.message || 'Nano Banana 2 generation failed' } }));
+              await handleReplicateError(queueErr, { generationId, tempEntryId, tempEntry, transactionId, modelName: 'Nano Banana 2' });
+              return;
+            }
+          }
+
+          // Immediate result
+          if (generationId) {
+            dispatch(updateActiveGeneration({
+              id: generationId,
+              updates: {
+                status: 'completed',
+                images: result.images || [],
+                historyId: (result as any)?.historyId
+              }
+            }));
+          }
+          clearInputs();
+          const resId = (result as any)?.historyId || generationId;
+          if (resId) await refreshSingleGeneration(resId);
+          if (transactionId) await handleGenerationSuccess(transactionId);
+        } catch (error) {
+          await handleReplicateError(error, { generationId, tempEntryId, tempEntry, transactionId, modelName: 'Nano Banana 2' });
+          return;
+        }
       } else if (selectedModel === 'prunaai/p-image-edit') {
         // P-Image-Edit (Replicate) - requires at least one input image
         const combinedImages = getCombinedUploadedImages().map((u: string) => toAbsoluteFromProxy(u));
@@ -6741,6 +6855,28 @@ const InputBox = () => {
                     />
                   </div>
                 )}
+                {selectedModel === 'google/nano-banana-2' && (
+                  <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={nanoBananaResolution}
+                      onResolutionChange={(val) => dispatch(setNanoBananaResolution(val as '1K' | '2K' | '4K'))}
+                      options={['1K', '2K', '4K']}
+                      dropdownId="nanoBananaResolutionMb"
+                    />
+                    <button
+                      onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
+                      className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                    >
+                      Google Search
+                    </button>
+                    <button
+                      onClick={() => dispatch(setNanoBananaImageSearch(!nanoBananaImageSearch))}
+                      className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                    >
+                      Image Search
+                    </button>
+                  </div>
+                )}
                 {selectedModel === 'flux-2-pro' && (
                   <div className="flex items-center gap-2 relative">
                     <ResolutionDropdown
@@ -6860,6 +6996,28 @@ const InputBox = () => {
                         options={['1K', '2K', '4K']}
                         dropdownId="nanoBananaProResolution"
                       />
+                    </div>
+                  )}
+                  {selectedModel === 'google/nano-banana-2' && (
+                    <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={nanoBananaResolution}
+                        onResolutionChange={(val) => dispatch(setNanoBananaResolution(val as '1K' | '2K' | '4K'))}
+                        options={['1K', '2K', '4K']}
+                        dropdownId="nanoBananaResolution"
+                      />
+                      <button
+                        onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
+                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                      >
+                        Google Search
+                      </button>
+                      <button
+                        onClick={() => dispatch(setNanoBananaImageSearch(!nanoBananaImageSearch))}
+                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                      >
+                        Image Search
+                      </button>
                     </div>
                   )}
                   {selectedModel === 'flux-2-pro' && (

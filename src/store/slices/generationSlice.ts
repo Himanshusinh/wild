@@ -47,6 +47,10 @@ interface GenerationState {
   // Parallel generation support
   activeGenerations: ActiveGeneration[];
   maxConcurrentGenerations: number;
+  // Google Nano Banana 2 options
+  nanoBananaResolution: string;
+  nanoBananaGoogleSearch: boolean;
+  nanoBananaImageSearch: boolean;
 }
 
 const initialState: GenerationState = {
@@ -76,6 +80,10 @@ const initialState: GenerationState = {
   // Parallel generation defaults
   activeGenerations: [],
   maxConcurrentGenerations: 4,
+  // Google Nano Banana 2 defaults
+  nanoBananaResolution: '1K',
+  nanoBananaGoogleSearch: false,
+  nanoBananaImageSearch: false,
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -102,7 +110,7 @@ export const generateImages = createAsyncThunk(
       aspect_ratio?: string; // For explicit aspect ratio overriding (like Seedream and Qwen)
       image_input?: string[]; // Specifically for Replicate APIs like Seedream
     },
-    { rejectWithValue }
+    { rejectWithValue, getState }
   ) => {
     try {
       // Enforce app-wide max of 4 images
@@ -182,7 +190,12 @@ export const generateImages = createAsyncThunk(
         ...(output_format ? { output_format } : {}), // Add output_format parameter if provided
         ...(size ? { size } : {}), // Add size parameter for Seedream models
         ...(aspect_ratio ? { aspect_ratio } : {}), // Add aspect_ratio parameter if provided
-        ...(image_input ? { image_input } : {}) // Add specific image array if provided by model specific logics
+        ...(image_input ? { image_input } : {}), // Add specific image array if provided by model specific logics
+        ...(model === 'google/nano-banana-2' ? {
+          resolution: (getState() as any).generation.nanoBananaResolution,
+          google_search: (getState() as any).generation.nanoBananaGoogleSearch,
+          image_search: (getState() as any).generation.nanoBananaImageSearch
+        } : {})
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
       if (isFalModel) {
@@ -522,6 +535,16 @@ const generationSlice = createSlice({
     // Output format
     setOutputFormat: (state, action: PayloadAction<string>) => {
       state.outputFormat = action.payload;
+    },
+    // Google Nano Banana 2 options
+    setNanoBananaResolution: (state, action: PayloadAction<string>) => {
+      state.nanoBananaResolution = action.payload;
+    },
+    setNanoBananaGoogleSearch: (state, action: PayloadAction<boolean>) => {
+      state.nanoBananaGoogleSearch = action.payload;
+    },
+    setNanoBananaImageSearch: (state, action: PayloadAction<boolean>) => {
+      state.nanoBananaImageSearch = action.payload;
     },
     clearGenerationState: (state) => {
       state.prompt = '';
@@ -1121,6 +1144,9 @@ export const {
   removeActiveGeneration,
   hydrateGenerations,
   clearOldGenerations,
+  setNanoBananaResolution,
+  setNanoBananaGoogleSearch,
+  setNanoBananaImageSearch,
 } = generationSlice.actions;
 
 export default generationSlice.reducer;

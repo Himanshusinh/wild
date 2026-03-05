@@ -16,6 +16,9 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'gemini-25-flash-image': 98,  // Google nano banana (T2I)
   'gemini-25-flash-image-i2i': 98,  // Google nano banana (I2I)
   'gpt-5-nano': 1,              // GPT-5 Nano (Assistant)
+  'google/nano-banana-2-1k': 154,
+  'google/nano-banana-2-2k': 222,
+  'google/nano-banana-2-4k': 322,
   'google/nano-banana-pro': 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
   'seedream-v4': 80,
   'seedream-4.5': 100, // Bytedance Seedream-4.5 (2K/4K same credit)
@@ -626,6 +629,17 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
       return 320; // Nano banana Pro 1K/2K: 320 credits (per creditDistribution)
     }
     return 320; // Default to 2K (320 credits per creditDistribution)
+  }
+
+  // Handle Google nano banana 2 with resolution
+  if (modelValue === 'google/nano-banana-2') {
+    if (resolution === '4K') {
+      return MODEL_CREDITS_MAPPING['google/nano-banana-2-4k'];
+    } else if (resolution === '2K') {
+      return MODEL_CREDITS_MAPPING['google/nano-banana-2-2k'];
+    } else {
+      return MODEL_CREDITS_MAPPING['google/nano-banana-2-1k'];
+    }
   }
 
   // Handle SeedVR2 models
