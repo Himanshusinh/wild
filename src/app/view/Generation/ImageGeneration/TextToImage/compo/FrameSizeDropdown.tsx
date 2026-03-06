@@ -215,8 +215,14 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isPImage = selectedModel === 'prunaai/p-image';
   const isGptImage15 = selectedModel === 'openai/gpt-image-1.5';
   const isQwenImageEdit = selectedModel === 'qwen-image-edit-2511' || selectedModel === 'qwen-image-edit' || selectedModel === 'qwen-image-edit-2512';
+  const isQwen2 = selectedModel === 'qwen/qwen-image-2' || selectedModel === 'qwen/qwen-image-2-pro';
 
   const frameSizes = (() => {
+    if (isQwen2) {
+      // Qwen Image 2: supported aspect ratios
+      const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '2:1', '1:2']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
     if (isQwenImageEdit) {
       // Qwen Image Edit: schema-supported aspect_ratio values only
       // Supported: 1:1, 16:9, 9:16, 4:3, 3:4, match_input_image

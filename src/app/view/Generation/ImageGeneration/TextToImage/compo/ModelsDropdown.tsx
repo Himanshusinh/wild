@@ -25,36 +25,40 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   let models = [
     { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     { name: 'Flux 2 Pro', value: 'flux-2-pro' },
-    { name: 'Seedream v4 4k', value: 'seedream-v4' },
+    // { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Seedream 4.5 4K', value: 'seedream-4.5' },
     { name: 'Seedream 5 Lite ', value: 'seedream-5-lite' },
+     { name: "Qwen Image 2", value: "qwen/qwen-image-2" },
+    { name: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
 
     { name: "Flux Kontext Pro", value: "flux-kontext-pro" },
     { name: "Flux Kontext Max", value: "flux-kontext-max" },
-    { name: "Flux Pro 1.1", value: "flux-pro-1.1" },
-    { name: "FLUX.1 Pro", value: "flux-pro" },
+    // { name: "Flux Pro 1.1", value: "flux-pro-1.1" },
+    // { name: "FLUX.1 Pro", value: "flux-pro" },
     // { name: 'FLUX.1 Dev', value: 'flux-dev' },
     { name: "Runway Gen4 Image", value: "gen4_image" },
     { name: "Runway Gen4 Image Turbo", value: "gen4_image_turbo" },
+    
     { name: "MiniMax Image-01", value: "minimax-image-01" },
     { name: "Nano Banana", value: "gemini-25-flash-image" },
     { name: "Nano Banana Pro", value: "google/nano-banana-pro" },
     { name: "Nano Banana 2", value: "google/nano-banana-2" },
-    { name: "Ideogram v3", value: "ideogram-ai/ideogram-v3" },
-    { name: "Ideogram v3 Quality", value: "ideogram-ai/ideogram-v3-quality" },
+    // { name: "Ideogram v3", value: "ideogram-ai/ideogram-v3" },
+    // { name: "Ideogram v3 Quality", value: "ideogram-ai/ideogram-v3-quality" },
     // { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
     // { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
     { name: "Imagen 4 Ultra", value: "imagen-4-ultra" },
     { name: "Imagen 4", value: "imagen-4" },
     { name: "Imagen 4 Fast", value: "imagen-4-fast" },
-    { name: "P-Image", value: "prunaai/p-image" },
-    { name: "Qwen Image 2511", value: "qwen-image-2511" },
+    // { name: "P-Image", value: "prunaai/p-image" },
+   
+    // { name: "Qwen Image 2511", value: "qwen-image-2511" },
     { name: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
-    { name: "Qwen Image  2512", value: "qwen-image-edit-2512" },
+    // { name: "Qwen Image  2512", value: "qwen-image-edit-2512" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
     { name: "z-image-turbo", value: "new-turbo-model" },
-    { name: "WILDMINDIMAGE", value: "wildmindimage" },
+    // { name: "WILDMINDIMAGE", value: "wildmindimage" },
     // Local models
     // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
     // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
@@ -100,9 +104,12 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'seedream-4.5' ||
       m.value === 'seedream-5-lite' ||
       m.value === 'flux-2-pro' ||
+      m.value === 'qwen/qwen-image-2' ||
+      m.value === 'qwen/qwen-image-2-pro' ||
       m.value === 'prunaai/p-image' ||
       m.value === 'qwen-image-edit-2511' ||
       // m.value === 'qwen-image-edit-2512' ||
+      
       m.value === 'openai/gpt-image-1.5'
     );
   }
@@ -203,7 +210,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     <div className="relative dropdown-container">
       <button
         onClick={handleDropdownClick}
-        className="Z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1"
+        className="z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1 flex-nowrap whitespace-nowrap"
       >
         {selectedModel === "new-turbo-model" ? (
           <Cpu className="w-4 h-4 mr-1" />

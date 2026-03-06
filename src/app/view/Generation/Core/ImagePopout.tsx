@@ -127,13 +127,14 @@ export const ImagePopout = ({
                         <div className="flex flex-col gap-2">
                             <div className="text-[10px] font-bold text-zinc-300 mb-0 tracking-[0.2em] uppercase pl-1">Models</div>
                             <div className="flex flex-col gap-0.5 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
-                                <ModelItem href="/text-to-image?model=google/nano-banana-pro" tag="TRENDING" tagColor="#FF7A00" name="Nano Banana Pro" desc="Google's best image Gen model" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=flux-2-pro" tag="TOP PICK" tagColor="#9D4EDD" name="Flux.2 Pro" desc="Extreme detailing in ultra-detail" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=imagen-4-ultra" tag="LATEST" tagColor="#00E5FF" name="Imagen 4 Ultra" desc="Incredible Prompt adherence" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2-pro" tag="NEW" tagColor="#B388FF" name="Qwen Image 2 Pro" desc="Premium high-fidelity generations" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2" tag="NEW" tagColor="#00E5FF" name="Qwen Image 2" desc="State-of-the-art image creation" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=google/nano-banana-2" tag="LATEST" tagColor="#FF7A00" name="Nano Banana 2" desc="Google's next-gen image model" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-image?model=seedream-5-lite" tag="LATEST" tagColor="#00E5FF" name="Seedream 5 Lite" desc="Top tier text to image model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=seedream-4.5" tag="LATEST" tagColor="#00E5FF" name="Seedream v4.5" desc="Advanced image creation" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=imagen-4" tag="" name="Imagen 4" desc="Incredible Prompt adherence" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=gemini-25-flash-image" tag="" name="Nano Banana" desc="Gemini 2.5 image Gen model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=google/nano-banana-pro" tag="TRENDING" tagColor="#FF7A00" name="Nano Banana Pro" desc="Google's best image Gen model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=new-turbo-model" tag="FAST" tagColor="#4CAF50" name="z-image-turbo" desc="Ultra-fast generation model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=openai/gpt-image-1.5" tag="SMART" tagColor="#FFFF00" name="GPT Image 1.5" desc="Advanced reasoning for images" onClick={onMouseLeave} />
                             </div>
                         </div>
 

@@ -39,6 +39,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   'replicate/qwen/qwen-image-2512': 60,
   'qwen/qwen-image-edit-2512': 60,
   'replicate/qwen/qwen-image-edit-2512': 60,
+  'qwen/qwen-image-2': 90,
+  'qwen/qwen-image-2-pro': 170,
   // Imagen 4 family (FAL/Google)
   'imagen-4-ultra': 140,
   'imagen-4': 100,

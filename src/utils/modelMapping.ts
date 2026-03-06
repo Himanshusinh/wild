@@ -197,6 +197,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'qwen/qwen-image-2',
+    creditModelName: 'qwen/qwen-image-2',
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      aspect_ratio: ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '2:1', '1:2'],
+      output_format: ['webp', 'jpg', 'png']
+    }
+  },
+  {
+    frontendValue: 'qwen/qwen-image-2-pro',
+    creditModelName: 'qwen/qwen-image-2-pro',
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      aspect_ratio: ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '2:1', '1:2'],
+      output_format: ['webp', 'jpg', 'png']
+    }
+  },
+  {
     frontendValue: 'qwen-image-2511',
     creditModelName: 'qwen-image-2511',
     generationType: 'image',
