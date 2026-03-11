@@ -1629,12 +1629,13 @@ export default function ArtStationPage() {
                             (() => {
                               const proxied = toMediaProxy(media.url)
                               const original = toDirectUrl(media.url) || media.url
-                              if (!proxied) return null;
+                              const videoSrc = proxied || original
+                              if (!videoSrc) return null;
 
                               return (
                                 <video
                                   key={`video-${cardId}`}
-                                  src={proxied || undefined}
+                                  src={videoSrc || undefined}
                                   className="w-full h-auto object-contain"
                                   muted
                                   playsInline
