@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon } from 'lucide-react';
+import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon, Sparkles } from 'lucide-react';
 // HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -96,6 +96,7 @@ import { toResourceProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import InfiniteScrollDebugOverlay, { IOEvent } from '@/components/debug/InfiniteScrollDebugOverlay';
 import HistoryControls from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls';
+import AssistantPanel from './AssistantPanel';
 
 const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> = ({ size = 64, alt = 'Loading', className }) => {
   const [failed, setFailed] = useState(false);
@@ -152,6 +153,7 @@ const InputBox = () => {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<HistoryEntry[]>([]);
@@ -2415,24 +2417,38 @@ const InputBox = () => {
     }, errorDetails?.retryable ? 5000 : 3000);
   };
 
-  const handleGenerate = async (generationId?: string) => {
+  const handleGenerate = async (generationId?: string, overridePrompt?: string) => {
+    const currentPrompt = overridePrompt || prompt;
+
+    if (!document.hasFocus() && !generationId) {
+      console.log('Document not focused, skipping explicit generation click handle. Wait for programmatic trigger.');
+      return;
+    }
+
+    if (!expectedCredits && !generationId) return;
+
     if (!userData) {
       router.push(getSignInUrl());
       return;
     }
-    if (!prompt.trim()) return;
 
+    if (!currentPrompt.trim()) {
+      // Allow generation if using specific models with uploads, otherwise block
+      if (!(uploadedImages.length > 0 && selectedModel === 'black-forest-labs/flux-1.1-pro')) {
+        return;
+      }
+    }
 
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
     // This ensures the loader shows instantly when the button is clicked
-    console.log('[DEBUG handleGenerate] START', { generationId, model: selectedModel, prompt: prompt.slice(0, 30) });
+    console.log('[DEBUG handleGenerate] START', { generationId, model: selectedModel, prompt: currentPrompt.slice(0, 30) });
     setIsGeneratingLocally(true);
     postGenerationBlockRef.current = true;
 
     // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
     postGenerationBlockRef.current = true;
 
-    const originalPrompt = prompt;
+    const originalPrompt = currentPrompt;
     let finalPrompt = originalPrompt;
 
     // If prompt-enhance toggles are enabled for the selected model(s), call the backend enhancer first
@@ -5666,6 +5682,11 @@ const InputBox = () => {
             grid-template-columns: repeat(6, 1fr);
             grid-auto-rows: auto;
             gap: 4px;
+            transition: all 0.5s ease-in-out;
+          }
+          
+          .assistant-open .image-grid {
+            grid-template-columns: repeat(5, 1fr);
           }
         }
         
@@ -5681,7 +5702,11 @@ const InputBox = () => {
         }
       `}</style>
 
-      <div ref={scrollRootRef} className="inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0">
+      <div
+        ref={scrollRootRef}
+        className={`inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0 transition-all duration-500 ${isAssistantOpen ? 'md:mr-[350px] assistant-open' : ''
+          }`}
+      >
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-black backdrop-blur-lg shadow-xl ">
@@ -6184,6 +6209,59 @@ const InputBox = () => {
         </div>
       </div>
 
+      <AssistantPanel
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        onApplyPrompt={(newPrompt) => {
+          // Add prompt to Redux/Local state
+          if (inputEl.current) {
+            inputEl.current.value = newPrompt;
+          }
+          dispatch(setPrompt(newPrompt));
+          // setIsAssistantOpen(false); // DO NOT Auto close assistant
+
+          // Trigger the generation immediately using the current state values but with the new prompt
+          if (!userData) {
+            saveAutoResumeIntent('image', {
+              prompt: newPrompt,
+              model: selectedModel,
+              imageCount,
+              frameSize,
+              style,
+              uploadedImages: getCombinedUploadedImages(),
+              selectedCharacters: selectedCharacters,
+            });
+            router.push(getSignInUrl());
+            return;
+          }
+
+          if (runningGenerationsCount >= 4) {
+            toast.error('Queue full (4/4 active). Please wait for a generation to complete.');
+            return;
+          }
+
+          const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+          dispatch(addActiveGeneration({
+            id: generationId,
+            prompt: newPrompt, // Use the new prompt from assistant
+            model: selectedModel,
+            status: 'pending',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            generationType: 'text-to-image',
+            params: {
+              imageCount,
+              frameSize,
+              style,
+              uploadedImages: getCombinedUploadedImages()
+            }
+          }));
+
+          handleGenerate(generationId, newPrompt); // Pass the new prompt explicitly if handleGenerate can take it
+        }}
+      />
+
       {/* Mobile-only: Selected images/characters grid above input box */}
       {!isInlineEditImagePage && (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
         <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
@@ -6678,6 +6756,21 @@ const InputBox = () => {
                         <span className="text-white text-sm"> </span>
                       </button>
                       <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        onClick={() => setIsAssistantOpen(prev => !prev)}
+                        type="button"
+                        aria-label="Toggle Assistant"
+                        aria-pressed={isAssistantOpen}
+                      >
+                        <Sparkles className={`w-5 h-5 transition-colors ${isAssistantOpen ? 'text-blue-400' : 'text-white'}`} />
+                      </button>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                        {isAssistantOpen ? 'Close Assistant' : 'AI Assistant'}
+                      </div>
                     </div>
 
                     <div className="relative">

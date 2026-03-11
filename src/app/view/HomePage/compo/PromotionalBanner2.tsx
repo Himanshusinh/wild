@@ -63,7 +63,7 @@ function detectIntent(userMsg: string): 'image' | 'video' | null {
 }
 
 /**
- * Also check the AI reply — if it contains a quoted prompt or "Prompt: ..."
+ * Also check the AI reply — if it contains a quoted prompt, list, or "Prompt: ..."
  * the AI has clearly suggested something generatable.
  */
 function detectIntentFromReply(aiReply: string, userMsgIntent: 'image' | 'video' | null): 'image' | 'video' | null {
@@ -72,10 +72,11 @@ function detectIntentFromReply(aiReply: string, userMsgIntent: 'image' | 'video'
 
   // 2. Only show buttons if the AI explicitly provides a prompt to use
   const hasQuotedText = /["\u201c\u201d][^"\u201c\u201d]{15,}["\u201c\u201d]/.test(aiReply);
-  const hasPromptPrefix = AI_PROMPT_REPLY.test(aiReply);
+  const hasListAndPromptMention = /\b(?:prompt|suggestion|idea)s?\b/i.test(aiReply) && /(?:^|\n|\:\s*)\s*[-*]\s+/.test(aiReply);
+  const hasPromptColon = /\b(?:prompt|use this|try this|suggestion)\b\s*:/i.test(aiReply);
 
   // We only trigger buttons if a specific prompt is detected in the AI's reply
-  if (hasQuotedText || hasPromptPrefix) {
+  if (hasQuotedText || hasListAndPromptMention || hasPromptColon) {
     // If prompt detected, check for video context in the AI reply
     if (/\b(video|animate|animation|cinematic)\b/i.test(aiReply)) return 'video';
     return 'image';
@@ -87,14 +88,28 @@ function detectIntentFromReply(aiReply: string, userMsgIntent: 'image' | 'video'
 /** Pull the best usable prompt from the AI reply */
 function extractPrompt(aiReply: string, userMsg: string): string {
   // 1. Quoted text (smart quotes or regular)
-  const quoted = aiReply.match(/["\u201c\u201d]([^"\u201c\u201d]{10,})["\u201c\u201d]/);
+  const quoted = aiReply.match(/(?:"|“|”)([^"“”]{15,})(?:"|“|”)/);
   if (quoted) return quoted[1].trim();
-  // 2. "Prompt: ..." up to next sentence
-  const promptColon = aiReply.match(/(?:prompt)[:\s]+([a-zA-Z][^.!?\n]{15,})/);
-  if (promptColon) return promptColon[1].replace(/["'.,!?]$/, '').trim();
-  // 3. Any colon-separated suggestion
-  const colonMatch = aiReply.match(/(?:prompt|use this|try)[:\s]+["']?(.{15,})/i);
-  if (colonMatch) return colonMatch[1].replace(/["'.,]$/, '').trim();
+
+  // 2. Extracts first bullet point, handles newlines or inline bullets
+  const bulletMatch = aiReply.match(/(?:^|\n|\:\s*)\s*[-*]\s+([^\n]{15,})/);
+  if (bulletMatch) {
+    let extracted = bulletMatch[1].trim();
+    const nextBulletIdx = extracted.search(/\s+[-*]\s+/);
+    if (nextBulletIdx !== -1) {
+      extracted = extracted.slice(0, nextBulletIdx);
+    }
+    return extracted.replace(/["'.,!?]$/, '');
+  }
+
+  // 3. Explicit "Prompt:" or "Try this:" followed by text
+  const explicitPrompt = aiReply.match(/\b(?:prompt|use this|try this|suggestion)\s*:\s*["'\n]*([^\n]{15,})/i);
+  if (explicitPrompt) return explicitPrompt[1].replace(/["'.,!?]$/, '').trim();
+
+  // 4. Any text following a colon
+  const colonMatch = aiReply.match(/:\s*\n*([A-Z][^\n]{15,})/);
+  if (colonMatch) return colonMatch[1].replace(/["'.,!?]$/, '').trim();
+
   return userMsg.trim();
 }
 
@@ -318,7 +333,7 @@ export default function PromotionalBanner2() {
                               </div>
                             )}
                             <div className="flex flex-col gap-1.5 max-w-[78%]">
-                              <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
+                              <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
                                 ? 'bg-blue-600 text-white rounded-br-sm'
                                 : 'bg-white/[0.06] border border-white/10 text-zinc-200 rounded-bl-sm'
                                 }`}>
@@ -389,7 +404,16 @@ export default function PromotionalBanner2() {
                           <p className="text-white/50 text-xs px-1 pb-1 uppercase tracking-wider font-medium">What would you like to do?</p>
                           {ACTION_CARDS.map((card) => (
                             <motion.button key={card.id} type="button" variants={staggerItem}
-                              onClick={() => { setPrompt(card.starter); setTimeout(() => textareaRef.current?.focus(), 50); }}
+                              onClick={() => {
+                                setPrompt(card.starter);
+                                setTimeout(() => {
+                                  if (textareaRef.current) {
+                                    textareaRef.current.focus();
+                                    const len = card.starter.length;
+                                    textareaRef.current.setSelectionRange(len, len);
+                                  }
+                                }, 50);
+                              }}
                               className="w-full flex items-center rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/20 transition-colors text-left overflow-hidden group"
                               whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                             >

@@ -13,43 +13,38 @@ import { auth } from '../../../lib/firebase'
 import { APP_ROUTES, LEGAL_ROUTES } from '../../../routes/routes'
 import toast from 'react-hot-toast'
 import LoadingScreen from '@/components/ui/LoadingScreen'
+import TextField from '@mui/material/TextField'
+import InputAdornment from '@mui/material/InputAdornment'
+import IconButton from '@mui/material/IconButton'
 import TurnstileCaptcha from '@/components/TurnstileCaptcha'
+import { setCookie, clearCookie, LoadingSpinner, textFieldSx, ValidationPopup, OtpInput, EyeIcon, EyeOffIcon } from "./components/shared"
+import { SignInForm as SignInFormComponent } from "./components/SignInForm"
+import { SignUpForm } from "./components/SignUpForm"
+import { RedeemCodeForm } from "./components/RedeemCodeForm"
+import { UsernameForm } from "./components/UsernameForm"
+import { ForgotPasswordModal } from "./components/ForgotPasswordModal"
 
-// Cookie utility functions
-const setCookie = (name: string, value: string, days: number = 7) => {
-  console.log("🍪 Starting cookie setting process...")
-  console.log("🍪 Cookie name:", name)
-  console.log("🍪 Cookie value length:", value.length)
-
-  const expires = new Date()
-  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000))
-  const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
-
-  console.log("🍪 Setting cookie string:", cookieString)
-  console.log("🍪 Current cookies before setting:", document.cookie)
-
-  document.cookie = cookieString
-
-  // Immediate verification
-  console.log("🍪 Current cookies immediately after setting:", document.cookie)
-
-  // Verify cookie was set after a delay
-  setTimeout(() => {
-    const cookies = document.cookie.split(';').map(c => c.trim())
-    console.log("🍪 All cookies after timeout:", cookies)
-    const targetCookie = cookies.find(c => c.startsWith(`${name}=`))
-    console.log("🍪 Cookie verification:", targetCookie ? "SET" : "NOT SET")
-    if (targetCookie) {
-      console.log("🍪 Found cookie:", targetCookie)
-      console.log("🍪 Cookie value extracted:", targetCookie.split('=')[1])
-    } else {
-      console.log("❌ Cookie NOT found in document.cookie")
-    }
-  }, 100)
-}
-
-const clearCookie = (name: string) => {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`
+export function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'; result: any; error: string | null; onSuggestion: (v: string) => void }) {
+  if (status === 'idle') return null;
+  if (status === 'invalid') return <div className="p-2 mt-0 mb-1 bg-amber-900/10 border border-amber-800 rounded-lg"><p className="text-amber-300 text-[10px]">Use 3-30 chars: a-z 0-9 _ . -</p></div>;
+  if (status === 'checking') return <div className="p-2 mt-0 mb-1 text-gray-400 text-[10px] animate-pulse">Checking availability...</div>;
+  if (status === 'error') return <div className="p-2 mt-0 mb-1 bg-red-900/10 border border-red-800 rounded-lg"><p className="text-red-300 text-[10px]">{error || 'Something went wrong'}</p></div>;
+  if (status === 'available') return null;
+  if (status === 'taken') {
+    return (
+      <div className="space-y-2 mt-0 mb-1">
+        <div className="p-2 bg-red-900/10 border border-red-800 rounded-lg">
+          <p className="text-red-300 text-[10px]">Username taken. Suggestions:</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {result?.suggestions?.map((s: string) => (
+            <button key={s} type="button" onClick={() => onSuggestion(s)} className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] hover:bg-gray-700">{s}</button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 export default function SignInForm() {
@@ -81,7 +76,7 @@ export default function SignInForm() {
   // Live validation states
   const [passwordError, setPasswordError] = useState("")
   const [emailError, setEmailError] = useState("")
-  const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
+  const [showLoginForm, setShowLoginForm] = useState(showLoginParam === 'true') // Login flow toggle initialized from URL
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false) // Forgot password modal
@@ -92,12 +87,18 @@ export default function SignInForm() {
   const [resendCooldown, setResendCooldown] = useState(0) // Seconds remaining before resend is allowed
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
-  const [showPassword, setShowPassword] = useState(false) // Password visibility toggle (synced for both fields)
+  const [showPassword, setShowPassword] = useState(false) // Password visibility toggle
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false) // Confirm Password visibility toggle
+  const [mounted, setMounted] = useState(false) // Component mount state for SSR
+
 
   // Captcha states
   const [captchaToken, setCaptchaToken] = useState<string>('')
   const [captchaError, setCaptchaError] = useState(false)
 
+  // Focus and Validation Popup states
+  const [isUsernameFocused, setIsUsernameFocused] = useState(false)
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false)
   // Redeem code states
   const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
   const [redeemCode, setRedeemCode] = useState("")
@@ -144,39 +145,37 @@ export default function SignInForm() {
     }
   }, [password, confirmPassword, email])
 
-  // Check if form is valid (passwords match, email valid, password length >= 6)
+  // Check if form is valid (passwords match, email valid, password length >= 6, valid username)
+  // Validation requirement tests
+  const usernameRequirements = [
+    { label: "Username must be 6-14 character", test: (v: string) => v.length >= 6 && v.length <= 14, required: true },
+    { label: "Can use Digit", test: (v: string) => /[0-9]/.test(v), required: false },
+    { label: "Can use Alphabet", test: (v: string) => /[a-zA-Z]/.test(v), required: false },
+    { label: "Can use Special Character (only _ and .)", test: (v: string) => /[._]/.test(v), required: false },
+    { label: "At least 1 special character", test: (v: string) => /[._]/.test(v), required: true },
+  ]
+
+  const passwordRequirements = [
+    { label: "Password must be 8-14 character", test: (v: string) => v.length >= 8 && v.length <= 14 },
+    { label: "At least 1 uppercase letter (A-Z)", test: (v: string) => /[A-Z]/.test(v) },
+    { label: "At least 1 lowercase letter (a-z)", test: (v: string) => /[a-z]/.test(v) },
+    { label: "At least 1 number (0-9)", test: (v: string) => /[0-9]/.test(v) },
+    { label: "At least 1 special character", test: (v: string) => /[^A-Za-z0-9]/.test(v) },
+  ]
+
+  const isUsernameValid = usernameRequirements
+    .filter(req => req.required !== false)
+    .every(req => req.test(username)) && /^[a-zA-Z0-9_.]*$/.test(username)
+  const isPasswordValid = passwordRequirements.every(req => req.test(password))
+
   const isFormValid =
-    password.length >= 6 &&
+    isPasswordValid &&
     password === confirmPassword &&
     isValidEmail(email) &&
     email.length > 0 &&
-    confirmPassword.length > 0
-
-  // Test cookie setting function
-  const testCookieSetting = () => {
-    console.log("🧪 Testing cookie setting...")
-    setCookie('test_cookie', 'test_value_123', 1)
-
-    setTimeout(() => {
-      console.log("🧪 Test cookies after setting:", document.cookie)
-      const testCookie = document.cookie.split(';').find(c => c.trim().startsWith('test_cookie='))
-      console.log("🧪 Test cookie found:", testCookie)
-    }, 200)
-  }
-
-  // Loading Spinner Component (light theme)
-  const LoadingSpinner = () => (
-    <div className="flex items-center justify-center py-1">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
-    </div>
-  )
-
-  // Redirect Spinner Component (light theme)
-  const RedirectSpinner = () => (
-    <div className="flex items-center justify-center py-1">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
-    </div>
-  )
+    confirmPassword.length > 0 &&
+    isUsernameValid &&
+    availability.isAvailable
 
   const switchToGoogleSignIn = () => {
     setShowLoginForm(false) // Ensure we're in sign-up mode for Google
@@ -195,7 +194,7 @@ export default function SignInForm() {
   }
 
   // Handle login form submission
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     console.log("🔐 Starting login process...")
     console.log("📧 Email:", email.trim())
@@ -225,7 +224,8 @@ export default function SignInForm() {
       console.log("🌐 Step 1: Sending credentials to backend...")
       const response = await axiosInstance.post("/api/auth/login", {
         email: email.trim(),
-        password: password
+        password: password,
+        captchaToken: captchaToken
       }, {
         withCredentials: true
       })
@@ -345,7 +345,6 @@ export default function SignInForm() {
         setError(errorMsg)
         toast.error(errorMsg, { duration: 4000 })
       }
-
     } catch (error: any) {
       console.error("❌ Login error:", error)
 
@@ -414,34 +413,40 @@ export default function SignInForm() {
     setCaptchaError(true)
   }
 
-  // API handlers for form flow
-  const handleSendOtp = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSendOtp = async (e: FormEvent) => {
     e.preventDefault()
     // console.log("🚀 Starting OTP send process...")
     // console.log("📧 Email:", email.trim())
     // console.log("🔒 Password provided:", !!password)
 
-    // Verify captcha token is present
+    // Explicit validation feedback
+    if (!username.trim()) {
+      toast.error("Please enter a username")
+      return
+    }
+    if (!isUsernameValid) {
+      toast.error("Username format is invalid")
+      return
+    }
+    if (!availability.isAvailable) {
+      toast.error("Username is already taken")
+      return
+    }
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address")
+      return
+    }
+    if (!isPasswordValid) {
+      toast.error("Password does not meet requirements")
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords don't match")
+      return
+    }
     if (!captchaToken) {
       setCaptchaError(true)
-      const errorMsg = "Please complete the captcha verification"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
-      return
-    }
-
-    if (password !== confirmPassword) {
-      console.log("❌ Password mismatch")
-      const errorMsg = "Password doesn't match"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
-      return
-    }
-    if (password.length < 6) {
-      console.log("❌ Password too short")
-      const errorMsg = "Password must be at least 6 characters"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
+      toast.error("Please complete the captcha verification")
       return
     }
 
@@ -470,6 +475,7 @@ export default function SignInForm() {
       if (response.data && response.data.data && response.data.data.sent) {
         console.log("✅ OTP sent successfully!")
         setOtpSent(true)
+        setResendCooldown(60) // Start 60s timer
         toast.success(`OTP sent to ${email.trim()}`)
         setError("")
         setSuccess(`OTP sent to ${email.trim()}`)
@@ -526,9 +532,8 @@ export default function SignInForm() {
       setProcessing(false)
     }
   }
-
-  const handleVerifyOtp = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const handleVerifyOtp = async (e?: FormEvent) => {
+    if (e) e.preventDefault()
     console.log("🔍 Starting OTP verification process...")
     console.log("📧 Email:", email.trim())
     console.log("🔢 OTP entered:", otp.trim())
@@ -559,6 +564,22 @@ export default function SignInForm() {
       if (response.data) {
         console.log("✅ OTP verification successful!")
         console.log("🔍 Full response data:", JSON.stringify(response.data, null, 2))
+
+        // Try to set username for the newly created email user
+        if (username.trim()) {
+          try {
+            console.log("👤 Setting username for newly verified email user...");
+            const usernameResponse = await axiosInstance.post("/api/auth/email/username", {
+              username: username.trim(),
+              email: email.trim()
+            }, { withCredentials: true });
+
+            console.log("✅ Username set successfully!");
+          } catch (usernameError) {
+            console.error("❌ Failed to set username after verification:", usernameError);
+            // Non-fatal, user account was already created. Just proceed to session.
+          }
+        }
 
         // Get custom token from backend response
         const customToken = response.data.customToken || response.data.data?.customToken || response.data.token || response.data.data?.token || response.data.idToken || response.data.data?.idToken
@@ -612,11 +633,11 @@ export default function SignInForm() {
                 localStorage.setItem('lastAuthMethod', 'email')
               } catch { }
 
-              toast.success('OTP verified successfully! Please choose a username.', { duration: 3000 })
-              setShowUsernameForm(true)
-              setOtp("")
-              setOtpSent(false)
-              setError("")
+              // Show redeem code form instead of direct redirection
+              setShowRedeemCodeForm(true)
+              setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
+              toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+
             } else {
               console.error("❌ Session creation failed:", sessionResponse.status)
               const errorMsg = "Session creation failed. Please try again."
@@ -740,7 +761,7 @@ export default function SignInForm() {
   }, [resendCooldown])
 
   // Handle forgot password
-  const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
+  const handleForgotPassword = async (e: FormEvent) => {
     e.preventDefault()
     console.log("🔐 Starting forgot password process...")
     console.log("📧 Email:", forgotPasswordEmail.trim())
@@ -1127,9 +1148,7 @@ export default function SignInForm() {
           toast.error(errorMsg, { duration: 4000 })
         }
       }
-
     } catch (error: any) {
-      console.error("❌ Username submission error details:")
       console.error("Error object:", error)
       console.error("Error message:", error.message)
       console.error("Error response:", error.response)
@@ -1273,6 +1292,17 @@ export default function SignInForm() {
     }
   }, [])
 
+  // Handle resend cooldown timer
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   // Handle showLogin query parameter
   useEffect(() => {
     if (showLoginParam === 'true') {
@@ -1280,1029 +1310,193 @@ export default function SignInForm() {
     }
   }, [showLoginParam])
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <div className="w-full h-full min-h-screen bg-[#1C1C20] relative overflow-x-hidden"></div>
+  }
+
   return (
-    <div className="w-full h-full flex flex-col bg-gray-900 relative overflow-x-hidden">
+    <div className="w-full h-full min-h-screen flex flex-col bg-[#1C1C20] relative overflow-x-hidden">
       {(authLoading || isRedirecting) && (
         <LoadingScreen message={isRedirecting ? 'Redirecting…' : 'Signing you in…'} subMessage={isRedirecting ? 'Just a moment while we finish up' : undefined} />
       )}
 
-      {/* Form Content - Centered (Krea Style) */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden px-6 md:px-12">
-        <div className="w-full max-w-md space-y-6">
-          {/* Welcome Section - Only show when not on OTP screen, username screen, login screen, or redeem code screen */}
-          {!otpSent && !showUsernameForm && !showLoginForm && !showRedeemCodeForm && (
-            <div className="text-center space-y-4 mb-8">
-              {/* Logo - Just above Welcome text */}
-              <div className="flex justify-center mb-2">
-                <div className="w-12 h-12 flex items-center justify-center">
-                  <img
-                    src="/core/logosquare.png"
-                    alt="WildMind Logo"
-                    width={48}
-                    height={48}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      // Silently handle error - don't log to console
-                      const target = e.target as HTMLImageElement;
-                      if (target) {
-                        target.style.display = 'none';
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
-              <p className="text-gray-400 text-base">Log in or sign up.</p>
-            </div>
-          )}
+      {/* Form Content - Stabilized Layout */}
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-40 p-6 md:p-12">
+        <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
-          {showUsernameForm ? (
-            <div className="space-y-6">
-              {/* Title (Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Username text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Verification Successful!</h1>
-                <p className="text-gray-400 text-base">Last step, Make a Unique Username</p>
-              </div>
-
-              {/* Username Input (Krea Style - Dark) */}
-              <div>
-                <input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                  required
-                />
-                {/* Capital letters validation (Dark) */}
-                {hasCapitalLetters && (
-                  <div className="mt-2 rounded-lg p-2 bg-red-900/30 border border-red-800">
-                    <p className="text-red-300 text-xs">Capital letters are not allowed in usernames. Please use lowercase letters only.</p>
-                  </div>
-                )}
-
-                {/* Live availability feedback - only show if no capital letters */}
-                {!hasCapitalLetters && (
-                  <div className="mt-2">
-                    <UsernameAvailabilityFeedback
-                      status={availability.status}
-                      result={availability.result}
-                      error={availability.error}
-                      onSuggestion={setUsername}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Continue Button (Krea Style - Dark) */}
-              <button
-                onClick={handleUsernameSubmit}
-                disabled={!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting
-                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-              >
-                {isUsernameSubmitting ? <LoadingSpinner /> : (
-                  <>
-                    Continue
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            </div>
-          ) : showRedeemCodeForm ? (
-            <div className="space-y-6">
-              {/* Title (Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Redeem Code text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Almost There!</h1>
-                <p className="text-gray-400 text-base">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
-              </div>
-
-              {/* Success Message (Dark) */}
-              {success && (
-                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm leading-relaxed">{success}</p>
-                </div>
-              )}
-
-              {/* Error Message (Dark) */}
-              {error && (
-                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                  <p className="text-red-300 text-sm leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              {/* Redeem Code Input (Krea Style - Dark) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Redeem Code <span className="text-gray-500 font-normal">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter your redeem code (e.g., STU-123456-ABC123)"
-                  value={redeemCode}
-                  onChange={(e) => {
-                    setRedeemCode(e.target.value.toUpperCase())
-                    setRedeemCodeValidated(false)
-                    setRedeemCodeInfo(null)
-                    setError("")
-                    setSuccess("")
+          {/* Constant Shared Header - Static for both Sign In and Sign Up */}
+          <div className="text-center w-full mb-8">
+            <p className="text-white text-md">Welcome to</p>
+            <div className="flex justify-center items-center gap-1 mt-0 mb-4">
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img
+                  src="/core/logosquare.png"
+                  alt="WildMind Logo"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target) target.style.display = 'none';
                   }}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base uppercase"
                 />
-
-                {/* Validation feedback (Dark) */}
-                {redeemCodeInfo && redeemCodeValidated && (
-                  <div className="mt-2 text-sm text-green-300 flex items-center space-x-2">
-                    <span>✓</span>
-                    <span>
-                      Valid {redeemCodeInfo.planName} - You'll get {redeemCodeInfo.creditsToGrant.toLocaleString()} credits!
-                      {redeemCodeInfo.remainingTime && (
-                        <span className="text-green-400 ml-1">(expires in {redeemCodeInfo.remainingTime})</span>
-                      )}
-                    </span>
-                  </div>
-                )}
-
-                {/* Help text (Dark) */}
-                <div className="mt-1 text-xs text-gray-500">
-                  Student codes start with "STU-" and Business codes start with "BUS-"
-                </div>
               </div>
-
-              {/* Buttons (Krea Style - Dark) */}
-              <div className="space-y-3">
-                {/* Validate/Apply Code Button */}
-                {redeemCode && !redeemCodeValidated ? (
-                  <button
-                    onClick={handleRedeemCodeValidation}
-                    disabled={processing || !redeemCode.trim()}
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !redeemCode.trim()
-                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                      }`}
-                  >
-                    {processing ? <LoadingSpinner /> : "Validate Code"}
-                  </button>
-                ) : redeemCodeValidated ? (
-                  <button
-                    onClick={handleRedeemCodeSubmit}
-                    disabled={processing}
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing
-                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                      : "bg-green-600 hover:bg-green-700 text-white"
-                      }`}
-                  >
-                    {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
-                  </button>
-                ) : null}
-
-                {/* Skip Button (Krea Style - Dark) */}
-                <button
-                  onClick={handleSkipRedeemCode}
-                  disabled={processing}
-                  className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white transition-colors"
-                >
-                  Continue with Free Plan
-                </button>
-
-                {/* Info about free plan (Dark) */}
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">
-                    Free plan includes 4,120 credits to get you started
-                  </p>
-                </div>
-              </div>
+              <h1 className="text-2xl font-bold text-white tracking-wide whitespace-nowrap">WildMind AI </h1>
             </div>
-          ) : showLoginForm ? (
-            <form onSubmit={handleLogin} className="space-y-6">
-              {/* Title (Krea Style - Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Welcome text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
-                <p className="text-gray-400 text-base">Log in or sign up.</p>
-              </div>
 
-              {/* Google Sign-in Button First (Krea Style - Dark) */}
-              <div className="relative">
-                {lastAuthMethod === 'google' && (
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors"
+            {/* Form Toggle Switcher */}
+            {!showUsernameForm && !showRedeemCodeForm && !otpSent && (
+              <div className="flex justify-center gap-6">
+                <span
+                  className={`pb-0 font-medium cursor-pointer transition-colors text-sm ${showLoginForm ? 'text-[#4182CF] border-b-2 border-[#4182CF]' : 'text-gray-500 hover:text-gray-300'}`}
+                  onClick={() => setShowLoginForm(true)}
                 >
-                  <Image src={getImageUrl('core', 'google')} alt="Google" width={20} height={20} className="w-5 h-5" />
-                  <span className="text-base">Continue with Google</span>
-                </button>
+                  Sign In
+                </span>
+                <span
+                  className={`pb-0 font-medium cursor-pointer transition-colors text-sm ${!showLoginForm ? 'text-[#4182CF] border-b-2 border-[#4182CF]' : 'text-gray-500 hover:text-gray-300'}`}
+                  onClick={() => setShowLoginForm(false)}
+                >
+                  Sign up
+                </span>
               </div>
+            )}
+          </div>
 
-              {/* OR Separator (Krea Style - Dark) */}
-              <div className="flex items-center gap-4">
-                <div className="flex-grow h-px bg-gray-700"></div>
-                <span className="text-gray-500 text-sm font-medium">OR</span>
-                <div className="flex-grow h-px bg-gray-700"></div>
-              </div>
+          {/* Conditional Form Body */}
+          <div className="w-full">
+            {showUsernameForm ? (
+              <UsernameForm
+                username={username} setUsername={setUsername}
+                isUsernameFocused={isUsernameFocused} setIsUsernameFocused={setIsUsernameFocused}
+                usernameRequirements={usernameRequirements} hasCapitalLetters={hasCapitalLetters}
+                availability={availability} isUsernameSubmitting={isUsernameSubmitting}
+                handleUsernameSubmit={handleUsernameSubmit}
+                UsernameFeedbackComponent={UsernameAvailabilityFeedback}
+              />
+            ) : showRedeemCodeForm ? (
+              <RedeemCodeForm
+                redeemCode={redeemCode} setRedeemCode={setRedeemCode}
+                redeemCodeValidated={redeemCodeValidated} setRedeemCodeValidated={setRedeemCodeValidated}
+                error={error} success={success} processing={processing}
+                handleRedeemCodeValidation={handleRedeemCodeValidation}
+                handleRedeemCodeSubmit={handleRedeemCodeSubmit}
+                handleSkipRedeemCode={handleSkipRedeemCode}
+              />
+            ) : showLoginForm ? (
+              <form onSubmit={handleLogin} className="flex flex-col gap-2">
 
-              {/* Email/Password Form - Show "Last Used" badge if email was last used */}
-              {lastAuthMethod === 'email' && (
-                <div className="relative -mb-2">
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Error Message (Dark) */}
-              {error && (
-                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                  <p className="text-red-300 text-sm leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              {/* Success Message or Redirect Spinner (Dark) */}
-              {isRedirecting ? (
-                <RedirectSpinner />
-              ) : success && (
-                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm leading-relaxed">{success}</p>
-                </div>
-              )}
-
-              {/* Email Input (Krea Style - Dark with Icon) */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Email"
+                <TextField
+                  label="Email/Username"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                  onChange={(e) => setEmail(e.target.value.trim())}
                   required
+                  sx={textFieldSx}
                 />
-              </div>
 
-              {/* Password Input (Krea Style - Dark with Icon and Eye Toggle) */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                <TextField
+                  label="Password"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
                   required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-
-              {/* Cloudflare Turnstile Captcha */}
-              <TurnstileCaptcha
-                onVerify={handleCaptchaVerify}
-                onError={handleCaptchaError}
-                theme="dark"
-              />
-
-              {/* Captcha Error */}
-              {captchaError && (
-                <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
-              )}
-
-              {/* Forgot Password Link */}
-              <div className="flex justify-end -mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-
-              {/* Continue with Email Button (Krea Style - Dark) */}
-              <button
-                type="submit"
-                disabled={processing || !captchaToken}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !captchaToken
-                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-              >
-                {processing ? "Logging in..." : (
-                  <>
-                    Continue with Email
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-
-              {/* Sign Up Link (Dark) */}
-              <div className="text-center pt-4">
-                <span className="text-gray-400 text-sm">Don&apos;t have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginForm(false)}
-                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
-                >
-                  Sign Up
-                </button>
-              </div>
-            </form>
-          ) : otpSent ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              {/* Title (Krea Style - Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Verify text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Verify code</h1>
-                <p className="text-gray-400 text-base">An authentication code has been sent to your email.</p>
-              </div>
-
-              {/* Code Input (Krea Style - Dark) */}
-              <div>
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit code"
-                  value={otp}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "").slice(0, 6)
-                    setOtp(value)
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ color: '#858585' }}>
+                          {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   }}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base text-center tracking-widest"
-                  required
-                  maxLength={6}
+                  sx={textFieldSx}
                 />
-              </div>
 
-              {/* Error Message (Dark) */}
-              {error && (
-                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                  <p className="text-red-300 text-sm text-center leading-relaxed">{error}</p>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setShowForgotPassword(true)} className="text-[#4182CF] text-xs font-normal hover:text-blue-400">
+                    Forgot Password?
+                  </button>
                 </div>
-              )}
 
-              {/* Success Message or Redirect Spinner (Dark) */}
-              {isRedirecting ? (
-                <RedirectSpinner />
-              ) : success && (
-                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm text-center leading-relaxed">{success}</p>
+                <div className="flex justify-center pt-4">
+                  <button
+                    type="submit"
+                    disabled={processing || !email || !password}
+                    className={`w-3/4 py-2.5 rounded-xl font-semibold transition-all ${processing || !email || !password
+                      ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
+                      : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
+                      }`}
+                  >
+                    {processing ? "Signing in..." : "Sign In"}
+                  </button>
                 </div>
-              )}
 
-              {/* Verify Button (Krea Style - Dark) */}
-              <button
-                type="submit"
-                disabled={processing || otp.length < 6}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || otp.length < 6
-                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-              >
-                {processing ? "Verifying..." : (
-                  <>
-                    Continue with Email
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-
-              {/* Resend Link (Dark) */}
-              <div className="text-center">
-                <span className="text-gray-400 text-sm">Not receive email? </span>
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
-                >
-                  Resend
-                </button>
-              </div>
-            </form>
-          ) : (
-            <>
-              {/* Google Sign-in Button First (Krea Style - Dark) */}
-              <div className="relative">
-                {lastAuthMethod === 'google' && (
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors"
-                >
-                  <Image src={getImageUrl('core', 'google')} alt="Google" width={20} height={20} className="w-5 h-5" />
-                  <span className="text-base">Continue with Google</span>
-                </button>
-              </div>
-
-              {/* OR Separator (Krea Style - Dark) */}
-              <div className="flex items-center gap-4">
-                <div className="flex-grow h-px bg-gray-700"></div>
-                <span className="text-gray-500 text-sm font-medium">OR</span>
-                <div className="flex-grow h-px bg-gray-700"></div>
-              </div>
-
-              {/* Email/Password Form - Show "Last Used" badge if email was last used */}
-              {lastAuthMethod === 'email' && (
-                <div className="relative -mb-2">
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
+                <div className="flex items-center gap-4 py-2">
+                  <div className="flex-grow h-px bg-[#2D3035]"></div>
+                  <span className="text-gray-500 text-xs font-medium">OR</span>
+                  <div className="flex-grow h-px bg-[#2D3035]"></div>
                 </div>
-              )}
 
-              {/* Email Form (Krea Style - Dark) */}
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                {/* Email Input with Icon */}
-                <div>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
+                <div className="relative">
+                  {lastAuthMethod === 'google' && (
+                    <div className="absolute -top-2 right-0 z-10">
+                      <span className="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-medium px-2 py-0.5 rounded-full">Last Used</span>
                     </div>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value.trim())}
-                      autoComplete="email"
-                      className={`w-full pl-10 pr-4 py-3 bg-gray-800 border ${emailError ? 'border-red-500' : 'border-gray-700'
-                        } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
-                      required
-                    />
-                  </div>
-                  {emailError && (
-                    <p className="mt-1.5 text-xs text-red-400">{emailError}</p>
                   )}
-                </div>
-
-                {/* Password Fields with Icons and Eye Toggle */}
-                <div className="space-y-2">
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                    >
-                      {showPassword ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-
-                  <div>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Confirm Password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        autoComplete="new-password"
-                        className={`w-full pl-10 pr-12 py-3 bg-gray-800 border ${passwordError ? 'border-red-500' : 'border-gray-700'
-                          } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                    {passwordError && (
-                      <p className="mt-1.5 text-xs text-red-400">{passwordError}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Terms Text (Dark) - Checkbox removed, text only */}
-                <div className="text-xs text-center text-gray-400 leading-relaxed">
-                  By signing up, you agree to our{" "}
-                  <Link
-                    href={LEGAL_ROUTES.TERMS_CONDITIONS}
-                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleLogin()}
+                    className="w-full bg-[#24242A] hover:bg-[#2D3035] text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-3 transition-colors"
                   >
-                    Terms and Conditions
-                  </Link>{" "}
-                  &{" "}
-                  <Link
-                    href={LEGAL_ROUTES.PRIVACY_PAGE}
-                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Privacy Policy
-                  </Link>.
+                    <img src={getImageUrl('core', 'google')} alt="Google" width={18} height={18} className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Continue with Google</span>
+                  </button>
                 </div>
 
-                {/* Cloudflare Turnstile Captcha */}
                 <TurnstileCaptcha
                   onVerify={handleCaptchaVerify}
                   onError={handleCaptchaError}
                   theme="dark"
                 />
-
-                {/* Captcha Error */}
-                {captchaError && (
-                  <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
-                )}
-
-                {/* Error Message (Dark) - Only show server/API errors */}
-                {error && (
-                  <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                    <p className="text-red-300 text-sm leading-relaxed">{error}</p>
-                  </div>
-                )}
-
-                {/* Continue with Email Button (Krea Style - Dark) */}
-                <button
-                  type="submit"
-                  disabled={processing || !isFormValid || !captchaToken}
-                  className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !isFormValid || !captchaToken
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                    }`}
-                >
-                  {processing ? "Sending..." : (
-                    <>
-                      Continue with Email
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  )}
-                </button>
               </form>
-
-              {/* Already have an account link (Dark) */}
-              <div className="text-center pt-4">
-                <span className="text-gray-400 text-sm">Already have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginForm(true)}
-                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
-                >
-                  Sign In
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Footer - Terms & Privacy (Krea Style - Dark) - Only show when not on OTP screen, username screen, or login screen */}
-      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
-        <div className="absolute bottom-6 left-0 right-0 text-center px-6">
-          <p className="text-xs text-gray-500">
-            By signing up, you agree to our{" "}
-            <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
-            <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
-          </p>
-        </div>
-      )} */}
-
-      {/* Debug: Test Cookie Button - Always visible for debugging */}
-      {/* <div className="text-center mb-4">
-        <button
-          type="button"
-          onClick={testCookieSetting}
-          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow-lg border-2 border-red-400"
-        >
-          🧪 Test Cookie Setting (Debug)
-        </button>
-        <p className="text-xs text-gray-400 mt-1">Click to test if cookies work in this browser</p>
-      </div> */}
-
-      {/* Cookies Settings - Individual Div - Only show when not on OTP screen, username screen, or login screen */}
-      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
-        <div className="text-center mb-12">
-          <span className="text-[#4285F4] text-xs">Cookies Settings</span>
-        </div>
-      )} */}
-
-      {/* Forgot Password Modal */}
-      {showForgotPassword && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md p-6 space-y-6">
-
-            {/* Google-only user panel */}
-            {isGoogleOnlyUser ? (
-              <>
-                {/* Header */}
-                <div className="text-center space-y-2">
-                  <div className="flex justify-center mb-3">
-                    <div className="w-14 h-14 rounded-full bg-blue-900/40 border border-blue-700 flex items-center justify-center">
-                      {/* Google icon */}
-                      <svg className="w-7 h-7" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <h2 className="text-2xl font-bold text-white">Google Account</h2>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    This email is linked to a <strong className="text-white">Google account</strong>. Password reset is not available for Google sign-ins.
-                  </p>
-                </div>
-
-                {/* Info box */}
-                <div className="rounded-xl p-4 bg-blue-900/20 border border-blue-800/60 space-y-2">
-                  <p className="text-blue-300 text-sm font-medium">What you can do instead:</p>
-                  <ul className="text-blue-200/80 text-sm space-y-1 list-disc list-inside">
-                    <li>Sign in using the <strong>Continue with Google</strong> button</li>
-                    <li>If you've forgotten your Google password, reset it at <a href="https://accounts.google.com" target="_blank" rel="noopener noreferrer" className="underline text-blue-400 hover:text-blue-300">accounts.google.com</a></li>
-                  </ul>
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForgotPassword(false)
-                      setIsGoogleOnlyUser(false)
-                      setForgotPasswordError("")
-                      setForgotPasswordEmail("")
-                      // Make sure we go to the login form and trigger Google sign-in
-                      setShowLoginForm(true)
-                    }}
-                    className="w-full py-3 px-4 rounded-lg font-medium text-base bg-white hover:bg-gray-100 text-gray-900 transition-colors flex items-center justify-center gap-3"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    Continue with Google
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForgotPassword(false)
-                      setIsGoogleOnlyUser(false)
-                      setForgotPasswordError("")
-                      setForgotPasswordEmail("")
-                    }}
-                    className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
             ) : (
-              <>
-                {/* Header */}
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold text-white">Reset Password</h2>
-                  <p className="text-gray-400 text-sm">
-                    {forgotPasswordSent
-                      ? "Check your email for password reset instructions."
-                      : "Enter your email address and we'll send you a link to reset your password."}
-                  </p>
-                </div>
-
-                {/* Success Message */}
-                {forgotPasswordSent ? (
-                  <div className="space-y-5">
-                    {/* Sent confirmation */}
-                    <div className="rounded-lg p-4 bg-green-900/30 border border-green-800">
-                      <p className="text-green-300 text-sm">
-                        A password reset link has been sent to <strong>{forgotPasswordEmail}</strong>. Check your inbox (and spam folder).
-                      </p>
-                    </div>
-
-                    {/* Cooldown timer */}
-                    <div className="flex flex-col items-center gap-3">
-                      {resendCooldown > 0 ? (
-                        <>
-                          {/* Circular countdown ring */}
-                          <div className="relative w-16 h-16">
-                            <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
-                              <circle cx="32" cy="32" r="28" fill="none" stroke="#374151" strokeWidth="4" />
-                              <circle
-                                cx="32" cy="32" r="28"
-                                fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="4"
-                                strokeDasharray={`${2 * Math.PI * 28}`}
-                                strokeDashoffset={`${2 * Math.PI * 28 * (1 - resendCooldown / 60)}`}
-                                strokeLinecap="round"
-                                style={{ transition: 'stroke-dashoffset 1s linear' }}
-                              />
-                            </svg>
-                            <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-sm">
-                              {resendCooldown}s
-                            </span>
-                          </div>
-                          <p className="text-gray-400 text-xs text-center">
-                            Didn't receive it? You can resend in <span className="text-blue-400 font-medium">{resendCooldown}s</span>
-                          </p>
-                          <button
-                            type="button"
-                            disabled
-                            className="w-full py-2.5 px-4 rounded-lg font-medium text-sm bg-gray-700 text-gray-500 cursor-not-allowed transition-colors"
-                          >
-                            Resend Email ({resendCooldown}s)
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-gray-400 text-xs text-center">Didn't receive it?</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setForgotPasswordSent(false)
-                              setForgotPasswordError("")
-                            }}
-                            className="w-full py-2.5 px-4 rounded-lg font-medium text-sm bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                          >
-                            Resend Email
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Close */}
-                    <button
-                      onClick={() => {
-                        setShowForgotPassword(false)
-                        setForgotPasswordSent(false)
-                        setForgotPasswordEmail("")
-                        setForgotPasswordError("")
-                        setResendCooldown(0)
-                      }}
-                      className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleForgotPassword} className="space-y-4">
-                    {/* Error Message */}
-                    {forgotPasswordError && (
-                      <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                        <p className="text-red-300 text-sm">{forgotPasswordError}</p>
-                      </div>
-                    )}
-
-                    {/* Email Input */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={forgotPasswordEmail}
-                        onChange={(e) => {
-                          setForgotPasswordEmail(e.target.value)
-                          setForgotPasswordError("")
-                        }}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                        required
-                        autoFocus
-                      />
-                    </div>
-
-                    {/* Buttons */}
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForgotPassword(false)
-                          setForgotPasswordEmail("")
-                          setForgotPasswordError("")
-                          setIsGoogleOnlyUser(false)
-                        }}
-                        className="flex-1 py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={processing || !forgotPasswordEmail.trim()}
-                        className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !forgotPasswordEmail.trim()
-                          ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700 text-white"
-                          }`}
-                      >
-                        {processing ? "Sending..." : "Send Reset Link"}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </>
+              <SignUpForm
+                username={username} setUsername={setUsername}
+                isUsernameFocused={isUsernameFocused} setIsUsernameFocused={setIsUsernameFocused}
+                usernameRequirements={usernameRequirements} hasCapitalLetters={hasCapitalLetters} availability={availability}
+                email={email} setEmail={setEmail}
+                password={password} setPassword={setPassword}
+                showPassword={showPassword} setShowPassword={setShowPassword}
+                isPasswordFocused={isPasswordFocused} setIsPasswordFocused={setIsPasswordFocused} passwordRequirements={passwordRequirements}
+                confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword}
+                showConfirmPassword={showConfirmPassword} setShowConfirmPassword={setShowConfirmPassword}
+                otpSent={otpSent} otp={otp} setOtp={setOtp} processing={processing} resendCooldown={resendCooldown}
+                handleSendOtp={handleSendOtp} handleVerifyOtp={handleVerifyOtp}
+                handleGoogleLogin={handleGoogleLogin} handleCaptchaVerify={handleCaptchaVerify} handleCaptchaError={handleCaptchaError}
+                UsernameFeedbackComponent={UsernameAvailabilityFeedback}
+              />
             )}
           </div>
-        </div>
-      )}
-    </div>
-  )
+        </div >
+      </div >
+      <ForgotPasswordModal
+        showForgotPassword={showForgotPassword} setShowForgotPassword={setShowForgotPassword}
+        forgotPasswordSent={forgotPasswordSent} setForgotPasswordSent={setForgotPasswordSent}
+        forgotPasswordEmail={forgotPasswordEmail} setForgotPasswordEmail={setForgotPasswordEmail}
+        forgotPasswordError={forgotPasswordError} processing={processing}
+        handleForgotPassword={handleForgotPassword}
+      />
+    </div >
+  );
 }
 
-function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'; result: any; error: string | null; onSuggestion: (v: string) => void }) {
-
-  if (status === 'idle') return null
-  if (status === 'invalid') {
-    return (
-      <div className="rounded-lg p-2 bg-amber-900/30 border border-amber-800">
-        <p className="text-amber-300 text-xs">Use 3-30 chars: a-z 0-9 _ . -</p>
-      </div>
-    )
-  }
-  if (status === 'checking') {
-    return (
-      <div className="rounded-lg p-2 bg-gray-800 border border-gray-700 inline-flex items-center gap-2">
-        <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-600 border-t-blue-500" />
-        <span className="text-gray-400 text-xs">Checking…</span>
-      </div>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <div className="rounded-lg p-2 bg-red-900/30 border border-red-800">
-        <p className="text-red-300 text-xs">{error || 'Something went wrong'}</p>
-      </div>
-    )
-  }
-  if (status === 'available') {
-    return (
-      <div className="rounded-lg p-2 bg-green-900/30 border border-green-800">
-        <p className="text-green-300 text-xs">Username "{result?.normalized}" is available</p>
-      </div>
-    )
-  }
-  if (status === 'taken') {
-    return (
-      <div className="space-y-2">
-        <div className="rounded-lg p-2 bg-red-900/30 border border-red-800">
-          <p className="text-red-300 text-xs">Username is already taken</p>
-        </div>
-        {result?.suggestions && result.suggestions.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            {result.suggestions.map((s: string) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onSuggestion(s)}
-                className="px-3 py-1 rounded-lg border border-gray-700 bg-gray-800 text-gray-300 text-xs hover:bg-gray-700"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-  return null
-}

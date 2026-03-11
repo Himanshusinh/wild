@@ -164,9 +164,9 @@ export default function SignUp() {
   const creatorInfo = image?.creator || null
 
   return (
-    <main className="flex min-h-screen bg-gray-900 w-full">
+    <main className="flex min-h-screen bg-[#1C1C20] w-full">
       {/* Left Side - Form - Full width on mobile/tablet, 50% on desktop */}
-      <div className="w-full lg:w-[50%] min-h-screen relative z-20 bg-gray-900 flex flex-col">
+      <div className="w-full lg:w-[50%] min-h-screen relative z-20 bg-[#1C1C20] flex flex-col">
         <SignInForm />
       </div>
 
