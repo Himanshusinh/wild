@@ -156,7 +156,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                 </div>
               </button>
             </div>
-          )}
+        )}
 
         {/* MiniMax/I2V Direct Image Upload */}
         {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") &&
