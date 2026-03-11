@@ -74,7 +74,7 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
     console.log(`Runway Act-Two estimated cost: ${estimatedCost} credits (actual cost calculated by backend)`);
     return estimatedCost;
   }
-  if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2') || frontendModel === 'gen4_turbo' || frontendModel === 'gen3a_turbo') {
+  if (frontendModel.includes('seedance') || frontendModel.includes('wan-2.5') || frontendModel.startsWith('kling-') || frontendModel.includes('pixverse') || frontendModel.includes('veo3.1') || frontendModel.includes('sora2') || frontendModel.includes('ltx2') || frontendModel.includes('ltx-2.3-fast') || frontendModel.includes('ltx-2.3-pro') || frontendModel === 'gen4_turbo' || frontendModel === 'gen3a_turbo') {
     // Use default values if not provided for WAN models to avoid "Unknown model" error
     const defaultDuration = duration || 5;
     const defaultResolution = resolution || '720p';

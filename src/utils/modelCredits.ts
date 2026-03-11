@@ -553,6 +553,40 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     return cost || null;
   }
 
+  // Handle LTX 2.3 Fast models (Replicate)
+  if (modelValue.includes('ltx-2.3-fast')) {
+    const res = (resolution || '1080p').toLowerCase();
+    const durNum = duration ? parseInt(String(duration).replace('s', '')) : 6;
+    // Map duration to pricing bucket
+    const validDurations = [6, 8, 10, 12, 14, 16, 18, 20];
+    let dBucket = validDurations.find(d => durNum <= d) || 20;
+
+    const table: Record<'1080p' | '2k' | '4k', Record<number, number>> = {
+      '1080p': { 6: 540, 8: 700, 10: 860, 12: 1020, 14: 1180, 16: 1340, 18: 1500, 20: 1660 },
+      '2k': { 6: 1020, 8: 1340, 10: 1660, 12: 1980, 14: 2300, 16: 2620, 18: 2940, 20: 3260 },
+      '4k': { 6: 1980, 8: 2620, 10: 3260, 12: 3900, 14: 4540, 16: 5180, 18: 5820, 20: 6460 },
+    };
+    const resKey = (res.includes('4k') || res.includes('2160') ? '4k' : (res.includes('2k') || res.includes('1440') ? '2k' : '1080p')) as '1080p' | '2k' | '4k';
+    const cost = table[resKey][dBucket];
+    return cost || null;
+  }
+
+  // Handle LTX 2.3 Pro models (Replicate) - 6/8/10s only
+  if (modelValue.includes('ltx-2.3-pro')) {
+    const res = (resolution || '1080p').toLowerCase();
+    const durNumRaw = duration ? parseInt(String(duration).replace('s', '')) : 6;
+    const durNum: 6 | 8 | 10 = durNumRaw <= 6 ? 6 : durNumRaw <= 8 ? 8 : 10;
+
+    const table: Record<'1080p' | '2k' | '4k', Record<6 | 8 | 10, number>> = {
+      '1080p': { 6: 780, 8: 1020, 10: 1260 },
+      '2k': { 6: 1500, 8: 1980, 10: 2460 },
+      '4k': { 6: 2940, 8: 3900, 10: 4860 },
+    };
+    const resKey = (res.includes('4k') || res.includes('2160') ? '4k' : (res.includes('2k') || res.includes('1440') ? '2k' : '1080p')) as '1080p' | '2k' | '4k';
+    const cost = table[resKey][durNum];
+    return cost || null;
+  }
+
   // Handle Sora 2 models
   if (modelValue.includes('sora2')) {
     const isPro = modelValue.includes('pro');

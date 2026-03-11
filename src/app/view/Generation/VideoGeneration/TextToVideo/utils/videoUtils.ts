@@ -271,6 +271,10 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     // LTX V2 supports both T2V and I2V
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
+  } else if ((model.includes('ltx-2.3-fast') || model.includes('ltx-2.3-pro')) && !model.includes('i2v')) {
+    // LTX 2.3 Fast/Pro supports both T2V and I2V (with first/last frame interpolation)
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
   }
 
   // Text-to-video only models
@@ -288,7 +292,9 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     (model.startsWith('kling-') && model.includes('i2v')) ||
     (model.includes('seedance') && model.includes('i2v')) ||
     (model.includes('pixverse') && model.includes('i2v')) ||
-    (model.includes('sora2') && model.includes('i2v'))) {
+    (model.includes('sora2') && model.includes('i2v')) ||
+    (model.includes('ltx-2.3-pro') && model.includes('i2v')) ||
+    (model.includes('ltx-2.3-fast') && model.includes('i2v'))) {
     capabilities.supportsImageToVideo = true;
     capabilities.requiresImage = true;
   }

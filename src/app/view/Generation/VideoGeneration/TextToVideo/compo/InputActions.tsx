@@ -39,6 +39,10 @@ const InputActions: React.FC<InputActionsProps> = ({
   lastFrameImage,
   selectedResolution
 }) => {
+  const hasImageToVideoSupport =
+    currentModelCapabilities?.supportsImageToVideo ||
+    currentModelCapabilities?.requiresFirstFrame;
+
   return (
     <>
       <div className="flex items-center gap-1 h-[40px]">
@@ -133,13 +137,13 @@ const InputActions: React.FC<InputActionsProps> = ({
         )}
 
         {/* Image Upload */}
-        {currentModelCapabilities.supportsImageToVideo &&
+        {hasImageToVideoSupport &&
           !selectedModel.includes("MiniMax") &&
           selectedModel !== "I2V-01-Director" &&
           selectedModel !== "S2V-01" && (
             <div className="relative">
               <button
-                className="md:p-2 pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                className="md:py-2 pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
                 onClick={() => {
                   setUploadModalType('image');
                   setUploadModalTarget('first_frame');
@@ -179,8 +183,10 @@ const InputActions: React.FC<InputActionsProps> = ({
           (selectedResolution === "768P" || selectedResolution === "1080P")) ||
           selectedModel.includes("veo3.1") ||
           selectedModel === "kling-o1" ||
+          selectedModel.startsWith("ltx-2.3-fast") ||
+          selectedModel.startsWith("ltx-2.3-pro") ||
           (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
-          currentModelCapabilities.supportsImageToVideo && (
+          hasImageToVideoSupport && (
             <div className="flex items-center justify-center">
               <Image
                 src="/icons/arrow-right-left.svg"
@@ -197,8 +203,10 @@ const InputActions: React.FC<InputActionsProps> = ({
           (selectedResolution === "768P" || selectedResolution === "1080P")) ||
           selectedModel.includes("veo3.1") ||
           selectedModel === "kling-o1" ||
+          selectedModel.startsWith("ltx-2.3-fast") ||
+          selectedModel.startsWith("ltx-2.3-pro") ||
           (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
-          currentModelCapabilities.supportsImageToVideo) && (
+          hasImageToVideoSupport) && (
             <div className="relative">
               <button
                 className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
@@ -217,7 +225,7 @@ const InputActions: React.FC<InputActionsProps> = ({
           )}
 
         {/* Video Upload */}
-        {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace") && (
+        {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace" || selectedModel.startsWith('ltx-2.3-pro')) && (
           <div className="relative">
             <button
               className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"

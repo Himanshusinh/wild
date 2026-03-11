@@ -46,12 +46,13 @@ declare global {
 
 // Import the video-specific components
 import VideoModelsDropdown from "./VideoModelsDropdown";
+import ResolutionDropdown from "./ResolutionDropdown";
+import CameraMotionDropdown from "./CameraMotionDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
 import VideoDurationDropdown from "./VideoDurationDropdown";
 import QualityDropdown from "./QualityDropdown";
 import VideoGenerationGuide from "./VideoGenerationGuide";
 import KlingModeDropdown from "./KlingModeDropdown";
-import ResolutionDropdown from "./ResolutionDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
 import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
@@ -110,6 +111,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [prompt, setPrompt] = usePersistedGenerationState("prompt", "", "text-to-video");
   const [selectedModel, setSelectedModel] = usePersistedGenerationState("selectedModel", "seedance-1.0-lite-t2v", "text-to-video");
   const [frameSize, setFrameSize] = usePersistedGenerationState("frameSize", "16:9", "text-to-video");
+  const [hasUserSetFrameSize, setHasUserSetFrameSize] = useState(false);
   const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
   const [isGenerating, setIsGenerating] = useState(false);
   const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
@@ -186,9 +188,9 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [error, setError] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Auto-detect aspect ratio for uploaded images
+  // Auto-detect aspect ratio for uploaded images (only until user manually changes it)
   useEffect(() => {
-    if (uploadedImages.length > 0) {
+    if (uploadedImages.length > 0 && !hasUserSetFrameSize) {
       const firstImage = uploadedImages[0];
       // Only auto-detect if frameSize is at its default or "auto"
       // to avoid overriding intentional user choices
@@ -213,7 +215,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         img.src = firstImage;
       }
     }
-  }, [uploadedImages, frameSize, setFrameSize]);
+  }, [uploadedImages, frameSize, setFrameSize, hasUserSetFrameSize]);
+
+  const handleFrameSizeChange = (value: string) => {
+    setHasUserSetFrameSize(true);
+    setFrameSize(value);
+  };
 
 
 
@@ -270,6 +277,9 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // State to trigger closing of duration dropdown
   const [closeDurationDropdown, setCloseDurationDropdown] = useState(false);
+
+  // State to trigger closing of camera motion dropdown
+  const [closeCameraMotionDropdown, setCloseCameraMotionDropdown] = useState(false);
 
   // Helpers: clean prompt and copy
 
@@ -350,7 +360,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       (selectedModel.includes("wan-2.5") ? (frameSize.includes("480") ? "480p" : (frameSize.includes("720") ? "720p" : "1080p")) :
         (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') :
           (selectedModel.includes('seedance-1.5') ? undefined : (selectedModel.includes('seedance') ? seedanceResolution :
-            (selectedModel.includes('ltx2') ? normalizedSelectedRes :
+            (selectedModel.includes('ltx2') || selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro') ? normalizedSelectedRes :
               (selectedModel.includes('pixverse') ? pixverseQuality : undefined))))))
   );
   const {
@@ -796,7 +806,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (newModel === 'gen4_aleph' || newModel.includes('v2v') || newModel.includes('remix')) return 'video_to_video';
       // I2V / image→video candidates
       // MiniMax-Hailuo-2.3-Fast is I2V only, others can do both T2V and I2V
-      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel === 'kling-o1' || newModel.includes('veo3') || newModel.includes('ltx2') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
+      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel === 'kling-o1' || newModel.includes('veo3') || newModel.includes('ltx2') || newModel.startsWith('ltx-2.3-pro') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
       // Default to text→video for other models
       return 'text_to_video';
     })();
@@ -812,7 +822,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (desiredMode === "text_to_video") {
       // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
       // Note: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-2.3-Fast, and Kling 2.1/master are I2V-only and will auto-switch to image-to-video mode
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel === 'kling-o1' || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
+      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel === 'kling-o1' || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2') || newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -899,6 +909,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
+        } else if (newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
+          // LTX 2.3 Fast/Pro: default 1080p, 6s
+          setSelectedResolution("1080p" as any);
+          setDuration(6);
+          setFrameSize("16:9");
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else {
           // Clear audio when switching away from WAN models to any other model
           if (selectedModel.includes("wan-2.5")) {
@@ -929,7 +947,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     } else if (desiredMode === "image_to_video") {
       // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, MiniMax-Hailuo-2.3, MiniMax-Hailuo-2.3-Fast, I2V-01-Director, S2V-01, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, Sora 2
-      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "MiniMax-Hailuo-2.3-Fast" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2')) {
+      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "MiniMax-Hailuo-2.3-Fast" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2') || newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "I2V-01-Director" || newModel === "S2V-01") {
@@ -1027,6 +1045,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           setFrameSize("16:9");
           setSelectedResolution("1080p" as any);
           // Clear audio when switching away from WAN models
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
+        } else if (newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
+          // LTX 2.3 Fast/Pro: default 1080p, 6s
+          setSelectedResolution("1080p" as any);
+          setDuration(6);
+          setFrameSize("16:9");
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
@@ -2530,7 +2556,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
         (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
-          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
+          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
 
       if (selectedModel === 'wan-2.2-animate-replace') {
         if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
@@ -2850,6 +2876,29 @@ const InputBox = (props: InputBoxProps = {}) => {
           } as any;
           generationType = 'text-to-video';
           apiEndpoint = isPro ? '/api/fal/ltx2/text-to-video/pro/submit' : '/api/fal/ltx2/text-to-video/fast/submit';
+        } else if ((selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro')) && !selectedModel.includes('i2v')) {
+          // LTX 2.3 Fast/Pro Text-to-Video (Replicate)
+          const isPro = selectedModel.includes('ltx-2.3-pro');
+          const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const apiPrompt = getApiPrompt(prompt);
+          const ltxAspect = frameSize === '9:16' ? '9:16' : '16:9';
+          const ltxFps = fps || 25;
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            resolution: normalizedRes.includes('4k') || normalizedRes.includes('2160') ? '4k' : (normalizedRes.includes('2k') || normalizedRes.includes('1440') ? '2k' : '1080p'),
+            aspect_ratio: ltxAspect,
+            duration,
+            fps: ltxFps,
+            camera_motion: selectedCameraMovements[0] || 'none',
+            generate_audio: generateAudio,
+            ...(isPro && uploadedAudio ? { audio: uploadedAudio } : {}),
+            ...(isPro && uploadedVideo ? { video: uploadedVideo } : {}),
+            generationType: 'text-to-video',
+            isPublic,
+          } as any;
+          generationType = 'text-to-video';
+          apiEndpoint = isPro ? '/api/replicate/ltx-2-3-pro-t2v/submit' : '/api/replicate/ltx-2-3-fast-t2v/submit';
         } else {
           // Runway models don't support text-to-video (they require an image)
           setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.");
@@ -2865,6 +2914,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           !selectedModel.includes('pixverse') &&
           !selectedModel.includes('sora2') &&
           !selectedModel.includes('ltx2') &&
+          !selectedModel.includes('ltx-2.3-fast') &&
           !selectedModel.includes('kling-');
 
         if (needsImage && uploadedImages.length === 0) {
@@ -3319,10 +3369,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/sora2/image-to-video/pro/submit' : '/api/fal/sora2/image-to-video/submit';
         } else if (selectedModel.includes('ltx2')) {
-          // LTX V2 Image-to-Video (Pro/Fast) - supports both t2v and i2v variants, use I2V when image is uploaded
+          // LTX V2 Image-to-Video (Pro/Fast) - model currently outputs fixed 16:9
           const isPro = selectedModel.includes('pro');
           const normalizedRes = (selectedResolution || '1080p').toLowerCase();
-          const ratio = frameSize === '9:16' ? '9:16' : (frameSize === '16:9' ? '16:9' : 'auto');
+          const ratio = '16:9';
           if (uploadedImages.length === 0) {
             setError('LTX V2 image-to-video requires an input image');
             return;
@@ -3342,6 +3392,36 @@ const InputBox = (props: InputBoxProps = {}) => {
           } as any;
           generationType = 'image-to-video';
           apiEndpoint = isPro ? '/api/fal/ltx2/image-to-video/pro/submit' : '/api/fal/ltx2/image-to-video/fast/submit';
+        } else if (selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro')) {
+          // LTX 2.3 Fast/Pro Image-to-Video (Replicate) - supports first frame + optional last frame
+          const isPro = selectedModel.includes('ltx-2.3-pro');
+          if (uploadedImages.length === 0) {
+            setError("LTX 2.3 image-to-video requires an input image");
+            return;
+          }
+          const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const apiPrompt = getApiPrompt(prompt);
+          const ltxAspect = frameSize === '9:16' ? '9:16' : '16:9';
+          const ltxFps = fps || 25;
+          const lastFrame = lastFrameImage || (uploadedImages.length > 1 ? uploadedImages[1] : null);
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            image: uploadedImages[0],
+            ...(lastFrame ? { last_frame_image: lastFrame } : {}),
+            resolution: normalizedRes.includes('4k') || normalizedRes.includes('2160') ? '4k' : (normalizedRes.includes('2k') || normalizedRes.includes('1440') ? '2k' : '1080p'),
+            aspect_ratio: ltxAspect,
+            duration,
+            fps: ltxFps,
+            camera_motion: selectedCameraMovements[0] || 'none',
+            generate_audio: generateAudio,
+            ...(isPro && uploadedAudio ? { audio: uploadedAudio } : {}),
+            ...(isPro && uploadedVideo ? { video: uploadedVideo } : {}),
+            generationType: 'image-to-video',
+            isPublic,
+          } as any;
+          generationType = 'image-to-video';
+          apiEndpoint = isPro ? '/api/replicate/ltx-2-3-pro-i2v/submit' : '/api/replicate/ltx-2-3-fast-i2v/submit';
         } else if (selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
           // Runway image to video - only for gen4_turbo and gen3a_turbo
           // Ensure image is provided
@@ -3752,6 +3832,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (selectedModel.includes('sora2') && !result.requestId) {
         console.error('❌ Sora 2 API response missing requestId:', result);
         throw new Error('Sora 2 API response missing requestId');
+      }
+
+      // Validate that we have a requestId for LTX 2.3 Replicate models
+      if ((selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) && !result.requestId) {
+        console.error('❌ LTX 2.3 API response missing requestId:', result);
+        throw new Error('LTX 2.3 API response missing requestId');
       }
 
       let videoUrl: string | undefined;
@@ -4697,6 +4783,67 @@ const InputBox = (props: InputBoxProps = {}) => {
           console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
           throw new Error('PixVerse video generation did not complete in time');
         }
+      } else if (selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) {
+        // LTX 2.3 Fast/Pro flow - queue-based polling via replicate queue endpoints
+        const ltxTierLabel = selectedModel.startsWith('ltx-2.3-pro') ? 'Pro' : 'Fast';
+        console.log(`🎬 LTX 2.3 ${ltxTierLabel} video generation started, request ID:`, result.requestId);
+        console.log('🎬 Model:', result.model);
+        console.log('🎬 History ID:', result.historyId);
+
+        let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+        const maxAttemptsLTX = 900; // up to 15 minutes
+        console.log(`🎬 Starting LTX 2.3 ${ltxTierLabel} polling with ${maxAttemptsLTX} attempts`);
+
+        for (let attempts = 0; attempts < maxAttemptsLTX; attempts++) {
+          try {
+            const statusRes = await api.get('/api/replicate/queue/status', {
+              params: { requestId: result.requestId },
+              timeout: 1200000
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            const statusValue = String(status?.status || '').toLowerCase();
+            consecutiveErrors = 0;
+
+            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
+              const resultRes = await api.get('/api/replicate/queue/result', {
+                params: { requestId: result.requestId },
+                timeout: 1200000
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              // mark as completed
+              if (generationId) {
+                dispatch(updateActiveGeneration({
+                  id: generationId,
+                  updates: { status: 'completed', historyId: result.historyId }
+                }));
+              }
+              break;
+            }
+            if (statusValue === 'failed' || statusValue === 'error') {
+              throw new Error(`LTX 2.3 ${ltxTierLabel} video generation failed`);
+            }
+          } catch (e: any) {
+            consecutiveErrors++;
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) throw e;
+          }
+          await new Promise(res => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          videoUrl = videoResult.videos[0].url;
+          console.log(`✅ LTX 2.3 ${ltxTierLabel} video completed with URL:`, videoUrl);
+        } else if (videoResult?.video && videoResult.video?.url) {
+          videoUrl = videoResult.video.url;
+        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          videoUrl = videoResult.output;
+        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          videoUrl = videoResult.output[0];
+        } else {
+          console.error(`❌ LTX 2.3 ${ltxTierLabel} video generation did not complete properly`);
+          throw new Error(`LTX 2.3 ${ltxTierLabel} video generation did not complete in time`);
+        }
       } else if (apiEndpoint === '/api/runway/video') {
         // Runway video completion (only when using Runway endpoint)
         console.log('🎬 Runway video generation started, task ID:', result.taskId);
@@ -5138,7 +5285,15 @@ const InputBox = (props: InputBoxProps = {}) => {
             {(() => {
               const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) ? uploadedImages.slice(0, 2) : uploadedImages;
               const extraLastFrame =
-                !!lastFrameImage && (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v')) || (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo));
+                !!lastFrameImage &&
+                (
+                  selectedModel.includes("veo3.1") ||
+                  selectedModel === "kling-o1" ||
+                  selectedModel.startsWith("ltx-2.3-fast") ||
+                  selectedModel.startsWith("ltx-2.3-pro") ||
+                  (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v')) ||
+                  (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo)
+                );
               return (displayImages.length > 0 || extraLastFrame) ? (
                 <div className="md:mb-3 mb-3">
                   <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
@@ -5332,9 +5487,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                   activeFeature={activeFeature}
                   onCloseOtherDropdowns={() => {
                     setCloseFrameSizeDropdown(true);
-                    setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                     setCloseDurationDropdown(true);
-                    setTimeout(() => setCloseDurationDropdown(false), 0);
+                    setCloseCameraMotionDropdown(true);
+                    setTimeout(() => {
+                      setCloseFrameSizeDropdown(false);
+                      setCloseDurationDropdown(false);
+                      setCloseCameraMotionDropdown(false);
+                    }, 100);
                   }}
                   onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
                 />
@@ -5343,6 +5502,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.includes('seedance-1.5') ||
                   (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
                   selectedModel.includes('ltx2') ||
+                  selectedModel.includes('ltx-2.3-fast') ||
+                  selectedModel.includes('ltx-2.3-pro') ||
                   (selectedModel.includes("veo3.1") && !(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1"))) ||
                   (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1"))) && (
                     <button
@@ -5392,6 +5553,42 @@ const InputBox = (props: InputBoxProps = {}) => {
                     )}
                   </div>
                 )}
+                {selectedModel.startsWith('ltx-2.3-pro') && (
+                  <div className="relative flex-shrink-0">
+                    <input
+                      type="file"
+                      accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                      onChange={handleAudioUpload}
+                      className="hidden"
+                      id="audio-upload-ltx-pro-mobile"
+                    />
+                    <label
+                      htmlFor="audio-upload-ltx-pro-mobile"
+                      className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                    >
+                      <Music className="md:w-3.5 w-3 h-3 md:h-3.5" />
+                      {uploadedAudio ? 'Audio OK' : 'Audio'}
+                    </label>
+                  </div>
+                )}
+                {selectedModel.startsWith('ltx-2.3-pro') && (
+                  <div className="relative flex-shrink-0">
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/ogg,video/quicktime,video/mov,.mp4,.webm,.ogg,.mov"
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                      id="video-upload-ltx-pro-mobile"
+                    />
+                    <label
+                      htmlFor="video-upload-ltx-pro-mobile"
+                      className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                    >
+                      <FilePlay className="md:w-3.5 w-3 h-3 md:h-3.5" />
+                      {uploadedVideo ? 'Video OK' : 'Video'}
+                    </label>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col items-end gap-2 pt-4">
                 <div className="text-white/80 md:text-sm text-xs">
@@ -5401,7 +5598,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   onClick={handleGenerate}
                   disabled={(() => {
                     const disabled = runningGenerationsCount >= 4 || !prompt.trim() ||
-                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && uploadedImages.length === 0) ||
+                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && !selectedModel.includes('ltx-2.3-fast') && uploadedImages.length === 0) ||
                       (generationMode === "video_to_video" && !uploadedVideo) ||
                       (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
                       (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
@@ -5427,12 +5624,15 @@ const InputBox = (props: InputBoxProps = {}) => {
                 selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
                 activeFeature={activeFeature}
                 onCloseOtherDropdowns={() => {
-                  // Close frame size dropdown
+                  // Close other dropdowns
                   setCloseFrameSizeDropdown(true);
-                  setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                  // Close duration dropdown
                   setCloseDurationDropdown(true);
-                  setTimeout(() => setCloseDurationDropdown(false), 0);
+                  setCloseCameraMotionDropdown(true);
+                  setTimeout(() => {
+                    setCloseFrameSizeDropdown(false);
+                    setCloseDurationDropdown(false);
+                    setCloseCameraMotionDropdown(false);
+                  }, 100);
                 }}
                 onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
               />
@@ -5582,7 +5782,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {/* Aspect Ratio - Always shown for Sora 2 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
-                        onFrameSizeChange={setFrameSize}
+                        onFrameSizeChange={handleFrameSizeChange}
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
@@ -5646,7 +5846,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {generationMode === 'image_to_video' ? (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
-                          onFrameSizeChange={setFrameSize}
+                          onFrameSizeChange={handleFrameSizeChange}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
@@ -5702,6 +5902,124 @@ const InputBox = (props: InputBoxProps = {}) => {
                           </div>
                         </div>
                       </button>
+                    </div>
+                  );
+                }
+
+                // LTX 2.3 Fast / Pro Models: Resolution + Duration (T2V/I2V 1080p/2k/4k)
+                if (selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) {
+                  return (
+                    <div className="flex flex-row gap-2 flex-wrap">
+                      {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
+                      <VideoFrameSizeDropdown
+                        selectedFrameSize={frameSize}
+                        onFrameSizeChange={handleFrameSizeChange}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true);
+                          setCloseDurationDropdown(true);
+                          setCloseCameraMotionDropdown(true);
+                          setTimeout(() => {
+                            setCloseModelsDropdown(false);
+                            setCloseDurationDropdown(false);
+                            setCloseCameraMotionDropdown(false);
+                          }, 100);
+                        }}
+                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                      />
+                      {/* Resolution - LTX 2.3 Fast supports 1080p/2k/4k */}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
+                        onResolutionChange={setSelectedResolution as any}
+                      />
+                      {/* Duration - 2s to 20s (depending on cost calculation) */}
+                      <VideoDurationDropdown
+                        selectedDuration={duration}
+                        onDurationChange={setDuration}
+                        selectedModel={selectedModel}
+                        generationMode={generationMode}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true);
+                          setCloseFrameSizeDropdown(true);
+                          setCloseCameraMotionDropdown(true);
+                          setTimeout(() => {
+                            setCloseModelsDropdown(false);
+                            setCloseFrameSizeDropdown(false);
+                            setCloseCameraMotionDropdown(false);
+                          }, 100);
+                        }}
+                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                      />
+                      {/* Camera Motion selector for LTX 2.3 Fast */}
+                      <CameraMotionDropdown
+                        selectedMotion={selectedCameraMovements[0] || 'none'}
+                        onMotionChange={(motion) => setSelectedCameraMovements([motion])}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true);
+                          setCloseFrameSizeDropdown(true);
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => {
+                            setCloseModelsDropdown(false);
+                            setCloseFrameSizeDropdown(false);
+                            setCloseDurationDropdown(false);
+                          }, 100);
+                        }}
+                        onCloseThisDropdown={closeCameraMotionDropdown}
+                      />
+                      {/* Audio toggle for LTX 2.3 Fast/Pro */}
+                      <button
+                        onClick={() => setGenerateAudio(v => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
+                          ? 'bg-transparent text-white '
+                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                          }`}
+                      >
+                        <div className="relative">
+                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          </div>
+                        </div>
+                      </button>
+                      {/* LTX 2.3 Pro extra inputs: audio + video files */}
+                      {selectedModel.startsWith('ltx-2.3-pro') && (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-ltx-pro"
+                          />
+                          <label
+                            htmlFor="audio-upload-ltx-pro"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                          >
+                            <Music className="w-4 h-4" />
+                            {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
+                          </label>
+                        </div>
+                      )}
+                      {selectedModel.startsWith('ltx-2.3-pro') && (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/ogg,video/quicktime,video/mov,.mp4,.webm,.ogg,.mov"
+                            onChange={handleVideoUpload}
+                            className="hidden"
+                            id="video-upload-ltx-pro"
+                          />
+                          <label
+                            htmlFor="video-upload-ltx-pro"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                          >
+                            <FilePlay className="w-4 h-4" />
+                            {uploadedVideo ? 'Video: Uploaded' : 'Upload Video'}
+                          </label>
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -5907,13 +6225,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                           value={klingMode}
                           onChange={setKlingMode}
                           onCloseOtherDropdowns={() => {
-                            // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
-                            // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
                             setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            // Close duration dropdown
                             setCloseDurationDropdown(true);
                             setTimeout(() => setCloseDurationDropdown(false), 0);
                           }}
@@ -5926,10 +6241,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          // Close models dropdown
                           setCloseModelsDropdown(true);
                           setTimeout(() => setCloseModelsDropdown(false), 0);
-                          // Close frame size dropdown
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
@@ -5950,10 +6263,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          // Close models dropdown
                           setCloseModelsDropdown(true);
                           setTimeout(() => setCloseModelsDropdown(false), 0);
-                          // Close duration dropdown
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
@@ -5966,10 +6277,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          // Close models dropdown
                           setCloseModelsDropdown(true);
                           setTimeout(() => setCloseModelsDropdown(false), 0);
-                          // Close frame size dropdown
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}

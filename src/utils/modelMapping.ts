@@ -818,6 +818,37 @@ export const MODEL_MAPPING: ModelMapping[] = [
     options: { resolution: ['1080p', '1440p', '2160p'], duration: [6, 8, 10] }
   },
 
+  // LTX 2.3 Fast (Replicate)
+  {
+    frontendValue: 'ltx-2.3-fast-t2v',
+    creditModelName: 'LTX 2.3 Fast T2V/I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { resolution: ['1080p', '2k', '4k'], duration: [6, 8, 10, 12, 14, 16, 18, 20] }
+  },
+  // LTX 2.3 Pro (Replicate)
+  {
+    frontendValue: 'ltx-2.3-pro-t2v',
+    creditModelName: 'LTX 2.3 Pro T2V/I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { resolution: ['1080p', '2k', '4k'], duration: [6, 8, 10] }
+  },
+  {
+    frontendValue: 'ltx-2.3-pro-i2v',
+    creditModelName: 'LTX 2.3 Pro T2V/I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { resolution: ['1080p', '2k', '4k'], duration: [6, 8, 10] }
+  },
+  {
+    frontendValue: 'ltx-2.3-fast-i2v',
+    creditModelName: 'LTX 2.3 Fast T2V/I2V',
+    generationType: 'video',
+    provider: 'replicate',
+    options: { resolution: ['1080p', '2k', '4k'], duration: [6, 8, 10, 12, 14, 16, 18, 20] }
+  },
+
   // MUSIC GENERATION MODELS
   {
     frontendValue: 'minimax-music-2',

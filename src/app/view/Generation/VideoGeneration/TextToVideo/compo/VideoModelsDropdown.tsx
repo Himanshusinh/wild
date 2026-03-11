@@ -20,7 +20,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   onModelChange,
   generationMode,
   selectedDuration = "5s",
-  selectedResolution = "512P", 
+  selectedResolution = "512P",
   onCloseOtherDropdowns,
   onCloseThisDropdown,
   activeFeature = 'Video',
@@ -136,6 +136,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "seedance-1.0-lite-t2v", label: "Seedance 1.0 Lite", description: "Text→Video & Image→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
       { value: "ltx2-pro-t2v", label: "LTX V2 Pro", description: "Text→Video & Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
       { value: "ltx2-fast-t2v", label: "LTX V2 Fast", description: "Text→Video & Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
+      { value: "ltx-2.3-pro-t2v", label: "LTX 2.3 Pro", description: "T2V & I2V, 6/8/10s, 1080p/2k/4k, 16:9/9:16, Camera & audio controls", provider: "replicate" },
+      { value: "ltx-2.3-fast-t2v", label: "LTX 2.3 Fast", description: "T2V & I2V, 2-20s, 1080p/2k/4k, 16:9/9:16, Camera controls, Audio", provider: "replicate" },
       { value: "wan-2.5-t2v", label: "WAN 2.5", description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
       { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
       { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
@@ -248,6 +250,14 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       } else {
         r = undefined; // Standard Sora 2 doesn't need resolution
       }
+    } else if (model.value.startsWith('ltx-2.3-fast')) {
+      // LTX 2.3 Fast (Replicate) - supports 1080p/2k/4k and 6–20s
+      d = normalizeDuration(selectedDuration, '6s');
+      const rRaw = normalizeResolution(selectedResolution, '1080p');
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes('4k') || rLower.includes('2160')) r = '4k';
+      else if (rLower.includes('2k') || rLower.includes('1440')) r = '2k';
+      else r = '1080p';
     } else if (model.value.includes('seedance-1.5')) {
       d = normalizeDuration(selectedDuration, '5s');
       r = undefined; // Seedance 1.5 pricing does not use resolution

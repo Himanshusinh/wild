@@ -43,7 +43,7 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
@@ -105,8 +105,28 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 8, label: "8 seconds", description: "Long" }
       ];
     }
-    if (selectedModel?.includes("ltx2")) {
-      // LTX V2 supports 6s, 8s, and 10s
+    if (selectedModel?.startsWith('ltx-2.3-pro')) {
+      // LTX 2.3 Pro supports only 6s/8s/10s
+      return [
+        { value: 6, label: "6 seconds", description: "Short video" },
+        { value: 8, label: "8 seconds", description: "Standard length" },
+        { value: 10, label: "10 seconds", description: "Long video" }
+      ];
+    }
+    if (selectedModel?.includes("ltx2") || selectedModel?.startsWith('ltx-2.3-fast')) {
+      // LTX V2 and LTX 2.3 Fast support various durations
+      if (selectedModel?.startsWith('ltx-2.3-fast')) {
+        return [
+          { value: 6, label: "6 seconds", description: "Short video" },
+          { value: 8, label: "8 seconds", description: "Standard" },
+          { value: 10, label: "10 seconds", description: "Medium" },
+          { value: 12, label: "12 seconds", description: "Long" },
+          { value: 14, label: "14 seconds", description: "Medium long" },
+          { value: 16, label: "16 seconds", description: "Very long" },
+          { value: 18, label: "18 seconds", description: "Extra long" },
+          { value: 20, label: "20 seconds", description: "Maximum length" }
+        ];
+      }
       return [
         { value: 6, label: "6 seconds", description: "Short video" },
         { value: 8, label: "8 seconds", description: "Standard length" },
@@ -226,7 +246,7 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
             if (onCloseOtherDropdowns) {
               onCloseOtherDropdowns();
             }
-          } catch {}
+          } catch { }
           setIsOpen(!isOpen);
         }}
         className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
@@ -244,11 +264,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
                 onDurationChange(duration.value);
                 setIsOpen(false);
               }}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                selectedDuration === duration.value
+              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedDuration === duration.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
-              }`}
+                }`}
             >
               <span className="md:text-sm text-xs">{duration.label}</span>
               {selectedDuration === duration.value && (

@@ -46,7 +46,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
@@ -228,6 +228,16 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         }
         return options;
       }
+    } else if (selectedModel?.includes("ltx2")) {
+      // LTX V2 (Pro/Fast) outputs fixed 16:9 only
+      return [
+        { value: "16:9", label: "16:9", description: "Widescreen landscape", icon: "landscape" }
+      ];
+    } else if (selectedModel?.includes("ltx-2.3-fast") || selectedModel?.includes("ltx-2.3-pro")) {
+      return [
+        { value: "16:9", label: "16:9", description: "Widescreen landscape", icon: "landscape" },
+        { value: "9:16", label: "9:16", description: "Widescreen portrait", icon: "portrait" }
+      ];
     } else {
       // gen4_turbo and gen4_aleph support more ratios
       return [
@@ -260,7 +270,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
             if (onCloseOtherDropdowns) {
               onCloseOtherDropdowns();
             }
-          } catch {}
+          } catch { }
           setIsOpen(!isOpen);
         }}
         className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
@@ -278,33 +288,28 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
                 onFrameSizeChange(size.value);
                 setIsOpen(false);
               }}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between gap-3 ${
-                selectedFrameSize === size.value
+              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between gap-3 ${selectedFrameSize === size.value
                   ? 'bg-white text-black'
                   : 'text-white/90 hover:bg-white/10'
-              }`}
+                }`}
             >
               <span className="flex items-center gap-2">
                 {/* Icon */}
                 {size.icon === 'square' && (
-                  <span className={`inline-block w-4 h-4 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
+                  <span className={`inline-block w-4 h-4 border ${selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    }`}></span>
                 )}
                 {size.icon === 'portrait' && (
-                  <span className={`inline-block w-3 h-4 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
+                  <span className={`inline-block w-3 h-4 border ${selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    }`}></span>
                 )}
                 {size.icon === 'landscape' && (
-                  <span className={`inline-block w-4 h-3 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
+                  <span className={`inline-block w-4 h-3 border ${selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    }`}></span>
                 )}
                 {size.icon === 'ultrawide' && (
-                  <span className={`inline-block w-5 h-2 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
+                  <span className={`inline-block w-5 h-2 border ${selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
+                    }`}></span>
                 )}
                 <span className="md:text-sm text-xs">{size.label}</span>
               </span>
