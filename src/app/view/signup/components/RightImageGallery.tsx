@@ -16,11 +16,39 @@ const DEFAULT_IMAGE_URL =
   "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsignup%2F3.png?alt=media&token=e67afc08-10e0-4710-b251-d9031ef14026"
 
 const TARGET_IMAGE_COUNT = 20
+const SIGNUP_GALLERY_CACHE_KEY = "wildmind_signup_gallery_v1"
 
 const fallbackImages: ImageData[] = Array.from({ length: TARGET_IMAGE_COUNT }).map((_, i) => ({
   imageUrl: `${DEFAULT_IMAGE_URL}&v=${i}`,
   prompt: "Featured creation",
 }))
+
+const dedupeImages = (items: ImageData[]): ImageData[] => {
+  const uniqueMap = new Map<string, ImageData>()
+  for (const item of items) {
+    const key = canonicalImageKey(item.imageUrl)
+    if (!key || uniqueMap.has(key)) continue
+    uniqueMap.set(key, item)
+  }
+  return Array.from(uniqueMap.values())
+}
+
+const normalizeSignupShowcasePayload = (payload: any): ImageData[] => {
+  const items = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
+  return items
+    .map((item: any) => ({
+      imageUrl:
+        normalizeMediaUrl(item?.imageUrl) ||
+        normalizeMediaUrl(item?.images?.[0]?.url) ||
+        normalizeMediaUrl(item?.images?.[0]?.originalUrl),
+      prompt: item?.prompt || item?.title || "Featured creation",
+      generationId: item?.generationId || item?.id,
+      creator: item?.creator || item?.createdBy,
+      width: toPositiveNumber(item?.width),
+      height: toPositiveNumber(item?.height),
+    }))
+    .filter((item: ImageData) => !!item.imageUrl)
+}
 
 const normalizeMediaUrl = (url?: string): string | undefined => {
   if (!url || typeof url !== "string") return undefined
@@ -96,53 +124,15 @@ const resolveItemMedia = (item: any): { imageUrl?: string; width?: number; heigh
 
 const fetchArtStationImages = async (): Promise<ImageData[]> => {
   try {
-    const collected: ImageData[] = []
-    const seen = new Set<string>()
-    let cursor: string | undefined
-
-    // Walk multiple feed pages to gather varied images like ArtStation listing
-    for (let page = 0; page < 4; page++) {
-      const url = new URL("/api/feed", window.location.origin)
-      url.searchParams.set("limit", "50")
-      url.searchParams.set("sortBy", "aestheticScore")
-      url.searchParams.set("sortOrder", "desc")
-      if (cursor) url.searchParams.set("cursor", cursor)
-
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-      })
-      if (!response.ok) break
-
-      const data = await response.json()
-      const payload = data?.data || data
-      const items = Array.isArray(payload?.items) ? payload.items : []
-
-      for (const item of items) {
-        const { imageUrl, width, height } = resolveItemMedia(item)
-        if (!imageUrl) continue
-        const key = canonicalImageKey(imageUrl)
-        if (!key || seen.has(key)) continue
-        seen.add(key)
-        collected.push({
-          imageUrl,
-          prompt: item?.prompt || item?.title || "Featured creation",
-          generationId: item?.id,
-          creator: item?.creator,
-          width,
-          height,
-        })
-        if (collected.length >= TARGET_IMAGE_COUNT * 2) break
-      }
-
-      if (collected.length >= TARGET_IMAGE_COUNT * 2) break
-      cursor = payload?.meta?.nextCursor || payload?.nextCursor
-      if (!cursor) break
-    }
-
-    return collected
+    const response = await fetch("/api/signup-showcase", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      cache: "default",
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    return dedupeImages(normalizeSignupShowcasePayload(data))
   } catch (error) {
     console.error("[Signup] Failed to fetch ArtStation gallery images:", error)
   }
@@ -174,15 +164,33 @@ const fetchSignupRandomImage = async (): Promise<ImageData | null> => {
   }
 }
 
-export default function RightImageGallery() {
-  const [images, setImages] = useState<ImageData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+export default function RightImageGallery({ initialImages = [] }: { initialImages?: ImageData[] }) {
+  const initialUniqueImages = useMemo(
+    () => dedupeImages(initialImages),
+    [initialImages],
+  )
+  const [images, setImages] = useState<ImageData[]>(initialUniqueImages.slice(0, TARGET_IMAGE_COUNT))
+  const [isLoading, setIsLoading] = useState(initialUniqueImages.length === 0)
 
   useEffect(() => {
     const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024
     if (!isDesktop) {
       setIsLoading(false)
       return
+    }
+
+    try {
+      const cached = window.sessionStorage.getItem(SIGNUP_GALLERY_CACHE_KEY)
+      if (cached) {
+        const parsed = dedupeImages(JSON.parse(cached))
+          .filter((item) => !!item?.imageUrl)
+        if (parsed.length > 0) {
+          setImages(parsed.slice(0, TARGET_IMAGE_COUNT))
+          setIsLoading(false)
+        }
+      }
+    } catch {
+      // ignore invalid storage cache
     }
 
     const preload = (url?: string) => {
@@ -213,17 +221,10 @@ export default function RightImageGallery() {
         }
 
         if (finalList.length === 0) {
-          finalList = [...fallbackImages]
+          finalList = initialUniqueImages.length > 0 ? [...initialUniqueImages] : [...fallbackImages]
         }
 
-        // Final dedup pass before column split
-        const uniqueMap = new Map<string, ImageData>()
-        for (const item of finalList) {
-          const key = canonicalImageKey(item.imageUrl)
-          if (!key || uniqueMap.has(key)) continue
-          uniqueMap.set(key, item)
-        }
-        finalList = Array.from(uniqueMap.values())
+        finalList = dedupeImages(finalList)
 
         while (finalList.length < TARGET_IMAGE_COUNT) {
           const i = finalList.length
@@ -236,6 +237,11 @@ export default function RightImageGallery() {
         }
         const bounded = finalList.slice(0, TARGET_IMAGE_COUNT)
         setImages(bounded)
+        try {
+          window.sessionStorage.setItem(SIGNUP_GALLERY_CACHE_KEY, JSON.stringify(finalList))
+        } catch {
+          // ignore storage failures
+        }
         bounded.forEach((item) => preload(item.imageUrl))
       } finally {
         setIsLoading(false)
@@ -243,7 +249,7 @@ export default function RightImageGallery() {
     }
 
     fetchImages()
-  }, [])
+  }, [initialUniqueImages])
 
   const columns = useMemo(() => {
     const source = images.length > 0 ? images : fallbackImages
