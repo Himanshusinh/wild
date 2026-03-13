@@ -46,6 +46,7 @@ export const UsernameForm = ({
                         onFocus={() => setIsUsernameFocused(true)}
                         onBlur={() => setIsUsernameFocused(false)}
                         required
+                        inputProps={{ maxLength: 14 }}
                         sx={textFieldSx}
                     />
                     {isUsernameFocused && (

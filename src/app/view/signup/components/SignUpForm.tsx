@@ -29,6 +29,7 @@ interface SignUpFormProps {
     passwordRequirements: any[];
     confirmPassword: string;
     setConfirmPassword: (val: string) => void;
+    passwordError: string;
     showConfirmPassword: boolean;
     setShowConfirmPassword: (val: boolean) => void;
     otpSent: boolean;
@@ -38,6 +39,7 @@ interface SignUpFormProps {
     resendCooldown: number;
     handleSendOtp: (e: React.FormEvent) => void;
     handleVerifyOtp: (e: React.FormEvent) => void;
+    handleResendOtp: () => void;
     handleGoogleLogin: () => void;
     handleCaptchaVerify: (token: string) => void;
     handleCaptchaError: () => void;
@@ -48,13 +50,22 @@ export const SignUpForm = ({
     username, setUsername, isUsernameFocused, setIsUsernameFocused, usernameRequirements, hasCapitalLetters, availability,
     email, setEmail,
     password, setPassword, showPassword, setShowPassword, isPasswordFocused, setIsPasswordFocused, passwordRequirements,
-    confirmPassword, setConfirmPassword, showConfirmPassword, setShowConfirmPassword,
+    confirmPassword, setConfirmPassword, passwordError, showConfirmPassword, setShowConfirmPassword,
     otpSent, otp, setOtp, processing, resendCooldown,
-    handleSendOtp, handleVerifyOtp, handleGoogleLogin, handleCaptchaVerify, handleCaptchaError,
+    handleSendOtp, handleVerifyOtp, handleResendOtp, handleGoogleLogin, handleCaptchaVerify, handleCaptchaError,
     UsernameFeedbackComponent
 }: SignUpFormProps) => {
+    const isInitialSubmitDisabled =
+        processing ||
+        !username ||
+        !email ||
+        !password ||
+        !confirmPassword ||
+        password !== confirmPassword ||
+        !!passwordError
+
     return (
-        <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="flex flex-col gap-2">
+        <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="flex flex-col gap-3">
             <div className="relative">
                 <TextField
                     label="User Name"
@@ -66,6 +77,7 @@ export const SignUpForm = ({
                     onFocus={() => setIsUsernameFocused(true)}
                     onBlur={() => setIsUsernameFocused(false)}
                     required
+                    inputProps={{ maxLength: 14 }}
                     sx={textFieldSx}
                     disabled={otpSent}
                 />
@@ -101,6 +113,7 @@ export const SignUpForm = ({
                     onFocus={() => setIsPasswordFocused(true)}
                     onBlur={() => setIsPasswordFocused(false)}
                     required
+                    inputProps={{ maxLength: 14 }}
                     InputProps={{
                         endAdornment: (
                             <InputAdornment position="end">
@@ -127,6 +140,7 @@ export const SignUpForm = ({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                inputProps={{ maxLength: 14 }}
                 InputProps={{
                     endAdornment: (
                         <InputAdornment position="end">
@@ -138,9 +152,11 @@ export const SignUpForm = ({
                 }}
                 sx={textFieldSx}
                 disabled={otpSent}
+                error={!otpSent && !!passwordError && confirmPassword.length > 0}
+                helperText={!otpSent && confirmPassword.length > 0 ? passwordError || " " : " "}
             />
 
-            <div className="text-[11px] text-center text-gray-500 leading-relaxed py-2">
+            <div className="text-[11px] text-center text-gray-500 leading-relaxed py-0 -mt-4">
                 By signing up, you agree to our <Link href={LEGAL_ROUTES.TERMS_CONDITIONS} className="text-[#4182CF] underline" target="_blank">Terms and Conditions</Link> & <Link href={LEGAL_ROUTES.PRIVACY_PAGE} className="text-[#4182CF] underline" target="_blank">Privacy Policy</Link>.
             </div>
 
@@ -149,8 +165,8 @@ export const SignUpForm = ({
             {otpSent && (
                 <div className="space-y-4 px-4 py-2">
                     <div className="text-center space-y-0 mb-2">
-                        <p className="text-green-400 text-xs font-medium">OTP has been sent to your email</p>
-                        <p className="text-gray-400 text-[10px]">Please enter the 6-digit code below</p>
+                        <p className="text-green-400 md:text-[10px] lg:text--[10px] xl:text-[10px] 2xl:text-xs font-medium">OTP has been sent to your email</p>
+                        <p className="text-gray-400 md:text-[10px] lg:text--[10px] xl:text-[10px] 2xl:text-xs">Please enter the 6-digit code below</p>
                     </div>
                     <OtpInput value={otp} onChange={setOtp} disabled={processing} />
                     <div className="flex flex-col items-end w-full gap-1 mt-1">
@@ -161,7 +177,7 @@ export const SignUpForm = ({
                         ) : (
                             <button
                                 type="button"
-                                onClick={(e) => { e.preventDefault(); handleSendOtp(e as any); }}
+                                onClick={handleResendOtp}
                                 className="text-[#4182CF] text-[10px] font-semibold hover:text-[#4B8EDF] transition-colors -mt-2"
                             >
                                 Resend Code
@@ -188,8 +204,8 @@ export const SignUpForm = ({
             <div className="flex justify-center pt-2">
                 <button
                     type="submit"
-                    disabled={processing || (!otpSent && (!username || !email || !password || !confirmPassword)) || (otpSent && otp.length < 6)}
-                    className={`w-3/4 py-2.5 rounded-xl font-semibold text-sm transition-all ${processing || (!otpSent && (!username || !email || !password || !confirmPassword)) || (otpSent && otp.length < 6)
+                    disabled={otpSent ? (processing || otp.length < 6) : isInitialSubmitDisabled}
+                    className={`w-3/4 py-2.5 rounded-xl font-semibold text-sm transition-all ${otpSent ? (processing || otp.length < 6) : isInitialSubmitDisabled
                         ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
                         : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
                         }`}

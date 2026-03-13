@@ -44,6 +44,38 @@ body {
   min-height: 100px;
 }
 
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+label[for],
+select:not(:disabled),
+summary,
+details > summary,
+[data-clickable="true"] {
+  cursor: pointer !important;
+}
+
+button:not(:disabled) *,
+a[href] *,
+[role="button"]:not([aria-disabled="true"]) *,
+label[for] *,
+summary *,
+details > summary *,
+[data-clickable="true"] * {
+  cursor: inherit !important;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
 /* Apply Satoshi to all headings - body text remains Poppins */
 h1,
 h2,

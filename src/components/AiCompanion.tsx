@@ -64,10 +64,12 @@ export default function AiCompanion() {
   // Hide on 404 and error pages
   const is404 = pathname === '/not-found' || pathname?.includes('/404');
   const isError = pathname === '/error' || pathname?.includes('/error');
-  
-  if (is404 || isError) {
-    return null;
-  }
+  const isAuthRoute =
+    pathname?.startsWith('/view/signup') ||
+    pathname?.startsWith('/view/signin') ||
+    pathname?.startsWith('/view/forgot-password') ||
+    pathname?.startsWith('/auth/reset-password');
+  const shouldHide = is404 || isError || isAuthRoute;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -220,6 +222,10 @@ export default function AiCompanion() {
       handleSendMessage();
     }
   };
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <>

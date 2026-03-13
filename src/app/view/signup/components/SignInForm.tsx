@@ -60,6 +60,7 @@ export const SignInForm = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                inputProps={{ maxLength: 14 }}
                 InputProps={{
                     endAdornment: (
                         <InputAdornment position="end">
@@ -104,7 +105,7 @@ export const SignInForm = ({
                 <button
                     type="submit"
                     disabled={processing || !email || !password}
-                    className={`w-3/4 py-2.5 rounded-xl font-semibold transition-all ${processing || !email || !password
+                    className={`w-3/4 py-2 rounded-xl font-semibold transition-all ${processing || !email || !password
                         ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
                         : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
                         }`}

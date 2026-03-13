@@ -134,6 +134,7 @@ export default function ChromeMount() {
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
   const isForgotPasswordRoute = pathnameLower.startsWith('/view/forgot-password');
+  const isResetPasswordRoute = pathnameLower.startsWith('/auth/reset-password');
   const isPricingRoute = pathnameLower.startsWith('/view/pricing');
   // Workflows route is now always visible, so isWorkflowsRoute is removed.
   const isArtStationRoute = pathnameLower.startsWith('/view/artstation');
@@ -182,6 +183,7 @@ export default function ChromeMount() {
     isLandingRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
+    isResetPasswordRoute ||
     isPricingRoute ||
     isArtStationRoute ||
     isLegalRoute ||
@@ -247,6 +249,7 @@ export default function ChromeMount() {
     isLandingRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
+    isResetPasswordRoute ||
     isLegalRoute ||
     isProductRoute ||
     isCompanyRoute ||

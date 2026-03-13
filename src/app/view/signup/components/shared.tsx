@@ -6,7 +6,7 @@ export const textFieldSx = {
         backgroundColor: '#24242A',
         borderRadius: '12px',
         color: '#FFF',
-        fontSize: '14px',
+        fontSize: '12px',
         '& fieldset': {
             borderColor: 'transparent',
             transition: 'border-color 0.2s ease-in-out'
@@ -33,7 +33,7 @@ export const textFieldSx = {
     },
     '& .MuiInputLabel-root': {
         color: '#858585',
-        fontSize: '14px',
+        fontSize: '12px',
         transform: 'translate(14px, 9px) scale(1)',
         '&.Mui-focused, &.MuiFormLabel-filled': {
             zIndex: 1,
@@ -84,7 +84,7 @@ export const ValidationPopup = ({ requirements, value }: { requirements: any[], 
             /* Mobile: Shown below the input */
             top-[calc(100%+12px)] left-0 w-full slide-in-from-top-1
             /* Desktop: Shown to the right of the input */
-            md:top-1/2 md:left-[calc(100%+16px)] md:-translate-y-1/2 md:w-54 md:max-w-64 lg:max-w-64 md:slide-in-from-left-2
+            md:top-1/2 md:left-[calc(100%+16px)] md:-translate-y-1/2 md:w-64 md:max-w-40 lg:max-w-40 xl:max-w-40 2xl:max-w-64 md:slide-in-from-left-2
             bg-[#24242A] rounded-xl border border-[#2D3035] p-2 shadow-xl">
 
             {/* Pointer arrow */}
@@ -100,7 +100,7 @@ export const ValidationPopup = ({ requirements, value }: { requirements: any[], 
                     const isValid = req.test ? req.test(value) : false;
                     return (
                         <div key={index} className="flex items-start gap-1">
-                            <span className={`text-[10px] leading-snug ${isValid ? 'text-green-500' : 'text-gray-400'}`}>
+                            <span className={`md:text-[10px] lg:text-[10px] xl:text-[8px] 2xl:text-[10px] leading-snug ${isValid ? 'text-green-500' : 'text-gray-400'}`}>
                                 • {req.label}
                             </span>
                         </div>
@@ -147,7 +147,7 @@ export const OtpInput = ({ value, onChange, disabled }: { value: string, onChang
     };
 
     return (
-        <div className="flex justify-between items-center w-full gap-2">
+        <div className="flex justify-between items-center w-full xl:gap-1 2xl:gap-2">
             {[0, 1, 2, 3, 4, 5].map((index) => (
                 <input
                     key={index}
@@ -161,7 +161,7 @@ export const OtpInput = ({ value, onChange, disabled }: { value: string, onChang
                     onPaste={index === 0 ? handlePaste : undefined}
                     disabled={disabled}
                     className={`
-                        w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 text-center text-lg md:text-xl font-bold rounded-xl 
+                        w-10 h-10 sm:w-11 sm:h-11 md:w-8 md:h-8 lg:w-8 lg:h-8 xl:w-8 xl:h-8 2xl:w-12 2xl:h-12 text-center text-lg md:text-xl font-bold xl:rounded-lg 2xl:rounded-xl 
                         bg-[#1C1C20] border-1 border-[#979797] text-white 
                         focus:border-[#4182CF] focus:outline-none transition-colors
                         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}

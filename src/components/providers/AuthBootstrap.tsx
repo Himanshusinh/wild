@@ -14,6 +14,16 @@ export default function AuthBootstrap() {
     let mounted = true
       ; (async () => {
         try {
+          const currentPath =
+            typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : ''
+          const isPublicAuthRoute =
+            currentPath.startsWith('/auth/reset-password') ||
+            currentPath.startsWith('/__/auth/')
+
+          if (isPublicAuthRoute) {
+            return
+          }
+
           // Optimization: Check if we have any auth credentials (cookie or local storage token)
           // If neither exists, we are definitely anonymous, so skip the API call to prevent 401s
           const hasCookie = typeof document !== 'undefined' && (

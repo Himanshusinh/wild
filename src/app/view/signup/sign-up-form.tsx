@@ -20,7 +20,6 @@ import TurnstileCaptcha from '@/components/TurnstileCaptcha'
 import { setCookie, clearCookie, LoadingSpinner, textFieldSx, ValidationPopup, OtpInput, EyeIcon, EyeOffIcon } from "./components/shared"
 import { SignInForm as SignInFormComponent } from "./components/SignInForm"
 import { SignUpForm } from "./components/SignUpForm"
-import { RedeemCodeForm } from "./components/RedeemCodeForm"
 import { UsernameForm } from "./components/UsernameForm"
 import { ForgotPasswordModal } from "./components/ForgotPasswordModal"
 
@@ -99,12 +98,6 @@ export default function SignInForm() {
   // Focus and Validation Popup states
   const [isUsernameFocused, setIsUsernameFocused] = useState(false)
   const [isPasswordFocused, setIsPasswordFocused] = useState(false)
-  // Redeem code states
-  const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
-  const [redeemCode, setRedeemCode] = useState("")
-  const [redeemCodeValidated, setRedeemCodeValidated] = useState(false)
-  const [redeemCodeInfo, setRedeemCodeInfo] = useState<any>(null)
-
   // Username live availability (always declared to keep hook order stable)
   const availability = useUsernameAvailability(process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : '')
   useEffect(() => {
@@ -113,6 +106,10 @@ export default function SignInForm() {
 
   // Check for capital letters in username
   const hasCapitalLetters = /[A-Z]/.test(username)
+  const normalizedUsernameForPasswordCheck = username.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const isPasswordContainingUsername =
+    normalizedUsernameForPasswordCheck.length >= 3 &&
+    password.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedUsernameForPasswordCheck)
 
   // Email validation function
   const isValidEmail = (email: string): boolean => {
@@ -152,7 +149,6 @@ export default function SignInForm() {
     { label: "Can use Digit", test: (v: string) => /[0-9]/.test(v), required: false },
     { label: "Can use Alphabet", test: (v: string) => /[a-zA-Z]/.test(v), required: false },
     { label: "Can use Special Character (only _ and .)", test: (v: string) => /[._]/.test(v), required: false },
-    { label: "At least 1 special character", test: (v: string) => /[._]/.test(v), required: true },
   ]
 
   const passwordRequirements = [
@@ -161,6 +157,13 @@ export default function SignInForm() {
     { label: "At least 1 lowercase letter (a-z)", test: (v: string) => /[a-z]/.test(v) },
     { label: "At least 1 number (0-9)", test: (v: string) => /[0-9]/.test(v) },
     { label: "At least 1 special character", test: (v: string) => /[^A-Za-z0-9]/.test(v) },
+    {
+      label: "Password must not contain your username",
+      test: (v: string) => {
+        const normalizedPassword = v.toLowerCase().replace(/[^a-z0-9]/g, '')
+        return !normalizedUsernameForPasswordCheck || !normalizedPassword.includes(normalizedUsernameForPasswordCheck)
+      }
+    },
   ]
 
   const isUsernameValid = usernameRequirements
@@ -191,6 +194,15 @@ export default function SignInForm() {
     setShowLoginForm(true) // Switch to login mode
     setError("")
     // Don't reset captcha - keep token valid across form switch
+  }
+
+  const redirectAfterAuthSuccess = (toastKey: string = 'LOGIN_SUCCESS') => {
+    setIsRedirecting(true)
+    let finalUrl = returnUrl || APP_ROUTES.HOME
+    if (!finalUrl.includes('toast=')) {
+      finalUrl += (finalUrl.includes('?') ? '&' : '?') + `toast=${toastKey}`
+    }
+    window.location.href = finalUrl
   }
 
   // Handle login form submission
@@ -428,6 +440,12 @@ export default function SignInForm() {
       toast.error("Username format is invalid")
       return
     }
+    if (isPasswordContainingUsername) {
+      const errorMsg = "Password must not contain your username."
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
     if (!availability.isAvailable) {
       toast.error("Username is already taken")
       return
@@ -464,7 +482,8 @@ export default function SignInForm() {
 
       // Call backend API to start email OTP
       const response = await axiosInstance.post("/api/auth/email/start", requestData, {
-        withCredentials: true // Include cookies
+        withCredentials: true, // Include cookies
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Response status:", response.status)
@@ -547,14 +566,16 @@ export default function SignInForm() {
       const requestData = {
         email: email.trim(),
         code: otp.trim(), // Backend expects 'code' field, not 'otp'
-        password: password
+        password: password,
+        username: username.trim().toLowerCase(),
       }
       console.log("📤 Sending verification request to:", "http://localhost:5000/api/auth/email/verify")
       console.log("📤 Request data:", requestData)
 
       // Call backend API to verify OTP and create user
       const response = await axiosInstance.post("/api/auth/email/verify", requestData, {
-        withCredentials: true // Include cookies
+        withCredentials: true, // Include cookies
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Verification response status:", response.status)
@@ -565,8 +586,8 @@ export default function SignInForm() {
         console.log("✅ OTP verification successful!")
         console.log("🔍 Full response data:", JSON.stringify(response.data, null, 2))
 
-        // Try to set username for the newly created email user
-        if (username.trim()) {
+        // Legacy follow-up username step is disabled; OTP verification now receives the final username.
+        if (false && username.trim()) {
           try {
             console.log("👤 Setting username for newly verified email user...");
             const usernameResponse = await axiosInstance.post("/api/auth/email/username", {
@@ -633,10 +654,8 @@ export default function SignInForm() {
                 localStorage.setItem('lastAuthMethod', 'email')
               } catch { }
 
-              // Show redeem code form instead of direct redirection
-              setShowRedeemCodeForm(true)
-              setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
               toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+              setTimeout(() => redirectAfterAuthSuccess(), 300)
 
             } else {
               console.error("❌ Session creation failed:", sessionResponse.status)
@@ -697,19 +716,32 @@ export default function SignInForm() {
     console.log("🔄 Starting OTP resend process...")
     console.log("📧 Email for resend:", email.trim())
 
+    if (!email.trim()) {
+      const errorMsg = "Email is required to resend OTP."
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
+      return
+    }
+
+    if (resendCooldown > 0) {
+      return
+    }
+
     setProcessing(true)
     setError("")
+    setSuccess("")
 
     try {
       const requestData = {
         email: email.trim()
       }
-      console.log("📤 Resending OTP to:", "http://localhost:5000/api/auth/email/start")
+      console.log("📤 Resending OTP to:", "/api/auth/email/start")
       console.log("📤 Resend request data:", requestData)
 
       // Call backend API to resend OTP
-      const response = await axios.post("http://localhost:5000/api/auth/email/start", requestData, {
-        withCredentials: true // Include cookies
+      const response = await axiosInstance.post("/api/auth/email/start", requestData, {
+        withCredentials: true, // Include cookies
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Resend response status:", response.status)
@@ -720,6 +752,7 @@ export default function SignInForm() {
         const successMsg = `OTP resent to ${email.trim()}`
         setError("")
         setSuccess(successMsg)
+        setResendCooldown(60)
         toast.success(successMsg, { duration: 3000 })
       } else {
         console.log("❌ OTP not resent - checking response structure:")
@@ -778,6 +811,8 @@ export default function SignInForm() {
     try {
       const response = await axiosInstance.post("/api/auth/forgot-password", {
         email: forgotPasswordEmail.trim()
+      }, {
+        skipGlobalErrorToast: true
       })
 
       console.log("📥 Forgot password response:", response.data)
@@ -1027,15 +1062,13 @@ export default function SignInForm() {
 
           console.log("✅ Google authentication complete!")
           setShowUsernameForm(false)
-          setShowRedeemCodeForm(true)
-          setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
-
-          // Track that email/password was used (for "Last Used" tag) - already set during OTP verification, but ensure it's set here too
+          // Track the auth method used for the next session
           try {
-            localStorage.setItem('lastAuthMethod', 'email')
+            localStorage.setItem('lastAuthMethod', 'google')
           } catch { }
 
           toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+          setTimeout(() => redirectAfterAuthSuccess(), 300)
         }
 
       } else {
@@ -1136,10 +1169,8 @@ export default function SignInForm() {
             setEmailError("")
             setError("")
 
-            // Show redeem code form
-            setShowRedeemCodeForm(true)
-            setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
             toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+            setTimeout(() => redirectAfterAuthSuccess(), 300)
           }
         } else {
           console.log("❌ No user data found in localStorage")
@@ -1176,95 +1207,6 @@ export default function SignInForm() {
       setIsUsernameSubmitting(false)
     }
   }
-
-  // Redeem Code Functions
-  const handleRedeemCodeValidation = async () => {
-    if (!redeemCode.trim()) {
-      setError("Please enter a redeem code")
-      return
-    }
-
-    setError("")
-    setProcessing(true)
-
-    try {
-      const response = await axiosInstance.post("/api/redeem-codes/validate", {
-        redeemCode: redeemCode.trim().toUpperCase()
-      })
-
-      if (response.data?.data?.valid) {
-        setRedeemCodeValidated(true)
-        setRedeemCodeInfo(response.data.data)
-        const timeInfo = response.data.data.remainingTime ? ` (expires in ${response.data.data.remainingTime})` : ''
-        setSuccess(`✓ Valid ${response.data.data.planName}! You'll get ${response.data.data.creditsToGrant.toLocaleString()} credits when you apply this code${timeInfo}.`)
-      } else {
-        setError(response.data?.data?.error || "Invalid redeem code")
-        setRedeemCodeValidated(false)
-        setRedeemCodeInfo(null)
-      }
-    } catch (error: any) {
-      console.error("❌ Redeem code validation failed:", error)
-      setError(error.response?.data?.message || "Failed to validate redeem code")
-      setRedeemCodeValidated(false)
-      setRedeemCodeInfo(null)
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  const handleRedeemCodeSubmit = async () => {
-    if (!redeemCodeValidated) {
-      setError("Please validate your redeem code first")
-      return
-    }
-
-    setError("")
-    setProcessing(true)
-
-    try {
-      const response = await axiosInstance.post("/api/auth/redeem-code/apply", {
-        redeemCode: redeemCode.trim().toUpperCase()
-      }, {
-        withCredentials: true
-      })
-
-      if (response.data?.responseStatus === 'success') {
-        setSuccess(`🎉 ${response.data.data.planName} activated! You received ${response.data.data.creditsGranted.toLocaleString()} credits.`)
-
-        // Redirect to home or returnUrl after successful redeem
-        setTimeout(() => {
-          setIsRedirecting(true)
-          setShowRedeemCodeForm(false)
-
-          let finalUrl = returnUrl || APP_ROUTES.HOME
-          if (!finalUrl.includes('toast=')) {
-            finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'toast=LOGIN_SUCCESS'
-          }
-          window.location.href = finalUrl
-        }, 2000)
-      } else {
-        setError(response.data?.message || "Failed to apply redeem code")
-      }
-    } catch (error: any) {
-      console.error("❌ Redeem code application failed:", error)
-      setError(error.response?.data?.message || "Failed to apply redeem code")
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  const handleSkipRedeemCode = () => {
-    setIsRedirecting(true)
-    setShowRedeemCodeForm(false)
-    setTimeout(() => {
-      let finalUrl = returnUrl || APP_ROUTES.HOME
-      if (!finalUrl.includes('toast=')) {
-        finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'toast=LOGIN_SUCCESS'
-      }
-      window.location.href = finalUrl
-    }, 1000)
-  }
-
 
   // Check which authentication method was last used (for "Last Used" tag)
   const [lastAuthMethod, setLastAuthMethod] = useState<'google' | 'email' | null>(null)
@@ -1319,19 +1261,23 @@ export default function SignInForm() {
   }
 
   return (
-    <div className="w-full h-full min-h-screen flex flex-col bg-[#1C1C20] relative overflow-x-hidden">
+    <div className="w-full h-full min-h-screen lg:min-h-0 flex flex-col bg-[#1C1C20] relative overflow-x-hidden">
       {(authLoading || isRedirecting) && (
         <LoadingScreen message={isRedirecting ? 'Redirecting…' : 'Signing you in…'} subMessage={isRedirecting ? 'Just a moment while we finish up' : undefined} />
       )}
 
-      {/* Form Content - Stabilized Layout */}
-      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-40 p-6 md:p-12">
+      {/* Form Content - Scrollable inside left column on desktop to keep consistent height when switching Sign In / Sign up */}
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-40 p-6 md:p-12 min-h-0 lg:overflow-y-auto">
         <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
           {/* Constant Shared Header - Static for both Sign In and Sign Up */}
-          <div className="text-center w-full mb-8">
+          <div className="text-center w-full sm:mb-4 lg:mb-4 xl:mb-4 2xl:mb-8">
             <p className="text-white text-md">Welcome to</p>
-            <div className="flex justify-center items-center gap-1 mt-0 mb-4">
+            <Link
+              href={APP_ROUTES.HOME}
+              className="flex justify-center items-center gap-1 mt-0 sm:mb-2 lg:mb-2 xl:mb-2 2xl:mb-4 cursor-pointer hover:opacity-90 transition-opacity no-underline"
+              aria-label="Go to home page"
+            >
               <div className="w-12 h-12 flex items-center justify-center">
                 <img
                   src="/core/logosquare.png"
@@ -1346,10 +1292,10 @@ export default function SignInForm() {
                 />
               </div>
               <h1 className="text-2xl font-bold text-white tracking-wide whitespace-nowrap">WildMind AI </h1>
-            </div>
+            </Link>
 
             {/* Form Toggle Switcher */}
-            {!showUsernameForm && !showRedeemCodeForm && !otpSent && (
+            {!showUsernameForm && !otpSent && (
               <div className="flex justify-center gap-6">
                 <span
                   className={`pb-0 font-medium cursor-pointer transition-colors text-sm ${showLoginForm ? 'text-[#4182CF] border-b-2 border-[#4182CF]' : 'text-gray-500 hover:text-gray-300'}`}
@@ -1378,17 +1324,8 @@ export default function SignInForm() {
                 handleUsernameSubmit={handleUsernameSubmit}
                 UsernameFeedbackComponent={UsernameAvailabilityFeedback}
               />
-            ) : showRedeemCodeForm ? (
-              <RedeemCodeForm
-                redeemCode={redeemCode} setRedeemCode={setRedeemCode}
-                redeemCodeValidated={redeemCodeValidated} setRedeemCodeValidated={setRedeemCodeValidated}
-                error={error} success={success} processing={processing}
-                handleRedeemCodeValidation={handleRedeemCodeValidation}
-                handleRedeemCodeSubmit={handleRedeemCodeSubmit}
-                handleSkipRedeemCode={handleSkipRedeemCode}
-              />
             ) : showLoginForm ? (
-              <form onSubmit={handleLogin} className="flex flex-col gap-2">
+              <form onSubmit={handleLogin} className="flex flex-col gap-3">
 
                 <TextField
                   label="Email/Username"
@@ -1410,6 +1347,7 @@ export default function SignInForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  inputProps={{ maxLength: 14 }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
@@ -1448,7 +1386,7 @@ export default function SignInForm() {
                 </div>
 
                 <div className="relative">
-                  {lastAuthMethod === 'google' && (
+                  {lastAuthMethod === 'google' && !error && (
                     <div className="absolute -top-2 right-0 z-10">
                       <span className="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-medium px-2 py-0.5 rounded-full">Last Used</span>
                     </div>
@@ -1470,20 +1408,20 @@ export default function SignInForm() {
                 />
               </form>
             ) : (
-              <SignUpForm
-                username={username} setUsername={setUsername}
-                isUsernameFocused={isUsernameFocused} setIsUsernameFocused={setIsUsernameFocused}
-                usernameRequirements={usernameRequirements} hasCapitalLetters={hasCapitalLetters} availability={availability}
-                email={email} setEmail={setEmail}
-                password={password} setPassword={setPassword}
-                showPassword={showPassword} setShowPassword={setShowPassword}
-                isPasswordFocused={isPasswordFocused} setIsPasswordFocused={setIsPasswordFocused} passwordRequirements={passwordRequirements}
-                confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword}
-                showConfirmPassword={showConfirmPassword} setShowConfirmPassword={setShowConfirmPassword}
-                otpSent={otpSent} otp={otp} setOtp={setOtp} processing={processing} resendCooldown={resendCooldown}
-                handleSendOtp={handleSendOtp} handleVerifyOtp={handleVerifyOtp}
-                handleGoogleLogin={handleGoogleLogin} handleCaptchaVerify={handleCaptchaVerify} handleCaptchaError={handleCaptchaError}
-                UsernameFeedbackComponent={UsernameAvailabilityFeedback}
+                <SignUpForm
+                  username={username} setUsername={setUsername}
+                  isUsernameFocused={isUsernameFocused} setIsUsernameFocused={setIsUsernameFocused}
+                  usernameRequirements={usernameRequirements} hasCapitalLetters={hasCapitalLetters} availability={availability}
+                  email={email} setEmail={setEmail}
+                  password={password} setPassword={setPassword}
+                  showPassword={showPassword} setShowPassword={setShowPassword}
+                  isPasswordFocused={isPasswordFocused} setIsPasswordFocused={setIsPasswordFocused} passwordRequirements={passwordRequirements}
+                  confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} passwordError={passwordError}
+                  showConfirmPassword={showConfirmPassword} setShowConfirmPassword={setShowConfirmPassword}
+                  otpSent={otpSent} otp={otp} setOtp={setOtp} processing={processing} resendCooldown={resendCooldown}
+                  handleSendOtp={handleSendOtp} handleVerifyOtp={handleVerifyOtp} handleResendOtp={handleResendOtp}
+                  handleGoogleLogin={handleGoogleLogin} handleCaptchaVerify={handleCaptchaVerify} handleCaptchaError={handleCaptchaError}
+                  UsernameFeedbackComponent={UsernameAvailabilityFeedback}
               />
             )}
           </div>

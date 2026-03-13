@@ -5,6 +5,12 @@ import { clearAuthData } from "./authUtils";
 import { setModalOpen } from "@/store/slices/uiSlice";
 import { getDeviceHash } from "./deviceHash";
 
+declare module "axios" {
+  export interface AxiosRequestConfig<D = any> {
+    skipGlobalErrorToast?: boolean;
+  }
+}
+
 let store: any = null;
 export const injectStore = (_store: any) => {
   store = _store;
@@ -780,6 +786,7 @@ axiosInstance.interceptors.response.use(
     const original = error?.config || {};
     const status = error?.response?.status;
     const errorData = error?.response?.data;
+    const skipGlobalErrorToast = Boolean(original?.skipGlobalErrorToast);
 
     // Check if request was cancelled (user navigated away, component unmounted, etc.)
     const isCancelled =
@@ -826,7 +833,7 @@ axiosInstance.interceptors.response.use(
             isGetRequest)) ||
         (status === 401 && isNoSessionTokenError);
 
-      if (!shouldSuppress) {
+      if (!shouldSuppress && !skipGlobalErrorToast) {
         await showFalErrorToast(error);
       }
     } catch {}
