@@ -159,9 +159,13 @@ export default function SignInForm() {
     { label: "At least 1 special character", test: (v: string) => /[^A-Za-z0-9]/.test(v) },
     {
       label: "Password must not contain your username",
+      hidden: true,
       test: (v: string) => {
         const normalizedPassword = v.toLowerCase().replace(/[^a-z0-9]/g, '')
-        return !normalizedUsernameForPasswordCheck || !normalizedPassword.includes(normalizedUsernameForPasswordCheck)
+        if (!normalizedUsernameForPasswordCheck) {
+          return false
+        }
+        return !normalizedPassword.includes(normalizedUsernameForPasswordCheck)
       }
     },
   ]
@@ -1267,11 +1271,11 @@ export default function SignInForm() {
       )}
 
       {/* Form Content - Scrollable inside left column on desktop to keep consistent height when switching Sign In / Sign up */}
-      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-40 p-6 md:p-12 min-h-0 lg:overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-12 xl:pt-24 2xl:pt-40 p-12 min-h-0 lg:overflow-y-auto">
         <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
           {/* Constant Shared Header - Static for both Sign In and Sign Up */}
-          <div className="text-center w-full sm:mb-4 lg:mb-4 xl:mb-4 2xl:mb-8">
+          <div className="text-center w-full mb-4 sm:mb-4 lg:mb-4 xl:mb-4 2xl:mb-8">
             <p className="text-white text-md">Welcome to</p>
             <Link
               href={APP_ROUTES.HOME}
@@ -1366,11 +1370,11 @@ export default function SignInForm() {
                   </button>
                 </div>
 
-                <div className="flex justify-center pt-4">
+                <div className="flex justify-center pt-4 md:pt-2 lg:pt-2 xl:pt-2 2xl:pt-4">
                   <button
                     type="submit"
                     disabled={processing || !email || !password}
-                    className={`w-3/4 py-2.5 rounded-xl font-semibold transition-all ${processing || !email || !password
+                    className={`w-3/4 md:w-1/4 lg:w-2/4 xl:w-2/4 2xl:w-2/4 py-2 md:py-1.5 lg:py-1.5 xl:py-1 2xl:py-1.5 rounded-xl font-semibold transition-all md:text-sm lg:text-md xl:text-md 2xl:text-lg ${processing || !email || !password
                       ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
                       : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
                       }`}

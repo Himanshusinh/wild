@@ -81,26 +81,20 @@ export const clearCookie = (name: string) => {
 export const ValidationPopup = ({ requirements, value }: { requirements: any[], value: string }) => {
     return (
         <div className="absolute z-50 animate-in fade-in
-            /* Mobile: Shown below the input */
             top-[calc(100%+12px)] left-0 w-full slide-in-from-top-1
-            /* Desktop: Shown to the right of the input */
-            md:top-1/2 md:left-[calc(100%+16px)] md:-translate-y-1/2 md:w-64 md:max-w-40 lg:max-w-40 xl:max-w-40 2xl:max-w-64 md:slide-in-from-left-2
             bg-[#24242A] rounded-xl border border-[#2D3035] p-2 shadow-xl">
 
             {/* Pointer arrow */}
             <div className="absolute bg-[#24242A] border-[#2D3035] w-3 h-3
-                /* Mobile: Arrow pointing up */
-                top-0 left-6 -translate-y-1/2 rotate-45 border-l border-t
-                /* Desktop: Arrow pointing left */
-                md:top-1/2 md:-left-1.5 md:-translate-y-1/2 md:-rotate-45"
+                top-0 left-6 -translate-y-1/2 rotate-45 border-l border-t"
             />
 
             <div className="space-y-1 relative z-10">
-                {requirements.map((req, index) => {
+                {requirements.filter((req) => !req.hidden).map((req, index) => {
                     const isValid = req.test ? req.test(value) : false;
                     return (
                         <div key={index} className="flex items-start gap-1">
-                            <span className={`md:text-[10px] lg:text-[10px] xl:text-[8px] 2xl:text-[10px] leading-snug ${isValid ? 'text-green-500' : 'text-gray-400'}`}>
+                            <span className={`text-[10px] md:text-[10px] lg:text-[10px] xl:text-[8px] 2xl:text-[10px] leading-snug ${isValid ? 'text-green-500' : 'text-gray-400'}`}>
                                 • {req.label}
                             </span>
                         </div>

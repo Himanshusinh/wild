@@ -101,11 +101,11 @@ export const SignInForm = ({
                 </button>
             </div>
 
-            <div className="flex justify-center pt-4">
+            <div className="flex justify-center pt-4 md:pt-2 lg:pt-2 xl:pt-1 2xl:pt-2">
                 <button
                     type="submit"
                     disabled={processing || !email || !password}
-                    className={`w-3/4 py-2 rounded-xl font-semibold transition-all ${processing || !email || !password
+                    className={`w-3/4 md:w-1/4 lg:w-2/4 xl:w-2/4 2xl:w-1/4 py-2 md:py-1.5 lg:py-1.5 xl:py-1 2xl:py-2 rounded-xl font-semibold transition-all ${processing || !email || !password
                         ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
                         : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
                         }`}

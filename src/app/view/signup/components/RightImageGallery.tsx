@@ -164,13 +164,9 @@ const fetchSignupRandomImage = async (): Promise<ImageData | null> => {
   }
 }
 
-export default function RightImageGallery({ initialImages = [] }: { initialImages?: ImageData[] }) {
-  const initialUniqueImages = useMemo(
-    () => dedupeImages(initialImages),
-    [initialImages],
-  )
-  const [images, setImages] = useState<ImageData[]>(initialUniqueImages.slice(0, TARGET_IMAGE_COUNT))
-  const [isLoading, setIsLoading] = useState(initialUniqueImages.length === 0)
+export default function RightImageGallery() {
+  const [images, setImages] = useState<ImageData[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024
@@ -221,7 +217,7 @@ export default function RightImageGallery({ initialImages = [] }: { initialImage
         }
 
         if (finalList.length === 0) {
-          finalList = initialUniqueImages.length > 0 ? [...initialUniqueImages] : [...fallbackImages]
+          finalList = [...fallbackImages]
         }
 
         finalList = dedupeImages(finalList)
@@ -249,7 +245,7 @@ export default function RightImageGallery({ initialImages = [] }: { initialImage
     }
 
     fetchImages()
-  }, [initialUniqueImages])
+  }, [])
 
   const columns = useMemo(() => {
     const source = images.length > 0 ? images : fallbackImages

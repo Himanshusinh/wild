@@ -63,6 +63,8 @@ export const SignUpForm = ({
         !confirmPassword ||
         password !== confirmPassword ||
         !!passwordError
+    const isOtpSubmitDisabled = processing || otp.length < 6
+    const isSubmitDisabled = otpSent ? isOtpSubmitDisabled : isInitialSubmitDisabled
 
     return (
         <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="flex flex-col gap-3">
@@ -204,8 +206,8 @@ export const SignUpForm = ({
             <div className="flex justify-center pt-2">
                 <button
                     type="submit"
-                    disabled={otpSent ? (processing || otp.length < 6) : isInitialSubmitDisabled}
-                    className={`w-3/4 py-2.5 rounded-xl font-semibold text-sm transition-all ${otpSent ? (processing || otp.length < 6) : isInitialSubmitDisabled
+                    disabled={isSubmitDisabled}
+                    className={`w-3/4 py-2.5 rounded-xl font-semibold text-sm transition-all ${isSubmitDisabled
                         ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
                         : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
                         }`}
@@ -213,7 +215,7 @@ export const SignUpForm = ({
                     {processing ? (otpSent ? "Verifying..." : "Creating...") : (otpSent ? "Sign Up" : "Get OTP")}
                 </button>
             </div>
-            <div className="flex justify-center -my-2 transform scale-90 origin-center mt-2">
+            <div className="flex justify-center  transform scale-90 origin-center xl:-mt-6 2xl:-mt-0">
                 <TurnstileCaptcha onVerify={handleCaptchaVerify} onError={handleCaptchaError} theme="dark" />
             </div>
 
