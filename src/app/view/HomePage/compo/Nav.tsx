@@ -210,7 +210,7 @@ const Nav = () => {
         <div className='flex items-center gap-3'>
           {!userData && (
             <button
-              onClick={() => router.push('/view/signin')}
+              onClick={() => router.push('/view/signup?showLogin=true')}
               className='flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 text-white text-sm font-medium px-6 py-2.5 rounded-full hover:bg-white/20 hover:border-white/30 transition-all duration-200 shadow-lg'
             >
               Sign In
