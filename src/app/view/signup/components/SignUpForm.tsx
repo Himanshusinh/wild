@@ -55,6 +55,9 @@ export const SignUpForm = ({
     handleSendOtp, handleVerifyOtp, handleResendOtp, handleGoogleLogin, handleCaptchaVerify, handleCaptchaError,
     UsernameFeedbackComponent
 }: SignUpFormProps) => {
+    const [usernameTouched, setUsernameTouched] = React.useState(false)
+    const [emailTouched, setEmailTouched] = React.useState(false)
+    const [passwordTouched, setPasswordTouched] = React.useState(false)
     const isInitialSubmitDisabled =
         processing ||
         !username ||
@@ -65,6 +68,12 @@ export const SignUpForm = ({
         !!passwordError
     const isOtpSubmitDisabled = processing || otp.length < 6
     const isSubmitDisabled = otpSent ? isOtpSubmitDisabled : isInitialSubmitDisabled
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const usernameHelperText = !otpSent && usernameTouched && !username.trim() ? "Name is required" : ""
+    const emailHelperText = !otpSent && emailTouched
+        ? (!email.trim() ? "Email is required" : (!emailRegex.test(email.trim()) ? "Please enter a valid email" : ""))
+        : ""
+    const passwordHelperText = !otpSent && passwordTouched && !password ? "Password is required" : ""
 
     return (
         <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="flex flex-col gap-3">
@@ -77,11 +86,16 @@ export const SignUpForm = ({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     onFocus={() => setIsUsernameFocused(true)}
-                    onBlur={() => setIsUsernameFocused(false)}
+                    onBlur={() => {
+                        setIsUsernameFocused(false)
+                        setUsernameTouched(true)
+                    }}
                     required
                     inputProps={{ maxLength: 14 }}
                     sx={textFieldSx}
                     disabled={otpSent}
+                    error={!otpSent && usernameTouched && !username.trim()}
+                    helperText={usernameHelperText || undefined}
                 />
                 {isUsernameFocused && (
                     <ValidationPopup requirements={usernameRequirements} value={username} />
@@ -98,9 +112,12 @@ export const SignUpForm = ({
                 size="small"
                 value={email}
                 onChange={(e) => setEmail(e.target.value.trim())}
+                onBlur={() => setEmailTouched(true)}
                 required
                 sx={textFieldSx}
                 disabled={otpSent}
+                error={!otpSent && emailTouched && emailHelperText.trim().length > 0}
+                helperText={emailHelperText || undefined}
             />
 
             <div className="relative">
@@ -113,7 +130,13 @@ export const SignUpForm = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => setIsPasswordFocused(true)}
-                    onBlur={() => setIsPasswordFocused(false)}
+                    onBlur={() => {
+                        setIsPasswordFocused(false)
+                        setPasswordTouched(true)
+                    }}
+                    onPaste={(e) => e.preventDefault()}
+                    onCopy={(e) => e.preventDefault()}
+                    onCut={(e) => e.preventDefault()}
                     required
                     inputProps={{ maxLength: 14 }}
                     InputProps={{
@@ -127,6 +150,8 @@ export const SignUpForm = ({
                     }}
                     sx={textFieldSx}
                     disabled={otpSent}
+                    error={!otpSent && passwordTouched && !password}
+                    helperText={passwordHelperText || undefined}
                 />
                 {isPasswordFocused && (
                     <ValidationPopup requirements={passwordRequirements} value={password} />
@@ -141,6 +166,9 @@ export const SignUpForm = ({
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onCopy={(e) => e.preventDefault()}
+                onCut={(e) => e.preventDefault()}
                 required
                 inputProps={{ maxLength: 14 }}
                 InputProps={{
@@ -155,10 +183,10 @@ export const SignUpForm = ({
                 sx={textFieldSx}
                 disabled={otpSent}
                 error={!otpSent && !!passwordError && confirmPassword.length > 0}
-                helperText={!otpSent && confirmPassword.length > 0 ? passwordError || " " : " "}
+                helperText={!otpSent && confirmPassword.length > 0 ? passwordError || undefined : undefined}
             />
 
-            <div className="text-[11px] text-center text-gray-500 leading-relaxed py-0 -mt-4">
+            <div className="text-[11px] text-center text-gray-500 leading-relaxed py-0 -mt-2">
                 By signing up, you agree to our <Link href={LEGAL_ROUTES.TERMS_CONDITIONS} className="text-[#4182CF] underline" target="_blank">Terms and Conditions</Link> & <Link href={LEGAL_ROUTES.PRIVACY_PAGE} className="text-[#4182CF] underline" target="_blank">Privacy Policy</Link>.
             </div>
 
@@ -171,7 +199,11 @@ export const SignUpForm = ({
                         <p className="text-gray-400 md:text-[10px] lg:text--[10px] xl:text-[10px] 2xl:text-xs">Please enter the 6-digit code below</p>
                     </div>
                     <OtpInput value={otp} onChange={setOtp} disabled={processing} />
-                    <div className="flex flex-col items-end w-full gap-1 mt-1">
+                    <div className="flex flex-col w-full gap-2 mt-1">
+                        <div className="w-full rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-center text-[10px] leading-relaxed text-[#aeb7c9]">
+                            If you do not receive the verification email, please check your Spam or Junk folder.
+                        </div>
+                        <div className="flex flex-col items-end w-full gap-1">
                         {resendCooldown > 0 ? (
                             <span className="text-gray-400 text-[10px] font-medium">
                                 Resend in 0:{resendCooldown.toString().padStart(2, '0')}
@@ -185,6 +217,7 @@ export const SignUpForm = ({
                                 Resend Code
                             </button>
                         )}
+                        </div>
                     </div>
                 </div>
             )}

@@ -82,6 +82,8 @@ export default function SignInForm() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("") // Email for forgot password
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false) // Track if email was sent
   const [forgotPasswordError, setForgotPasswordError] = useState("") // Isolated error for forgot password modal
+  const [loginRetryAfterSeconds, setLoginRetryAfterSeconds] = useState(0)
+  const [loginAttemptsLeft, setLoginAttemptsLeft] = useState<number | null>(null)
   const [isGoogleOnlyUser, setIsGoogleOnlyUser] = useState(false) // True when user signed up via Google
   const [resendCooldown, setResendCooldown] = useState(0) // Seconds remaining before resend is allowed
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
@@ -94,6 +96,9 @@ export default function SignInForm() {
   // Captcha states
   const [captchaToken, setCaptchaToken] = useState<string>('')
   const [captchaError, setCaptchaError] = useState(false)
+  const loginRetryStorageKey = 'wildmind_login_retry_until'
+  const loginAttemptsStorageKey = 'wildmind_login_failed_attempts'
+  const LOGIN_MAX_ATTEMPTS = 5
 
   // Focus and Validation Popup states
   const [isUsernameFocused, setIsUsernameFocused] = useState(false)
@@ -133,7 +138,7 @@ export default function SignInForm() {
     // Validate email - only show error if email field has value
     if (email.length > 0) {
       if (!isValidEmail(email)) {
-        setEmailError("Invalid email address")
+        setEmailError("Please enter a valid email")
       } else {
         setEmailError("")
       }
@@ -209,6 +214,72 @@ export default function SignInForm() {
     window.location.href = finalUrl
   }
 
+  const startLoginRetryTimer = (retryAfterSeconds: number) => {
+    const safeSeconds = Math.max(1, Math.floor(retryAfterSeconds))
+    setLoginRetryAfterSeconds(safeSeconds)
+    setLoginAttemptsLeft(0)
+    try {
+      window.sessionStorage.setItem(loginRetryStorageKey, String(Date.now() + safeSeconds * 1000))
+      window.localStorage.removeItem(loginRetryStorageKey)
+    } catch { }
+  }
+
+  const clearLoginAttemptState = () => {
+    setLoginAttemptsLeft(null)
+    try {
+      window.sessionStorage.removeItem(loginAttemptsStorageKey)
+      window.sessionStorage.removeItem(loginRetryStorageKey)
+      window.localStorage.removeItem(loginRetryStorageKey)
+    } catch { }
+  }
+
+  const getStoredFailedAttempts = (): number => {
+    try {
+      const value = Number(window.sessionStorage.getItem(loginAttemptsStorageKey) || 0)
+      if (!Number.isFinite(value)) {
+        return 0
+      }
+      return Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, value))
+    } catch {
+      return 0
+    }
+  }
+
+  const setStoredFailedAttempts = (failedAttempts: number) => {
+    const safeValue = Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, failedAttempts))
+    try {
+      window.sessionStorage.setItem(loginAttemptsStorageKey, String(safeValue))
+    } catch { }
+  }
+
+  const getRemainingAttemptsFromHeaders = (headers: any): number | null => {
+    const rawRemaining =
+      headers?.['ratelimit-remaining'] ??
+      headers?.['RateLimit-Remaining'] ??
+      headers?.['x-ratelimit-remaining'] ??
+      headers?.['X-RateLimit-Remaining']
+
+    const remaining = Number(rawRemaining)
+    if (!Number.isFinite(remaining)) {
+      return null
+    }
+
+    return Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, remaining))
+  }
+
+  const updateLoginAttemptsLeft = (headers: any) => {
+    const remaining = getRemainingAttemptsFromHeaders(headers)
+    if (remaining !== null) {
+      setLoginAttemptsLeft(remaining)
+      setStoredFailedAttempts(LOGIN_MAX_ATTEMPTS - remaining)
+      return
+    }
+
+    const failedAttempts = Math.min(LOGIN_MAX_ATTEMPTS, getStoredFailedAttempts() + 1)
+    setStoredFailedAttempts(failedAttempts)
+    setLoginAttemptsLeft(Math.max(0, LOGIN_MAX_ATTEMPTS - failedAttempts))
+  }
+
   // Handle login form submission
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
@@ -216,8 +287,24 @@ export default function SignInForm() {
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", password ? "***" : "empty")
 
+    if (loginRetryAfterSeconds > 0) {
+      const errorMsg = `Too many authentication attempts. Please try again after ${Math.floor(loginRetryAfterSeconds / 60)
+        .toString()
+        .padStart(2, '0')}:${(loginRetryAfterSeconds % 60).toString().padStart(2, '0')}.`
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
+      return
+    }
+
     if (!email.trim() || !password) {
       setError("Please enter both email and password")
+      return
+    }
+
+    if (email.includes('@') && !isValidEmail(email.trim())) {
+      const errorMsg = "Enter valid email"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
 
@@ -243,7 +330,8 @@ export default function SignInForm() {
         password: password,
         captchaToken: captchaToken
       }, {
-        withCredentials: true
+        withCredentials: true,
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Login response status:", response.status)
@@ -335,6 +423,7 @@ export default function SignInForm() {
 
         // Persist toast flag for next page (faster redirect)
         try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch { }
+        clearLoginAttemptState()
         setIsRedirecting(true)
         setEmail("")
         setPassword("")
@@ -374,19 +463,49 @@ export default function SignInForm() {
           .filter(Boolean)
           .join('\n')
         errorMessage = detailedMessage || 'Please fix the highlighted fields and try again.'
+        if (
+          detailedMessage.toLowerCase().includes('valid email') ||
+          detailedMessage.toLowerCase().includes('enter valid email')
+        ) {
+          errorMessage = 'Enter valid email'
+        }
         setError(errorMessage)
         toast.error(errorMessage, { duration: 4000 })
       } else {
         errorMessage = error.response?.data?.message || 'An error occurred'
-        if (errorMessage.includes('already have an account with Google')) {
-          errorMessage = "This email is registered with Google. Please use the Google sign-in button below."
-          setError(errorMessage)
-          toast.error(errorMessage, { duration: 4000 })
-        } else if (error.response?.status === 401) {
-          errorMessage = "Invalid credentials. Please check your email and password."
-          setError(errorMessage)
+          if (errorMessage.includes('already have an account with Google')) {
+            errorMessage = "This email is registered with Google. Please use the Google sign-in button below."
+            setError(errorMessage)
+            toast.error(errorMessage, { duration: 4000 })
+          } else if (
+            errorMessage.toLowerCase().includes('enter valid email') ||
+            errorMessage.toLowerCase().includes('valid email') ||
+            errorMessage.toLowerCase().includes('invalid email')
+          ) {
+            errorMessage = 'Enter valid email'
+            setError(errorMessage)
+            toast.error(errorMessage, { duration: 4000 })
+          } else if (
+            error.response?.status === 429 ||
+            errorMessage.toLowerCase().includes('too many authentication attempts') ||
+            errorMessage.toLowerCase().includes('too many failed login attempts')
+          ) {
+            const retryAfterSeconds =
+              Number(error.response?.data?.data?.retryAfterSeconds) ||
+              Number(error.response?.headers?.['retry-after']) ||
+              5 * 60
+            startLoginRetryTimer(retryAfterSeconds)
+            setStoredFailedAttempts(LOGIN_MAX_ATTEMPTS)
+            errorMessage = "Too many authentication attempts. Please try again later."
+            setError(errorMessage)
+            toast.error(errorMessage, { duration: 4000 })
+          } else if (error.response?.status === 401) {
+            updateLoginAttemptsLeft(error?.response?.headers)
+            errorMessage = "Invalid credentials. Please check your email and password."
+            setError(errorMessage)
           toast.error(errorMessage, { duration: 4000 })
         } else if (error.response?.status === 404) {
+          updateLoginAttemptsLeft(error?.response?.headers)
           errorMessage = "User not found. Please check your email."
           setError(errorMessage)
           toast.error(errorMessage, { duration: 4000 })
@@ -437,7 +556,9 @@ export default function SignInForm() {
 
     // Explicit validation feedback
     if (!username.trim()) {
-      toast.error("Please enter a username")
+      const errorMsg = "Name is required"
+      setError(errorMsg)
+      toast.error(errorMsg)
       return
     }
     if (!isUsernameValid) {
@@ -454,8 +575,22 @@ export default function SignInForm() {
       toast.error("Username is already taken")
       return
     }
+    if (!email.trim()) {
+      const errorMsg = "Email is required"
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
     if (!isValidEmail(email)) {
-      toast.error("Please enter a valid email address")
+      const errorMsg = "Please enter a valid email"
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
+    if (!password) {
+      const errorMsg = "Password is required"
+      setError(errorMsg)
+      toast.error(errorMsg)
       return
     }
     if (!isPasswordValid) {
@@ -534,17 +669,19 @@ export default function SignInForm() {
         setError(errorMsg)
         toast.error(errorMsg, { duration: 4000 })
       } else if (errorMessage.includes('Account already exists')) {
-        const errorMsg = "Account already exists. Please use sign-in instead."
+        const errorMsg = "This email is already registered. Please login instead or try with other email."
         setError(errorMsg)
         toast.error(errorMsg, { duration: 4000 })
       } else if (errorMessage.includes('Temporary') || errorMessage.includes('disposable')) {
         // Temporary/disposable email error
-        setError(errorMessage)
-        toast.error(errorMessage, { duration: 5000 })
+        const errorMsg = "Temporary domain email are not allowed."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 5000 })
       } else if (errorMessage.includes('Invalid email address') || errorMessage.includes('mail server')) {
         // MX record validation error
-        setError(errorMessage)
-        toast.error(errorMessage, { duration: 5000 })
+        const errorMsg = "Please enter a valid email"
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 5000 })
       } else {
         // Handle other errors normally
         setError(errorMessage)
@@ -1260,6 +1397,94 @@ export default function SignInForm() {
     setMounted(true)
   }, [])
 
+  useEffect(() => {
+    if (!mounted) return
+
+    let cancelled = false
+
+    ; (async () => {
+      try {
+        const hasCookie =
+          typeof document !== 'undefined' &&
+          (document.cookie.includes('app_session=') ||
+            document.cookie.includes('auth_hint='))
+
+        const hasStoredAuth =
+          typeof localStorage !== 'undefined' &&
+          Boolean(localStorage.getItem('user') || localStorage.getItem('authToken'))
+
+        const hasFirebaseUser = Boolean(auth.currentUser)
+
+        if (!hasCookie && !hasStoredAuth && !hasFirebaseUser) {
+          return
+        }
+
+        try {
+          const api = getApiClient()
+          const response = await api.get('/api/auth/me', {
+            skipGlobalErrorToast: true,
+          })
+          const resolvedUser =
+            response?.data?.data?.user || response?.data?.user || response?.data
+
+          if (!cancelled && resolvedUser) {
+            window.location.replace(returnUrl || APP_ROUTES.HOME)
+          }
+        } catch { }
+      } catch { }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [mounted, returnUrl])
+
+  useEffect(() => {
+    try {
+      window.localStorage.removeItem(loginRetryStorageKey)
+      const storedUntil = Number(window.sessionStorage.getItem(loginRetryStorageKey) || 0)
+      if (!storedUntil) {
+        const storedFailedAttempts = getStoredFailedAttempts()
+        if (storedFailedAttempts > 0 && storedFailedAttempts < LOGIN_MAX_ATTEMPTS) {
+          setLoginAttemptsLeft(LOGIN_MAX_ATTEMPTS - storedFailedAttempts)
+        }
+        return
+      }
+      const remaining = Math.max(0, Math.ceil((storedUntil - Date.now()) / 1000))
+      if (remaining > 0) {
+        setLoginRetryAfterSeconds(remaining)
+        setLoginAttemptsLeft(0)
+      } else {
+        clearLoginAttemptState()
+      }
+    } catch { }
+  }, [])
+
+  useEffect(() => {
+    if (loginRetryAfterSeconds <= 0) {
+      try { window.sessionStorage.removeItem(loginRetryStorageKey) } catch { }
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setLoginRetryAfterSeconds((prev) => {
+        if (prev <= 1) {
+          clearLoginAttemptState()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [loginRetryAfterSeconds])
+
+  useEffect(() => {
+    if (!showLoginForm) {
+      clearLoginAttemptState()
+    }
+  }, [showLoginForm])
+
   if (!mounted) {
     return <div className="w-full h-full min-h-screen bg-[#1C1C20] relative overflow-x-hidden"></div>
   }
@@ -1271,7 +1496,7 @@ export default function SignInForm() {
       )}
 
       {/* Form Content - Scrollable inside left column on desktop to keep consistent height when switching Sign In / Sign up */}
-      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-12 xl:pt-24 2xl:pt-40 p-12 min-h-0 lg:overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-12 xl:pt-14 2xl:pt-36 p-12 min-h-0 lg:overflow-y-auto">
         <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
           {/* Constant Shared Header - Static for both Sign In and Sign Up */}
@@ -1364,20 +1589,31 @@ export default function SignInForm() {
                   sx={textFieldSx}
                 />
 
-                <div className="flex justify-end">
-                  <button type="button" onClick={() => setShowForgotPassword(true)} className="text-[#4182CF] text-xs font-normal hover:text-blue-400">
-                    Forgot Password?
-                  </button>
-                </div>
+                  <div className="flex items-center justify-between px-1">
+                    {loginRetryAfterSeconds > 0 ? (
+                      <span className="text-[10px] font-medium text-[#ff7a7d]">
+                        Try again after {Math.floor(loginRetryAfterSeconds / 60).toString().padStart(2, '0')}:{(loginRetryAfterSeconds % 60).toString().padStart(2, '0')}
+                      </span>
+                    ) : loginAttemptsLeft !== null ? (
+                      <span className="text-[10px] font-medium text-[#ff7a7d]">
+                        Attempts left {loginAttemptsLeft} of {LOGIN_MAX_ATTEMPTS}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    <button type="button" onClick={() => setShowForgotPassword(true)} className="text-[#4182CF] text-xs font-normal hover:text-blue-400">
+                      Forgot Password?
+                    </button>
+                  </div>
 
                 <div className="flex justify-center pt-4 md:pt-2 lg:pt-2 xl:pt-2 2xl:pt-4">
                   <button
                     type="submit"
-                    disabled={processing || !email || !password}
-                    className={`w-3/4 md:w-1/4 lg:w-2/4 xl:w-2/4 2xl:w-2/4 py-2 md:py-1.5 lg:py-1.5 xl:py-1 2xl:py-1.5 rounded-xl font-semibold transition-all md:text-sm lg:text-md xl:text-md 2xl:text-lg ${processing || !email || !password
-                      ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
-                      : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
-                      }`}
+                      disabled={processing || !email || !password || loginRetryAfterSeconds > 0}
+                      className={`w-3/4 md:w-1/4 lg:w-2/4 xl:w-2/4 2xl:w-2/4 py-2 md:py-1.5 lg:py-1.5 xl:py-1 2xl:py-1.5 md:rounded-sm lg:rounded-md xl:rounded-lg 2xl:rounded-xl font-semibold transition-all md:text-sm lg:text-md xl:text-md 2xl:text-[16px] ${processing || !email || !password || loginRetryAfterSeconds > 0
+                        ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
+                        : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
+                        }`}
                   >
                     {processing ? "Signing in..." : "Sign In"}
                   </button>

@@ -7,7 +7,7 @@ import toast from "react-hot-toast"
 import TextField from "@mui/material/TextField"
 import InputAdornment from "@mui/material/InputAdornment"
 import IconButton from "@mui/material/IconButton"
-import { confirmPasswordReset } from "firebase/auth"
+import axiosInstance from "@/lib/axiosInstance"
 import { auth } from "@/lib/firebase"
 import RightImageGallery from "@/app/view/signup/components/RightImageGallery"
 import {
@@ -44,6 +44,29 @@ export default function ResetPasswordPage() {
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0
   const isValid = isPasswordValid && passwordsMatch
 
+  const redirectForCurrentAuthState = () => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    let isAuthenticated = false
+
+    try {
+      const hasSessionCookie =
+        document.cookie.includes("app_session=") ||
+        document.cookie.includes("auth_hint=")
+
+      const hasStoredUser = Boolean(localStorage.getItem("user") || localStorage.getItem("authToken"))
+      const hasFirebaseUser = Boolean(auth.currentUser)
+
+      isAuthenticated = hasSessionCookie || hasStoredUser || hasFirebaseUser
+    } catch {
+      isAuthenticated = Boolean(auth.currentUser)
+    }
+
+    router.replace(isAuthenticated ? "/view/HomePage" : "/view/signup?showLogin=true")
+  }
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -52,7 +75,7 @@ export default function ResetPasswordPage() {
     if (!mounted) return
     if (mode !== "resetPassword" || !oobCode) {
       toast.error("Invalid or expired reset link")
-      router.replace("/view/signup?showLogin=true")
+      redirectForCurrentAuthState()
     }
   }, [mounted, mode, oobCode, router])
 
@@ -62,21 +85,18 @@ export default function ResetPasswordPage() {
     if (!oobCode || mode !== "resetPassword") {
       const invalidMsg = "Invalid reset link"
       setErrorMessage(invalidMsg)
-      toast.error(invalidMsg)
       return
     }
 
     if (!isPasswordValid) {
       const invalidMsg = "Password does not meet requirements"
       setErrorMessage(invalidMsg)
-      toast.error(invalidMsg, { duration: 4000 })
       return
     }
 
     if (!passwordsMatch) {
       const invalidMsg = "Passwords do not match"
       setErrorMessage(invalidMsg)
-      toast.error(invalidMsg)
       return
     }
 
@@ -84,7 +104,14 @@ export default function ResetPasswordPage() {
     setErrorMessage("")
 
     try {
-      await confirmPasswordReset(auth, oobCode, newPassword)
+      await axiosInstance.post(
+        "/api/auth/reset-password/complete",
+        { oobCode, newPassword },
+        {
+          withCredentials: true,
+          skipGlobalErrorToast: true,
+        },
+      )
       toast.success("Password reset successfully! You can now sign in.", {
         duration: 4000,
       })
@@ -94,7 +121,9 @@ export default function ResetPasswordPage() {
 
       let nextError = "Failed to reset password. Please try again."
 
-      if (error?.code === "auth/expired-action-code") {
+      if (error?.response?.data?.message) {
+        nextError = error.response.data.message
+      } else if (error?.code === "auth/expired-action-code") {
         nextError = "This password reset link has expired. Please request a new one."
       } else if (error?.code === "auth/invalid-action-code") {
         nextError = "This password reset link is invalid or has already been used."
@@ -105,7 +134,18 @@ export default function ResetPasswordPage() {
       }
 
       setErrorMessage(nextError)
-      toast.error(nextError, { duration: 5000 })
+
+      const normalizedError = nextError.toLowerCase()
+      if (
+        normalizedError.includes("invalid or has already been used") ||
+        normalizedError.includes("invalid reset link") ||
+        normalizedError.includes("expired reset link") ||
+        normalizedError.includes("password reset link has expired")
+      ) {
+        window.setTimeout(() => {
+          redirectForCurrentAuthState()
+        }, 1200)
+      }
     } finally {
       setProcessing(false)
     }
@@ -118,9 +158,9 @@ export default function ResetPasswordPage() {
   return (
     <main className="flex min-h-screen lg:h-screen lg:overflow-hidden bg-[#1C1C20] w-full">
       <div className="w-full lg:w-[50%] min-h-screen lg:h-full lg:min-h-0 lg:overflow-hidden relative z-20 bg-[#1C1C20] flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-40 p-6 md:p-12 min-h-0 lg:overflow-y-auto">
+        <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-12 xl:pt-14 2xl:pt-36 p-12 min-h-0 lg:overflow-y-auto">
           <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
-            <div className="text-center w-full sm:mb-4 lg:mb-4 xl:mb-4 2xl:mb-8">
+            <div className="text-center w-full mb-4 sm:mb-4 lg:mb-4 xl:mb-4 2xl:mb-8">
               <p className="text-white text-md">Welcome to</p>
               <Link
                 href="/view/signup?showLogin=true"
@@ -138,10 +178,10 @@ export default function ResetPasswordPage() {
                 </div>
                 <h1 className="text-2xl font-bold text-white tracking-wide whitespace-nowrap">WildMind AI</h1>
               </Link>
-              <p className="text-white text-[34px] font-bold leading-tight font-satoshi mt-6">
+              <p className="text-white text-[34px] font-bold leading-tight font-satoshi mt-6 sm:mt-6 lg:mt-6 xl:mt-6 2xl:mt-8">
                 Reset Your Password
               </p>
-              <p className="text-[#858585] text-sm mt-3">
+              <p className="text-[#858585] text-sm mt-3 sm:mt-3 lg:mt-3 xl:mt-3 2xl:mt-4">
                 Enter your new password below.
               </p>
             </div>
@@ -196,6 +236,10 @@ export default function ResetPasswordPage() {
                 sx={textFieldSx}
               />
 
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-center text-[12px] text-[#b6bfd1]">
+                Choose a fresh password that is different from your last 3 passwords.
+              </div>
+
               {errorMessage ? (
                 <div className="rounded-xl border border-red-900/70 bg-red-950/40 px-4 py-3 text-center text-[12px] text-red-300">
                   {errorMessage}
@@ -220,15 +264,6 @@ export default function ResetPasswordPage() {
                 >
                   {processing ? "Resetting..." : "Reset Password"}
                 </button>
-              </div>
-
-              <div className="text-center pt-0 -mt-1">
-                <Link
-                  href="/view/signup?showLogin=true"
-                  className="text-[#4182CF] text-sm font-medium hover:text-blue-400"
-                >
-                  Back to Sign In
-                </Link>
               </div>
             </form>
           </div>

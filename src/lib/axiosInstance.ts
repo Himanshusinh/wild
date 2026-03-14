@@ -787,6 +787,14 @@ axiosInstance.interceptors.response.use(
     const status = error?.response?.status;
     const errorData = error?.response?.data;
     const skipGlobalErrorToast = Boolean(original?.skipGlobalErrorToast);
+    const requestUrl = String(original?.url || "");
+    const isAuthCredentialRoute =
+      requestUrl === "/api/auth/login" ||
+      requestUrl === "/api/auth/google" ||
+      requestUrl === "/api/auth/email/start" ||
+      requestUrl === "/api/auth/email/verify" ||
+      requestUrl === "/api/auth/google/username" ||
+      requestUrl === "/api/auth/email/username";
 
     // Check if request was cancelled (user navigated away, component unmounted, etc.)
     const isCancelled =
@@ -850,7 +858,7 @@ axiosInstance.interceptors.response.use(
       }
     } catch {}
 
-    if (status !== 401) {
+    if (status !== 401 || isAuthCredentialRoute) {
       // ── Admin-panel moderation errors (403 with specific code) ──────────
       // Triggered by moderationGuard when user is banned, suspended, or has a blocked IP/device.
       const MODERATION_CODES = [

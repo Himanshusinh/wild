@@ -45,6 +45,22 @@ export const textFieldSx = {
         }
     },
     '& .MuiInputLabel-root.Mui-focused': { color: '#4182CF' },
+    '& .MuiFormHelperText-root': {
+        marginTop: '4px',
+        marginLeft: '4px',
+        marginRight: '4px',
+        marginBottom: '0px',
+        fontSize: '10px',
+        lineHeight: 1.15,
+        minHeight: 0,
+    },
+    '& .MuiFormHelperText-root.Mui-error': {
+        color: '#ff7a7d',
+        fontSize: '10px',
+        lineHeight: 1.1,
+        marginTop: '4px',
+        marginBottom: '0px',
+    },
 };
 
 // SVG Icons
@@ -82,11 +98,13 @@ export const ValidationPopup = ({ requirements, value }: { requirements: any[], 
     return (
         <div className="absolute z-50 animate-in fade-in
             top-[calc(100%+12px)] left-0 w-full slide-in-from-top-1
+            md:top-1/2 md:left-[calc(100%+16px)] md:-translate-y-1/2  md:max-w-36 lg:max-w-32 xl:max-w-36 2xl:max-w-48 md:slide-in-from-left-2
             bg-[#24242A] rounded-xl border border-[#2D3035] p-2 shadow-xl">
 
             {/* Pointer arrow */}
             <div className="absolute bg-[#24242A] border-[#2D3035] w-3 h-3
-                top-0 left-6 -translate-y-1/2 rotate-45 border-l border-t"
+                top-0 left-6 -translate-y-1/2 rotate-45 border-l border-t
+                md:top-1/2 md:-left-1.5 md:-translate-y-1/2 md:-rotate-45"
             />
 
             <div className="space-y-1 relative z-10">
