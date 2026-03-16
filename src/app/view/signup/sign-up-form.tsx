@@ -1496,7 +1496,7 @@ export default function SignInForm() {
       )}
 
       {/* Form Content - Scrollable inside left column on desktop to keep consistent height when switching Sign In / Sign up */}
-      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-12 xl:pt-14 2xl:pt-36 p-12 min-h-0 lg:overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-10 xl:pt-12 2xl:pt-30 p-12 min-h-0 lg:overflow-y-auto">
         <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
           {/* Constant Shared Header - Static for both Sign In and Sign Up */}
