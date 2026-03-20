@@ -534,7 +534,7 @@ GENERATOR HINTS:
       <div ref={scrollRootRef} className=" inset-0  pl-[0] pr-6 pb-6 overflow-y-auto no-scrollbar z-0 relative">
         <div className="py-6 pl-4 ">
             {/* History Header - Fixed during scroll */}
-            <div className="fixed top-0 left-0 right-0 z-30 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
+            <div className="fixed top-0 left-0 right-0 z-50 py-5 ml-18 mr-1  backdrop-blur-lg shadow-xl pl-6 ">
               <h2 className="text-xl font-semibold text-white pl-0 ">Product Generation History</h2>
             </div>
             {/* Spacer to keep content below fixed header */}

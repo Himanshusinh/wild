@@ -18,12 +18,12 @@ export default function AiCompanion() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const justFinishedDraggingRef = useRef(false);
-  
+
   // Drag state for mobile
   const [buttonPosition, setButtonPosition] = useState<{ bottom: number; right: number }>(() => {
     // Load saved position from localStorage on mount
@@ -61,14 +61,7 @@ export default function AiCompanion() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Hide on 404 and error pages
-  const is404 = pathname === '/not-found' || pathname?.includes('/404');
-  const isError = pathname === '/error' || pathname?.includes('/error');
-  
-  if (is404 || isError) {
-    return null;
-  }
-
+  // Move effects and hooks here
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (isOpen) {
@@ -90,11 +83,20 @@ export default function AiCompanion() {
     }
   }, [buttonPosition]);
 
+  // Hide on 404, error, and coming-soon pages
+  const is404 = pathname === '/not-found' || pathname?.includes('/404');
+  const isError = pathname === '/error' || pathname?.includes('/error');
+  const isComingSoon = pathname === '/coming-soon' || pathname?.startsWith('/coming-soon/');
+
+  if (is404 || isError || isComingSoon) {
+    return null;
+  }
+
   // Touch handlers for mobile dragging
   const handleTouchStart = (e: React.TouchEvent) => {
     // Only enable dragging on mobile (screen width < 768px)
     if (!isMobile) return;
-    
+
     const touch = e.touches[0];
     setIsDragging(false);
     setDragStart({
@@ -107,43 +109,43 @@ export default function AiCompanion() {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!dragStart || !isMobile) return;
-    
+
     const touch = e.touches[0];
     const deltaX = touch.clientX - dragStart.x;
     const deltaY = dragStart.y - touch.clientY; // Inverted because bottom increases upward
-    
+
     // If moved more than 10px, consider it dragging
     const movedEnough = Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10;
-    
+
     if (movedEnough) {
       if (!isDragging) {
         setIsDragging(true);
       }
       e.preventDefault(); // Prevent scrolling while dragging
-      
+
       const buttonWidth = 48; // w-12 = 48px
       const buttonHeight = 48;
       const maxRight = window.innerWidth - buttonWidth - 16; // 16px padding
       const maxBottom = window.innerHeight - buttonHeight - 16;
-      
+
       let newRight = dragStart.startRight - deltaX; // Inverted because right decreases as x increases
       let newBottom = dragStart.startBottom + deltaY;
-      
+
       // Constrain to viewport bounds
       newRight = Math.max(16, Math.min(maxRight, newRight));
       newBottom = Math.max(16, Math.min(maxBottom, newBottom));
-      
+
       setButtonPosition({ bottom: newBottom, right: newRight });
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!dragStart || !isMobile) return;
-    
+
     const wasDragging = isDragging;
     setIsDragging(false);
     setDragStart(null);
-    
+
     // If we were dragging, prevent the click event
     if (wasDragging) {
       justFinishedDraggingRef.current = true;
@@ -201,7 +203,7 @@ export default function AiCompanion() {
     } catch (error: any) {
       console.error('[AiCompanion] Error:', error);
       setHasError(true);
-      
+
       const errorMessage: ChatMessage = {
         id: `error_${Date.now()}`,
         role: 'assistant',
@@ -281,9 +283,9 @@ export default function AiCompanion() {
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-2">
-              <img 
-                src="/icons/wildmind_icon_darkbg.svg" 
-                alt="WildMind AI" 
+              <img
+                src="/icons/wildmind_icon_darkbg.svg"
+                alt="WildMind AI"
                 className="w-full h-full object-contain"
               />
             </div>
@@ -318,11 +320,10 @@ export default function AiCompanion() {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] md:max-w-[80%] rounded-2xl px-4 py-2.5 ${
-                  message.role === 'user'
-                    ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
-                    : 'bg-white/5 text-white border border-white/10'
-                }`}
+                className={`max-w-[85%] md:max-w-[80%] rounded-2xl px-4 py-2.5 ${message.role === 'user'
+                  ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
+                  : 'bg-white/5 text-white border border-white/10'
+                  }`}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                   {message.content}

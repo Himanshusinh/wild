@@ -1,4 +1,31 @@
-import { PublicItem } from '@/components/ArtStationPreview'
+export interface PublicItem {
+  id: string
+  prompt?: string
+  generationType?: string
+  model?: string
+  aspectRatio?: string
+  frameSize?: string
+  aspect_ratio?: string
+  createdAt?: string
+  updatedAt?: string
+  isPublic?: boolean
+  isDeleted?: boolean
+  createdBy?: any
+  aestheticScore?: number
+  images: Array<{
+    id: string
+    url?: string
+    originalUrl?: string
+    webpUrl?: string
+    avifUrl?: string
+    thumbnailUrl?: string
+    storagePath?: string
+    [key: string]: any
+  }>
+  videos?: any[]
+  audios?: any[]
+  [key: string]: any
+}
 
 // Cache configuration
 export const REVALIDATE_SECONDS = 10 // Reduced to 10s for debugging (was 86400)

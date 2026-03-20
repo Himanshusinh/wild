@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { auth } from './firebase'
 import { showFalErrorToast } from './falToast'
-import { clearAuthData } from './authUtils'
 
 // Try to extract an ID token from localStorage in a tolerant way
 const getStoredIdToken = (): string | null => {
@@ -82,13 +81,13 @@ axiosInstance.interceptors.request.use(async (config) => {
       if (isFormData) {
         const hdrs: any = anyConfig.headers || {};
         // AxiosHeaders supports .delete(); plain objects use delete.
-        try { if (typeof hdrs.delete === 'function') hdrs.delete('Content-Type'); } catch {}
-        try { if (typeof hdrs.delete === 'function') hdrs.delete('content-type'); } catch {}
-        try { delete hdrs['Content-Type']; } catch {}
-        try { delete hdrs['content-type']; } catch {}
+        try { if (typeof hdrs.delete === 'function') hdrs.delete('Content-Type'); } catch { }
+        try { if (typeof hdrs.delete === 'function') hdrs.delete('content-type'); } catch { }
+        try { delete hdrs['Content-Type']; } catch { }
+        try { delete hdrs['content-type']; } catch { }
         anyConfig.headers = hdrs;
       }
-    } catch {}
+    } catch { }
 
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === 'string' ? config.url : ''
@@ -434,11 +433,21 @@ export async function ensureSessionReady(maxWaitMs: number = 800): Promise<boole
 }
 
 // Response interceptor: on 401, try to refresh session cookie once
+// CIRCUIT BREAKER: Prevent infinite 401 loops
 let isRefreshing = false
 let pendingRequests: Array<() => void> = []
 let lastSessionCreateAt = 0
 const SESSION_CREATE_COOLDOWN_MS = 2 * 60 * 1000 // 2 minutes
+
+// Circuit breaker state for 401 errors
+let authFailureCount = 0
+let lastAuthFailureTime = 0
+const MAX_AUTH_RETRIES = 3 // Maximum consecutive 401 failures before giving up
+const AUTH_FAILURE_RESET_WINDOW_MS = 60 * 1000 // Reset failure count after 1 minute of no failures
+const AUTH_RETRY_BACKOFF_MS = [500, 1000, 2000] // Exponential backoff: 500ms, 1s, 2s
+
 const getNow = () => Date.now()
+
 const canCreateSession = (): boolean => {
   try {
     const fromStorage = Number(sessionStorage.getItem('session_last_create') || '0')
@@ -446,9 +455,44 @@ const canCreateSession = (): boolean => {
     return getNow() - last > SESSION_CREATE_COOLDOWN_MS
   } catch { return getNow() - lastSessionCreateAt > SESSION_CREATE_COOLDOWN_MS }
 }
+
 const markSessionCreated = () => {
   lastSessionCreateAt = getNow()
   try { sessionStorage.setItem('session_last_create', String(lastSessionCreateAt)) } catch { }
+}
+
+// Track auth failures to prevent infinite loops
+const recordAuthFailure = () => {
+  const now = getNow()
+  // Reset counter if last failure was more than 1 minute ago
+  if (now - lastAuthFailureTime > AUTH_FAILURE_RESET_WINDOW_MS) {
+    authFailureCount = 0
+  }
+  authFailureCount++
+  lastAuthFailureTime = now
+  console.warn(`[API][circuit-breaker] Auth failure ${authFailureCount}/${MAX_AUTH_RETRIES}`, {
+    timestamp: new Date(now).toISOString()
+  })
+}
+
+// Check if we've exceeded max retries
+const hasExceededMaxRetries = (): boolean => {
+  return authFailureCount >= MAX_AUTH_RETRIES
+}
+
+// Reset auth failure counter (call on successful auth)
+const resetAuthFailures = () => {
+  if (authFailureCount > 0) {
+    console.log('[API][circuit-breaker] Resetting failure count after successful auth')
+  }
+  authFailureCount = 0
+  lastAuthFailureTime = 0
+}
+
+// Get backoff delay based on failure count
+const getAuthRetryDelay = (): number => {
+  const index = Math.min(authFailureCount - 1, AUTH_RETRY_BACKOFF_MS.length - 1)
+  return AUTH_RETRY_BACKOFF_MS[index] || 0
 }
 
 // Session refresh state management
@@ -612,6 +656,9 @@ axiosInstance.interceptors.response.use(
         console.log('[API][logout][response]', { status: response?.status, url: response?.config?.url })
       }
 
+      // CIRCUIT BREAKER: Reset failure count on successful response
+      resetAuthFailures()
+
       // Check for session refresh header (automatic refresh when session expires within 3 days)
       // Axios normalizes headers to lowercase, but check both cases for safety
       const refreshHeader = response.headers['x-session-refresh-needed'] ||
@@ -680,11 +727,61 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Avoid infinite loops
+    // CIRCUIT BREAKER: Check if we've exceeded max retries
+    recordAuthFailure()
+    if (hasExceededMaxRetries()) {
+      console.error('[API][circuit-breaker] Max auth retries exceeded - logging out user', {
+        failureCount: authFailureCount,
+        maxRetries: MAX_AUTH_RETRIES,
+        url: original?.url
+      })
+
+      // Clear auth data and redirect to login
+      try {
+        // IMPORTANT: avoid importing auth utils (and thus the Redux store) at module init time,
+        // which can create circular dependencies during Next.js prerender/export.
+        if (typeof window !== 'undefined') {
+          try {
+            const mod = await import('./authUtils')
+            mod.clearAuthData()
+          } catch { }
+        }
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          // Don't redirect if already on public pages
+          const isPublic = currentPath === '/' ||
+            currentPath.startsWith('/view/Landingpage') ||
+            currentPath.startsWith('/view/signup') ||
+            currentPath.startsWith('/view/signin') ||
+            currentPath.startsWith('/blog') ||
+            currentPath.startsWith('/view/pricing') ||
+            currentPath.startsWith('/legal/')
+
+          if (!isPublic) {
+            console.warn('[API][circuit-breaker] Redirecting to signup after max retries')
+            window.location.href = `/view/signup?next=${encodeURIComponent(currentPath)}&toast=AUTH_LOOP_DETECTED`
+          }
+        }
+      } catch (cleanupErr) {
+        console.error('[API][circuit-breaker] Error during cleanup:', cleanupErr)
+      }
+
+      return Promise.reject(new Error('Maximum authentication retries exceeded. Please log in again.'))
+    }
+
+    // Avoid infinite loops - don't retry if already retried
     if (original.__isRetry) {
+      console.warn('[API][401] Request already retried once, not retrying again')
       return Promise.reject(error)
     }
     original.__isRetry = true
+
+    // Apply exponential backoff before retry
+    const backoffDelay = getAuthRetryDelay()
+    if (backoffDelay > 0) {
+      console.log(`[API][401] Applying backoff delay: ${backoffDelay}ms before retry ${authFailureCount}/${MAX_AUTH_RETRIES}`)
+      await new Promise(resolve => setTimeout(resolve, backoffDelay))
+    }
 
     // Queue requests while a refresh is in progress
     if (isRefreshing) {

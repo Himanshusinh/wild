@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering to avoid SSG/SSR issues with client-side dependencies
+export const dynamic = 'force-dynamic';
+
 import React, { useEffect } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';

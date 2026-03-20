@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
 import { getMeCached } from '@/lib/me';
-import { RootState } from '@/store';
+import type { RootState } from '@/store';
 
 // Types
 export interface UserCredits {
