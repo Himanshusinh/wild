@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Poppins, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Poppins, Inter, Bebas_Neue } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
@@ -13,7 +13,6 @@ import { Toaster as SonnerToaster } from 'sonner'
 import ToastMount from './toast-mount'
 import ConsoleSilencer from "@/components/ConsoleSilencer";
 import ChromeMount from './chrome-mount'
-import AiCompanion from "@/components/AiCompanion";
 import DownloadStatusIndicator from "@/components/DownloadStatusIndicator";
 import ModalsContainer from "@/components/modals/ModalsContainer";
 
@@ -42,6 +41,13 @@ const poppins = Poppins({
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+const bebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  variable: "--font-bebas-neue",
+  weight: "400",
   display: "swap",
 });
 
@@ -140,7 +146,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} ${inter.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} ${inter.variable} ${bebasNeue.variable}`}>
       <head>
         {/* Preconnect to required origins - Limit to 4 most critical for performance */}
         {/* Most important: Firebase Storage (LCP images/videos) */}
@@ -197,7 +203,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} ${bebasNeue.variable} antialiased`}
       >
         {/* Google Tag Manager (noscript) */}
         <noscript>
@@ -242,7 +248,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
           <ToastMount />
           <DownloadStatusIndicator />
-          <AiCompanion />
           <ModalsContainer />
         </ReduxProvider>
       </body>

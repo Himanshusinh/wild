@@ -6,7 +6,8 @@ import Link from "next/link"
 import axios from "axios"
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
-import { useUsernameAvailability } from "./useUsernameAvailability"
+import { useUsernameAvailability, USERNAME_ALLOWED_CHAR_REGEX, USERNAME_REGEX_CONST, USERNAME_RULE_MESSAGE } from "./useUsernameAvailability"
+import { isValidSignupEmail } from "./emailValidation"
 import { getImageUrl } from "@/routes/imageroute"
 import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
@@ -25,7 +26,7 @@ import { ForgotPasswordModal } from "./components/ForgotPasswordModal"
 
 export function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'; result: any; error: string | null; onSuggestion: (v: string) => void }) {
   if (status === 'idle') return null;
-  if (status === 'invalid') return <div className="p-2 mt-0 mb-1 bg-amber-900/10 border border-amber-800 rounded-lg"><p className="text-amber-300 text-[10px]">Use 3-30 chars: a-z 0-9 _ . -</p></div>;
+  if (status === 'invalid') return <div className="p-2 mt-0 mb-1 bg-amber-900/10 border border-amber-800 rounded-lg"><p className="text-amber-300 text-[10px]">{USERNAME_RULE_MESSAGE}</p></div>;
   if (status === 'checking') return <div className="p-2 mt-0 mb-1 text-gray-400 text-[10px] animate-pulse">Checking availability...</div>;
   if (status === 'error') return <div className="p-2 mt-0 mb-1 bg-red-900/10 border border-red-800 rounded-lg"><p className="text-red-300 text-[10px]">{error || 'Something went wrong'}</p></div>;
   if (status === 'available') return null;
@@ -45,6 +46,8 @@ export function UsernameAvailabilityFeedback({ status, result, error, onSuggesti
   }
   return null;
 }
+
+const OTP_RESEND_COOLDOWN_SECONDS = 120
 
 export default function SignInForm() {
   const searchParams = useSearchParams()
@@ -112,14 +115,15 @@ export default function SignInForm() {
   // Check for capital letters in username
   const hasCapitalLetters = /[A-Z]/.test(username)
   const normalizedUsernameForPasswordCheck = username.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const PASSWORD_ALLOWED_SPECIAL_CHAR_REGEX = /^[A-Za-z0-9!@#$%]*$/
+  const PASSWORD_REQUIRED_SPECIAL_CHAR_REGEX = /[!@#$%]/
   const isPasswordContainingUsername =
     normalizedUsernameForPasswordCheck.length >= 3 &&
     password.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedUsernameForPasswordCheck)
 
   // Email validation function
   const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email.trim())
+    return isValidSignupEmail(email)
   }
 
   // Live validation: Check passwords match and email is valid
@@ -150,10 +154,16 @@ export default function SignInForm() {
   // Check if form is valid (passwords match, email valid, password length >= 6, valid username)
   // Validation requirement tests
   const usernameRequirements = [
-    { label: "Username must be 6-14 character", test: (v: string) => v.length >= 6 && v.length <= 14, required: true },
-    { label: "Can use Digit", test: (v: string) => /[0-9]/.test(v), required: false },
-    { label: "Can use Alphabet", test: (v: string) => /[a-zA-Z]/.test(v), required: false },
-    { label: "Can use Special Character (only _ and .)", test: (v: string) => /[._]/.test(v), required: false },
+    { label: "Username must be 6-14 characters", test: (v: string) => v.length >= 6 && v.length <= 14, required: true },
+    { label: "Can use digits (0-9)", test: (v: string) => /[0-9]/.test(v), required: false },
+    { label: "Can use alphabets (a-z)", test: (v: string) => /[a-zA-Z]/.test(v), required: false },
+    {
+      label: "Can use special characters (only _ and -)",
+      test: (v: string) => /[_-]/.test(v),
+      invalidTest: (v: string) => /[^A-Za-z0-9_-]/.test(v),
+      invalidLabel: "Only _ and - are allowed as special characters",
+      required: false
+    },
   ]
 
   const passwordRequirements = [
@@ -161,7 +171,13 @@ export default function SignInForm() {
     { label: "At least 1 uppercase letter (A-Z)", test: (v: string) => /[A-Z]/.test(v) },
     { label: "At least 1 lowercase letter (a-z)", test: (v: string) => /[a-z]/.test(v) },
     { label: "At least 1 number (0-9)", test: (v: string) => /[0-9]/.test(v) },
-    { label: "At least 1 special character", test: (v: string) => /[^A-Za-z0-9]/.test(v) },
+    { label: "At least 1 special character (! @ # $ %)", test: (v: string) => PASSWORD_REQUIRED_SPECIAL_CHAR_REGEX.test(v) },
+    {
+      label: "Only ! @ # $ % are allowed as special characters",
+      test: (v: string) => PASSWORD_REQUIRED_SPECIAL_CHAR_REGEX.test(v) && PASSWORD_ALLOWED_SPECIAL_CHAR_REGEX.test(v),
+      invalidTest: (v: string) => /[^A-Za-z0-9!@#$%]/.test(v),
+      invalidLabel: "Only ! @ # $ % are allowed as special characters",
+    },
     {
       label: "Password must not contain your username",
       hidden: true,
@@ -177,7 +193,7 @@ export default function SignInForm() {
 
   const isUsernameValid = usernameRequirements
     .filter(req => req.required !== false)
-    .every(req => req.test(username)) && /^[a-zA-Z0-9_.]*$/.test(username)
+    .every(req => req.test(username)) && USERNAME_ALLOWED_CHAR_REGEX.test(username)
   const isPasswordValid = passwordRequirements.every(req => req.test(password))
 
   const isFormValid =
@@ -211,7 +227,7 @@ export default function SignInForm() {
     if (!finalUrl.includes('toast=')) {
       finalUrl += (finalUrl.includes('?') ? '&' : '?') + `toast=${toastKey}`
     }
-    window.location.href = finalUrl
+    window.location.replace(finalUrl)
   }
 
   const startLoginRetryTimer = (retryAfterSeconds: number) => {
@@ -296,12 +312,14 @@ export default function SignInForm() {
       return
     }
 
-    if (!email.trim() || !password) {
+    const identifier = email.trim()
+
+    if (!identifier || !password) {
       setError("Please enter both email and password")
       return
     }
 
-    if (email.includes('@') && !isValidEmail(email.trim())) {
+    if (identifier.includes('@') && !isValidEmail(identifier)) {
       const errorMsg = "Enter valid email"
       setError(errorMsg)
       toast.error(errorMsg, { duration: 4000 })
@@ -326,7 +344,7 @@ export default function SignInForm() {
       // Step 1: Send credentials to backend
       console.log("🌐 Step 1: Sending credentials to backend...")
       const response = await axiosInstance.post("/api/auth/login", {
-        email: email.trim(),
+        identifier,
         password: password,
         captchaToken: captchaToken
       }, {
@@ -442,7 +460,7 @@ export default function SignInForm() {
 
         console.log("🏠 Redirecting to:", finalRedirectUrl)
         console.log("🔗 Return URL was:", returnUrl)
-        window.location.href = finalRedirectUrl
+        window.location.replace(finalRedirectUrl)
 
       } else {
         console.error("❌ Login failed:", response.data?.message)
@@ -633,7 +651,7 @@ export default function SignInForm() {
       if (response.data && response.data.data && response.data.data.sent) {
         console.log("✅ OTP sent successfully!")
         setOtpSent(true)
-        setResendCooldown(60) // Start 60s timer
+        setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS) // Start 2 minute timer
         toast.success(`OTP sent to ${email.trim()}`)
         setError("")
         setSuccess(`OTP sent to ${email.trim()}`)
@@ -893,7 +911,7 @@ export default function SignInForm() {
         const successMsg = `OTP resent to ${email.trim()}`
         setError("")
         setSuccess(successMsg)
-        setResendCooldown(60)
+        setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS)
         toast.success(successMsg, { duration: 3000 })
       } else {
         console.log("❌ OTP not resent - checking response structure:")
@@ -959,9 +977,9 @@ export default function SignInForm() {
       console.log("📥 Forgot password response:", response.data)
 
       if (response.data?.responseStatus === 'success') {
-        // Success - email sent — start 60-second resend cooldown
+        // Success - email sent — start resend cooldown
         setForgotPasswordSent(true)
-        setResendCooldown(60)
+        setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS)
         toast.success(response.data?.message || "Password reset link has been sent to your email.", { duration: 5000 })
       } else {
         const reason = response.data?.data?.reason
@@ -1095,7 +1113,7 @@ export default function SignInForm() {
           console.log("🔗 Return URL was:", returnUrl)
 
           setTimeout(() => {
-            window.location.href = finalRedirectUrl
+            window.location.replace(finalRedirectUrl)
           }, 2000)
         }
       }
@@ -1144,9 +1162,9 @@ export default function SignInForm() {
     }
 
     // Validate username format
-    const usernameRegex = /^[a-z0-9_.-]{3,30}$/
+    const usernameRegex = USERNAME_REGEX_CONST
     if (!usernameRegex.test(username.trim())) {
-      const errorMsg = "Username must be 3-30 characters, lowercase letters, numbers, dots, underscores, and hyphens only"
+      const errorMsg = USERNAME_RULE_MESSAGE
       setError(errorMsg)
       toast.error(errorMsg, { duration: 4000 })
       return
@@ -1496,7 +1514,7 @@ export default function SignInForm() {
       )}
 
       {/* Form Content - Scrollable inside left column on desktop to keep consistent height when switching Sign In / Sign up */}
-      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-10 xl:pt-12 2xl:pt-30 p-12 min-h-0 lg:overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-16 xl:pt-12 2xl:pt-30 p-12 min-h-0 lg:overflow-y-auto">
         <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
           {/* Constant Shared Header - Static for both Sign In and Sign Up */}

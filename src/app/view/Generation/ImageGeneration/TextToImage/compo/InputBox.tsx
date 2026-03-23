@@ -5709,7 +5709,7 @@ const InputBox = () => {
       >
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-black backdrop-blur-lg shadow-xl ">
+          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
             <div className="flex items-center justify-between md:mb-2 mb-0 pl-10 md:pl-0 md:pt-2">
               <div className="flex items-center gap-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>

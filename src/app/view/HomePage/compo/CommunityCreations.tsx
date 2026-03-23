@@ -152,12 +152,12 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className="text-xl md:text-2xl font-medium text-white md:mb-5 mb-1 md:mt-4">
+      <h2 className=" text-xl md:text-2xl font-medium text-white md:mb-5 mb-1 md:mt-4 px-4 sm:px-6 lg:px-8" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
         Community Creations
       </h2>
 
       {/* Masonry Grid */}
-      <div className="relative min-h-[300px]">
+      <div className="relative min-h-[300px] px-4 sm:px-6 lg:px-8 pb-4">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center py-8">

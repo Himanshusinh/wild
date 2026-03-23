@@ -40,13 +40,16 @@ const FooterNew = dynamic(() => import('../core/FooterNew'), {
 
 import type { WorkflowCard } from './compo/WorkflowCarousel'
 import { ViewType, GenerationType } from '@/types/generation';
-import PromotionalBanner2 from './compo/PromotionalBanner2';
+import MasonrySection from './compo/MasonrySection';
 import AIToolsSection from './compo/AIToolsSection';
 
 import CompactFeatureStrip from './CompactFeatureStrip';
 import AllFeatures from './compo/AllFeatures';
-import AllModels from './compo/AllModels';
+import VideoModelCards from './compo/VideoModelCards';
+import InfiniteCanvas from './compo/InfiniteCanvas';
 import WildMindAIAPPS from './compo/WildMindAIAPPS';
+import CreatorsSection from './compo/CreatorsSection';
+import CreationCTASection from './compo/CreationCTASection';
 
 
 
@@ -205,36 +208,41 @@ const HomePage: React.FC = () => {
 
 
     return (
-        <div className="min-h-screen bg-[#07070B]">
+        <div className="min-h-screen bg-[#0E0E12]">
             <div className="flex  md:ml-[68px] pt-2">
                 <div className="flex-1 min-w-0">
                     {/* <Header /> */}
+                    {/* <Header /> */}
 
                     {/* Promotional Banner */}
-                    <PromotionalBanner2 />
+                    <MasonrySection />
 
                     <AllFeatures />
-                    <AllModels />
+                    <VideoModelCards />
 
 
-                    <Recentcreation />
+                    {/* <Recentcreation /> */}
+                    <InfiniteCanvas />
                     <WildMindAIAPPS />
+                    <CreatorsSection />
+                    <CreationCTASection />
+                    <CommunityCreations />
 
                     {/* <CompactFeatureStrip /> */}
 
                     {/* <AIToolsSection /> */}
-                    <main className="bg-[#07070B] text-white  md:px-8 ">
+                    {/* <main className="bg-[#07070B] text-white  md:px-8 ">
                         <div className="w-full px-4 md:pl-2">
                             <CommunityCreations />
                         </div>
-                    </main>
-                    <div className='md:px-2 px-2'>
+                    </main> */}
+                    {/* <div className='md:px-2 px-2'>
                         <TopCreators />
-                    </div>
+                    </div> */}
 
 
 
-                    <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
+                    {/* <main className="bg-[#07070B] text-white px-0 md:px-8 md:py-6 md:mb-32 mb-6 md:mt-32 mt-16">
                         <div className="w-full px-4 md:px-8 lg:px-12">
                             <div className="w-full">
                                 <WobbleCard
@@ -283,7 +291,7 @@ const HomePage: React.FC = () => {
                                 </WobbleCard>
                             </div>
                         </div>
-                    </main>
+                    </main> */}
 
                     <FooterNew />
                 </div>
