@@ -5758,7 +5758,7 @@ const InputBox = () => {
                 <button
                   onClick={() => {
                     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    const url = isLocal ? 'http://localhost:3005' : 'https://editor-image.wildmindai.com/';
+                    const url = isLocal ? 'http://localhost:3002' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
                   }}
                   className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all bg-white/10 text-white/100"
