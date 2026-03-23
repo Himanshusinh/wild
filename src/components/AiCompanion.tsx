@@ -11,6 +11,32 @@ const WELCOME_MESSAGE: ChatMessage = {
   timestamp: Date.now(),
 };
 
+/** Renders assistant message with **bold** and newlines for clean, readable UI. */
+function MessageContent({ content, role }: { content: string; role: 'user' | 'assistant' }) {
+  if (role === 'user') {
+    return <span className="whitespace-pre-wrap break-words">{content}</span>;
+  }
+  const lines = content.split(/\n/);
+  const renderInline = (text: string) =>
+    text.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
+      seg.startsWith('**') && seg.endsWith('**') ? (
+        <strong key={j} className="font-semibold text-white">{seg.slice(2, -2)}</strong>
+      ) : (
+        seg
+      )
+    );
+  return (
+    <div className="leading-[1.55]">
+      {lines.map((line, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <br />}
+          {renderInline(line)}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 export default function AiCompanion() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -23,6 +49,16 @@ export default function AiCompanion() {
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const justFinishedDraggingRef = useRef(false);
+  const companionSessionIdRef = useRef<string | null>(null);
+  const getCompanionSessionId = () => {
+    if (!companionSessionIdRef.current) {
+      companionSessionIdRef.current =
+        (typeof crypto !== 'undefined' && typeof (crypto as { randomUUID?: () => string }).randomUUID === 'function'
+          ? (crypto as { randomUUID: () => string }).randomUUID()
+          : `comp_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`);
+    }
+    return companionSessionIdRef.current;
+  };
   
   // Drag state for mobile
   const [buttonPosition, setButtonPosition] = useState<{ bottom: number; right: number }>(() => {
@@ -187,7 +223,7 @@ export default function AiCompanion() {
 
     try {
       // Send to API
-      const response = await sendCompanionMessage(trimmedMessage, messages);
+      const response = await sendCompanionMessage(trimmedMessage, messages, getCompanionSessionId());
 
       if (response.responseStatus === 'success' && response.data) {
         const assistantMessage: ChatMessage = {
@@ -324,15 +360,13 @@ export default function AiCompanion() {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] md:max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                className={`max-w-[85%] md:max-w-[80%] rounded-2xl px-4 py-3 text-[15px] ${
                   message.role === 'user'
                     ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
                     : 'bg-white/5 text-white border border-white/10'
                 }`}
               >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                  {message.content}
-                </p>
+                <MessageContent content={message.content} role={message.role} />
               </div>
             </div>
           ))}

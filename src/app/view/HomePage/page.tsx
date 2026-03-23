@@ -210,7 +210,7 @@ const HomePage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                     {/* <Header /> */}
 
-                    {/* Promotional Banner */}
+                    {/* Promotional Banner — approval flow (conversation → plan preview → approve) lives inside same UI */}
                     <PromotionalBanner2 />
 
                     <AllFeatures />

@@ -36,6 +36,15 @@
   animation: slide-in-from-right 0.3s ease-out;
 }
 
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
 body {
   background-color: #000000;
   color: #ffffff;

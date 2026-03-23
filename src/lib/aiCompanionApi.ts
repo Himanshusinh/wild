@@ -122,12 +122,19 @@ function isSensitiveQuestion(message: string): boolean {
   return score >= 2;
 }
 
+/** When true, companion uses OpenClaw (POST /api/assistant/chat) with fallback to /api/chat/companion */
+const useOpenClawCompanion =
+  typeof process !== 'undefined' &&
+  (process.env.NEXT_PUBLIC_USE_OPENCLAW_COMPANION === '1' || process.env.NEXT_PUBLIC_USE_OPENCLAW_COMPANION === 'true');
+
 /**
- * Send a message to the AI companion
+ * Send a message to the AI companion.
+ * Optional companionSessionId: when using OpenClaw, pass a stable session id for conversation context.
  */
 export async function sendCompanionMessage(
   message: string,
-  conversationHistory: ChatMessage[] = []
+  conversationHistory: ChatMessage[] = [],
+  companionSessionId?: string
 ): Promise<ChatResponse> {
   try {
     if (isPricingQuestion(message)) {
@@ -154,21 +161,36 @@ export async function sendCompanionMessage(
       };
     }
 
-    // Get backend URL
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-    
+    const backendUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+
+    if (useOpenClawCompanion && companionSessionId) {
+      try {
+        const ocRes = await fetch(`${backendUrl}/api/assistant/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ message: message.trim(), sessionId: companionSessionId }),
+        });
+        const ocData = (await ocRes.json()) as { ok?: boolean; content?: string };
+        if (ocRes.ok && ocData.ok === true && typeof ocData.content === 'string' && ocData.content.length > 0) {
+          return {
+            responseStatus: 'success',
+            message: 'OK',
+            data: { response: ocData.content, messageId: `openclaw-${Date.now()}` },
+          };
+        }
+      } catch (_) {
+        // Fall through to companion fallback
+      }
+    }
+
     const response = await fetch(`${backendUrl}/api/chat/companion`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include', // Include cookies for auth
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         message,
-        conversationHistory: conversationHistory.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
+        conversationHistory: conversationHistory.map((msg) => ({ role: msg.role, content: msg.content })),
       }),
     });
 

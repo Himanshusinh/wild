@@ -1,17 +1,23 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveAutoResumeIntent } from '@/lib/autoResume';
 import {
   Image as ImageIcon, Video, Bot, ArrowRight, Shuffle,
   Plus, Settings, Send, X, Sparkles, User, Loader2,
+  CheckCircle2, Circle, AlertCircle, Zap, BadgeDollarSign, Award, Gauge,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import UploadModal from '../../Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import { useDispatch } from 'react-redux';
 import { deductCreditsOptimistic, rollbackCreditsOptimistic } from '@/store/slices/creditsSlice';
+import { getApiClient } from '@/lib/axiosInstance';
+import { useAssistantStream } from '@/hooks/useAssistantStream';
+import { AgentStateDisplay, type ToolPill } from '@/components/assistant/AgentStateDisplay';
+import { PlanApprovalCard } from '@/components/assistant/PlanApprovalCard';
+import AssistantMessageContent from '@/components/assistant/AssistantMessageContent';
 
 /* ─────────────────────────────────────────────
    All models — sourced from AllModels.tsx + extras
@@ -47,71 +53,44 @@ const ACTION_CARDS = [
 type GenerationAction = { type: 'image' | 'video'; prompt: string } | null;
 type ChatMessage = { role: 'user' | 'assistant'; content: string; id: string; action?: GenerationAction };
 type ModelFilter = 'all' | 'image' | 'video';
+type Priority = 'quality' | 'balanced' | 'speed' | 'economy';
+type JobStatus = 'idle' | 'queued' | 'planning' | 'running' | 'completed' | 'failed';
 
-/* ─── Intent detection ─── */
+interface OrchestratorStep {
+  stepId: string;
+  label: string;
+  service: string;
+  status?: 'pending' | 'running' | 'completed' | 'failed';
+  creditCost?: number;
+  result?: { url?: string };
+}
+
+interface OrchestratorJob {
+  jobId: string;
+  status: JobStatus;
+  plan?: { taskType: string; summary: string; steps: OrchestratorStep[]; totalEstimatedCredits: number };
+  steps?: OrchestratorStep[];
+  completedSteps?: number;
+  totalSteps?: number;
+  error?: string;
+  result?: { assets?: Array<{ url: string; type: string }> };
+}
+
+const PRIORITY_OPTIONS: Array<{ id: Priority; label: string; icon: React.ReactNode; desc: string }> = [
+  { id: 'quality', label: 'Quality', icon: <Award className="w-3.5 h-3.5" />, desc: 'Best output, higher cost' },
+  { id: 'balanced', label: 'Balanced', icon: <Gauge className="w-3.5 h-3.5" />, desc: 'Best of both worlds' },
+  { id: 'speed', label: 'Speed', icon: <Zap className="w-3.5 h-3.5" />, desc: 'Fastest generation' },
+  { id: 'economy', label: 'Economy', icon: <BadgeDollarSign className="w-3.5 h-3.5" />, desc: 'Lowest credit cost' },
+];
+
+/* ─── Intent detection (legacy) ───
+   NOTE: The assist mode flow is now fully OpenClaw + /api/assistant/stream.
+   These helpers are currently unused but kept for potential future "generate →" UX.
+*/
 const IMAGE_KEYWORDS = /\b(generate|create|make|draw)\b\s+(?:a\s+)?(?:[\w-]+\s+){0,2}(image|photo|picture|illustration|artwork|art)\b|\b(image|photo|picture)\s+of\b/i;
 const VIDEO_KEYWORDS = /\b(generate|create|make|animate)\b\s+(?:a\s+)?(?:[\w-]+\s+){0,2}(video|animation|clip|motion|short)\b|\bvideo\s+of\b/i;
 const GENERIC_GEN_KEYWORDS = /^\s*(generate|create|make|draw)\b/i;
-// Patterns that indicate the AI has supplied a usable prompt in its reply
 const AI_PROMPT_REPLY = /(?:prompt|suggestion|use this|try this)[:\s\n]+/i;
-
-function detectIntent(userMsg: string): 'image' | 'video' | null {
-  if (VIDEO_KEYWORDS.test(userMsg)) return 'video';
-  if (IMAGE_KEYWORDS.test(userMsg)) return 'image';
-  if (GENERIC_GEN_KEYWORDS.test(userMsg)) return 'image';
-  return null;
-}
-
-/**
- * Also check the AI reply — if it contains a quoted prompt, list, or "Prompt: ..."
- * the AI has clearly suggested something generatable.
- */
-function detectIntentFromReply(aiReply: string, userMsgIntent: 'image' | 'video' | null): 'image' | 'video' | null {
-  // 1. If user already expressed intent (e.g. "make a video"), stick with that
-  if (userMsgIntent) return userMsgIntent;
-
-  // 2. Only show buttons if the AI explicitly provides a prompt to use
-  const hasQuotedText = /["\u201c\u201d][^"\u201c\u201d]{15,}["\u201c\u201d]/.test(aiReply);
-  const hasListAndPromptMention = /\b(?:prompt|suggestion|idea)s?\b/i.test(aiReply) && /(?:^|\n|\:\s*)\s*[-*]\s+/.test(aiReply);
-  const hasPromptColon = /\b(?:prompt|use this|try this|suggestion)\b\s*:/i.test(aiReply);
-
-  // We only trigger buttons if a specific prompt is detected in the AI's reply
-  if (hasQuotedText || hasListAndPromptMention || hasPromptColon) {
-    // If prompt detected, check for video context in the AI reply
-    if (/\b(video|animate|animation|cinematic)\b/i.test(aiReply)) return 'video';
-    return 'image';
-  }
-
-  return null;
-}
-
-/** Pull the best usable prompt from the AI reply */
-function extractPrompt(aiReply: string, userMsg: string): string {
-  // 1. Quoted text (smart quotes or regular)
-  const quoted = aiReply.match(/(?:"|“|”)([^"“”]{15,})(?:"|“|”)/);
-  if (quoted) return quoted[1].trim();
-
-  // 2. Extracts first bullet point, handles newlines or inline bullets
-  const bulletMatch = aiReply.match(/(?:^|\n|\:\s*)\s*[-*]\s+([^\n]{15,})/);
-  if (bulletMatch) {
-    let extracted = bulletMatch[1].trim();
-    const nextBulletIdx = extracted.search(/\s+[-*]\s+/);
-    if (nextBulletIdx !== -1) {
-      extracted = extracted.slice(0, nextBulletIdx);
-    }
-    return extracted.replace(/["'.,!?]$/, '');
-  }
-
-  // 3. Explicit "Prompt:" or "Try this:" followed by text
-  const explicitPrompt = aiReply.match(/\b(?:prompt|use this|try this|suggestion)\s*:\s*["'\n]*([^\n]{15,})/i);
-  if (explicitPrompt) return explicitPrompt[1].replace(/["'.,!?]$/, '').trim();
-
-  // 4. Any text following a colon
-  const colonMatch = aiReply.match(/:\s*\n*([A-Z][^\n]{15,})/);
-  if (colonMatch) return colonMatch[1].replace(/["'.,!?]$/, '').trim();
-
-  return userMsg.trim();
-}
 
 /* Stagger animations */
 const staggerList = {
@@ -124,6 +103,29 @@ const staggerItem = {
   visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, damping: 22, stiffness: 270 } },
   exit: { opacity: 0, y: -4, transition: { duration: 0.14 } },
 };
+
+type FlowPhase = 'chat' | 'planning' | 'plan_review' | 'running' | 'done';
+
+interface PlanStepForReview {
+  stepId: string;
+  label: string;
+  service: string;
+  creditCost?: number;
+  selectedModel?: { modelId: string; label: string; provider: string };
+  alternatives?: { modelId: string; label: string; creditCost: number }[];
+  params?: Record<string, unknown>;
+}
+
+interface PlanForReview {
+  taskType: string;
+  summary: string;
+  style?: string;
+  totalEstimatedCredits: number;
+  totalEstimatedDurationSeconds?: number;
+  steps: PlanStepForReview[];
+  originalPrompt?: string;
+  enhancedPrompt?: string;
+}
 
 export default function PromotionalBanner2() {
   const router = useRouter();
@@ -139,6 +141,105 @@ export default function PromotionalBanner2() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
+  // ── Orchestrator state ──
+  const [priority, setPriority] = useState<Priority>('balanced');
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const [job, setJob] = useState<OrchestratorJob | null>(null);
+  const [jobStatus, setJobStatus] = useState<JobStatus>('idle');
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── In-panel approval flow (conversation → plan preview → approve) ──
+  const [converseSessionId] = useState(() => typeof crypto !== 'undefined' && 'randomUUID' in crypto ? (crypto as { randomUUID: () => string }).randomUUID() : `sess_${Date.now()}`);
+  const [spec, setSpec] = useState<any>(null);
+  const [plan, setPlan] = useState<PlanForReview | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [planUserCredits, setPlanUserCredits] = useState<number | null>(null);
+  const [planSteps, setPlanSteps] = useState<PlanStepForReview[]>([]);
+  const [flowPhase, setFlowPhase] = useState<FlowPhase>('chat');
+  const [modelOverrides, setModelOverrides] = useState<Record<string, string>>({});
+  const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Array<{ modelId: string; label: string; provider: string; creditCost?: number }>>([]);
+
+  // ── Streaming assistant state (v2) ──
+  const { start: startAssistantStream, isStreaming, error: streamError } = useAssistantStream();
+  const [toolPills, setToolPills] = useState<ToolPill[]>([]);
+  const [reqMeta, setReqMeta] = useState<any>(null);
+
+  const sendAssistControlMessage = useCallback(async (text: string) => {
+    if (isAiThinking || isStreaming) return;
+    const userMsg: ChatMessage = { role: 'user', content: text, id: Date.now().toString() };
+    setChatHistory((p) => [...p, userMsg]);
+    setIsAiThinking(true);
+    try {
+      await startAssistantStream({
+        apiUrl: '/api/assistant/stream',
+        message: text,
+        sessionId: converseSessionId,
+        onEvent: (evt) => {
+          if (evt.event === 'thinking') { setIsAiThinking(true); return; }
+          if (evt.event === 'tool_call') {
+            const p = evt.data as { tool?: string; label?: string; status?: string };
+            const tool = p?.tool;
+            if (typeof tool === 'string' && tool) {
+              setToolPills((prev) => [
+                ...prev,
+                { tool, label: typeof p.label === 'string' && p.label ? p.label : tool, status: p.status },
+              ]);
+            }
+            return;
+          }
+          if (evt.event === 'req_meta') { setReqMeta(evt.data); return; }
+          if (evt.event === 'assistant_message') {
+            const content = (evt.data as any)?.content ?? '';
+            if (typeof content === 'string' && content.length) {
+              setChatHistory((p) => [...p, { role: 'assistant', content, id: (Date.now() + 1).toString() }]);
+            }
+            setReqMeta(null);
+            return;
+          }
+          if (evt.event === 'plan_ready') {
+            const planData = evt.data as any;
+            if (planData?.planId) setPlanId(planData.planId);
+            if (planData?.plan) {
+              const p = planData.plan;
+              setPlan(p);
+              setPlanSteps(p.steps ?? []);
+            }
+            if (planData?.userCredits != null) setPlanUserCredits(planData.userCredits);
+            setFlowPhase('plan_review');
+            return;
+          }
+          if (evt.event === 'job_queued') {
+            const jobData = evt.data as { jobId?: string; planId?: string; status?: string; message?: string };
+            if (jobData?.jobId) {
+              const newJob: OrchestratorJob = { jobId: jobData.jobId, status: 'queued' };
+              setJob(newJob);
+              setJobStatus('queued');
+              setPlan(null);
+              setPlanId(null);
+              setPlanSteps([]);
+              setFlowPhase('running');
+              startPolling(jobData.jobId);
+            }
+            return;
+          }
+          if (evt.event === 'done') { setIsAiThinking(false); return; }
+          if (evt.event === 'error') {
+            const msg = (evt.data as any)?.message ?? 'Stream error';
+            setChatHistory((p) => [...p, { role: 'assistant', content: `❌ ${msg}`, id: (Date.now() + 1).toString() }]);
+            setIsAiThinking(false);
+          }
+        },
+      });
+    } finally {
+      setIsAiThinking(false);
+    }
+  }, [converseSessionId, isAiThinking, isStreaming, startAssistantStream]);
+
+  const handlePlanModelOverride = (stepId: string, modelId: string) => {
+    setModelOverrides((prev) => ({ ...prev, [stepId]: modelId }));
+  };
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const hasChatHistory = chatHistory.length > 0;
@@ -146,7 +247,7 @@ export default function PromotionalBanner2() {
   /* Auto-scroll chat — inside the scrollable div, NOT the page */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [chatHistory, isAiThinking]);
+  }, [chatHistory, isAiThinking, job]);
 
   /* Focus textarea when assist opens */
   useEffect(() => {
@@ -155,6 +256,57 @@ export default function PromotionalBanner2() {
       return () => clearTimeout(t);
     }
   }, [isAssistMode]);
+
+  /* Clean up polling on unmount */
+  useEffect(() => {
+    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
+  }, []);
+
+  /* ── Orchestrator polling ── */
+  const startPolling = useCallback((jobId: string) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const api = getApiClient();
+        const res = await api.get(`/api/orchestrator/status/${jobId}`);
+        const data: OrchestratorJob = res.data;
+        setJob(data);
+        setJobStatus(data.status);
+        if (data.status === 'completed' || data.status === 'failed') {
+          clearInterval(pollIntervalRef.current!);
+          pollIntervalRef.current = null;
+          setIsAiThinking(false);
+          setFlowPhase(data.status === 'completed' ? 'done' : 'chat');
+          if (data.status === 'completed') {
+            // Add success message to chat; use plan prompt so "Generate Image/Video →" passes it to the generation page
+            const firstAsset = data.result?.assets?.[0];
+            const taskType = data.plan?.taskType ?? 'image';
+            const planPrompt = (data.plan as { originalPrompt?: string; enhancedPrompt?: string } | undefined)?.originalPrompt
+              ?? (data.plan as { originalPrompt?: string; enhancedPrompt?: string } | undefined)?.enhancedPrompt
+              ?? '';
+            const action: GenerationAction = firstAsset
+              ? { type: taskType.includes('video') ? 'video' : 'image', prompt: planPrompt }
+              : null;
+            setChatHistory(p => [...p, {
+              role: 'assistant',
+              content: `✅ Generation complete! ${data.plan?.summary ?? 'Your content is ready.'}`,
+              id: Date.now().toString(),
+              action,
+            }]);
+          } else {
+            dispatch(rollbackCreditsOptimistic(data.plan?.totalEstimatedCredits ?? 0));
+            setChatHistory(p => [...p, {
+              role: 'assistant',
+              content: `❌ Generation failed: ${data.error ?? 'Unknown error. Please try again.'}`,
+              id: Date.now().toString(),
+            }]);
+          }
+        }
+      } catch {
+        // Silently retry polling on transient errors
+      }
+    }, 2500);
+  }, [dispatch]);
 
   const selectedModel = ALL_MODELS.find((m) => m.id === selectedModelId) ?? ALL_MODELS[0];
   const filteredModels = modelFilter === 'all' ? ALL_MODELS : ALL_MODELS.filter((m) => m.type === modelFilter);
@@ -204,48 +356,111 @@ export default function PromotionalBanner2() {
     const text = prompt.trim();
     if (!text || isAiThinking) return;
 
-    // Detect intent BEFORE clearing prompt
-    const intent = detectIntent(text);
-
     const userMsg: ChatMessage = { role: 'user', content: text, id: Date.now().toString() };
     setChatHistory((p) => [...p, userMsg]);
     setPrompt('');
     if (textareaRef.current) textareaRef.current.style.height = '36px';
     setIsAiThinking(true);
+    setJob(null);
+    setJobStatus('idle');
 
-    // Optimistic credit deduction
-    dispatch(deductCreditsOptimistic(1));
+    // v2 rule: EVERYTHING in assist mode goes through /api/assistant/stream (OpenClaw).
+    // No generative/non-generative split.
+    setToolPills([]);
+    setReqMeta(null);
+    setSpec(null);
+    setPlan(null);
+    setPlanId(null);
+    setPlanSteps([]);
+    setAvailableModels([]);
+    setFlowPhase('chat');
 
     try {
-      const res = await fetch('/api/assistant/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          history: chatHistory.slice(-6).map(({ role, content }) => ({ role, content })),
-        }),
+      await startAssistantStream({
+        apiUrl: '/api/assistant/stream',
+        message: text.trim(),
+        sessionId: converseSessionId,
+        onEvent: (evt) => {
+          if (evt.event === 'thinking') {
+            setIsAiThinking(true);
+            return;
+          }
+          if (evt.event === 'tool_call') {
+            const p = evt.data as { tool?: string; label?: string; status?: string };
+            const tool = p?.tool;
+            if (typeof tool !== 'string' || !tool) return;
+            setToolPills((prev) => [
+              ...prev,
+              { tool, label: typeof p.label === 'string' && p.label ? p.label : tool, status: p.status },
+            ]);
+            return;
+          }
+          if (evt.event === 'req_meta') {
+            setReqMeta(evt.data);
+            return;
+          }
+          if (evt.event === 'assistant_message') {
+            const content = (evt.data as any)?.content ?? '';
+            if (typeof content === 'string' && content.length) {
+              setChatHistory((p) => [...p, { role: 'assistant', content, id: (Date.now() + 1).toString() }]);
+            }
+            setReqMeta(null);
+            return;
+          }
+          if (evt.event === 'plan_ready') {
+            const planData = evt.data as any;
+            if (planData?.planId) setPlanId(planData.planId);
+            if (planData?.plan) {
+              const p = planData.plan;
+              setPlan(p);
+              setPlanSteps(p.steps ?? []);
+            }
+            if (planData?.userCredits != null) setPlanUserCredits(planData.userCredits);
+            setFlowPhase('plan_review');
+            return;
+          }
+          if (evt.event === 'job_queued') {
+            const jobData = evt.data as { jobId?: string; planId?: string; status?: string; message?: string };
+            if (jobData?.jobId) {
+              const newJob: OrchestratorJob = { jobId: jobData.jobId, status: 'queued' };
+              setJob(newJob);
+              setJobStatus('queued');
+              setPlan(null);
+              setPlanId(null);
+              setPlanSteps([]);
+              setFlowPhase('running');
+              startPolling(jobData.jobId);
+            }
+            return;
+          }
+          if (evt.event === 'done') {
+            setIsAiThinking(false);
+            return;
+          }
+          if (evt.event === 'error') {
+            const msg = (evt.data as any)?.message ?? 'Stream error';
+            setChatHistory((p) => [...p, { role: 'assistant', content: `❌ ${msg}`, id: (Date.now() + 1).toString() }]);
+            setIsAiThinking(false);
+          }
+        },
       });
-
-      if (!res.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const data = await res.json();
-      const reply = data.reply || "I'm ready to help you create something amazing!";
-
-      // Determine final intent: user keywords OR AI reply suggests a prompt
-      const genPrompt = extractPrompt(reply, text);
-      const finalIntent = detectIntentFromReply(reply, intent);
-      const action: GenerationAction = finalIntent ? { type: finalIntent, prompt: genPrompt } : null;
-
-      setChatHistory((p) => [...p, { role: 'assistant', content: reply, id: (Date.now() + 1).toString(), action }]);
-    } catch {
-      // Rollback credits on error
-      dispatch(rollbackCreditsOptimistic(1));
-      setChatHistory((p) => [...p, { role: 'assistant', content: "Something went wrong — please try again!", id: (Date.now() + 1).toString() }]);
     } finally {
       setIsAiThinking(false);
     }
+  };
+
+  const handleModifyPlan = () => {
+    setPlan(null);
+    setPlanId(null);
+    setPlanSteps([]);
+    setFlowPhase('chat');
+  };
+
+  const handleCancelPlan = () => {
+    setPlan(null);
+    setPlanId(null);
+    setPlanSteps([]);
+    setFlowPhase('chat');
   };
 
   /* ── render ── */
@@ -317,7 +532,7 @@ export default function PromotionalBanner2() {
                     }}
                   >
                     {/* Chat messages */}
-                    <div className="space-y-3 pb-3">
+                    <div className="space-y-4 pb-4">
                       <AnimatePresence initial={false}>
                         {chatHistory.map((msg) => (
                           <motion.div
@@ -332,12 +547,16 @@ export default function PromotionalBanner2() {
                                 <Image src="/core/logosquare.png" alt="AI" width={20} height={20} className="object-contain" unoptimized />
                               </div>
                             )}
-                            <div className="flex flex-col gap-1.5 max-w-[78%]">
-                              <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
+                            <div className="flex flex-col gap-1.5 max-w-[85%] min-w-0">
+                              <div className={`rounded-2xl px-4 py-3 text-[15px] leading-[1.5] ${msg.role === 'user'
                                 ? 'bg-blue-600 text-white rounded-br-sm'
                                 : 'bg-white/[0.06] border border-white/10 text-zinc-200 rounded-bl-sm'
                                 }`}>
-                                {msg.content}
+                                {msg.role === 'assistant' ? (
+                                  <AssistantMessageContent content={msg.content} />
+                                ) : (
+                                  <span className="whitespace-pre-wrap break-words">{msg.content}</span>
+                                )}
                               </div>
                               {msg.role === 'assistant' && msg.action && (
                                 <motion.button
@@ -347,14 +566,15 @@ export default function PromotionalBanner2() {
                                   transition={{ type: 'spring' as const, damping: 20, stiffness: 300, delay: 0.15 }}
                                   onClick={() => {
                                     const { type, prompt: genPrompt } = msg.action!;
+                                    const q = (p: string) => (p ? `&prompt=${encodeURIComponent(p)}` : '');
                                     if (type === 'video') {
                                       const modelToUse = selectedModel.type === 'video' ? selectedModelId : 'seedance-1.0-lite-t2v';
                                       saveAutoResumeIntent('video', { isAnimate: true, prompt: genPrompt, model: modelToUse, selectedModel: modelToUse });
-                                      router.push(`/text-to-video?model=${encodeURIComponent(modelToUse)}`);
+                                      router.push(`/text-to-video?model=${encodeURIComponent(modelToUse)}${q(genPrompt)}`);
                                     } else {
                                       const modelToUse = selectedModel.type === 'image' ? selectedModelId : 'gemini-25-flash-image';
                                       saveAutoResumeIntent('image', { prompt: genPrompt, model: modelToUse, selectedModel: modelToUse });
-                                      router.push(`/text-to-image?model=${encodeURIComponent(modelToUse)}`);
+                                      router.push(`/text-to-image?model=${encodeURIComponent(modelToUse)}${q(genPrompt)}`);
                                     }
                                   }}
                                   className={`self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-lg ${msg.action.type === 'video'
@@ -376,27 +596,270 @@ export default function PromotionalBanner2() {
                         ))}
                       </AnimatePresence>
 
-                      {/* Thinking dots */}
+                      {/* Thinking dots / Orchestrator live progress */}
                       <AnimatePresence>
-                        {isAiThinking && (
+                        {isAiThinking && job && (
                           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                            className="flex gap-2.5 justify-start">
-                            <div className="w-6 h-6 flex items-center justify-center">
+                            className="flex gap-2.5 justify-start w-full">
+                            <div className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
                               <Image src="/core/logosquare.png" alt="AI" width={20} height={20} className="object-contain" unoptimized />
                             </div>
-                            <div className="bg-white/[0.06] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" />
+                            <div className="bg-white/[0.04] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 flex-1 space-y-2">
+                              <p className="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                {jobStatus === 'queued' ? 'Queued…' : jobStatus === 'planning' ? 'Planning…' : 'Generating…'}
+                              </p>
+                              {job.plan?.steps?.map((step, i) => {
+                                const s = job.steps?.find(js => js.stepId === step.stepId) ?? step;
+                                const isDone = s.status === 'completed';
+                                const isRunning = s.status === 'running';
+                                const isFailed = s.status === 'failed';
+                                return (
+                                  <div key={step.stepId} className="flex items-center gap-2 text-xs">
+                                    {isDone ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                      : isFailed ? <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                                      : isRunning ? <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
+                                      : <Circle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
+                                    <span className={isDone ? 'text-zinc-400 line-through' : isRunning ? 'text-white' : 'text-zinc-600'}>
+                                      {step.label}
+                                    </span>
+                                    {step.creditCost && <span className="ml-auto text-zinc-600">{step.creditCost}cr</span>}
+                                  </div>
+                                );
+                              })}
+                              {job.plan?.totalEstimatedCredits && (
+                                <p className="text-[10px] text-zinc-600 pt-1 border-t border-white/[0.05]">
+                                  Est. {job.plan.totalEstimatedCredits} credits · {priority} priority
+                                </p>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                        {isAiThinking && !job && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="flex gap-2.5 justify-start w-full"
+                          >
+                            <div className="w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
+                              <Image src="/core/logosquare.png" alt="AI" width={20} height={20} className="object-contain" unoptimized />
+                            </div>
+                            <div className="flex flex-col gap-2 min-w-0 max-w-[85%]">
+                              <div className="bg-white/[0.06] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 space-y-2">
+                                <AgentStateDisplay
+                                  isThinking={toolPills.length === 0}
+                                  thinkingText="Thinking…"
+                                  toolPills={toolPills}
+                                />
+                              </div>
+                              {/* Choice chips from reqMeta */}
+                              {reqMeta?.choices && Array.isArray(reqMeta.choices) && reqMeta.choices.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 pl-1">
+                                  {reqMeta.choices.map((choice: string) => (
+                                    <button
+                                      key={choice}
+                                      type="button"
+                                      onClick={() => {
+                                        setReqMeta(null);
+                                        sendAssistControlMessage(choice);
+                                      }}
+                                      className="px-3 py-1.5 rounded-full text-[12px] border border-white/10 hover:border-violet-500/50 hover:bg-violet-500/10 text-zinc-300 hover:text-violet-300 transition-colors"
+                                    >
+                                      {choice}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              {/* Progress bar */}
+                              {reqMeta?.progress && (
+                                <div className="flex items-center gap-2 px-1">
+                                  <div className="flex-1 h-[2px] bg-zinc-800 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-violet-500 rounded-full transition-all duration-500"
+                                      style={{ width: `${reqMeta.progress.percent}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[11px] text-zinc-500 shrink-0">
+                                    {reqMeta.progress.answered}/{reqMeta.progress.total}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
 
+                    {/* Plan preview — same card (Option B: summary + "Show full details" toggle) */}
+                    <AnimatePresence>
+                      {flowPhase === 'plan_review' && plan && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          className="pb-4 space-y-3"
+                        >
+                          {planId && (
+                            <PlanApprovalCard
+                              planId={planId}
+                              plan={{
+                                taskType: plan.taskType,
+                                totalEstimatedCredits: plan.totalEstimatedCredits,
+                                totalEstimatedDurationSeconds: plan.totalEstimatedDurationSeconds,
+                                steps: (plan.steps ?? []).map((s: any) => ({
+                                  stepId: s.stepId,
+                                  label: s.label,
+                                  creditCost: s.creditCost,
+                                  selectedModel: s.selectedModel,
+                                  alternatives: s.alternatives,
+                                })),
+                              }}
+                              userCredits={planUserCredits}
+                              onApprove={(overrides) => {
+                                if (overrides && Object.keys(overrides).length > 0) {
+                                  sendAssistControlMessage(
+                                    `approve:${planId}:${encodeURIComponent(JSON.stringify(overrides))}`,
+                                  );
+                                } else {
+                                  sendAssistControlMessage(`approve:${planId}`);
+                                }
+                              }}
+                              onModelSwitch={(stepId, modelId) => {
+                                sendAssistControlMessage(
+                                  `switch_model:${planId}:${stepId}:${modelId}`,
+                                );
+                              }}
+                              onReject={() => {
+                                setPlan(null);
+                                setPlanId(null);
+                                setPlanUserCredits(null);
+                                setFlowPhase('chat');
+                                setChatHistory(p => [...p, {
+                                  role: 'assistant',
+                                  content: 'No problem. What would you like to change?',
+                                  id: Date.now().toString()
+                                }]);
+                              }}
+                            />
+                          )}
+                          <div className="rounded-xl bg-white/[0.06] border border-white/10 p-4 space-y-3">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Plan summary</p>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-300">
+                              <span>{plan.taskType?.replace(/_/g, ' ')}</span>
+                              <span>💰 {plan.totalEstimatedCredits ?? 0} credits</span>
+                              {plan.totalEstimatedDurationSeconds != null && (
+                                <span>⏱ ~{Math.ceil(plan.totalEstimatedDurationSeconds / 60)} min</span>
+                              )}
+                              {priority && <span>Priority: {priority}</span>}
+                              {plan.style && <span>🎨 {plan.style}</span>}
+                              {spec?.reference_image_url && (
+                                <span className="flex items-center gap-1">
+                                  <span className="inline-block w-6 h-6 rounded border border-white/20 overflow-hidden shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={spec.reference_image_url} alt="Ref" className="w-full h-full object-cover" />
+                                  </span>
+                                  Reference
+                                </span>
+                              )}
+                            </div>
+                            {plan.summary && <p className="text-sm text-zinc-400">{plan.summary}</p>}
+                            <div className="space-y-2 pt-2 border-t border-white/10">
+                              {planSteps.map((step, i) => {
+                                const overrideId = modelOverrides[step.stepId];
+                                const options = [step.selectedModel as any, ...((step.alternatives ?? []) as any[])]
+                                  .filter((m): m is any => Boolean(m))
+                                  .map((m) => ({
+                                    modelId: String(m.modelId),
+                                    label: String(m.label),
+                                    creditCost: typeof m.creditCost === 'number' ? m.creditCost : undefined,
+                                  }));
+                                const effectiveModel = overrideId
+                                  ? (step.alternatives?.find((a: { modelId: string }) => a.modelId === overrideId) ?? step.selectedModel)
+                                  : step.selectedModel;
+                                return (
+                                  <div key={step.stepId} className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-zinc-300">{i + 1}. {step.label}</span>
+                                      {(effectiveModel as any)?.creditCost != null && <span className="text-zinc-500">{(effectiveModel as any).creditCost}cr</span>}
+                                    </div>
+                                    {options.length > 1 && (
+                                      <select
+                                        value={overrideId ?? step.selectedModel?.modelId ?? ''}
+                                        onChange={(e) => handlePlanModelOverride(step.stepId, e.target.value)}
+                                        className="mt-0.5 text-[11px] rounded bg-white/5 border border-white/10 text-zinc-300 px-2 py-1 max-w-full"
+                                      >
+                                        {options.map((opt: { modelId: string; label: string; creditCost?: number }) => (
+                                          <option key={opt.modelId} value={opt.modelId}>
+                                            {opt.label} {opt.creditCost != null ? `(${opt.creditCost}cr)` : ''}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    )}
+                                    {showPlanDetails && step.params && Object.keys(step.params).length > 0 && (
+                                      <pre className="text-[10px] text-zinc-500 bg-black/20 rounded p-2 overflow-x-auto mt-1">
+                                        {JSON.stringify(step.params, null, 2)}
+                                      </pre>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowPlanDetails((d) => !d)}
+                              className="text-xs text-zinc-500 hover:text-zinc-400 underline"
+                            >
+                              {showPlanDetails ? 'Hide full details' : 'Show full details'}
+                            </button>
+                            {showPlanDetails && (
+                              <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
+                                {plan.originalPrompt && (
+                                  <div>
+                                    <p className="text-zinc-500 uppercase tracking-wider mb-0.5">Original prompt</p>
+                                    <p className="text-zinc-400 break-words">{plan.originalPrompt}</p>
+                                  </div>
+                                )}
+                                {plan.enhancedPrompt && plan.enhancedPrompt !== plan.originalPrompt && (
+                                  <div>
+                                    <p className="text-zinc-500 uppercase tracking-wider mb-0.5">Enhanced prompt</p>
+                                    <p className="text-zinc-400 break-words">{plan.enhancedPrompt}</p>
+                                  </div>
+                                )}
+                                {spec && typeof spec === 'object' && (
+                                  <div>
+                                    <p className="text-zinc-500 uppercase tracking-wider mb-0.5">Spec</p>
+                                    <ul className="text-zinc-400 space-y-0.5">
+                                      {Object.entries(spec).filter(([, v]) => v != null && v !== '').map(([k, v]) => (
+                                        <li key={k}><span className="text-zinc-500">{k}:</span> {String(v)}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              <button type="button" onClick={() => planId && sendAssistControlMessage(`approve:${planId}`)}
+                                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">
+                                Approve & Generate
+                              </button>
+                              <button type="button" onClick={handleModifyPlan}
+                                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 text-sm">
+                                Modify Plan
+                              </button>
+                              <button type="button" onClick={handleCancelPlan}
+                                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 text-sm">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     {/* Action cards — shown inside the same container when no chat yet */}
                     <AnimatePresence>
-                      {!hasChatHistory && isAssistMode && (
+                      {!hasChatHistory && isAssistMode && flowPhase === 'chat' && (
                         <motion.div
                           variants={staggerList} initial="hidden" animate="visible" exit="exit"
                           className="space-y-2 pb-3"
@@ -404,16 +867,7 @@ export default function PromotionalBanner2() {
                           <p className="text-white/50 text-xs px-1 pb-1 uppercase tracking-wider font-medium">What would you like to do?</p>
                           {ACTION_CARDS.map((card) => (
                             <motion.button key={card.id} type="button" variants={staggerItem}
-                              onClick={() => {
-                                setPrompt(card.starter);
-                                setTimeout(() => {
-                                  if (textareaRef.current) {
-                                    textareaRef.current.focus();
-                                    const len = card.starter.length;
-                                    textareaRef.current.setSelectionRange(len, len);
-                                  }
-                                }, 50);
-                              }}
+                              onClick={() => { setPrompt(card.starter); setTimeout(() => textareaRef.current?.focus(), 50); }}
                               className="w-full flex items-center rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.08] hover:border-white/20 transition-colors text-left overflow-hidden group"
                               whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                             >
@@ -435,6 +889,16 @@ export default function PromotionalBanner2() {
                     <div ref={chatEndRef} />
                   </div>
 
+                  {/* Hint when agent is asking for a reference — prompt user to use + to upload */}
+                  {chatHistory.length > 0 && (() => {
+                    const lastAgent = [...chatHistory].reverse().find((m) => m.role === 'assistant');
+                    const asksRef = lastAgent?.content && /reference|upload|mood board|style reference/i.test(lastAgent.content);
+                    return asksRef ? (
+                      <p className="px-4 pb-1 text-[11px] text-zinc-500">
+                        Use the <strong className="text-zinc-400">+</strong> button below to upload a reference image, then send a message (e.g. &quot;here it is&quot;). Or reply &quot;no&quot; to skip.
+                      </p>
+                    ) : null;
+                  })()}
 
                   {/* Uploaded image pills */}
                   {uploadedImages.length > 0 && (
@@ -523,78 +987,48 @@ export default function PromotionalBanner2() {
                         <Plus className="w-[18px] h-[18px]" />
                       </button>
 
+                      {/* Priority picker */}
                       <div className="relative">
-                        <button type="button" onClick={() => setShowModelSelector((v) => !v)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${showModelSelector
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                            : 'text-zinc-400 hover:text-white hover:bg-white/10 border-transparent'
-                            }`}>
-                          <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${selectedModel.color}`} />
-                          <span className="max-w-[80px] truncate">{selectedModel.name}</span>
-                          <Settings className="w-3.5 h-3.5 shrink-0" />
+                        <button type="button" onClick={() => setShowPriorityPicker(v => !v)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                            showPriorityPicker
+                              ? 'bg-violet-500/20 text-violet-400 border-violet-500/30'
+                              : 'text-zinc-400 hover:text-white hover:bg-white/10 border-transparent'
+                          }`}>
+                          {PRIORITY_OPTIONS.find(p => p.id === priority)?.icon}
+                          <span className="capitalize">{priority}</span>
                         </button>
-
-                        {/* Model selector popup — opens UPWARD, absolutely positioned so it doesn't affect layout */}
                         <AnimatePresence>
-                          {showModelSelector && (
+                          {showPriorityPicker && (
                             <motion.div
                               initial={{ opacity: 0, y: 8, scale: 0.96 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: 8, scale: 0.96 }}
                               transition={{ type: 'spring' as const, damping: 24, stiffness: 320 }}
-                              className="absolute bottom-full left-0 mb-3 z-[100] w-[340px] bg-zinc-900/98 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+                              className="absolute bottom-full left-0 mb-2 z-[100] w-56 bg-zinc-900/98 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden p-2"
                             >
-                              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
-                                <p className="text-sm font-semibold text-white">Select model</p>
-                                <button type="button" onClick={() => setShowModelSelector(false)}
-                                  className="size-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-colors">
-                                  <X className="w-4 h-4" />
+                              <p className="text-[10px] text-zinc-500 uppercase tracking-wider px-2 pb-1.5 font-semibold">Generation Priority</p>
+                              {PRIORITY_OPTIONS.map(opt => (
+                                <button key={opt.id} type="button"
+                                  onClick={() => { setPriority(opt.id); setShowPriorityPicker(false); }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all ${
+                                    priority === opt.id
+                                      ? 'bg-white/10 text-white'
+                                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                                  }`}>
+                                  <span className={priority === opt.id ? 'text-violet-400' : ''}>{opt.icon}</span>
+                                  <div className="text-left">
+                                    <p className="font-semibold capitalize">{opt.label}</p>
+                                    <p className="text-[10px] text-zinc-600">{opt.desc}</p>
+                                  </div>
+                                  {priority === opt.id && <span className="ml-auto text-violet-400 text-[10px]">✓</span>}
                                 </button>
-                              </div>
-
-                              <div className="flex gap-1 p-3 pb-2">
-                                {(['all', 'image', 'video'] as ModelFilter[]).map((f) => (
-                                  <button key={f} type="button" onClick={() => setModelFilter(f)}
-                                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${modelFilter === f ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-white'
-                                      }`}>
-                                    {f === 'all' ? 'All' : f === 'image' ? '🖼 Image' : '🎬 Video'}
-                                  </button>
-                                ))}
-                              </div>
-
-                              <div className="px-3 pb-3 pt-2 grid grid-cols-3 gap-2 max-h-52 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                                {filteredModels.map((model) => (
-                                  <button key={model.id} type="button" onClick={() => handleModelSelect(model)}
-                                    className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all group ${selectedModelId === model.id
-                                      ? 'bg-white/10 border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.15)]'
-                                      : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.07] hover:border-white/20'
-                                      }`}>
-                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${model.color} flex items-center justify-center text-white font-bold text-sm shadow-lg`}>
-                                      {model.badge}
-                                    </div>
-                                    <span className="text-[10px] font-medium text-zinc-400 group-hover:text-white text-center line-clamp-2 leading-tight transition-colors">
-                                      {model.name}
-                                    </span>
-                                    <span className={`absolute top-1.5 right-1.5 text-[8px] font-bold uppercase tracking-wide px-1 py-0.5 rounded ${model.type === 'video' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'
-                                      }`}>
-                                      {model.type === 'video' ? 'VID' : 'IMG'}
-                                    </span>
-                                    {selectedModelId === model.id && (
-                                      <div className="absolute -top-1.5 -right-1.5 bg-blue-500 rounded-full w-4 h-4 flex items-center justify-center shadow-lg ring-2 ring-zinc-900">
-                                        <span className="text-white text-[8px] font-bold">✓</span>
-                                      </div>
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-
-                              <div className="px-4 py-2.5 border-t border-white/[0.07] text-center">
-                                <p className="text-[10px] text-zinc-600">Click a model to open its generation page</p>
-                              </div>
+                              ))}
                             </motion.div>
                           )}
                         </AnimatePresence>
                       </div>
+
                     </div>
                   )}
                 </div>
