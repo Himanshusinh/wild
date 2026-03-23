@@ -77,7 +77,7 @@ export function ProjectsView() {
         } else if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') {
              return 'https://onstaging-studios.wildmindai.com';
         }
-        return 'http://localhost:3001';
+        return 'http://localhost:3002';
     };
     const canvasUrl = getCanvasUrl();
 

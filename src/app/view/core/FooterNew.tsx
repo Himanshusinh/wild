@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -13,21 +14,14 @@ import {
 } from '@/routes/routes'
 
 const LogoSvg = () => (
-  <svg viewBox="0 0 90 72" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-[30px] w-[38px]">
-    <line x1="8" y1="8" x2="8" y2="60" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <polyline
-      points="8,60 24,36 36,52"
-      stroke="white"
-      strokeWidth="9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    />
-    <line x1="36" y1="52" x2="48" y2="16" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <line x1="48" y1="16" x2="62" y2="52" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <line x1="62" y1="52" x2="74" y2="28" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <line x1="74" y1="28" x2="74" y2="64" stroke="white" strokeWidth="9" strokeLinecap="round" />
-  </svg>
+  <Image
+    src="/core/logosquare.png"
+    alt="WildMind Logo"
+    width={54}
+    height={54}
+    className="h-10 w-10 md:h-12 md:w-12 object-contain"
+    unoptimized
+  />
 )
 
 const FooterNew: React.FC = () => {
@@ -56,13 +50,13 @@ const FooterNew: React.FC = () => {
       <div className="mx-3 border-t border-white/10 md:mx-[18px] lg:mx-8">
         <div className="grid grid-cols-1 gap-10 px-6 py-12 sm:px-8 md:grid-cols-2 md:px-10 lg:grid-cols-[200px_repeat(4,minmax(0,1fr))] lg:gap-10 lg:px-10">
           <div className="relative z-[1]">
-            <div className="mb-[14px]">
+            <div className="mb-[0px]">
               <LogoSvg />
             </div>
-            <div className="mb-1.5 text-[13px] font-bold tracking-[-0.01em] text-[#F0EFE9]">
+            <div className="mb-0 text-[13px] font-bold tracking-[-0.01em] text-[#F0EFE9]">
               <span className="font-light">WILD</span>MIND AI
             </div>
-            <div className="mb-5 text-[11px] leading-[1.6] text-[rgba(255,255,255,0.6)]">
+            <div className="mb-2 text-[11px] leading-[1.6] text-[rgba(255,255,255,0.6)]">
               Imagination to Creation
             </div>
             <div className="flex gap-2">

@@ -164,7 +164,7 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#1C1C20]">
+    <div className="min-h-screen bg-[#0E0E12]">
       {/* DEBUG: This is MainLayout component */}
 
 

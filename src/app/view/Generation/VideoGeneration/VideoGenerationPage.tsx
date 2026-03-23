@@ -31,7 +31,7 @@ export default function VideoGenerationPage() {
 
             const hostname = window.location.hostname;
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                window.open('http://localhost:3001', '_blank');
+                window.open('http://localhost:3003', '_blank');
             } else {
                 window.open('https://editor-video.wildmindai.com/', '_blank');
             }
@@ -86,12 +86,12 @@ export default function VideoGenerationPage() {
     }, [searchParams]);
 
     return (
-        <div className="min-h-screen bg-[#07070B]">
+        <div className="min-h-screen bg-[#0E0E12]">
             {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
             <div className="flex">
                 <div className="flex-1 min-w-0 px-2 sm:px-6 md:px-8">
                     {/* Sticky header + filters (pinned under navbar) */}
-                    <div className="sticky top-0 z-40 bg-[#07070B]">
+                    <div className="sticky top-0 z-40 bg-[#0E0E12]">
 
                         <div className="mb-0 md:mb-1 pt-8 md:pt-2">
                             <div className="flex items-center justify-between md:mb-2 mb-0">
@@ -177,7 +177,7 @@ export default function VideoGenerationPage() {
                                         onClick={() => {
                                             const hostname = window.location.hostname;
                                             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                                                window.open('http://localhost:3001', '_blank');
+                                                window.open('http://localhost:3003', '_blank');
                                             } else {
                                                 window.open('https://editor-video.wildmindai.com/', '_blank');
                                             }
@@ -219,7 +219,7 @@ export default function VideoGenerationPage() {
                                             if (feature === 'Video editor') {
                                                 const hostname = window.location.hostname;
                                                 if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                                                    window.open('http://localhost:3001', '_blank');
+                                                    window.open('http://localhost:3003', '_blank');
                                                 } else {
                                                     window.open('https://editor-video.wildmindai.com/', '_blank');
                                                 }
