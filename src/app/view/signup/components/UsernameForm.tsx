@@ -1,6 +1,7 @@
 import React from 'react';
 import TextField from '@mui/material/TextField';
 import { ValidationPopup, LoadingSpinner, textFieldSx } from './shared';
+import { USERNAME_ALLOWED_CHAR_REGEX, USERNAME_RULE_MESSAGE } from '../useUsernameAvailability';
 
 interface UsernameFormProps {
     username: string;
@@ -27,6 +28,10 @@ export const UsernameForm = ({
     handleUsernameSubmit,
     UsernameFeedbackComponent
 }: UsernameFormProps) => {
+    const hasInvalidUsernameCharacters = !USERNAME_ALLOWED_CHAR_REGEX.test(username)
+    const usernameFeedbackStatus = hasInvalidUsernameCharacters ? 'invalid' : (hasCapitalLetters ? 'idle' : availability.status)
+    const usernameFeedbackError = hasInvalidUsernameCharacters ? USERNAME_RULE_MESSAGE : availability.error
+
     return (
         <div className="space-y-4">
             <div className="text-center space-y-2 mb-6 -mt-8">
@@ -53,11 +58,11 @@ export const UsernameForm = ({
                         <ValidationPopup requirements={usernameRequirements} value={username} />
                     )}
                 </div>
-                {!hasCapitalLetters && username.length > 0 && (
+                {username.length > 0 && usernameFeedbackStatus !== 'invalid' && (
                     <UsernameFeedbackComponent
-                        status={availability.status}
+                        status={usernameFeedbackStatus}
                         result={availability.result}
-                        error={availability.error}
+                        error={usernameFeedbackError}
                         onSuggestion={setUsername}
                     />
                 )}

@@ -112,7 +112,7 @@ export default function ImageComparisonSlider({
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden select-none group"
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: hoverToSlide ? 'pan-x' : 'none' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

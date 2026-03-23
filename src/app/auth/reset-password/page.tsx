@@ -30,6 +30,8 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
   const oobCode = searchParams?.get("oobCode")
   const mode = searchParams?.get("mode")
+  const expiresAtParam = searchParams?.get("expiresAt")
+  const signature = searchParams?.get("sig")
 
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -73,18 +75,33 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!mounted) return
-    if (mode !== "resetPassword" || !oobCode) {
+    const expiresAt = Number(expiresAtParam)
+    if (mode !== "resetPassword" || !oobCode || !signature || !Number.isFinite(expiresAt)) {
       toast.error("Invalid or expired reset link")
       redirectForCurrentAuthState()
+      return
     }
-  }, [mounted, mode, oobCode, router])
+
+    if (Date.now() > expiresAt) {
+      toast.error("This password reset link has expired. Please request a new one.")
+      redirectForCurrentAuthState()
+    }
+  }, [mounted, mode, oobCode, expiresAtParam, signature, router])
 
   const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!oobCode || mode !== "resetPassword") {
+    const expiresAt = Number(expiresAtParam)
+
+    if (!oobCode || mode !== "resetPassword" || !signature || !Number.isFinite(expiresAt)) {
       const invalidMsg = "Invalid reset link"
       setErrorMessage(invalidMsg)
+      return
+    }
+
+    if (Date.now() > expiresAt) {
+      const expiredMsg = "This password reset link has expired. Please request a new one."
+      setErrorMessage(expiredMsg)
       return
     }
 
@@ -106,7 +123,7 @@ export default function ResetPasswordPage() {
     try {
       await axiosInstance.post(
         "/api/auth/reset-password/complete",
-        { oobCode, newPassword },
+        { oobCode, newPassword, expiresAt, signature },
         {
           withCredentials: true,
           skipGlobalErrorToast: true,
