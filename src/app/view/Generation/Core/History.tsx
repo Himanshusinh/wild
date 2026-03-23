@@ -1106,9 +1106,9 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-full bg-[#07070B] text-white md:p-2 select-none">
+    <div className="min-h-full bg-[#0E0E12] text-white md:p-2 select-none">
       {/* Fixed Header with title and controls */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#07070B] backdrop-blur-xl shadow-xl px-3">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12] backdrop-blur-xl shadow-xl px-3">
         <div className="pt-10 md:pt-4  md:px-3">
           <div className="flex  md:items-center gap-4 md:pl-14 pb-2">
             <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { CreditCard, GripVertical, History } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
@@ -25,14 +26,14 @@ interface NavItemDef {
 }
 
 const LogoSvg = () => (
-  <svg viewBox="0 0 90 72" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-10">
-    <line x1="8" y1="8" x2="8" y2="60" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <polyline points="8,60 24,36 36,52" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <line x1="36" y1="52" x2="48" y2="16" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <line x1="48" y1="16" x2="62" y2="52" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <line x1="62" y1="52" x2="74" y2="28" stroke="white" strokeWidth="9" strokeLinecap="round" />
-    <line x1="74" y1="28" x2="74" y2="64" stroke="white" strokeWidth="9" strokeLinecap="round" />
-  </svg>
+  <Image
+    src="/core/logosquare.png"
+    alt="WildMind Logo"
+    width={54}
+    height={54}
+    className="h-10 w-10 md:h-12 md:w-12 object-contain"
+    unoptimized
+  />
 );
 
 const HomeSvg = ({ className }: IconProps) => (
@@ -377,7 +378,7 @@ const SidePannelFeatures = () => {
         <div
           onClick={() => nav(APP_ROUTES.LANDING)}
           onMouseEnter={(e) => handleMouseEnterItem(null, e)}
-          className="mb-7 flex cursor-pointer items-center justify-center pt-[18px]"
+          className="mb-2 flex cursor-pointer items-center justify-center pt-[18px]"
         >
           <LogoSvg />
         </div>
