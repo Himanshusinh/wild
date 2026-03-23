@@ -21,7 +21,7 @@ export const textFieldSx = {
         },
         '&.Mui-disabled': {
             backgroundColor: '#24242A',
-            opacity: 1, // Keep full opacity
+            opacity: 1,
             '& input': {
                 WebkitTextFillColor: '#FFF !important',
                 color: '#FFF',
@@ -63,7 +63,6 @@ export const textFieldSx = {
     },
 };
 
-// SVG Icons
 export const EyeIcon = () => (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -81,27 +80,24 @@ export const LoadingSpinner = () => (
     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
 );
 
-// Helper for cookies
 export const setCookie = (name: string, value: string, days: number = 7) => {
-    const expires = new Date()
-    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000))
-    const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
-    document.cookie = cookieString
-}
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    document.cookie = cookieString;
+};
 
 export const clearCookie = (name: string) => {
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`
-}
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
+};
 
-// Global Validation Popup component (for password/username requirements hover)
 export const ValidationPopup = ({ requirements, value }: { requirements: any[], value: string }) => {
     return (
         <div className="absolute z-50 animate-in fade-in
             top-[calc(100%+12px)] left-0 w-full slide-in-from-top-1
-            md:top-1/2 md:left-[calc(100%+16px)] md:-translate-y-1/2  md:max-w-36 lg:max-w-32 xl:max-w-36 2xl:max-w-48 md:slide-in-from-left-2
+            md:top-1/2 md:left-[calc(100%+16px)] md:-translate-y-1/2 md:max-w-36 lg:max-w-32 xl:max-w-36 2xl:max-w-48 md:slide-in-from-left-2
             bg-[#24242A] rounded-xl border border-[#2D3035] p-2 shadow-xl">
 
-            {/* Pointer arrow */}
             <div className="absolute bg-[#24242A] border-[#2D3035] w-3 h-3
                 top-0 left-6 -translate-y-1/2 rotate-45 border-l border-t
                 md:top-1/2 md:-left-1.5 md:-translate-y-1/2 md:-rotate-45"
@@ -110,10 +106,14 @@ export const ValidationPopup = ({ requirements, value }: { requirements: any[], 
             <div className="space-y-1 relative z-10">
                 {requirements.filter((req) => !req.hidden).map((req, index) => {
                     const isValid = req.test ? req.test(value) : false;
+                    const isInvalid = req.invalidTest ? req.invalidTest(value) : false;
+                    const label = isInvalid && req.invalidLabel ? req.invalidLabel : req.label;
+                    const toneClass = isInvalid ? 'text-red-400' : isValid ? 'text-green-500' : 'text-gray-400';
+
                     return (
                         <div key={index} className="flex items-start gap-1">
-                            <span className={`text-[10px] md:text-[10px] lg:text-[10px] xl:text-[8px] 2xl:text-[10px] leading-snug ${isValid ? 'text-green-500' : 'text-gray-400'}`}>
-                                • {req.label}
+                            <span className={`text-[10px] md:text-[10px] lg:text-[10px] xl:text-[8px] 2xl:text-[10px] leading-snug ${toneClass}`}>
+                                * {label}
                             </span>
                         </div>
                     );
@@ -123,7 +123,6 @@ export const ValidationPopup = ({ requirements, value }: { requirements: any[], 
     );
 };
 
-// Extracted OtpInput component
 export const OtpInput = ({ value, onChange, disabled }: { value: string, onChange: (val: string) => void, disabled?: boolean }) => {
     const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
         const newValue = e.target.value.replace(/[^0-9]/g, '');
@@ -144,7 +143,6 @@ export const OtpInput = ({ value, onChange, disabled }: { value: string, onChang
             const prevInput = document.getElementById(`otp-${index - 1}`) as HTMLInputElement;
             if (prevInput) {
                 prevInput.focus();
-                // Clear the previous input when navigating back
                 const newOtp = value.split('');
                 newOtp[index - 1] = '';
                 onChange(newOtp.join(''));
@@ -155,7 +153,7 @@ export const OtpInput = ({ value, onChange, disabled }: { value: string, onChang
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         e.preventDefault();
         const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
-        onChange(pastedData.padEnd(6, '').slice(0, 6)); // Ensure it's exactly 6 chars or padded
+        onChange(pastedData.padEnd(6, '').slice(0, 6));
     };
 
     return (

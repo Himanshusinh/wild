@@ -1,216 +1,343 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Search, Image as ImageIcon, Video, Scissors, Crop, Maximize, Mic, Smartphone, User, Sparkles, Wand2 } from 'lucide-react';
-import { ROUTES } from '@/routes/routes';
+import Link from "next/link";
+import { useEffect, useRef, useState, type ReactNode, type WheelEventHandler } from "react";
+import { ChevronLeft, ChevronRight, Clapperboard, Crop, ImageIcon, LayoutGrid, Music, Scissors, Video } from "lucide-react";
+import { ROUTES } from "@/routes/routes";
 
-type Category = 'explore' | 'image' | 'video' | 'edit';
+type CardConfig = {
+  title: string;
+  subtitle: string;
+  href: string;
+  badge: ReactNode;
+  icon: ReactNode;
+  iconClassName: string;
+  glowClassName: string;
+  hoverClassName: string;
+  footerClassName: string;
+  cta: string;
+};
 
-interface FeatureItem {
-    id: string;
-    title: string;
-    href: string;
-    videoSrc?: string;
-    poster?: string;
-    imageSrc?: string;
-    icon: React.ReactNode;
-    categories: Category[];
-}
+const CARD_WIDTH = "w-[190px] sm:w-[198px] md:w-[200px]";
 
-const FEATURES: FeatureItem[] = [
-    {
-        id: 'create-image',
-        title: 'Create Image',
-        href: ROUTES.TEXT_TO_IMAGE,
-        videoSrc: "https://imagine.animagic.art/imagine-one/home/all-features/videos/create-image-dark.mp4",
-        poster: "https://imagine.animagic.art/imagine-one/home/all-features/first-frames/create-image.png",
-        icon: <Wand2 className="size-4.5" />,
-        categories: ['explore', 'image']
-    },
-    {
-        id: 'create-video',
-        title: 'Create Video',
-        href: ROUTES.TEXT_TO_VIDEO,
-        videoSrc: "https://imagine.animagic.art/imagine-one/home/all-features/videos/create-video-dark.mp4",
-        poster: "https://imagine.animagic.art/imagine-one/home/all-features/first-frames/create-video.png",
-        icon: <Video className="size-4.5" />,
-        categories: ['explore', 'video']
-    },
-    {
-        id: 'edit-image',
-        title: 'Edit Image',
-        href: "/view/EditImage",
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/edit_image1.png",
-        icon: <Crop className="size-4.5" />,
-        categories: ['explore', 'image', 'edit']
-    },
-    {
-        id: 'upscale',
-        title: 'Upscale',
-        href: "/view/EditImage?feature=upscale",
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/upscale_image.png",
-        icon: <Maximize className="size-4.5" />,
-        categories: ['explore', 'image', 'edit']
-    },
-    {
-        id: 'edit-videos',
-        title: 'Edit Videos',
-        href: "/view/EditVideo",
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/edit_video.png",
-        icon: <Scissors className="size-4.5" />,
-        categories: ['explore', 'video', 'edit']
-    },
-    {
-        id: 'apps',
-        title: 'Apps',
-        href: "/view/workflows",
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/apps.png",
-        icon: <Smartphone className="size-4.5" />,
-        categories: ['explore']
-    },
-    {
-        id: 'remove-background',
-        title: 'Remove Background',
-        href: "/view/EditImage?feature=remove-bg",
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/remove_bg.png",
-        icon: <Scissors className="size-4.5" />,
-        categories: ['explore', 'image', 'edit']
-    },
-    {
-        id: 'product-placement',
-        title: 'Product Placement',
-        href: ROUTES.PRODUCT_GENERATION,
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/product_placement.png",
-        icon: <Sparkles className="size-4.5" />,
-        categories: ['image']
-    },
-    {
-        id: 'lipsync-studio',
-        title: 'Lipsync Studio',
-        href: ROUTES.TEXT_TO_VIDEO + "?feature=lipsync",
-        imageSrc: "https://imagine.animagic.art/imagine-one/home/all-features/lipsync.png",
-        icon: <Mic className="size-4.5" />,
-        categories: ['video', 'edit']
-    },
-    {
-        id: 'image-to-video',
-        title: 'Image to Video',
-        href: ROUTES.TEXT_TO_VIDEO,
-        videoSrc: "https://imagine.animagic.art/imagine-one/home/all-features/videos/i2v-dark.mp4",
-        poster: "https://imagine.animagic.art/imagine-one/home/all-features/first-frames/i2v.png",
-        icon: <Video className="size-4.5" />,
-        categories: ['video']
-    }
+const cards: CardConfig[] = [
+  {
+    title: "Image\nGeneration",
+    subtitle: "Text to image - Any style",
+    href: ROUTES.TEXT_TO_IMAGE,
+    badge: "AI IMAGE",
+    icon: <ImageIcon size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#1e3a8a,#3B82F6)] shadow-[0_8px_24px_rgba(59,130,246,0.45)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#3B82F6]/55 hover:shadow-[0_14px_34px_rgba(59,130,246,0.16)]",
+    footerClassName: "bg-[rgba(59,130,246,0.06)] text-[#3B82F6]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Create\nVideo",
+    subtitle: "Text or image to video",
+    href: ROUTES.TEXT_TO_VIDEO,
+    badge: "VIDEO",
+    icon: <Video size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#9a3412,#ea580c)] shadow-[0_8px_24px_rgba(234,88,12,0.45)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(234,88,12,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#ea580c]/55 hover:shadow-[0_14px_34px_rgba(234,88,12,0.14)]",
+    footerClassName: "bg-[rgba(234,88,12,0.06)] text-[#ea580c]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Edit\nImage",
+    subtitle: "Inpaint - Outpaint - Replace",
+    href: "/view/EditImage",
+    badge: "EDIT",
+    icon: <Crop size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#4c1d95,#7c3aed)] shadow-[0_8px_24px_rgba(124,58,237,0.45)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#7c3aed]/55 hover:shadow-[0_14px_34px_rgba(124,58,237,0.14)]",
+    footerClassName: "bg-[rgba(124,58,237,0.06)] text-[#7c3aed]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Upscale",
+    subtitle: "Up to 4x HD resolution",
+    href: "/view/EditImage?feature=upscale",
+    badge: (
+      <div className="flex items-center gap-1">
+        <span className="rounded-[5px] border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.06em] text-white/45">
+          1x
+        </span>
+        <span className="rounded-[5px] bg-[#d97706] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.06em] text-white">
+          4x
+        </span>
+      </div>
+    ),
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M3 17l6-6M17 3l-6 6M13 3h4v4M3 13v4h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    iconClassName: "bg-[linear-gradient(135deg,#78350f,#d97706)] shadow-[0_8px_24px_rgba(217,119,6,0.45)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(217,119,6,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#d97706]/55 hover:shadow-[0_14px_34px_rgba(217,119,6,0.14)]",
+    footerClassName: "bg-[rgba(217,119,6,0.06)] text-[#d97706]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Remove\nBG",
+    subtitle: "One-click BG removal",
+    href: "/view/EditImage?feature=remove-bg",
+    badge: "REMOVE",
+    icon: <Scissors size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#14532d,#16a34a)] shadow-[0_8px_24px_rgba(22,163,74,0.45)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(22,163,74,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#16a34a]/55 hover:shadow-[0_14px_34px_rgba(22,163,74,0.14)]",
+    footerClassName: "bg-[rgba(22,163,74,0.06)] text-[#16a34a]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Apps",
+    subtitle: "Restore - Stylize - Animate",
+    href: "/view/workflows",
+    badge: "20+ APPS",
+    icon: <LayoutGrid size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#374151,#6b7280)] shadow-[0_8px_24px_rgba(107,114,128,0.35)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(107,114,128,0.18),transparent_68%)]",
+    hoverClassName: "hover:border-white/25 hover:shadow-[0_14px_34px_rgba(0,0,0,0.36)]",
+    footerClassName: "bg-[rgba(107,114,128,0.06)] text-white/45",
+    cta: "Explore ->",
+  },
+  {
+    title: "Lipsync\nStudio",
+    subtitle: "Speech sync - Talking avatars",
+    href: `${ROUTES.TEXT_TO_VIDEO}?feature=lipsync`,
+    badge: "LIPSYNC",
+    icon: <Video size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#4c1d95,#7c3aed)] shadow-[0_8px_24px_rgba(124,58,237,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#7c3aed]/55 hover:shadow-[0_14px_34px_rgba(124,58,237,0.14)]",
+    footerClassName: "bg-[rgba(124,58,237,0.06)] text-[#7c3aed]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Video\nUpscale",
+    subtitle: "Enhance existing videos",
+    href: "/text-to-video/edit-video?feature=upscale",
+    badge: "UPSCALE",
+    icon: <Clapperboard size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#92400e,#f59e0b)] shadow-[0_8px_24px_rgba(245,158,11,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#f59e0b]/55 hover:shadow-[0_14px_34px_rgba(245,158,11,0.14)]",
+    footerClassName: "bg-[rgba(245,158,11,0.06)] text-[#f59e0b]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Text To\nMusic",
+    subtitle: "Prompt to full music track",
+    href: ROUTES.TEXT_TO_MUSIC,
+    badge: "MUSIC",
+    icon: <Music size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#0f766e,#14b8a6)] shadow-[0_8px_24px_rgba(20,184,166,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#14b8a6]/55 hover:shadow-[0_14px_34px_rgba(20,184,166,0.14)]",
+    footerClassName: "bg-[rgba(20,184,166,0.06)] text-[#14b8a6]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Remove\nVideo BG",
+    subtitle: "Transparent video backgrounds",
+    href: "/text-to-video/edit-video?feature=remove-bg",
+    badge: "VIDEO BG",
+    icon: <Scissors size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#065f46,#10b981)] shadow-[0_8px_24px_rgba(16,185,129,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#10b981]/55 hover:shadow-[0_14px_34px_rgba(16,185,129,0.14)]",
+    footerClassName: "bg-[rgba(16,185,129,0.06)] text-[#10b981]",
+    cta: "Try Now ->",
+  },
 ];
 
 export default function AllFeatures() {
-    const [activeTab, setActiveTab] = useState<Category>('explore');
-    const router = useRouter();
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const pendingDotRef = useRef<number | null>(null);
+  const [activeDot, setActiveDot] = useState(0);
+  const [dotCount, setDotCount] = useState(1);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
 
-    const filteredFeatures = FEATURES.filter(feature => feature.categories.includes(activeTab));
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
 
-    return (
-        <div className="desktop:px-10 tablet:px-16 px-6 py-6">
-            <div className="flex w-full flex-col gap-6">
-                {/* Header and Tabs */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <h2 className="text-2xl text-white font-medium">All features</h2>
+    const updatePagination = () => {
+      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+      const step = Math.max(1, el.clientWidth * 0.82);
+      const pages = Math.max(1, Math.ceil(maxScroll / step) + 1);
+      const index = Math.min(pages - 1, Math.max(0, Math.round(el.scrollLeft / step)));
+      const pendingDot = pendingDotRef.current;
 
-                    <div dir="ltr" className="w-full md:w-fit overflow-x-auto no-scrollbar">
-                        <div role="tablist" className="inline-flex items-center justify-start gap-2 bg-zinc-900/50 p-1 rounded-xl border border-white/5 min-w-full md:min-w-0 flex-nowrap">
-                            <TabButton
-                                active={activeTab === 'explore'}
-                                onClick={() => setActiveTab('explore')}
-                                icon={<Search size={14} />}
-                                label="Explore"
-                            />
-                            <TabButton
-                                active={activeTab === 'image'}
-                                onClick={() => setActiveTab('image')}
-                                icon={<ImageIcon size={14} />}
-                                label="Image"
-                            />
-                            <TabButton
-                                active={activeTab === 'video'}
-                                onClick={() => setActiveTab('video')}
-                                icon={<Video size={14} />}
-                                label="Video"
-                            />
-                            <TabButton
-                                active={activeTab === 'edit'}
-                                onClick={() => setActiveTab('edit')}
-                                icon={<Crop size={14} />}
-                                label="Edit"
-                            />
-                        </div>
-                    </div>
-                </div>
+      if (pendingDot !== null) {
+        const targetLeft = pendingDot * step;
+        const reachedTarget = Math.abs(el.scrollLeft - targetLeft) < 8;
+        if (reachedTarget) {
+          pendingDotRef.current = null;
+          setActiveDot(index);
+        } else {
+          setActiveDot(pendingDot);
+        }
+      } else {
+        setActiveDot(index);
+      }
 
-                {/* Features Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {filteredFeatures.map((feature) => (
-                        <Link
-                            key={feature.id}
-                            href={feature.href}
-                            className="group relative isolate flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 transition-all hover:bg-zinc-800/60 hover:border-white/20 aspect-video md:aspect-auto md:h-52"
-                        >
-                            <div className="flex flex-col justify-between h-full p-4 z-10">
-                                <div className="text-white/70 group-hover:text-white transition-colors">
-                                    {feature.icon}
-                                </div>
-                                <p className="text-sm font-medium text-white">{feature.title}</p>
-                            </div>
+      setDotCount(pages);
+      setShowLeftArrow(el.scrollLeft > 2);
+      setShowRightArrow(el.scrollLeft < maxScroll - 2);
+    };
 
-                            {/* Background Media */}
-                            <div className="absolute right-0 bottom-0 -z-1 aspect-square w-[70%] overflow-hidden pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
-                                {feature.videoSrc ? (
-                                    <video
-                                        src={feature.videoSrc}
-                                        poster={feature.poster}
-                                        playsInline
-                                        autoPlay
-                                        muted
-                                        loop
-                                        className="size-full object-cover object-center"
-                                    />
-                                ) : feature.imageSrc ? (
-                                    <img
-                                        src={feature.imageSrc}
-                                        alt={feature.title}
-                                        className="size-full object-cover object-center"
-                                    />
-                                ) : null}
-                            </div>
+    updatePagination();
+    el.addEventListener("scroll", updatePagination, { passive: true });
+    window.addEventListener("resize", updatePagination);
 
-                            {/* Overlay Gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </Link>
-                    ))}
-                </div>
-            </div>
+    return () => {
+      el.removeEventListener("scroll", updatePagination);
+      window.removeEventListener("resize", updatePagination);
+    };
+  }, []);
+
+  const getStep = () => {
+    const el = railRef.current;
+    if (!el) return 0;
+    return el.clientWidth * 0.82;
+  };
+
+  const scrollByDirection = (direction: "left" | "right") => {
+    const nextIndex =
+      direction === "right"
+        ? Math.min(dotCount - 1, activeDot + 1)
+        : Math.max(0, activeDot - 1);
+
+    pendingDotRef.current = nextIndex;
+    setActiveDot(nextIndex);
+    scrollToPage(nextIndex);
+  };
+
+  const scrollToPage = (index: number) => {
+    const el = railRef.current;
+    if (!el) return;
+    const step = getStep();
+    el.scrollTo({
+      left: index * step,
+      behavior: "smooth",
+    });
+  };
+
+  const handleRailWheel: WheelEventHandler<HTMLDivElement> = (event) => {
+    const el = railRef.current;
+    if (!el) return;
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    event.preventDefault();
+    el.scrollLeft += event.deltaY;
+  };
+
+  return (
+    <section className="bg-[#0E0E12] pb-12 pt-8">
+      <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <p className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3b82f6]">
+            <span className="h-[1.5px] w-4 bg-[#3b82f6]" />
+            All Features
+          </p>
+          <Link
+            href="/view/workflows"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-white/60 transition-colors hover:text-white"
+          >
+            <span>View all</span>
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
         </div>
-    );
-}
 
-function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
-    return (
-        <button
+        <div className="relative">
+          <button
+            onClick={() => scrollByDirection("left")}
+            className={`absolute left-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 md:flex ${showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            aria-label="Scroll left"
             type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={onClick}
-            className={`
-        group relative flex items-center justify-center h-8 px-4 gap-2 text-sm font-medium rounded-lg transition-all
-        ${active
-                    ? 'bg-zinc-700 text-white shadow-lg'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                }
-      `}
-        >
-            {icon}
-            <span>{label}</span>
-        </button>
-    );
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <button
+            onClick={() => scrollByDirection("right")}
+            className={`absolute right-1 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 ${showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            aria-label="Scroll right"
+            type="button"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+
+          <div
+            ref={railRef}
+            onWheel={handleRailWheel}
+            className="scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
+          >
+            {cards.map((card) => (
+              <Link
+                key={card.title}
+                href={card.href}
+                className={`group ${CARD_WIDTH} shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-[#171a26] transition-all duration-300 ${card.hoverClassName}`}
+              >
+                <div className="relative min-h-[188px] p-[16px] pb-[0px]">
+                  <div className={`pointer-events-none absolute left-[-28px] top-[-28px] h-40 w-40 ${card.glowClassName}`} />
+                  <div className="relative z-[1] mb-[32px] flex items-start justify-between">
+                    <span className={`flex h-[44px] w-[44px] items-center justify-center rounded-[12px] text-white ${card.iconClassName}`}>{card.icon}</span>
+                    {typeof card.badge === "string" ? (
+                      <span className="rounded-full border border-white/15 bg-white/5 px-[9px] py-[3px] text-[8px] font-bold uppercase tracking-[0.07em] text-white/80">
+                        {card.badge}
+                      </span>
+                    ) : (
+                      card.badge
+                    )}
+                  </div>
+
+                  <div className="relative z-[1]">
+                    <h3 className="mb-[6px] whitespace-pre-line text-[16px] font-bold leading-[1.2] tracking-[-0.01em] text-white">
+                      {card.title}
+                    </h3>
+                    <p className="text-[11px] leading-[1.5] text-white/46">{card.subtitle}</p>
+                  </div>
+                </div>
+
+                <div className={`border-t border-white/10 px-4 py-3 text-center text-[12px] font-bold tracking-[0.02em] ${card.footerClassName}`}>
+                  {card.cta}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-center gap-[6px]">
+          {Array.from({ length: dotCount }).map((_, index) => (
+            <button
+              key={`dot-${index}`}
+              type="button"
+              onClick={() => {
+                pendingDotRef.current = index;
+                setActiveDot(index);
+                scrollToPage(index);
+              }}
+              aria-current={index === activeDot ? "true" : "false"}
+              aria-label={`Go to feature page ${index + 1}`}
+              className={
+                index === activeDot
+                  ? "h-[3px] w-6 rounded-full bg-[#3b82f6]"
+                  : "h-[3px] w-[6px] rounded-full bg-white/20 transition-colors hover:bg-white/35 active:bg-white/50"
+              }
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

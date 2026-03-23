@@ -8,6 +8,8 @@ import TurnstileCaptcha from '@/components/TurnstileCaptcha';
 import { getImageUrl } from "@/routes/imageroute";
 import { LEGAL_ROUTES } from '../../../../routes/routes';
 import { textFieldSx, EyeIcon, EyeOffIcon, ValidationPopup, OtpInput } from './shared';
+import { USERNAME_ALLOWED_CHAR_REGEX, USERNAME_RULE_MESSAGE } from '../useUsernameAvailability';
+import { isValidSignupEmail } from '../emailValidation';
 
 interface SignUpFormProps {
 
@@ -68,10 +70,14 @@ export const SignUpForm = ({
         !!passwordError
     const isOtpSubmitDisabled = processing || otp.length < 6
     const isSubmitDisabled = otpSent ? isOtpSubmitDisabled : isInitialSubmitDisabled
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const resendMinutes = Math.floor(resendCooldown / 60)
+    const resendSeconds = resendCooldown % 60
     const usernameHelperText = !otpSent && usernameTouched && !username.trim() ? "Name is required" : ""
+    const hasInvalidUsernameCharacters = !USERNAME_ALLOWED_CHAR_REGEX.test(username)
+    const usernameFeedbackStatus = hasInvalidUsernameCharacters ? 'invalid' : (hasCapitalLetters ? 'idle' : availability.status)
+    const usernameFeedbackError = hasInvalidUsernameCharacters ? USERNAME_RULE_MESSAGE : availability.error
     const emailHelperText = !otpSent && emailTouched
-        ? (!email.trim() ? "Email is required" : (!emailRegex.test(email.trim()) ? "Please enter a valid email" : ""))
+        ? (!email.trim() ? "Email is required" : (!isValidSignupEmail(email.trim()) ? "Please enter a valid email" : ""))
         : ""
     const passwordHelperText = !otpSent && passwordTouched && !password ? "Password is required" : ""
 
@@ -101,8 +107,8 @@ export const SignUpForm = ({
                     <ValidationPopup requirements={usernameRequirements} value={username} />
                 )}
             </div>
-            {!hasCapitalLetters && username.length > 0 && (
-                <UsernameFeedbackComponent status={availability.status} result={availability.result} error={availability.error} onSuggestion={setUsername} />
+            {username.length > 0 && usernameFeedbackStatus !== 'invalid' && (
+                <UsernameFeedbackComponent status={usernameFeedbackStatus} result={availability.result} error={usernameFeedbackError} onSuggestion={setUsername} />
             )}
 
             <TextField
@@ -206,7 +212,7 @@ export const SignUpForm = ({
                         <div className="flex flex-col items-end w-full gap-1">
                         {resendCooldown > 0 ? (
                             <span className="text-gray-400 text-[10px] font-medium">
-                                Resend in 0:{resendCooldown.toString().padStart(2, '0')}
+                                Resend in {resendMinutes}:{resendSeconds.toString().padStart(2, '0')}
                             </span>
                         ) : (
                             <button

@@ -55,7 +55,11 @@ export default function App() {
   }
   if (pathname?.startsWith('/view/HomePage')) {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
-    return <HomePage />;
+    return (
+      <div className="min-h-screen bg-[#0E0E12]">
+        <HomePage />
+      </div>
+    );
   }
 
   // Root path: Publicly accessible - always render LandingPage
@@ -76,7 +80,9 @@ export default function App() {
             }),
           }}
         />
-        <HomePage />
+        <div className="min-h-screen bg-[#0E0E12]">
+          <HomePage />
+        </div>
       </>
     );
   }
@@ -95,7 +101,9 @@ export default function App() {
   if (currentView === 'home') {
     console.log('🔍 App - Rendering HomePage');
     return (
-      <HomePage />
+      <div className="min-h-screen bg-[#0E0E12]">
+        <HomePage />
+      </div>
     );
   }
 

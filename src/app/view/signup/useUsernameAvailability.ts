@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
-const USERNAME_REGEX = /^[a-z0-9_.-]{3,30}$/
+const USERNAME_REGEX = /^[a-z0-9_-]{6,14}$/
+export const USERNAME_ALLOWED_CHAR_REGEX = /^[A-Za-z0-9_-]*$/
+export const USERNAME_RULE_MESSAGE = 'Username must be 6-14 characters and only use letters, numbers, _ and -'
 
 export type UsernameCheckResult = {
   available: boolean
