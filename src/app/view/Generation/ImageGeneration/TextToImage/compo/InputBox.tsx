@@ -6811,7 +6811,7 @@ const InputBox = () => {
                         onClick={handleEnhancePrompt}
                         disabled={isEnhancing || !prompt.trim()}
                         type="button"
-                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         aria-pressed={isEnhancing}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-white/90">
@@ -6824,7 +6824,7 @@ const InputBox = () => {
 
                     <div className="relative">
                       <button
-                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsCharacterModalOpen(true)}
                         type="button"
                         aria-label="Upload character"
@@ -6837,7 +6837,7 @@ const InputBox = () => {
 
                     <div className="relative">
                       <button
-                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsAssistantOpen(prev => !prev)}
                         type="button"
                         aria-label="Toggle Assistant"
@@ -6852,7 +6852,7 @@ const InputBox = () => {
 
                     <div className="relative">
                       <button
-                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsUploadOpen(true)}
                         type="button"
                         aria-label="Upload image"
