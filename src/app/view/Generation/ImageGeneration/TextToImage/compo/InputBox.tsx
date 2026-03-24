@@ -308,25 +308,32 @@ const InputBox = () => {
     prevSortOrderRef.current = sortOrder;
   }, [sortOrder]);
 
-  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null } }) => {
+  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null }; search?: string }) => {
     if (!userData) return;
     const order = next?.sortOrder || sortOrder;
     const dr = next?.dateRange || dateRange;
+    const s = typeof next?.search === 'string' ? next.search : searchQuery;
 
     // Update local UI state if caller provided overrides
     if (next?.sortOrder) setSortOrder(next.sortOrder);
     if (next?.dateRange) setDateRange(next.dateRange);
+    if (typeof next?.search === 'string') setSearchQuery(next.search);
 
     setPage(1);
 
     const filters: any = { mode: 'image', sortOrder: order };
-    if (searchQuery.trim()) filters.search = searchQuery.trim();
+    if (s.trim()) filters.search = s.trim();
     if (dr.start && dr.end) filters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
     dispatch(setFilters(filters));
 
     await (dispatch as any)(loadHistory({
       filters,
-      backendFilters: { mode: 'image', sortOrder: order, ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}) } as any,
+      backendFilters: { 
+        mode: 'image', 
+        sortOrder: order, 
+        ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}),
+        ...(s.trim() ? { search: s.trim() } : {})
+      } as any,
       paginationParams: { limit: 60 },
       requestOrigin: 'page',
       expectedType: 'text-to-image',
@@ -1363,6 +1370,30 @@ const InputBox = () => {
   // Block pagination while generation finishes & initial history refresh occurs
   const postGenerationBlockRef = useRef(false);
   // Debug event storage removed; bottom scroll pagination doesn't emit IO events
+
+  // Lock scrollRootRef overflow when in edit image page to prevent false scrolling (Bug 51)
+  useEffect(() => {
+    const originalBodyStyle = window.getComputedStyle(document.body).overflow;
+    const originalHtmlStyle = window.getComputedStyle(document.documentElement).overflow;
+
+    if (isInlineEditImagePage) {
+      if (scrollRootRef.current) scrollRootRef.current.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      if (scrollRootRef.current) scrollRootRef.current.style.overflow = 'auto';
+      // Body/HTML reset is handled by EditImageInterface's unmount or should we do it here too?
+      // For safety, let's reset if it's NOT the edit page.
+      document.body.style.overflow = originalBodyStyle || 'auto';
+      document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+    }
+    
+    return () => {
+      if (scrollRootRef.current) scrollRootRef.current.style.overflow = 'auto';
+      document.body.style.overflow = originalBodyStyle || 'auto';
+      document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+    };
+  }, [isInlineEditImagePage]);
 
   // Keep the queue panel (activeGenerations) in sync with the real history list.
   // If a generation completes/fails and is visible in the grid, update the queue item immediately
@@ -5771,12 +5802,32 @@ const InputBox = () => {
 
               {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
               <div className="hidden md:flex items-center pr-4">
-                {userData && <HistoryControls mode="image" />}
+                {userData && (
+                  <HistoryControls 
+                    mode="image" 
+                    onSearchChange={setSearchQuery}
+                    onSortChange={onSortChange}
+                    onDateChange={(range) => {
+                      setDateRange(range);
+                      setDateInput(range.start ? range.start.toLocaleDateString() : '');
+                    }}
+                  />
+                )}
               </div>
             </div>
 
             <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
-              {userData && <HistoryControls mode="image" />}
+              {userData && (
+                <HistoryControls 
+                  mode="image" 
+                  onSearchChange={setSearchQuery}
+                  onSortChange={onSortChange}
+                  onDateChange={(range) => {
+                    setDateRange(range);
+                    setDateInput(range.start ? range.start.toLocaleDateString() : '');
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -5991,7 +6042,30 @@ const InputBox = () => {
             <>
               {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
               {(!userData || (hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
-                <ImageGenerationGuide />
+                ((currentFilters as any)?.search || (currentFilters as any)?.dateRange) ? (
+                  <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-[#60a5fa]/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-[#60a5fa]/20">
+                      <ImageIcon className="w-8 h-8 md:w-10 md:h-10 text-[#60a5fa]" />
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-medium text-white mb-3">No generations found</h3>
+                    <p className="text-slate-400 max-w-sm text-xs md:text-sm">
+                      We couldn't find any images matching your {(currentFilters as any)?.search ? "search" : "date filter"}. Try adjusting your filters or clear them.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setDateRange({ start: null, end: null });
+                        setDateInput("");
+                        refreshHistoryFromBackend({ sortOrder, dateRange: { start: null, end: null }, search: "" });
+                      }}
+                      className="mt-8 px-8 py-2.5 bg-[#60a5fa] text-black rounded-xl text-sm font-bold hover:bg-[#60a5fa]/90 transition-all shadow-[0_0_20px_rgba(96,165,250,0.3)]"
+                    >
+                      Clear all filters
+                    </button>
+                  </div>
+                ) : (
+                  <ImageGenerationGuide />
+                )
               )}
 
               {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
@@ -6956,7 +7030,8 @@ const InputBox = () => {
                       options={['1K', '2K', '4K']}
                       dropdownId="nanoBananaResolutionMb"
                     />
-                    <button
+                    {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                    {/* <button
                       onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
                       className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                     >
@@ -6967,7 +7042,7 @@ const InputBox = () => {
                       className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                     >
                       Image Search
-                    </button>
+                    </button> */}
                   </div>
                 )}
                 {selectedModel === 'flux-2-pro' && (
@@ -7099,7 +7174,8 @@ const InputBox = () => {
                         options={['1K', '2K', '4K']}
                         dropdownId="nanoBananaResolution"
                       />
-                      <button
+                      {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                      {/* <button
                         onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
                         className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                       >
@@ -7110,7 +7186,7 @@ const InputBox = () => {
                         className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                       >
                         Image Search
-                      </button>
+                      </button> */}
                     </div>
                   )}
                   {selectedModel === 'flux-2-pro' && (

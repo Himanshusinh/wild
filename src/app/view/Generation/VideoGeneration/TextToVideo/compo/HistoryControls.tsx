@@ -380,12 +380,15 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
                 const day = i + 1;
                 const thisDate = new Date(calendarYear, calendarMonth, day);
                 const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                const isFuture = thisDate.getTime() > new Date().setHours(23, 59, 59, 999);
                 return (
                   <button
                     key={day}
-                    className={`h-8 rounded text-sm text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                    disabled={isFuture}
+                    className={`h-8 rounded text-sm text-center ${isFuture ? 'text-white/20 cursor-not-allowed' : 'text-white hover:bg-white/15'} ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={async (e) => {
+                      if (isFuture) return;
                       e.stopPropagation();
                       e.preventDefault();
                       const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
@@ -414,12 +417,20 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
               <button
                 className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
                 onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
                   e.preventDefault();
                   const now = new Date();
                   setCalendarMonth(now.getMonth());
                   setCalendarYear(now.getFullYear());
+                  
+                  // Bug 60 fix: Selecting 'Today' should apply the filter
+                  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+                  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                  const iso = now.toISOString().slice(0, 10);
+                  setDateInput(iso);
+                  await onDateChange({ start, end }, iso);
+                  setShowCalendar(false);
                 }}
               >Today</button>
             </div>

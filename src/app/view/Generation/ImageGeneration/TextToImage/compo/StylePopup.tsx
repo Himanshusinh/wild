@@ -61,10 +61,10 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
         clearTimeout(timeoutRef.current);
       }
       
-      // Set new timeout for 5 seconds
+      // Set new timeout for 1 minute (Bug 46 fix)
       timeoutRef.current = setTimeout(() => {
         onClose();
-      }, 20000);
+      }, 60000);
     } else {
       // Clear timeout if popup is closed
       if (timeoutRef.current) {
