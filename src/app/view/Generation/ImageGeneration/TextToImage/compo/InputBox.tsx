@@ -6780,7 +6780,7 @@ const InputBox = () => {
                             inputEl.current.focus();
                           }
                         }}
-                        className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
+                        className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 text-white/90 text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
                         aria-label="Clear prompt"
                       >
                         <svg
@@ -6811,56 +6811,56 @@ const InputBox = () => {
                         onClick={handleEnhancePrompt}
                         disabled={isEnhancing || !prompt.trim()}
                         type="button"
-                        className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         aria-pressed={isEnhancing}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-white/90">
                           <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
                           <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
                         </svg>
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
                     </div>
 
                     <div className="relative">
                       <button
-                        className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsCharacterModalOpen(true)}
                         type="button"
                         aria-label="Upload character"
                       >
-                        <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                        <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-4 h-4" />
                         <span className="text-white text-sm"> </span>
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
                     </div>
 
                     <div className="relative">
                       <button
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsAssistantOpen(prev => !prev)}
                         type="button"
                         aria-label="Toggle Assistant"
                         aria-pressed={isAssistantOpen}
                       >
-                        <Sparkles className={`w-5 h-5 transition-colors ${isAssistantOpen ? 'text-blue-400' : 'text-white'}`} />
+                        <Sparkles className={`w-4 h-4 transition-colors ${isAssistantOpen ? 'text-blue-400' : 'text-white/90'}`} />
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                         {isAssistantOpen ? 'Close Assistant' : 'AI Assistant'}
                       </div>
                     </div>
 
                     <div className="relative">
                       <button
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsUploadOpen(true)}
                         type="button"
                         aria-label="Upload image"
                       >
-                        <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                        <Image src="/icons/fileupload.svg" alt="Attach" width={16} height={16} className="opacity-100" />
                         <span className="text-white text-sm"> </span>
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
                     </div>
                   </div>
                 </div>
