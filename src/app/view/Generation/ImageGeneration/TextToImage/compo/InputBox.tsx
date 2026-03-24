@@ -5768,7 +5768,7 @@ const InputBox = () => {
 
                 <button
                   onClick={() => router.push('/text-to-image')}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80  border border-white/10 transition-all ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Image"
                 >
                   <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
@@ -5780,7 +5780,7 @@ const InputBox = () => {
                     console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
                     router.push('/text-to-image/edit-image');
                   }}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Edit Image"
                 >
                   <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
@@ -5793,7 +5793,7 @@ const InputBox = () => {
                     const url = isLocal ? 'http://localhost:3002' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
                   }}
-                  className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all bg-white/10 text-white/100"
+                  className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
                   aria-label="Image Editor"
                 >
                   <Edit3 size={16} className="text-white" />
@@ -5802,8 +5802,8 @@ const InputBox = () => {
               </div>
 
               {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
-              <div className="hidden md:flex items-center pr-4">
-                {userData && (
+              {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
+                <div className="hidden md:flex items-center pr-4">
                   <HistoryControls 
                     mode="image" 
                     onSearchChange={setSearchQuery}
@@ -5813,12 +5813,12 @@ const InputBox = () => {
                       setDateInput(range.start ? range.start.toLocaleDateString() : '');
                     }}
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
-              {userData && (
+            {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
+              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
                 <HistoryControls 
                   mode="image" 
                   onSearchChange={setSearchQuery}
@@ -5828,8 +5828,8 @@ const InputBox = () => {
                     setDateInput(range.start ? range.start.toLocaleDateString() : '');
                   }}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
 

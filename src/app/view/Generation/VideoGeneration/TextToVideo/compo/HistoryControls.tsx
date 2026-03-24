@@ -135,7 +135,6 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     const currentSortOrder = (currentFilters as any)?.sortOrder || 'desc';
 
     didInitialLoadRef.current = true;
-    dispatch(clearHistory());
     dispatch(setFilters({
       mode,
       sortOrder: currentSortOrder,
@@ -194,7 +193,6 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       }
 
       didInitialLoadRef.current = true;
-      dispatch(clearHistory());
       dispatch(setFilters({
         mode,
         sortOrder: order,
@@ -231,7 +229,6 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     }
 
     didInitialLoadRef.current = true;
-    dispatch(clearHistory());
     dispatch(setFilters({
       mode,
       sortOrder,
@@ -259,7 +256,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search prompt..."
-          className={`px-2 py-1 md:py-1.5 rounded-lg text-xs bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/10 text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
+          className={`px-3 py-1 md:py-1.5 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-white/10 border border-white/20 bg-transparent text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
         />
         {searchInput && (
           <button
@@ -281,7 +278,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </div>
       <button
         onClick={() => onSortChange('desc')}
-        className={`relative group md:px-2 px-1 py-1 md:py-1.5 rounded-lg text-xs flex items-center gap-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white border-white/5 text-black shadow-sm' : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
+        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
         aria-label="Recent"
       >
         <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
@@ -289,7 +286,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </button>
       <button
         onClick={() => onSortChange('asc')}
-        className={`relative group md:px-2 px-1 py-1 md:py-1.5 rounded-lg text-xs flex items-center gap-1.5 rounded-lg md:text-sm text-xs font-medium transition-all border whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white border-white/5 text-black shadow-sm' : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'}`}
+        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
         aria-label="Oldest"
       >
         <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
@@ -325,7 +322,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
             setCalendarYear(base.getFullYear());
             setShowCalendar((v) => !v);
           }}
-          className={`relative group px-1 py-1 md:py-1 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
+          className={`relative group p-1 md:p-1.5 rounded-lg text-xs transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/5 text-white/80'}`}
           aria-label="Date"
         >
           <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
