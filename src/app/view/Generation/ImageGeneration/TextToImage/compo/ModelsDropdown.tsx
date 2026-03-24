@@ -36,9 +36,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // { name: "Flux Pro 1.1", value: "flux-pro-1.1" },
     // { name: "FLUX.1 Pro", value: "flux-pro" },
     // { name: 'FLUX.1 Dev', value: 'flux-dev' },
-    { name: "Runway Gen4 Image", value: "gen4_image" },
-    { name: "Runway Gen4 Image Turbo", value: "gen4_image_turbo" },
-    
     { name: "MiniMax Image-01", value: "minimax-image-01" },
     { name: "Nano Banana", value: "gemini-25-flash-image" },
     { name: "Nano Banana Pro", value: "google/nano-banana-pro" },
@@ -95,8 +92,6 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   if (restrictForImages) {
     filteredModels = modelsWithCredits.filter(m =>
       m.value.startsWith('flux-kontext') ||
-      m.value === 'gen4_image' ||
-      m.value === 'gen4_image_turbo' ||
       m.value === 'gemini-25-flash-image' ||
       m.value === 'google/nano-banana-pro' ||
       m.value === 'google/nano-banana-2' ||
@@ -125,6 +120,19 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       }
     }
   }, []); // Only run on mount
+
+  // If a previously saved/legacy model is no longer available (e.g. removed from dropdown),
+  // switch to a valid fallback.
+  useEffect(() => {
+    const existsInList = modelsWithCredits.some((m) => m.value === selectedModel);
+    if (!existsInList) {
+      if (uploadedImages.length > 0) {
+        dispatch(setSelectedModel('gemini-25-flash-image'));
+      } else {
+        dispatch(setSelectedModel('new-turbo-model'));
+      }
+    }
+  }, [selectedModel, modelsWithCredits, uploadedImages.length, dispatch]);
 
   // If user switches to image-to-image (uploaded images) while an unsupported model is selected, auto-switch to nano banana
   useEffect(() => {
