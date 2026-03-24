@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
-import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
 import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
 import MusicGenerationPage from '../MusicGeneration/MusicGenerationPage';
@@ -29,7 +28,6 @@ const generators: GeneratorComponentMap = {
   // Image Generation Features
   'text-to-image': TextToImageInputBox,
   'image-to-image': TextToImageInputBox, // Uses same component as text-to-image (supports image uploads)
-  'sticker-generation': StickerGenerationInputBox,
 
   // Video Generation Features
   'text-to-video': VideoGenerationPage,
