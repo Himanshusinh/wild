@@ -156,7 +156,7 @@ const DEFAULT_NAV_ITEMS: NavItemDef[] = [
 ];
 
 const STORAGE_KEY = 'sidebar_item_order';
-const DESKTOP_PRIMARY_ORDER = ['home', 'apps', 'audio', 'image', 'studio', 'genart', 'video'];
+const DESKTOP_PRIMARY_ORDER = ['home', 'genart', 'image', 'video', 'studio', 'audio', 'apps'];
 const DESKTOP_BOTTOM_ORDER = ['pricing', 'history'];
 const MOBILE_ORDER = ['genart', 'image', 'video', 'audio', 'apps'];
 
@@ -297,7 +297,7 @@ const SidePannelFeatures = () => {
     const insertLine = (
       <div
         key="insert-line"
-        className="mx-1 my-0.5 h-[2px] rounded-full bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
+        className="mx-1 my-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
         style={{ boxShadow: '0 0 6px 1px rgba(255,255,255,0.28)' }}
       />
     );
@@ -378,7 +378,7 @@ const SidePannelFeatures = () => {
         <div
           onClick={() => nav(APP_ROUTES.LANDING)}
           onMouseEnter={(e) => handleMouseEnterItem(null, e)}
-          className="mb-2 flex cursor-pointer items-center justify-center pt-[18px]"
+          className="mb-2 flex cursor-pointer items-center justify-center pt-2"
         >
           <LogoSvg />
         </div>
