@@ -72,7 +72,6 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 import QualityDropdown from "./QualityDropdown";
-import ImageGenerationGuide from "./ImageGenerationGuide";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -424,6 +423,8 @@ const InputBox = () => {
           if (m === 'bytedance/seedream-4') return 'seedream-v4';
           if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
           if (m === 'z-image-turbo') return 'new-turbo-model';
+          // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
+          if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
           return m;
         };
         dispatch(setSelectedModel(mapIncomingModel(mdl)));
@@ -6063,8 +6064,10 @@ const InputBox = () => {
                       Clear all filters
                     </button>
                   </div>
-                ) : (
-                  <ImageGenerationGuide />
+                ) : (!loading && !isFiltering) && (
+                  <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
+                    <GifLoader size={120} alt="Logo" />
+                  </div>
                 )
               )}
 
@@ -7380,7 +7383,9 @@ const InputBox = () => {
               </svg>
             </button>
             {/* Guide Content */}
-            <ImageGenerationGuide />
+            <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
+              <GifLoader size={120} alt="Logo" />
+            </div>
           </div>
         </div>
       )}
