@@ -6066,7 +6066,8 @@ const InputBox = () => {
                   </div>
                 ) : (!loading && !isFiltering) && (
                   <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
-                    <GifLoader size={120} alt="Logo" />
+                    <GifLoader size={120} alt="Loading" />
+                    <div className="text-white text-lg text-center mt-4">Loading generations...</div>
                   </div>
                 )
               )}
@@ -7383,9 +7384,10 @@ const InputBox = () => {
               </svg>
             </button>
             {/* Guide Content */}
-            <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
-              <GifLoader size={120} alt="Logo" />
-            </div>
+            {/* <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
+              <GifLoader size={120} alt="Loading" />
+              <div className="text-white text-lg text-center mt-4">Loading generations...</div>
+            </div> */}
           </div>
         </div>
       )}
