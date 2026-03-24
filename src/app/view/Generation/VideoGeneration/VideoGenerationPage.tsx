@@ -31,7 +31,7 @@ export default function VideoGenerationPage() {
 
             const hostname = window.location.hostname;
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                window.open('http://localhost:3001', '_blank');
+                window.open('http://localhost:3003', '_blank');
             } else {
                 window.open('https://editor-video.wildmindai.com/', '_blank');
             }
@@ -177,7 +177,7 @@ export default function VideoGenerationPage() {
                                         onClick={() => {
                                             const hostname = window.location.hostname;
                                             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                                                window.open('http://localhost:3001', '_blank');
+                                                window.open('http://localhost:3003', '_blank');
                                             } else {
                                                 window.open('https://editor-video.wildmindai.com/', '_blank');
                                             }
@@ -219,7 +219,7 @@ export default function VideoGenerationPage() {
                                             if (feature === 'Video editor') {
                                                 const hostname = window.location.hostname;
                                                 if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                                                    window.open('http://localhost:3001', '_blank');
+                                                    window.open('http://localhost:3003', '_blank');
                                                 } else {
                                                     window.open('https://editor-video.wildmindai.com/', '_blank');
                                                 }

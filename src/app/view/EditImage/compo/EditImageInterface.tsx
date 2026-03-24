@@ -198,6 +198,22 @@ const EditImageInterface: React.FC = () => {
   const [faceEnhance, setFaceEnhance] = useState(false);
   const [swinTask, setSwinTask] = useState<'classical_sr' | 'real_sr' | 'compressed_sr'>('real_sr');
   const getSwinTaskLabel = (t: 'classical_sr' | 'real_sr' | 'compressed_sr') => {
+
+  // Global scroll lock for Edit Image screen (Bug 51)
+  useEffect(() => {
+    // Lock scroll on mount
+    const originalBodyStyle = window.getComputedStyle(document.body).overflow;
+    const originalHtmlStyle = window.getComputedStyle(document.documentElement).overflow;
+    
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Unlock scroll on unmount
+    return () => {
+      document.body.style.overflow = originalBodyStyle || 'auto';
+      document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+    };
+  }, []);
     if (t === 'classical_sr') return 'classical_sr: Upscale high-quality inputs (classical super-resolution).';
     if (t === 'real_sr') return 'real_sr: Upscale real-world photos with mixed noise/compression (default).';
     return 'compressed_sr: Upscale heavily compressed/low-bitrate images.';
@@ -3716,7 +3732,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#07070B]">
+    <div className="relative bg-[#07070B]">
       {/* Sticky header like ArtStation */}
       {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
@@ -3776,7 +3792,7 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 pt-20 md:pt-13 flex-col md:flex-row">
+      <div className="flex flex-1 min-h-0 md:py-1 pt-20 md:mt-10 flex-col md:flex-row">
         {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
         <div className="w-auto bg-transparent flex flex-col md:h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-0">
           {/* Error Message */}
@@ -4902,7 +4918,7 @@ const EditImageInterface: React.FC = () => {
 
 
           {/* Right Main Area - Output preview parallel to input image */}
-          <div className="md:p-4 p-0  flex flex-col md:flex-row items-start justify-center md:gap-4 gap-2 md:pt-3 pt-0">
+          <div className="md:p-0 p-0  flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-3 pt-0">
             <div
               className={`bg-white/5 rounded-xl border border-white/10  relative overflow-hidden w-full max-w-6xl md:max-w-[100rem] ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
               onDragOver={(e) => { try { e.preventDefault(); } catch { } }}

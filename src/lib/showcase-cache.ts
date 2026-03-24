@@ -4,11 +4,11 @@ import { PublicItem } from '@/components/ArtStationPreview'
 export const REVALIDATE_SECONDS = 10 // Reduced to 10s for debugging (was 86400)
 
 // Helper to normalize dates
-const normalizeDate = (d: any) => 
-  typeof d === 'string' 
-    ? d 
-    : (d && typeof d === 'object' && typeof d._seconds === 'number' 
-      ? new Date(d._seconds * 1000).toISOString() 
+const normalizeDate = (d: any) =>
+  typeof d === 'string'
+    ? d
+    : (d && typeof d === 'object' && typeof d._seconds === 'number'
+      ? new Date(d._seconds * 1000).toISOString()
       : undefined)
 
 // Helper to resolve image URL
@@ -21,13 +21,13 @@ const resolveImageUrl = (item: any) => {
 export async function getShowcaseImages(): Promise<PublicItem[]> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
-    
+
     console.log('[ShowcaseCache] Init fetch from API Base:', apiBase)
-    
+
     const allItems: any[] = []
     let nextCursor: string | undefined = undefined
     let page = 0
-    const MAX_PAGES = 3 
+    const MAX_PAGES = 3
     const TARGET_COUNT = 50
 
     while (page < MAX_PAGES && allItems.length < TARGET_COUNT) {
@@ -35,12 +35,12 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
       apiUrl.searchParams.set('mode', 'image')
       apiUrl.searchParams.set('limit', '50')
       if (nextCursor) apiUrl.searchParams.set('cursor', nextCursor)
-      
+
       console.log(`[ShowcaseCache] Fetching page ${page + 1} from:`, apiUrl.toString())
-      
+
       const res = await fetch(apiUrl.toString(), {
         method: 'GET',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -56,12 +56,12 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
       }
 
       const json = await res.json()
-      
+
       // Log simple stats about raw response
       const payload = json?.data || json
       const items = (payload?.items || []) as any[]
       console.log(`[ShowcaseCache] Page ${page + 1} raw items count:`, items.length)
-      
+
       nextCursor = payload?.meta?.nextCursor || payload?.nextCursor
 
       if (items.length === 0) break
@@ -71,40 +71,40 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
         // 1. Must be an image generation
         const type = (item.generationType || '').toLowerCase()
         const isImage = type === 'text-to-image' || type === 'image-upscale' || type === 'logo' || type === 'product-generation' || type === 'sticker-generation'
-        
+
         if (!isImage) {
-           console.log('[ShowcaseCache] Filtered out (not image):', item.id, type)
-           return false
+          console.log('[ShowcaseCache] Filtered out (not image):', item.id, type)
+          return false
         }
 
         // 2. Must not be video or audio
         if (item.videos?.length > 0 || item.audios?.length > 0) {
-           console.log('[ShowcaseCache] Filtered out (has video/audio):', item.id)
-           return false
+          console.log('[ShowcaseCache] Filtered out (has video/audio):', item.id)
+          return false
         }
 
         // 3. Must have a valid OPTIMIZED image URL (zata/optimized only)
         // Check root or any image in the array
         const rootOptimized = resolveImageUrl(item)
         const hasOptimizedImage = rootOptimized || (Array.isArray(item.images) && item.images.some((img: any) => resolveImageUrl(img)))
-        
+
         if (!hasOptimizedImage) {
-           console.log('[ShowcaseCache] Filtered out (no valid image URL):', item.id, 'Images:', item.images?.length)
-           return false
+          console.log('[ShowcaseCache] Filtered out (no valid image URL):', item.id, 'Images:', item.images?.length)
+          return false
         }
 
         // 4. Score check (relaxed)
         // const score = typeof item.aestheticScore === 'number' ? item.aestheticScore : (typeof item.score === 'number' ? item.score : 0)
         // We accept all scores now
-        
+
         return true
       })
-      
+
       console.log(`[ShowcaseCache] Page ${page + 1} valid items after filter:`, filtered.length)
 
       allItems.push(...filtered)
       page++
-      
+
       if (!nextCursor) break
     }
 
@@ -121,12 +121,12 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
     // Normalize to PublicItem format
     return top50.map(it => {
       // Process images to strictly use optimized URLs
-      const processedImages = Array.isArray(it.images) 
+      const processedImages = Array.isArray(it.images)
         ? it.images.map((img: any) => ({
-            ...img,
-            url: resolveImageUrl(img), // Overwrite with optimized URL
-            originalUrl: resolveImageUrl(img)
-          })).filter((img: any) => img.url) // Remove if no optimized URL
+          ...img,
+          url: resolveImageUrl(img), // Overwrite with optimized URL
+          originalUrl: resolveImageUrl(img)
+        })).filter((img: any) => img.url) // Remove if no optimized URL
         : []
 
       // If no processed images, try to make one from root if possible
@@ -172,7 +172,7 @@ export async function getShowcaseImages(): Promise<PublicItem[]> {
 export async function getSignupImages(): Promise<PublicItem[]> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
-    
+
     const allItems: any[] = []
     let nextCursor: string | undefined = undefined
     let page = 0
@@ -186,7 +186,7 @@ export async function getSignupImages(): Promise<PublicItem[]> {
       apiUrl.searchParams.set('mode', 'image')
       apiUrl.searchParams.set('limit', '50')
       if (nextCursor) apiUrl.searchParams.set('cursor', nextCursor)
-      
+
       const res = await fetch(apiUrl.toString(), {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -206,7 +206,7 @@ export async function getSignupImages(): Promise<PublicItem[]> {
         // Allow if explicitly text-to-image OR if undefined (fallback) OR if contains 'image'
         // But exclude video/audio explicitly
         if (item.videos?.length > 0 || item.audios?.length > 0) return false
-        
+
         // 2. Strict 1:1 aspect ratio
         const ratio = item.aspectRatio || item.aspect_ratio || item.frameSize
         if (ratio !== '1:1') return false
@@ -219,7 +219,7 @@ export async function getSignupImages(): Promise<PublicItem[]> {
         // Check root or any image in the array
         const rootOptimized = resolveImageUrl(item)
         const hasOptimizedImage = rootOptimized || (Array.isArray(item.images) && item.images.some((img: any) => resolveImageUrl(img)))
-        
+
         if (!hasOptimizedImage) return false
 
         return true
@@ -227,7 +227,7 @@ export async function getSignupImages(): Promise<PublicItem[]> {
 
       allItems.push(...filtered)
       page++
-      
+
       if (!nextCursor) break
     }
 

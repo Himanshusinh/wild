@@ -1,13 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, ArrowUpRight, Loader2, FolderOpen, Trash2 } from 'lucide-react';
-import { fetchCanvasProjects, deleteProject } from '@/lib/canvasApi';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus, ArrowUpRight, Loader2, FolderOpen, Trash2, Bell, Check, X } from 'lucide-react';
+import { fetchCanvasProjects, deleteProject, fetchCanvasInvitations, acceptCanvasInvitation, dismissCanvasInvitation, type CanvasInvitation } from '@/lib/canvasApi';
 import { CanvasProject } from '@/types/canvasTypes';
 import Image from 'next/image';
+import { useAppDispatch } from '@/store/hooks';
+import { addNotification } from '@/store/slices/uiSlice';
  
 export function ProjectsView() {
+    const dispatch = useAppDispatch();
     const [projects, setProjects] = useState<CanvasProject[]>([]);
+    const [currentUser, setCurrentUser] = useState<{ uid?: string; email?: string } | null>(null);
+    const [invitations, setInvitations] = useState<CanvasInvitation[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeCategory, setActiveCategory] = useState<'owned' | 'shared'>('owned');
+
+    type ProjectCard = CanvasProject & {
+        accessType: 'owned' | 'shared';
+        isPlaceholder?: boolean;
+        sharedBy?: string;
+    };
+
+    const resolveCurrentUser = async (): Promise<{ uid?: string; email?: string } | null> => {
+        try {
+            const { getMeCached } = await import('@/lib/me');
+            const me = await getMeCached();
+            const nextUser = {
+                uid: typeof me?.uid === 'string' ? me.uid : undefined,
+                email: typeof me?.email === 'string' ? me.email : undefined,
+            };
+            if (nextUser.uid || nextUser.email) return nextUser;
+        } catch {}
+
+        try {
+            const rawUser = localStorage.getItem('user');
+            if (rawUser) {
+                const parsed = JSON.parse(rawUser);
+                const nextUser = {
+                    uid: typeof parsed?.uid === 'string' ? parsed.uid : undefined,
+                    email: typeof parsed?.email === 'string' ? parsed.email : undefined,
+                };
+                if (nextUser.uid || nextUser.email) return nextUser;
+            }
+        } catch {}
+
+        return null;
+    };
+
+    const syncInvitationsForUser = async (user: { uid?: string; email?: string } | null) => {
+        if (!user?.uid) {
+            setInvitations([]);
+            return;
+        }
+        try {
+            const nextInvitations = await fetchCanvasInvitations();
+            setInvitations(nextInvitations);
+        } catch {
+            setInvitations([]);
+        }
+    };
 
     // Determine canvas URL based on environment (copied from original logic)
     const getCanvasUrl = () => {
@@ -26,7 +77,7 @@ export function ProjectsView() {
         } else if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') {
              return 'https://onstaging-studios.wildmindai.com';
         }
-        return 'http://localhost:3001';
+        return 'http://localhost:3002';
     };
     const canvasUrl = getCanvasUrl();
 
@@ -46,22 +97,39 @@ export function ProjectsView() {
         }
 
         // Reload when window gets focus (e.g. user comes back from canvas tab)
-        window.addEventListener('focus', loadProjects);
-        return () => window.removeEventListener('focus', loadProjects);
+        const handleRefresh = () => loadProjects();
+        const handleVisibility = () => {
+            if (!document.hidden) loadProjects();
+        };
+
+        window.addEventListener('focus', handleRefresh);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('focus', handleRefresh);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
     }, []);
+
+    useEffect(() => {
+        if (!currentUser?.uid) return;
+        const intervalId = window.setInterval(async () => {
+            try {
+                const next = await fetchCanvasInvitations();
+                setInvitations((prev) => JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
+            } catch {}
+        }, 4000);
+
+        return () => window.clearInterval(intervalId);
+    }, [currentUser?.uid]);
 
     const loadProjects = async () => {
         setLoading(true);
         setError(null);
         try {
             // Check if user is authenticated first
-            const { getMeCached } = await import('@/lib/me');
-            try {
-                await getMeCached();
-            } catch (authError) {
-                console.warn('[ProjectsView] User not authenticated, projects may not load', authError);
-                // Continue anyway - the API call will fail with 401 if not authenticated
-            }
+            const nextUser = await resolveCurrentUser();
+            setCurrentUser(nextUser);
+            await syncInvitationsForUser(nextUser);
 
             const response = await fetchCanvasProjects();
             const enrichedProjects = (response.projects || []).map((p: CanvasProject) => {
@@ -128,18 +196,66 @@ export function ProjectsView() {
         }
     };
 
-    const formatDate = (dateInput: any) => {
+    const refreshInvitations = () => {
+        void syncInvitationsForUser(currentUser);
+    };
+
+    const handleInvitationAction = (invitationId: string, status: 'accepted' | 'dismissed') => {
+        (async () => {
+            try {
+                const updatedInvitation = status === 'accepted'
+                    ? await acceptCanvasInvitation(invitationId)
+                    : await dismissCanvasInvitation(invitationId);
+
+                await loadProjects();
+                await syncInvitationsForUser(currentUser);
+
+                if (updatedInvitation && status === 'accepted') {
+                    setActiveCategory('shared');
+                    dispatch(addNotification({
+                        type: 'success',
+                        message: `${updatedInvitation.projectName} moved to Shared projects.`,
+                    }));
+                    return;
+                }
+
+                dispatch(addNotification({
+                    type: 'info',
+                    message: 'Invitation dismissed.',
+                }));
+            } catch (error) {
+                dispatch(addNotification({
+                    type: 'error',
+                    message: error instanceof Error ? error.message : 'Failed to update invitation.',
+                }));
+            }
+        })();
+    };
+
+    const formatDate = (dateInput: unknown) => {
         if (!dateInput) return '';
         let date: Date;
 
         if (typeof dateInput === 'string' || typeof dateInput === 'number') {
             date = new Date(dateInput);
-        } else if (dateInput && typeof dateInput === 'object' && '_seconds' in dateInput) {
+        } else if (
+            typeof dateInput === 'object' &&
+            dateInput !== null &&
+            '_seconds' in dateInput &&
+            typeof dateInput._seconds === 'number'
+        ) {
             date = new Date(dateInput._seconds * 1000);
-        } else if (dateInput && typeof dateInput === 'object' && 'seconds' in dateInput) {
+        } else if (
+            typeof dateInput === 'object' &&
+            dateInput !== null &&
+            'seconds' in dateInput &&
+            typeof dateInput.seconds === 'number'
+        ) {
             date = new Date(dateInput.seconds * 1000);
+        } else if (dateInput instanceof Date) {
+            date = dateInput;
         } else {
-            date = new Date(dateInput);
+            return 'Recently';
         }
 
         if (isNaN(date.getTime())) return 'Recently';
@@ -154,11 +270,156 @@ export function ProjectsView() {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
+    const toSafeIsoString = (dateInput: unknown) => {
+        if (!dateInput) return new Date().toISOString();
+
+        if (typeof dateInput === 'string' || typeof dateInput === 'number') {
+            const date = new Date(dateInput);
+            return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+        }
+
+        if (
+            typeof dateInput === 'object' &&
+            dateInput !== null &&
+            '_seconds' in dateInput &&
+            typeof dateInput._seconds === 'number'
+        ) {
+            return new Date(dateInput._seconds * 1000).toISOString();
+        }
+
+        if (
+            typeof dateInput === 'object' &&
+            dateInput !== null &&
+            'seconds' in dateInput &&
+            typeof dateInput.seconds === 'number'
+        ) {
+            return new Date(dateInput.seconds * 1000).toISOString();
+        }
+
+        if (
+            typeof dateInput === 'object' &&
+            dateInput !== null &&
+            'toDate' in dateInput &&
+            typeof dateInput.toDate === 'function'
+        ) {
+            const converted = dateInput.toDate();
+            if (converted instanceof Date && !Number.isNaN(converted.getTime())) {
+                return converted.toISOString();
+            }
+        }
+
+        if (dateInput instanceof Date && !Number.isNaN(dateInput.getTime())) {
+            return dateInput.toISOString();
+        }
+
+        return new Date().toISOString();
+    };
+
+    const pendingInvitations = useMemo(
+        () => invitations.filter((invitation) => invitation.status === 'pending'),
+        [invitations]
+    );
+
+    const ownedProjects = useMemo<ProjectCard[]>(
+        () => projects
+            .filter((project) => !currentUser?.uid || project.ownerUid === currentUser.uid)
+            .map((project) => ({ ...project, accessType: 'owned' })),
+        [currentUser?.uid, projects]
+    );
+
+    const sharedProjects = useMemo<ProjectCard[]>(() => {
+        const apiSharedProjects = projects
+            .filter((project) => !!currentUser?.uid && project.ownerUid !== currentUser.uid)
+            .map((project) => ({ ...project, accessType: 'shared' as const }));
+
+        const acceptedInvitations = invitations.filter((invitation) => invitation.status === 'accepted');
+        const placeholderProjects = acceptedInvitations
+            .filter((invitation) => !apiSharedProjects.some((project) => project.id === invitation.projectId))
+            .map<ProjectCard>((invitation) => ({
+                id: invitation.projectId,
+                name: invitation.projectName,
+                ownerUid: '',
+                createdAt: toSafeIsoString(invitation.createdAt),
+                updatedAt: toSafeIsoString(invitation.updatedAt || invitation.createdAt),
+                accessType: 'shared',
+                isPlaceholder: true,
+                sharedBy: invitation.senderUsername || invitation.senderEmail,
+            }));
+
+        return [...apiSharedProjects, ...placeholderProjects];
+    }, [currentUser?.uid, invitations, projects]);
+
+    const visibleProjects = activeCategory === 'owned' ? ownedProjects : sharedProjects;
+
     return (
         <div className="animate-in fade-in duration-500">
             <div className="flex items-end justify-between mb-12">
-                <div><h2 className="text-4xl font-medium tracking-tight text-white mb-2">My Projects</h2><p className="text-slate-400">Manage your workspaces and assets.</p></div>
+                <div>
+                    <h2 className="text-4xl font-medium tracking-tight text-white mb-2">Projects</h2>
+                    <p className="text-slate-400">Manage your own canvas work and the projects shared with you.</p>
+                </div>
                 <button onClick={handleCreateNewProject} className="bg-white text-black px-6 py-3 rounded-full font-semibold hover:bg-[#60a5fa] transition-colors flex items-center gap-2"><Plus size={18} /> New Canvas</button>
+            </div>
+
+            {pendingInvitations.length > 0 && (
+                <div className="mb-8 rounded-3xl border border-blue-500/20 bg-blue-500/10 backdrop-blur-sm p-6">
+                    <div className="flex items-center gap-3 mb-5">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                            <Bell size={18} className="text-blue-300" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-white">Project Invitations</h3>
+                            <p className="text-sm text-blue-100/70">Accept an incoming collaboration invite to place it inside Shared.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4">
+                        {pendingInvitations.map((invitation) => (
+                            <div key={invitation.id} className="rounded-2xl border border-white/10 bg-black/20 p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <div className="text-white font-medium">{invitation.projectName}</div>
+                                    <div className="text-sm text-slate-300 mt-1">
+                                        {invitation.senderUsername || invitation.senderEmail || 'A teammate'} shared this project with you.
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1">
+                                        Sent to {invitation.recipientEmail}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => handleInvitationAction(invitation.id, 'accepted')}
+                                        className="px-4 py-2 rounded-full bg-white text-black hover:bg-[#60a5fa] transition-colors flex items-center gap-2 font-medium"
+                                    >
+                                        <Check size={14} />
+                                        Accept
+                                    </button>
+                                    <button
+                                        onClick={() => handleInvitationAction(invitation.id, 'dismissed')}
+                                        className="px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-colors flex items-center gap-2"
+                                    >
+                                        <X size={14} />
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="mb-8 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+                <button
+                    onClick={() => setActiveCategory('owned')}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${activeCategory === 'owned' ? 'bg-white text-black' : 'text-slate-300 hover:text-white'}`}
+                >
+                    My Projects ({ownedProjects.length})
+                </button>
+                <button
+                    onClick={() => setActiveCategory('shared')}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${activeCategory === 'shared' ? 'bg-white text-black' : 'text-slate-300 hover:text-white'}`}
+                >
+                    Shared ({sharedProjects.length})
+                </button>
             </div>
 
             {loading ? (
@@ -178,14 +439,67 @@ export function ProjectsView() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {/* Create New Card */}
-                    <div onClick={handleCreateNewProject} className="aspect-[4/3] rounded-2xl border border-dashed border-white/10 bg-[#050505] hover:bg-[#0A0A0A] hover:border-white/20 transition-all cursor-pointer flex flex-col items-center justify-center group">
-                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center text-slate-600 group-hover:text-white group-hover:scale-110 transition-all mb-4"><Plus size={32} /></div>
-                        <span className="text-slate-500 group-hover:text-white font-medium">Create New</span>
-                    </div>
+                    {activeCategory === 'owned' && (
+                        <div onClick={handleCreateNewProject} className="aspect-[4/3] rounded-2xl border border-dashed border-white/10 bg-[#050505] hover:bg-[#0A0A0A] hover:border-white/20 transition-all cursor-pointer flex flex-col items-center justify-center group">
+                            <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center text-slate-600 group-hover:text-white group-hover:scale-110 transition-all mb-4"><Plus size={32} /></div>
+                            <span className="text-slate-500 group-hover:text-white font-medium">Create New</span>
+                        </div>
+                    )}
 
                     {/* Project Cards */}
-                    {projects.map((p: CanvasProject) => (
+                    {activeCategory === 'shared' && pendingInvitations.length > 0 && (
+                        <div className="col-span-full rounded-3xl border border-blue-500/20 bg-blue-500/10 p-6">
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                                    <Bell size={18} className="text-blue-300" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white">Pending Invitations</h3>
+                                    <p className="text-sm text-blue-100/70">Accept here to move the project into Shared.</p>
+                                </div>
+                            </div>
+                            <div className="grid gap-4">
+                                {pendingInvitations.map((invitation) => (
+                                    <div key={`shared-${invitation.id}`} className="rounded-2xl border border-white/10 bg-black/20 p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                        <div>
+                                            <div className="text-white font-medium">{invitation.projectName}</div>
+                                            <div className="text-sm text-slate-300 mt-1">
+                                                Invited by {invitation.senderUsername || invitation.senderEmail || 'a teammate'}
+                                            </div>
+                                            <div className="text-xs text-slate-400 mt-1">
+                                                Sent to {invitation.recipientEmail}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleInvitationAction(invitation.id, 'accepted')}
+                                                className="px-4 py-2 rounded-full bg-white text-black hover:bg-[#60a5fa] transition-colors flex items-center gap-2 font-medium"
+                                            >
+                                                <Check size={14} />
+                                                Accept
+                                            </button>
+                                            <button
+                                                onClick={() => handleInvitationAction(invitation.id, 'dismissed')}
+                                                className="px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-colors flex items-center gap-2"
+                                            >
+                                                <X size={14} />
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {visibleProjects.length === 0 && activeCategory === 'shared' && pendingInvitations.length === 0 && (
+                        <div className="col-span-full rounded-3xl border border-white/10 bg-white/[0.02] px-8 py-14 text-center">
+                            <div className="text-white text-xl font-medium mb-2">No shared projects yet</div>
+                            <p className="text-slate-400">Incoming invites will appear here, and accepted collaboration invites will stay here as shared projects.</p>
+                        </div>
+                    )}
+
+                    {visibleProjects.map((p) => (
                         <div key={p.id} onClick={() => handleOpenProject(p.id)} className="group relative aspect-[4/3] bg-[#0A0A0A] rounded-2xl border border-white/5 overflow-hidden hover:border-[#60a5fa]/50 transition-all cursor-pointer">
                             {p.thumbnail ? (
                                 <Image src={p.thumbnail} fill className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover:scale-105 transition-all duration-700" alt={p.name} unoptimized />
@@ -198,18 +512,32 @@ export function ProjectsView() {
                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent p-6 flex flex-col justify-end">
                                 <div className="flex justify-between items-end">
                                     <div>
-
                                         <h3 className="text-xl font-medium text-white truncate max-w-[200px]">{p.name}</h3>
                                         <span className="text-sm text-slate-400">{formatDate(p.updatedAt)}</span>
+                                        {p.accessType === 'shared' && (
+                                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                <span className="inline-flex items-center rounded-full bg-blue-500/20 px-2.5 py-1 text-[11px] font-medium text-blue-100">
+                                                    Shared
+                                                </span>
+                                                {p.sharedBy && (
+                                                    <span className="text-xs text-slate-400">from {p.sharedBy}</span>
+                                                )}
+                                                {p.isPlaceholder && (
+                                                    <span className="text-xs text-amber-300">Waiting for project sync</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={(e: React.MouseEvent) => handleDeleteProject(e, p.id, p.name)}
-                                            className="w-10 h-10 rounded-full bg-red-500/20 backdrop-blur flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
-                                            title="Delete project"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {p.accessType === 'owned' && (
+                                            <button
+                                                onClick={(e: React.MouseEvent) => handleDeleteProject(e, p.id, p.name)}
+                                                className="w-10 h-10 rounded-full bg-red-500/20 backdrop-blur flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                                                title="Delete project"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                         <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white hover:text-black" title="Open project">
                                             <ArrowUpRight size={18} />
                                         </button>
