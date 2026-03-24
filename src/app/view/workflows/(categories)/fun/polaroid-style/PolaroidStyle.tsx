@@ -26,6 +26,7 @@ export default function PolaroidStyle() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [textPrompt, setTextPrompt] = useState("");
 
   const [includeProps, setIncludeProps] = useState(true);
   const [aspectRatio, setAspectRatio] = useState("1:1");

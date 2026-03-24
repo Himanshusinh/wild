@@ -109,11 +109,38 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps): JSX.Element {
                 </svg>
                 {post.readTime}
               </div>
+              <button className="share-button" type="button" aria-label="Share">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 5h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10 14l9-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M9 5H5v14h14v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
           </header>
 
           <div className="blog-post-content">
             <p className="blog-intro">{post.content.introduction}</p>
+
+            {/* Generic sections fallback */}
+            {Array.isArray(post.content.sections) && post.content.sections.length > 0 && (
+              post.content.sections.map((section: any, idx: number) => (
+                <section className="blog-section-content" key={section.title || `section-${idx}`}>
+                  {section.title && <h2>{section.title}</h2>}
+                  {Array.isArray(section.paragraphs) &&
+                    section.paragraphs.map((p: string, pIdx: number) => (
+                      <p key={section.title ? `${section.title}-p-${pIdx}` : `p-${idx}-${pIdx}`}>{p}</p>
+                    ))}
+                  {Array.isArray(section.bullets) && section.bullets.length > 0 && (
+                    <ul className="blog-list">
+                      {section.bullets.map((item: string, bIdx: number) => (
+                        <li key={section.title ? `${section.title}-b-${bIdx}` : `b-${idx}-${bIdx}`}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              ))
+            )}
 
             {/* Multimodal Content content structure */}
             {post.content.whatIsMultimodal && (

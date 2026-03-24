@@ -156,6 +156,28 @@ export default function PeopleAge() {
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
+                <div className="mb-8">
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                    onClick={openUploadModal}>
+                    {originalImage ? (
+                      <>
+                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
+                        <div className="relative z-10 flex flex-col items-center gap-2">
+                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Image</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
+                        <div className="text-center">
+                          <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
+                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
                   <label className="block text-xs font-bold uppercase text-slate-500 mb-2 tracking-wider">Select Target Age</label>
                   <div className="relative group">
@@ -186,28 +208,6 @@ export default function PeopleAge() {
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
                     placeholder="Describe the person's appearance or add extra instructions..."
                   ></textarea>
-                </div>
-
-                <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={openUploadModal}>
-                    {originalImage ? (
-                      <>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Image</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
-                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </div>
               </div>
 
