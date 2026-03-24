@@ -69,10 +69,9 @@ export default function LightDirectionSphere({
     ctx.save();
     ctx.translate(CENTER, CENTER);
 
-    // Initial clip path for the image square
+    // Initial clip path for the image circle
     ctx.beginPath();
-    const borderRadius = iconSize * 0.2; // rounded corners relative to size
-    ctx.roundRect(-iconHalf, -iconHalf, iconSize, iconSize, borderRadius);
+    ctx.arc(0, 0, iconHalf, 0, Math.PI * 2);
     ctx.clip();
 
     if (loadedImage) {
@@ -143,7 +142,7 @@ export default function LightDirectionSphere({
 
     // Draw border around the subject image
     ctx.beginPath();
-    ctx.roundRect(CENTER - iconHalf, CENTER - iconHalf, iconSize, iconSize, borderRadius);
+    ctx.arc(CENTER, CENTER, iconHalf, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
     ctx.stroke();

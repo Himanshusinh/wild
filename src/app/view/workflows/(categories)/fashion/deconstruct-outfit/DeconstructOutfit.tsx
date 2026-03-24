@@ -202,7 +202,7 @@ export default function DeconstructOutfit() {
               </div>
 
               {uploadedImage && generatedImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
+                <div className="relative w-full h-full">
                   <ImageComparisonSlider
                     beforeImage={uploadedImage}
                     afterImage={generatedImage}
@@ -219,8 +219,8 @@ export default function DeconstructOutfit() {
                   </button>
                 </div>
               ) : uploadedImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={uploadedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                <div className="relative w-full h-full">
+                  <img src={uploadedImage} className="w-full h-full object-contain" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
                       <div className="relative w-20 h-20 mb-4">
@@ -232,7 +232,7 @@ export default function DeconstructOutfit() {
                   )}
                 </div>
               ) : (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
+                <div className="relative w-full h-full">
                   <ImageComparisonSlider
                     beforeImage="/workflow-samples/deconstruct-outfit-before.jpg"
                     afterImage="/workflow-samples/deconstruct-outfit-after.jpg"

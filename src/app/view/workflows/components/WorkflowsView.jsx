@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, LayoutGrid, List, Menu, Heart } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
 
 // ... imports
@@ -108,7 +109,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
 
   const handleCategoryClick = (cat) => {
-    setActiveCategory(cat);
+    // setActiveCategory(cat); // Optimistic update removed to prevent double-load animation
     const slug = slugify(cat);
     // Always use /view/workflows/[slug] for all categories, regardless of current basePath
     const path = `/view/workflows/${slug}`;
@@ -266,19 +267,43 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
       {/* Workflow Grid */}
       {filteredWorkflows.length > 0 ? (
-        <div className={viewMode === 'grid'
-          ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10"
-          : "flex flex-col gap-4"
-        }>
-          {filteredWorkflows.map((wf) => {
-            const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeCategory + viewMode}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: {
+                opacity: 1,
+                y: 0,
+                transition: {
+                  duration: 0.5,
+                  ease: [0.25, 0.1, 0.25, 1.0], // cubic-bezier for smooth professional feel
+                  staggerChildren: 0.05
+                }
+              },
+              exit: {
+                opacity: 0,
+                y: -10,
+                transition: { duration: 0.2, ease: "easeInOut" }
+              }
+            }}
+            className={viewMode === 'grid'
+              ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10"
+              : "flex flex-col gap-4"
+            }
+          >
+            {filteredWorkflows.map((wf) => {
+              const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
-            return (
-
-              <WorkflowCard key={wf.id} wf={wf} router={router} />
-            );
-          })}
-        </div>
+              return (
+                <WorkflowCard key={wf.id} wf={wf} router={router} />
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 bg-white/[0.02] border border-white/5 rounded-[2.5rem] mt-4">
           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
@@ -309,11 +334,16 @@ function WorkflowCard({ wf, router }) {
   };
 
   return (
-    <div
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+      }}
       onClick={handleClick}
       onMouseEnter={() => setIsPlaying(true)}
       onMouseLeave={() => setIsPlaying(false)}
-      className={`group flex flex-col transition-all duration-300 ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1'}`}
+      className={`group flex flex-col ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      whileHover={!isComingSoon ? { y: -5 } : {}}
     >
       <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/5 mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
         {/* Thumbnail (Visible by default) */}
@@ -367,6 +397,6 @@ function WorkflowCard({ wf, router }) {
       <div className="px-1 text-center">
         <h3 className={`text-xs md:text-[13px] font-semibold transition-all duration-300 tracking-tight line-clamp-1 ${isComingSoon ? 'text-white/30' : 'text-white/70 group-hover:text-white'}`}>{wf.title}</h3>
       </div>
-    </div>
+    </motion.div>
   );
 }

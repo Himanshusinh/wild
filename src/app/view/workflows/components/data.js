@@ -10,8 +10,8 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/creatively-upscale-before.png",
     "sampleBefore": "/workflow-samples/creatively-upscale-before.png",
     "sampleAfter": "/workflow-samples/creatively-upscale-after.png",
-    "imageFit": "object-contain",
-    "imagePosition": "object-center",
+    "imageFit": "object-cover",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -129,7 +129,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/become-celebrity-before.jpg",
     "sampleBefore": "/workflow-samples/become-celebrity-before.jpg",
     "sampleAfter": "/workflow-samples/become-celebrity-after.jpg",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -142,7 +142,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/polaroid-style-before.jpg",
     "sampleBefore": "/workflow-samples/polaroid-style-before.jpg",
     "sampleAfter": "/workflow-samples/polaroid-style-after.jpg",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -152,9 +152,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Create a collection of cute chibi illustration stickers and see them as mockups on notebooks or laptops.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/custom-stickers-before.png",
-    "sampleBefore": "/workflow-samples/custom-stickers-before.png",
-    "sampleAfter": "/workflow-samples/custom-stickers-after.png",
+    "thumbnail": "/workflow-samples/custom-stickers-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/custom-stickers-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/custom-stickers-after-v2.jpg",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -165,9 +165,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fun",
     "description": "Blend 2D characters or animals seamlessly into realistic backgrounds.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/fusion-styles-before.jpg",
-    "sampleBefore": "/workflow-samples/fusion-styles-before.jpg",
-    "sampleAfter": "/workflow-samples/fusion-styles-after.png",
+    "thumbnail": "/workflow-samples/fusion-styles-before-v2.jpg",
+    "sampleBefore": "/workflow-samples/fusion-styles-before-v2.jpg",
+    "sampleAfter": "/workflow-samples/fusion-styles-after-v2.jpg",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -300,13 +300,13 @@ export const WORKFLOWS_DATA = [
   },
   {
     "id": "interior-refine",
-    "title": "interior refine",
+    "title": "Interior Refine",
     "category": "Architecture",
     "description": "Refine and enhance interior renders with realistic lighting, textures, and furniture placement.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/interior-refine-before.jpg",
-    "sampleBefore": "/workflow-samples/interior-refine-before.jpg",
-    "sampleAfter": "/workflow-samples/interior-refine-after.jpg",
+    "thumbnail": "/workflow-samples/interior-refine-before-v2.png",
+    "sampleBefore": "/workflow-samples/interior-refine-before-v2.png",
+    "sampleAfter": "/workflow-samples/interior-refine-after-v2.jpg",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -372,10 +372,9 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleBefore": "/workflow-samples/pose-control-before-v2.jpg",
     "sampleAfter": "/workflow-samples/pose-control-after-v2.png",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
-    "cost": 90,
-    "comingSoon": true
+    "cost": 90
 
   },
   {
@@ -388,7 +387,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/character-sheet-before-v2.png",
     "sampleAfter": "/workflow-samples/character-sheet-after-v2.png",
     "cost": 90,
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center"
   },
   {
@@ -401,7 +400,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/expression-sheet-before-v2.jpg",
     "sampleAfter": "/workflow-samples/expression-sheet-after-v2.jpg",
     "cost": 90,
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center"
   },
   {
@@ -414,7 +413,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/product-photography-before-1.jpg",
     "sampleBeforeReference": "/workflow-samples/product-photography-before-2.png",
     "sampleAfter": "/workflow-samples/product-photography-after.jpg",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "isDualUpload": true,
     "cost": 90
@@ -467,7 +466,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/mockup-generation-before.png",
     "sampleBefore": "/workflow-samples/mockup-generation-before.png",
     "sampleAfter": "/workflow-samples/mockup-generation-after.png",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center"
   },
   {
@@ -479,7 +478,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/business-card-before.png",
     "sampleBefore": "/workflow-samples/business-card-before.png",
     "sampleAfter": "/workflow-samples/business-card-after.png",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -506,19 +505,7 @@ export const WORKFLOWS_DATA = [
     "sampleAfter": "/workflow-samples/automotive-after.png",
     "imageFit": "object-cover",
     "imagePosition": "object-center"
-  },
-  {
-    "id": "famous-photographer",
-    "title": "World Famous Photographer",
-    "category": "Photography",
-    "description": "Transform your photos into the signature style of legendary world-famous photographers.",
-    "model": "StyleRender AI",
-    "thumbnail": "/workflow-samples/famous-photographer-after.png",
-    "sampleBefore": "/workflow-samples/famous-photographer-before.png",
-    "sampleAfter": "/workflow-samples/famous-photographer-after.png",
-    "imageFit": "object-cover",
-    "imagePosition": "object-center",
-    "comingSoon": true
+
   },
   {
     "id": "relight",
@@ -540,9 +527,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fashion",
     "description": "Try different hairstyles on your photo.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/hairstyle-before.jpg",
-    "sampleBefore": "/workflow-samples/hairstyle-before.jpg",
-    "sampleAfter": "/workflow-samples/hairstyle-after.jpg",
+    "thumbnail": "/workflow-samples/hair-style-before.jpg",
+    "sampleBefore": "/workflow-samples/hair-style-before.jpg",
+    "sampleAfter": "/workflow-samples/hair-style-after.jpg",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -553,9 +540,9 @@ export const WORKFLOWS_DATA = [
     "category": "Fashion",
     "description": "Generate professional fashion modeling poses from a single photo.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/fashion-modeling-before.jpg",
-    "sampleBefore": "/workflow-samples/fashion-modeling-before.jpg",
-    "sampleAfter": "/workflow-samples/fashion-modeling-after.jpg",
+    "thumbnail": "/workflow-samples/fashion-modeling-final-before.jpg",
+    "sampleBefore": "/workflow-samples/fashion-modeling-final-before.jpg",
+    "sampleAfter": "/workflow-samples/fashion-modeling-final-after.jpg",
     "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
@@ -566,10 +553,10 @@ export const WORKFLOWS_DATA = [
     "category": "Fashion",
     "description": "Generate professional rampwalk videos or images from a single photo.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/rampwalk-before.jpg",
-    "sampleBefore": "/workflow-samples/rampwalk-before.jpg",
-    "sampleAfter": "/workflow-samples/rampwalk-after.jpg",
-    "imageFit": "object-contain",
+    "thumbnail": "/workflow-samples/rampwalk-final-before.jpg",
+    "sampleBefore": "/workflow-samples/rampwalk-final-before.jpg",
+    "sampleAfter": "/workflow-samples/rampwalk-final-after.jpg",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -579,10 +566,10 @@ export const WORKFLOWS_DATA = [
     "category": "Fashion",
     "description": "Apply professional makeup styles to your photos instantly.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/makeup-before.jpg",
-    "sampleBefore": "/workflow-samples/makeup-before.jpg",
-    "sampleAfter": "/workflow-samples/makeup-after.jpg",
-    "imageFit": "object-contain",
+    "thumbnail": "/workflow-samples/makeup-final-before.jpg",
+    "sampleBefore": "/workflow-samples/makeup-final-before.jpg",
+    "sampleAfter": "/workflow-samples/makeup-final-after.jpg",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -595,7 +582,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/deconstruct-outfit-before.jpg",
     "sampleBefore": "/workflow-samples/deconstruct-outfit-before.jpg",
     "sampleAfter": "/workflow-samples/deconstruct-outfit-after.jpg",
-    "imageFit": "object-contain",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },
@@ -605,10 +592,10 @@ export const WORKFLOWS_DATA = [
     "category": "Fashion",
     "description": "Generate professional styling suggestions and combinations.",
     "model": "Seadream4/ Nano Banana/ Qwen",
-    "thumbnail": "/workflow-samples/fashion-stylist-before.png",
-    "sampleBefore": "/workflow-samples/fashion-stylist-before.png",
-    "sampleAfter": "/workflow-samples/fashion-stylist-after.jpg",
-    "imageFit": "object-contain",
+    "thumbnail": "/workflow-samples/fashion-stylist-before-v3.jpg",
+    "sampleBefore": "/workflow-samples/fashion-stylist-before-v3.jpg",
+    "sampleAfter": "/workflow-samples/fashion-stylist-after-v3.jpg",
+    "imageFit": "object-cover",
     "imagePosition": "object-center",
     "cost": 90
   },

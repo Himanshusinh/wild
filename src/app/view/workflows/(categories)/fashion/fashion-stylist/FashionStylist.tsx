@@ -86,7 +86,7 @@ export default function FashionStylist() {
       // Simulation for now
       await new Promise(resolve => setTimeout(resolve, 3000));
       // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/fashion-stylist-after.jpg");
+      setGeneratedImage("/workflow-samples/fashion-stylist-after-v3.jpg");
       toast.success('Styling generated!');
 
     } catch (error: any) {
@@ -243,7 +243,7 @@ export default function FashionStylist() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                   />
                   <button
                     onClick={handleDownload}
@@ -269,11 +269,11 @@ export default function FashionStylist() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/fashion-stylist-before.png"
-                    afterImage="/workflow-samples/fashion-stylist-after.jpg"
+                    beforeImage="/workflow-samples/fashion-stylist-before-v3.jpg"
+                    afterImage="/workflow-samples/fashion-stylist-after-v3.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                   />
                 </div>
               )}

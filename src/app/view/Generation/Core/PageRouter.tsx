@@ -18,8 +18,7 @@ import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
 import EditImageInterface from '../../EditImage/compo/EditImageInterface';
 import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
 
-type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'edit-image' | 'edit-video';
+import { ViewType, GenerationType } from '@/types/generation';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;

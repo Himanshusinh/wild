@@ -189,8 +189,8 @@ export default function Makeup() {
                         key={area}
                         onClick={() => setFocusArea(area)}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${focusArea === area
-                            ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)]'
-                            : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                          ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)]'
+                          : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                           }`}
                       >
                         {area}
@@ -332,11 +332,11 @@ export default function Makeup() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/makeup-before.jpg"
-                    afterImage="/workflow-samples/makeup-after.jpg"
+                    beforeImage="/workflow-samples/makeup-final-before.jpg"
+                    afterImage="/workflow-samples/makeup-final-after.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                   />
                 </div>
               )}

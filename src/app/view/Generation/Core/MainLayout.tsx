@@ -171,7 +171,7 @@ export default function MainLayout({
       <div className="md:ml-[48px] ml-0 ">
         <Suspense fallback={null}>
           {/* Let PageRouter read from Redux; MainLayout already syncs UI state */}
-          <PageRouter />
+          <PageRouter currentView={currentView} currentGenerationType={currentGenerationType} />
         </Suspense>
       </div>
       <NotificationToast />
