@@ -1190,7 +1190,11 @@ export const buildCreditModelName = (
   }
   // Handle Google nano banana pro with resolution
   else if (mapping.frontendValue === 'google/nano-banana-pro' && options?.resolution) {
-    const res = String(options.resolution).toUpperCase();
+    const rawRes = String(options.resolution).toUpperCase();
+    const res =
+      rawRes === '4K' || rawRes.includes('AUTO_4K') || rawRes.includes('2160') || rawRes.includes('4096')
+        ? '4K'
+        : (rawRes === '1K' || rawRes.includes('1024') ? '1K' : '2K');
     modelName = `Nano banana Pro ${res}`;
   }
   // Handle Crystal Upscaler with resolution

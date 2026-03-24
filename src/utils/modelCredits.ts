@@ -658,13 +658,14 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
   }
 
   // Handle Google nano banana pro with resolution
-  if (modelValue === 'google/nano-banana-pro' && resolution) {
-    if (resolution === '4K') {
-      return 620; // Nano banana Pro 4K: 620 credits (per creditDistribution)
-    } else if (resolution === '1K' || resolution === '2K') {
-      return 320; // Nano banana Pro 1K/2K: 320 credits (per creditDistribution)
-    }
-    return 320; // Default to 2K (320 credits per creditDistribution)
+  if (modelValue === 'google/nano-banana-pro') {
+    const res = String(resolution || '2K').toUpperCase();
+    const is4K =
+      res === '4K' ||
+      res.includes('AUTO_4K') ||
+      res.includes('2160') ||
+      res.includes('4096');
+    return is4K ? 620 : 320; // 1K/2K => 320, 4K => 620
   }
 
   // Handle Google nano banana 2 with resolution

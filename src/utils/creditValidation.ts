@@ -265,11 +265,13 @@ export const getImageGenerationCreditCost = (
 
   // Handle resolution-based pricing for nano-banana-pro
   if (frontendModel === 'google/nano-banana-pro') {
-    const res = resolution?.toUpperCase() || '2K';
-    let cost = 300; // Default to 1K/2K pricing
-    if (res === '4K') {
-      cost = 500; // 4K pricing
-    }
+    const res = String(resolution || '2K').toUpperCase();
+    const is4K =
+      res === '4K' ||
+      res.includes('AUTO_4K') ||
+      res.includes('2160') ||
+      res.includes('4096');
+    const cost = is4K ? 620 : 320;
     console.log(`Nano Banana Pro cost: ${cost} credits for resolution: ${res}`);
     return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
   }
