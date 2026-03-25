@@ -152,9 +152,22 @@ export default function CommunityCreations({
 
   return (
     <section className={`w-full ${className}`}>
-      <h2 className=" text-xl md:text-2xl font-medium text-white md:mb-5 mb-1 md:mt-4 px-4 sm:px-6 lg:px-8" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-        Community Creations
-      </h2>
+
+      <div className=" px-4 sm:px-6 lg:px-8">
+          <div
+            className="mb-1.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] sm:text-[10px] "
+            style={{ color: "#3B82F6" }}
+          >
+            <span className="inline-block h-[1.5px] w-3.5 sm:w-4" style={{ background: "#3B82F6" }} />
+            Wild  Creations
+          </div>
+          <h2
+            className="text-[24px] leading-none tracking-[0.02em] text-white sm:text-[20px] md:text-[28px] lg:text-[36px]"
+            style={{ fontFamily: "var(--font-bebas-neue), sans-serif" }}
+          >
+            See what our community is creating with Wild Mind AI
+          </h2>
+        </div>
 
       {/* Masonry Grid */}
       <div className="relative min-h-[300px] px-4 sm:px-6 lg:px-8 pb-4">

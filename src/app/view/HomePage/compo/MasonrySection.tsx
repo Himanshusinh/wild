@@ -42,8 +42,8 @@ export default function MasonrySection() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-[#0E0E12] px-4 pb-12 pt-12 sm:px-8 sm:pb-16 sm:pt-16 lg:px-16 lg:pt-24 xl:px-20">
-      <div className="relative mx-auto flex w-full max-w-[980px] flex-col items-center px-1 text-center sm:px-4">
+    <section className="relative overflow-hidden bg-[#0E0E12] px-4 pb-12 pt-12 sm:px-4 sm:pb-16 sm:pt-16 md:px-4 md:pt-20 lg:px-4 lg:pt-24 xl:px-16  ">
+      <div className="relative mx-auto flex w-full max-w-auto flex-col items-center px-1 text-center sm:px-4">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-4 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.18)]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6] shadow-[0_0_8px_#3B82F6]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#555]">
@@ -52,7 +52,7 @@ export default function MasonrySection() {
         </div>
 
         <h1
-          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] lg:text-[120px]"
+          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[80px] xl:text-[120px]"
           style={{
             fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
           }}

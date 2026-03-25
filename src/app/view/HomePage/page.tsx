@@ -218,6 +218,8 @@ const HomePage: React.FC = () => {
                     <MasonrySection />
 
                     <AllFeatures />
+                                                            <CommunityCreations />
+
                     <VideoModelCards />
 
 
@@ -225,8 +227,8 @@ const HomePage: React.FC = () => {
                     <InfiniteCanvas />
                     <WildMindAIAPPS />
                     <CreatorsSection />
+
                     <CreationCTASection />
-                    <CommunityCreations />
 
                     {/* <CompactFeatureStrip /> */}
 

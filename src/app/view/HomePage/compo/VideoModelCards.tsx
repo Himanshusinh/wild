@@ -125,7 +125,7 @@ const MODELS: VideoModel[] = [
 
 export default function VideoModelCards() {
   return (
-    <section className="mx-4 md:mx-[34px] mb-[36px] bg-[#0E0E12]">
+    <section className="pt-8 mx-4 md:mx-[34px] mb-[36px] bg-[#0E0E12]">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#3B82F6]">
@@ -136,7 +136,7 @@ export default function VideoModelCards() {
             {MODELS.length} models
           </span>
         </div>
-        <span className="text-[10px] text-white/40">Updated weekly</span>
+        {/* <span className="text-[10px] text-white/40">Updated weekly</span> */}
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">

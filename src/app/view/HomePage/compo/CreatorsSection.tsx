@@ -42,7 +42,7 @@ export default function CreatorsSection() {
   const activeCard = cards[active];
 
   return (
-    <section className="bg-[#0E0E12] px-4 pb-8 sm:px-[18px] sm:pb-[52px]">
+    <section className="bg-[#0E0E12] px-4 pb-8 sm:px-8 sm:pb-[52px]">
       <div className="mb-4 flex items-end justify-between gap-4">
         <h2
           className="max-w-[260px] text-[24px] font-bold leading-[1.1] tracking-[-0.02em] text-white sm:max-w-[480px] sm:text-[26px] sm:leading-[1.2]"
