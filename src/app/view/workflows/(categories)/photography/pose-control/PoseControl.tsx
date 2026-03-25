@@ -261,7 +261,7 @@ export default function PoseControl() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button
@@ -292,7 +292,7 @@ export default function PoseControl() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
 

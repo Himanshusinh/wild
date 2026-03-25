@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap, Download } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import { toast } from 'sonner';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
@@ -123,13 +123,11 @@ export default function RemoveWatermark() {
     };
 
     return (
-        <>
+        <div className="watermark-remover-container">
             <style jsx global>{`
         @keyframes shimmer { 100% { left: 150%; } }
       `}</style>
-            <Toaster position="bottom-center" toastOptions={{
-                style: { background: '#333', color: '#fff' }
-            }} />
+
 
             <div className={`fixed inset-0 z-[80] flex items-center justify-center px-4 md:pl-20 transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
                 <div className="absolute top-0 right-0 bottom-0 left-0 md:left-20 bg-black/80 backdrop-blur-xl" onClick={onClose}></div>
@@ -257,11 +255,11 @@ export default function RemoveWatermark() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/workflow-samples/remove-watermark-before.jpg"
-                                        afterImage="/workflow-samples/remove-watermark-after.jpg"
+                                        beforeImage="/workflow-samples/remove-watermark-before-v2.jpg"
+                                        afterImage="/workflow-samples/remove-watermark-after-v2.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
-                                        imageFit="object-contain"
+                                        imageFit="object-cover"
                                     />
 
                                 </div>
@@ -283,6 +281,6 @@ export default function RemoveWatermark() {
                     remainingSlots={1}
                 />
             )}
-        </>
+        </div>
     );
 }

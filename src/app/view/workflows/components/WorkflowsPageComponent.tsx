@@ -64,7 +64,7 @@ export function WorkflowsPageComponent({ initialCategory = 'All', basePath = '/v
         <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600/[0.03] rounded-full blur-[120px]"></div>
       </div>
 
-      <main className="relative z-10 pt-1 pb-32 px-10 sm:px-6 md:px-24 min-h-screen">
+      <main className="relative z-10 pt-1 pb-32 px-2 sm:px-6 md:px-24 min-h-screen">
         <div className="w-full">
           <WorkflowsView openModal={openWorkflowModal} initialCategory={initialCategory} basePath={basePath} workflows={workflows as any} />
         </div>
