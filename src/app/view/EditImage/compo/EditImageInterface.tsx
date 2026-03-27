@@ -4203,7 +4203,7 @@ const EditImageInterface: React.FC = () => {
 
                     {/* Chat UI */}
                     <div className="mt-3">
-                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 pl-0.5">Chat to Edit</label>
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pl-0.5">Chat to Edit</label>
                       <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') ? 'md:h-[23rem] h-[16rem]' : 'md:h-[27rem] h-[20rem]'}`}>
                         <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar">
                           {liveChatMessages.length === 0 && (
@@ -4498,7 +4498,7 @@ const EditImageInterface: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2">
                         {/* Output format (left) */}
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 pt-2">Output Format</label>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Output Format</label>
                           <div className="relative edit-dropdown">
                             <button
                               onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
@@ -4525,7 +4525,7 @@ const EditImageInterface: React.FC = () => {
 
                         {/* Background type (right) */}
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 pt-2">Background Type</label>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Background Type</label>
                           <div className="relative edit-dropdown">
                             <button
                               onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
@@ -4560,7 +4560,7 @@ const EditImageInterface: React.FC = () => {
 
                       {model.startsWith('851-labs/') && (
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Reverse</label>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Reverse</label>
                           <button
                             type="button"
                             onClick={() => setReverseBg(v => !v)}
@@ -4573,7 +4573,7 @@ const EditImageInterface: React.FC = () => {
 
                       {/* Standardized Estimated Output card */}
                       <div className="pt-1">
-                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
                             <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
@@ -4602,7 +4602,7 @@ const EditImageInterface: React.FC = () => {
                         <div className="space-y-2">
                           {/* AI MODEL label */}
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-2">Upscale Factor (N)</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Upscale Factor (N)</p>
                             {/* Range label row */}
                             <div className="flex items-center justify-between mb-0">
                               <span className="text-[12px] text-white/50">1× — 8×</span>
@@ -4633,7 +4633,7 @@ const EditImageInterface: React.FC = () => {
 
                           {/* Standardized Estimated Output card */}
                           <div className="pt-1">
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
                             <div className="grid grid-cols-2 gap-2">
                               <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
                                 <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
@@ -4659,7 +4659,7 @@ const EditImageInterface: React.FC = () => {
                         <div className="space-y-2">
                           {/* Scale slider */}
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-2">Scale (1x-10x)</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Scale (1x-10x)</p>
                             {/* Range label row */}
                             <div className="flex items-center justify-between mb-0">
                               <span className="text-[12px] text-white/50">1× — 10×</span>
@@ -4724,7 +4724,7 @@ const EditImageInterface: React.FC = () => {
                         <div className="space-y-2">
                           {/* AI MODEL label */}
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-2">Scale Factor</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Scale Factor</p>
                             {/* Range label row */}
                             <div className="flex items-center justify-between mb-0">
                               <span className="text-[12px] text-white/50">1× — 6×</span>
@@ -4757,7 +4757,7 @@ const EditImageInterface: React.FC = () => {
                           {/* Output Format — Only for models that support explicit format selection */}
                           {['philz1337x/crystal-upscaler', 'fal-ai/topaz/upscale/image', 'nightmareai/real-esrgan', 'philz1337x/clarity-upscaler', 'fal-ai/seedvr/upscale/image'].includes(model as any) && (
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Output Format</p>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Output Format</p>
                               <div className="flex flex-wrap gap-2">
                                 {['png', 'jpg'].map((fmt) => (
                                   <button
@@ -4777,7 +4777,7 @@ const EditImageInterface: React.FC = () => {
 
                           {/* Estimated Output card — always visible */}
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
                             <div className="grid grid-cols-2 gap-2">
                               <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
                                 <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
@@ -4801,7 +4801,7 @@ const EditImageInterface: React.FC = () => {
                       {model === 'fal-ai/topaz/upscale/image' && (
                         <div className="space-y-3">
                           <div>
-                            <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-2">Model</label>
+                            <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Model</label>
                             <div className="relative edit-dropdown">
                               <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between bg-transparent text-white/90`}>
                                 <span className="truncate">{topazModel}</span>
@@ -4818,7 +4818,7 @@ const EditImageInterface: React.FC = () => {
                           </div>
 
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-2">Upscale Factor</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Upscale Factor</p>
                             {/* Range label row */}
                             <div className="flex items-center justify-between mb-0">
                               <span className="text-[12px] text-white/50">1× — 6×</span>
