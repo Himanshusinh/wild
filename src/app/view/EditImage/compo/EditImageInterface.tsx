@@ -19,6 +19,9 @@ import { toast } from 'react-hot-toast';
 import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
 import { EditImageExpandFrame } from './EditImageExpandFrame';
+import { EditImageSidebar } from './EditImageSidebar';
+import { EditImageCanvasArea, CanvasTopBar } from './EditImageCanvasArea';
+import { EditImageStatusBar } from './EditImageStatusBar';
 import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
 import { useCredits } from '@/hooks/useCredits';
@@ -26,6 +29,30 @@ import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
+
+const featureDisplayName: Record<EditFeature, string> = {
+  upscale: 'Upscale',
+  'remove-bg': 'Remove Background',
+  resize: 'Resize',
+  fill: 'Erase / Replace',
+  vectorize: 'Vectorize',
+  erase: 'Erase',
+  expand: 'Expand',
+  reimagine: 'Reimagine',
+  'live-chat': 'AI Chat',
+};
+
+const featurePreviewGif: Record<EditFeature, string> = {
+  upscale: '/editimage/upscale_banner.jpg',
+  'remove-bg': '/editimage/RemoveBG_banner.jpg',
+  resize: '/editimage/resize_banner.jpg',
+  fill: '/editimage/replace_banner.jpg',
+  vectorize: '/editimage/vector_banner.jpg',
+  erase: '/editimage/replace_banner.jpg',
+  expand: '/editimage/replace_banner.jpg',
+  reimagine: '/editimage/replace_banner.jpg',
+  'live-chat': '/editimage/replace_banner.jpg',
+};
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
 // This prevents passing `/_next/image?url=...` wrappers to the backend, which can't use them.
@@ -267,6 +294,29 @@ const EditImageInterface: React.FC = () => {
     const factorRaw = Number(String(scaleFactor).replace('x', '')) || 2;
     return estimateCrystalUpscalerCredits(w, h, factorRaw);
   }, [inputNaturalSize?.width, inputNaturalSize?.height, model, scaleFactor, selectedFeature]);
+
+  const topazEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'fal-ai/topaz/upscale/image') return null;
+    const w = inputNaturalSize.width;
+    const h = inputNaturalSize.height;
+    if (w <= 0 || h <= 0) return null;
+    const outW = Math.round(w * (topazUpscaleFactor || 2));
+    const outH = Math.round(h * (topazUpscaleFactor || 2));
+    return { outW, outH, credits: 16 }; // Topaz often has a fixed higher cost
+  }, [inputNaturalSize, model, selectedFeature, topazUpscaleFactor]);
+
+  const realEsrganEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'nightmareai/real-esrgan') return null;
+    const w = inputNaturalSize.width;
+    const h = inputNaturalSize.height;
+    if (w <= 0 || h <= 0) return null;
+    const factor = Number(String(scaleFactor).replace('x', '')) || 4;
+    const outW = Math.round(w * factor);
+    const outH = Math.round(h * factor);
+    return { outW, outH, credits: 14 };
+  }, [inputNaturalSize, model, scaleFactor, selectedFeature]);
   // Outpaint (resize) controls
   const [resizeExpandLeft, setResizeExpandLeft] = useState<number>(0);
   const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
@@ -2144,6 +2194,7 @@ const EditImageInterface: React.FC = () => {
     return { x, y };
   };
 
+
   const handleRun = async () => {
     if (!user) {
       saveAutoResumeIntent('image', {
@@ -3732,7 +3783,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="relative bg-[#07070B]">
+    <div className="body flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0d0d10] font-sans text-white pt-12 pl-4">
       {/* Sticky header like ArtStation */}
       {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
@@ -3792,145 +3843,17 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 pt-20 md:mt-10 flex-col md:flex-row">
-        {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-        <div className="w-auto bg-transparent flex flex-col md:h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-0">
-          {/* Error Message */}
-          {errorMsg && (
-            <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">
-              <p className="text-red-400 text-xs">{errorMsg}</p>
-            </div>
-          )}
-
-
-          {/* Feature tabs (two rows on desktop, sliding row on mobile) */}
-          <div className="relative md:px-4 md:pt-3 w-auto md:mx-0">
-            <div
-              className="overflow-x-auto md:overflow-visible"
-              ref={featureTabsRef}
-              onScroll={handleFeatureTabsScroll}
-            >
-              <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1  md:pl-0 pb-0">
-                {features.map((feature) => (
-                  <button
-                    key={feature.id}
-                    onClick={() => {
-                      setSelectedFeature(feature.id as EditFeature);
-                      // Update URL with feature parameter
-                      const params = new URLSearchParams(window.location.search);
-                      params.set('feature', feature.id);
-                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
-
-                      if (feature.id === 'remove-bg') {
-                        setModel('851-labs/background-remover');
-                      } else if (feature.id === 'upscale') {
-                        setModel('philz1337x/crystal-upscaler');
-                      } else if (feature.id === 'resize') {
-                        setModel('fal-ai/bria/expand');
-                      } else if (feature.id === 'vectorize') {
-                        setModel('fal-ai/recraft/vectorize' as any);
-                      }
-                      setProcessing((p) => ({ ...p, [feature.id]: false }));
-                    }}
-                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id
-                      ? (feature.id === 'resize' ? 'border-[#2F6BFF] bg-[#2F6BFF]/10' : 'border-white/30 bg-white/10')
-                      : 'border-white/10 hover:bg-white/10'}`}
-                  >
-                    <div className="flex items-center gap-0 justify-center  ">
-                      <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
-                        {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="md:w-6 md:h-6 w-5 h-5" />)}
-                        {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="md:w-6 md:h-6 w-5 h-5" />)}
-                        {/* {feature.id === 'expand' && (<img src="/icons/resize.svg" alt="Expand" className="w-6 h-6" />)} */}
-                        {/* {feature.id === 'erase' && (<img src="/icons/erase.svg" alt="Erase" className="md:w-8 md:h-8 w-5 h-5" />)} */}
-
-                        {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="md:w-5 md:h-5 w-4 h-4" />)}
-                        {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="md:w-6 md:h-6 w-5 h-5" />)}
-                        {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
-                        {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
-                        {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
-                      </div>
-
-                    </div>
-                    <div className="flex items-center justify-center pt-1">
-                      {feature.id === 'fill' ? (
-                        <span className="text-white text-[10px] md:text-xs text-center leading-tight">
-                          Erase /<br />Replace
-                        </span>
-                      ) : (
-                        <span className="text-white text-[10px] md:text-sm text-center">{feature.label}</span>
-                      )}
-                    </div>
-
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile hint: fixed left arrow, only when scrolled left */}
-            {hasLeftScroll && (
-              <button
-                type="button"
-                className="md:hidden absolute top-1/2 -translate-y-5 left-0 pr-1 h-5 flex items-center border-l border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-r-full"
-                onClick={() => {
-                  try {
-                    const el = featureTabsRef.current;
-                    if (el) {
-                      el.scrollBy({ left: -120, behavior: 'smooth' });
-                    }
-                  } catch { }
-                }}
-                aria-label="Scroll feature tabs left"
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 6l-6 6 6 6" />
-                </svg>
-              </button>
-            )}
-
-            {/* Mobile hint: fixed right arrow to indicate more tabs */}
-            <button
-              type="button"
-              className="md:hidden  absolute top-1/2 -translate-y-5  right-0 pl-1 h-5  flex items-center border-r border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-l-full"
-              onClick={() => {
-                try {
-                  const el = featureTabsRef.current;
-                  if (el) {
-                    el.scrollBy({ left: 120, behavior: 'smooth' });
-                  }
-                } catch { }
-              }}
-              aria-label="Scroll feature tabs"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-
-
-
-          {/* Feature Preview (GIF banner) - hidden for Live Chat */}
-          {selectedFeature !== 'live-chat' && (
+      {/* Error Message - Moved to top absolute */}
+      {errorMsg && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 backdrop-blur border border-red-500/20 rounded-xl px-4 py-2 shadow-2xl">
+          <p className="text-white text-sm font-medium">{errorMsg}</p>
+        </div>
+      )}
+      <EditImageSidebar
+        imagePreview={
+          selectedFeature !== 'live-chat' ? (
             <div className="px-1 md:px-4 md:mb-2 md:pt-4 pt-2 z-10">
-              <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
+              <div className="preview-wrap relative h-[148px] bg-[#1a1a20] border-b border-white/10 rounded-t-[15px] shrink-0 overflow-hidden cursor-pointer group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
                 <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
@@ -3938,9 +3861,10 @@ const EditImageInterface: React.FC = () => {
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Input Image section removed: unified canvas lives on the right */}
+          ) : null
+        }
+        parameters={
+          <div className="flex flex-col gap-4 py-4 thin-scrollbar">
 
           {/* Reimagine Reference Image */}
           {selectedFeature === 'reimagine' && (
@@ -4166,8 +4090,31 @@ const EditImageInterface: React.FC = () => {
                         <input type="number" value={vPathPrecision} onChange={(e) => setVPathPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
                       </div>
                     </div>
+
                   </div>
                 )}
+
+                {/* Standardized Estimated Output card */}
+                <div className="pt-2">
+                  <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                      <span className="text-[12px] font-semibold text-white leading-tight uppercase">
+                        Vector (SVG)
+                      </span>
+                    </div>
+                    <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                      <span className="text-[12px] font-semibold text-white leading-tight">
+                        {vectorizeModel === 'fal-ai/recraft/vectorize' 
+                          ? `${vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits` 
+                          : `${vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -4175,7 +4122,7 @@ const EditImageInterface: React.FC = () => {
           {/* Action Buttons moved to bottom under Parameters */}
 
           {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-          <div className="flex-1 min-h-0 md:p-3 p-0.5 overflow-hidden md:p-4">
+          <div className="flex-1 min-h-0 md:p-3 p-0.5 overflow-hidden md:p-4 md:pt-10">
             {selectedFeature === 'live-chat' && (
               <>
                 <h3 className="text-xs font-medium text-white/80 md:mb-2 mb-1 md:text-sm">Live Chat Controls</h3>
@@ -4305,55 +4252,50 @@ const EditImageInterface: React.FC = () => {
             )}
             {selectedFeature !== 'vectorize' && selectedFeature !== 'live-chat' && (
               <>
-                <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
-
-                <div className="space-y-1">
+                <div className="space-y-3">
                   {selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'expand' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">
-                              {model ? getUpscaleModelLabel(model) : 'Select model'}
-                            </span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'model' && (
-                            <div className={`absolute top-full z-100 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30  md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                              {(selectedFeature === 'remove-bg'
+                    <div>
+                      <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">AI Model</p>
+                      <div className="relative edit-dropdown">
+                        <button
+                          onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+                          className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
+                        >
+                          <span className="truncate">
+                            {model ? getUpscaleModelLabel(model) : 'Select model'}
+                          </span>
+                          <ChevronUp className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === 'model' ? '' : 'rotate-180'}`} />
+                        </button>
+                        {activeDropdown === 'model' && (
+                          <div className={`absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                            {(selectedFeature === 'remove-bg'
+                              ? [
+                                { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
+                                { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
+                              ]
+                              : selectedFeature === 'resize'
                                 ? [
-                                  { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
-                                  { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
+                                  { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
                                 ]
-                                : selectedFeature === 'resize'
-                                  ? [
-                                    { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
-                                  ]
-                                  : [
-                                    { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-                                    { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
-                                    { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
-                                    { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
-                                  ]
-                              ).map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
-                                  className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="truncate">{opt.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                                : [
+                                  { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+                                  { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
+                                  { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+                                  { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+                                ]
+                            ).map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
+                                className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${model === opt.value ? 'bg-white/10 text-white font-medium' : 'text-white/75 hover:bg-white/8 hover:text-white'}`}
+                              >
+                                {model === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />}
+                                <span className="truncate">{opt.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {/* Right-side placeholder for alignment; can hold extra params per feature */}
-                      <div />
                     </div>
                   )}
                   {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
@@ -4511,34 +4453,15 @@ const EditImageInterface: React.FC = () => {
 
                 {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
                 {selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <EditImageExpandControls
                       aspectPreset={resizeAspectRatio || 'custom'}
-                      expandPrompt={resizeNegativePrompt} // Using negative prompt field for prompt if needed, or just ignore
+                      expandPrompt={resizeNegativePrompt}
                       isExpanding={processing.resize}
                       sourceImageUrl={inputs.resize}
                       onAspectPresetChange={(preset) => setResizeAspectRatio(preset as any)}
                       onExpandPromptChange={setResizeNegativePrompt}
-                      onExpand={() => {
-                        // Trigger the existing handleGenerate or similar logic?
-                        // The original ExpandControls called onExpand prop.
-                        // Here we probably rely on the main "Generate" button in the footer?
-                        // Or we can add a specific button here if needed.
-                        // For now, let's assume the main button handles it, but ExpandControls HAS an Expand button.
-                        // We should probably wire that button to the main generation logic.
-                        // But wait, the main logic is handleGenerate.
-                        // I'll leave onExpand empty for now and let the user use the main button,
-                        // OR I can try to trigger the main button.
-                        // Actually, ExpandControls has its own button.
-                        // I'll pass a function that calls the API.
-                        // But I don't have easy access to handleGenerate here without prop drilling or context.
-                        // I'll check if handleGenerate is available in scope.
-                        // It is available in EditImageInterface scope!
-                        // So I can just call handleGenerate().
-                        // handleGenerate();
-                        // But handleGenerate takes no args? I need to check.
-                        // I'll check handleGenerate signature.
-                      }}
+                      onExpand={() => {}}
                       aspectPresets={aspectPresets}
                       customWidth={Number(resizeCanvasW) || 1024}
                       customHeight={Number(resizeCanvasH) || 1024}
@@ -4546,241 +4469,314 @@ const EditImageInterface: React.FC = () => {
                       onCustomHeightChange={(h) => setResizeCanvasH(h)}
                       imageSize={{ width: Number(resizeOrigW) || 0, height: Number(resizeOrigH) || 0 }}
                     />
-                  </div>
-                )}
-
-
-
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                    <>
-                      {/* Output format (left) */}
-                      <div className="mb-1 mt-1">
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">{output || 'Select format'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'output' && (
-                            <div className={`absolute z-30 top-full md:mt-2 mt-1 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                              {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
-                                <button
-                                  key={fmt}
-                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                  className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="uppercase">{fmt}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                    
+                    {/* Standardized Estimated Output card */}
+                    <div className="pt-1">
+                      <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                          <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                          <span className="text-[12px] font-semibold text-white leading-tight">
+                            {resizeCanvasW && resizeCanvasH ? `${resizeCanvasW} × ${resizeCanvasH}` : '—'}
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Background type (right) */}
-                      <div className="mb-1">
-                        <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Background Type</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">{backgroundType || 'Select background type'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'backgroundType' && (
-                            <div className={`absolute top-full z-30 md:mt-2 mt-1 md:pb-0 pb-0 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-44 max-h-28 overflow-y-auto dropdown-scrollbar`}>
-                              {[
-                                { label: 'RGBA (Transparent)', value: 'rgba', description: '' },
-                                { label: 'White', value: 'white', description: '' },
-                                { label: 'Green', value: 'green', description: '' },
-                                { label: 'Blur', value: 'blur', description: '' },
-                                { label: 'Overlay', value: 'overlay', description: '' },
-                                { label: 'Depth-Map', value: 'map', description: '' },
-                              ].map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                                  className={` w-full md:px-3 px-2.5 md:py-2 py-0.5  text-left md:text-[13px] text-[12px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <div className="flex items-center justify-between w-full">
-                                    <span className="truncate font-medium">{opt.label}</span>
-                                  </div>
-                                  <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
-                                    {opt.description}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                        <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                          <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                          <span className="text-[12px] font-semibold text-white leading-tight">
+                            {10} credits
+                          </span>
                         </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Buttons moved to bottom footer */}
-                </div>
-
-                {/* Removed duplicate Erase Controls */}
-                {/* Removed old fill/erase controls logic */
-                  selectedFeature === 'erase' && (
-                    <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
-                  )
-                }
-                {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                  <div>
-                    {/* <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={threshold}
-                      onChange={(e) => setThreshold(e.target.value)}
-                      placeholder="0.0 (soft alpha) to 1.0"
-                      className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                    />
-                    <div className="mt-1 text-xs text-white/50">
-                      Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
-                    </div> */}
-                    <div className="mt-1">
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
-                      <button
-                        type="button"
-                        onClick={() => setReverseBg(v => !v)}
-                        className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
-                      >
-                        {reverseBg ? 'Enabled' : 'Disabled'}
-                      </button>
-                      <div className="mt-1 text-xs text-white/50">
-                        Remove foreground instead of background
                       </div>
                     </div>
                   </div>
                 )}
 
+
+
+                  {selectedFeature === 'remove-bg' && (model.startsWith('851-labs/') || String(model).startsWith('lucataco/')) && (
+                    <div className="space-y-4 w-full">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Output format (left) */}
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                              className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate uppercase">{output || 'png'}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'output' && (
+                              <div className={`absolute z-30 top-full md:mt-2 mt-1 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                                {['png', 'jpg'].map((fmt) => (
+                                  <button
+                                    key={fmt}
+                                    onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  >
+                                    <span className="uppercase">{fmt}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Background type (right) */}
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Background Type</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
+                              className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate">{backgroundType || 'Select type'}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'backgroundType' && (
+                              <div className={`absolute top-full z-30 md:mt-2 mt-1 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                                {[
+                                  { label: 'RGBA (Transparent)', value: 'rgba' },
+                                  { label: 'White', value: 'white' },
+                                  { label: 'Green', value: 'green' },
+                                  { label: 'Blur', value: 'blur' },
+                                  { label: 'Overlay', value: 'overlay' },
+                                  { label: 'Depth-Map', value: 'map' },
+                                ].map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
+                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {model.startsWith('851-labs/') && (
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
+                          <button
+                            type="button"
+                            onClick={() => setReverseBg(v => !v)}
+                            className={`md:h-[32px] h-[28px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
+                          >
+                            {reverseBg ? 'Enabled' : 'Disabled'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Standardized Estimated Output card */}
+                      <div className="pt-1">
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                            <span className="text-[12px] font-semibold text-white leading-tight">
+                              {inputNaturalSize.width > 0 ? `${inputNaturalSize.width} × ${inputNaturalSize.height}` : 'Original size'}
+                            </span>
+                          </div>
+                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                            <span className="text-[12px] font-semibold text-white leading-tight">
+                              10 credits
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {selectedFeature === 'erase' && (
+                  <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
+                )}
+
                 {selectedFeature === 'upscale' && (
                   <>
                     {model === 'fal-ai/seedvr/upscale/image' && (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Upscale factor (N)</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={8}
-                              step={1}
-                              value={seedvrUpscaleFactor}
-                              onChange={(e) => setSeedvrUpscaleFactor(Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 2))))}
-                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                            />
-                          </div>
-                          <div className="flex flex-col justify-end">
-                            <div className="text-xs text-white/70">
-                              Output: {seedvrEstimate ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}` : '—'}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Upscale factor (N)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={8}
+                            step={1}
+                            value={seedvrUpscaleFactor}
+                            onChange={(e) => setSeedvrUpscaleFactor(Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 2))))}
+                            className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-0 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                          />
+                        </div>
+
+                        {/* Standardized Estimated Output card */}
+                        <div className="pt-1">
+                          <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {seedvrEstimate ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}` : '—'}
+                              </span>
                             </div>
-                            <div className="text-xs text-white/70">
-                              Est. cost: {seedvrEstimate ? `${seedvrEstimate.credits} credits` : '—'}
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {seedvrEstimate ? `${seedvrEstimate.credits} credits` : '—'}
+                              </span>
                             </div>
                           </div>
                         </div>
-                        <div className="text-[11px] text-white/50">
-                          Uses factor-only upscaling. Estimated cost uses 4 credits per output megapixel (rounded up). Final cost is recalculated and deducted server-side only after success.
+
+                        <div className="text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                          Uses factor-only upscaling. Estimated cost is 4 credits per output megapixel.
                         </div>
                       </div>
                     )}
                     {model === 'nightmareai/real-esrgan' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale (0-10)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            step={1}
-                            value={Number(String(scaleFactor).replace('x', '')) || 4}
-                            onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
-                            className="w-full md:h-[30px] h-[28px] md:px-2 px-1.5 md:py-1 py-0   bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                          />
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale (0-10)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 4}
+                              onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
+                              className="w-full md:h-[30px] h-[28px] md:px-2 px-1.5 md:py-1 py-0   bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <div className="w-full">
+                              <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
+                              <button
+                                type="button"
+                                onClick={() => setFaceEnhance(v => !v)}
+                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                              >
+                                {faceEnhance ? 'Enabled' : 'Disabled'}
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-end">
-                          <div className="w-full">
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
-                            <button
-                              type="button"
-                              onClick={() => setFaceEnhance(v => !v)}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
-                            >
-                              {faceEnhance ? 'Enabled' : 'Disabled'}
-                            </button>
+
+                        {/* Standardized Estimated Output card */}
+                        <div className="pt-1">
+                          <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {realEsrganEstimate ? `${realEsrganEstimate.outW} × ${realEsrganEstimate.outH}` : '—'}
+                              </span>
+                            </div>
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {realEsrganEstimate ? `${realEsrganEstimate.credits} credits` : '—'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )}
                     {model === 'philz1337x/crystal-upscaler' && (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={6}
-                              step={1}
-                              value={Number(String(scaleFactor).replace('x', '')) || 2}
-                              onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
-                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                            />
+                      <div className="space-y-4 pt-1">
+                        {/* AI MODEL label */}
+                        <div>
+                          <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Scale Factor</p>
+                          {/* Range label row */}
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[12px] text-white/50">1× — 6×</span>
+                            <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                              {Number(String(scaleFactor).replace('x', '')) || 2}×
+                            </span>
                           </div>
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
-                            <div className="relative edit-dropdown">
-                              <button
-                                onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                              >
-                                <span className="truncate uppercase">{(output || 'png').toString()}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                  {['png', 'jpg'].map((fmt) => (
-                                    <button
-                                      key={fmt}
-                                      onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                      className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                    >
-                                      <span className="uppercase">{fmt}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                          {/* Slider */}
+                          <input
+                            type="range"
+                            min={1}
+                            max={6}
+                            step={1}
+                            value={Number(String(scaleFactor).replace('x', '')) || 2}
+                            onChange={(e) => setScaleFactor(String(e.target.value))}
+                            className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                            style={{
+                              background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((Number(String(scaleFactor).replace('x','')) || 2) - 1) / 5 * 100}%, rgba(255,255,255,0.15) ${((Number(String(scaleFactor).replace('x','')) || 2) - 1) / 5 * 100}%, rgba(255,255,255,0.15) 100%)`
+                            }}
+                          />
+                          {/* Tick marks */}
+                          <div className="flex justify-between mt-1.5 px-[8px]">
+                            {[1, 2, 3, 4, 5, 6].map(v => (
+                              <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
+                            ))}
                           </div>
                         </div>
-                        <div className="text-[11px] text-white/50">
-                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
-                          {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+
+                        {/* Output Format */}
+                        {/* Output Format — Only for models that support explicit format selection */}
+                        {['philz1337x/crystal-upscaler', 'fal-ai/topaz/upscale/image', 'nightmareai/real-esrgan', 'philz1337x/clarity-upscaler'].includes(model as any) && (
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Output Format</p>
+                            <div className="flex flex-wrap gap-2">
+                              {['png', 'jpg'].map((fmt) => (
+                                <button
+                                  key={fmt}
+                                  onClick={() => setOutput(fmt as any)}
+                                  className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${
+                                    (output || 'png') === fmt
+                                      ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white'
+                                      : 'bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white/80'
+                                  }`}
+                                >
+                                  {fmt.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Estimated Output card — always visible */}
+                        <div>
+                          <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {inputNaturalSize.width > 0 
+                                  ? `${inputNaturalSize.width * (Number(String(scaleFactor).replace('x','')) || 2)} × ${inputNaturalSize.height * (Number(String(scaleFactor).replace('x','')) || 2)}` 
+                                  : `${Number(String(scaleFactor).replace('x','')) || 2}× size`
+                                }
+                              </span>
+                            </div>
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
                     {model === 'fal-ai/topaz/upscale/image' && (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-2">Model</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Model</label>
                             <div className="relative edit-dropdown">
                               <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between bg-transparent text-white/90`}>
                                 <span className="truncate">{topazModel}</span>
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
                               </button>
                               {activeDropdown === 'topazModel' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-56 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-56 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
                                   {['Low Resolution V2', 'Standard V2', 'CGI', 'High Fidelity V2', 'Text Refine', 'Recovery', 'Redefine', 'Recovery V2'].map((opt) => (
                                     <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
                                   ))}
@@ -4789,27 +4785,11 @@ const EditImageInterface: React.FC = () => {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-2">Upscale factor</label>
+                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Upscale factor</label>
                             <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e) => setTopazUpscaleFactor(Number(e.target.value) || 2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
-                            <div className="relative edit-dropdown">
-                              <button onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
-                                <span className="truncate uppercase">{topazOutputFormat}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-40 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                                  {(['jpeg', 'png'] as const).map((fmt) => (
-                                    <button key={fmt} onClick={() => { setTopazOutputFormat(fmt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazOutputFormat === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}><span className="uppercase">{fmt}</span></button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
                           <div>
                             <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Subject detection</label>
                             <div className="relative edit-dropdown">
@@ -4818,7 +4798,7 @@ const EditImageInterface: React.FC = () => {
                                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
                               </button>
                               {activeDropdown === 'backgroundType' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
                                   {(['All', 'Foreground', 'Background'] as const).map((opt) => (
                                     <button key={opt} onClick={() => { setTopazSubjectDetection(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazSubjectDetection === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
                                   ))}
@@ -4826,16 +4806,9 @@ const EditImageInterface: React.FC = () => {
                               )}
                             </div>
                           </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhancement</label>
                             <button type="button" onClick={() => setTopazFaceEnhance(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>{topazFaceEnhance ? 'Enabled' : 'Disabled'}</button>
-                          </div>
-                          <div className="flex items-end">
-                            <label className="flex items-center gap-2 text-xs text-white/70">
-                              <input type="checkbox" className="accent-white/90" checked={topazCropToFill} onChange={(e) => setTopazCropToFill(e.target.checked)} /> Crop to fill
-                            </label>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -4843,84 +4816,176 @@ const EditImageInterface: React.FC = () => {
                             <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face creativity (0-1)</label>
                             <input type="number" min={0} max={1} step={0.1} value={topazFaceCreativity} onChange={(e) => setTopazFaceCreativity(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
                           </div>
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face strength (0-1)</label>
-                            <input type="number" min={0} max={1} step={0.1} value={topazFaceStrength} onChange={(e) => setTopazFaceStrength(Math.max(0, Math.min(1, Number(e.target.value) || 0.8)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
+                          <div className="flex items-end flex-col justify-end">
+                             <label className="flex items-center gap-2 text-xs text-white/70 mb-2 cursor-pointer">
+                              <input type="checkbox" className="accent-white/90" checked={topazCropToFill} onChange={(e) => setTopazCropToFill(e.target.checked)} /> Crop to fill
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Standardized Estimated Output card */}
+                        <div className="pt-1">
+                          <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {topazEstimate ? `${topazEstimate.outW} × ${topazEstimate.outH}` : '—'}
+                              </span>
+                            </div>
+                            <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                              <span className="text-[12px] font-semibold text-white leading-tight">
+                                {topazEstimate ? `${topazEstimate.credits} credits` : '—'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )}
-                    {/* {model === 'mv-lab/swin2sr' && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Task</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setActiveDropdown(activeDropdown === 'swinTask' ? '' : 'swinTask')}
-                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium z-0 ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-black/80 text-white/90`}
-                        >
-                          <span className="truncate">{getSwinTaskLabel(swinTask)}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'swinTask' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {activeDropdown === 'swinTask' && (
-                          <div className={`z-0 absolute top-full mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                            {(['classical_sr','real_sr','compressed_sr'] as const).map((t) => (
-                              <button
-                                key={t}
-                                onClick={() => { setSwinTask(t); setActiveDropdown(''); }}
-                                className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${swinTask === t ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                              >
-                                <span className="text-left pr-4">{getSwinTaskLabel(t)}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )} */}
                   </>
                 )}
               </>
             )}
-
-            {/* Bottom action buttons under parameters (hidden for Live Chat) */}
-            {selectedFeature !== 'live-chat' && (
-              <div className="mt-3 pt-2 border-t border-white/10">
-                <div className="flex gap-2 2xl:gap-3">
-                  <button
-                    onClick={handleReset}
-                    className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={handleRun}
-                    disabled={!inputs[selectedFeature] || processing[selectedFeature]}
-                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
-                  >
-                    {processing[selectedFeature] ? 'Processing...' : 'Generate'}
-                  </button>
-                  {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
-                    <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                      {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
-
-          {/* Footer removed; buttons are rendered at the end of Parameters above */}
-
         </div>
+      }
+        footer={
+          selectedFeature !== 'live-chat' ? (
+            <div className="flex gap-2 2xl:gap-3">
+              <button
+                onClick={handleReset}
+                className="flex-1 px-2 py-2 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm"
+              >
+                Reset
+              </button>
+              <button
+                onClick={handleRun}
+                disabled={!inputs[selectedFeature] || processing[selectedFeature]}
+                className="flex-1 px-2 py-2 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm"
+              >
+                {processing[selectedFeature] ? 'Processing...' : 'Generate'}
+              </button>
+              {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
+                <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                  {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
+                </div>
+              )}
+            </div>
+          ) : null
+        }
+      />
 
-        {/* Right Main Area - Image Display (below on mobile, right on desktop) */}
-        <div className="flex-1 flex flex-col bg-[#07070B] overflow-hidden md:border-l md:border-white/5">
+      {/* Right Main Area - Image Display */}
+      <EditImageCanvasArea
+        topBar={
+          <div className="flex items-center w-full h-full px-4 gap-3">
+
+            {/* Left: Breadcrumb */}
+           
+
+            {/* Center: Feature tabs */}
+            <div
+              className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full"
+              ref={featureTabsRef}
+              onScroll={handleFeatureTabsScroll}
+            >
+              <div className="flex items-center gap-[2px] h-full">
+                {features.map((feature) => (
+                  <button
+                    key={feature.id}
+                    onClick={() => {
+                      setSelectedFeature(feature.id as EditFeature);
+                      const params = new URLSearchParams(window.location.search);
+                      params.set('feature', feature.id);
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+
+                      if (feature.id === 'remove-bg') {
+                        setModel('851-labs/background-remover');
+                      } else if (feature.id === 'upscale') {
+                        setModel('philz1337x/crystal-upscaler');
+                      } else if (feature.id === 'resize') {
+                        setModel('fal-ai/bria/expand');
+                      } else if (feature.id === 'vectorize') {
+                        setModel('fal-ai/recraft/vectorize' as any);
+                      }
+                      setProcessing((p) => ({ ...p, [feature.id]: false }));
+                    }}
+                    className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${
+                      selectedFeature === feature.id
+                        ? 'text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40'
+                        : 'text-white/40 font-normal hover:text-white/70'
+                    }`}
+                  >
+                    <span className={`flex items-center justify-center w-[14px] h-[14px] shrink-0 transition-opacity ${selectedFeature === feature.id ? 'opacity-80' : 'opacity-40'}`}>
+                      {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="" className="w-[13px] h-[13px]" />)}
+                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="" className="w-[14px] h-[14px]" />)}
+                    </span>
+                    <span>{feature.id === 'fill' ? 'Erase / Replace' : feature.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+
+            {/* Right: Action icons */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Zoom in */}
+              <button
+                title="Zoom in"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
+                </svg>
+              </button>
+              {/* Zoom out */}
+              <button
+                title="Zoom out"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35M8 11h6" />
+                </svg>
+              </button>
+              {/* Divider */}
+              <span className="w-px h-4 bg-white/10 mx-1" />
+              {/* Download */}
+              <button
+                title="Download"
+                onClick={handleDownloadOutput}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+              </button>
+              {/* Share */}
+              <button
+                title="Share"
+                onClick={handleShareOutput}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        canvas={
+          <div className="flex-1 flex flex-col relative w-full h-full p-4 overflow-hidden">
 
 
           {/* Right Main Area - Output preview parallel to input image */}
           <div className="md:p-0 p-0  flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-3 pt-0">
             <div
-              className={`bg-white/5 rounded-xl border border-white/10  relative overflow-hidden w-full max-w-6xl md:max-w-[100rem] ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
+              className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
               onDragOver={(e) => { try { e.preventDefault(); } catch { } }}
               onDrop={(e) => {
                 try {
@@ -4962,8 +5027,7 @@ const EditImageInterface: React.FC = () => {
                 } catch { }
               }}
             >
-              {/* Dotted grid background overlay */}
-              <div className="absolute inset-0 z-0  pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
+
               {outputs[selectedFeature] && (
                 <div className="absolute md:top-5 top-0 md:left-4 left-1 z-10 ">
                   <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
@@ -5964,22 +6028,40 @@ const EditImageInterface: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                          )} */}
+                          )} */ }
                             </div>
                           )}
                         </>
                       )}
                     </div>
                   ) : (
-                    <button
-                      onClick={handleOpenUploadModal}
-                      className="text-white/80 hover:text-white transition-colors text-center"
-                    >
-                      <svg className="w-10 h-10 mx-auto mb-2 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
-                      </svg>
-                      <span className="text-xs">Drop image here or click to upload</span>
-                    </button>
+                    <div className="flex flex-col items-center justify-center w-full h-full p-4 md:p-8">
+                      <div 
+                        className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] bg-white/[0.02] hover:bg-white/[0.04] transition-all cursor-pointer group"
+                        onClick={handleOpenUploadModal}
+                      >
+                        <div className="w-12 h-12 mb-6 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform duration-300">
+                          <svg className="w-6 h-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
+                            <circle cx="12" cy="13" r="3" stroke="currentColor" strokeWidth="1.5" />
+                            <path d="M12 10v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </div>
+                        
+                        <h3 className="text-xl md:text-2xl font-semibold text-white mb-2">Drop your image here</h3>
+                        <p className="text-sm md:text-base text-white/40 mb-8">
+                          or <span className="text-blue-400 font-medium">click to browse</span> from your computer
+                        </p>
+                        
+                        <div className="flex flex-wrap items-center justify-center gap-2 px-6">
+                          {['PNG', 'JPG', 'up to 50MB'].map((label) => (
+                            <span key={label} className="px-2.5 py-1 text-[10px] font-bold text-white/30 bg-white/5 rounded-md border border-white/5 tracking-wider">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -6050,29 +6132,19 @@ const EditImageInterface: React.FC = () => {
               </div>
             )}
           </div>
-
-          <style jsx global>{`
-            .very-thin-scrollbar {
-              scrollbar-width: thin;
-              scrollbar-color: rgba(255,255,255,0.12) transparent;
-            }
-            .very-thin-scrollbar::-webkit-scrollbar {
-              width: 4px;
-              height: 4px;
-            }
-            .very-thin-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(255,255,255,0.12);
-              border-radius: 999px;
-              border: 1px solid rgba(255,255,255,0.02);
-            }
-            .very-thin-scrollbar::-webkit-scrollbar-track {
-              background: transparent;
-            }
-            /* Note: global scrollbar hiding removed so browser shows scrollbar only when content overflows */
-          `}</style>
-        </div>
-      </div>
-    </div >
+          </div>
+          
+        }
+        statusBar={
+          <EditImageStatusBar
+            isProcessing={Object.values(processing).some(p => p)}
+            statusText={`Processing: ${featureDisplayName[selectedFeature]}...`}
+            progress={65}
+            credits={creditBalance}
+          />
+        }
+      />
+    </div>
   );
 };
 

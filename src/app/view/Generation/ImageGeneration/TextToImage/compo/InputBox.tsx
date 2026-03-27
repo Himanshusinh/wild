@@ -6508,8 +6508,8 @@ const InputBox = () => {
         <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
           <div
             className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
-              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
-              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+              ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl'
               }`}
             onMouseEnter={() => setIsInputBoxHovered(true)}
             onMouseLeave={() => setIsInputBoxHovered(false)}
@@ -6580,7 +6580,7 @@ const InputBox = () => {
           >
             {/* Outline Glow Effect - shows on hover or when typing */}
             <div
-              className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+              className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
               style={{
                 opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
               }}
