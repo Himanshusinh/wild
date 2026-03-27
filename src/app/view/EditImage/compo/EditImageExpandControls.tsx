@@ -64,9 +64,9 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
     // Click outside logic moved to CustomDimensionInput
 
     return (
-        <div className="flex flex-col gap-3 w-full">
+        <div className="flex flex-col gap-1 w-full">
             <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-2">Expand Image</p>
+                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Expand Image</p>
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">

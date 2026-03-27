@@ -14,7 +14,7 @@ export const EditImageSidebar: React.FC<EditImageSidebarProps> = ({
   children 
 }) => {
   return (
-    <div className="absolute left-[14px] top-[14px] bottom-[14px] w-[242px] bg-[rgba(14,14,18,0.82)] backdrop-blur-[18px] border border-[rgba(255,255,255,0.12)] rounded-2xl flex flex-col overflow-hidden z-20 shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.04)] md:relative md:left-0 md:top-0 md:bottom-0 md:h-auto md:w-[320px] md:mx-4 md:my-4 md:shrink-0 hidden md:flex">
+    <div className="absolute left-[14px] top-[14px] bottom-[14px] w-[242px] bg-[rgba(14,14,18,0.82)] backdrop-blur-[18px] border border-[rgba(255,255,255,0.12)] rounded-2xl flex flex-col overflow-hidden z-20  md:relative md:left-0 md:top-0 md:bottom-0 md:h-auto md:w-[320px] md:mx-4 md:my-4 md:shrink-0 hidden md:flex">
       {imagePreview}
       
       <div className="flex-1 overflow-y-auto thin-scrollbar relative">

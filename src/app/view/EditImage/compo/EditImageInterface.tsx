@@ -4255,7 +4255,7 @@ const EditImageInterface: React.FC = () => {
                   <div className="space-y-2">
                     {selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'expand' && (
                       <div>
-                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">AI Model</p>
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">AI Model</p>
                         <div className="relative edit-dropdown">
                           <button
                             onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
@@ -4472,7 +4472,7 @@ const EditImageInterface: React.FC = () => {
 
                       {/* Standardized Estimated Output card */}
                       <div className="pt-1">
-                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
                             <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
