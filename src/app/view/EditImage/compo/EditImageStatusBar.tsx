@@ -18,7 +18,7 @@ export const EditImageStatusBar: React.FC<EditImageStatusBarProps> = ({
   if (!isProcessing) return null;
 
   return (
-    <div className="status-bar bg-[#131317]/90 backdrop-blur-xl border border-white/10 rounded-full h-11 px-5 flex items-center gap-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="status-bar bg-[#0E0E12]/90 backdrop-blur-xl border border-white/10 rounded-full h-11 px-5 flex items-center gap-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="relative flex-1 h-1 bg-white/5 rounded-full overflow-hidden min-w-[120px]">
         <div 
           className="absolute inset-0 bg-[#2F6BFF] transition-all duration-500 ease-out"

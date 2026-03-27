@@ -53,9 +53,9 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
 
             {/* Brush Size */}
             <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                    <span className="text-white/60 text-xs">Brush Size</span>
-                    <span className="text-white/60 text-xs">{brushSize}px</span>
+                <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Brush Size</span>
+                    <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">{brushSize}px</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -88,7 +88,7 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
             {/* Prompt Input */}
             {mode === 'replace' && (
                 <div className="flex flex-col gap-1.5">
-                    <span className="text-white/60 text-xs">Prompt (Optional)</span>
+                    <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Prompt (Optional)</span>
                     <input
                         type="text"
                         value={prompt}

@@ -66,7 +66,7 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
     return (
         <div className="flex flex-col gap-3 w-full">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white/90">Expand Image</h3>
+                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-2">Expand Image</p>
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
@@ -112,7 +112,8 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
                 </select>
 
                 {/* Width Input */}
-                <input
+                <div className="flex items-center gap-2">
+                    <input
                     type="number"
                     value={aspectPreset === 'custom' ? customWidth : aspectPresets[aspectPreset]?.width || 1500}
                     onChange={(e) => {
@@ -144,6 +145,8 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
                     placeholder="H"
                     className={`h-[32px] w-[70px] px-2 rounded-lg border border-white/20 text-white text-xs focus:outline-none ${aspectPreset === 'custom' ? 'bg-white/5' : 'bg-white/5 opacity-50 cursor-not-allowed'}`}
                 />
+                </div>
+                
 
                 {/* Custom Button */}
                 <div ref={customButtonRef} className="relative">
