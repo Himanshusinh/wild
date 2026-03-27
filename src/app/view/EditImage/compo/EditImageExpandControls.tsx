@@ -97,7 +97,7 @@ export const EditImageExpandControls: React.FC<EditImageExpandControlsProps> = (
 
                         onAspectPresetChange(selectedPreset);
                     }}
-                    className="h-[32px] px-3 rounded-lg bg-white/5 border border-white/20 text-white text-xs focus:outline-none cursor-pointer min-w-[100px]"
+                    className="h-[32px] px-3 rounded-lg bg-white/2 border border-white/15 text-white text-xs focus:outline-none cursor-pointer min-w-[100px]"
                 >
                     {Object.entries(availablePresets)
                         .filter(([key]) => key !== 'custom')

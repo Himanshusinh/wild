@@ -432,6 +432,26 @@ const EditImageInterface: React.FC = () => {
 
   const liveCredits = useMemo(() => getLiveModelCredits(liveModel, liveResolution), [liveModel, liveResolution]);
 
+  const availableModels = useMemo(() => {
+    if (selectedFeature === 'remove-bg') {
+      return [
+        { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
+        { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
+      ];
+    }
+    if (selectedFeature === 'resize') {
+      return [
+        { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
+      ];
+    }
+    return [
+      { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+      { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
+      { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+      { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+    ];
+  }, [selectedFeature]);
+
   const liveFrameSizes = [
     { name: 'Square', value: '1:1' },
     { name: 'Portrait', value: '3:4' },
@@ -621,7 +641,7 @@ const EditImageInterface: React.FC = () => {
         } catch { /* ignore optimistic errors */ }
       }
 
-      setProcessing((p) => ({ ...p, ['live-chat']: true }));
+      setProcessing((prev) => ({ ...prev, ['live-chat']: true }));
       setErrorMsg('');
       setLiveChatMessages((prev) => [
         ...prev,
@@ -747,7 +767,7 @@ const EditImageInterface: React.FC = () => {
         return prev;
       });
     } finally {
-      setProcessing((p) => ({ ...p, ['live-chat']: false }));
+      setProcessing((prev) => ({ ...prev, ['live-chat']: false }));
       setLivePrompt('');
     }
   };
@@ -1511,7 +1531,6 @@ const EditImageInterface: React.FC = () => {
     // But we verify it's correct here to handle edge cases
     const dpr = window.devicePixelRatio || 1;
     const currentTransform = ctx.getTransform();
-    // Only reset if transform is clearly wrong (identity matrix when it shouldn't be)
     // We check if scale is 1 when DPR > 1, which would indicate transform wasn't applied
     if (dpr > 1 && currentTransform.a === 1 && currentTransform.d === 1) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2889,6 +2908,8 @@ const EditImageInterface: React.FC = () => {
             const actionName = isReplace ? 'Replace' : 'Erase';
 
             // 2. Prepare Payload
+            // Note: We send Data URI directly to backend (via direct connection) to match Canvas logic
+            // The backend (falService) handles uploading to Zata if needed.
             const payload: any = {
               image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
               mask: maskDataUrl,
@@ -4095,7 +4116,7 @@ const EditImageInterface: React.FC = () => {
                   )}
 
                   {/* Standardized Estimated Output card */}
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
@@ -4257,33 +4278,27 @@ const EditImageInterface: React.FC = () => {
                       <div>
                         <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">AI Model</p>
                         <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                            className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
-                          >
-                            <span className="truncate">
-                              {model ? getUpscaleModelLabel(model) : 'Select model'}
-                            </span>
-                            <ChevronUp className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === 'model' ? '' : 'rotate-180'}`} />
-                          </button>
-                          {activeDropdown === 'model' && (
+                          {availableModels.length > 1 ? (
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
+                            >
+                              <span className="truncate">
+                                {model ? getUpscaleModelLabel(model) : 'Select model'}
+                              </span>
+                              <ChevronUp className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === 'model' ? '' : 'rotate-180'}`} />
+                            </button>
+                          ) : (
+                            <div className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 flex items-center text-white/90 bg-white/2">
+                              <span className="truncate">
+                                {model ? getUpscaleModelLabel(model) : 'Select model'}
+                              </span>
+                            </div>
+                          )}
+
+                          {activeDropdown === 'model' && availableModels.length > 1 && (
                             <div className={`absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                              {(selectedFeature === 'remove-bg'
-                                ? [
-                                  { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
-                                  { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
-                                ]
-                                : selectedFeature === 'resize'
-                                  ? [
-                                    { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
-                                  ]
-                                  : [
-                                    { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-                                    { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
-                                    { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
-                                    { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
-                                  ]
-                              ).map((opt) => (
+                              {availableModels.map((opt) => (
                                 <button
                                   key={opt.value}
                                   onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
@@ -4694,7 +4709,7 @@ const EditImageInterface: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setFaceEnhance(v => !v)}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
+                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'text-white/80 hover:bg-white/10'}`}
                             >
                               {faceEnhance ? 'Enabled' : 'Disabled'}
                             </button>
