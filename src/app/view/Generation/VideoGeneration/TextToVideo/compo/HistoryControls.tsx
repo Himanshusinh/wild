@@ -248,7 +248,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
 
   return (
-    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-2 md:pt-0 sticky', className].filter(Boolean).join(' ')}>
+    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-2 md:pt-2 sticky', className].filter(Boolean).join(' ')}>
       {/* Prompt search (backend-driven) */}
       <div className="relative flex items-center md:mr-0 mr-auto">
         <input
@@ -325,7 +325,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
           className={`relative group h-[32px] w-[32px] flex items-center justify-center rounded-lg text-[13px] transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/10 text-white/80'}`}
           aria-label="Date"
         >
-          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
         </button>
         {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
           <div

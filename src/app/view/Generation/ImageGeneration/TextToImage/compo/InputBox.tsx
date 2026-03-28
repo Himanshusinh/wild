@@ -5742,8 +5742,8 @@ const InputBox = () => {
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
-            <div className="flex items-center justify-between md:mb-2 mb-0 pl-10 md:pl-0 md:pt-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between md:mb-0 mb-0 pl-10 md:pl-0 ">
+              <div className="flex items-center gap-2 md:pt-2">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation </h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
@@ -5768,7 +5768,7 @@ const InputBox = () => {
 
                 <button
                   onClick={() => router.push('/text-to-image')}
-                  className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Image"
                 >
                   <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
@@ -5780,7 +5780,7 @@ const InputBox = () => {
                     console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
                     router.push('/text-to-image/edit-image');
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Edit Image"
                 >
                   <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
@@ -5793,7 +5793,7 @@ const InputBox = () => {
                     const url = isLocal ? 'http://localhost:3002' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
                   aria-label="Image Editor"
                 >
                   <Edit3 size={16} className="text-white" />
@@ -5806,6 +5806,7 @@ const InputBox = () => {
                 <div className="hidden md:flex items-center pr-4">
                   <HistoryControls 
                     mode="image" 
+                    className="mb-0 pt-0"
                     onSearchChange={setSearchQuery}
                     onSortChange={onSortChange}
                     onDateChange={(range) => {
@@ -6077,7 +6078,7 @@ const InputBox = () => {
 
               {/* History Entries - Grouped by Date */}
               {userData && sortedDates.length > 0 && (
-                <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
+                <div className=" space-y-4 md:px-0 px-2  mt-18 md:mt-14">
                   {sortedDates.map((date) => (
                     <div key={date} className="space-y-2 md:-mt-2">
                       {/* Date Header */}
@@ -6805,7 +6806,7 @@ const InputBox = () => {
                   {/* Desktop-only: Previews just to the left of upload */}
 
                   {/* Mobile: Single column on right | Desktop: Horizontal row */}
-                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
+                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-0 pb-0 pr-0">
                     {/* Enhance prompt button (manual trigger) */}
                     <div className="relative">
                       <button

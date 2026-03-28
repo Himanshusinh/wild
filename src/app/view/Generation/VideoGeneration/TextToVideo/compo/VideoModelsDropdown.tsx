@@ -128,7 +128,6 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "MiniMax-Hailuo-2.3", label: "Hailuo-2.3", description: "Text→Video / Image→Video, 6s/10s, 768P/1080P", provider: "minimax" },
       { value: "MiniMax-Hailuo-2.3-Fast", label: "Hailuo-2.3 Fast", description: "Image→Video only (faster), 6s/10s, 768P/1080P", provider: "minimax" },
       { value: "MiniMax-Hailuo-02", label: "Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
-      { value: "pixverse-v5-t2v", label: "PixVerse v5", description: "Text→Video & Image→Video, 5s/8s, 360p/540p/720p/1080p, 16:9/9:16/1:1", provider: "replicate" },
 
       { value: "seedance-1.5-pro-t2v", label: "Seedance 1.5 Pro", description: "Text→Video & Image→Video, 2-12s, 16:9/4:3/1:1/3:4/9:16/21:9/9:21, Audio On/Off", provider: "replicate" },
       { value: "seedance-1.0-pro-t2v", label: "Seedance 1.0 Pro", description: "Text→Video & Image→Video, 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21", provider: "replicate" },
@@ -142,7 +141,6 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
       { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
       { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" },
-      { value: "gen3a_turbo", label: "Gen-3a Turbo", description: "Advanced features, last position support", provider: "runway" },
 
       // { value: "T2V-01-Director", label: "Hailuo-T2V-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" },
       // { value: "I2V-01-Director", label: "Hailuo-I2V-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },

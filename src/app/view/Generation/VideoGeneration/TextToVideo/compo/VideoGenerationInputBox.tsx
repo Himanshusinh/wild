@@ -502,9 +502,6 @@ const VideoGenerationInputBox = () => {
                 <option value="gen4_turbo">
                   Gen-4 Turbo ({getModelCreditInfo('gen4_turbo', '5s')?.credits || 0} credits)
                 </option>
-                <option value="gen3a_turbo">
-                  Gen-3a Turbo ({getModelCreditInfo('gen3a_turbo', '5s')?.credits || 0} credits)
-                </option>
               </>
             ) : (
               <option value="gen4_aleph">

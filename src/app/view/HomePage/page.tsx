@@ -50,6 +50,8 @@ import InfiniteCanvas from './compo/InfiniteCanvas';
 import WildMindAIAPPS from './compo/WildMindAIAPPS';
 import CreatorsSection from './compo/CreatorsSection';
 import CreationCTASection from './compo/CreationCTASection';
+import CreativeStyle from './compo/CreativeStyle';
+import ImageVideoToggle from './compo/ImageVideoToggle';
 
 
 
@@ -59,6 +61,7 @@ const HomePage: React.FC = () => {
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const onViewChange = (view: ViewType) => {
         setCurrentView(view);
@@ -215,12 +218,14 @@ const HomePage: React.FC = () => {
                     {/* <Header /> */}
 
                     {/* Promotional Banner */}
-                    <MasonrySection />
+                    <MasonrySection mode={homepageMode} onModeChange={setHomepageMode} />
+                    <CreativeStyle />
+                    <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
-                    <AllFeatures />
-                                                            <CommunityCreations />
+                    <AllFeatures mode={homepageMode} />
+                    <CommunityCreations mode={homepageMode} />
 
-                    <VideoModelCards />
+                    <VideoModelCards mode={homepageMode} />
 
 
                     {/* <Recentcreation /> */}

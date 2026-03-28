@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode, type WheelEventHandler } from "react";
-import { ChevronLeft, ChevronRight, Clapperboard, Crop, ImageIcon, LayoutGrid, Music, Scissors, Video } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clapperboard, Crop, Eraser, ImageIcon, LayoutGrid, Music, PenTool, Scissors, Video } from "lucide-react";
 import { ROUTES } from "@/routes/routes";
 
 type CardConfig = {
   title: string;
   subtitle: string;
   href: string;
+  featureType?: "image" | "video" | "both";
   badge: ReactNode;
   icon: ReactNode;
   iconClassName: string;
@@ -95,6 +96,42 @@ const cards: CardConfig[] = [
     cta: "Try Now ->",
   },
   {
+    title: "Erase /\nReplace",
+    subtitle: "Precise area editing",
+    href: "/text-to-image/edit-image?tool=erase-replace&feature=fill",
+    badge: "FILL",
+    icon: <Eraser size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#1d4ed8,#2563eb)] shadow-[0_8px_24px_rgba(37,99,235,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#2563eb]/55 hover:shadow-[0_14px_34px_rgba(37,99,235,0.14)]",
+    footerClassName: "bg-[rgba(37,99,235,0.06)] text-[#2563eb]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Expand\nCanvas",
+    subtitle: "Outpaint and resize frame",
+    href: "/text-to-image/edit-image?tool=erase-replace&feature=resize",
+    badge: "EXPAND",
+    icon: <Crop size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#7c2d12,#ea580c)] shadow-[0_8px_24px_rgba(234,88,12,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(234,88,12,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#ea580c]/55 hover:shadow-[0_14px_34px_rgba(234,88,12,0.14)]",
+    footerClassName: "bg-[rgba(234,88,12,0.06)] text-[#ea580c]",
+    cta: "Try Now ->",
+  },
+  {
+    title: "Vectorize",
+    subtitle: "Convert image to SVG",
+    href: "/text-to-image/edit-image?tool=erase-replace&feature=vectorize",
+    badge: "SVG",
+    icon: <PenTool size={20} />,
+    iconClassName: "bg-[linear-gradient(135deg,#581c87,#9333ea)] shadow-[0_8px_24px_rgba(147,51,234,0.42)]",
+    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(147,51,234,0.2),transparent_68%)]",
+    hoverClassName: "hover:border-[#9333ea]/55 hover:shadow-[0_14px_34px_rgba(147,51,234,0.14)]",
+    footerClassName: "bg-[rgba(147,51,234,0.06)] text-[#9333ea]",
+    cta: "Try Now ->",
+  },
+  {
     title: "Apps",
     subtitle: "Restore - Stylize - Animate",
     href: "/view/workflows",
@@ -134,6 +171,7 @@ const cards: CardConfig[] = [
     title: "Text To\nMusic",
     subtitle: "Prompt to full music track",
     href: ROUTES.TEXT_TO_MUSIC,
+    featureType: "video",
     badge: "MUSIC",
     icon: <Music size={20} />,
     iconClassName: "bg-[linear-gradient(135deg,#0f766e,#14b8a6)] shadow-[0_8px_24px_rgba(20,184,166,0.42)]",
@@ -156,13 +194,14 @@ const cards: CardConfig[] = [
   },
 ];
 
-export default function AllFeatures() {
+export default function AllFeatures({ mode = "image" }: { mode?: "image" | "video" }) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const pendingDotRef = useRef<number | null>(null);
   const [activeDot, setActiveDot] = useState(0);
   const [dotCount, setDotCount] = useState(1);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
 
   useEffect(() => {
     const el = railRef.current;
@@ -191,6 +230,7 @@ export default function AllFeatures() {
       setDotCount(pages);
       setShowLeftArrow(el.scrollLeft > 2);
       setShowRightArrow(el.scrollLeft < maxScroll - 2);
+      setIsOverflowing(maxScroll > 2);
     };
 
     updatePagination();
@@ -238,51 +278,61 @@ export default function AllFeatures() {
     el.scrollLeft += event.deltaY;
   };
 
+  const isVideoFeature = (card: CardConfig) => {
+    if (card.featureType) return card.featureType === "video";
+    return (
+      card.href.includes("/text-to-video") ||
+      card.title.toLowerCase().includes("video") ||
+      card.title.toLowerCase().includes("lipsync")
+    );
+  };
+
+  const visibleCards = cards.filter((card) => {
+    if (card.featureType === "both") return true;
+    if (mode === "video") return isVideoFeature(card);
+    return !isVideoFeature(card);
+  });
+
   return (
-    <section className="bg-[#0E0E12] pb-12 pt-8">
+    <section className="bg-[#0E0E12] pb-12 pt-0">
       <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-2 flex items-center justify-between gap-4">
           <p className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3b82f6]">
             <span className="h-[1.5px] w-4 bg-[#3b82f6]" />
             All Features
           </p>
-          <Link
-            href="/view/workflows"
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-white/60 transition-colors hover:text-white"
-          >
-            <span>View all</span>
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
         </div>
 
         <div className="relative">
-          <button
-            onClick={() => scrollByDirection("left")}
-            className={`absolute left-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 md:flex ${showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"}`}
-            aria-label="Scroll left"
-            type="button"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+          {isOverflowing && showLeftArrow && (
+            <button
+              onClick={() => scrollByDirection("left")}
+              className="absolute left-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 md:flex"
+              aria-label="Scroll left"
+              type="button"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
 
-          <button
-            onClick={() => scrollByDirection("right")}
-            className={`absolute right-1 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 ${showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"}`}
-            aria-label="Scroll right"
-            type="button"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          {isOverflowing && showRightArrow && (
+            <button
+              onClick={() => scrollByDirection("right")}
+              className="absolute right-1 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60"
+              aria-label="Scroll right"
+              type="button"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
 
           <div
             ref={railRef}
             onWheel={handleRailWheel}
-            className="scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={`scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mode === "video" && !isOverflowing ? "justify-center pr-0" : "pr-12"}`}
             style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
           >
-            {cards.map((card) => (
+            {visibleCards.map((card) => (
               <Link
                 key={card.title}
                 href={card.href}
@@ -330,10 +380,11 @@ export default function AllFeatures() {
               aria-current={index === activeDot ? "true" : "false"}
               aria-label={`Go to feature page ${index + 1}`}
               className={
-                index === activeDot
+                index === activeDot && isOverflowing
                   ? "h-[3px] w-6 rounded-full bg-[#3b82f6]"
                   : "h-[3px] w-[6px] rounded-full bg-white/20 transition-colors hover:bg-white/35 active:bg-white/50"
               }
+              disabled={!isOverflowing}
             />
           ))}
         </div>

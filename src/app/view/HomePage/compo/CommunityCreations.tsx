@@ -6,13 +6,17 @@ import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
 import { API_BASE } from '../routes'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 
+type ResolveOptions = {
+  allowReplicate?: boolean
+}
+
 // Helper to normalize media URL (same as ArtStation) - moved outside component for stability
-const normalizeMediaUrl = (url?: string): string | undefined => {
+const normalizeMediaUrl = (url?: string, options?: ResolveOptions): string | undefined => {
   if (!url || typeof url !== 'string') return undefined
   const trimmed = url.trim()
   if (!trimmed) return undefined
   // Reject replicate URLs to prevent 404s - only use Zata URLs
-  if (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com')) {
+  if (!options?.allowReplicate && (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com'))) {
     return undefined
   }
   if (/^https?:\/\//i.test(trimmed)) return trimmed
@@ -23,7 +27,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 }
 
 // Resolve media URL with fallbacks (same as ArtStation) - moved outside component for stability
-const resolveMediaUrl = (m: any): string | undefined => {
+const resolveMediaUrl = (m: any, options?: ResolveOptions): string | undefined => {
   if (!m) return undefined
   // Try multiple URL properties in order of preference
   const candidates = [
@@ -34,7 +38,7 @@ const resolveMediaUrl = (m: any): string | undefined => {
     m.storagePath,
   ]
   for (const candidate of candidates) {
-    const normalized = normalizeMediaUrl(candidate)
+    const normalized = normalizeMediaUrl(candidate, options)
     if (normalized) return normalized
   }
   return undefined
@@ -42,8 +46,10 @@ const resolveMediaUrl = (m: any): string | undefined => {
 
 export default function CommunityCreations({
   className = "",
+  mode = "image",
 }: {
   className?: string;
+  mode?: "image" | "video";
 }) {
   const router = useRouter();
   const [items, setItems] = useState<PublicItem[]>([])
@@ -59,7 +65,7 @@ export default function CommunityCreations({
         // Hardcoded fallback for now to ensure it works
         const apiBase = API_BASE || 'https://wildmindai.com'
         // Direct fetch to backend
-        const res = await fetch(`${apiBase}/api/feed?mode=image&limit=50`, {
+        const res = await fetch(`${apiBase}/api/feed?mode=${mode}&limit=50`, {
            method: 'GET',
            headers: {
              'Content-Type': 'application/json'
@@ -82,15 +88,26 @@ export default function CommunityCreations({
             // Filter non-images
             const type = (item.generationType || '').toLowerCase()
             const isImage = type === 'text-to-image' || type === 'image-upscale' || type === 'logo' || type === 'product-generation' || type === 'sticker-generation'
-            if (!isImage) return false
+            const isVideo = type === 'text-to-video' || type === 'image-to-video' || type === 'video-to-video' || type === 'lipsync'
+            if (mode === 'image' && !isImage) return false
+            if (mode === 'video' && !isVideo) return false
 
             // Exclude video/audio
-            if (item.videos?.length > 0 || item.audios?.length > 0) return false
+            if (mode === 'image' && (item.videos?.length > 0 || item.audios?.length > 0)) return false
+            if (mode === 'video' && (!item.videos || item.videos.length === 0)) return false
             
-            // Check for valid image URL (relaxed check)
-            const hasValidImage = resolveMediaUrl(item) || (Array.isArray(item.images) && item.images.some((img: any) => resolveMediaUrl(img)))
-            
-            return !!hasValidImage
+            // Check for valid media URL based on current mode
+            const hasValidMedia = mode === 'video'
+              ? (
+                  resolveMediaUrl(item, { allowReplicate: true }) ||
+                  (Array.isArray(item.videos) && item.videos.some((vid: any) => resolveMediaUrl(vid, { allowReplicate: true })))
+                )
+              : (
+                  resolveMediaUrl(item) ||
+                  (Array.isArray(item.images) && item.images.some((img: any) => resolveMediaUrl(img)))
+                )
+
+            return !!hasValidMedia
           }).map((item: any) => {
               // Normalize structure to PublicItem if needed
               return {
@@ -114,27 +131,48 @@ export default function CommunityCreations({
       }
     }
     fetchItems()
-  }, [])
+  }, [mode])
 
   // Prepare cards for Masonry with validation
   const cards = useMemo(() => {
     return items
       .map(item => {
-        // Find the best image with valid URL
+        if (mode === 'video') {
+          let vid = item.videos?.[0]
+          let mediaUrl = resolveMediaUrl(vid, { allowReplicate: true })
+
+          if (!mediaUrl) {
+            mediaUrl = resolveMediaUrl(item, { allowReplicate: true })
+            if (mediaUrl) {
+              vid = { id: item.id || '0', url: mediaUrl }
+            }
+          }
+
+          if (!mediaUrl || !vid) return null
+
+          return {
+            item,
+            media: {
+              ...vid,
+              url: mediaUrl,
+            },
+            kind: 'video' as const
+          }
+        }
+
+        // Image mode
         let img = item.images?.[0]
         let mediaUrl = resolveMediaUrl(img)
-        
-        // If no valid image in array, try root level
+
         if (!mediaUrl) {
           mediaUrl = resolveMediaUrl(item)
           if (mediaUrl) {
             img = { id: item.id || '0', url: mediaUrl }
           }
         }
-        
-        // Only include if we have a valid URL
+
         if (!mediaUrl || !img) return null
-        
+
         return {
           item,
           media: {
@@ -145,7 +183,7 @@ export default function CommunityCreations({
         }
       })
       .filter((card): card is NonNullable<typeof card> => card !== null) // Remove null entries
-  }, [items])
+  }, [items, mode])
 
   // Limit to 20 items for the homepage
   const limitedCards = useMemo(() => cards.slice(0, 20), [cards])
@@ -165,7 +203,9 @@ export default function CommunityCreations({
             className="text-[24px] leading-none tracking-[0.02em] text-white sm:text-[20px] md:text-[28px] lg:text-[36px]"
             style={{ fontFamily: "var(--font-bebas-neue), sans-serif" }}
           >
-            See what our community is creating with Wild Mind AI
+            {mode === 'video'
+              ? 'See what our community is creating with Wild Mind AI Video'
+              : 'See what our community is creating with Wild Mind AI'}
           </h2>
         </div>
 
@@ -190,7 +230,7 @@ export default function CommunityCreations({
         ) : (
           <div className="columns-2 md:columns-4 lg:columns-5 gap-2 space-y-2">
             {limitedCards.map((card, idx) => {
-              const { item, media } = card
+              const { item, media, kind } = card
               // Double-check we have a valid URL before rendering
               if (!media?.url || typeof media.url !== 'string' || media.url.length === 0) {
                 return null
@@ -202,20 +242,32 @@ export default function CommunityCreations({
                   className="break-inside-avoid relative w-full mb-2 cursor-pointer group"
                   onClick={() => setPreview(item)}
                 >
-                  {/* Image */}
-                  <img
-                    src={media.url}
-                    alt={item.prompt || 'Community creation'}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-auto object-contain block rounded-xl"
-                    onError={(e) => {
-                      // Hide broken images
-                      const target = e.currentTarget
-                      target.style.display = 'none'
-                      console.warn('[CommunityCreations] Image failed to load:', media.url)
-                    }}
-                  />
+                  {kind === 'video' ? (
+                    <video
+                      src={media.url}
+                      className="w-full h-auto object-cover block rounded-xl"
+                      muted
+                      loop
+                      autoPlay
+                      playsInline
+                      onError={() => {
+                        console.warn('[CommunityCreations] Video failed to load:', media.url)
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={media.url}
+                      alt={item.prompt || 'Community creation'}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-auto object-contain block rounded-xl"
+                      onError={(e) => {
+                        const target = e.currentTarget
+                        target.style.display = 'none'
+                        console.warn('[CommunityCreations] Image failed to load:', media.url)
+                      }}
+                    />
+                  )}
                   
                   {/* Hover Overlay (ArtStation style) */}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none rounded-xl" />
@@ -231,7 +283,7 @@ export default function CommunityCreations({
             <div className="absolute bottom-0 left-0 right-0 h-[200px] z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-0 right-0 h-[150px] flex items-center justify-center z-20 pointer-events-auto">
               <button
-                onClick={() => router.push('/view/ArtStation')}
+                onClick={() => router.push(`/view/ArtStation?mode=${mode}`)}
                 className="bg-white text-black px-8 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors shadow-lg"
               >
                 Explore Art Station
@@ -244,18 +296,20 @@ export default function CommunityCreations({
       {/* Preview Modal */}
       {preview && (() => {
         // Resolve preview URL safely
-        const previewImage = preview.images?.[0]
-        const previewUrl = previewImage ? resolveMediaUrl(previewImage) : resolveMediaUrl(preview)
+        const previewMedia = mode === 'video' ? preview.videos?.[0] : preview.images?.[0]
+        const previewUrl = previewMedia
+          ? resolveMediaUrl(previewMedia, mode === 'video' ? { allowReplicate: true } : undefined)
+          : resolveMediaUrl(preview, mode === 'video' ? { allowReplicate: true } : undefined)
         
         // Only render if we have a valid URL
         if (!previewUrl) {
-          console.warn('[CommunityCreations] Preview item has no valid image URL:', preview.id)
+          console.warn('[CommunityCreations] Preview item has no valid media URL:', preview.id)
           return null
         }
         
         return (
           <ArtStationPreview
-            preview={{ kind: 'image', url: previewUrl, item: preview }}
+            preview={{ kind: mode === 'video' ? 'video' : 'image', url: previewUrl, item: preview }}
             onClose={() => setPreview(null)}
             onConfirmDelete={async () => {}} // Read-only view
             currentUid={null} // Read-only view
