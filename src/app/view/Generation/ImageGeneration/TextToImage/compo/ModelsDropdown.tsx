@@ -1,11 +1,40 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Cpu, ChevronUp, Infinity as InfinityIcon } from "lucide-react";
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSelectedModel, setFrameSize } from '@/store/slices/generationSlice';
 import { toggleDropdown, addNotification } from '@/store/slices/uiSlice';
 import { getModelCreditInfo } from '@/utils/modelCredits';
+
+const MODEL_DESCRIPTIONS: Record<string, string> = {
+  'new-turbo-model': "Ultra-fast image generation for quick drafts and real-time applications.",
+  'openai/gpt-image-1.5': "Balanced model for high-quality, general-purpose image generation.",
+  'google/nano-banana-pro': "Premium creative image generation with strong detail and style control.",
+  'flux-2-pro': "High-end photorealistic and artistic image generation with advanced coherence.",
+  'google/nano-banana-2': "Improved version of Nano Banana with better quality and consistency.",
+  'seedream-4.5': "Generates ultra-high-resolution (4K) detailed images.",
+  'gemini-25-flash-image': "Lightweight creative image model for decent quality at lower cost.",
+  'seedream-5-lite': "Cost-efficient model for decent-quality images with faster speed.",
+  'flux-kontext-max': "Advanced contextual image editing and generation with deep understanding.",
+  'qwen/qwen-image-2': "General-purpose image generation with multilingual prompt support.",
+  'flux-kontext-pro': "Professional-grade contextual editing and controlled image generation.",
+  'qwen/qwen-image-2-pro': "Enhanced version with higher fidelity and better prompt alignment.",
+  'imagen-4': "High-quality image generation with strong realism and text rendering.",
+  'minimax-image-01': "Budget-friendly model for simple image generation tasks.",
+  'imagen-4-fast': "Faster version of Imagen 4 optimized for speed over detail.",
+  'imagen-4-ultra': "Top-tier ultra-realistic image generation with maximum detail, lighting, and cinematic quality.",
+  'qwen-image-edit-2511': "Professional-grade image editing model with advanced coherence and preservation.",
+  'prunaai/p-image': "Optimized image generation with high efficiency.",
+};
+
+const MODEL_RESOLUTIONS: Record<string, string[]> = {
+  'flux-2-pro': ['1K (80 credits)', '2K (160 credits)'],
+  'google/nano-banana-pro': ['1K/2K (320 credits)', '4K (620 credits)'],
+  'google/nano-banana-2': ['1K (154 credits)', '2K (222 credits)', '4K (322 credits)'],
+  'qwen-image-edit-2512': ['1K (60 credits)'],
+  'seedream-4.5': ['4K (100 credits)'],
+};
 
 type ModelsDropdownProps = {
   openDirection?: 'up' | 'down';
@@ -20,6 +49,8 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
   const uploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [hoveredModel, setHoveredModel] = useState<string | null>(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const hasInputImage = uploadedImages.length > 0;
 
   let models = [
@@ -85,6 +116,45 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       displayName: model.name,
     };
   });
+
+  const renderTooltip = () => {
+    if (!hoveredModel) return null;
+    const description = MODEL_DESCRIPTIONS[hoveredModel];
+    const resolutions = MODEL_RESOLUTIONS[hoveredModel];
+    if (!description && !resolutions) return null;
+
+    return (
+      <div 
+        className="fixed z-[120] w-64 p-3 rounded-xl bg-[#13131a] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)] pointer-events-none animate-in fade-in zoom-in-95 duration-200"
+        style={{ 
+          left: `${hoverPos.x + 20}px`, 
+          top: `${hoverPos.y}px`,
+          transform: 'translateY(-50%)' 
+        }}
+      >
+        <div className="space-y-3">
+          {description && (
+            <p className="text-[11px] leading-relaxed text-white/80 font-medium font-sans">
+              {description}
+            </p>
+          )}
+          {resolutions && resolutions.length > 0 && (
+            <div className="pt-2 border-t border-white/5 space-y-2">
+              <p className="text-[9px] uppercase tracking-widest text-[#2F6BFF] font-bold">Supported Resolutions</p>
+              <div className="flex flex-col gap-1.5">
+                {resolutions.map((res, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[10px] text-white/60 font-medium">
+                    <div className="w-1 h-1 rounded-full bg-[#2F6BFF]" />
+                    {res}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // If imageOnly or user uploaded images, restrict to models which support image inputs
   let filteredModels = modelsWithCredits;
@@ -280,6 +350,12 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                   {allModels.map((model) => (
                     <button
                       key={`mobile-${model.value}`}
+                      onMouseEnter={(e) => {
+                        setHoveredModel(model.value);
+                        setHoverPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+                      onMouseLeave={() => setHoveredModel(null)}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleModelSelect(model.value);
@@ -324,6 +400,12 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                   {leftModels.map((model) => (
                     <button
                       key={`left-${model.value}`}
+                      onMouseEnter={(e) => {
+                        setHoveredModel(model.value);
+                        setHoverPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+                      onMouseLeave={() => setHoveredModel(null)}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleModelSelect(model.value);
@@ -378,6 +460,12 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
                   {rightModels.map((model) => (
                     <button
                       key={`right-${model.value}`}
+                      onMouseEnter={(e) => {
+                        setHoveredModel(model.value);
+                        setHoverPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+                      onMouseLeave={() => setHoveredModel(null)}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleModelSelect(model.value);
@@ -416,6 +504,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
           })()}
         </div>
       )}
+      {renderTooltip()}
     </div>
   );
 };
