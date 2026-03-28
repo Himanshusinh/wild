@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveAutoResumeIntent } from "@/lib/autoResume";
 import { enhancePromptAPI } from "@/lib/api/geminiApi";
+import { getSignInUrl } from "@/routes/routes";
 import toast from "react-hot-toast";
 
 type GenerationMode = "image" | "video";
@@ -69,6 +70,18 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
   const [selectedGenerateType, setSelectedGenerateType] = useState<GenerationMode>(mode);
   const [showGenerateMenu, setShowGenerateMenu] = useState(false);
 
+  const hasSignedInUser = () => {
+    if (typeof window === "undefined") return false;
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return Boolean(parsed?.uid || parsed?._id || parsed?.id || parsed?.email);
+    } catch {
+      return false;
+    }
+  };
+
   const fillPrompt = (value: string) => {
     setPrompt(value);
     requestAnimationFrame(() => {
@@ -82,13 +95,19 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt || isGenerating) return;
 
-    setIsGenerating(true);
     if (targetType === "video") {
       // Video InputBox restores `selectedModel` from auto-resume intent
       saveAutoResumeIntent("video", {
         prompt: trimmedPrompt,
         selectedModel: "seedance-1.0-lite-t2v",
       });
+
+      if (!hasSignedInUser()) {
+        router.push(getSignInUrl("/text-to-video"));
+        return;
+      }
+
+      setIsGenerating(true);
       router.push("/text-to-video");
       return;
     }
@@ -98,6 +117,13 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
       prompt: trimmedPrompt,
       model: "seedream-5-lite",
     });
+
+    if (!hasSignedInUser()) {
+      router.push(getSignInUrl("/text-to-image"));
+      return;
+    }
+
+    setIsGenerating(true);
     router.push("/text-to-image");
   };
 
