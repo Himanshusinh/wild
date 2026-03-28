@@ -52,11 +52,11 @@ const PromptInput: React.FC<PromptInputProps> = ({
           autoComplete="off"
           autoCorrect="on"
           autoCapitalize="on"
-          className={`flex-1 bg-transparent md:h-[4rem] h-[3rem] text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}`}
+          className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}`}
           rows={1}
           style={{
-            minHeight: '24px',
-            maxHeight: '92px',
+            minHeight: '90px',
+            maxHeight: '90px',
             lineHeight: '1.2',
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
@@ -122,7 +122,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
             </div>
           )}
           
-          <div className="flex items-center gap-1 h-[40px]">
+          <div className="flex items-center gap-1 h-[20px]">
              {actions}
           </div>
         </div>

@@ -6108,7 +6108,7 @@ const EditImageInterface: React.FC = () => {
                     ) : (
                       <div className="flex flex-col items-center justify-center w-full h-full p-4 md:p-8">
                         <div
-                          className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] bg-white/[0.02] hover:bg-white/[0.04] transition-all cursor-pointer group"
+                          className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] hover:bg-white/[0.04] transition-all cursor-pointer group"
                           onClick={handleOpenUploadModal}
                         >
                           <div className="w-12 h-12 mb-6 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform duration-300">

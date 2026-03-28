@@ -93,9 +93,9 @@ export default function VideoGenerationPage() {
                     {/* Sticky header + filters (pinned under navbar) */}
                     <div className="sticky top-0 z-40 bg-[#0E0E12] backdrop-blur-lg shadow-xl">
 
-                        <div className="mb-0 md:mb-1 pt-8 md:pt-2">
+                        <div className="mb-0 md:mb-1 pt-8 md:pt-0">
                             <div className="flex items-center justify-between md:mb-2 mb-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 md:pt-2">
                                     <h2 className="text-white md:text-2xl text-md font-semibold">
                                         Video Generation
                                     </h2>
@@ -195,8 +195,8 @@ export default function VideoGenerationPage() {
 
                                 {/* Desktop: Search, Sort, and Date controls - positioned at right end of Video Generation text */}
                                 {activeFeature !== 'Edit' && (
-                                    <div className="hidden md:flex items-center pt-2">
-                                        <HistoryControls mode="video" />
+                                    <div className="hidden md:flex items-center">
+                                        <HistoryControls mode="video" className="mb-0 pt-0" />
                                         {/* HistoryControls removed to avoid duplication */}
                                     </div>
                                 )}

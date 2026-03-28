@@ -72,7 +72,7 @@ const EditVideoInterface: React.FC = () => {
   const [threshold, setThreshold] = useState<string>('');
   const [reverseBg, setReverseBg] = useState(false);
   const [backgroundType, setBackgroundType] = useState('');
-  const [activeDropdown, setActiveDropdown] = useState<'output' | 'backgroundType' | 'seedvrQuality' | 'seedvrWriteMode' | 'seedvrTargetResolution' | 'birefModel' | 'birefOperatingResolution' | 'birefOutputType' | 'birefQuality' | 'birefWriteMode' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<'output' | 'backgroundType' | 'seedvrMode' | 'seedvrRes' | 'seedvrFormat' | 'seedvrQuality' | 'seedvrWriteMode' | 'seedvrTargetResolution' | 'birefModel' | 'birefOperatingResolution' | 'birefOutputType' | 'birefQuality' | 'birefWriteMode' | ''>('');
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   const dispatch = useAppDispatch();
 
@@ -99,7 +99,7 @@ const EditVideoInterface: React.FC = () => {
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <button
               onClick={handleOpenUploadModal}
-              className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-lg text-xs font-medium text-white border border-white/20 hover:bg-white/30 transition-colors"
+              className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-xs font-medium text-white border border-white/20 hover:bg-white/30 transition-colors"
             >
               Change
             </button>
@@ -111,9 +111,9 @@ const EditVideoInterface: React.FC = () => {
 
   const renderSidebarParameters = () => {
     return (
-      <div className="px-4 py-2 space-y-4">
+      <div className="px-4 py-1 space-y-2">
         {errorMsg && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 animate-in fade-in slide-in-from-top-1">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-1 animate-in fade-in slide-in-from-top-1">
             <p className="text-red-400 text-[11px] font-medium leading-relaxed">{errorMsg}</p>
           </div>
         )}
@@ -135,26 +135,310 @@ const EditVideoInterface: React.FC = () => {
 
         {/* Dynamic Parameters based on feature */}
         {selectedFeature === 'upscale' ? (
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Upscale Factor</p>
-              <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/10">
-                {[1.5, 2, 4].map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setSeedvrUpscaleFactor(f)}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${seedvrUpscaleFactor === f ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-                  >
-                    {f}x
-                  </button>
-                ))}
+              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase"></p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Upscale Mode</label>
+                  <div className="relative edit-dropdown">
+                    <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrMode' ? '' : 'seedvrMode')} className="h-[36px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                      <span className="truncate capitalize">{seedvrUpscaleMode}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrMode' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'seedvrMode' && (
+                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-1 shadow-xl">
+                        {['factor', 'target'].map((opt) => (
+                          <button key={opt} onClick={() => { setSeedvrUpscaleMode(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[13px] text-white/90 hover:bg-white/10 capitalize">{opt}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-            {/* Additional parameters can be added here */}
+
+            {/* Upscale Factor (Ruler UI) or Resolution */}
+            {seedvrUpscaleMode === 'factor' ? (
+              <div className="space-y-2 pt-0">
+                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Scale Factor</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-white/50">1× — 10×</span>
+                  <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                    {seedvrUpscaleFactor}×
+                  </span>
+                </div>
+                <div className="pt-0">
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    step={0.1}
+                    value={seedvrUpscaleFactor}
+                    onChange={(e) => setSeedvrUpscaleFactor(Number(e.target.value))}
+                    className="w-full h-[3px] appearance-none rounded-full cursor-pointer touch-none"
+                    style={{
+                      background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((seedvrUpscaleFactor) - 1) / 5 * 100}%, rgba(255,255,255,0.15) ${((seedvrUpscaleFactor) - 1) / 5 * 100}%, rgba(255,255,255,0.15) 100%)`
+                    }}
+                  />
+                  <div className="flex justify-between mt-1 px-[8px]">
+                    {[1, 2, 3, 4, 5, 6].map(v => (
+                      <span key={v} className="text-[10px] font-medium text-white/30 w-0 flex justify-center">{v}×</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Target Resolution</p>
+                <div className="relative edit-dropdown">
+                  <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrRes' ? '' : 'seedvrRes')} className="h-[36px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                    <span className="truncate">{seedvrTargetResolution}</span>
+                    <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrRes' ? 'rotate-180' : ''}`} />
+                  </button>
+                  {activeDropdown === 'seedvrRes' && (
+                    <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-1 shadow-xl">
+                      {['720p', '1080p', '1440p', '2160p'].map((opt) => (
+                        <button key={opt} onClick={() => { setSeedvrTargetResolution(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[13px] text-white/90 hover:bg-white/10">{opt}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Additional Settings */}
+            <div className="border-t border-white/5 pt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Additional Settings</span>
+                <button
+                  onClick={() => setShowUpscaleAdvanced(!showUpscaleAdvanced)}
+                  className="px-2.5 py-1 rounded-md text-[10px] font-semibold bg-white/[0.05] ring-1 ring-white/10 text-white/80 hover:bg-white/[0.08] hover:text-white transition-colors"
+                >
+                  {showUpscaleAdvanced ? 'Less' : 'More'}
+                </button>
+              </div>
+
+              {showUpscaleAdvanced && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Seed</label>
+                      <input 
+                        type="text" 
+                        value={seedvrSeed} 
+                        onChange={(e) => setSeedvrSeed(e.target.value)} 
+                        placeholder="random"
+                        className="w-full h-[28px] px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 bg-white/[0.03] text-white text-[11px] font-medium transition focus:outline-none focus:ring-1 focus:ring-[#2F6BFF]/50 border-none placeholder-white/40" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Noise Scale</label>
+                      <input 
+                        type="number" 
+                        step={0.1}
+                        value={seedvrNoiseScale} 
+                        onChange={(e) => setSeedvrNoiseScale(Number(e.target.value))} 
+                        className="w-full h-[28px] px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 bg-white/[0.03] text-white text-[11px] font-medium transition focus:outline-none focus:ring-1 focus:ring-[#2F6BFF]/50 border-none" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Format</label>
+                      <div className="relative edit-dropdown">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrFormat' ? '' : 'seedvrFormat')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                          <span className="truncate">{seedvrOutputFormat}</span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrFormat' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'seedvrFormat' && (
+                          <div className="absolute z-30 top-full mt-2 left-0 w-[120%] bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-1 shadow-xl">
+                            {['X264 (.mp4)', 'VP9 (.webm)', 'PRORES4444 (.mov)', 'GIF (.gif)'].map((opt) => (
+                              <button key={opt} onClick={() => { setSeedvrOutputFormat(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[11px] text-white/90 hover:bg-white/10">{opt}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Quality</label>
+                      <div className="relative edit-dropdown">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrQuality' ? '' : 'seedvrQuality')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                          <span className="truncate capitalize">{seedvrOutputQuality}</span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrQuality' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'seedvrQuality' && (
+                          <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-1 shadow-xl">
+                            {['low', 'medium', 'high', 'maximum'].map((opt) => (
+                              <button key={opt} onClick={() => { setSeedvrOutputQuality(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[11px] text-white/90 hover:bg-white/10 capitalize">{opt}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Write Mode</label>
+                      <div className="relative edit-dropdown">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrWriteMode' ? '' : 'seedvrWriteMode')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                          <span className="truncate capitalize">{seedvrOutputWriteMode}</span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrWriteMode' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'seedvrWriteMode' && (
+                          <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-1 shadow-xl">
+                            {['fast', 'balanced', 'small'].map((opt) => (
+                              <button key={opt} onClick={() => { setSeedvrOutputWriteMode(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[11px] text-white/90 hover:bg-white/10 capitalize">{opt}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Sync Mode</label>
+                      <button 
+                        onClick={() => setSeedvrSyncMode(!seedvrSyncMode)}
+                        className={`h-[28px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-center ${seedvrSyncMode ? 'bg-[#2F6BFF] text-white ring-transparent hover:ring-transparent' : 'bg-white/[0.03] text-white/90'}`}
+                      >
+                        {seedvrSyncMode ? 'On' : 'Off'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <p className="text-[11px] font-medium text-white/40 italic leading-snug pt-2">
+                    Note: When sync_mode is true, the media will be returned as a Base64 URI and not stored.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Remove BG params can be added here */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Parameters</p>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Model</label>
+                  <div className="relative edit-dropdown">
+                    <button onClick={() => setActiveDropdown(activeDropdown === 'birefModel' ? '' : 'birefModel')} className="h-[36px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                      <span className="truncate">{birefModel}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefModel' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'birefModel' && (
+                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 shadow-xl">
+                        {['General Use (Light)', 'General Use (Light 2K)', 'General Use (Heavy)', 'Matting', 'Portrait', 'General Use (Dynamic)'].map((opt) => (
+                          <button key={opt} onClick={() => { setBirefModel(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-2 text-left text-[13px] text-white/90 hover:bg-white/10">{opt}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Operating Resolution</label>
+                  <div className="relative edit-dropdown">
+                    <button onClick={() => setActiveDropdown(activeDropdown === 'birefOperatingResolution' ? '' : 'birefOperatingResolution')} className="h-[36px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                      <span className="truncate">{birefOperatingResolution}</span>
+                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefOperatingResolution' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {activeDropdown === 'birefOperatingResolution' && (
+                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 shadow-xl">
+                        {['1024x1024', '2048x2048', '2304x2304'].map((opt) => (
+                          <button key={opt} onClick={() => { setBirefOperatingResolution(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-2 text-left text-[13px] text-white/90 hover:bg-white/10">{opt}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Mask</label>
+                  <button 
+                    onClick={() => setBirefOutputMask(!birefOutputMask)}
+                    className={`h-[28px] px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-center ${birefOutputMask ? 'bg-[white] text-black ring-transparent hover:ring-transparent' : 'bg-white/[0.03] text-white/90'}`}
+                  >
+                    {birefOutputMask ? 'On' : 'Off'}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pb-2">
+                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Refine Foreground</label>
+                  <button 
+                    onClick={() => setBirefRefineFg(!birefRefineFg)}
+                    className={`h-[28px] px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-center ${birefRefineFg ? 'bg-[white] text-black ring-transparent hover:ring-transparent' : 'bg-white/[0.03] text-white/90'}`}
+                  >
+                    {birefRefineFg ? 'On' : 'Off'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Settings */}
+            <div className="border-t border-white/5 pt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Additional Settings</span>
+                <button
+                  onClick={() => setShowRemoveBgAdvanced(!showRemoveBgAdvanced)}
+                  className="px-2.5 py-1 rounded-md text-[10px] font-semibold bg-white/[0.05] ring-1 ring-white/10 text-white/80 hover:bg-white/[0.08] hover:text-white transition-colors"
+                >
+                  {showRemoveBgAdvanced ? 'Less' : 'More'}
+                </button>
+              </div>
+
+              {showRemoveBgAdvanced && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Format</label>
+                      <div className="relative edit-dropdown">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'birefOutputType' ? '' : 'birefOutputType')} className="h-[28px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                          <span className="truncate">{birefOutputType}</span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefOutputType' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'birefOutputType' && (
+                          <div className="absolute z-30 top-full mt-2 left-0 w-[120%] bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-1 shadow-xl">
+                            {['X264 (.mp4)', 'VP9 (.webm)', 'PRORES4444 (.mov)', 'GIF (.gif)'].map((opt) => (
+                              <button key={opt} onClick={() => { setBirefOutputType(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[11px] text-white/90 hover:bg-white/10">{opt}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Write Mode</label>
+                      <div className="relative edit-dropdown">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'birefWriteMode' ? '' : 'birefWriteMode')} className="h-[28px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                          <span className="truncate capitalize">{birefWriteMode}</span>
+                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefWriteMode' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {activeDropdown === 'birefWriteMode' && (
+                          <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-1 shadow-xl">
+                            {['fast', 'balanced', 'small'].map((opt) => (
+                              <button key={opt} onClick={() => { setBirefWriteMode(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-1 text-left text-[11px] text-white/90 hover:bg-white/10 capitalize">{opt}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Sync Mode</label>
+                      <button 
+                        onClick={() => setBirefSyncMode(!birefSyncMode)}
+                        className={`h-[28px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-center ${birefSyncMode ? 'bg-[#2F6BFF] text-white ring-transparent hover:ring-transparent' : 'bg-white/[0.03] text-white/90'}`}
+                      >
+                        {birefSyncMode ? 'On' : 'Off'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -162,13 +446,13 @@ const EditVideoInterface: React.FC = () => {
         <div className="pt-2 border-t border-white/5">
           <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+            <div className="bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1 flex flex-col gap-0.5">
               <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
               <span className="text-[12px] font-semibold text-white leading-tight">
                 {inputNaturalSize.width > 0 ? `${Math.round(inputNaturalSize.width * seedvrUpscaleFactor)} × ${Math.round(inputNaturalSize.height * seedvrUpscaleFactor)}` : '—'}
               </span>
             </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-1 flex flex-col gap-0.5">
               <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
               <span className="text-[12px] font-semibold text-white leading-tight">60 credits</span>
             </div>
@@ -1011,7 +1295,7 @@ const EditVideoInterface: React.FC = () => {
 
   const renderCanvasArea = () => (
     <div
-      className="bg-white/5 rounded-xl border border-white/10 relative overflow-hidden min-h-[24rem] h-full w-full max-w-6xl md:max-w-[100rem] flex items-center justify-center"
+      className="bg-[#0E0E12] relative overflow-hidden min-h-[24rem] h-full w-full max-w-6xl md:max-w-[100rem] flex items-center justify-center"
       onDragOver={(e) => { try { e.preventDefault(); } catch { } }}
       onDrop={(e) => {
         try {
@@ -1030,10 +1314,10 @@ const EditVideoInterface: React.FC = () => {
         } catch { }
       }}
     >
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
+
       {outputs[selectedFeature] && (
         <div className="absolute top-5 left-4 z-10 ">
-          <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1.5">Output {selectedFeature === 'upscale' ? 'Video' : 'Image'}</span>
+          <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1">Output {selectedFeature === 'upscale' ? 'Video' : 'Image'}</span>
         </div>
       )}
       {(outputs[selectedFeature] || inputs[selectedFeature]) && (
@@ -1160,7 +1444,7 @@ const EditVideoInterface: React.FC = () => {
             !inputs[selectedFeature] && !outputs[selectedFeature] && (
             <button
               onClick={() => setIsUploadOpen(true)}
-              className="group relative flex flex-col items-center justify-center w-full max-w-lg aspect-video rounded-3xl border-2 border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 transition-all duration-300"
+              className="group relative flex flex-col items-center justify-center w-full max-w-xl aspect-[3/2] rounded-3xl border-2 border-dashed border-white/10 hover:border-white/10 hover:bg-white/4 transition-all duration-300"
             >
               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
@@ -1203,7 +1487,7 @@ const EditVideoInterface: React.FC = () => {
   const isInline = pathname?.startsWith('/text-to-video/edit-video');
 
   return (
-    <div className={`flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] ${isInline ? 'bg-transparent' : 'bg-[#07070B]'} text-white overflow-hidden rounded-2xl border border-white/5`}>
+    <div className={`flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] ${isInline ? 'bg-[#0E0E12]' : 'bg-[#07070B] rounded-2xl border border-white/5'} text-white overflow-hidden`}>
       <VideoUploadModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
