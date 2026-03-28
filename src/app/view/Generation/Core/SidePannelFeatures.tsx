@@ -155,14 +155,17 @@ const DEFAULT_NAV_ITEMS: NavItemDef[] = [
   },
 ];
 
-const STORAGE_KEY = 'sidebar_item_order';
-const DESKTOP_PRIMARY_ORDER = ['home', 'apps', 'audio', 'image', 'studio', 'genart', 'video'];
+const DESKTOP_PRIMARY_ORDER = ['home', 'genart', 'image', 'video', 'studio', 'audio', 'apps'];
 const DESKTOP_BOTTOM_ORDER = ['pricing', 'history'];
 const MOBILE_ORDER = ['genart', 'image', 'video', 'audio', 'apps'];
 
-function loadOrder(): string[] {
+function getStorageKey(userId: string) {
+  return `sidebar_item_order:${userId}`;
+}
+
+function loadOrder(storageKey: string): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return DEFAULT_NAV_ITEMS.map((item) => item.id);
     const parsed: string[] = JSON.parse(raw);
     const merged = parsed.filter((id) => DEFAULT_NAV_ITEMS.some((item) => item.id === id));
@@ -175,18 +178,14 @@ function loadOrder(): string[] {
   }
 }
 
-function saveOrder(order: string[]) {
+function saveOrder(storageKey: string, order: string[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    localStorage.setItem(storageKey, JSON.stringify(order));
   } catch {}
 }
 
 function applyOrder(order: string[]): NavItemDef[] {
   return order.map((id) => DEFAULT_NAV_ITEMS.find((item) => item.id === id)).filter(Boolean) as NavItemDef[];
-}
-
-function pickByOrder(items: NavItemDef[], order: string[]) {
-  return order.map((id) => items.find((item) => item.id === id)).filter(Boolean) as NavItemDef[];
 }
 
 const SidePannelFeatures = () => {
@@ -198,21 +197,32 @@ const SidePannelFeatures = () => {
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
+  const storageKey = React.useMemo(() => getStorageKey(userData?.uid || userData?.email || userData?.username || 'guest'), [userData?.uid, userData?.email, userData?.username]);
 
   const [order, setOrder] = React.useState<string[]>(() => {
     if (typeof window === 'undefined') return DEFAULT_NAV_ITEMS.map((item) => item.id);
-    return loadOrder();
+    return DEFAULT_NAV_ITEMS.map((item) => item.id);
   });
 
   const orderedItems = React.useMemo(() => applyOrder(order), [order]);
-  const desktopPrimaryItems = React.useMemo(() => pickByOrder(orderedItems, DESKTOP_PRIMARY_ORDER), [orderedItems]);
-  const desktopBottomItems = React.useMemo(() => pickByOrder(orderedItems, DESKTOP_BOTTOM_ORDER), [orderedItems]);
-  const mobileItems = React.useMemo(() => pickByOrder(orderedItems, MOBILE_ORDER), [orderedItems]);
+  const desktopPrimaryItems = React.useMemo(() => orderedItems.filter((item) => DESKTOP_PRIMARY_ORDER.includes(item.id)), [orderedItems]);
+  const desktopBottomItems = React.useMemo(() => orderedItems.filter((item) => DESKTOP_BOTTOM_ORDER.includes(item.id)), [orderedItems]);
+  const mobileItems = React.useMemo(() => orderedItems.filter((item) => MOBILE_ORDER.includes(item.id)), [orderedItems]);
 
   const [draggingId, setDraggingId] = React.useState<string | null>(null);
   const [insertBeforeId, setInsertBeforeId] = React.useState<string | null>(null);
   const draggingIdRef = React.useRef<string | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setOrder(loadOrder(storageKey));
+  }, [storageKey]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    saveOrder(storageKey, order);
+  }, [storageKey, order]);
 
   const handleMouseEnterItem = (id: string | null, e?: React.MouseEvent) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -275,7 +285,6 @@ const SidePannelFeatures = () => {
         if (toIdx === -1) next.push(fromId);
         else next.splice(toIdx, 0, fromId);
       }
-      saveOrder(next);
       return next;
     });
 
@@ -297,7 +306,7 @@ const SidePannelFeatures = () => {
     const insertLine = (
       <div
         key="insert-line"
-        className="mx-1 my-0.5 h-[2px] rounded-full bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
+        className="mx-1 my-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
         style={{ boxShadow: '0 0 6px 1px rgba(255,255,255,0.28)' }}
       />
     );
@@ -378,7 +387,7 @@ const SidePannelFeatures = () => {
         <div
           onClick={() => nav(APP_ROUTES.LANDING)}
           onMouseEnter={(e) => handleMouseEnterItem(null, e)}
-          className="mb-2 flex cursor-pointer items-center justify-center pt-[18px]"
+          className="mb-2 flex cursor-pointer items-center justify-center pt-2"
         >
           <LogoSvg />
         </div>

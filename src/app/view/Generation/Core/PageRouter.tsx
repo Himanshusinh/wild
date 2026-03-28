@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
-import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
 import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
 import MusicGenerationPage from '../MusicGeneration/MusicGenerationPage';
@@ -18,8 +17,7 @@ import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
 import EditImageInterface from '../../EditImage/compo/EditImageInterface';
 import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
 
-type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'edit-image' | 'edit-video';
+import { ViewType, GenerationType } from '@/types/generation';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -29,7 +27,6 @@ const generators: GeneratorComponentMap = {
   // Image Generation Features
   'text-to-image': TextToImageInputBox,
   'image-to-image': TextToImageInputBox, // Uses same component as text-to-image (supports image uploads)
-  'sticker-generation': StickerGenerationInputBox,
 
   // Video Generation Features
   'text-to-video': VideoGenerationPage,

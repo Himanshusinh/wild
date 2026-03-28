@@ -77,7 +77,7 @@ function ArrowBetween() {
 
 export default function CreationCTASection() {
   return (
-    <section className="bg-[#0E0E12] px-4 sm:px-4 lg:px-6 pb-4">
+    <section className="bg-[#0E0E12] px-4 sm:px-6 md:px-8 pb-4">
       <div className="relative overflow-hidden border-y border-white/10 bg-[#0E0E12]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.08)_0%,transparent_52%,rgba(99,102,241,0.05)_100%)]" />
         <div className="pointer-events-none absolute left-[20%] top-[-80px] h-[300px] w-[400px] bg-[radial-gradient(ellipse,rgba(59,130,246,0.18)_0%,transparent_65%)]" />

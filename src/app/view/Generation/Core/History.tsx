@@ -7,7 +7,6 @@ import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
 import FilterPopover from '@/components/ui/FilterPopover';
-import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview';
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -2015,9 +2014,9 @@ const History = () => {
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />
 
-      {stickerPreviewEntry && (
+      {/* {stickerPreviewEntry && (
         <StickerImagePreview isOpen={true} onClose={() => setStickerPreviewEntry(null)} entry={stickerPreviewEntry} />
-      )}
+      )} */}
       {productPreviewEntry && (
         <ProductImagePreview isOpen={true} onClose={() => setProductPreviewEntry(null)} entry={productPreviewEntry} />
       )}

@@ -6,9 +6,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { message, history } = body as {
+        const { message, history, threadId } = body as {
             message: string;
             history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+            threadId?: string;
         };
 
         if (!message || typeof message !== 'string' || !message.trim()) {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
             ''
         ).replace(/\/$/, '');
 
-        // Call the new /api/chat/assistant endpoint on the backend
+        // Agent-mode proxy only. Chat-mode uses /api/assistant/chat-mode.
         const url = `${base}/api/chat/assistant`;
 
         const resp = await fetch(url, {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
                 cookie: req.headers.get('cookie') || '',
                 'ngrok-skip-browser-warning': 'true',
             },
-            body: JSON.stringify({ message: message.trim(), history: history ?? [] }),
+            body: JSON.stringify({ message: message.trim(), history: history ?? [], threadId }),
         });
 
         if (!resp.ok) {
@@ -52,7 +53,11 @@ export async function POST(req: NextRequest) {
             data?.data?.response ||
             "I'm ready to help you create something amazing!";
 
-        return NextResponse.json({ reply: reply.trim() });
+        return NextResponse.json({
+            reply: reply.trim(),
+            thread: data?.data?.thread || null,
+            threadId: data?.data?.threadId || data?.data?.thread?.id || null,
+        });
     } catch (err: any) {
         console.error('[AssistantChatProxy] Error:', err?.message);
         return NextResponse.json({

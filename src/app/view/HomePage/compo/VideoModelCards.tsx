@@ -22,7 +22,7 @@ type VideoModel = {
   specs: string[];
 };
 
-const MODELS: VideoModel[] = [
+const VIDEO_MODELS: VideoModel[] = [
   {
     seed: "veo31",
     name: "Veo 3.1",
@@ -123,24 +123,85 @@ const MODELS: VideoModel[] = [
   },
 ];
 
-export default function VideoModelCards() {
+const IMAGE_MODELS: VideoModel[] = [
+  {
+    seed: "seedream5lite",
+    name: "Seedream 5 Lite",
+    brand: "ByteDance",
+    href: "/text-to-image?model=seedream-5-lite",
+    accent: "#3B82F6",
+    brandColor: "#3B82F6",
+    brandBorder: "rgba(59,130,246,0.4)",
+    pills: [{ label: "5 Lite", active: true, color: "#3B82F6", background: "rgba(59,130,246,0.07)", border: "rgba(59,130,246,0.3)" }],
+    specs: ["2K", "3K", "Fast"],
+  },
+  {
+    seed: "seedream45",
+    name: "Seedream 4.5",
+    brand: "ByteDance",
+    href: "/text-to-image?model=seedream-4.5",
+    accent: "#60a5fa",
+    brandColor: "#60a5fa",
+    brandBorder: "rgba(96,165,250,0.4)",
+    pills: [{ label: "4.5", active: true, color: "#60a5fa", background: "rgba(96,165,250,0.07)", border: "rgba(96,165,250,0.3)" }],
+    specs: ["2K", "4K", "Pro"],
+  },
+  {
+    seed: "nanobanana",
+    name: "Nano Banana Pro",
+    brand: "Google",
+    href: "/text-to-image?model=google/nano-banana-pro",
+    accent: "#34d399",
+    brandColor: "#34d399",
+    brandBorder: "rgba(52,211,153,0.4)",
+    pills: [{ label: "Pro", active: true, color: "#34d399", background: "rgba(52,211,153,0.07)", border: "rgba(52,211,153,0.3)" }],
+    specs: ["2K", "4K", "Accurate"],
+  },
+  {
+    seed: "gptimage15",
+    name: "GPT Image 1.5",
+    brand: "OpenAI",
+    href: "/text-to-image?model=openai/gpt-image-1.5",
+    accent: "#c084fc",
+    brandColor: "#c084fc",
+    brandBorder: "rgba(192,132,252,0.4)",
+    pills: [{ label: "1.5", active: true, color: "#c084fc", background: "rgba(192,132,252,0.07)", border: "rgba(192,132,252,0.3)" }],
+    specs: ["HD", "Prompt+", "Creative"],
+  },
+  {
+    seed: "flux2pro",
+    name: "Flux 2 Pro",
+    brand: "BFL",
+    href: "/text-to-image?model=flux-2-pro",
+    accent: "#fbbf24",
+    brandColor: "#fbbf24",
+    brandBorder: "rgba(251,191,36,0.4)",
+    pills: [{ label: "2 Pro", active: true, color: "#fbbf24", background: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.3)" }],
+    specs: ["2K", "Fast", "Detail"],
+  },
+];
+
+export default function VideoModelCards({ mode = "video" }: { mode?: "image" | "video" }) {
+  const models = mode === "video" ? VIDEO_MODELS : IMAGE_MODELS;
+  const heading = mode === "video" ? "Video Models" : "Image Models";
+
   return (
-    <section className="mx-4 md:mx-[34px] mb-[36px] bg-[#0E0E12]">
+    <section className="pt-8 mx-4 md:mx-[34px] mb-[36px] bg-[#0E0E12]">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#3B82F6]">
             <span className="inline-block h-[1.5px] w-3 bg-[#3B82F6]" />
-            Video Models
+            {heading}
           </div>
           <span className="rounded-full border border-white/10 bg-[#0E0E12] px-2 py-[2px] text-[10px] text-white/45">
-            {MODELS.length} models
+            {models.length} models
           </span>
         </div>
-        <span className="text-[10px] text-white/40">Updated weekly</span>
+        {/* <span className="text-[10px] text-white/40">Updated weekly</span> */}
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-        {MODELS.map((model) => (
+        {models.map((model) => (
           <Link
             key={model.name}
             href={model.href}

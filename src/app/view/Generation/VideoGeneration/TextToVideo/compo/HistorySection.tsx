@@ -70,7 +70,9 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
   // Auto-grouping logic
   const todayKey = new Date().toDateString();
-  const sortOrder = useAppSelector((state: any) => state.history?.filters?.sortOrder || "desc");
+  const filters = useAppSelector((state: any) => state.history?.filters || {});
+  const sortOrder = filters?.sortOrder || "desc";
+  const isFiltered = !!(filters.search || filters.dateRange);
 
   console.log('[HistorySection DEBUG] Render:', {
     activeGenerationsLength: activeGenerations?.length,
@@ -218,7 +220,34 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
       {/* Guide when empty */}
       {!loading && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
-        <VideoGenerationGuide />
+        isFiltered ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white/90 mb-2">No generations found</h3>
+            <p className="text-gray-400 max-w-md mx-auto">
+              {filters.dateRange 
+                ? "No generations found for the selected date range. Try adjusting your filters."
+                : "No generations found matching your search. Try a different prompt or clear your filters."}
+            </p>
+            <button
+              onClick={() => {
+                onSearch('');
+                onDateChange({ start: null, end: null });
+                if (onSortChange) onSortChange('desc');
+              }}
+              className="mt-8 px-8 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-white/90 transition-all"
+            >
+              Clear all filters
+            </button>
+          </div>
+        ) : (
+          <VideoGenerationGuide />
+        )
       )}
 
       {sortedDates.map((date) => (

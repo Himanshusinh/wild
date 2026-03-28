@@ -62,6 +62,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const [fsLastPoint, setFsLastPoint] = React.useState({ x: 0, y: 0 });
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
+  const fsMouseDownTimeRef = React.useRef(0);
+  const fsMouseDownPosRef = React.useRef({ x: 0, y: 0 });
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -464,6 +466,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    fsMouseDownTimeRef.current = Date.now();
+    fsMouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+
     if (fsContainerRef.current) {
       const rect = fsContainerRef.current.getBoundingClientRect();
       const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
@@ -488,7 +493,33 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     const clamped = fsClampOffset({ x: fsOffset.x + dx, y: fsOffset.y + dy }, fsScale);
     setFsOffset(clamped); setFsLastPoint({ x: e.clientX, y: e.clientY });
   }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
-  const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
+  const fsOnMouseUp = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    setFsIsPanning(false);
+
+    // Bug 61: Quick click detection for zoom toggle
+    const dt = Date.now() - fsMouseDownTimeRef.current;
+    const dx = Math.abs(e.clientX - fsMouseDownPosRef.current.x);
+    const dy = Math.abs(e.clientY - fsMouseDownPosRef.current.y);
+
+    // If movement is minimal and it was a short press, treat as click
+    if (dt < 300 && dx < 8 && dy < 8) {
+      if (fsContainerRef.current) {
+        const rect = fsContainerRef.current.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        // If already zoomed in, reset to fit. Otherwise, zoom in.
+        if (fsScale > fsFitScale + 0.01) {
+          setFsScale(fsFitScale);
+          setFsOffset({ x: 0, y: 0 });
+        } else {
+          // Jump to 2x fit scale for a meaningful zoom on click
+          const next = Math.min(6, fsFitScale * 2);
+          fsZoomToPoint({ x: mx, y: my }, next);
+        }
+      }
+    }
+  }, [fsScale, fsFitScale, fsZoomToPoint]);
 
   // Lock background scroll while modal is open
   React.useEffect(() => {
@@ -506,8 +537,9 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:py-20" onClick={onClose}>
-      <button 
-        aria-label="Close" 
+      {!isFsOpen && (
+        <button 
+          aria-label="Close" 
         className="text-white/100 hover:text-white text-lg absolute md:top-8 top-4 md:right-10 right-10 z-[100] hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
         onClick={(e) => {
           e.stopPropagation()
@@ -523,6 +555,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           e.stopPropagation()
         }}
       >✕</button>
+      )}
       <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-transparent">
@@ -803,9 +836,11 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
       </div>
       {isFsOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          {/* <div className="absolute top-3 right-4 z-[90]">
-            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg hover:bg-white/20 text-white text-sm ">✕</button>
-          </div> */}
+          <div className="absolute top-3 right-4 z-[90]">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-black/50 hover:bg-black/80 text-white text-sm ring-1 ring-white/30 backdrop-blur-sm transition-colors">
+              ✕
+            </button>
+          </div>
           <div
             ref={fsContainerRef}
             className="relative w-full h-full cursor-zoom-in"
@@ -839,8 +874,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               />
             </div>
           </div>
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-xs bg-white/10 px-3 py-1.5 rounded-md ring-1 ring-white/20">
-            Left-click to zoom in, right-click to zoom out. When zoomed, drag to pan.
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/80 px-4 py-2 rounded-lg backdrop-blur-sm text-center">
+            Click to toggle zoom • Drag to pan • ESC to exit
           </div>
         </div>
       )}

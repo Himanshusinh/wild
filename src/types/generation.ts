@@ -13,6 +13,8 @@ export type GenerationType =
   | 'logo-generation'
   | 'edit-image'
   | 'edit-video'
-  | 'text-to-character';
+  | 'text-to-character'
+  | 'image-to-image'
+  | 'image-to-video';
 
 

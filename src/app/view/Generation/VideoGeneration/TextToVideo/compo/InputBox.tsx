@@ -5160,7 +5160,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
 
-      {user ? (
+      {user && activeFeature !== 'Edit' ? (
         <HistorySection
           loading={loading}
           showHistory={showHistory}
@@ -5174,18 +5174,19 @@ const InputBox = (props: InputBoxProps = {}) => {
           onSortChange={onSortOrderChange}
           onDateChange={onDateRangeChange}
         />
+      ) : user ? (
+        <VideoGenerationGuide />
       ) : (
         <VideoGenerationGuide />
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[90%] max-w-[840px] z-[0]">
+      <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative rounded-lg bg-black/20 backdrop-blur-3xl ring-1  shadow-2xl transition-all duration-300 ${(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") ? 'max-w-[1100px]' : 'max-w-[900px]'
-            } ${isInputBoxHovered
-              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
-              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 p-2 space-y-4 transition-all duration-300 w-full ${isInputBoxHovered
+              ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl'
             }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
@@ -5240,7 +5241,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         >
           {/* Outline Glow Effect - shows on hover or when typing */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+            className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
             style={{
               opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0
             }}
@@ -5280,7 +5281,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           />
 
           {/* Uploaded Content Display */}
-          <div className="px-3 md:pb-3 pb-0">
+          <div className="">
             {/* Uploaded Images */}
             {(() => {
               const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) ? uploadedImages.slice(0, 2) : uploadedImages;
@@ -5295,8 +5296,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo)
                 );
               return (displayImages.length > 0 || extraLastFrame) ? (
-                <div className="md:mb-3 mb-3">
-                  <div className="text-xs text-white/60 mb-2">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
+                <div className="md:mb-0 mb-3">
+                  <div className="text-xs text-white/60 mb-1">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
                   <div className="flex gap-2 flex-wrap">
                     {displayImages.map((image, index) => (
                       <div key={index} className="relative group">
@@ -5474,7 +5475,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 px-3 pb-3">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
             {/* Mobile: First row - Model dropdown and Generate button */}
             <div className="flex md:hidden justify-between items-center gap-2 w-full">
               <div className="flex-1 flex items-center gap-2 mt-10">
@@ -5613,8 +5614,8 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
 
-            {/* Desktop: Original layout */}
-            <div className="hidden md:flex flex-col gap-3 flex-wrap">
+            {/* Desktop: Original layout - changed to flex-row for size parity */}
+            <div className="hidden md:flex flex-row gap-3 flex-wrap items-center">
               {/* Model selector */}
               <VideoModelsDropdown
                 selectedModel={selectedModel}
@@ -5649,7 +5650,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (isWanAnimateReplace) {
                   return (
                     <div className="flex flex-col gap-3">
-                      <div className="flex flex-row gap-2 flex-wrap">
+                      <div className="flex flex-row gap-3 flex-wrap">
                         {/* Resolution Dropdown - 480 or 720 ONLY */}
                         <div className="relative">
                           <select
@@ -5778,7 +5779,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Sora 2 Models: Full customization (check before Veo 3.1)
                 if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Sora 2 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -5841,7 +5842,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
                 if (selectedModel.includes('ltx2')) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
                       {generationMode === 'image_to_video' ? (
                         <VideoFrameSizeDropdown
@@ -5909,7 +5910,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // LTX 2.3 Fast / Pro Models: Resolution + Duration (T2V/I2V 1080p/2k/4k)
                 if (selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6027,7 +6028,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Veo 3.1 Models: Full customization (check before Veo3)
                 if (selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Veo 3.1 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6092,7 +6093,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Kling 2.6 Pro Models: Aspect ratio, duration, and audio
                 if (selectedModel === 'kling-2.6-pro') {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6139,7 +6140,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Veo3 Models: Full customization (check after Veo 3.1)
                 if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Veo3 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6202,7 +6203,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Kling Models: Full customization
                 if (selectedModel.startsWith('kling-')) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Kling models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6255,7 +6256,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // WAN 2.5 Models: Full customization (exclude wan-2.2-animate-replace)
                 if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for WAN models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6321,7 +6322,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Seedance Models: Full customization
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Only shown for T2V (ignored for I2V) */}
                       {generationMode === "text_to_video" && (
                         <VideoFrameSizeDropdown
@@ -6404,7 +6405,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // PixVerse Models: Full customization
                 if (selectedModel.includes("pixverse")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6468,7 +6469,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel !== "wan-2.2-animate-replace" &&
                   !selectedModel.includes("wan-2.2-animate")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Runway models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -6510,7 +6511,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // MiniMax & Director Models
                 if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {/* Resolution - For MiniMax models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={selectedResolution}
@@ -6564,7 +6565,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (isWanAnimateReplace) {
                   return (
                     <div className="flex flex-col gap-3 w-full">
-                      <div className="flex flex-row gap-2 flex-wrap">
+                      <div className="flex flex-row gap-3 flex-wrap">
                         <div className="relative">
                           <select
                             value={wanAnimateResolution}
@@ -6617,7 +6618,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -6657,7 +6658,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes('ltx2')) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {generationMode === 'image_to_video' ? (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
@@ -6712,7 +6713,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -6752,7 +6753,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -6807,7 +6808,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.startsWith('kling-')) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -6854,7 +6855,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -6887,7 +6888,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       {generationMode === "text_to_video" && (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
@@ -6936,7 +6937,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("pixverse")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -6985,7 +6986,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel !== "wan-2.2-animate-replace" &&
                   !selectedModel.includes("wan-2.2-animate")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -7020,7 +7021,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
                   return (
-                    <div className="flex flex-row gap-2 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
                         selectedFrameSize={selectedResolution}
                         onFrameSizeChange={setSelectedResolution}
@@ -7057,11 +7058,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
 
             {/* Desktop: Generate button section - positioned at bottom right */}
-            <div className="absolute bottom-2 right-2 hidden md:flex flex-col items-end gap-2 z-20">
+            <div className="absolute bottom-3 right-3 hidden md:flex flex-col items-end gap-0 z-20">
               {error && <div className="text-red-500 text-xs">{error}</div>}
 
-              <div className="text-white/80 text-xs pr-1">
-                Total credits: <span className="font-semibold">{liveCreditCost}</span>
+              <div className="text-white/60 text-[11px] pr-1">
+                Total credits: <span className="font-medium text-white/80">{liveCreditCost}</span>
               </div>
               <button
                 onClick={handleGenerate}
@@ -7088,7 +7089,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 })()}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                Generate Video
+                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
               </button>
             </div>
 

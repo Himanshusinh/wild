@@ -258,11 +258,11 @@ export default function PhotoToLineDrawing() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/workflow-samples/photo-to-line-before.jpg"
-                                        afterImage="/workflow-samples/photo-to-line-after.jpg"
+                                        beforeImage="/workflow-samples/photo-to-line-before-v2.jpg"
+                                        afterImage="/workflow-samples/photo-to-line-after-v2.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
-                                        imageFit="object-contain"
+                                        imageFit="object-cover"
                                     />
 
                                 </div>

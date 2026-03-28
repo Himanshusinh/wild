@@ -72,7 +72,6 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 import QualityDropdown from "./QualityDropdown";
-import ImageGenerationGuide from "./ImageGenerationGuide";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from 'next/dynamic';
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), { ssr: false });
@@ -308,25 +307,32 @@ const InputBox = () => {
     prevSortOrderRef.current = sortOrder;
   }, [sortOrder]);
 
-  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null } }) => {
+  const refreshHistoryFromBackend = useCallback(async (next?: { sortOrder?: 'asc' | 'desc'; dateRange?: { start: Date | null; end: Date | null }; search?: string }) => {
     if (!userData) return;
     const order = next?.sortOrder || sortOrder;
     const dr = next?.dateRange || dateRange;
+    const s = typeof next?.search === 'string' ? next.search : searchQuery;
 
     // Update local UI state if caller provided overrides
     if (next?.sortOrder) setSortOrder(next.sortOrder);
     if (next?.dateRange) setDateRange(next.dateRange);
+    if (typeof next?.search === 'string') setSearchQuery(next.search);
 
     setPage(1);
 
     const filters: any = { mode: 'image', sortOrder: order };
-    if (searchQuery.trim()) filters.search = searchQuery.trim();
+    if (s.trim()) filters.search = s.trim();
     if (dr.start && dr.end) filters.dateRange = { start: dr.start.toISOString(), end: dr.end.toISOString() };
     dispatch(setFilters(filters));
 
     await (dispatch as any)(loadHistory({
       filters,
-      backendFilters: { mode: 'image', sortOrder: order, ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}) } as any,
+      backendFilters: { 
+        mode: 'image', 
+        sortOrder: order, 
+        ...(dr.start && dr.end ? { dateRange: { start: dr.start.toISOString(), end: dr.end.toISOString() } } : {}),
+        ...(s.trim() ? { search: s.trim() } : {})
+      } as any,
       paginationParams: { limit: 60 },
       requestOrigin: 'page',
       expectedType: 'text-to-image',
@@ -417,6 +423,8 @@ const InputBox = () => {
           if (m === 'bytedance/seedream-4') return 'seedream-v4';
           if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
           if (m === 'z-image-turbo') return 'new-turbo-model';
+          // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
+          if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
           return m;
         };
         dispatch(setSelectedModel(mapIncomingModel(mdl)));
@@ -1363,6 +1371,30 @@ const InputBox = () => {
   // Block pagination while generation finishes & initial history refresh occurs
   const postGenerationBlockRef = useRef(false);
   // Debug event storage removed; bottom scroll pagination doesn't emit IO events
+
+  // Lock scrollRootRef overflow when in edit image page to prevent false scrolling (Bug 51)
+  useEffect(() => {
+    const originalBodyStyle = window.getComputedStyle(document.body).overflow;
+    const originalHtmlStyle = window.getComputedStyle(document.documentElement).overflow;
+
+    if (isInlineEditImagePage) {
+      if (scrollRootRef.current) scrollRootRef.current.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      if (scrollRootRef.current) scrollRootRef.current.style.overflow = 'auto';
+      // Body/HTML reset is handled by EditImageInterface's unmount or should we do it here too?
+      // For safety, let's reset if it's NOT the edit page.
+      document.body.style.overflow = originalBodyStyle || 'auto';
+      document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+    }
+    
+    return () => {
+      if (scrollRootRef.current) scrollRootRef.current.style.overflow = 'auto';
+      document.body.style.overflow = originalBodyStyle || 'auto';
+      document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+    };
+  }, [isInlineEditImagePage]);
 
   // Keep the queue panel (activeGenerations) in sync with the real history list.
   // If a generation completes/fails and is visible in the grid, update the queue item immediately
@@ -5710,9 +5742,9 @@ const InputBox = () => {
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
-            <div className="flex items-center justify-between md:mb-2 mb-0 pl-10 md:pl-0 md:pt-2">
-              <div className="flex items-center gap-2">
-                <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation</h2>
+            <div className="flex items-center justify-between md:mb-0 mb-0 pl-10 md:pl-0 ">
+              <div className="flex items-center gap-2 md:pt-2">
+                <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation </h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
 
@@ -5736,7 +5768,7 @@ const InputBox = () => {
 
                 <button
                   onClick={() => router.push('/text-to-image')}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80  border border-white/10 transition-all ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Image"
                 >
                   <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
@@ -5748,7 +5780,7 @@ const InputBox = () => {
                     console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
                     router.push('/text-to-image/edit-image');
                   }}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Edit Image"
                 >
                   <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
@@ -5761,7 +5793,7 @@ const InputBox = () => {
                     const url = isLocal ? 'http://localhost:3002' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
                   }}
-                  className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all bg-white/10 text-white/100"
+                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
                   aria-label="Image Editor"
                 >
                   <Edit3 size={16} className="text-white" />
@@ -5770,14 +5802,35 @@ const InputBox = () => {
               </div>
 
               {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
-              <div className="hidden md:flex items-center pr-4">
-                {userData && <HistoryControls mode="image" />}
-              </div>
+              {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
+                <div className="hidden md:flex items-center pr-4">
+                  <HistoryControls 
+                    mode="image" 
+                    className="mb-0 pt-0"
+                    onSearchChange={setSearchQuery}
+                    onSortChange={onSortChange}
+                    onDateChange={(range) => {
+                      setDateRange(range);
+                      setDateInput(range.start ? range.start.toLocaleDateString() : '');
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
-            <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
-              {userData && <HistoryControls mode="image" />}
-            </div>
+            {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
+              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
+                <HistoryControls 
+                  mode="image" 
+                  onSearchChange={setSearchQuery}
+                  onSortChange={onSortChange}
+                  onDateChange={(range) => {
+                    setDateRange(range);
+                    setDateInput(range.start ? range.start.toLocaleDateString() : '');
+                  }}
+                />
+              </div>
+            )}
           </div>
 
 
@@ -5991,7 +6044,33 @@ const InputBox = () => {
             <>
               {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
               {(!userData || (hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
-                <ImageGenerationGuide />
+                ((currentFilters as any)?.search || (currentFilters as any)?.dateRange) ? (
+                  <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-[#60a5fa]/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-[#60a5fa]/20">
+                      <ImageIcon className="w-8 h-8 md:w-10 md:h-10 text-[#60a5fa]" />
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-medium text-white mb-3">No generations found</h3>
+                    <p className="text-slate-400 max-w-sm text-xs md:text-sm">
+                      We couldn't find any images matching your {(currentFilters as any)?.search ? "search" : "date filter"}. Try adjusting your filters or clear them.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setDateRange({ start: null, end: null });
+                        setDateInput("");
+                        refreshHistoryFromBackend({ sortOrder, dateRange: { start: null, end: null }, search: "" });
+                      }}
+                      className="mt-8 px-8 py-2.5 bg-[#60a5fa] text-black rounded-xl text-sm font-bold hover:bg-[#60a5fa]/90 transition-all shadow-[0_0_20px_rgba(96,165,250,0.3)]"
+                    >
+                      Clear all filters
+                    </button>
+                  </div>
+                ) : (!loading && !isFiltering) && (
+                  <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
+                    <GifLoader size={120} alt="Loading" />
+                    <div className="text-white text-lg text-center mt-4">Loading generations...</div>
+                  </div>
+                )
               )}
 
               {/* Local preview: if no row for today yet, render a dated block so preview shows immediately */}
@@ -5999,7 +6078,7 @@ const InputBox = () => {
 
               {/* History Entries - Grouped by Date */}
               {userData && sortedDates.length > 0 && (
-                <div className=" space-y-4 md:px-0 px-2 md:mt-18 mt-18 ">
+                <div className=" space-y-4 md:px-0 px-2  mt-18 md:mt-14">
                   {sortedDates.map((date) => (
                     <div key={date} className="space-y-2 md:-mt-2">
                       {/* Date Header */}
@@ -6430,8 +6509,8 @@ const InputBox = () => {
         <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
           <div
             className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
-              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
-              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+              ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl'
               }`}
             onMouseEnter={() => setIsInputBoxHovered(true)}
             onMouseLeave={() => setIsInputBoxHovered(false)}
@@ -6502,7 +6581,7 @@ const InputBox = () => {
           >
             {/* Outline Glow Effect - shows on hover or when typing */}
             <div
-              className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+              className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
               style={{
                 opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
               }}
@@ -6684,106 +6763,99 @@ const InputBox = () => {
                   }}
                   data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
                 />
-                {/* Enhancement overlay removed - text shines instead */}
-                {/* Fixed position buttons container */}
-                <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
-                  {/* Clear prompt button - only show when there's text */}
-                  {prompt.trim() && (
-                    <div className="relative group">
-                      <button
-                        onClick={() => {
-                          // Clear prompt when user explicitly clicks the clear button
-                          dispatch(setPrompt(''));
-                          // Also clear the contentEditable element
-                          if (contentEditableRef.current) {
-                            contentEditableRef.current.textContent = '';
-                          }
-                          // Focus the input after clearing
-                          if (inputEl.current) {
-                            inputEl.current.focus();
-                          }
-                        }}
-                        className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                        aria-label="Clear prompt"
-                      >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-white/80"
+                <div className="flex md:flex-row flex-row -mb-6 md:items-center items-start md:gap-2 gap-1 flex-shrink-0">
+                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-0 pb-0 pr-0">
+                    {/* Clear prompt button - only show when there's text */}
+                    {prompt.trim() && (
+                      <div className="relative group">
+                        <button
+                          onClick={() => {
+                            dispatch(setPrompt(''));
+                            if (contentEditableRef.current) {
+                              contentEditableRef.current.textContent = '';
+                            }
+                            if (inputEl.current) {
+                              inputEl.current.focus();
+                            }
+                          }}
+                          className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
+                          aria-label="Clear prompt"
                         >
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
-                    </div>
-                  )}
-                  {/* Desktop-only: Previews just to the left of upload */}
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-white/80"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Clear Prompt</div>
+                      </div>
+                    )}
 
-                  {/* Mobile: Single column on right | Desktop: Horizontal row */}
-                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-1 pb-4 pr-1">
                     {/* Enhance prompt button (manual trigger) */}
                     <div className="relative">
                       <button
                         onClick={handleEnhancePrompt}
                         disabled={isEnhancing || !prompt.trim()}
                         type="button"
-                        className="p-1.25 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         aria-pressed={isEnhancing}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-white/90">
                           <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
                           <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
                         </svg>
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
                     </div>
 
                     <div className="relative">
                       <button
-                        className="p-0.75 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsCharacterModalOpen(true)}
                         type="button"
                         aria-label="Upload character"
                       >
-                        <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-6 h-6" />
+                        <Image src="/icons/character.svg" alt="Attach" width={16} height={16} className="opacity-100 w-4 h-4" />
                         <span className="text-white text-sm"> </span>
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Character</div>
                     </div>
 
                     <div className="relative">
                       <button
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsAssistantOpen(prev => !prev)}
                         type="button"
                         aria-label="Toggle Assistant"
                         aria-pressed={isAssistantOpen}
                       >
-                        <Sparkles className={`w-5 h-5 transition-colors ${isAssistantOpen ? 'text-blue-400' : 'text-white'}`} />
+                        <Sparkles className={`w-4 h-4 transition-colors ${isAssistantOpen ? 'text-blue-400' : 'text-white/90'}`} />
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                         {isAssistantOpen ? 'Close Assistant' : 'AI Assistant'}
                       </div>
                     </div>
 
                     <div className="relative">
                       <button
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition cursor-pointer flex items-center gap-0 peer"
+                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                         onClick={() => setIsUploadOpen(true)}
                         type="button"
                         aria-label="Upload image"
                       >
-                        <Image src="/icons/fileupload.svg" alt="Attach" width={18} height={18} className="opacity-100" />
+                        <Image src="/icons/fileupload.svg" alt="Attach" width={16} height={16} className="opacity-100" />
                         <span className="text-white text-sm"> </span>
                       </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Upload Image</div>
                     </div>
                   </div>
                 </div>
@@ -6956,7 +7028,8 @@ const InputBox = () => {
                       options={['1K', '2K', '4K']}
                       dropdownId="nanoBananaResolutionMb"
                     />
-                    <button
+                    {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                    {/* <button
                       onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
                       className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                     >
@@ -6967,7 +7040,7 @@ const InputBox = () => {
                       className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                     >
                       Image Search
-                    </button>
+                    </button> */}
                   </div>
                 )}
                 {selectedModel === 'flux-2-pro' && (
@@ -7099,7 +7172,8 @@ const InputBox = () => {
                         options={['1K', '2K', '4K']}
                         dropdownId="nanoBananaResolution"
                       />
-                      <button
+                      {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                      {/* <button
                         onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
                         className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                       >
@@ -7110,7 +7184,7 @@ const InputBox = () => {
                         className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
                       >
                         Image Search
-                      </button>
+                      </button> */}
                     </div>
                   )}
                   {selectedModel === 'flux-2-pro' && (
@@ -7304,7 +7378,10 @@ const InputBox = () => {
               </svg>
             </button>
             {/* Guide Content */}
-            <ImageGenerationGuide />
+            {/* <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
+              <GifLoader size={120} alt="Loading" />
+              <div className="text-white text-lg text-center mt-4">Loading generations...</div>
+            </div> */}
           </div>
         </div>
       )}

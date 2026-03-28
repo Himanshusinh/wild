@@ -26,8 +26,11 @@ export default function Relighting() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedLighting, setSelectedLighting] = useState("Natural");
-  const [additionalText, setAdditionalText] = useState("");
+  const [selectedLighting, setSelectedLighting] = useState("Natural Daylight");
+  const [selectedDirection, setSelectedDirection] = useState("Front Light");
+  const [lightIntensity, setLightIntensity] = useState(50);
+  const [shadowControl, setShadowControl] = useState(50);
+  const [additionalDetails, setAdditionalDetails] = useState("");
 
   // Workflow Data
   const workflowData = {
@@ -39,12 +42,23 @@ export default function Relighting() {
   };
 
   const lightingOptions = [
-    "Natural",
-    "Studio",
-    "Cinematic",
-    "Dramatic",
-    "Soft Diffused",
-    "Moody"
+    "Natural Daylight",
+    "Soft Studio Light",
+    "Dramatic / Cinematic Light",
+    "Night Lighting",
+    "Golden Hour",
+    "Moody / Low-Key",
+    "High-Key / Bright",
+    "Neon / Colored Light"
+  ];
+
+  const directionOptions = [
+    "Front Light",
+    "Side Light (Left / Right)",
+    "Back Light (Rim Light)",
+    "Top Light",
+    "Bottom Light",
+    "Multi-directional (Studio)"
   ];
 
   useEffect(() => {
@@ -93,7 +107,10 @@ export default function Relighting() {
         image: originalImage,
         isPublic: true,
         lightingStyle: selectedLighting,
-        additionalText: additionalText
+        lightDirection: selectedDirection,
+        lightIntensity: lightIntensity < 34 ? "Low (Soft & subtle)" : lightIntensity > 66 ? "High (Strong highlights & shadows)" : "Medium (Balanced)",
+        shadowControl: shadowControl < 34 ? "Soft" : shadowControl > 66 ? "Hard / Sharp" : "Natural",
+        additionalDetails: additionalDetails
       });
 
       if (response.data?.data?.images?.[0]?.url) {
@@ -194,14 +211,83 @@ export default function Relighting() {
                   </div>
                 </div>
 
-                <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Additional Details (Optional)</label>
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-100">
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Light Direction</label>
+                  {originalImage && (
+                    <div className="mb-4 relative w-full h-48 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center group/preview">
+                      <img
+                        src={originalImage}
+                        className="max-w-full max-h-full object-contain"
+                        alt="Light Direction Reference"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                        <p className="text-xs text-white/90 font-medium flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] shadow-[0_0_8px_#60a5fa]"></span>
+                          Previewing: {selectedDirection}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {directionOptions.map(direction => (
+                      <button
+                        key={direction}
+                        onClick={() => setSelectedDirection(direction)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${selectedDirection === direction
+                          ? 'bg-[#60a5fa] text-black border-[#60a5fa] shadow-[0_0_15px_rgba(96,165,250,0.3)]'
+                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:border-white/20'
+                          }`}
+                      >
+                        {direction}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Light Intensity</label>
+                    <span className="text-xs font-medium text-[#60a5fa]">
+                      {lightIntensity < 34 ? "Low (Soft & subtle)" : lightIntensity > 66 ? "High (Strong highlights & shadows)" : "Medium (Balanced)"}
+                    </span>
+                  </div>
+                  <div className="relative h-6 flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={lightIntensity}
+                      onChange={(e) => setLightIntensity(parseInt(e.target.value))}
+                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] hover:bg-white/20 transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Shadow Control</label>
+                    <span className="text-xs font-medium text-[#60a5fa]">
+                      {shadowControl < 34 ? "Soft" : shadowControl > 66 ? "Hard / Sharp" : "Natural"}
+                    </span>
+                  </div>
+                  <div className="relative h-6 flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={shadowControl}
+                      onChange={(e) => setShadowControl(parseInt(e.target.value))}
+                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] hover:bg-white/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-8 animate-in fade-in slide-in-from-top-3 duration-500 delay-400">
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-3 tracking-wider">Additional Details <span className="text-slate-600 font-normal normal-case ml-1">(Optional)</span></label>
                   <textarea
-                    value={additionalText}
-                    onChange={(e) => setAdditionalText(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Describe specific lighting details or instructions..."
-                  ></textarea>
+                    value={additionalDetails}
+                    onChange={(e) => setAdditionalDetails(e.target.value)}
+                    placeholder="E.g., Make it look like sunset on Mars..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-white/10 transition-all resize-none h-24"
+                  />
                 </div>
               </div>
 
@@ -262,16 +348,6 @@ export default function Relighting() {
                     Download
                   </button>
                 </div>
-              ) : originalImage ? (
-                <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
-                      <p className="text-white font-medium text-lg animate-pulse">Relighting scene...</p>
-                    </div>
-                  )}
-                </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
@@ -286,8 +362,8 @@ export default function Relighting() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {isUploadModalOpen && (
         <UploadModal
@@ -300,7 +376,8 @@ export default function Relighting() {
           }}
           remainingSlots={1}
         />
-      )}
+      )
+      }
     </>
   );
 }

@@ -403,6 +403,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
+  const fsMouseDownTimeRef = React.useRef(0);
+  const fsMouseDownPosRef = React.useRef({ x: 0, y: 0 });
 
   // -------- Fullscreen helpers (declared before any early returns) ---------
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -577,6 +579,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    fsMouseDownTimeRef.current = Date.now();
+    fsMouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+
     // Determine click position relative to container for zoom-to-point
     if (fsContainerRef.current) {
       const rect = fsContainerRef.current.getBoundingClientRect();
@@ -633,7 +638,33 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     setFsLastPoint({ x: e.clientX, y: e.clientY });
   }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
 
-  const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
+  const fsOnMouseUp = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    setFsIsPanning(false);
+
+    // Bug 61: Quick click detection for zoom toggle
+    const dt = Date.now() - fsMouseDownTimeRef.current;
+    const dx = Math.abs(e.clientX - fsMouseDownPosRef.current.x);
+    const dy = Math.abs(e.clientY - fsMouseDownPosRef.current.y);
+
+    // If movement is minimal and it was a short press, treat as click
+    if (dt < 300 && dx < 8 && dy < 8) {
+      if (fsContainerRef.current) {
+        const rect = fsContainerRef.current.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        // If already zoomed in, reset to fit. Otherwise, zoom in.
+        if (fsScale > fsFitScale + 0.01) {
+          setFsScale(fsFitScale);
+          setFsOffset({ x: 0, y: 0 });
+        } else {
+          // Jump to 2x fit scale for a meaningful zoom on click
+          const next = Math.min(6, fsFitScale * 2);
+          fsZoomToPoint({ x: mx, y: my }, next);
+        }
+      }
+    }
+  }, [fsScale, fsFitScale, fsZoomToPoint]);
 
   // Keyboard navigation in fullscreen - Navigate through ALL images sequentially
   React.useEffect(() => {
@@ -1484,8 +1515,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       }}
     >
 
-      <button
-        aria-label="Close"
+      {!isFsOpen && (
+        <button
+          aria-label="Close"
         className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
         onClick={(e) => {
           e.stopPropagation()
@@ -1501,6 +1533,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           e.stopPropagation()
         }}
       >✕</button>
+      )}
       <div
         className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  md:border md:border-white/10 rounded-xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
@@ -1906,9 +1939,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       {isFsOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
           <div className="absolute top-3 right-4 z-[90]">
-            {/* <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-black/50 hover:bg-black/80 text-white text-sm ring-1 ring-white/30 backdrop-blur-sm transition-colors">
               ✕
-            </button> */}
+            </button>
           </div>
           {/* Generation Navigation Buttons (Left side) */}
           {/* Show ONLY if: multiple generations exist AND not at latest/newest (index 0) */}

@@ -19,6 +19,9 @@ import { toast } from 'react-hot-toast';
 import { EditImageEraseFrame } from './EditImageEraseFrame';
 import { EditImageEraseControls } from './EditImageEraseControls';
 import { EditImageExpandFrame } from './EditImageExpandFrame';
+import { EditImageSidebar } from './EditImageSidebar';
+import { EditImageCanvasArea, CanvasTopBar } from './EditImageCanvasArea';
+import { EditImageStatusBar } from './EditImageStatusBar';
 import { EditImageExpandControls } from './EditImageExpandControls';
 import { saveUpload } from '@/lib/libraryApi';
 import { useCredits } from '@/hooks/useCredits';
@@ -26,6 +29,30 @@ import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
+
+const featureDisplayName: Record<EditFeature, string> = {
+  upscale: 'Upscale',
+  'remove-bg': 'Remove Background',
+  resize: 'Resize',
+  fill: 'Erase / Replace',
+  vectorize: 'Vectorize',
+  erase: 'Erase',
+  expand: 'Expand',
+  reimagine: 'Reimagine',
+  'live-chat': 'AI Chat',
+};
+
+const featurePreviewGif: Record<EditFeature, string> = {
+  upscale: '/editimage/upscale_banner.jpg',
+  'remove-bg': '/editimage/RemoveBG_banner.jpg',
+  resize: '/editimage/resize_banner.jpg',
+  fill: '/editimage/replace_banner.jpg',
+  vectorize: '/editimage/vector_banner.jpg',
+  erase: '/editimage/replace_banner.jpg',
+  expand: '/editimage/replace_banner.jpg',
+  reimagine: '/editimage/replace_banner.jpg',
+  'live-chat': '/editimage/replace_banner.jpg',
+};
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
 // This prevents passing `/_next/image?url=...` wrappers to the backend, which can't use them.
@@ -198,6 +225,22 @@ const EditImageInterface: React.FC = () => {
   const [faceEnhance, setFaceEnhance] = useState(false);
   const [swinTask, setSwinTask] = useState<'classical_sr' | 'real_sr' | 'compressed_sr'>('real_sr');
   const getSwinTaskLabel = (t: 'classical_sr' | 'real_sr' | 'compressed_sr') => {
+
+    // Global scroll lock for Edit Image screen (Bug 51)
+    useEffect(() => {
+      // Lock scroll on mount
+      const originalBodyStyle = window.getComputedStyle(document.body).overflow;
+      const originalHtmlStyle = window.getComputedStyle(document.documentElement).overflow;
+
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+
+      // Unlock scroll on unmount
+      return () => {
+        document.body.style.overflow = originalBodyStyle || 'auto';
+        document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+      };
+    }, []);
     if (t === 'classical_sr') return 'classical_sr: Upscale high-quality inputs (classical super-resolution).';
     if (t === 'real_sr') return 'real_sr: Upscale real-world photos with mixed noise/compression (default).';
     return 'compressed_sr: Upscale heavily compressed/low-bitrate images.';
@@ -251,6 +294,29 @@ const EditImageInterface: React.FC = () => {
     const factorRaw = Number(String(scaleFactor).replace('x', '')) || 2;
     return estimateCrystalUpscalerCredits(w, h, factorRaw);
   }, [inputNaturalSize?.width, inputNaturalSize?.height, model, scaleFactor, selectedFeature]);
+
+  const topazEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'fal-ai/topaz/upscale/image') return null;
+    const w = inputNaturalSize.width;
+    const h = inputNaturalSize.height;
+    if (w <= 0 || h <= 0) return null;
+    const outW = Math.round(w * (topazUpscaleFactor || 2));
+    const outH = Math.round(h * (topazUpscaleFactor || 2));
+    return { outW, outH, credits: 16 }; // Topaz often has a fixed higher cost
+  }, [inputNaturalSize, model, selectedFeature, topazUpscaleFactor]);
+
+  const realEsrganEstimate = useMemo(() => {
+    if (selectedFeature !== 'upscale') return null;
+    if (model !== 'nightmareai/real-esrgan') return null;
+    const w = inputNaturalSize.width;
+    const h = inputNaturalSize.height;
+    if (w <= 0 || h <= 0) return null;
+    const factor = Number(String(scaleFactor).replace('x', '')) || 4;
+    const outW = Math.round(w * factor);
+    const outH = Math.round(h * factor);
+    return { outW, outH, credits: 14 };
+  }, [inputNaturalSize, model, scaleFactor, selectedFeature]);
   // Outpaint (resize) controls
   const [resizeExpandLeft, setResizeExpandLeft] = useState<number>(0);
   const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
@@ -365,6 +431,26 @@ const EditImageInterface: React.FC = () => {
   };
 
   const liveCredits = useMemo(() => getLiveModelCredits(liveModel, liveResolution), [liveModel, liveResolution]);
+
+  const availableModels = useMemo(() => {
+    if (selectedFeature === 'remove-bg') {
+      return [
+        { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
+        { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
+      ];
+    }
+    if (selectedFeature === 'resize') {
+      return [
+        { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
+      ];
+    }
+    return [
+      { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+      { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
+      { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+      { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+    ];
+  }, [selectedFeature]);
 
   const liveFrameSizes = [
     { name: 'Square', value: '1:1' },
@@ -555,7 +641,7 @@ const EditImageInterface: React.FC = () => {
         } catch { /* ignore optimistic errors */ }
       }
 
-      setProcessing((p) => ({ ...p, ['live-chat']: true }));
+      setProcessing((prev) => ({ ...prev, ['live-chat']: true }));
       setErrorMsg('');
       setLiveChatMessages((prev) => [
         ...prev,
@@ -681,7 +767,7 @@ const EditImageInterface: React.FC = () => {
         return prev;
       });
     } finally {
-      setProcessing((p) => ({ ...p, ['live-chat']: false }));
+      setProcessing((prev) => ({ ...prev, ['live-chat']: false }));
       setLivePrompt('');
     }
   };
@@ -1445,7 +1531,6 @@ const EditImageInterface: React.FC = () => {
     // But we verify it's correct here to handle edge cases
     const dpr = window.devicePixelRatio || 1;
     const currentTransform = ctx.getTransform();
-    // Only reset if transform is clearly wrong (identity matrix when it shouldn't be)
     // We check if scale is 1 when DPR > 1, which would indicate transform wasn't applied
     if (dpr > 1 && currentTransform.a === 1 && currentTransform.d === 1) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2127,6 +2212,7 @@ const EditImageInterface: React.FC = () => {
 
     return { x, y };
   };
+
 
   const handleRun = async () => {
     if (!user) {
@@ -2822,6 +2908,8 @@ const EditImageInterface: React.FC = () => {
             const actionName = isReplace ? 'Replace' : 'Erase';
 
             // 2. Prepare Payload
+            // Note: We send Data URI directly to backend (via direct connection) to match Canvas logic
+            // The backend (falService) handles uploading to Zata if needed.
             const payload: any = {
               image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
               mask: maskDataUrl,
@@ -3449,7 +3537,7 @@ const EditImageInterface: React.FC = () => {
             upscale_mode: 'factor',
             upscale_factor: factor,
             noise_scale: 0.1,
-            output_format: 'jpg',
+            output_format: (output === 'jpg' || output === 'png') ? output : 'jpg',
           };
 
           const res = await axiosInstance.post('/api/fal/seedvr/upscale/image', body);
@@ -3716,9 +3804,9 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#07070B]">
+    <div className="body flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12 pl-4">
       {/* Sticky header like ArtStation */}
-      {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#07070B] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
+      {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#0E0E12] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0  sm:ml-8 md:ml-7 lg:ml-7 ">
             <h1 className="text-white text-xl sm:text-xl md:text-2xl font-semibold">Edit Images</h1>
@@ -3776,31 +3864,1110 @@ const EditImageInterface: React.FC = () => {
           }
         }}
       />
-      <div className="flex flex-1 min-h-0 md:py-1 pt-20 md:pt-13 flex-col md:flex-row">
-        {/* Left Sidebar - Controls (on top for mobile, left for desktop) */}
-        <div className="w-auto bg-transparent flex flex-col md:h-full rounded-br-2xl mb-3 overflow-hidden relative md:w-[450px] md:ml-4 md:mx-0 mx-0">
-          {/* Error Message */}
-          {errorMsg && (
-            <div className="md:mx-3 md:mt-2 bg-red-500/10 border border-red-500/20 rounded md:px-2 md:py-1">
-              <p className="text-red-400 text-xs">{errorMsg}</p>
+      {/* Error Message - Moved to top absolute */}
+      {errorMsg && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 backdrop-blur border border-red-500/20 rounded-xl px-4 py-2 shadow-2xl">
+          <p className="text-white text-sm font-medium">{errorMsg}</p>
+        </div>
+      )}
+      <EditImageSidebar
+        imagePreview={
+          selectedFeature !== 'live-chat' ? (
+            <div className="px-1 md:px-4 md:mb-2 md:pt-4 pt-2 z-10">
+              <div className="preview-wrap relative h-[148px] bg-[#1a1a20] border-b border-white/10 rounded-t-[15px] shrink-0 overflow-hidden cursor-pointer group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
+                <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
+                  {featureDisplayName[selectedFeature]}
+                </div>
+              </div>
             </div>
-          )}
+          ) : null
+        }
+        parameters={
+          <div className="flex flex-col gap-4 pt-4 pb-40 thin-scrollbar">
+
+            {/* Reimagine Reference Image */}
+            {selectedFeature === 'reimagine' && (
+              <div className="px-1 md:px-4">
+                <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-2 md:text-sm">Reference Image (Optional)</label>
+
+                {!reimagineReferenceImage ? (
+                  <div
+                    className="border border-white/20 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors group"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setReimagineReferenceImage(ev.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                        <circle cx="9" cy="9" r="2" />
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                      </svg>
+                    </div>
+                    <span className="text-xs text-white/50 text-center">Click to upload reference</span>
+                  </div>
+                ) : (
+                  <div className="relative rounded-xl overflow-hidden border border-white/10 group">
+                    <img src={reimagineReferenceImage} alt="Reference" className="w-full h-32 object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => setReimagineReferenceImage(null)}
+                        className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-colors"
+                        title="Remove"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6 6 18" />
+                          <path d="m6 6 12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
+                      <span className="text-[10px] text-white/80">Reference Image</span>
+                    </div>
+                  </div>
+                )}
+                <p className="text-[10px] text-white/40 mt-2">
+                  Upload an image to extract details, texture, or style. This will be used as a guide for the generation.
+                </p>
+              </div>
+            )}
+
+            {/* Vectorize model & parameters */}
+            {selectedFeature === 'vectorize' && (
+              <div className="px-1 md:px-4">
+                {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
+                <div className="space-y-2">
+                  {/* Super Mode Toggle */}
+                  <div>
+                    <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Mode</label>
+                    <div className="relative bg-white/5 border border-white/20 rounded-lg md:p-1 p-0.5 flex">
+                      <button
+                        onClick={() => setVectorizeSuperMode(false)}
+                        className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-0 md:text-xs text-[11px] font-medium rounded transition-colors ${!vectorizeSuperMode
+                          ? 'bg-white text-black'
+                          : 'text-white/70 hover:text-white'
+                          }`}
+                      >
+                        Line Vector
+                      </button>
+                      <button
+                        onClick={() => setVectorizeSuperMode(true)}
+                        className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-1 md:text-xs text-[11px] font-medium rounded transition-colors whitespace-nowrap ${vectorizeSuperMode
+                          ? 'bg-white text-black'
+                          : 'text-white/70 hover:text-white'
+                          }`}
+                      >
+                        Art Vector
+                      </button>
+                    </div>
+                    {vectorizeSuperMode && (
+                      <div className="text-[11px] text-white/50 mt-1">
+                        First converts image to 2D vector using Seedream, then vectorizes the result
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 mt-2">Model</label>
+                    <div className="relative edit-dropdown">
+                      <button
+                        onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
+                        className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
+                      >
+                        <span className="truncate">
+                          {vectorizeModel === 'fal-ai/recraft/vectorize'
+                            ? 'Recraft Vectorize'
+                            : 'Image to SVG'}
+                        </span>
+                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
+                      </button>
+                      {activeDropdown === 'vectorizeModel' && (
+                        <div className={`absolute top-full md:mt-2 mt-1 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                          {[
+                            { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize', credits: (vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
+                            { label: 'Image to SVG', value: 'fal-ai/image2svg', credits: (vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
+                              className={`w-full md:px-3 px-2.5 md:py-2 py-0.5 text-left md:text-[13px] text-[12px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate">{opt.label}</span>
+                                <span className="text-[11px]">{opt.credits} credits</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {vectorizeModel === 'fal-ai/image2svg' && (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Colormode</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'vColorMode' ? '' : 'vColorMode')}
+                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                            >
+                              <span className="truncate">{vColorMode}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vColorMode' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'vColorMode' && (
+                              <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                {['color', 'binary'].map((opt) => (
+                                  <button key={opt} onClick={() => { setVColorMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vColorMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Hierarchical</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'vHierarchical' ? '' : 'vHierarchical')}
+                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                            >
+                              <span className="truncate">{vHierarchical}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vHierarchical' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'vHierarchical' && (
+                              <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                {['stacked', 'cutout'].map((opt) => (
+                                  <button key={opt} onClick={() => { setVHierarchical(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vHierarchical === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Mode</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'vMode' ? '' : 'vMode')}
+                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                            >
+                              <span className="truncate">{vMode}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vMode' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'vMode' && (
+                              <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                {['spline', 'polygon'].map((opt) => (
+                                  <button key={opt} onClick={() => { setVMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Filter Speckle</label>
+                          <input type="number" value={vFilterSpeckle} onChange={(e) => setVFilterSpeckle(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Color Precision</label>
+                          <input type="number" value={vColorPrecision} onChange={(e) => setVColorPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Layer Difference</label>
+                          <input type="number" value={vLayerDifference} onChange={(e) => setVLayerDifference(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Corner Threshold</label>
+                          <input type="number" value={vCornerThreshold} onChange={(e) => setVCornerThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Length Threshold</label>
+                          <input type="number" step="0.1" value={vLengthThreshold} onChange={(e) => setVLengthThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Max Iterations</label>
+                          <input type="number" value={vMaxIterations} onChange={(e) => setVMaxIterations(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Splice Threshold</label>
+                          <input type="number" value={vSpliceThreshold} onChange={(e) => setVSpliceThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Path Precision</label>
+                          <input type="number" value={vPathPrecision} onChange={(e) => setVPathPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Standardized Estimated Output card */}
+                  <div className="pt-1">
+                    <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                        <span className="text-[12px] font-semibold text-white leading-tight uppercase">
+                          Vector (SVG)
+                        </span>
+                      </div>
+                      <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                        <span className="text-[12px] font-semibold text-white leading-tight">
+                          {vectorizeModel === 'fal-ai/recraft/vectorize'
+                            ? `${vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`
+                            : `${vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons moved to bottom under Parameters */}
+
+            {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
+            <div className="flex-1 min-h-0 md:p-4 p-2 overflow-visible">
+              {selectedFeature === 'live-chat' && (
+                <>
+                  <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Live Chat Controls</p>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Model dropdown */}
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Model</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveModel' ? '' : 'liveModel')}
+                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                          >
+                            <span className="truncate">{liveAllowedModels.find(m => m.value === liveModel)?.label || 'Select model'}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveModel' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {liveActiveDropdown === 'liveModel' && (
+                            <div className={`absolute top-full z-30 left-0 min-w-50 md:min-w-60 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {liveAllowedModels.map(opt => (
+                                <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="truncate">{opt.label}</span>
+                                    <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Frame size */}
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Frame Size</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveFrame' ? '' : 'liveFrame')}
+                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                          >
+                            <span className="truncate">{liveFrameSizes.find(s => s.value === liveFrameSize)?.name || liveFrameSize}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveFrame' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {liveActiveDropdown === 'liveFrame' && (
+                            <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                              {liveFrameSizes.map(opt => (
+                                <button key={opt.value} onClick={() => { setLiveFrameSize(opt.value as any); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveFrameSize === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
+                                  <span className="truncate">{opt.name}</span>
+                                  <span className="ml-2 text-white/50 text-[11px]">{opt.value}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resolution shown for Pro & Seedream */}
+                    {(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') && (
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Resolution</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveResolution' ? '' : 'liveResolution')}
+                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                          >
+                            <span className="truncate">{liveResolution}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveResolution' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {liveActiveDropdown === 'liveResolution' && (
+                            <div className={`absolute top-full z-30 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1`}>
+                              {(['1K', '2K', '4K'] as const).map(r => (
+                                <button key={r} onClick={() => { setLiveResolution(r); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveResolution === r ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{r}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Chat UI */}
+                    <div className="mt-3">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pl-0.5">Chat to Edit</label>
+                      <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') ? 'md:h-[23rem] h-[16rem]' : 'md:h-[27rem] h-[20rem]'}`}>
+                        <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar">
+                          {liveChatMessages.length === 0 && (
+                            <div className="md:text-[12px] text-[10px] text-white/70">Start by uploading an image on the right, then tell me what to change.</div>
+                          )}
+                          {liveChatMessages.map((m, i) => (
+                            <div
+                              key={i}
+                              ref={(el) => { if (i === liveChatMessages.length - 1) lastMsgRef.current = el; }}
+                              className={`flex items-start gap-2 transition-transform duration-150 ${m.role === 'user' ? 'justify-end' : ''}`}
+                            >
+                              <div className={`md:px-2 px-1 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[11px] ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/90'}`}>
+                                {m.text}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-2 gap-4">
+                          <div className="relative gap-2">
+                            <input
+                              value={livePrompt}
+                              onChange={(e) => setLivePrompt(e.target.value)}
+                              placeholder="Tell me your edit request"
+                              className="w-full md:h-[36px] h-[30px] md:px-3 px-2 md:pr-[40px] pr-[32px] bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLiveGenerate(); } }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleLiveGenerate}
+                              disabled={processing['live-chat'] || !livePrompt.trim()}
+                              aria-label="Generate"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 md:w-7 md:h-7 w-5 h-5 bg-blue-500  text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                {/* <circle cx="12" cy="12" r="9" /> */}
+                                <path d="M10 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              {selectedFeature !== 'vectorize' && selectedFeature !== 'live-chat' && (
+                <>
+                  <div className="space-y-2">
+                    {selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'expand' && (
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">AI Model</p>
+                        <div className="relative edit-dropdown">
+                          {availableModels.length > 1 ? (
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
+                            >
+                              <span className="truncate">
+                                {model ? getUpscaleModelLabel(model) : 'Select model'}
+                              </span>
+                              <ChevronUp className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === 'model' ? '' : 'rotate-180'}`} />
+                            </button>
+                          ) : (
+                            <div className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 flex items-center text-white/90 bg-white/2">
+                              <span className="truncate">
+                                {model ? getUpscaleModelLabel(model) : 'Select model'}
+                              </span>
+                            </div>
+                          )}
+
+                          {activeDropdown === 'model' && availableModels.length > 1 && (
+                            <div className={`absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                              {availableModels.map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
+                                  className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${model === opt.value ? 'bg-white/10 text-white font-medium' : 'text-white/75 hover:bg-white/8 hover:text-white'}`}
+                                >
+                                  {model === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />}
+                                  <span className="truncate">{opt.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">Brush Size</label>
+                        <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                        <div className="text-[11px] text-white/50 mt-0">{brushSize}px</div>
+                      </div>
+                    )}
+                    {/* Remove-BG (851-labs) specialized controls */}
+                  </div>
+
+                  {selectedFeature === 'fill' && (
+                    <EditImageEraseControls
+                      brushSize={eraseBrushSize}
+                      setBrushSize={setEraseBrushSize}
+                      prompt={erasePrompt}
+                      setPrompt={setErasePrompt}
+                      mode={eraseActionMode}
+                      setMode={setEraseActionMode}
+                      model={eraseModel}
+                      setModel={setEraseModel}
+                      isProcessing={processing['fill']}
+                      onGenerate={handleRun}
+                      onClearMask={() => setEraseMaskData(null)} /* We need a way to clear mask in Frame too */
+                      onBrushAdjustStart={() => setIsAdjustingBrush(true)}
+                      onBrushAdjustEnd={() => setIsAdjustingBrush(false)}
+                    />
+                  )}
+                  {/* Removed old fill/erase controls logic */}
+                  {selectedFeature === 'erase' && (
+                    <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
+                  )
+                  }
+
+                  {/* Erase feature - no prompt input, uses hardcoded prompt */}
+                  {selectedFeature === 'erase' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">Brush Size</label>
+                        <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+                        <div className="text-[11px] text-white/50 mt-0">{brushSize}px</div>
+                      </div>
+                      <div className="text-xs text-white/60 mb-0">
+                        Draw on the image to mark areas you want to erase. The masked areas will be removed automatically.
+                      </div>
+                    </>
+                  )}
+
+                  {/* Expand feature */}
+                  {selectedFeature === 'expand' && (
+                    <>
+                      {expandOriginalSize.width > 0 && expandOriginalSize.height > 0 && (
+                        <div className="mb-2">
+                          <div className="text-xs text-white/70">
+                            Original: {expandOriginalSize.width} × {expandOriginalSize.height}px
+                          </div>
+                          <div className="text-xs text-white/70 mt-1">
+                            New: {expandCustomWidth} × {expandCustomHeight}px
+                            {(expandEffectiveWidth !== expandCustomWidth || expandEffectiveHeight !== expandCustomHeight) && (
+                              <>
+                                <span className="mx-1 text-white/40">•</span>
+                                <span className="text-white/70">Generated: {expandEffectiveWidth} × {expandEffectiveHeight}px</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandBounds({ left: 0, top: 0, right: 0, bottom: 0 });
+                              }}
+                              className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
+                            >Reset</button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Center the selection rectangle relative to original image
+                                const w = expandCustomWidth;
+                                const h = expandCustomHeight;
+                                const dw = w - expandOriginalSize.width; // can be negative (crop) or positive (expand)
+                                const dh = h - expandOriginalSize.height;
+                                let left: number, right: number, top: number, bottom: number;
+                                if (dw >= 0) {
+                                  left = Math.floor(dw / 2); right = dw - left;
+                                } else {
+                                  const crop = -dw; // pixels to remove
+                                  const cLeft = Math.floor(crop / 2); const cRight = crop - cLeft;
+                                  left = -cLeft; right = -cRight;
+                                }
+                                if (dh >= 0) {
+                                  top = Math.floor(dh / 2); bottom = dh - top;
+                                } else {
+                                  const crop = -dh;
+                                  const cTop = Math.floor(crop / 2); const cBottom = crop - cTop;
+                                  top = -cTop; bottom = -cBottom;
+                                }
+                                setExpandBounds({ left, top, right, bottom });
+                              }}
+                              className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
+                            >Center</button>
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Aspect Ratio</label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === 'expandAspect' ? '' : 'expandAspect')}
+                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                          >
+                            <span className="truncate">{expandAspectRatio === 'custom' ? 'Custom' : expandAspectRatio}</span>
+                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'expandAspect' ? 'rotate-180' : ''}`} />
+                          </button>
+                          {activeDropdown === 'expandAspect' && (
+                            <div className={`absolute bottom-full mb-2 z-100 left-0 w-full bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar shadow-2xl`}>
+                              {['custom', '1:1', '4:3', '3:4', '16:9', '9:16', '21:9', '3:2', '2:3'].map((ar) => (
+                                <button
+                                  key={ar}
+                                  onClick={() => {
+                                    setExpandAspectRatio(ar);
+                                    setActiveDropdown('');
+                                    if (ar !== 'custom' && expandOriginalSize.width > 0 && expandOriginalSize.height > 0) {
+                                      const [w, h] = ar.split(':').map(Number);
+                                      const aspect = w / h;
+                                      const origAspect = expandOriginalSize.width / expandOriginalSize.height;
+                                      let newWidth = expandOriginalSize.width;
+                                      let newHeight = expandOriginalSize.height;
+                                      if (aspect > origAspect) {
+                                        newWidth = Math.round(expandOriginalSize.height * aspect);
+                                      } else {
+                                        newHeight = Math.round(expandOriginalSize.width / aspect);
+                                      }
+                                      const left = Math.max(0, Math.floor((newWidth - expandOriginalSize.width) / 2));
+                                      const right = newWidth - expandOriginalSize.width - left;
+                                      const top = Math.max(0, Math.floor((newHeight - expandOriginalSize.height) / 2));
+                                      const bottom = newHeight - expandOriginalSize.height - top;
+                                      setExpandBounds({ left, top, right, bottom });
+                                    }
+                                  }}
+                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${expandAspectRatio === ar ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                >
+                                  <span className="truncate">{ar === 'custom' ? 'Custom' : ar}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-xs text-white/60 mt-2">
+                        Drag the edges of the image on the canvas to expand or crop. The new dimensions will be calculated automatically.
+                      </div>
+                    </>
+                  )}
+
+                  {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
+                  {selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && (
+                    <div className="space-y-2">
+                      <EditImageExpandControls
+                        aspectPreset={resizeAspectRatio || 'custom'}
+                        expandPrompt={resizeNegativePrompt}
+                        isExpanding={processing.resize}
+                        sourceImageUrl={inputs.resize}
+                        onAspectPresetChange={(preset) => setResizeAspectRatio(preset as any)}
+                        onExpandPromptChange={setResizeNegativePrompt}
+                        onExpand={() => { }}
+                        aspectPresets={aspectPresets}
+                        customWidth={Number(resizeCanvasW) || 1024}
+                        customHeight={Number(resizeCanvasH) || 1024}
+                        onCustomWidthChange={(w) => setResizeCanvasW(w)}
+                        onCustomHeightChange={(h) => setResizeCanvasH(h)}
+                        imageSize={{ width: Number(resizeOrigW) || 0, height: Number(resizeOrigH) || 0 }}
+                      />
+
+                      {/* Standardized Estimated Output card */}
+                      <div className="pt-1">
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                            <span className="text-[12px] font-semibold text-white leading-tight">
+                              {resizeCanvasW && resizeCanvasH ? `${resizeCanvasW} × ${resizeCanvasH}` : '—'}
+                            </span>
+                          </div>
+                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                            <span className="text-[12px] font-semibold text-white leading-tight">
+                              {10} credits
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
 
-          {/* Feature tabs (two rows on desktop, sliding row on mobile) */}
-          <div className="relative md:px-4 md:pt-3 w-auto md:mx-0">
+
+                  {selectedFeature === 'remove-bg' && (model.startsWith('851-labs/') || String(model).startsWith('lucataco/')) && (
+                    <div className="space-y-2 w-full">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Output format (left) */}
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Output Format</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
+                              className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate uppercase">{output || 'png'}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'output' && (
+                              <div className={`absolute z-[100] top-full md:mt-2 mt-1 left-0 md:w-44 w-36 bg-black backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                                {['png', 'jpg'].map((fmt) => (
+                                  <button
+                                    key={fmt}
+                                    onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
+                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  >
+                                    <span className="uppercase">{fmt}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Background type (right) */}
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Background Type</label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
+                              className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate">{backgroundType || 'Select type'}</span>
+                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {activeDropdown === 'backgroundType' && (
+                              <div className={`absolute top-full z-[100] md:mt-2 mt-1 left-0 md:w-56 w-44 bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                                {[
+                                  { label: 'RGBA (Transparent)', value: 'rgba' },
+                                  { label: 'White', value: 'white' },
+                                  { label: 'Green', value: 'green' },
+                                  { label: 'Blur', value: 'blur' },
+                                  { label: 'Overlay', value: 'overlay' },
+                                  { label: 'Depth-Map', value: 'map' },
+                                ].map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
+                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {model.startsWith('851-labs/') && (
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Reverse</label>
+                          <button
+                            type="button"
+                            onClick={() => setReverseBg(v => !v)}
+                            className={`md:h-[32px] h-[28px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
+                          >
+                            {reverseBg ? 'Enabled' : 'Disabled'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Standardized Estimated Output card */}
+                      <div className="pt-1">
+                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                            <span className="text-[12px] font-semibold text-white leading-tight">
+                              {inputNaturalSize.width > 0 ? `${inputNaturalSize.width} × ${inputNaturalSize.height}` : 'Original size'}
+                            </span>
+                          </div>
+                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                            <span className="text-[12px] font-semibold text-white leading-tight">
+                              10 credits
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedFeature === 'erase' && (
+                    <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
+                  )}
+
+                  {selectedFeature === 'upscale' && (
+                    <>
+                      {model === 'fal-ai/seedvr/upscale/image' && (
+                        <div className="space-y-2">
+                          {/* AI MODEL label */}
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Upscale Factor (N)</p>
+                            {/* Range label row */}
+                            <div className="flex items-center justify-between mb-0">
+                              <span className="text-[12px] text-white/50">1× — 8×</span>
+                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                {seedvrUpscaleFactor}×
+                              </span>
+                            </div>
+                            {/* Slider */}
+                            <input
+                              type="range"
+                              min={1}
+                              max={8}
+                              step={1}
+                              value={seedvrUpscaleFactor}
+                              onChange={(e) => setSeedvrUpscaleFactor(Number(e.target.value))}
+                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((seedvrUpscaleFactor) - 1) / 7 * 100}%, rgba(255,255,255,0.15) ${((seedvrUpscaleFactor) - 1) / 7 * 100}%, rgba(255,255,255,0.15) 100%)`
+                              }}
+                            />
+                            {/* Tick marks */}
+                            <div className="flex justify-between mt-1.5 px-[8px]">
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map(v => (
+                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Standardized Estimated Output card */}
+                          <div className="pt-1">
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {seedvrEstimate ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}` : '—'}
+                                </span>
+                              </div>
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {seedvrEstimate ? `${seedvrEstimate.credits} credits` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                            Uses factor-only upscaling. Estimated cost is 4 credits per output megapixel.
+                          </div>
+                        </div>
+                      )}
+                      {model === 'nightmareai/real-esrgan' && (
+                        <div className="space-y-2">
+                          {/* Scale slider */}
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Scale (1x-10x)</p>
+                            {/* Range label row */}
+                            <div className="flex items-center justify-between mb-0">
+                              <span className="text-[12px] text-white/50">1× — 10×</span>
+                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                {Number(String(scaleFactor).replace('x', '')) || 4}×
+                              </span>
+                            </div>
+                            {/* Slider */}
+                            <input
+                              type="range"
+                              min={1}
+                              max={10}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 4}
+                              onChange={(e) => setScaleFactor(String(e.target.value))}
+                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((Number(String(scaleFactor).replace('x', '')) || 4) - 1) / 9 * 100}%, rgba(255,255,255,0.15) ${((Number(String(scaleFactor).replace('x', '')) || 4) - 1) / 9 * 100}%, rgba(255,255,255,0.15) 100%)`
+                              }}
+                            />
+                            {/* Tick marks */}
+                            <div className="flex justify-between mt-1.5 px-[8px]">
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
+                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Face enhance toggle */}
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Face enhance</p>
+                            <button
+                              type="button"
+                              onClick={() => setFaceEnhance(v => !v)}
+                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'text-white/80 hover:bg-white/10'}`}
+                            >
+                              {faceEnhance ? 'Enabled' : 'Disabled'}
+                            </button>
+                          </div>
+
+                          {/* Standardized Estimated Output card */}
+                          <div className="pt-1">
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {realEsrganEstimate ? `${realEsrganEstimate.outW} × ${realEsrganEstimate.outH}` : '—'}
+                                </span>
+                              </div>
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {realEsrganEstimate ? `${realEsrganEstimate.credits} credits` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {model === 'philz1337x/crystal-upscaler' && (
+                        <div className="space-y-2">
+                          {/* AI MODEL label */}
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Scale Factor</p>
+                            {/* Range label row */}
+                            <div className="flex items-center justify-between mb-0">
+                              <span className="text-[12px] text-white/50">1× — 6×</span>
+                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                {Number(String(scaleFactor).replace('x', '')) || 2}×
+                              </span>
+                            </div>
+                            {/* Slider */}
+                            <input
+                              type="range"
+                              min={1}
+                              max={6}
+                              step={1}
+                              value={Number(String(scaleFactor).replace('x', '')) || 2}
+                              onChange={(e) => setScaleFactor(String(e.target.value))}
+                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((Number(String(scaleFactor).replace('x', '')) || 2) - 1) / 5 * 100}%, rgba(255,255,255,0.15) ${((Number(String(scaleFactor).replace('x', '')) || 2) - 1) / 5 * 100}%, rgba(255,255,255,0.15) 100%)`
+                              }}
+                            />
+                            {/* Tick marks */}
+                            <div className="flex justify-between mt-1.5 px-[8px]">
+                              {[1, 2, 3, 4, 5, 6].map(v => (
+                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Output Format */}
+                          {/* Output Format — Only for models that support explicit format selection */}
+                          {['philz1337x/crystal-upscaler', 'fal-ai/topaz/upscale/image', 'nightmareai/real-esrgan', 'philz1337x/clarity-upscaler', 'fal-ai/seedvr/upscale/image'].includes(model as any) && (
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Output Format</p>
+                              <div className="flex flex-wrap gap-2">
+                                {['png', 'jpg'].map((fmt) => (
+                                  <button
+                                    key={fmt}
+                                    onClick={() => setOutput(fmt as any)}
+                                    className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${(output || 'png') === fmt
+                                      ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white'
+                                      : 'bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white/80'
+                                      }`}
+                                  >
+                                    {fmt.toUpperCase()}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Estimated Output card — always visible */}
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {inputNaturalSize.width > 0
+                                    ? `${inputNaturalSize.width * (Number(String(scaleFactor).replace('x', '')) || 2)} × ${inputNaturalSize.height * (Number(String(scaleFactor).replace('x', '')) || 2)}`
+                                    : `${Number(String(scaleFactor).replace('x', '')) || 2}× size`
+                                  }
+                                </span>
+                              </div>
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {model === 'fal-ai/topaz/upscale/image' && (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Model</label>
+                            <div className="relative edit-dropdown">
+                              <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between bg-transparent text-white/90`}>
+                                <span className="truncate">{topazModel}</span>
+                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
+                              </button>
+                              {activeDropdown === 'topazModel' && (
+                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-56 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+                                  {['Low Resolution V2', 'Standard V2', 'CGI', 'High Fidelity V2', 'Text Refine', 'Recovery', 'Redefine', 'Recovery V2'].map((opt) => (
+                                    <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Upscale Factor</p>
+                            {/* Range label row */}
+                            <div className="flex items-center justify-between mb-0">
+                              <span className="text-[12px] text-white/50">1× — 6×</span>
+                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                {topazUpscaleFactor}×
+                              </span>
+                            </div>
+                            {/* Slider */}
+                            <input
+                              type="range"
+                              min={1}
+                              max={6}
+                              step={1}
+                              value={topazUpscaleFactor}
+                              onChange={(e) => setTopazUpscaleFactor(Number(e.target.value))}
+                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                              style={{
+                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((topazUpscaleFactor) - 1) / 5 * 100}%, rgba(255,255,255,0.15) ${((topazUpscaleFactor) - 1) / 5 * 100}%, rgba(255,255,255,0.15) 100%)`
+                              }}
+                            />
+                            {/* Tick marks */}
+                            <div className="flex justify-between mt-1.5 px-[8px]">
+                              {[1, 2, 3, 4, 5, 6].map(v => (
+                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Subject detection</label>
+                              <div className="relative edit-dropdown">
+                                <button onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
+                                  <span className="truncate">{topazSubjectDetection}</span>
+                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                                </button>
+                                {activeDropdown === 'backgroundType' && (
+                                  <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                                    {(['All', 'Foreground', 'Background'] as const).map((opt) => (
+                                      <button key={opt} onClick={() => { setTopazSubjectDetection(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazSubjectDetection === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Face enhancement</label>
+                              <button type="button" onClick={() => setTopazFaceEnhance(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>{topazFaceEnhance ? 'Enabled' : 'Disabled'}</button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Face creativity (0-1)</label>
+                              <input type="number" min={0} max={1} step={0.1} value={topazFaceCreativity} onChange={(e) => setTopazFaceCreativity(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
+                            </div>
+                            <div className="flex items-end flex-col justify-end">
+                              <label className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 cursor-pointer">
+                                <input type="checkbox" className="accent-white/90" checked={topazCropToFill} onChange={(e) => setTopazCropToFill(e.target.checked)} /> Crop to fill
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Standardized Estimated Output card */}
+                          <div className="pt-1">
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {topazEstimate ? `${topazEstimate.outW} × ${topazEstimate.outH}` : '—'}
+                                </span>
+                              </div>
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {topazEstimate ? `${topazEstimate.credits} credits` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        }
+        footer={
+          selectedFeature !== 'live-chat' ? (
+            <div className="flex gap-2 2xl:gap-3">
+              <button
+                onClick={handleReset}
+                className="flex-1 px-2 py-2 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm"
+              >
+                Reset
+              </button>
+              <button
+                onClick={handleRun}
+                disabled={!inputs[selectedFeature] || processing[selectedFeature]}
+                className="flex-1 px-2 py-2 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm"
+              >
+                {processing[selectedFeature] ? 'Processing...' : 'Generate'}
+              </button>
+              {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
+                <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                  {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
+                </div>
+              )}
+            </div>
+          ) : null
+        }
+      />
+
+      {/* Right Main Area - Image Display */}
+      <EditImageCanvasArea
+        topBar={
+          <div className="flex items-center w-full h-full px-4 gap-3">
+
+            {/* Left: Breadcrumb */}
+
+
+            {/* Center: Feature tabs */}
             <div
-              className="overflow-x-auto md:overflow-visible"
+              className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full"
               ref={featureTabsRef}
               onScroll={handleFeatureTabsScroll}
             >
-              <div className="md:grid md:grid-cols-4 flex flex-nowrap md:gap-2 gap-1  md:pl-0 pb-0">
+              <div className="flex items-center gap-[2px] h-full">
                 {features.map((feature) => (
                   <button
                     key={feature.id}
                     onClick={() => {
                       setSelectedFeature(feature.id as EditFeature);
-                      // Update URL with feature parameter
                       const params = new URLSearchParams(window.location.search);
                       params.set('feature', feature.id);
                       router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
@@ -3816,1575 +4983,272 @@ const EditImageInterface: React.FC = () => {
                       }
                       setProcessing((p) => ({ ...p, [feature.id]: false }));
                     }}
-                    className={`text-left bg-white/5 items-center justify-center rounded-lg md:p-1  md:h-18 h-14 w-auto px-2 md:w-auto flex-shrink-0  min-w-[78px] border transition ${selectedFeature === feature.id
-                      ? (feature.id === 'resize' ? 'border-[#2F6BFF] bg-[#2F6BFF]/10' : 'border-white/30 bg-white/10')
-                      : 'border-white/10 hover:bg-white/10'}`}
+                    className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${selectedFeature === feature.id
+                      ? 'text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40'
+                      : 'text-white/40 font-normal hover:text-white/70'
+                      }`}
                   >
-                    <div className="flex items-center gap-0 justify-center  ">
-                      <div className={`md:w-6 md:h-6 w-5 h-5 rounded flex items-center justify-center  ${selectedFeature === feature.id ? '' : ''}`}>
-                        {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="Upscale" className="md:w-6 md:h-6 w-5 h-5" />)}
-                        {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="Remove background" className="md:w-6 md:h-6 w-5 h-5" />)}
-                        {/* {feature.id === 'expand' && (<img src="/icons/resize.svg" alt="Expand" className="w-6 h-6" />)} */}
-                        {/* {feature.id === 'erase' && (<img src="/icons/erase.svg" alt="Erase" className="md:w-8 md:h-8 w-5 h-5" />)} */}
-
-                        {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="Resize" className="md:w-5 md:h-5 w-4 h-4" />)}
-                        {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="Image Fill" className="md:w-6 md:h-6 w-5 h-5" />)}
-                        {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="Vectorize" className="md:w-7 md:h-7 w-6 h-6" />)}
-                        {/* {feature.id === 'reimagine' && (<img src="/icons/reimagine.svg" alt="Reimagine" className="md:w-6 md:h-6 w-5 h-5" />)} */}
-                        {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="Live Chat" className="md:w-6 md:h-6 w-5 h-5" />)}
-                      </div>
-
-                    </div>
-                    <div className="flex items-center justify-center pt-1">
-                      {feature.id === 'fill' ? (
-                        <span className="text-white text-[10px] md:text-xs text-center leading-tight">
-                          Erase /<br />Replace
-                        </span>
-                      ) : (
-                        <span className="text-white text-[10px] md:text-sm text-center">{feature.label}</span>
-                      )}
-                    </div>
-
+                    <span className={`flex items-center justify-center w-[14px] h-[14px] shrink-0 transition-opacity ${selectedFeature === feature.id ? 'opacity-80' : 'opacity-40'}`}>
+                      {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="" className="w-[13px] h-[13px]" />)}
+                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="" className="w-[14px] h-[14px]" />)}
+                      {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="" className="w-[14px] h-[14px]" />)}
+                    </span>
+                    <span>{feature.id === 'fill' ? 'Erase / Replace' : feature.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Mobile hint: fixed left arrow, only when scrolled left */}
-            {hasLeftScroll && (
+
+            {/* Right: Action icons */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Zoom in */}
               <button
-                type="button"
-                className="md:hidden absolute top-1/2 -translate-y-5 left-0 pr-1 h-5 flex items-center border-l border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-r-full"
-                onClick={() => {
-                  try {
-                    const el = featureTabsRef.current;
-                    if (el) {
-                      el.scrollBy({ left: -120, behavior: 'smooth' });
-                    }
-                  } catch { }
-                }}
-                aria-label="Scroll feature tabs left"
+                title="Zoom in"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 6l-6 6 6 6" />
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
                 </svg>
               </button>
-            )}
-
-            {/* Mobile hint: fixed right arrow to indicate more tabs */}
-            <button
-              type="button"
-              className="md:hidden  absolute top-1/2 -translate-y-5  right-0 pl-1 h-5  flex items-center border-r border-white/10 justify-center bg-white/5 backdrop-blur-lg text-white rounded-l-full"
-              onClick={() => {
-                try {
-                  const el = featureTabsRef.current;
-                  if (el) {
-                    el.scrollBy({ left: 120, behavior: 'smooth' });
-                  }
-                } catch { }
-              }}
-              aria-label="Scroll feature tabs"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              {/* Zoom out */}
+              <button
+                title="Zoom out"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
               >
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-
-
-
-          {/* Feature Preview (GIF banner) - hidden for Live Chat */}
-          {selectedFeature !== 'live-chat' && (
-            <div className="px-1 md:px-4 md:mb-2 md:pt-4 pt-2 z-10">
-              <div className="relative rounded-xl overflow-hidden bg-white/5 ring-1 ring-white/15 h-24 md:h-28">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
-                <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
-                  {featureDisplayName[selectedFeature]}
-                </div>
-              </div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35M8 11h6" />
+                </svg>
+              </button>
+              {/* Divider */}
+              <span className="w-px h-4 bg-white/10 mx-1" />
+              {/* Download */}
+              <button
+                title="Download"
+                onClick={handleDownloadOutput}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+              </button>
+              {/* Share */}
+              <button
+                title="Share"
+                onClick={handleShareOutput}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                  <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
+                </svg>
+              </button>
             </div>
-          )}
+          </div>
+        }
+        canvas={
+          <div className="flex-1 flex flex-col relative w-full h-full p-4  bg-[#0E0E12] overflow-hidden">
 
-          {/* Input Image section removed: unified canvas lives on the right */}
 
-          {/* Reimagine Reference Image */}
-          {selectedFeature === 'reimagine' && (
-            <div className="px-1 md:px-4">
-              <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-2 md:text-sm">Reference Image (Optional)</label>
-
-              {!reimagineReferenceImage ? (
-                <div
-                  className="border border-dashed border-white/20 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors group"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = async (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          setReimagineReferenceImage(ev.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
+            {/* Right Main Area - Output preview parallel to input image */}
+            <div className="md:p-0 p-0  flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-3 pt-0">
+              <div
+                className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
+                onDragOver={(e) => { try { e.preventDefault(); } catch { } }}
+                onDrop={(e) => {
+                  try {
+                    e.preventDefault();
+                    const file = e.dataTransfer?.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const img = ev.target?.result as string;
+                      // Apply dropped image to all features so switching tabs preserves the same input
+                      setInputs({
+                        'upscale': img,
+                        'remove-bg': img,
+                        'resize': img,
+                        'fill': img,
+                        'vectorize': img,
+                        'erase': img,
+                        'expand': img,
+                        'reimagine': img,
+                        'live-chat': img,
+                      });
+                      // Clear all outputs when a new image is dropped so the output area re-renders
+                      setOutputs({
+                        'upscale': null,
+                        'remove-bg': null,
+                        'resize': null,
+                        'fill': null,
+                        'vectorize': null,
+                        'erase': null,
+                        'expand': null,
+                        'reimagine': null,
+                        'live-chat': null,
+                      });
+                      // Also reset zoom and pan state
+                      setScale(1);
+                      setOffset({ x: 0, y: 0 });
                     };
-                    input.click();
-                  }}
-                >
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
-                      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                      <circle cx="9" cy="9" r="2" />
-                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                    </svg>
-                  </div>
-                  <span className="text-xs text-white/50 text-center">Click to upload reference</span>
-                </div>
-              ) : (
-                <div className="relative rounded-xl overflow-hidden border border-white/10 group">
-                  <img src={reimagineReferenceImage} alt="Reference" className="w-full h-32 object-cover" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => setReimagineReferenceImage(null)}
-                      className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-colors"
-                      title="Remove"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span className="text-[10px] text-white/80">Reference Image</span>
-                  </div>
-                </div>
-              )}
-              <p className="text-[10px] text-white/40 mt-2">
-                Upload an image to extract details, texture, or style. This will be used as a guide for the generation.
-              </p>
-            </div>
-          )}
+                    reader.readAsDataURL(file);
+                  } catch { }
+                }}
+              >
 
-          {/* Vectorize model & parameters */}
-          {selectedFeature === 'vectorize' && (
-            <div className="px-1 md:px-4">
-              {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
-              <div className="space-y-2">
-                {/* Super Mode Toggle */}
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Mode</label>
-                  <div className="relative bg-white/5 border border-white/20 rounded-lg md:p-1 p-0.5 flex">
-                    <button
-                      onClick={() => setVectorizeSuperMode(false)}
-                      className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-0 md:text-xs text-[11px] font-medium rounded transition-colors ${!vectorizeSuperMode
-                        ? 'bg-white text-black'
-                        : 'text-white/70 hover:text-white'
-                        }`}
-                    >
-                      Line Vector
-                    </button>
-                    <button
-                      onClick={() => setVectorizeSuperMode(true)}
-                      className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-1 md:text-xs text-[11px] font-medium rounded transition-colors whitespace-nowrap ${vectorizeSuperMode
-                        ? 'bg-white text-black'
-                        : 'text-white/70 hover:text-white'
-                        }`}
-                    >
-                      Art Vector
-                    </button>
+                {outputs[selectedFeature] && (
+                  <div className="absolute md:top-5 top-0 md:left-4 left-1 z-10  ">
+                    <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
                   </div>
-                  {vectorizeSuperMode && (
-                    <div className="text-[11px] text-white/50 mt-1">
-                      First converts image to 2D vector using Seedream, then vectorizes the result
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1 mt-2 md:text-sm ">Model</label>
-                  <div className="relative edit-dropdown">
-                    <button
-                      onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
-                      className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
-                    >
-                      <span className="truncate">
-                        {vectorizeModel === 'fal-ai/recraft/vectorize'
-                          ? 'Recraft Vectorize'
-                          : 'Image to SVG'}
-                      </span>
-                      <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
-                    </button>
-                    {activeDropdown === 'vectorizeModel' && (
-                      <div className={`absolute top-full md:mt-2 mt-1 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                        {[
-                          { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize', credits: (vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
-                          { label: 'Image to SVG', value: 'fal-ai/image2svg', credits: (vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
-                        ].map((opt) => (
-                          <button
-                            key={opt.value}
-                            onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
-                            className={`w-full md:px-3 px-2.5 md:py-2 py-0.5 text-left md:text-[13px] text-[12px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="truncate">{opt.label}</span>
-                              <span className="text-[11px]">{opt.credits} credits</span>
-                            </div>
-                          </button>
-                        ))}
+                )}
+
+
+                {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
+                {(outputs[selectedFeature] || inputs[selectedFeature]) && (
+                  <div className="absolute md:bottom-3 bottom-0 md:left-3 left-1 z-50 md:bottom-4 md:left-4 flex items-center md:gap-2 gap-1">
+                    {outputs[selectedFeature] && (
+                      <div className="relative">
+                        <button
+                          ref={menuButtonRef}
+                          className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10 md:p-2"
+                          aria-haspopup="menu"
+                          aria-expanded={showImageMenu}
+                          onClick={() => setShowImageMenu(v => !v)}
+                        >
+                          <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="5" cy="12" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="19" cy="12" r="2" />
+                          </svg>
+                        </button>
                       </div>
                     )}
-                  </div>
-                </div>
-                {vectorizeModel === 'fal-ai/image2svg' && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Colormode</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'vColorMode' ? '' : 'vColorMode')}
-                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
-                          >
-                            <span className="truncate">{vColorMode}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vColorMode' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'vColorMode' && (
-                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                              {['color', 'binary'].map((opt) => (
-                                <button key={opt} onClick={() => { setVColorMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vColorMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Hierarchical</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'vHierarchical' ? '' : 'vHierarchical')}
-                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
-                          >
-                            <span className="truncate">{vHierarchical}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vHierarchical' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'vHierarchical' && (
-                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                              {['stacked', 'cutout'].map((opt) => (
-                                <button key={opt} onClick={() => { setVHierarchical(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vHierarchical === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Mode</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'vMode' ? '' : 'vMode')}
-                            className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
-                          >
-                            <span className="truncate">{vMode}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vMode' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'vMode' && (
-                            <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                              {['spline', 'polygon'].map((opt) => (
-                                <button key={opt} onClick={() => { setVMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Filter Speckle</label>
-                        <input type="number" value={vFilterSpeckle} onChange={(e) => setVFilterSpeckle(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Color Precision</label>
-                        <input type="number" value={vColorPrecision} onChange={(e) => setVColorPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Layer Difference</label>
-                        <input type="number" value={vLayerDifference} onChange={(e) => setVLayerDifference(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Corner Threshold</label>
-                        <input type="number" value={vCornerThreshold} onChange={(e) => setVCornerThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Length Threshold</label>
-                        <input type="number" step="0.1" value={vLengthThreshold} onChange={(e) => setVLengthThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Max Iterations</label>
-                        <input type="number" value={vMaxIterations} onChange={(e) => setVMaxIterations(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Splice Threshold</label>
-                        <input type="number" value={vSpliceThreshold} onChange={(e) => setVSpliceThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Path Precision</label>
-                        <input type="number" value={vPathPrecision} onChange={(e) => setVPathPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons moved to bottom under Parameters */}
-
-          {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-          <div className="flex-1 min-h-0 md:p-3 p-0.5 overflow-hidden md:p-4">
-            {selectedFeature === 'live-chat' && (
-              <>
-                <h3 className="text-xs font-medium text-white/80 md:mb-2 mb-1 md:text-sm">Live Chat Controls</h3>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Model dropdown */}
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveModel' ? '' : 'liveModel')}
-                          className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                        >
-                          <span className="truncate">{liveAllowedModels.find(m => m.value === liveModel)?.label || 'Select model'}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveModel' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {liveActiveDropdown === 'liveModel' && (
-                          <div className={`absolute top-full z-30 left-0 min-w-50 md:min-w-60 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                            {liveAllowedModels.map(opt => (
-                              <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="truncate">{opt.label}</span>
-                                  <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {/* Frame size */}
-                    <div>
-                      <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-1 md:text-sm">Frame Size</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveFrame' ? '' : 'liveFrame')}
-                          className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                        >
-                          <span className="truncate">{liveFrameSizes.find(s => s.value === liveFrameSize)?.name || liveFrameSize}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveFrame' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {liveActiveDropdown === 'liveFrame' && (
-                          <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                            {liveFrameSizes.map(opt => (
-                              <button key={opt.value} onClick={() => { setLiveFrameSize(opt.value as any); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveFrameSize === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                                <span className="truncate">{opt.name}</span>
-                                <span className="ml-2 text-white/50 text-[11px]">{opt.value}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Resolution shown for Pro & Seedream */}
-                  {(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') && (
-                    <div>
-                      <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-1 md:text-sm">Resolution</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveResolution' ? '' : 'liveResolution')}
-                          className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                        >
-                          <span className="truncate">{liveResolution}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveResolution' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {liveActiveDropdown === 'liveResolution' && (
-                          <div className={`absolute top-full z-30 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1`}>
-                            {(['1K', '2K', '4K'] as const).map(r => (
-                              <button key={r} onClick={() => { setLiveResolution(r); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveResolution === r ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{r}</button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Chat UI */}
-                  <div className="mt-3">
-                    <label className="block text-xs font-medium text-white/70 mb-1 pl-0.5 md:text-sm">Chat to Edit</label>
-                    <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') ? 'md:h-[23rem] h-[16rem]' : 'md:h-[27rem] h-[20rem]'}`}>
-                      <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar">
-                        {liveChatMessages.length === 0 && (
-                          <div className="md:text-[12px] text-[10px] text-white/70">Start by uploading an image on the right, then tell me what to change.</div>
-                        )}
-                        {liveChatMessages.map((m, i) => (
-                          <div
-                            key={i}
-                            ref={(el) => { if (i === liveChatMessages.length - 1) lastMsgRef.current = el; }}
-                            className={`flex items-start gap-2 transition-transform duration-150 ${m.role === 'user' ? 'justify-end' : ''}`}
-                          >
-                            <div className={`md:px-2 px-1 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[11px] ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/90'}`}>
-                              {m.text}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-2 gap-4">
-                        <div className="relative gap-2">
-                          <input
-                            value={livePrompt}
-                            onChange={(e) => setLivePrompt(e.target.value)}
-                            placeholder="Tell me your edit request"
-                            className="w-full md:h-[36px] h-[30px] md:px-3 px-2 md:pr-[40px] pr-[32px] bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLiveGenerate(); } }}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleLiveGenerate}
-                            disabled={processing['live-chat'] || !livePrompt.trim()}
-                            aria-label="Generate"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 md:w-7 md:h-7 w-5 h-5 bg-blue-500  text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.8">
-                              {/* <circle cx="12" cy="12" r="9" /> */}
-                              <path d="M10 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-            {selectedFeature !== 'vectorize' && selectedFeature !== 'live-chat' && (
-              <>
-                <h3 className="text-xs font-medium text-white/80 mb-2 md:text-sm">Parameters</h3>
-
-                <div className="space-y-1">
-                  {selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'expand' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Model</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${model ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">
-                              {model ? getUpscaleModelLabel(model) : 'Select model'}
-                            </span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'model' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'model' && (
-                            <div className={`absolute top-full z-100 left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30  md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                              {(selectedFeature === 'remove-bg'
-                                ? [
-                                  { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
-                                  { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
-                                ]
-                                : selectedFeature === 'resize'
-                                  ? [
-                                    { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
-                                  ]
-                                  : [
-                                    { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-                                    { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
-                                    { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
-                                    { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
-                                  ]
-                              ).map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
-                                  className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] ${model === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="truncate">{opt.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {/* Right-side placeholder for alignment; can hold extra params per feature */}
-                      <div />
-                    </div>
-                  )}
-                  {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
-                      <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                      <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
-                    </div>
-                  )}
-                  {/* Remove-BG (851-labs) specialized controls */}
-                </div>
-
-                {selectedFeature === 'fill' && (
-                  <EditImageEraseControls
-                    brushSize={eraseBrushSize}
-                    setBrushSize={setEraseBrushSize}
-                    prompt={erasePrompt}
-                    setPrompt={setErasePrompt}
-                    mode={eraseActionMode}
-                    setMode={setEraseActionMode}
-                    model={eraseModel}
-                    setModel={setEraseModel}
-                    isProcessing={processing['fill']}
-                    onGenerate={handleRun}
-                    onClearMask={() => setEraseMaskData(null)} /* We need a way to clear mask in Frame too */
-                    onBrushAdjustStart={() => setIsAdjustingBrush(true)}
-                    onBrushAdjustEnd={() => setIsAdjustingBrush(false)}
-                  />
-                )}
-                {/* Removed old fill/erase controls logic */}
-                {selectedFeature === 'erase' && (
-                  <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
-                )
-                }
-
-                {/* Erase feature - no prompt input, uses hardcoded prompt */}
-                {selectedFeature === 'erase' && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Brush Size</label>
-                      <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                      <div className="text-[11px] text-white/50 mt-1">{brushSize}px</div>
-                    </div>
-                    <div className="text-xs text-white/60 mb-2">
-                      Draw on the image to mark areas you want to erase. The masked areas will be removed automatically.
-                    </div>
-                  </>
-                )}
-
-                {/* Expand feature */}
-                {selectedFeature === 'expand' && (
-                  <>
-                    {expandOriginalSize.width > 0 && expandOriginalSize.height > 0 && (
-                      <div className="mb-2">
-                        <div className="text-xs text-white/70">
-                          Original: {expandOriginalSize.width} × {expandOriginalSize.height}px
-                        </div>
-                        <div className="text-xs text-white/70 mt-1">
-                          New: {expandCustomWidth} × {expandCustomHeight}px
-                          {(expandEffectiveWidth !== expandCustomWidth || expandEffectiveHeight !== expandCustomHeight) && (
-                            <>
-                              <span className="mx-1 text-white/40">•</span>
-                              <span className="text-white/70">Generated: {expandEffectiveWidth} × {expandEffectiveHeight}px</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExpandBounds({ left: 0, top: 0, right: 0, bottom: 0 });
-                            }}
-                            className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
-                          >Reset</button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Center the selection rectangle relative to original image
-                              const w = expandCustomWidth;
-                              const h = expandCustomHeight;
-                              const dw = w - expandOriginalSize.width; // can be negative (crop) or positive (expand)
-                              const dh = h - expandOriginalSize.height;
-                              let left: number, right: number, top: number, bottom: number;
-                              if (dw >= 0) {
-                                left = Math.floor(dw / 2); right = dw - left;
-                              } else {
-                                const crop = -dw; // pixels to remove
-                                const cLeft = Math.floor(crop / 2); const cRight = crop - cLeft;
-                                left = -cLeft; right = -cRight;
-                              }
-                              if (dh >= 0) {
-                                top = Math.floor(dh / 2); bottom = dh - top;
-                              } else {
-                                const crop = -dh;
-                                const cTop = Math.floor(crop / 2); const cBottom = crop - cTop;
-                                top = -cTop; bottom = -cBottom;
-                              }
-                              setExpandBounds({ left, top, right, bottom });
-                            }}
-                            className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
-                          >Center</button>
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Aspect Ratio</label>
-                      <div className="relative edit-dropdown">
-                        <button
-                          onClick={() => setActiveDropdown(activeDropdown === 'expandAspect' ? '' : 'expandAspect')}
-                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                        >
-                          <span className="truncate">{expandAspectRatio === 'custom' ? 'Custom' : expandAspectRatio}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'expandAspect' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {activeDropdown === 'expandAspect' && (
-                          <div className={`absolute bottom-full mb-2 z-100 left-0 w-full bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar shadow-2xl`}>
-                            {['custom', '1:1', '4:3', '3:4', '16:9', '9:16', '21:9', '3:2', '2:3'].map((ar) => (
-                              <button
-                                key={ar}
-                                onClick={() => {
-                                  setExpandAspectRatio(ar);
-                                  setActiveDropdown('');
-                                  if (ar !== 'custom' && expandOriginalSize.width > 0 && expandOriginalSize.height > 0) {
-                                    const [w, h] = ar.split(':').map(Number);
-                                    const aspect = w / h;
-                                    const origAspect = expandOriginalSize.width / expandOriginalSize.height;
-                                    let newWidth = expandOriginalSize.width;
-                                    let newHeight = expandOriginalSize.height;
-                                    if (aspect > origAspect) {
-                                      newWidth = Math.round(expandOriginalSize.height * aspect);
-                                    } else {
-                                      newHeight = Math.round(expandOriginalSize.width / aspect);
-                                    }
-                                    const left = Math.max(0, Math.floor((newWidth - expandOriginalSize.width) / 2));
-                                    const right = newWidth - expandOriginalSize.width - left;
-                                    const top = Math.max(0, Math.floor((newHeight - expandOriginalSize.height) / 2));
-                                    const bottom = newHeight - expandOriginalSize.height - top;
-                                    setExpandBounds({ left, top, right, bottom });
-                                  }
-                                }}
-                                className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${expandAspectRatio === ar ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                              >
-                                <span className="truncate">{ar === 'custom' ? 'Custom' : ar}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-xs text-white/60 mt-2">
-                      Drag the edges of the image on the canvas to expand or crop. The new dimensions will be calculated automatically.
-                    </div>
-                  </>
-                )}
-
-                {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
-                {selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && (
-                  <div className="space-y-3">
-                    <EditImageExpandControls
-                      aspectPreset={resizeAspectRatio || 'custom'}
-                      expandPrompt={resizeNegativePrompt} // Using negative prompt field for prompt if needed, or just ignore
-                      isExpanding={processing.resize}
-                      sourceImageUrl={inputs.resize}
-                      onAspectPresetChange={(preset) => setResizeAspectRatio(preset as any)}
-                      onExpandPromptChange={setResizeNegativePrompt}
-                      onExpand={() => {
-                        // Trigger the existing handleGenerate or similar logic?
-                        // The original ExpandControls called onExpand prop.
-                        // Here we probably rely on the main "Generate" button in the footer?
-                        // Or we can add a specific button here if needed.
-                        // For now, let's assume the main button handles it, but ExpandControls HAS an Expand button.
-                        // We should probably wire that button to the main generation logic.
-                        // But wait, the main logic is handleGenerate.
-                        // I'll leave onExpand empty for now and let the user use the main button,
-                        // OR I can try to trigger the main button.
-                        // Actually, ExpandControls has its own button.
-                        // I'll pass a function that calls the API.
-                        // But I don't have easy access to handleGenerate here without prop drilling or context.
-                        // I'll check if handleGenerate is available in scope.
-                        // It is available in EditImageInterface scope!
-                        // So I can just call handleGenerate().
-                        // handleGenerate();
-                        // But handleGenerate takes no args? I need to check.
-                        // I'll check handleGenerate signature.
+                    {/* Upload other button next to menu */}
+                    <button
+                      onClick={() => {
+                        // Do not clear existing image/output here. Only open the modal.
+                        // If user picks a new image, onAdd will replace the input.
+                        try { handleOpenUploadModal(); } catch { }
                       }}
-                      aspectPresets={aspectPresets}
-                      customWidth={Number(resizeCanvasW) || 1024}
-                      customHeight={Number(resizeCanvasH) || 1024}
-                      onCustomWidthChange={(w) => setResizeCanvasW(w)}
-                      onCustomHeightChange={(h) => setResizeCanvasH(h)}
-                      imageSize={{ width: Number(resizeOrigW) || 0, height: Number(resizeOrigH) || 0 }}
-                    />
-                  </div>
-                )}
+                      className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10"
+                      title="Upload other"
+                    >
+                      <Image src="/icons/fileupload.svg" alt="Upload" width={16} height={16} className="md:w-6 md:h-6 w-3 h-3" />
+                    </button>
 
 
 
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                    <>
-                      {/* Output format (left) */}
-                      <div className="mb-1 mt-1">
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Output Format</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">{output || 'Select format'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'output' && (
-                            <div className={`absolute z-30 top-full md:mt-2 mt-1 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                              {['png', 'jpg', 'jpeg', 'webp'].map((fmt) => (
-                                <button
-                                  key={fmt}
-                                  onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                  className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="uppercase">{fmt}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Background type (right) */}
-                      <div className="mb-1">
-                        <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Background Type</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between ${backgroundType ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                          >
-                            <span className="truncate">{backgroundType || 'Select background type'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'backgroundType' && (
-                            <div className={`absolute top-full z-30 md:mt-2 mt-1 md:pb-0 pb-0 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-44 max-h-28 overflow-y-auto dropdown-scrollbar`}>
-                              {[
-                                { label: 'RGBA (Transparent)', value: 'rgba', description: '' },
-                                { label: 'White', value: 'white', description: '' },
-                                { label: 'Green', value: 'green', description: '' },
-                                { label: 'Blur', value: 'blur', description: '' },
-                                { label: 'Overlay', value: 'overlay', description: '' },
-                                { label: 'Depth-Map', value: 'map', description: '' },
-                              ].map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                                  className={` w-full md:px-3 px-2.5 md:py-2 py-0.5  text-left md:text-[13px] text-[12px] flex flex-col items-start ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <div className="flex items-center justify-between w-full">
-                                    <span className="truncate font-medium">{opt.label}</span>
-                                  </div>
-                                  <span className={`text-xs mt-1 ${backgroundType === opt.value ? 'text-black/70' : 'text-white/60'}`}>
-                                    {opt.description}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Buttons moved to bottom footer */}
-                </div>
-
-                {/* Removed duplicate Erase Controls */}
-                {/* Removed old fill/erase controls logic */
-                  selectedFeature === 'erase' && (
-                    <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
-                  )
-                }
-                {selectedFeature === 'remove-bg' && model.startsWith('851-labs/') && (
-                  <div>
-                    {/* <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Threshold (0.0-1.0)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={threshold}
-                      onChange={(e) => setThreshold(e.target.value)}
-                      placeholder="0.0 (soft alpha) to 1.0"
-                      className="w-full px-2 py-1 bg-transparent border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                    />
-                    <div className="mt-1 text-xs text-white/50">
-                      Controls hard segmentation. 0.0 = soft alpha, 1.0 = hard edges
-                    </div> */}
-                    <div className="mt-1">
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Reverse</label>
-                      <button
-                        type="button"
-                        onClick={() => setReverseBg(v => !v)}
-                        className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
-                      >
-                        {reverseBg ? 'Enabled' : 'Disabled'}
-                      </button>
-                      <div className="mt-1 text-xs text-white/50">
-                        Remove foreground instead of background
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedFeature === 'upscale' && (
-                  <>
-                    {model === 'fal-ai/seedvr/upscale/image' && (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Upscale factor (N)</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={8}
-                              step={1}
-                              value={seedvrUpscaleFactor}
-                              onChange={(e) => setSeedvrUpscaleFactor(Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 2))))}
-                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                            />
-                          </div>
-                          <div className="flex flex-col justify-end">
-                            <div className="text-xs text-white/70">
-                              Output: {seedvrEstimate ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}` : '—'}
-                            </div>
-                            <div className="text-xs text-white/70">
-                              Est. cost: {seedvrEstimate ? `${seedvrEstimate.credits} credits` : '—'}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-[11px] text-white/50">
-                          Uses factor-only upscaling. Estimated cost uses 4 credits per output megapixel (rounded up). Final cost is recalculated and deducted server-side only after success.
-                        </div>
-                      </div>
-                    )}
-                    {model === 'nightmareai/real-esrgan' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm pt-1">Scale (0-10)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            step={1}
-                            value={Number(String(scaleFactor).replace('x', '')) || 4}
-                            onChange={(e) => setScaleFactor(String(Math.max(0, Math.min(10, Number(e.target.value)))))}
-                            className="w-full md:h-[30px] h-[28px] md:px-2 px-1.5 md:py-1 py-0   bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <div className="w-full">
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhance</label>
-                            <button
-                              type="button"
-                              onClick={() => setFaceEnhance(v => !v)}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}
-                            >
-                              {faceEnhance ? 'Enabled' : 'Disabled'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {model === 'philz1337x/crystal-upscaler' && (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Scale factor (1-6)</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={6}
-                              step={1}
-                              value={Number(String(scaleFactor).replace('x', '')) || 2}
-                              onChange={(e) => setScaleFactor(String(Math.max(1, Math.min(6, Number(e.target.value)))))}
-                              className="w-full md:h-[30px] h-[27px] md:px-2 px-1.5 md:py-1 py-0.5 bg-white/5 border border-white/20 rounded-lg text-white text-xs placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-1">Output format</label>
-                            <div className="relative edit-dropdown">
-                              <button
-                                onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between ${output ? 'bg-transparent text-white/90' : 'bg-transparent text-white/90 hover:bg-white/5'}`}
-                              >
-                                <span className="truncate uppercase">{(output || 'png').toString()}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 mb-1 bottom-full mt-2 left-0 md:w-44 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                  {['png', 'jpg'].map((fmt) => (
-                                    <button
-                                      key={fmt}
-                                      onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                      className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                    >
-                                      <span className="uppercase">{fmt}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-[11px] text-white/50">
-                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
-                          {' '}· Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
-                        </div>
-                      </div>
-                    )}
-                    {model === 'fal-ai/topaz/upscale/image' && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-2">Model</label>
-                            <div className="relative edit-dropdown">
-                              <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between bg-transparent text-white/90`}>
-                                <span className="truncate">{topazModel}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'topazModel' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-56 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                                  {['Low Resolution V2', 'Standard V2', 'CGI', 'High Fidelity V2', 'Text Refine', 'Recovery', 'Redefine', 'Recovery V2'].map((opt) => (
-                                    <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm pt-2">Upscale factor</label>
-                            <input type="number" min={0.1} step={0.1} value={topazUpscaleFactor} onChange={(e) => setTopazUpscaleFactor(Number(e.target.value) || 2)} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Output format</label>
-                            <div className="relative edit-dropdown">
-                              <button onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
-                                <span className="truncate uppercase">{topazOutputFormat}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'output' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-40 w-36 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                                  {(['jpeg', 'png'] as const).map((fmt) => (
-                                    <button key={fmt} onClick={() => { setTopazOutputFormat(fmt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazOutputFormat === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}><span className="uppercase">{fmt}</span></button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Subject detection</label>
-                            <div className="relative edit-dropdown">
-                              <button onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
-                                <span className="truncate">{topazSubjectDetection}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'backgroundType' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                  {(['All', 'Foreground', 'Background'] as const).map((opt) => (
-                                    <button key={opt} onClick={() => { setTopazSubjectDetection(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazSubjectDetection === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face enhancement</label>
-                            <button type="button" onClick={() => setTopazFaceEnhance(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>{topazFaceEnhance ? 'Enabled' : 'Disabled'}</button>
-                          </div>
-                          <div className="flex items-end">
-                            <label className="flex items-center gap-2 text-xs text-white/70">
-                              <input type="checkbox" className="accent-white/90" checked={topazCropToFill} onChange={(e) => setTopazCropToFill(e.target.checked)} /> Crop to fill
-                            </label>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face creativity (0-1)</label>
-                            <input type="number" min={0} max={1} step={0.1} value={topazFaceCreativity} onChange={(e) => setTopazFaceCreativity(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Face strength (0-1)</label>
-                            <input type="number" min={0} max={1} step={0.1} value={topazFaceStrength} onChange={(e) => setTopazFaceStrength(Math.max(0, Math.min(1, Number(e.target.value) || 0.8)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {/* {model === 'mv-lab/swin2sr' && (
-                    <div>
-                      <label className="block text-xs font-medium text-white/70 mb-1 2xl:text-sm">Task</label>
-                      <div className="relative edit-dropdown">
+                    {/* Themed dropdown menu */}
+                    {outputs[selectedFeature] && showImageMenu && (
+                      <div ref={menuRef} className="absolute md:bottom-10 bottom-7 left-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-auto min-w-[100px] overflow-hidden md:min-w-[150px]">
                         <button
-                          onClick={() => setActiveDropdown(activeDropdown === 'swinTask' ? '' : 'swinTask')}
-                          className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium z-0 ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-black/80 text-white/90`}
+                          onClick={async () => {
+                            console.log('Download clicked!')
+                            await handleDownloadOutput();
+                            setShowImageMenu(false);
+                          }}
+                          className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-white hover:bg-green-500/20 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 border-b border-white/10 md:text-base md:py-2"
                         >
-                          <span className="truncate">{getSwinTaskLabel(swinTask)}</span>
-                          <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'swinTask' ? 'rotate-180' : ''}`} />
+                          <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download
                         </button>
-                        {activeDropdown === 'swinTask' && (
-                          <div className={`z-0 absolute top-full mt-2 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                            {(['classical_sr','real_sr','compressed_sr'] as const).map((t) => (
-                              <button
-                                key={t}
-                                onClick={() => { setSwinTask(t); setActiveDropdown(''); }}
-                                className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${swinTask === t ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                              >
-                                <span className="text-left pr-4">{getSwinTaskLabel(t)}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )} */}
-                  </>
-                )}
-              </>
-            )}
+                        <button
+                          onClick={async () => {
+                            console.log('Share clicked!')
+                            await handleShareOutput();
+                            setShowImageMenu(false);
+                          }}
+                          className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-white hover:bg-blue-500/20 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 md:text-base md:py-2"
+                        >
+                          <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z" />
+                          </svg>
+                          {shareCopied ? 'Copied!' : 'Share'}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              if (selectedFeature === 'live-chat') {
+                                // Special case: deleting the input/original image
+                                if (activeLiveIndex === -1) {
+                                  // Clear the input images
+                                  setLiveOriginalInput(null);
+                                  setInputs((prev) => ({ ...prev, ['live-chat']: null }));
 
-            {/* Bottom action buttons under parameters (hidden for Live Chat) */}
-            {selectedFeature !== 'live-chat' && (
-              <div className="mt-3 pt-2 border-t border-white/10">
-                <div className="flex gap-2 2xl:gap-3">
-                  <button
-                    onClick={handleReset}
-                    className="flex-1 px-2 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={handleRun}
-                    disabled={!inputs[selectedFeature] || processing[selectedFeature]}
-                    className="flex-1 px-2 py-1.5 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm 2xl:py-2"
-                  >
-                    {processing[selectedFeature] ? 'Processing...' : 'Generate'}
-                  </button>
-                  {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
-                    <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                      {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Footer removed; buttons are rendered at the end of Parameters above */}
-
-        </div>
-
-        {/* Right Main Area - Image Display (below on mobile, right on desktop) */}
-        <div className="flex-1 flex flex-col bg-[#07070B] overflow-hidden md:border-l md:border-white/5">
-
-
-          {/* Right Main Area - Output preview parallel to input image */}
-          <div className="md:p-4 p-0  flex flex-col md:flex-row items-start justify-center md:gap-4 gap-2 md:pt-3 pt-0">
-            <div
-              className={`bg-white/5 rounded-xl border border-white/10  relative overflow-hidden w-full max-w-6xl md:max-w-[100rem] ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
-              onDragOver={(e) => { try { e.preventDefault(); } catch { } }}
-              onDrop={(e) => {
-                try {
-                  e.preventDefault();
-                  const file = e.dataTransfer?.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    const img = ev.target?.result as string;
-                    // Apply dropped image to all features so switching tabs preserves the same input
-                    setInputs({
-                      'upscale': img,
-                      'remove-bg': img,
-                      'resize': img,
-                      'fill': img,
-                      'vectorize': img,
-                      'erase': img,
-                      'expand': img,
-                      'reimagine': img,
-                      'live-chat': img,
-                    });
-                    // Clear all outputs when a new image is dropped so the output area re-renders
-                    setOutputs({
-                      'upscale': null,
-                      'remove-bg': null,
-                      'resize': null,
-                      'fill': null,
-                      'vectorize': null,
-                      'erase': null,
-                      'expand': null,
-                      'reimagine': null,
-                      'live-chat': null,
-                    });
-                    // Also reset zoom and pan state
-                    setScale(1);
-                    setOffset({ x: 0, y: 0 });
-                  };
-                  reader.readAsDataURL(file);
-                } catch { }
-              }}
-            >
-              {/* Dotted grid background overlay */}
-              <div className="absolute inset-0 z-0  pointer-events-none opacity-30 bg-[radial-gradient(circle,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px]" />
-              {outputs[selectedFeature] && (
-                <div className="absolute md:top-5 top-0 md:left-4 left-1 z-10 ">
-                  <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
-                </div>
-              )}
-
-
-              {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
-              {(outputs[selectedFeature] || inputs[selectedFeature]) && (
-                <div className="absolute md:bottom-3 bottom-0 md:left-3 left-1 z-50 md:bottom-4 md:left-4 flex items-center md:gap-2 gap-1">
-                  {outputs[selectedFeature] && (
-                    <div className="relative">
-                      <button
-                        ref={menuButtonRef}
-                        className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10 md:p-2"
-                        aria-haspopup="menu"
-                        aria-expanded={showImageMenu}
-                        onClick={() => setShowImageMenu(v => !v)}
-                      >
-                        <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <circle cx="5" cy="12" r="2" />
-                          <circle cx="12" cy="12" r="2" />
-                          <circle cx="19" cy="12" r="2" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                  {/* Upload other button next to menu */}
-                  <button
-                    onClick={() => {
-                      // Do not clear existing image/output here. Only open the modal.
-                      // If user picks a new image, onAdd will replace the input.
-                      try { handleOpenUploadModal(); } catch { }
-                    }}
-                    className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10"
-                    title="Upload other"
-                  >
-                    <Image src="/icons/fileupload.svg" alt="Upload" width={16} height={16} className="md:w-6 md:h-6 w-3 h-3" />
-                  </button>
-
-
-
-                  {/* Themed dropdown menu */}
-                  {outputs[selectedFeature] && showImageMenu && (
-                    <div ref={menuRef} className="absolute md:bottom-10 bottom-7 left-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-auto min-w-[100px] overflow-hidden md:min-w-[150px]">
-                      <button
-                        onClick={async () => {
-                          console.log('Download clicked!')
-                          await handleDownloadOutput();
-                          setShowImageMenu(false);
-                        }}
-                        className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-white hover:bg-green-500/20 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 border-b border-white/10 md:text-base md:py-2"
-                      >
-                        <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                        </svg>
-                        Download
-                      </button>
-                      <button
-                        onClick={async () => {
-                          console.log('Share clicked!')
-                          await handleShareOutput();
-                          setShowImageMenu(false);
-                        }}
-                        className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-white hover:bg-blue-500/20 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 md:text-base md:py-2"
-                      >
-                        <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z" />
-                        </svg>
-                        {shareCopied ? 'Copied!' : 'Share'}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            if (selectedFeature === 'live-chat') {
-                              // Special case: deleting the input/original image
-                              if (activeLiveIndex === -1) {
-                                // Clear the input images
-                                setLiveOriginalInput(null);
-                                setInputs((prev) => ({ ...prev, ['live-chat']: null }));
-
-                                // If there are generated images, switch to the last one
-                                if (liveHistory.length > 0) {
-                                  const lastIdx = liveHistory.length - 1;
-                                  const lastImage = liveHistory[lastIdx];
-                                  setActiveLiveIndex(lastIdx);
-                                  setOutputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
-                                  setInputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
-                                  setCurrentHistoryId(lastImage.id || null);
+                                  // If there are generated images, switch to the last one
+                                  if (liveHistory.length > 0) {
+                                    const lastIdx = liveHistory.length - 1;
+                                    const lastImage = liveHistory[lastIdx];
+                                    setActiveLiveIndex(lastIdx);
+                                    setOutputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                    setInputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                    setCurrentHistoryId(lastImage.id || null);
+                                  } else {
+                                    // No generated images, reset everything
+                                    setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+                                    setCurrentHistoryId(null);
+                                  }
                                 } else {
-                                  // No generated images, reset everything
-                                  setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
-                                  setCurrentHistoryId(null);
+                                  // Deleting a generated image from history
+                                  await handleDeleteLiveChatImage(activeLiveIndex, currentHistoryId || undefined);
                                 }
                               } else {
-                                // Deleting a generated image from history
-                                await handleDeleteLiveChatImage(activeLiveIndex, currentHistoryId || undefined);
+                                // For other features, just delete from server and clear output
+                                const id = currentHistoryId;
+                                if (id) {
+                                  await axiosInstance.delete(`/api/generations/${id}`);
+                                }
+                                setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
                               }
-                            } else {
-                              // For other features, just delete from server and clear output
-                              const id = currentHistoryId;
-                              if (id) {
-                                await axiosInstance.delete(`/api/generations/${id}`);
-                              }
-                              setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
+                              setShowImageMenu(false);
+                            } catch (e) {
+                              console.error('Delete failed:', e);
+                              setShowImageMenu(false);
                             }
-                            setShowImageMenu(false);
-                          } catch (e) {
-                            console.error('Delete failed:', e);
-                            setShowImageMenu(false);
-                          }
-                        }}
-                        className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-red-300 hover:bg-red-500/10 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 border-t border-white/10 md:text-base md:py-2"
-                      >
-                        <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {outputs[selectedFeature] ? (
-                <div className="w-full h-full relative">
-                  {(inputs[selectedFeature]) ? (
-                    // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
-                    <div className={`w-full h-full relative ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
-                      {selectedFeature === 'resize' && (
-                        <div className="absolute inset-0 z-10">
-                          <EditImageExpandFrame
-                            sourceImageUrl={inputs.resize}
-                            localExpandedImageUrl={null}
-                            expandedImageUrl={outputs.resize}
-                            aspectPreset={resizeAspectRatio || 'custom'}
-                            aspectPresets={aspectPresets}
-                            customWidth={Number(resizeCanvasW) || 1024}
-                            customHeight={Number(resizeCanvasH) || 1024}
-                            onFrameInfoChange={(info) => {
-                              if (info) {
-                                // Only update if values actually changed to avoid infinite loops
-                                if (info.canvasSize[0] !== Number(resizeCanvasW)) setResizeCanvasW(info.canvasSize[0]);
-                                if (info.canvasSize[1] !== Number(resizeCanvasH)) setResizeCanvasH(info.canvasSize[1]);
-                                // We don't necessarily want to overwrite original size if it was set by image load,
-                                // but the frame info reflects the current image state in the canvas.
-                                // setResizeOrigW(info.originalImageSize[0]);
-                                // setResizeOrigH(info.originalImageSize[1]);
-
-                                // Update location
-                                setResizeOrigX(info.originalImageLocation[0]);
-                                setResizeOrigY(info.originalImageLocation[1]);
-                              }
-                            }}
-                            onImageSizeChange={(size) => {
-                              if (size) {
-                                setResizeOrigW(size.width);
-                                setResizeOrigH(size.height);
-                              }
-                            }}
-                          />
-                        </div>
-                      )}
-                      {inputs[selectedFeature] && selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && (
-                        <div className="absolute md:bottom-3 bottom-1 md:left-1/2 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
-                          <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
-                            <button
-                              onClick={() => setUpscaleViewMode('comparison')}
-                              className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === 'comparison' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
-                            >
-                              Compare
-                            </button>
-                            <button
-                              onClick={() => setUpscaleViewMode('zoom')}
-                              className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === 'zoom' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
-                            >
-                              Zoom
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && upscaleViewMode === 'comparison' ? (
-                        // Comparison slider mode: Original on left, Generated on right, no overlap
-                        <>
-                          {/* Original (left) */}
-                          <div
-                            className="absolute inset-0"
-                            style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
-                          >
-                            <Image
-                              src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
-                              alt="Original"
-                              fill
-                              unoptimized
-                              className="object-contain object-center"
-                            />
-                          </div>
-
-                          {/* Generated (right) */}
-                          <div
-                            className="absolute inset-0"
-                            style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
-                          >
-                            <Image
-                              src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
-                              alt="Generated"
-                              fill
-                              unoptimized
-                              className="object-contain object-center"
-                              style={{ objectPosition: 'center 55%' }}
-                              onError={(e) => {
-                                console.error('[EditImage] Output image failed to load:', {
-                                  src: outputs[selectedFeature],
-                                  selectedFeature,
-                                  error: e
-                                });
-                              }}
-                              onLoad={() => {
-                                console.log('[EditImage] Output image loaded successfully:', {
-                                  src: outputs[selectedFeature],
-                                  selectedFeature
-                                });
-                              }}
-                            />
-                          </div>
-
-                          {/* Slider */}
-                          <div className="absolute inset-0">
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={sliderPosition}
-                              onChange={(e) => setSliderPosition(Number(e.target.value))}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
-                            />
-                            <div
-                              className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
-                              style={{ left: `${sliderPosition}%` }}
-                            />
-                          </div>
-
-                          <div className="absolute top-5 left-4 z-30 2xl:top-6 2xl:left-6">
-                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Original</span>
-                          </div>
-                          <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
-                            <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
-                          </div>
-                        </>
-                      ) : (
-                        // Zoom mode (all features)
-                        <div
-                          ref={imageContainerRef}
-                          className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
-                          onMouseDown={handleMouseDown}
-                          onMouseMove={handleMouseMove}
-                          onMouseUp={handleMouseUp}
-                          onMouseLeave={handleMouseUp}
-                          onWheel={handleWheel}
-                          onKeyDown={handleKeyDown}
-                          tabIndex={0}
-                          style={{ outline: 'none' }}
+                          }}
+                          className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-red-300 hover:bg-red-500/10 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 border-t border-white/10 md:text-base md:py-2"
                         >
-                          <Image
-                            ref={imageRef}
-                            src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
-                            alt="Output"
-                            fill
-                            unoptimized
-                            className="object-contain object-center"
-                            style={{
-                              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                              transformOrigin: 'center center',
-                              objectPosition: 'center 55%'
-                            }}
-                            onLoad={(e) => {
-                              const img = e.target as HTMLImageElement;
-                              setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                              console.log('[EditImage] Zoom mode output image loaded:', {
-                                src: outputs[selectedFeature],
-                                selectedFeature,
-                                dimensions: { width: img.naturalWidth, height: img.naturalHeight }
-                              });
-                            }}
-                            onError={(e) => {
-                              console.error('[EditImage] Zoom mode output image failed to load:', {
-                                src: outputs[selectedFeature],
-                                selectedFeature,
-                                error: e
-                              });
-                            }}
-                            onClick={handleImageClick}
-                          />
-
-                          {/* Zoom Controls */}
-                          <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
-                            <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
-                              <button
-                                onClick={() => {
-                                  const newScale = Math.max(0.1, scale - 0.1);
-                                  setScale(newScale);
-                                  setOffset(clampOffset(offset, newScale));
-                                }}
-                                disabled={scale <= 0.1}
-                                className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                              >
-                                −
-                              </button>
-                              <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
-                                {Math.round(scale * 100)}%
-                              </span>
-                              <button
-                                onClick={() => {
-                                  const newScale = Math.min(6, scale + 0.1);
-                                  setScale(newScale);
-                                  setOffset(clampOffset(offset, newScale));
-                                }}
-                                disabled={scale >= 6}
-                                className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                              >
-                                +
-                              </button>
-                              <button
-                                onClick={resetZoom}
-                                className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
-                              >
-                                ⌂
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Regular image viewer with zoom controls
-                    <div
-                      ref={imageContainerRef}
-                      className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
-                      onMouseDown={handleMouseDown}
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                      onMouseLeave={handleMouseUp}
-                      onWheel={handleWheel}
-                      onKeyDown={handleKeyDown}
-                      tabIndex={0}
-                      style={{ outline: 'none' }}
-                    >
-                      <Image
-                        ref={imageRef}
-                        src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
-                        alt="Output"
-                        fill
-                        unoptimized
-                        className="object-contain object-center"
-                        style={{
-                          transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                          transformOrigin: 'center center',
-                          objectPosition: 'center 55%'
-                        }}
-                        onLoad={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                          console.log('[EditImage] No-input mode output image loaded:', {
-                            src: outputs[selectedFeature],
-                            selectedFeature,
-                            dimensions: { width: img.naturalWidth, height: img.naturalHeight }
-                          });
-                        }}
-                        onError={(e) => {
-                          console.error('[EditImage] No-input mode output image failed to load:', {
-                            src: outputs[selectedFeature],
-                            selectedFeature,
-                            error: e
-                          });
-                        }}
-                        onClick={handleImageClick}
-                      />
-
-                      {/* Zoom Controls */}
-                      <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
-                        <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
-                          <button
-                            onClick={() => {
-                              const newScale = Math.max(0.1, scale - 0.1);
-                              setScale(newScale);
-                              setOffset(clampOffset(offset, newScale));
-                            }}
-                            disabled={scale <= 0.1}
-                            className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                          >
-                            −
-                          </button>
-                          <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
-                            {Math.round(scale * 100)}%
-                          </span>
-                          <button
-                            onClick={() => {
-                              const newScale = Math.min(6, scale + 0.1);
-                              setScale(newScale);
-                              setOffset(clampOffset(offset, newScale));
-                            }}
-                            disabled={scale >= 6}
-                            className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                          >
-                            +
-                          </button>
-                          <button
-                            onClick={resetZoom}
-                            className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
-                          >
-                            ⌂
-                          </button>
-                        </div>
+                          <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                          Delete
+                        </button>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className={`w-full h-full flex items-center justify-center ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
-                  {inputs[selectedFeature] ? (
-                    <div className="absolute inset-0">
-                      {selectedFeature === 'resize' || selectedFeature === 'fill' ? (
-                        selectedFeature === 'resize' ? (
+                    )}
+                  </div>
+                )}
+
+                {outputs[selectedFeature] ? (
+                  <div className="w-full h-full relative">
+                    {(inputs[selectedFeature]) ? (
+                      // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
+                      <div className={`w-full h-full relative ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
+                        {selectedFeature === 'resize' && (
                           <div className="absolute inset-0 z-10">
                             <EditImageExpandFrame
                               sourceImageUrl={inputs.resize}
                               localExpandedImageUrl={null}
-                              expandedImageUrl={null}
+                              expandedImageUrl={outputs.resize}
                               aspectPreset={resizeAspectRatio || 'custom'}
                               aspectPresets={aspectPresets}
                               customWidth={Number(resizeCanvasW) || 1024}
                               customHeight={Number(resizeCanvasH) || 1024}
                               onFrameInfoChange={(info) => {
                                 if (info) {
+                                  // Only update if values actually changed to avoid infinite loops
                                   if (info.canvasSize[0] !== Number(resizeCanvasW)) setResizeCanvasW(info.canvasSize[0]);
                                   if (info.canvasSize[1] !== Number(resizeCanvasH)) setResizeCanvasH(info.canvasSize[1]);
+                                  // We don't necessarily want to overwrite original size if it was set by image load,
+                                  // but the frame info reflects the current image state in the canvas.
+                                  // setResizeOrigW(info.originalImageSize[0]);
+                                  // setResizeOrigH(info.originalImageSize[1]);
+
+                                  // Update location
                                   setResizeOrigX(info.originalImageLocation[0]);
                                   setResizeOrigY(info.originalImageLocation[1]);
                                 }
@@ -5397,484 +5261,771 @@ const EditImageInterface: React.FC = () => {
                               }}
                             />
                           </div>
-                        ) : (
-                          <div className="absolute inset-0 z-10">
-                            <EditImageEraseFrame
-                              sourceImageUrl={inputs['fill'] as string}
-                              brushSize={eraseBrushSize}
-                              isDrawing={eraseIsDrawing}
-                              setIsDrawing={setEraseIsDrawing}
-                              onMaskChange={setEraseMaskData}
-                              isAdjustingBrush={isAdjustingBrush}
-                            />
+                        )}
+                        {inputs[selectedFeature] && selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && (
+                          <div className="absolute md:bottom-3 bottom-1 md:left-1/2 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
+                            <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                              <button
+                                onClick={() => setUpscaleViewMode('comparison')}
+                                className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === 'comparison' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                              >
+                                Compare
+                              </button>
+                              <button
+                                onClick={() => setUpscaleViewMode('zoom')}
+                                className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === 'zoom' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                              >
+                                Zoom
+                              </button>
+                            </div>
                           </div>
-                        )
-                      ) : (
-                        <>
-                          <Image
-                            src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
-                            alt="Input"
-                            fill
-                            unoptimized
-                            className="object-contain object-center"
-                            onLoad={(e) => {
-                              if (selectedFeature === 'expand') {
-                                const img = e.target as HTMLImageElement;
-                                setExpandOriginalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                                setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                                // Trigger canvas redraw after a short delay to ensure container is ready
-                                setTimeout(() => {
-                                  drawExpandCanvas();
-                                }, 100);
-                              } else {
-                                const img = e.target as HTMLImageElement;
-                                setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                              }
-                            }}
-                          />
-                          {selectedFeature === 'expand' && expandOriginalSize.width > 0 && (
-                            <div ref={expandContainerRef} className="absolute inset-0 z-10">
-                              <canvas
-                                ref={expandCanvasRef}
-                                className="absolute inset-0 w-full h-full"
-                                style={{
-                                  pointerEvents: 'auto',
-                                  userSelect: 'none',
-                                  cursor: (expandResizing || expandHoverEdge) === 'left' || (expandResizing || expandHoverEdge) === 'right'
-                                    ? 'ew-resize'
-                                    : (expandResizing || expandHoverEdge) === 'top' || (expandResizing || expandHoverEdge) === 'bottom'
-                                      ? 'ns-resize'
-                                      : (expandResizing || expandHoverEdge) === 'move'
-                                        ? 'move'
-                                        : 'default'
-                                }}
-                                onMouseDown={handleExpandMouseDown}
-                                onMouseMove={handleExpandMouseMove}
-                                onMouseUp={handleExpandMouseUp}
-                                onMouseLeave={handleExpandMouseUp}
+                        )}
+
+                        {selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && upscaleViewMode === 'comparison' ? (
+                          // Comparison slider mode: Original on left, Generated on right, no overlap
+                          <>
+                            {/* Original (left) */}
+                            <div
+                              className="absolute inset-0"
+                              style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                            >
+                              <Image
+                                src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
+                                alt="Original"
+                                fill
+                                unoptimized
+                                className="object-contain object-center"
                               />
                             </div>
-                          )}
-                          {/* Erase Frame handled above */}
-                          {(selectedFeature === 'reimagine' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
-                            <div ref={fillContainerRef} className="absolute inset-0 z-10">
-                              {/* Reimagine: Selection Mode Toggle */}
-                              {/* Reimagine: Selection Mode Toggle - Floating Dock (Rectangle Only) */}
-                              {selectedFeature === 'reimagine' && !reimagineSelectionConfirmed && (
-                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/60 backdrop-blur-xl rounded-full p-1.5 border border-white/10 shadow-2xl transition-all hover:bg-black/70">
-                                  <button
-                                    onClick={() => {
-                                      setReimagineSelectionMode('rectangle');
-                                      setReimagineLiveBounds(null);
-                                      setReimagineSelectionBounds(null);
-                                      setHasMask(false);
-                                      setRectangleStart(null);
-                                      setRectangleCurrent(null);
-                                      const ctx = fillCanvasRef.current?.getContext('2d');
-                                      if (ctx && fillContainerRef.current) {
-                                        const rect = fillContainerRef.current.getBoundingClientRect();
-                                        ctx.clearRect(0, 0, rect.width, rect.height);
-                                      }
-                                    }}
-                                    className={`p-2.5 rounded-full transition-all duration-200 group relative bg-white text-black shadow-lg`}
-                                    title="Selection Tool"
-                                  >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    </svg>
-                                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                      Selection Tool
-                                    </span>
-                                  </button>
-                                </div>
-                              )}
 
-                              <canvas
-                                ref={fillCanvasRef}
-                                className="absolute inset-0 w-full h-full touch-none"
-                                style={{
-                                  pointerEvents: selectedFeature === 'reimagine' && reimagineSelectionConfirmed ? 'none' : 'auto',
-                                  userSelect: 'none',
-                                  backgroundColor: 'transparent',
-                                  mixBlendMode: 'normal',
-                                  cursor: selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle'
-                                    ? (isDrawingRectangle ? 'crosshair' : (reimagineLiveBounds || reimagineSelectionBounds ? 'move' : 'crosshair'))
-                                    : 'crosshair'
+                            {/* Generated (right) */}
+                            <div
+                              className="absolute inset-0"
+                              style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
+                            >
+                              <Image
+                                src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
+                                alt="Generated"
+                                fill
+                                unoptimized
+                                className="object-contain object-center"
+                                style={{ objectPosition: 'center 55%' }}
+                                onError={(e) => {
+                                  console.error('[EditImage] Output image failed to load:', {
+                                    src: outputs[selectedFeature],
+                                    selectedFeature,
+                                    error: e
+                                  });
                                 }}
-                                onMouseDown={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  e.preventDefault();
-                                  const p = pointFromMouseEvent(e);
+                                onLoad={() => {
+                                  console.log('[EditImage] Output image loaded successfully:', {
+                                    src: outputs[selectedFeature],
+                                    selectedFeature
+                                  });
+                                }}
+                              />
+                            </div>
 
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    // Check if clicking inside existing selection
-                                    const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                    if (bounds &&
-                                      p.x >= bounds.x && p.x <= bounds.x + bounds.width &&
-                                      p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
-                                      // Start dragging
-                                      setIsDraggingSelection(true);
-                                      setDragStart({ x: p.x - bounds.x, y: p.y - bounds.y });
-                                    } else {
-                                      // Start drawing new rectangle
-                                      setIsDrawingRectangle(true);
-                                      setRectangleStart(p);
-                                      setRectangleCurrent(p);
-                                      setReimagineLiveBounds(null);
-                                      setReimagineSelectionBounds(null);
-                                      setHasMask(false);
-                                      // Clear canvas
-                                      const ctx = fillCanvasRef.current?.getContext('2d');
-                                      if (ctx && fillContainerRef.current) {
-                                        const rect = fillContainerRef.current.getBoundingClientRect();
-                                        ctx.clearRect(0, 0, rect.width, rect.height);
-                                      }
-                                    }
-                                  } else {
-                                    // Brush mode or other features
-                                    beginMaskStroke(p.x, p.y);
+                            {/* Slider */}
+                            <div className="absolute inset-0">
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={sliderPosition}
+                                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
+                              />
+                              <div
+                                className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
+                                style={{ left: `${sliderPosition}%` }}
+                              />
+                            </div>
+
+                            <div className="absolute top-5 left-4 z-30 2xl:top-6 2xl:left-6">
+                              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Original</span>
+                            </div>
+                            <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
+                              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
+                            </div>
+                          </>
+                        ) : (
+                          // Zoom mode (all features)
+                          <div
+                            ref={imageContainerRef}
+                            className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onWheel={handleWheel}
+                            onKeyDown={handleKeyDown}
+                            tabIndex={0}
+                            style={{ outline: 'none' }}
+                          >
+                            <Image
+                              ref={imageRef}
+                              src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
+                              alt="Output"
+                              fill
+                              unoptimized
+                              className="object-contain object-center"
+                              style={{
+                                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                                transformOrigin: 'center center',
+                                objectPosition: 'center 55%'
+                              }}
+                              onLoad={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                console.log('[EditImage] Zoom mode output image loaded:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                                });
+                              }}
+                              onError={(e) => {
+                                console.error('[EditImage] Zoom mode output image failed to load:', {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e
+                                });
+                              }}
+                              onClick={handleImageClick}
+                            />
+
+                            {/* Zoom Controls */}
+                            <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
+                              <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                                <button
+                                  onClick={() => {
+                                    const newScale = Math.max(0.1, scale - 0.1);
+                                    setScale(newScale);
+                                    setOffset(clampOffset(offset, newScale));
+                                  }}
+                                  disabled={scale <= 0.1}
+                                  className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                                >
+                                  −
+                                </button>
+                                <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
+                                  {Math.round(scale * 100)}%
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    const newScale = Math.min(6, scale + 0.1);
+                                    setScale(newScale);
+                                    setOffset(clampOffset(offset, newScale));
+                                  }}
+                                  disabled={scale >= 6}
+                                  className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                                >
+                                  +
+                                </button>
+                                <button
+                                  onClick={resetZoom}
+                                  className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
+                                >
+                                  ⌂
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      // Regular image viewer with zoom controls
+                      <div
+                        ref={imageContainerRef}
+                        className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onWheel={handleWheel}
+                        onKeyDown={handleKeyDown}
+                        tabIndex={0}
+                        style={{ outline: 'none' }}
+                      >
+                        <Image
+                          ref={imageRef}
+                          src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
+                          alt="Output"
+                          fill
+                          unoptimized
+                          className="object-contain object-center"
+                          style={{
+                            transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                            transformOrigin: 'center center',
+                            objectPosition: 'center 55%'
+                          }}
+                          onLoad={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                            console.log('[EditImage] No-input mode output image loaded:', {
+                              src: outputs[selectedFeature],
+                              selectedFeature,
+                              dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                            });
+                          }}
+                          onError={(e) => {
+                            console.error('[EditImage] No-input mode output image failed to load:', {
+                              src: outputs[selectedFeature],
+                              selectedFeature,
+                              error: e
+                            });
+                          }}
+                          onClick={handleImageClick}
+                        />
+
+                        {/* Zoom Controls */}
+                        <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
+                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                            <button
+                              onClick={() => {
+                                const newScale = Math.max(0.1, scale - 0.1);
+                                setScale(newScale);
+                                setOffset(clampOffset(offset, newScale));
+                              }}
+                              disabled={scale <= 0.1}
+                              className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                            >
+                              −
+                            </button>
+                            <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
+                              {Math.round(scale * 100)}%
+                            </span>
+                            <button
+                              onClick={() => {
+                                const newScale = Math.min(6, scale + 0.1);
+                                setScale(newScale);
+                                setOffset(clampOffset(offset, newScale));
+                              }}
+                              disabled={scale >= 6}
+                              className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                            >
+                              +
+                            </button>
+                            <button
+                              onClick={resetZoom}
+                              className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
+                            >
+                              ⌂
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
+                    {inputs[selectedFeature] ? (
+                      <div className="absolute inset-0">
+                        {selectedFeature === 'resize' || selectedFeature === 'fill' ? (
+                          selectedFeature === 'resize' ? (
+                            <div className="absolute inset-0 z-10">
+                              <EditImageExpandFrame
+                                sourceImageUrl={inputs.resize}
+                                localExpandedImageUrl={null}
+                                expandedImageUrl={null}
+                                aspectPreset={resizeAspectRatio || 'custom'}
+                                aspectPresets={aspectPresets}
+                                customWidth={Number(resizeCanvasW) || 1024}
+                                customHeight={Number(resizeCanvasH) || 1024}
+                                onFrameInfoChange={(info) => {
+                                  if (info) {
+                                    if (info.canvasSize[0] !== Number(resizeCanvasW)) setResizeCanvasW(info.canvasSize[0]);
+                                    if (info.canvasSize[1] !== Number(resizeCanvasH)) setResizeCanvasH(info.canvasSize[1]);
+                                    setResizeOrigX(info.originalImageLocation[0]);
+                                    setResizeOrigY(info.originalImageLocation[1]);
                                   }
                                 }}
-                                onMouseMove={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  e.preventDefault();
-                                  const p = pointFromMouseEvent(e);
-
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    if (isDraggingSelection && dragStart && (reimagineLiveBounds || reimagineSelectionBounds)) {
-                                      // Dragging existing selection
-                                      const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                      if (bounds) {
-                                        const containerWidth = fillContainerRef.current?.getBoundingClientRect().width || 0;
-                                        const containerHeight = fillContainerRef.current?.getBoundingClientRect().height || 0;
-                                        const newX = Math.max(0, Math.min(p.x - dragStart.x, containerWidth - bounds.width));
-                                        const newY = Math.max(0, Math.min(p.y - dragStart.y, containerHeight - bounds.height));
-                                        setReimagineLiveBounds({
-                                          x: newX,
-                                          y: newY,
-                                          width: bounds.width,
-                                          height: bounds.height
-                                        });
-                                        // Update canvas mask - Do NOT draw white fill
-                                        const ctx = fillCanvasRef.current?.getContext('2d');
-                                        if (ctx) {
-                                          ctx.clearRect(0, 0, containerWidth, containerHeight);
-                                        }
-                                      }
-                                    } else if (isDrawingRectangle && rectangleStart) {
-                                      // Drawing new rectangle
-                                      setRectangleCurrent(p);
-                                      const bounds = {
-                                        x: Math.min(rectangleStart.x, p.x),
-                                        y: Math.min(rectangleStart.y, p.y),
-                                        width: Math.abs(p.x - rectangleStart.x),
-                                        height: Math.abs(p.y - rectangleStart.y)
-                                      };
-                                      setReimagineLiveBounds(bounds);
-                                    }
-                                  } else {
-                                    // Brush mode
-                                    continueMaskStroke(p.x, p.y);
-                                  }
-                                }}
-                                onMouseUp={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  e.preventDefault();
-
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    if (isDraggingSelection) {
-                                      setIsDraggingSelection(false);
-                                      setDragStart(null);
-                                      // Finalize dragged position
-                                      if (reimagineLiveBounds) {
-                                        setReimagineSelectionBounds(reimagineLiveBounds);
-                                      }
-                                    } else if (isDrawingRectangle && rectangleStart && rectangleCurrent) {
-                                      setIsDrawingRectangle(false);
-                                      // Finalize rectangle
-                                      let bounds = {
-                                        x: Math.min(rectangleStart.x, rectangleCurrent.x),
-                                        y: Math.min(rectangleStart.y, rectangleCurrent.y),
-                                        width: Math.abs(rectangleCurrent.x - rectangleStart.x),
-                                        height: Math.abs(rectangleCurrent.y - rectangleStart.y)
-                                      };
-
-                                      // Check for Tap (very small movement) -> Create 1024x1024 selection
-                                      const dist = Math.sqrt(Math.pow(rectangleCurrent.x - rectangleStart.x, 2) + Math.pow(rectangleCurrent.y - rectangleStart.y, 2));
-                                      if (dist < 10) {
-                                        // It's a tap! Create 1024x1024 selection centered on tap
-                                        const container = fillContainerRef.current;
-                                        const canvas = fillCanvasRef.current;
-                                        if (container && canvas && inputNaturalSize.width > 0) {
-                                          const rect = container.getBoundingClientRect();
-
-                                          // Calculate actual rendered image dimensions (object-contain)
-                                          const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
-                                          const containerAspect = rect.width / rect.height;
-
-                                          let renderWidth, renderHeight; // offsetX, offsetY not needed for scale, but needed for bounds clamping if we were strict
-
-                                          if (containerAspect > imgAspect) {
-                                            // Container is wider than image - image is height-constrained
-                                            renderHeight = rect.height;
-                                            renderWidth = rect.height * imgAspect;
-                                          } else {
-                                            // Container is taller than image - image is width-constrained
-                                            renderWidth = rect.width;
-                                            renderHeight = rect.width / imgAspect;
-                                          }
-
-                                          // Uniform scale factor
-                                          const scale = renderWidth / inputNaturalSize.width;
-
-                                          // Target size in canvas pixels (representing 1024x1024 on image)
-                                          const targetSize = 1024 * scale;
-
-                                          // Center on tap location (rectangleStart)
-                                          let newX = rectangleStart.x - (targetSize / 2);
-                                          let newY = rectangleStart.y - (targetSize / 2);
-
-                                          // Clamp to canvas bounds (allowing it to go into letterboxed area is fine, 
-                                          // but ideally we clamp to the image area? For now clamp to canvas/container)
-                                          newX = Math.max(0, Math.min(newX, rect.width - targetSize));
-                                          newY = Math.max(0, Math.min(newY, rect.height - targetSize));
-
-                                          bounds = {
-                                            x: newX,
-                                            y: newY,
-                                            width: targetSize,
-                                            height: targetSize
-                                          };
-                                        }
-                                      }
-
-                                      if (bounds.width > 10 && bounds.height > 10) {
-                                        setReimagineLiveBounds(bounds);
-                                        setReimagineSelectionBounds(bounds);
-                                        // Do NOT draw white fill on canvas
-                                        const ctx = fillCanvasRef.current?.getContext('2d');
-                                        if (ctx) {
-                                          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                                          setHasMask(true);
-                                        }
-                                      }
-                                      setRectangleStart(null);
-                                      setRectangleCurrent(null);
-                                    }
-                                  } else {
-                                    // Brush mode
-                                    endMaskStroke();
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  e.preventDefault();
-
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    if (isDraggingSelection) {
-                                      setIsDraggingSelection(false);
-                                      setDragStart(null);
-                                      if (reimagineLiveBounds) {
-                                        setReimagineSelectionBounds(reimagineLiveBounds);
-                                      }
-                                    }
-                                    if (isDrawingRectangle) {
-                                      setIsDrawingRectangle(false);
-                                      setRectangleStart(null);
-                                      setRectangleCurrent(null);
-                                    }
-                                  } else {
-                                    endMaskStroke();
-                                  }
-                                }}
-                                onTouchStart={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  // e.preventDefault(); // Removed to fix passive event listener error; touch-action: none handles this
-                                  const p = pointFromTouchEvent(e);
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                    if (bounds &&
-                                      p.x >= bounds.x && p.x <= bounds.x + bounds.width &&
-                                      p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
-                                      setIsDraggingSelection(true);
-                                      setDragStart({ x: p.x - bounds.x, y: p.y - bounds.y });
-                                    } else {
-                                      setIsDrawingRectangle(true);
-                                      setRectangleStart(p);
-                                      setRectangleCurrent(p);
-                                    }
-                                  } else {
-                                    beginMaskStroke(p.x, p.y);
-                                  }
-                                }}
-                                onTouchMove={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  // e.preventDefault(); // Removed to fix passive event listener error
-                                  const p = pointFromTouchEvent(e);
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    if (isDraggingSelection && dragStart && (reimagineLiveBounds || reimagineSelectionBounds)) {
-                                      const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                      const containerWidth = fillContainerRef.current?.getBoundingClientRect().width || 0;
-                                      const containerHeight = fillContainerRef.current?.getBoundingClientRect().height || 0;
-                                      if (bounds) {
-                                        const newX = Math.max(0, Math.min(p.x - dragStart.x, containerWidth - bounds.width));
-                                        const newY = Math.max(0, Math.min(p.y - dragStart.y, containerHeight - bounds.height));
-                                        setReimagineLiveBounds({ x: newX, y: newY, width: bounds.width, height: bounds.height });
-                                        // Do NOT draw white fill on canvas
-                                        const ctx = fillCanvasRef.current?.getContext('2d');
-                                        if (ctx) {
-                                          ctx.clearRect(0, 0, containerWidth, containerHeight);
-                                        }
-                                      }
-                                    } else if (isDrawingRectangle && rectangleStart) {
-                                      setRectangleCurrent(p);
-                                      const bounds = {
-                                        x: Math.min(rectangleStart.x, p.x),
-                                        y: Math.min(rectangleStart.y, p.y),
-                                        width: Math.abs(p.x - rectangleStart.x),
-                                        height: Math.abs(p.y - rectangleStart.y)
-                                      };
-                                      setReimagineLiveBounds(bounds);
-                                    }
-                                  } else {
-                                    continueMaskStroke(p.x, p.y);
-                                  }
-                                }}
-                                onTouchEnd={(e) => {
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
-                                  // e.preventDefault(); // Removed to fix passive event listener error
-
-                                  if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                    if (isDraggingSelection) {
-                                      setIsDraggingSelection(false);
-                                      setDragStart(null);
-                                      if (reimagineLiveBounds) setReimagineSelectionBounds(reimagineLiveBounds);
-                                    } else if (isDrawingRectangle && rectangleStart && rectangleCurrent) {
-                                      setIsDrawingRectangle(false);
-                                      // Finalize rectangle
-                                      let bounds = {
-                                        x: Math.min(rectangleStart.x, rectangleCurrent.x),
-                                        y: Math.min(rectangleStart.y, rectangleCurrent.y),
-                                        width: Math.abs(rectangleCurrent.x - rectangleStart.x),
-                                        height: Math.abs(rectangleCurrent.y - rectangleStart.y)
-                                      };
-
-                                      // Check for Tap (very small movement) -> Create 1024x1024 selection
-                                      const dist = Math.sqrt(Math.pow(rectangleCurrent.x - rectangleStart.x, 2) + Math.pow(rectangleCurrent.y - rectangleStart.y, 2));
-                                      if (dist < 10) {
-                                        // It's a tap! Create 1024x1024 selection centered on tap
-                                        const container = fillContainerRef.current;
-                                        const canvas = fillCanvasRef.current;
-                                        if (container && canvas && inputNaturalSize.width > 0) {
-                                          const rect = container.getBoundingClientRect();
-
-                                          // Calculate actual rendered image dimensions (object-contain)
-                                          const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
-                                          const containerAspect = rect.width / rect.height;
-
-                                          let renderWidth, renderHeight;
-
-                                          if (containerAspect > imgAspect) {
-                                            // Container is wider than image - image is height-constrained
-                                            renderHeight = rect.height;
-                                            renderWidth = rect.height * imgAspect;
-                                          } else {
-                                            // Container is taller than image - image is width-constrained
-                                            renderWidth = rect.width;
-                                            renderHeight = rect.width / imgAspect;
-                                          }
-
-                                          // Uniform scale factor
-                                          const scale = renderWidth / inputNaturalSize.width;
-
-                                          // Target size in canvas pixels (representing 1024x1024 on image)
-                                          const targetSize = 1024 * scale;
-
-                                          // Center on tap location (rectangleStart)
-                                          let newX = rectangleStart.x - (targetSize / 2);
-                                          let newY = rectangleStart.y - (targetSize / 2);
-
-                                          // Clamp to canvas bounds
-                                          newX = Math.max(0, Math.min(newX, rect.width - targetSize));
-                                          newY = Math.max(0, Math.min(newY, rect.height - targetSize));
-
-                                          bounds = {
-                                            x: newX,
-                                            y: newY,
-                                            width: targetSize,
-                                            height: targetSize
-                                          };
-                                        }
-                                      }
-
-                                      if (bounds.width > 10 && bounds.height > 10) {
-                                        setReimagineLiveBounds(bounds);
-                                        setReimagineSelectionBounds(bounds);
-                                        const ctx = fillCanvasRef.current?.getContext('2d');
-                                        if (ctx) {
-                                          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                                          setHasMask(true);
-                                        }
-                                      }
-                                      setRectangleStart(null);
-                                      setRectangleCurrent(null);
-                                    }
-                                  } else {
-                                    endMaskStroke();
+                                onImageSizeChange={(size) => {
+                                  if (size) {
+                                    setResizeOrigW(size.width);
+                                    setResizeOrigH(size.height);
                                   }
                                 }}
                               />
-
-                              {/* Reimagine: Visual Selection Feedback */}
-                              {selectedFeature === 'reimagine' && (reimagineLiveBounds || reimagineSelectionBounds) && (
-                                <>
-                                  {/* Dark overlay on non-selected areas - Removed gradient, using box-shadow on selection box instead for linearity */}
-
-                                  {/* Selection Bounding Box Border */}
-                                  {(reimagineLiveBounds || reimagineSelectionBounds) && (
-                                    <div
-                                      className="absolute pointer-events-none z-16 border border-white/50 rounded-lg transition-all duration-200"
-                                      style={{
-                                        left: `${(reimagineLiveBounds || reimagineSelectionBounds)?.x || 0}px`,
-                                        top: `${(reimagineLiveBounds || reimagineSelectionBounds)?.y || 0}px`,
-                                        width: `${(reimagineLiveBounds || reimagineSelectionBounds)?.width || 0}px`,
-                                        height: `${(reimagineLiveBounds || reimagineSelectionBounds)?.height || 0}px`,
-                                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)', // Darken outside
+                            </div>
+                          ) : (
+                            <div className="absolute inset-0 z-10">
+                              <EditImageEraseFrame
+                                sourceImageUrl={inputs['fill'] as string}
+                                brushSize={eraseBrushSize}
+                                isDrawing={eraseIsDrawing}
+                                setIsDrawing={setEraseIsDrawing}
+                                onMaskChange={setEraseMaskData}
+                                isAdjustingBrush={isAdjustingBrush}
+                              />
+                            </div>
+                          )
+                        ) : (
+                          <>
+                            <Image
+                              src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
+                              alt="Input"
+                              fill
+                              unoptimized
+                              className="object-contain object-center"
+                              onLoad={(e) => {
+                                if (selectedFeature === 'expand') {
+                                  const img = e.target as HTMLImageElement;
+                                  setExpandOriginalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                  setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                  // Trigger canvas redraw after a short delay to ensure container is ready
+                                  setTimeout(() => {
+                                    drawExpandCanvas();
+                                  }, 100);
+                                } else {
+                                  const img = e.target as HTMLImageElement;
+                                  setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                }
+                              }}
+                            />
+                            {selectedFeature === 'expand' && expandOriginalSize.width > 0 && (
+                              <div ref={expandContainerRef} className="absolute inset-0 z-10">
+                                <canvas
+                                  ref={expandCanvasRef}
+                                  className="absolute inset-0 w-full h-full"
+                                  style={{
+                                    pointerEvents: 'auto',
+                                    userSelect: 'none',
+                                    cursor: (expandResizing || expandHoverEdge) === 'left' || (expandResizing || expandHoverEdge) === 'right'
+                                      ? 'ew-resize'
+                                      : (expandResizing || expandHoverEdge) === 'top' || (expandResizing || expandHoverEdge) === 'bottom'
+                                        ? 'ns-resize'
+                                        : (expandResizing || expandHoverEdge) === 'move'
+                                          ? 'move'
+                                          : 'default'
+                                  }}
+                                  onMouseDown={handleExpandMouseDown}
+                                  onMouseMove={handleExpandMouseMove}
+                                  onMouseUp={handleExpandMouseUp}
+                                  onMouseLeave={handleExpandMouseUp}
+                                />
+                              </div>
+                            )}
+                            {/* Erase Frame handled above */}
+                            {(selectedFeature === 'reimagine' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
+                              <div ref={fillContainerRef} className="absolute inset-0 z-10">
+                                {/* Reimagine: Selection Mode Toggle */}
+                                {/* Reimagine: Selection Mode Toggle - Floating Dock (Rectangle Only) */}
+                                {selectedFeature === 'reimagine' && !reimagineSelectionConfirmed && (
+                                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/60 backdrop-blur-xl rounded-full p-1.5 border border-white/10 shadow-2xl transition-all hover:bg-black/70">
+                                    <button
+                                      onClick={() => {
+                                        setReimagineSelectionMode('rectangle');
+                                        setReimagineLiveBounds(null);
+                                        setReimagineSelectionBounds(null);
+                                        setHasMask(false);
+                                        setRectangleStart(null);
+                                        setRectangleCurrent(null);
+                                        const ctx = fillCanvasRef.current?.getContext('2d');
+                                        if (ctx && fillContainerRef.current) {
+                                          const rect = fillContainerRef.current.getBoundingClientRect();
+                                          ctx.clearRect(0, 0, rect.width, rect.height);
+                                        }
                                       }}
+                                      className={`p-2.5 rounded-full transition-all duration-200 group relative bg-white text-black shadow-lg`}
+                                      title="Selection Tool"
                                     >
-                                      {/* Minimalist Corner Handles */}
-                                      <div className="absolute -top-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
-                                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
-                                      <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
-                                      <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                      </svg>
+                                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                        Selection Tool
+                                      </span>
+                                    </button>
+                                  </div>
+                                )}
 
-                                      {/* Animated border effect - Linear Shadow (Clean Border) */}
-                                      <div className="absolute inset-0 border border-white/80 rounded-lg shadow-none" />
-                                    </div>
-                                  )}
-                                </>
-                              )}
+                                <canvas
+                                  ref={fillCanvasRef}
+                                  className="absolute inset-0 w-full h-full touch-none"
+                                  style={{
+                                    pointerEvents: selectedFeature === 'reimagine' && reimagineSelectionConfirmed ? 'none' : 'auto',
+                                    userSelect: 'none',
+                                    backgroundColor: 'transparent',
+                                    mixBlendMode: 'normal',
+                                    cursor: selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle'
+                                      ? (isDrawingRectangle ? 'crosshair' : (reimagineLiveBounds || reimagineSelectionBounds ? 'move' : 'crosshair'))
+                                      : 'crosshair'
+                                  }}
+                                  onMouseDown={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    e.preventDefault();
+                                    const p = pointFromMouseEvent(e);
 
-                              {/* Reimagine: Confirm Selection Button - Removed in favor of direct prompt interaction */}
-                              {selectedFeature === 'reimagine' && hasMask && !reimagineSelectionConfirmed && (
-                                <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                  <button
-                                    onClick={() => {
-                                      setReimagineSelectionConfirmed(true);
-                                    }}
-                                    className="px-6 py-2.5 bg-white text-black hover:bg-gray-100 rounded-full shadow-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2"
-                                  >
-                                    <span>Continue</span>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M5 12h14"></path>
-                                      <path d="m12 5 7 7-7 7"></path>
-                                    </svg>
-                                  </button>
-                                </div>
-                              )}
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      // Check if clicking inside existing selection
+                                      const bounds = reimagineLiveBounds || reimagineSelectionBounds;
+                                      if (bounds &&
+                                        p.x >= bounds.x && p.x <= bounds.x + bounds.width &&
+                                        p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
+                                        // Start dragging
+                                        setIsDraggingSelection(true);
+                                        setDragStart({ x: p.x - bounds.x, y: p.y - bounds.y });
+                                      } else {
+                                        // Start drawing new rectangle
+                                        setIsDrawingRectangle(true);
+                                        setRectangleStart(p);
+                                        setRectangleCurrent(p);
+                                        setReimagineLiveBounds(null);
+                                        setReimagineSelectionBounds(null);
+                                        setHasMask(false);
+                                        // Clear canvas
+                                        const ctx = fillCanvasRef.current?.getContext('2d');
+                                        if (ctx && fillContainerRef.current) {
+                                          const rect = fillContainerRef.current.getBoundingClientRect();
+                                          ctx.clearRect(0, 0, rect.width, rect.height);
+                                        }
+                                      }
+                                    } else {
+                                      // Brush mode or other features
+                                      beginMaskStroke(p.x, p.y);
+                                    }
+                                  }}
+                                  onMouseMove={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    e.preventDefault();
+                                    const p = pointFromMouseEvent(e);
 
-                              {/* Reimagine: Floating Prompt Input - Clean Glassmorphism */}
-                              {/* {selectedFeature === 'reimagine' && reimagineSelectionConfirmed && reimagineSelectionBounds && (
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      if (isDraggingSelection && dragStart && (reimagineLiveBounds || reimagineSelectionBounds)) {
+                                        // Dragging existing selection
+                                        const bounds = reimagineLiveBounds || reimagineSelectionBounds;
+                                        if (bounds) {
+                                          const containerWidth = fillContainerRef.current?.getBoundingClientRect().width || 0;
+                                          const containerHeight = fillContainerRef.current?.getBoundingClientRect().height || 0;
+                                          const newX = Math.max(0, Math.min(p.x - dragStart.x, containerWidth - bounds.width));
+                                          const newY = Math.max(0, Math.min(p.y - dragStart.y, containerHeight - bounds.height));
+                                          setReimagineLiveBounds({
+                                            x: newX,
+                                            y: newY,
+                                            width: bounds.width,
+                                            height: bounds.height
+                                          });
+                                          // Update canvas mask - Do NOT draw white fill
+                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          if (ctx) {
+                                            ctx.clearRect(0, 0, containerWidth, containerHeight);
+                                          }
+                                        }
+                                      } else if (isDrawingRectangle && rectangleStart) {
+                                        // Drawing new rectangle
+                                        setRectangleCurrent(p);
+                                        const bounds = {
+                                          x: Math.min(rectangleStart.x, p.x),
+                                          y: Math.min(rectangleStart.y, p.y),
+                                          width: Math.abs(p.x - rectangleStart.x),
+                                          height: Math.abs(p.y - rectangleStart.y)
+                                        };
+                                        setReimagineLiveBounds(bounds);
+                                      }
+                                    } else {
+                                      // Brush mode
+                                      continueMaskStroke(p.x, p.y);
+                                    }
+                                  }}
+                                  onMouseUp={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    e.preventDefault();
+
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      if (isDraggingSelection) {
+                                        setIsDraggingSelection(false);
+                                        setDragStart(null);
+                                        // Finalize dragged position
+                                        if (reimagineLiveBounds) {
+                                          setReimagineSelectionBounds(reimagineLiveBounds);
+                                        }
+                                      } else if (isDrawingRectangle && rectangleStart && rectangleCurrent) {
+                                        setIsDrawingRectangle(false);
+                                        // Finalize rectangle
+                                        let bounds = {
+                                          x: Math.min(rectangleStart.x, rectangleCurrent.x),
+                                          y: Math.min(rectangleStart.y, rectangleCurrent.y),
+                                          width: Math.abs(rectangleCurrent.x - rectangleStart.x),
+                                          height: Math.abs(rectangleCurrent.y - rectangleStart.y)
+                                        };
+
+                                        // Check for Tap (very small movement) -> Create 1024x1024 selection
+                                        const dist = Math.sqrt(Math.pow(rectangleCurrent.x - rectangleStart.x, 2) + Math.pow(rectangleCurrent.y - rectangleStart.y, 2));
+                                        if (dist < 10) {
+                                          // It's a tap! Create 1024x1024 selection centered on tap
+                                          const container = fillContainerRef.current;
+                                          const canvas = fillCanvasRef.current;
+                                          if (container && canvas && inputNaturalSize.width > 0) {
+                                            const rect = container.getBoundingClientRect();
+
+                                            // Calculate actual rendered image dimensions (object-contain)
+                                            const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
+                                            const containerAspect = rect.width / rect.height;
+
+                                            let renderWidth, renderHeight; // offsetX, offsetY not needed for scale, but needed for bounds clamping if we were strict
+
+                                            if (containerAspect > imgAspect) {
+                                              // Container is wider than image - image is height-constrained
+                                              renderHeight = rect.height;
+                                              renderWidth = rect.height * imgAspect;
+                                            } else {
+                                              // Container is taller than image - image is width-constrained
+                                              renderWidth = rect.width;
+                                              renderHeight = rect.width / imgAspect;
+                                            }
+
+                                            // Uniform scale factor
+                                            const scale = renderWidth / inputNaturalSize.width;
+
+                                            // Target size in canvas pixels (representing 1024x1024 on image)
+                                            const targetSize = 1024 * scale;
+
+                                            // Center on tap location (rectangleStart)
+                                            let newX = rectangleStart.x - (targetSize / 2);
+                                            let newY = rectangleStart.y - (targetSize / 2);
+
+                                            // Clamp to canvas bounds (allowing it to go into letterboxed area is fine, 
+                                            // but ideally we clamp to the image area? For now clamp to canvas/container)
+                                            newX = Math.max(0, Math.min(newX, rect.width - targetSize));
+                                            newY = Math.max(0, Math.min(newY, rect.height - targetSize));
+
+                                            bounds = {
+                                              x: newX,
+                                              y: newY,
+                                              width: targetSize,
+                                              height: targetSize
+                                            };
+                                          }
+                                        }
+
+                                        if (bounds.width > 10 && bounds.height > 10) {
+                                          setReimagineLiveBounds(bounds);
+                                          setReimagineSelectionBounds(bounds);
+                                          // Do NOT draw white fill on canvas
+                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          if (ctx) {
+                                            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                                            setHasMask(true);
+                                          }
+                                        }
+                                        setRectangleStart(null);
+                                        setRectangleCurrent(null);
+                                      }
+                                    } else {
+                                      // Brush mode
+                                      endMaskStroke();
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    e.preventDefault();
+
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      if (isDraggingSelection) {
+                                        setIsDraggingSelection(false);
+                                        setDragStart(null);
+                                        if (reimagineLiveBounds) {
+                                          setReimagineSelectionBounds(reimagineLiveBounds);
+                                        }
+                                      }
+                                      if (isDrawingRectangle) {
+                                        setIsDrawingRectangle(false);
+                                        setRectangleStart(null);
+                                        setRectangleCurrent(null);
+                                      }
+                                    } else {
+                                      endMaskStroke();
+                                    }
+                                  }}
+                                  onTouchStart={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    // e.preventDefault(); // Removed to fix passive event listener error; touch-action: none handles this
+                                    const p = pointFromTouchEvent(e);
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      const bounds = reimagineLiveBounds || reimagineSelectionBounds;
+                                      if (bounds &&
+                                        p.x >= bounds.x && p.x <= bounds.x + bounds.width &&
+                                        p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
+                                        setIsDraggingSelection(true);
+                                        setDragStart({ x: p.x - bounds.x, y: p.y - bounds.y });
+                                      } else {
+                                        setIsDrawingRectangle(true);
+                                        setRectangleStart(p);
+                                        setRectangleCurrent(p);
+                                      }
+                                    } else {
+                                      beginMaskStroke(p.x, p.y);
+                                    }
+                                  }}
+                                  onTouchMove={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    // e.preventDefault(); // Removed to fix passive event listener error
+                                    const p = pointFromTouchEvent(e);
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      if (isDraggingSelection && dragStart && (reimagineLiveBounds || reimagineSelectionBounds)) {
+                                        const bounds = reimagineLiveBounds || reimagineSelectionBounds;
+                                        const containerWidth = fillContainerRef.current?.getBoundingClientRect().width || 0;
+                                        const containerHeight = fillContainerRef.current?.getBoundingClientRect().height || 0;
+                                        if (bounds) {
+                                          const newX = Math.max(0, Math.min(p.x - dragStart.x, containerWidth - bounds.width));
+                                          const newY = Math.max(0, Math.min(p.y - dragStart.y, containerHeight - bounds.height));
+                                          setReimagineLiveBounds({ x: newX, y: newY, width: bounds.width, height: bounds.height });
+                                          // Do NOT draw white fill on canvas
+                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          if (ctx) {
+                                            ctx.clearRect(0, 0, containerWidth, containerHeight);
+                                          }
+                                        }
+                                      } else if (isDrawingRectangle && rectangleStart) {
+                                        setRectangleCurrent(p);
+                                        const bounds = {
+                                          x: Math.min(rectangleStart.x, p.x),
+                                          y: Math.min(rectangleStart.y, p.y),
+                                          width: Math.abs(p.x - rectangleStart.x),
+                                          height: Math.abs(p.y - rectangleStart.y)
+                                        };
+                                        setReimagineLiveBounds(bounds);
+                                      }
+                                    } else {
+                                      continueMaskStroke(p.x, p.y);
+                                    }
+                                  }}
+                                  onTouchEnd={(e) => {
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    // e.preventDefault(); // Removed to fix passive event listener error
+
+                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                      if (isDraggingSelection) {
+                                        setIsDraggingSelection(false);
+                                        setDragStart(null);
+                                        if (reimagineLiveBounds) setReimagineSelectionBounds(reimagineLiveBounds);
+                                      } else if (isDrawingRectangle && rectangleStart && rectangleCurrent) {
+                                        setIsDrawingRectangle(false);
+                                        // Finalize rectangle
+                                        let bounds = {
+                                          x: Math.min(rectangleStart.x, rectangleCurrent.x),
+                                          y: Math.min(rectangleStart.y, rectangleCurrent.y),
+                                          width: Math.abs(rectangleCurrent.x - rectangleStart.x),
+                                          height: Math.abs(rectangleCurrent.y - rectangleStart.y)
+                                        };
+
+                                        // Check for Tap (very small movement) -> Create 1024x1024 selection
+                                        const dist = Math.sqrt(Math.pow(rectangleCurrent.x - rectangleStart.x, 2) + Math.pow(rectangleCurrent.y - rectangleStart.y, 2));
+                                        if (dist < 10) {
+                                          // It's a tap! Create 1024x1024 selection centered on tap
+                                          const container = fillContainerRef.current;
+                                          const canvas = fillCanvasRef.current;
+                                          if (container && canvas && inputNaturalSize.width > 0) {
+                                            const rect = container.getBoundingClientRect();
+
+                                            // Calculate actual rendered image dimensions (object-contain)
+                                            const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
+                                            const containerAspect = rect.width / rect.height;
+
+                                            let renderWidth, renderHeight;
+
+                                            if (containerAspect > imgAspect) {
+                                              // Container is wider than image - image is height-constrained
+                                              renderHeight = rect.height;
+                                              renderWidth = rect.height * imgAspect;
+                                            } else {
+                                              // Container is taller than image - image is width-constrained
+                                              renderWidth = rect.width;
+                                              renderHeight = rect.width / imgAspect;
+                                            }
+
+                                            // Uniform scale factor
+                                            const scale = renderWidth / inputNaturalSize.width;
+
+                                            // Target size in canvas pixels (representing 1024x1024 on image)
+                                            const targetSize = 1024 * scale;
+
+                                            // Center on tap location (rectangleStart)
+                                            let newX = rectangleStart.x - (targetSize / 2);
+                                            let newY = rectangleStart.y - (targetSize / 2);
+
+                                            // Clamp to canvas bounds
+                                            newX = Math.max(0, Math.min(newX, rect.width - targetSize));
+                                            newY = Math.max(0, Math.min(newY, rect.height - targetSize));
+
+                                            bounds = {
+                                              x: newX,
+                                              y: newY,
+                                              width: targetSize,
+                                              height: targetSize
+                                            };
+                                          }
+                                        }
+
+                                        if (bounds.width > 10 && bounds.height > 10) {
+                                          setReimagineLiveBounds(bounds);
+                                          setReimagineSelectionBounds(bounds);
+                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          if (ctx) {
+                                            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                                            setHasMask(true);
+                                          }
+                                        }
+                                        setRectangleStart(null);
+                                        setRectangleCurrent(null);
+                                      }
+                                    } else {
+                                      endMaskStroke();
+                                    }
+                                  }}
+                                />
+
+                                {/* Reimagine: Visual Selection Feedback */}
+                                {selectedFeature === 'reimagine' && (reimagineLiveBounds || reimagineSelectionBounds) && (
+                                  <>
+                                    {/* Dark overlay on non-selected areas - Removed gradient, using box-shadow on selection box instead for linearity */}
+
+                                    {/* Selection Bounding Box Border */}
+                                    {(reimagineLiveBounds || reimagineSelectionBounds) && (
+                                      <div
+                                        className="absolute pointer-events-none z-16 border border-white/50 rounded-lg transition-all duration-200"
+                                        style={{
+                                          left: `${(reimagineLiveBounds || reimagineSelectionBounds)?.x || 0}px`,
+                                          top: `${(reimagineLiveBounds || reimagineSelectionBounds)?.y || 0}px`,
+                                          width: `${(reimagineLiveBounds || reimagineSelectionBounds)?.width || 0}px`,
+                                          height: `${(reimagineLiveBounds || reimagineSelectionBounds)?.height || 0}px`,
+                                          boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)', // Darken outside
+                                        }}
+                                      >
+                                        {/* Minimalist Corner Handles */}
+                                        <div className="absolute -top-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                        <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                        <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+
+                                        {/* Animated border effect - Linear Shadow (Clean Border) */}
+                                        <div className="absolute inset-0 border border-white/80 rounded-lg shadow-none" />
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+
+                                {/* Reimagine: Confirm Selection Button - Removed in favor of direct prompt interaction */}
+                                {selectedFeature === 'reimagine' && hasMask && !reimagineSelectionConfirmed && (
+                                  <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                    <button
+                                      onClick={() => {
+                                        setReimagineSelectionConfirmed(true);
+                                      }}
+                                      className="px-6 py-2.5 bg-white text-black hover:bg-gray-100 rounded-full shadow-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2"
+                                    >
+                                      <span>Continue</span>
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 12h14"></path>
+                                        <path d="m12 5 7 7-7 7"></path>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Reimagine: Floating Prompt Input - Clean Glassmorphism */}
+                                {/* {selectedFeature === 'reimagine' && reimagineSelectionConfirmed && reimagineSelectionBounds && (
                             <div
                               className="absolute z-20 w-full max-w-2xl left-1/2 -translate-x-1/2"
                               style={{
@@ -5948,115 +6099,138 @@ const EditImageInterface: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                          )} */}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleOpenUploadModal}
-                      className="text-white/80 hover:text-white transition-colors text-center"
-                    >
-                      <svg className="w-10 h-10 mx-auto mb-2 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
-                      </svg>
-                      <span className="text-xs">Drop image here or click to upload</span>
-                    </button>
-                  )}
-                </div>
-              )}
-              {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
-              {/* Fill mask overlay moved to input area */}
-              {processing[selectedFeature] && (
-                <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-                  <img src="/styles/Logo.gif" alt="Generating..." className="w-32 h-32 md:w-48 md:h-48 opacity-90" />
-                </div>
-              )}
-            </div>
-
-            {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
-            {selectedFeature === 'live-chat' && (
-              <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto ">
-                <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-[35rem] lg:h-[45rem] very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
-                  <div className="flex flex-row md:flex-col items-center md:items-end md:gap-3 gap-1 pr-1 min-w-max">
-                    {/* Generated images (latest first) */}
-                    {(liveHistory || []).slice().reverse().map((item, revIdx) => {
-                      // revIdx 0 is latest; compute original index
-                      const origIdx = liveHistory.length - 1 - revIdx;
-                      const isActive = outputs['live-chat'] === item.url && activeLiveIndex === origIdx;
-                      const isHovered = hoveredThumbnailIdx === origIdx;
-                      const showMenu = showThumbnailMenuIdx === origIdx;
-
-                      return (
-                        <button
-                          key={`gen-${origIdx}-${item.url}`}
-                          onClick={() => {
-                            setActiveLiveIndex(origIdx);
-                            setOutputs((prev) => ({ ...prev, ['live-chat']: item.url }));
-                            setInputs((prev) => ({ ...prev, ['live-chat']: item.url }));
-                            setCurrentHistoryId(item.id || null);
-                          }}
-                          className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
-                          title={`Generation ${origIdx + 1}`}
+                          )} */ }
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center w-full h-full p-4 md:p-8">
+                        <div
+                          className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] hover:bg-white/[0.04] transition-all cursor-pointer group"
+                          onClick={handleOpenUploadModal}
                         >
-                          <img src={normalizeEditImageUrl(item.url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
-                        </button>
-                      );
-                    })}
+                          <div className="w-12 h-12 mb-6 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform duration-300">
+                            <svg className="w-6 h-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
+                              <circle cx="12" cy="13" r="3" stroke="currentColor" strokeWidth="1.5" />
+                              <path d="M12 10v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                          </div>
 
-                    {/* Input image thumbnail shown below generated images if present and not duplicate */}
-                    {(liveOriginalInput || inputs['live-chat']) && (
-                      (() => {
-                        const inputUrl = (liveOriginalInput || inputs['live-chat']) as string;
-                        const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1]?.url === inputUrl;
-                        if (alreadyShown) return null;
-                        const isActiveInput = outputs['live-chat'] === inputUrl && activeLiveIndex === -1;
-                        return (
-                          <button
-                            key={`input-thumb`}
-                            onClick={() => {
-                              setActiveLiveIndex(-1);
-                              setOutputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
-                              setInputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
-                            }}
-                            className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? 'border-white' : 'border-white/20 hover:border-white/40'}`}
-                            title={`Input image`}
-                          >
-                            <img src={normalizeEditImageUrl(inputUrl)} alt={`Input`} className="w-full h-full object-cover" />
-                          </button>
-                        );
-                      })()
+                          <h3 className="text-xl md:text-2xl font-semibold text-white mb-2">Drop your image here</h3>
+                          <p className="text-sm md:text-base text-white/40 mb-8">
+                            or <span className="text-blue-400 font-medium">click to browse</span> from your computer
+                          </p>
+
+                          <div className="flex flex-wrap items-center justify-center gap-2 px-6">
+                            {['PNG', 'JPG', 'up to 50MB'].map((label) => (
+                              <span key={label} className="px-2.5 py-1 text-[10px] font-bold text-white/30 bg-white/5 rounded-md border border-white/5 tracking-wider">
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
+                {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
+                {/* Fill mask overlay moved to input area */}
+                {processing[selectedFeature] && (
+                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                    <img src="/styles/Logo.gif" alt="Generating..." className="w-32 h-32 md:w-48 md:h-48 opacity-90" />
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
+              {selectedFeature === 'live-chat' && (
+                <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
+                  <div className="hidden md:block">
+                    <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">Secondary Preview</h3>
+                    <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden aspect-square flex items-center justify-center mb-2">
+                      {outputs['live-chat'] ? (
+                        <img src={normalizeEditImageUrl(outputs['live-chat'])} alt="Current Preview" className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="text-white/20 text-xs">No output yet</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col flex-1 min-h-0">
+                    <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">History</h3>
+                    <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
+                      <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
+                        {/* Generated images (latest first) */}
+                        {(liveHistory || []).slice().reverse().map((item, revIdx) => {
+                          // revIdx 0 is latest; compute original index
+                          const origIdx = liveHistory.length - 1 - revIdx;
+                          const isActive = outputs['live-chat'] === item.url && activeLiveIndex === origIdx;
+                          const isHovered = hoveredThumbnailIdx === origIdx;
+                          const showMenu = showThumbnailMenuIdx === origIdx;
+
+                          return (
+                            <button
+                              key={`gen-${origIdx}-${item.url}`}
+                              onClick={() => {
+                                setActiveLiveIndex(origIdx);
+                                setOutputs((prev) => ({ ...prev, ['live-chat']: item.url }));
+                                setInputs((prev) => ({ ...prev, ['live-chat']: item.url }));
+                                setCurrentHistoryId(item.id || null);
+                              }}
+                              className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
+                              title={`Generation ${origIdx + 1}`}
+                            >
+                              <img src={normalizeEditImageUrl(item.url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
+                            </button>
+                          );
+                        })}
+
+                        {/* Input image thumbnail shown below generated images if present and not duplicate */}
+                        {(liveOriginalInput || inputs['live-chat']) && (
+                          (() => {
+                            const inputUrl = (liveOriginalInput || inputs['live-chat']) as string;
+                            const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1]?.url === inputUrl;
+                            if (alreadyShown) return null;
+                            const isActiveInput = outputs['live-chat'] === inputUrl && activeLiveIndex === -1;
+                            return (
+                              <button
+                                key={`input-thumb`}
+                                onClick={() => {
+                                  setActiveLiveIndex(-1);
+                                  setOutputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+                                  setInputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+                                }}
+                                className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? 'border-white/5' : 'border-white/10 hover:border-white/30'}`}
+                                title={`Input image`}
+                              >
+                                <img src={normalizeEditImageUrl(inputUrl)} alt={`Input`} className="w-full h-full object-cover" />
+                              </button>
+                            );
+                          })()
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
           </div>
 
-          <style jsx global>{`
-            .very-thin-scrollbar {
-              scrollbar-width: thin;
-              scrollbar-color: rgba(255,255,255,0.12) transparent;
-            }
-            .very-thin-scrollbar::-webkit-scrollbar {
-              width: 4px;
-              height: 4px;
-            }
-            .very-thin-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(255,255,255,0.12);
-              border-radius: 999px;
-              border: 1px solid rgba(255,255,255,0.02);
-            }
-            .very-thin-scrollbar::-webkit-scrollbar-track {
-              background: transparent;
-            }
-            /* Note: global scrollbar hiding removed so browser shows scrollbar only when content overflows */
-          `}</style>
-        </div>
-      </div>
-    </div >
+        }
+        statusBar={
+          <EditImageStatusBar
+            isProcessing={Object.values(processing).some(p => p)}
+            statusText={`Processing: ${featureDisplayName[selectedFeature]}...`}
+            progress={65}
+            credits={creditBalance}
+          />
+        }
+      />
+    </div>
   );
 };
 

@@ -154,6 +154,33 @@ h6 {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* Very thin scrollbar for compact areas */
+.very-thin-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+
+
 /* Unified custom scrollbar - Modern thin with gradient */
 .custom-scrollbar {
   scrollbar-width: thin;
