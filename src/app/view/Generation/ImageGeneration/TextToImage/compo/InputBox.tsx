@@ -6509,8 +6509,8 @@ const InputBox = () => {
         <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
           <div
             className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
-              ? 'bg-black/40 ring-blue-400/60 shadow-[0_0_30px_rgba(59,130,246,0.3)] scale-[1.01]'
-              : 'bg-black/20 ring-white/20 hover:ring-[#60a5fa]/40 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]'
+              ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
+              : 'bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl'
               }`}
             onMouseEnter={() => setIsInputBoxHovered(true)}
             onMouseLeave={() => setIsInputBoxHovered(false)}
@@ -6581,7 +6581,7 @@ const InputBox = () => {
           >
             {/* Outline Glow Effect - shows on hover or when typing */}
             <div
-              className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
+              className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
               style={{
                 opacity: (prompt.trim() || isInputBoxHovered) ? 0.2 : 0
               }}
@@ -6763,50 +6763,43 @@ const InputBox = () => {
                   }}
                   data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
                 />
-                {/* Enhancement overlay removed - text shines instead */}
-                {/* Fixed position buttons container */}
-                <div className="flex md:flex-row flex-row -mb-6  md:items-center items-start md:gap-2  gap-1 flex-shrink-0">
-                  {/* Clear prompt button - only show when there's text */}
-                  {prompt.trim() && (
-                    <div className="relative group">
-                      <button
-                        onClick={() => {
-                          // Clear prompt when user explicitly clicks the clear button
-                          dispatch(setPrompt(''));
-                          // Also clear the contentEditable element
-                          if (contentEditableRef.current) {
-                            contentEditableRef.current.textContent = '';
-                          }
-                          // Focus the input after clearing
-                          if (inputEl.current) {
-                            inputEl.current.focus();
-                          }
-                        }}
-                        className="px-1 py-1 md:-mt-5 mt-1 md:mx-0 ml-1 rounded-lg ring-1 ring-white/20 bg-transparent hover:bg-white/10 text-white/90 text-sm font-medium transition-colors duration-200 flex items-center gap-1.5"
-                        aria-label="Clear prompt"
-                      >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-white/80"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20  text-white/100 backdrop-blur-3xl shadow-3xl text-[10px] px-2 py-1 rounded-md whitespace-nowrap">Clear Prompt</div>
-                    </div>
-                  )}
-                  {/* Desktop-only: Previews just to the left of upload */}
-
-                  {/* Mobile: Single column on right | Desktop: Horizontal row */}
+                <div className="flex md:flex-row flex-row -mb-6 md:items-center items-start md:gap-2 gap-1 flex-shrink-0">
                   <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-0 pb-0 pr-0">
+                    {/* Clear prompt button - only show when there's text */}
+                    {prompt.trim() && (
+                      <div className="relative group">
+                        <button
+                          onClick={() => {
+                            dispatch(setPrompt(''));
+                            if (contentEditableRef.current) {
+                              contentEditableRef.current.textContent = '';
+                            }
+                            if (inputEl.current) {
+                              inputEl.current.focus();
+                            }
+                          }}
+                          className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
+                          aria-label="Clear prompt"
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-white/80"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Clear Prompt</div>
+                      </div>
+                    )}
+
                     {/* Enhance prompt button (manual trigger) */}
                     <div className="relative">
                       <button

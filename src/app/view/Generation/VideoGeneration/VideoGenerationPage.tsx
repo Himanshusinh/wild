@@ -91,14 +91,14 @@ export default function VideoGenerationPage() {
             <div className="flex">
                 <div className="flex-1 min-w-0 px-2 sm:px-6 md:px-8">
                     {/* Sticky header + filters (pinned under navbar) */}
-                    <div className="sticky top-0 z-40 bg-[#0E0E12]">
+                    <div className="sticky top-0 z-40 bg-[#0E0E12] backdrop-blur-lg shadow-xl">
 
-                        <div className="mb-0 md:mb-1 pt-8 md:pt-2">
+                        <div className="mb-0 md:mb-1 pt-8 md:pt-0">
                             <div className="flex items-center justify-between md:mb-2 mb-0">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
+                                <div className="flex items-center gap-2 md:pt-2">
+                                    <h2 className="text-white md:text-2xl text-md font-semibold">
                                         Video Generation
-                                    </h3>
+                                    </h2>
 
                                     {/* Info button - only show when there are generations */}
                                     {historyEntries.entries.length > 0 && historyEntries.sortedDates.length > 0 && (
@@ -123,7 +123,7 @@ export default function VideoGenerationPage() {
                                             setActiveFeature('Video');
                                             router.push('/text-to-video', { scroll: false });
                                         }}
-                                        className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${activeFeature === 'Video' ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === 'Video' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
                                         aria-label="Video"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -137,7 +137,7 @@ export default function VideoGenerationPage() {
                                             setActiveFeature('Lipsync');
                                             router.push('/text-to-video?feature=lipsync', { scroll: false });
                                         }}
-                                        className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${activeFeature === 'Lipsync' ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/20 transition-all ${activeFeature === 'Lipsync' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
                                         aria-label="Lipsync"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -151,7 +151,7 @@ export default function VideoGenerationPage() {
                                             setActiveFeature('Animate');
                                             router.push('/text-to-video?feature=animation', { scroll: false });
                                         }}
-                                        className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${activeFeature === 'Animate' ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === 'Animate' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
                                         aria-label="Animate"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -163,7 +163,7 @@ export default function VideoGenerationPage() {
 
                                     <button
                                         onClick={() => router.push('/text-to-video/edit-video?feature=upscale')}
-                                        className={`flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all ${pathname?.startsWith('/text-to-video/edit-video') ? 'bg-white text-black' : 'bg-white/10 text-white/100'}`}
+                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${pathname?.startsWith('/text-to-video/edit-video') ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
                                         aria-label="Edit"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -182,7 +182,7 @@ export default function VideoGenerationPage() {
                                                 window.open('https://editor-video.wildmindai.com/', '_blank');
                                             }
                                         }}
-                                        className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/80 border border-white/10 transition-all bg-white/10 text-white/100"
+                                        className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/5 border border-white/10 transition-all bg-white/0 text-white/100"
                                         aria-label="Video editor"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -194,10 +194,12 @@ export default function VideoGenerationPage() {
                                 </div>
 
                                 {/* Desktop: Search, Sort, and Date controls - positioned at right end of Video Generation text */}
-                                <div className="hidden md:flex items-center pt-2">
-                                    <HistoryControls mode="video" />
-                                    {/* HistoryControls removed to avoid duplication */}
-                                </div>
+                                {activeFeature !== 'Edit' && (
+                                    <div className="hidden md:flex items-center">
+                                        <HistoryControls mode="video" className="mb-0 pt-0" />
+                                        {/* HistoryControls removed to avoid duplication */}
+                                    </div>
+                                )}
                             </div>
 
                             <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-2">

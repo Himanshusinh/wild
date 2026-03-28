@@ -99,6 +99,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 Speak", description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast Speak", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
+        { value: "ltx-2.3-pro-t2v", label: "LTX 2.3 Pro", description: "T2V & I2V, 6/8/10s, 1080p/2k/4k, Camera & audio controls", provider: "replicate" },
+        { value: "ltx-2.3-fast-t2v", label: "LTX 2.3 Fast", description: "T2V & I2V, 2-20s, 1080p/2k/4k, Camera controls, Audio", provider: "replicate" },
         // { value: "kling-v2.5-turbo-pro-t2v", label: "Kling Lipsync", description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1", provider: "replicate" }
       ];
     }
@@ -335,7 +337,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           } catch { }
           setIsOpen(!isOpen);
         }}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black hover:bg-white/95`}
       >
         <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedModelInfo?.label || selectedModel}

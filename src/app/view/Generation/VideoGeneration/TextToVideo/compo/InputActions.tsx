@@ -62,10 +62,10 @@ const InputActions: React.FC<InputActionsProps> = ({
         {(currentModelCapabilities.requiresReferenceImage) && (
           <div className="relative">
             <button
-              className={`py-2 rounded-xl transition-all duration-200 cursor-pointer group relative ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
+              className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                 (generationMode === "video_to_video" && references.length >= 4)
                 ? 'opacity-50 cursor-not-allowed'
-                : ''
+                : 'hover:bg-white/10'
                 }`}
               onClick={() => {
                 setUploadModalType('reference');
@@ -75,27 +75,27 @@ const InputActions: React.FC<InputActionsProps> = ({
                 (generationMode === "video_to_video" && references.length >= 4)}
             >
               <FilePlus2
-                size={22}
+                size={16}
                 className={`transition-all duration-200 ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
                   (generationMode === "video_to_video" && references.length >= 4)
                   ? 'text-gray-400'
-                  : 'text-green-400 hover:text-green-300 hover:scale-110'
+                  : 'text-green-400'
                   }`}
               />
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                {generationMode === "image_to_video" && selectedModel === "S2V-01" ? 'Upload character reference (1 max)' : 'Upload references'}
-              </div>
-
-              {/* References Count Badge */}
-              {references.length > 0 && (
-                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                  (generationMode === "video_to_video" && references.length >= 4)
-                  ? 'bg-red-500' : 'bg-green-500'
-                  }`}>
-                  <span className="text-xs text-white font-bold">{references.length}</span>
-                </div>
-              )}
             </button>
+            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+              {generationMode === "image_to_video" && selectedModel === "S2V-01" ? 'Upload character reference (1 max)' : 'Upload references'}
+            </div>
+
+            {/* References Count Badge */}
+            {references.length > 0 && (
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
+                (generationMode === "video_to_video" && references.length >= 4)
+                ? 'bg-red-500' : 'bg-green-500'
+                }`}>
+                <span className="text-xs text-white font-bold">{references.length}</span>
+              </div>
+            )}
 
             {/* References Preview Popup */}
             {references.length > 0 && (
@@ -143,18 +143,16 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel !== "S2V-01" && (
             <div className="relative">
               <button
-                className="md:py-2 pt-2 pl-1 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType('image');
                   setUploadModalTarget('first_frame');
                   setIsUploadModalOpen(true);
                 }}
               >
-                <div className="relative">
-                  <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> First Frame </div>
-                </div>
+                <FilePlus2 size={16} className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? 'text-blue-300' : ''}`} />
               </button>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">First Frame</div>
             </div>
         )}
 
@@ -163,18 +161,16 @@ const InputActions: React.FC<InputActionsProps> = ({
           (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
             <div className="relative">
               <button
-                className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType('image');
                   setUploadModalTarget('first_frame');
                   setIsUploadModalOpen(true);
                 }}
               >
-                <div className="relative">
-                  <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${uploadedImages.length > 0 ? 'text-blue-300 bg-white/20' : ''}`} />
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> First Frame </div>
-                </div>
+                <FilePlus2 size={16} className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? 'text-blue-300' : ''}`} />
               </button>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">First Frame</div>
             </div>
           )}
 
@@ -209,18 +205,16 @@ const InputActions: React.FC<InputActionsProps> = ({
           hasImageToVideoSupport) && (
             <div className="relative">
               <button
-                className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+                className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType('image');
                   setUploadModalTarget('last_frame');
                   setIsUploadModalOpen(true);
                 }}
               >
-                <div className="relative">
-                  <FilePlus2 size={30} className={`rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-blue-300 group-hover:scale-110 ${lastFrameImage ? 'text-blue-300 bg-white/20' : ''}`} />
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50"> Last Frame (optional)</div>
-                </div>
+                <FilePlus2 size={16} className={`text-white transition-all duration-200 ${lastFrameImage ? 'text-blue-300' : ''}`} />
               </button>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Last Frame (optional)</div>
             </div>
           )}
 
@@ -228,22 +222,17 @@ const InputActions: React.FC<InputActionsProps> = ({
         {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace" || selectedModel.startsWith('ltx-2.3-pro')) && (
           <div className="relative">
             <button
-              className="py-2 rounded-xl transition-all duration-200 cursor-pointer group relative"
+              className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
               onClick={() => {
                 setUploadModalType('video');
                 setIsUploadModalOpen(true);
               }}
             >
-              <div className="relative">
-                <FilePlay
-                  size={30}
-                  className="rounded-md p-1.5 text-white transition-all bg-white/10 duration-200 group-hover:text-purple-300 group-hover:scale-110"
-                />
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                  {selectedModel === "wan-2.2-animate-replace" && activeFeature === 'Animate' ? 'Upload video (mandatory)' : 'Upload video'}
-                </div>
-              </div>
+              <FilePlay size={16} className="text-white transition-all duration-200" />
             </button>
+            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+              {selectedModel === "wan-2.2-animate-replace" && activeFeature === 'Animate' ? 'Upload video (mandatory)' : 'Upload video'}
+            </div>
           </div>
         )}
       </div>

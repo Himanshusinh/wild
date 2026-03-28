@@ -106,7 +106,7 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent  text-white ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5 ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
           }`}
       >
         <Monitor className="md:w-4 w-3 h-3 md:h-4  mr-1" />
