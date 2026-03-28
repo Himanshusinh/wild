@@ -6,14 +6,21 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { message, history, threadId } = body as {
+        const { message, history = [], modelId, modelInput, threadId, attachments = [] } = body as {
             message: string;
             history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+            modelId?: string;
+            modelInput?: Record<string, unknown>;
             threadId?: string;
+            attachments?: Array<Record<string, unknown>>;
         };
 
         if (!message || typeof message !== 'string' || !message.trim()) {
             return NextResponse.json({ error: 'message is required' }, { status: 400 });
+        }
+
+        if (!modelId || typeof modelId !== 'string') {
+            return NextResponse.json({ error: 'modelId is required' }, { status: 400 });
         }
 
         const base = (
@@ -22,30 +29,34 @@ export async function POST(req: NextRequest) {
             ''
         ).replace(/\/$/, '');
 
-        // Agent-mode proxy only. Chat-mode uses /api/assistant/chat-mode.
-        const url = `${base}/api/chat/assistant`;
+        const url = `${base}/api/chat/assistant/models`;
 
         const resp = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Forward cookies for any session context
                 cookie: req.headers.get('cookie') || '',
                 'ngrok-skip-browser-warning': 'true',
             },
-            body: JSON.stringify({ message: message.trim(), history: history ?? [], threadId }),
+            body: JSON.stringify({
+                message: message.trim(),
+                history,
+                modelId,
+                modelInput,
+                threadId,
+                attachments,
+            }),
         });
 
         if (!resp.ok) {
             const errText = await resp.text();
-            console.error('[AssistantChatProxy] Backend error:', resp.status, errText);
+            console.error('[AssistantChatModeProxy] Backend error:', resp.status, errText);
             return NextResponse.json({
                 reply: "I'm having a moment — please try again!",
                 fallback: true,
             });
         }
 
-        // Backend returns: { responseStatus, message, data: { reply } }
         const data = await resp.json();
         const reply =
             data?.data?.reply ||
@@ -59,7 +70,7 @@ export async function POST(req: NextRequest) {
             threadId: data?.data?.threadId || data?.data?.thread?.id || null,
         });
     } catch (err: any) {
-        console.error('[AssistantChatProxy] Error:', err?.message);
+        console.error('[AssistantChatModeProxy] Error:', err?.message);
         return NextResponse.json({
             reply: "I'm here to help! Describe what you'd like to create.",
             fallback: true,
