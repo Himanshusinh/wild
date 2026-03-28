@@ -4162,14 +4162,14 @@ const EditImageInterface: React.FC = () => {
                           </button>
                           {liveActiveDropdown === 'liveModel' && (
                             <div className={`absolute top-full z-30 left-0 min-w-50 md:min-w-60 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                              {liveAllowedModels.map(opt => (
-                                <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="truncate">{opt.label}</span>
-                                    <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
-                                  </div>
-                                </button>
-                              ))}
+                          {liveAllowedModels.filter(opt => opt.value !== 'qwen-image-edit-2511' || inputs['live-chat']).map(opt => (
+                            <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate">{opt.label}</span>
+                                <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
+                              </div>
+                            </button>
+                          ))}
                             </div>
                           )}
                         </div>

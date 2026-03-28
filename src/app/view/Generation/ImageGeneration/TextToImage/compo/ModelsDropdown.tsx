@@ -103,9 +103,15 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       m.value === 'qwen/qwen-image-2-pro' ||
       m.value === 'prunaai/p-image' ||
       m.value === 'qwen-image-edit-2511' ||
-      // m.value === 'qwen-image-edit-2512' ||
+      m.value === 'qwen-image-edit-2512' ||
       
       m.value === 'openai/gpt-image-1.5'
+    );
+  } else {
+    // Hide image-to-image only models when no image is uploaded or requested
+    filteredModels = modelsWithCredits.filter(m => 
+      m.value !== 'qwen-image-edit-2511' && 
+      m.value !== 'qwen-image-edit-2512'
     );
   }
 
@@ -236,7 +242,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       {activeDropdown === 'models' && (
         <div 
           style={{ backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)' }}
-          className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/40 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/20 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}
+          className={`absolute ${openDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/20 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}
         >
           {(() => {
             // Priority models moved to LEFT column and marked with crown
