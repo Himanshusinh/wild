@@ -248,7 +248,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
 
   return (
-    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-2 md:pt-0 sticky', className].filter(Boolean).join(' ')}>
+    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-2 md:pt-2 sticky', className].filter(Boolean).join(' ')}>
       {/* Prompt search (backend-driven) */}
       <div className="relative flex items-center md:mr-0 mr-auto">
         <input
@@ -256,7 +256,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search prompt..."
-          className={`px-3 py-1 md:py-1.5 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-white/10 border border-white/20 bg-transparent text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
+          className={`px-2 py-1 md:py-1 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-white/10 border border-white/20 bg-transparent text-white placeholder-white/70 w-44 md:w-60 ${searchInput ? 'pr-8' : ''}`}
         />
         {searchInput && (
           <button
@@ -278,7 +278,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </div>
       <button
         onClick={() => onSortChange('desc')}
-        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+        className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
         aria-label="Recent"
       >
         <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
@@ -286,7 +286,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </button>
       <button
         onClick={() => onSortChange('asc')}
-        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+        className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
         aria-label="Oldest"
       >
         <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
@@ -322,10 +322,10 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
             setCalendarYear(base.getFullYear());
             setShowCalendar((v) => !v);
           }}
-          className={`relative group p-1 md:p-1.5 rounded-lg text-xs transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/5 text-white/80'}`}
+          className={`relative group p-1 md:p-0.75 rounded-lg text-xs transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/5 text-white/80'}`}
           aria-label="Date"
         >
-          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
         </button>
         {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
           <div
