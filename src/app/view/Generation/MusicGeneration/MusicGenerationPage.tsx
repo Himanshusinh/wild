@@ -166,10 +166,10 @@ export default function MusicGenerationPage() {
                                             className={`
                                                 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs 
                                                 transition-all duration-200 whitespace-nowrap relative
-                                                hover:bg-white hover:text-black hover:scale-105 active:scale-95
+                                                active:scale-95
                                                 ${activeFeature === feature
                                                     ? 'bg-white text-black font-semibold shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                                    : 'bg-white/10 text-white/90 border border-white/5'}
+                                                    : 'bg-white/10 text-white/90 border border-white/5 hover:bg-white hover:text-black hover:scale-105'}
                                             `}
                                             aria-label={feature}
                                             style={{

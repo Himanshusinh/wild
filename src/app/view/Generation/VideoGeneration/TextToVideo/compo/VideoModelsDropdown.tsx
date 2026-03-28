@@ -337,7 +337,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           } catch { }
           setIsOpen(!isOpen);
         }}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black hover:bg-white/95`}
       >
         <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedModelInfo?.label || selectedModel}

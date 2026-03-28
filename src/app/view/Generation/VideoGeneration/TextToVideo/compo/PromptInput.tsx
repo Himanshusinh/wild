@@ -37,7 +37,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
   }, [prompt, inputRef]);
 
   return (
-    <div className="flex items-start md:gap-3 gap-0 md:p-3 p-2 md:pt-2 pt-0 relative z-10">
+    <div className="flex items-start md:gap-3 gap-0 p-0 relative z-10">
       <div className="flex-1 flex items-start gap-2 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
         <textarea
           ref={inputRef}
@@ -52,11 +52,11 @@ const PromptInput: React.FC<PromptInputProps> = ({
           autoComplete="off"
           autoCorrect="on"
           autoCapitalize="on"
-          className={`flex-1 mt-2 bg-transparent md:h-[4rem] h-[3rem] text-white placeholder-white/50 outline-none md:text-[15px] text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}`}
+          className={`flex-1 bg-transparent md:h-[4rem] h-[3rem] text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}`}
           rows={1}
           style={{
             minHeight: '24px',
-            maxHeight: '96px',
+            maxHeight: '92px',
             lineHeight: '1.2',
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
@@ -79,10 +79,10 @@ const PromptInput: React.FC<PromptInputProps> = ({
         {/* Fixed position buttons container */}
         <div className="flex items-center md:gap-0 gap-0 flex-shrink-0 md:p-0 p-0">
           {prompt.trim() && (
-            <div className="relative group">
+            <div className="relative">
               <button
                 onClick={onClear}
-                className="md:px-2 px-1.5 md:py-1.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white md:text-sm text-[11px] font-medium transition-colors duration-200 flex items-center gap-1.5"
+                className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                 aria-label="Clear prompt"
               >
                 <svg
@@ -100,25 +100,25 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-40">Clear Prompt</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Clear Prompt</div>
             </div>
           )}
           {/* Enhance Prompt Button */}
           {prompt.trim() && (
-            <div className="relative group ml-1">
+            <div className="relative ml-1">
               <button
                 onClick={onEnhance}
                 disabled={isEnhancing}
-                className={`md:px-2 px-1.5 md:py-1.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white md:text-sm text-[11px] font-medium transition-colors duration-200 flex items-center gap-1.5 ${isEnhancing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer ${isEnhancing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 aria-label="Enhance prompt"
               >
                 {isEnhancing ? (
                   <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <Sparkles size={14} className="text-yellow-300" />
+                  <Sparkles size={14} className="text-white/90" />
                 )}
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/80 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Enhance Prompt</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
             </div>
           )}
           
