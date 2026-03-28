@@ -6,13 +6,17 @@ import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
 import { API_BASE } from '../routes'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 
+type ResolveOptions = {
+  allowReplicate?: boolean
+}
+
 // Helper to normalize media URL (same as ArtStation) - moved outside component for stability
-const normalizeMediaUrl = (url?: string): string | undefined => {
+const normalizeMediaUrl = (url?: string, options?: ResolveOptions): string | undefined => {
   if (!url || typeof url !== 'string') return undefined
   const trimmed = url.trim()
   if (!trimmed) return undefined
   // Reject replicate URLs to prevent 404s - only use Zata URLs
-  if (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com')) {
+  if (!options?.allowReplicate && (trimmed.includes('replicate.delivery') || trimmed.includes('replicate.com'))) {
     return undefined
   }
   if (/^https?:\/\//i.test(trimmed)) return trimmed
@@ -23,7 +27,7 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
 }
 
 // Resolve media URL with fallbacks (same as ArtStation) - moved outside component for stability
-const resolveMediaUrl = (m: any): string | undefined => {
+const resolveMediaUrl = (m: any, options?: ResolveOptions): string | undefined => {
   if (!m) return undefined
   // Try multiple URL properties in order of preference
   const candidates = [
@@ -34,7 +38,7 @@ const resolveMediaUrl = (m: any): string | undefined => {
     m.storagePath,
   ]
   for (const candidate of candidates) {
-    const normalized = normalizeMediaUrl(candidate)
+    const normalized = normalizeMediaUrl(candidate, options)
     if (normalized) return normalized
   }
   return undefined
@@ -92,10 +96,18 @@ export default function CommunityCreations({
             if (mode === 'image' && (item.videos?.length > 0 || item.audios?.length > 0)) return false
             if (mode === 'video' && (!item.videos || item.videos.length === 0)) return false
             
-            // Check for valid image URL (relaxed check)
-            const hasValidImage = resolveMediaUrl(item) || (Array.isArray(item.images) && item.images.some((img: any) => resolveMediaUrl(img)))
-            
-            return !!hasValidImage
+            // Check for valid media URL based on current mode
+            const hasValidMedia = mode === 'video'
+              ? (
+                  resolveMediaUrl(item, { allowReplicate: true }) ||
+                  (Array.isArray(item.videos) && item.videos.some((vid: any) => resolveMediaUrl(vid, { allowReplicate: true })))
+                )
+              : (
+                  resolveMediaUrl(item) ||
+                  (Array.isArray(item.images) && item.images.some((img: any) => resolveMediaUrl(img)))
+                )
+
+            return !!hasValidMedia
           }).map((item: any) => {
               // Normalize structure to PublicItem if needed
               return {
@@ -127,10 +139,10 @@ export default function CommunityCreations({
       .map(item => {
         if (mode === 'video') {
           let vid = item.videos?.[0]
-          let mediaUrl = resolveMediaUrl(vid)
+          let mediaUrl = resolveMediaUrl(vid, { allowReplicate: true })
 
           if (!mediaUrl) {
-            mediaUrl = resolveMediaUrl(item)
+            mediaUrl = resolveMediaUrl(item, { allowReplicate: true })
             if (mediaUrl) {
               vid = { id: item.id || '0', url: mediaUrl }
             }
@@ -271,7 +283,7 @@ export default function CommunityCreations({
             <div className="absolute bottom-0 left-0 right-0 h-[200px] z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-0 right-0 h-[150px] flex items-center justify-center z-20 pointer-events-auto">
               <button
-                onClick={() => router.push('/view/ArtStation')}
+                onClick={() => router.push(`/view/ArtStation?mode=${mode}`)}
                 className="bg-white text-black px-8 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors shadow-lg"
               >
                 Explore Art Station
@@ -285,11 +297,13 @@ export default function CommunityCreations({
       {preview && (() => {
         // Resolve preview URL safely
         const previewMedia = mode === 'video' ? preview.videos?.[0] : preview.images?.[0]
-        const previewUrl = previewMedia ? resolveMediaUrl(previewMedia) : resolveMediaUrl(preview)
+        const previewUrl = previewMedia
+          ? resolveMediaUrl(previewMedia, mode === 'video' ? { allowReplicate: true } : undefined)
+          : resolveMediaUrl(preview, mode === 'video' ? { allowReplicate: true } : undefined)
         
         // Only render if we have a valid URL
         if (!previewUrl) {
-          console.warn('[CommunityCreations] Preview item has no valid image URL:', preview.id)
+          console.warn('[CommunityCreations] Preview item has no valid media URL:', preview.id)
           return null
         }
         

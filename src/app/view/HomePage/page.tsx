@@ -50,6 +50,8 @@ import InfiniteCanvas from './compo/InfiniteCanvas';
 import WildMindAIAPPS from './compo/WildMindAIAPPS';
 import CreatorsSection from './compo/CreatorsSection';
 import CreationCTASection from './compo/CreationCTASection';
+import CreativeStyle from './compo/CreativeStyle';
+import ImageVideoToggle from './compo/ImageVideoToggle';
 
 
 
@@ -217,6 +219,8 @@ const HomePage: React.FC = () => {
 
                     {/* Promotional Banner */}
                     <MasonrySection mode={homepageMode} onModeChange={setHomepageMode} />
+                    <CreativeStyle />
+                    <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
                     <AllFeatures mode={homepageMode} />
                     <CommunityCreations mode={homepageMode} />

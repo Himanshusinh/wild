@@ -171,6 +171,7 @@ const cards: CardConfig[] = [
     title: "Text To\nMusic",
     subtitle: "Prompt to full music track",
     href: ROUTES.TEXT_TO_MUSIC,
+    featureType: "video",
     badge: "MUSIC",
     icon: <Music size={20} />,
     iconClassName: "bg-[linear-gradient(135deg,#0f766e,#14b8a6)] shadow-[0_8px_24px_rgba(20,184,166,0.42)]",
@@ -200,6 +201,7 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
   const [dotCount, setDotCount] = useState(1);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
 
   useEffect(() => {
     const el = railRef.current;
@@ -228,6 +230,7 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
       setDotCount(pages);
       setShowLeftArrow(el.scrollLeft > 2);
       setShowRightArrow(el.scrollLeft < maxScroll - 2);
+      setIsOverflowing(maxScroll > 2);
     };
 
     updatePagination();
@@ -293,7 +296,7 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
   return (
     <section className="bg-[#0E0E12] pb-12 pt-0">
       <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-2 flex items-center justify-between gap-4">
           <p className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3b82f6]">
             <span className="h-[1.5px] w-4 bg-[#3b82f6]" />
             All Features
@@ -301,30 +304,32 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
         </div>
 
         <div className="relative">
-          <button
-            onClick={() => scrollByDirection("left")}
-            disabled={!showLeftArrow}
-            className={`absolute left-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 disabled:cursor-not-allowed disabled:opacity-35 md:flex`}
-            aria-label="Scroll left"
-            type="button"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+          {isOverflowing && showLeftArrow && (
+            <button
+              onClick={() => scrollByDirection("left")}
+              className="absolute left-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 md:flex"
+              aria-label="Scroll left"
+              type="button"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
 
-          <button
-            onClick={() => scrollByDirection("right")}
-            disabled={!showRightArrow}
-            className={`absolute right-1 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60 disabled:cursor-not-allowed disabled:opacity-35`}
-            aria-label="Scroll right"
-            type="button"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          {isOverflowing && showRightArrow && (
+            <button
+              onClick={() => scrollByDirection("right")}
+              className="absolute right-1 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 active:border-[#3b82f6]/60"
+              aria-label="Scroll right"
+              type="button"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
 
           <div
             ref={railRef}
             onWheel={handleRailWheel}
-            className="scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={`scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mode === "video" && !isOverflowing ? "justify-center pr-0" : "pr-12"}`}
             style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
           >
             {visibleCards.map((card) => (
@@ -375,10 +380,11 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
               aria-current={index === activeDot ? "true" : "false"}
               aria-label={`Go to feature page ${index + 1}`}
               className={
-                index === activeDot
+                index === activeDot && isOverflowing
                   ? "h-[3px] w-6 rounded-full bg-[#3b82f6]"
                   : "h-[3px] w-[6px] rounded-full bg-white/20 transition-colors hover:bg-white/35 active:bg-white/50"
               }
+              disabled={!isOverflowing}
             />
           ))}
         </div>

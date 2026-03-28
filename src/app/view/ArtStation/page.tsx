@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
@@ -106,6 +107,7 @@ const canonicalMediaKey = (url?: string) => {
 };
 
 export default function ArtStationPage() {
+  const searchParams = useSearchParams()
   const formatDate = (input?: string) => {
     if (!input) return ''
     const d = new Date(input)
@@ -176,6 +178,19 @@ export default function ArtStationPage() {
   const inFlightRef = useRef<Promise<void> | null>(null)
   const queuedNextRef = useRef<{ reset: boolean } | null>(null)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Deep-link support: /view/ArtStation?mode=video -> Videos tab
+  useEffect(() => {
+    const modeParam = (searchParams?.get('mode') || '').toLowerCase()
+    if (modeParam === 'video') {
+      setActiveCategory('Videos')
+      return
+    }
+    if (modeParam === 'image') {
+      setActiveCategory('Images')
+      return
+    }
+  }, [searchParams])
 
   // Track pending optimistic updates to prevent bulk-status from overwriting them with stale data
   // Map maps key -> count of active operations

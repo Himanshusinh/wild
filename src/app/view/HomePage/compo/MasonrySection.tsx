@@ -156,8 +156,8 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
   };
 
   return (
-    <section className="relative overflow-hidden bg-[#0E0E12] px-4  pt-12 sm:px-4  sm:pt-16 md:px-4 md:pt-20 lg:px-4 lg:pt-24 xl:px-16  ">
-      <div className="relative mx-auto flex w-full max-w-auto flex-col items-center px-1 text-center sm:px-4">
+    <section className="relative overflow-visible bg-[#0E0E12] px-4 pt-12 sm:px-4 sm:pt-16 md:px-4 md:pt-20 lg:px-4 lg:pt-24 xl:px-16">
+      <div className="relative z-30 mx-auto flex w-full max-w-auto flex-col items-center px-1 text-center sm:px-4">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-4 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.18)]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6] shadow-[0_0_8px_#3B82F6]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#555]">
@@ -166,7 +166,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
         </div>
 
         <h1
-          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[80px] xl:text-[120px]"
+          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[80px] xl:text-[80px] 2xl:text-[120px]"
           style={{
             fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
           }}
@@ -282,7 +282,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             </button>
 
             {showGenerateMenu && (
-              <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[110px] overflow-hidden rounded-xl border border-[#E5E4E0] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
+              <div className="absolute right-0 top-[calc(100%+4px)] z-[140] min-w-[110px] overflow-hidden rounded-xl border border-[#E5E4E0] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
                 <button
                   type="button"
                   onClick={() => handleModeToggle("image")}
@@ -355,28 +355,6 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
           </div>
         </div>
 
-        <div className="mt-20 inline-flex items-center gap-1 rounded-full border border-[#E5E4E0] bg-white p-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
-          <button
-            type="button"
-            onClick={() => handleModeToggle("image")}
-            className={`rounded-full px-5 py-1.5 text-[12px] font-semibold transition-colors sm:text-[13px] ${selectedGenerateType === "image"
-              ? "bg-[#3B82F6] text-white"
-              : "bg-white text-[#556070] hover:bg-[#eef3ff]"
-              }`}
-          >
-            Image
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeToggle("video")}
-            className={`rounded-full px-5 py-1.5 text-[12px] font-semibold transition-colors sm:text-[13px] ${selectedGenerateType === "video"
-              ? "bg-[#3B82F6] text-white"
-              : "bg-white text-[#556070] hover:bg-[#eef3ff]"
-              }`}
-          >
-            Video
-          </button>
-        </div>
       </div>
     </section>
   );
