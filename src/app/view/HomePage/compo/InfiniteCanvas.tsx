@@ -1,171 +1,297 @@
 "use client";
 
-import type { PointerEvent as ReactPointerEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const BOARD_WIDTH = 820;
-const BOARD_HEIGHT = 360;
-const NODE_WIDTH = 190;
-const NODE_HEIGHT = 146;
+/**
+ * Visual tokens aligned with wildmindcanvas (ImageModalFrame, TextModalFrame, VideoModalFrame).
+ * @see wildmindcanvas/core/canvas/canvasHelpers.ts — SELECTED_FRAME_BORDER_COLOR, etc.
+ */
+const STUDIO = {
+  frameBg: "#1A1A1A",
+  frameBorder: "#2e2e2e",
+  frameBorderW: 4,
+  selectionBlue: "#3B7FDB",
+  connector: "#4C83FF",
+  font: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+} as const;
+
+/** World size (CSS px) */
+const BOARD_WIDTH = 1040;
+const BOARD_HEIGHT = 560;
 const DOT_OFFSET = 6;
 
+const MIN_ZOOM = 0.65;
+const MAX_ZOOM = 2.4;
+const ZOOM_STEP = 1.12;
+
+const PRESET_PROMPT =
+  "Neon city at dusk, rain on wet streets, cinematic lighting, ultra detailed, 8k";
+
 type NodeId = "input" | "generate" | "motion" | "voice";
+
+/** Per-node size for clamping & ports (matches composed studio-style chrome). */
+const NODE_LAYOUT: Record<NodeId, { w: number; h: number }> = {
+  input: { w: 212, h: 136 },
+  generate: { w: 212, h: 304 },
+  motion: { w: 212, h: 192 },
+  voice: { w: 212, h: 128 },
+};
+
+/** Image preview height inside generate node (below top border). */
+const GENERATE_PREVIEW_H = 118;
+
 type NodePosition = { left: number; top: number };
 type NodePositions = Record<NodeId, NodePosition>;
 
 const INITIAL_POSITIONS: NodePositions = {
-  input: { left: 40, top: 98 },
-  generate: { left: 315, top: 42 },
-  motion: { left: 590, top: 62 },
-  voice: { left: 315, top: 230 },
+  input: { left: 36, top: 180 },
+  generate: { left: 300, top: 100 },
+  motion: { left: 600, top: 120 },
+  voice: { left: 300, top: 380 },
 };
+
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
+function studioDotStyle(accent: string): CSSProperties {
+  return {
+    position: "absolute",
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    border: `2px solid ${STUDIO.frameBg}`,
+    background: accent,
+    zIndex: 5,
+  };
+}
 
 export default function InfiniteCanvas() {
   const vpRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+
+  const [baseFit, setBaseFit] = useState(1);
+  const [userZoom, setUserZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+
   const [positions, setPositions] = useState<NodePositions>(INITIAL_POSITIONS);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const generateNonceRef = useRef(0);
+
   const dragStateRef = useRef<{
     nodeId: NodeId;
-    pointerId: number;
     offsetX: number;
     offsetY: number;
   } | null>(null);
-  function getDotPoint(dotId: string): { x: number; y: number } | null {
-    switch (dotId) {
-      case "dotA":
-        return {
-          x: positions.input.left + NODE_WIDTH + DOT_OFFSET,
-          y: positions.input.top + NODE_HEIGHT / 2,
-        };
-      case "dotBl":
-        return {
-          x: positions.generate.left - DOT_OFFSET,
-          y: positions.generate.top + NODE_HEIGHT / 2,
-        };
-      case "dotBr":
-        return {
-          x: positions.generate.left + NODE_WIDTH + DOT_OFFSET,
-          y: positions.generate.top + NODE_HEIGHT / 2,
-        };
-      case "dotBb":
-        return {
-          x: positions.generate.left + NODE_WIDTH / 2,
-          y: positions.generate.top + NODE_HEIGHT + DOT_OFFSET,
-        };
-      case "dotCl":
-        return {
-          x: positions.motion.left - DOT_OFFSET,
-          y: positions.motion.top + NODE_HEIGHT / 2,
-        };
-      case "dotDl":
-        return {
-          x: positions.voice.left - DOT_OFFSET,
-          y: positions.voice.top + NODE_HEIGHT / 2,
-        };
-      default:
-        return null;
-    }
-  }
 
-  function getPathD(
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number
-  ) {
-    const cx = (x1 + x2) / 2;
-    return `M${x1} ${y1} C${cx} ${y1} ${cx} ${y2} ${x2} ${y2}`;
-  }
+  const panStateRef = useRef<{
+    startX: number;
+    startY: number;
+    originPanX: number;
+    originPanY: number;
+    pointerId: number;
+  } | null>(null);
 
-  function clampPosition(left: number, top: number): NodePosition {
-    return {
-      left: Math.max(16, Math.min(left, BOARD_WIDTH - NODE_WIDTH - 16)),
-      top: Math.max(16, Math.min(top, BOARD_HEIGHT - NODE_HEIGHT - 16)),
-    };
-  }
+  const [isPanning, setIsPanning] = useState(false);
 
-  function updateNodePosition(nodeId: NodeId, left: number, top: number) {
-    setPositions((prev) => ({
-      ...prev,
-      [nodeId]: clampPosition(left, top),
-    }));
-  }
+  const effectiveScale = baseFit * userZoom;
 
-  function updateLayout() {
+  const updateBaseFit = useCallback(() => {
     const vp = vpRef.current;
     if (!vp) return;
     const isMobile = window.innerWidth < 640;
     const padding = isMobile ? 10 : 32;
     const widthScale = (vp.clientWidth - padding * 2) / BOARD_WIDTH;
     const heightScale = (vp.clientHeight - padding * 2) / BOARD_HEIGHT;
-    const baseScale = Math.min(widthScale, heightScale, 1);
-    const mobileBoostedScale = isMobile ? Math.min(baseScale * 1.2, 1) : baseScale;
-    setScale(mobileBoostedScale);
-  }
-
-  useEffect(() => {
-    const timer = window.setTimeout(updateLayout, 150);
-    window.addEventListener("resize", updateLayout);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("resize", updateLayout);
-    };
+    const fit = Math.min(widthScale, heightScale, 1);
+    const boosted = isMobile ? Math.min(fit * 1.12, 1) : fit;
+    setBaseFit(boosted);
   }, []);
 
   useEffect(() => {
-    function handlePointerMove(event: PointerEvent) {
-      const drag = dragStateRef.current;
-      const board = boardRef.current;
-      if (!drag || !board) return;
-      const boardRect = board.getBoundingClientRect();
-      const nextLeft = (event.clientX - boardRect.left) / scale - drag.offsetX;
-      const nextTop = (event.clientY - boardRect.top) / scale - drag.offsetY;
-      updateNodePosition(drag.nodeId, nextLeft, nextTop);
-    }
-
-    function endDrag() {
-      dragStateRef.current = null;
-    }
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", endDrag);
-    window.addEventListener("pointercancel", endDrag);
-
+    const t = window.setTimeout(updateBaseFit, 150);
+    window.addEventListener("resize", updateBaseFit);
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", endDrag);
-      window.removeEventListener("pointercancel", endDrag);
+      window.clearTimeout(t);
+      window.removeEventListener("resize", updateBaseFit);
     };
-  }, [scale]);
+  }, [updateBaseFit]);
 
-  function startDrag(nodeId: NodeId, event: ReactPointerEvent<HTMLDivElement>) {
-    const target = event.currentTarget;
+  const clientToWorld = useCallback((clientX: number, clientY: number) => {
     const board = boardRef.current;
-    const position = positions[nodeId];
-    if (!board) return;
-    const boardRect = board.getBoundingClientRect();
+    if (!board) return { x: 0, y: 0 };
+    const r = board.getBoundingClientRect();
+    const x = ((clientX - r.left) / r.width) * BOARD_WIDTH;
+    const y = ((clientY - r.top) / r.height) * BOARD_HEIGHT;
+    return { x, y };
+  }, []);
+
+  function clampPosition(nodeId: NodeId, left: number, top: number): NodePosition {
+    const { w, h } = NODE_LAYOUT[nodeId];
+    return {
+      left: clamp(left, 12, BOARD_WIDTH - w - 12),
+      top: clamp(top, 12, BOARD_HEIGHT - h - 12),
+    };
+  }
+
+  function updateNodePosition(nodeId: NodeId, left: number, top: number) {
+    setPositions((prev) => ({
+      ...prev,
+      [nodeId]: clampPosition(nodeId, left, top),
+    }));
+  }
+
+  const getDotPoint = useCallback(
+    (dotId: string): { x: number; y: number } | null => {
+      const p = positions;
+      const Li = NODE_LAYOUT.input;
+      const Lg = NODE_LAYOUT.generate;
+      const Lm = NODE_LAYOUT.motion;
+      const Lv = NODE_LAYOUT.voice;
+      const bw = STUDIO.frameBorderW;
+
+      switch (dotId) {
+        case "dotA":
+          return {
+            x: p.input.left + Li.w + DOT_OFFSET,
+            y: p.input.top + Li.h / 2,
+          };
+        case "dotBl": {
+          const imgMidY = p.generate.top + bw + GENERATE_PREVIEW_H / 2;
+          return { x: p.generate.left - DOT_OFFSET, y: imgMidY };
+        }
+        case "dotBr":
+          return {
+            x: p.generate.left + Lg.w + DOT_OFFSET,
+            y: p.generate.top + bw + GENERATE_PREVIEW_H / 2,
+          };
+        case "dotBb":
+          return {
+            x: p.generate.left + Lg.w / 2,
+            y: p.generate.top + bw + GENERATE_PREVIEW_H + bw + DOT_OFFSET,
+          };
+        case "dotCl":
+          return {
+            x: p.motion.left - DOT_OFFSET,
+            y: p.motion.top + Lm.h / 2,
+          };
+        case "dotDl":
+          return {
+            x: p.voice.left - DOT_OFFSET,
+            y: p.voice.top + Lv.h / 2,
+          };
+        default:
+          return null;
+      }
+    },
+    [positions]
+  );
+
+  function getPathD(x1: number, y1: number, x2: number, y2: number) {
+    const cx = (x1 + x2) / 2;
+    return `M${x1} ${y1} C${cx} ${y1} ${cx} ${y2} ${x2} ${y2}`;
+  }
+
+  useEffect(() => {
+    function onMove(ev: PointerEvent) {
+      const nodeDrag = dragStateRef.current;
+      if (nodeDrag) {
+        const { x, y } = clientToWorld(ev.clientX, ev.clientY);
+        updateNodePosition(nodeDrag.nodeId, x - nodeDrag.offsetX, y - nodeDrag.offsetY);
+        return;
+      }
+      const panDrag = panStateRef.current;
+      if (panDrag && ev.pointerId === panDrag.pointerId) {
+        setPan({
+          x: panDrag.originPanX + (ev.clientX - panDrag.startX),
+          y: panDrag.originPanY + (ev.clientY - panDrag.startY),
+        });
+      }
+    }
+
+    function endAll() {
+      dragStateRef.current = null;
+      if (panStateRef.current) setIsPanning(false);
+      panStateRef.current = null;
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", endAll);
+    window.addEventListener("pointercancel", endAll);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", endAll);
+      window.removeEventListener("pointercancel", endAll);
+    };
+  }, [clientToWorld]);
+
+  function startDragNode(nodeId: NodeId, event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const pos = positions[nodeId];
+    const { x, y } = clientToWorld(event.clientX, event.clientY);
     dragStateRef.current = {
       nodeId,
-      pointerId: event.pointerId,
-      offsetX: (event.clientX - boardRect.left) / scale - position.left,
-      offsetY: (event.clientY - boardRect.top) / scale - position.top,
+      offsetX: x - pos.left,
+      offsetY: y - pos.top,
     };
-    target.setPointerCapture(event.pointerId);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function onBackdropPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget) return;
+    if (e.button !== 0 && e.button !== 1) return;
+    e.preventDefault();
+    setIsPanning(true);
+    panStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      originPanX: pan.x,
+      originPanY: pan.y,
+      pointerId: e.pointerId,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onWheel(e: React.WheelEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
+    setUserZoom((z) => clamp(z * delta, MIN_ZOOM, MAX_ZOOM));
+  }
+
+  async function runDemoGenerate() {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    generateNonceRef.current += 1;
+    const n = generateNonceRef.current;
+    await new Promise((r) => window.setTimeout(r, 900 + Math.random() * 400));
+    if (n !== generateNonceRef.current) return;
+    const seed = `hero-${Date.now()}-${n}`;
+    setGeneratedImageUrl(`https://picsum.photos/seed/${encodeURIComponent(seed)}/400/220`);
+    setIsGenerating(false);
   }
 
   const connections = [
-    { from: getDotPoint("dotA"), to: getDotPoint("dotBl"), color: "#f59e0b", dashed: false },
-    { from: getDotPoint("dotBr"), to: getDotPoint("dotCl"), color: "#3B82F6", dashed: true },
-    { from: getDotPoint("dotBb"), to: getDotPoint("dotDl"), color: "#6EE66E", dashed: false },
-  ].filter((connection) => connection.from && connection.to);
+    { from: getDotPoint("dotA"), to: getDotPoint("dotBl"), dashed: false },
+    { from: getDotPoint("dotBr"), to: getDotPoint("dotCl"), dashed: true },
+    { from: getDotPoint("dotBb"), to: getDotPoint("dotDl"), dashed: false },
+  ].filter((c) => c.from && c.to);
+
+  const { w: iw, h: ih } = NODE_LAYOUT.input;
+  const { w: gw, h: gh } = NODE_LAYOUT.generate;
+  const { w: mw, h: mh } = NODE_LAYOUT.motion;
+  const { w: vw, h: vh } = NODE_LAYOUT.voice;
+  const bw = STUDIO.frameBorderW;
 
   return (
-    <section className="bg-[#0E0E12] px-4 sm:px-4 md:px-6 lg:px-8">
+    <section
+      className="bg-[#0E0E12] px-4 sm:px-4 md:px-6 lg:px-8"
+      style={{ fontFamily: STUDIO.font }}
+    >
       <style>{`
-        .dash-anim {
-          animation: dashmove 1.4s linear infinite;
-        }
+        .dash-anim { animation: dashmove 1.4s linear infinite; }
         .wb {
           width: 3px;
           border-radius: 999px;
@@ -179,44 +305,27 @@ export default function InfiniteCanvas() {
         .wb:nth-child(5) { height: 18px; animation-delay: -0.5s; }
         .wb:nth-child(6) { height: 14px; animation-delay: -0.25s; }
         .wb:nth-child(7) { height: 10px; animation-delay: -0.55s; }
-        .nd-blink {
-          display: inline-block;
-          width: 7px;
-          height: 13px;
-          margin-left: 3px;
-          background: rgba(240,239,233,.5);
-          animation: blink 1s steps(2, start) infinite;
-          vertical-align: -2px;
-        }
-        @keyframes blink {
-          to { opacity: 0; }
-        }
         @keyframes waveform {
           0%, 100% { transform: scaleY(0.75); opacity: 0.8; }
           50% { transform: scaleY(1.15); opacity: 1; }
         }
-        @keyframes dashmove {
-          to { stroke-dashoffset: -20; }
-        }
-        .canvas-node {
+        @keyframes dashmove { to { stroke-dashoffset: -20; } }
+        .studio-node {
           touch-action: none;
           user-select: none;
           cursor: grab;
-          transition: box-shadow 180ms ease, border-color 180ms ease;
-          will-change: transform;
+          box-sizing: border-box;
         }
-        .canvas-node:active {
-          cursor: grabbing;
-        }
+        .studio-node:active { cursor: grabbing; }
       `}</style>
 
       <div className="mb-3 flex flex-col gap-2 sm:mb-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div
             className="mb-1.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] sm:text-[10px]"
-            style={{ color: "#3B82F6" }}
+            style={{ color: STUDIO.selectionBlue }}
           >
-            <span className="inline-block h-[1.5px] w-3.5 sm:w-4" style={{ background: "#3B82F6" }} />
+            <span className="inline-block h-[1.5px] w-3.5 sm:w-4" style={{ background: STUDIO.selectionBlue }} />
             Infinite Canvas
           </div>
           <h2
@@ -225,31 +334,81 @@ export default function InfiniteCanvas() {
           >
             Build Visual Workflows
           </h2>
+          <p className="mt-1.5 max-w-xl text-[11px] leading-snug text-white/40 sm:text-xs">
+            Studio-style text, image, and video frames (Wildmind canvas look). Pan, zoom, drag nodes, then{" "}
+            <span className="text-white/70">Generate image</span> for a quick demo.
+          </p>
         </div>
-        <button
+        <a
+          href="https://wildmindai.com"
+          target="_blank"
+          rel="noopener noreferrer"
           className="w-fit rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/45 transition-all duration-200 hover:border-white/20 hover:text-[#F0EFE9] sm:px-[18px] sm:py-2 sm:text-xs"
         >
-          Open Canvas 
-        </button>
+          Open Canvas
+        </a>
       </div>
 
       <div
         ref={vpRef}
         className="relative w-full overflow-hidden rounded-2xl border border-white/7 bg-[#1C1C20] sm:rounded-3xl"
         style={{
-          height: "clamp(340px, 48vw, 430px)",
+          height: "clamp(360px, 50vw, 460px)",
           backgroundImage:
             "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)",
           backgroundSize: "28px 28px",
+          touchAction: "none",
         }}
+        onWheel={onWheel}
       >
+        <div className="pointer-events-none absolute right-2 top-2 z-30 flex items-center gap-1 rounded-lg border border-white/10 bg-black/40 px-1 py-0.5 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Zoom out"
+            className="pointer-events-auto rounded px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
+            onClick={() => setUserZoom((z) => clamp(z / ZOOM_STEP, MIN_ZOOM, MAX_ZOOM))}
+          >
+            −
+          </button>
+          <span className="min-w-[2.5rem] text-center text-[10px] tabular-nums text-white/50">
+            {Math.round(userZoom * 100)}%
+          </span>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            className="pointer-events-auto rounded px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
+            onClick={() => setUserZoom((z) => clamp(z * ZOOM_STEP, MIN_ZOOM, MAX_ZOOM))}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="pointer-events-auto ml-0.5 rounded border-l border-white/10 pl-1.5 text-[10px] text-white/45 hover:text-white/70"
+            onClick={() => {
+              setPan({ x: 0, y: 0 });
+              setUserZoom(1);
+            }}
+          >
+            Reset
+          </button>
+        </div>
+
+        <div
+          className={`absolute inset-0 z-[1] ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+          onPointerDown={onBackdropPointerDown}
+          style={{ touchAction: "none" }}
+        />
+
         <div
           ref={boardRef}
-          className="absolute left-1/2 top-1/2 z-[2] origin-center"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-[2]"
           style={{
             width: BOARD_WIDTH,
             height: BOARD_HEIGHT,
-            transform: `translate(-50%, -50%) scale(${scale})`,
+            marginLeft: -BOARD_WIDTH / 2,
+            marginTop: -BOARD_HEIGHT / 2,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${effectiveScale})`,
+            transformOrigin: "center center",
           }}
         >
           <svg
@@ -259,7 +418,7 @@ export default function InfiniteCanvas() {
           >
             {connections.map((connection, index) => (
               <path
-                key={`${index}-${connection.color}`}
+                key={index}
                 d={getPathD(
                   connection.from!.x,
                   connection.from!.y,
@@ -267,108 +426,291 @@ export default function InfiniteCanvas() {
                   connection.to!.y
                 )}
                 fill="none"
-                stroke={connection.color}
+                stroke={STUDIO.connector}
                 strokeWidth="2"
                 strokeLinecap="round"
-                strokeOpacity="0.85"
+                strokeOpacity="0.9"
                 strokeDasharray={connection.dashed ? "5 5" : undefined}
                 className={connection.dashed ? "dash-anim" : undefined}
               />
             ))}
           </svg>
 
+          {/* === Text frame (TextModalFrame-style) === */}
           <div
-            id="ndA"
-            onPointerDown={(event) => startDrag("input", event)}
-            className="canvas-node absolute z-[2] w-[190px] rounded-[11px] border border-white/[0.09] bg-[rgba(28,28,32,0.96)] shadow-[0_6px_28px_rgba(0,0,0,0.5)] hover:border-white/[0.18]"
-            style={{ left: positions.input.left, top: positions.input.top }}
+            className="studio-node pointer-events-auto absolute z-[2]"
+            style={{ left: positions.input.left, top: positions.input.top, width: iw, height: ih }}
+            onPointerDown={(e) => startDragNode("input", e)}
           >
-            <div className="flex items-center gap-1.5 border-b border-white/[0.05] px-2.5 pb-[6px] pt-[7px] sm:px-3 sm:pb-[7px] sm:pt-[9px]">
-              <span className="flex h-3.5 w-3.5 items-center justify-center text-[#f59e0b]">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.4"/><path d="M3 4.5h7M3 6.5h4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#f59e0b]">Input</span>
-              <span className="ml-auto text-xs tracking-[2px] opacity-20">:::</span>
+            <div
+              className="w-full flex-shrink-0 bg-black"
+              style={{ height: 10, borderRadius: "16px 16px 0 0" }}
+            />
+            <div
+              style={{
+                border: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderTop: "none",
+                borderRadius: "0 0 16px 16px",
+                background: STUDIO.frameBg,
+                height: ih - 10,
+                overflow: "hidden",
+              }}
+            >
+              <textarea
+                readOnly
+                value={PRESET_PROMPT}
+                className="h-full w-full resize-none border-0 bg-transparent p-3 text-[11px] leading-relaxed text-white/90 outline-none"
+                style={{ fontFamily: STUDIO.font }}
+              />
             </div>
-            <div className="p-2.5 pb-0 sm:p-3 sm:pb-0">
-              <div
-                className="rounded-[7px] border border-white/[0.06] bg-[rgba(6,8,12,.85)] p-3 font-mono text-[11px] leading-relaxed text-[rgba(240,239,233,.4)]"
-              >
-                "Neon city at dusk..."<span className="nd-blink" />
-              </div>
-            </div>
-            <div className="mt-1.5 px-2.5 pb-2 text-xs font-bold text-white sm:mt-2 sm:px-3 sm:pb-2.5">Text Prompt</div>
-            <div id="dotA" className="absolute right-[-6px] top-1/2 z-[5] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-[rgba(28,28,32,0.96)] bg-[#f59e0b]" />
+            <div
+              style={{
+                ...studioDotStyle("#f59e0b"),
+                right: -DOT_OFFSET - 5,
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
+            />
           </div>
 
+          {/* === Image generation: ImageModalFrame + ImageModalControls-style === */}
           <div
-            onPointerDown={(event) => startDrag("generate", event)}
-            className="canvas-node absolute z-[2] w-[190px] rounded-[11px] border border-white/[0.09] bg-[rgba(28,28,32,0.96)] shadow-[0_6px_28px_rgba(0,0,0,0.5)] hover:border-white/[0.18]"
-            style={{ left: positions.generate.left, top: positions.generate.top }}
+            className="pointer-events-auto absolute z-[2]"
+            style={{ left: positions.generate.left, top: positions.generate.top, width: gw, height: gh }}
           >
-            <div className="flex items-center gap-1.5 border-b border-white/[0.05] px-2.5 pb-[6px] pt-[7px] sm:px-3 sm:pb-[7px] sm:pt-[9px]">
-              <span className="flex h-3.5 w-3.5 items-center justify-center text-[#3B82F6]">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L12 6.5 6.5 12M1 6.5h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#3B82F6]">Generate</span>
-              <span className="ml-auto text-xs tracking-[2px] opacity-20">:::</span>
-            </div>
-            <div className="p-2.5 pb-0 sm:p-3 sm:pb-0">
-              <div className="h-24 overflow-hidden rounded-[7px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://picsum.photos/seed/ndimg1/190/96" alt="" className="h-full w-full object-cover" style={{ filter: "brightness(.85) saturate(.9)" }} />
-              </div>
-            </div>
-            <div className="mt-1.5 px-2.5 pb-2 text-xs font-bold text-white sm:mt-2 sm:px-3 sm:pb-2.5">Flux Pro 1.1</div>
-            <div id="dotBl" className="absolute left-[-6px] top-1/2 z-[5] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-[rgba(28,28,32,0.96)] bg-[#3B82F6]" />
-            <div id="dotBr" className="absolute right-[-6px] top-1/2 z-[5] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-[rgba(28,28,32,0.96)] bg-[#3B82F6]" />
-            <div id="dotBb" className="absolute bottom-[-6px] left-1/2 z-[5] h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 border-[rgba(28,28,32,0.96)] bg-[#3B82F6]" />
-          </div>
-
-          <div
-            onPointerDown={(event) => startDrag("motion", event)}
-            className="canvas-node absolute z-[2] w-[190px] rounded-[11px] border border-white/[0.09] bg-[rgba(28,28,32,0.96)] shadow-[0_6px_28px_rgba(0,0,0,0.5)] hover:border-white/[0.18]"
-            style={{ left: positions.motion.left, top: positions.motion.top }}
-          >
-            <div className="flex items-center gap-1.5 border-b border-white/[0.05] px-2.5 pb-[6px] pt-[7px] sm:px-3 sm:pb-[7px] sm:pt-[9px]">
-              <span className="flex h-3.5 w-3.5 items-center justify-center text-[#a78bfa]">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="9" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M10 5.5l2.5-1.5v5L10 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#a78bfa]">Motion</span>
-              <span className="ml-auto text-xs tracking-[2px] opacity-20">:::</span>
-            </div>
-            <div className="p-2.5 pb-0 sm:p-3 sm:pb-0">
-              <div className="flex h-24 items-center justify-center rounded-[7px] bg-[linear-gradient(135deg,#1e1028,#181a2e)]">
-                <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-white/20 bg-white/[0.12]">
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="ml-0.5"><path d="M2.5 1.5L9 5.5L2.5 9.5V1.5Z" fill="rgba(196,181,253,.9)"/></svg>
+            <div
+              onPointerDown={(e) => startDragNode("generate", e)}
+              className="studio-node"
+              style={{
+                width: gw,
+                height: GENERATE_PREVIEW_H + bw,
+                boxSizing: "border-box",
+                background: STUDIO.frameBg,
+                borderTop: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderLeft: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderRight: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderBottom: "none",
+                borderRadius: "20px 20px 0 0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              {isGenerating ? (
+                <div className="flex flex-col items-center gap-2 text-[11px] text-white/45">
+                  <span
+                    className="inline-block h-7 w-7 animate-spin rounded-full"
+                    style={{
+                      border: "2px solid rgba(255,255,255,0.15)",
+                      borderTopColor: STUDIO.selectionBlue,
+                    }}
+                  />
+                  Generating image…
                 </div>
-              </div>
+              ) : generatedImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={generatedImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  style={{
+                    borderRadius: 17,
+                    filter: "brightness(0.92) saturate(0.95)",
+                  }}
+                />
+              ) : (
+                <div className="text-center" style={{ color: "#666" }}>
+                  <svg
+                    width={48}
+                    height={48}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="mx-auto mb-2 opacity-30"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <span className="text-[10px] text-white/35">Image generation</span>
+                </div>
+              )}
             </div>
-            <div className="mt-1.5 px-2.5 pb-2 text-xs font-bold text-white sm:mt-2 sm:px-3 sm:pb-2.5">Runway Gen-3</div>
-            <div id="dotCl" className="absolute left-[-6px] top-1/2 z-[5] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-[rgba(28,28,32,0.96)] bg-[#a78bfa]" />
+
+            <div
+              style={{
+                width: gw,
+                background: STUDIO.frameBg,
+                border: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderTop: `1px solid rgba(255,255,255,0.06)`,
+                borderRadius: "0 0 16px 16px",
+                marginTop: -bw,
+                padding: "10px 12px 12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div className="flex gap-2">
+                <textarea
+                  readOnly
+                  value={PRESET_PROMPT}
+                  className="min-h-[44px] flex-1 resize-none rounded-[10px] border-0 p-3 text-[12px] font-semibold leading-snug text-white outline-none"
+                  style={{
+                    background: STUDIO.frameBg,
+                    fontFamily: STUDIO.font,
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                />
+                <button
+                  type="button"
+                  title="Generate"
+                  disabled={isGenerating}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void runDemoGenerate();
+                  }}
+                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[10px] text-white transition hover:opacity-90 disabled:opacity-40"
+                  style={{ background: STUDIO.selectionBlue }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+              <div className="text-[10px] font-semibold text-white/55">Google nano banana pro · 2K</div>
+            </div>
+
+            <div
+              style={{
+                ...studioDotStyle(STUDIO.selectionBlue),
+                left: -DOT_OFFSET - 5,
+                top: bw + GENERATE_PREVIEW_H / 2,
+                transform: "translateY(-50%)",
+              }}
+            />
+            <div
+              style={{
+                ...studioDotStyle(STUDIO.selectionBlue),
+                right: -DOT_OFFSET - 5,
+                top: bw + GENERATE_PREVIEW_H / 2,
+                transform: "translateY(-50%)",
+              }}
+            />
+            <div
+              style={{
+                ...studioDotStyle(STUDIO.selectionBlue),
+                left: "50%",
+                top: bw + GENERATE_PREVIEW_H + bw + DOT_OFFSET,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
           </div>
 
+          {/* === Video frame (VideoModalFrame-style) === */}
           <div
-            onPointerDown={(event) => startDrag("voice", event)}
-            className="canvas-node absolute z-[2] w-[190px] rounded-[11px] border border-white/[0.09] bg-[rgba(28,28,32,0.96)] shadow-[0_6px_28px_rgba(0,0,0,0.5)] hover:border-white/[0.18]"
-            style={{ left: positions.voice.left, top: positions.voice.top }}
+            className="studio-node pointer-events-auto absolute z-[2]"
+            style={{ left: positions.motion.left, top: positions.motion.top, width: mw, height: mh }}
+            onPointerDown={(e) => startDragNode("motion", e)}
           >
-            <div className="flex items-center gap-1.5 border-b border-white/[0.05] px-2.5 pb-[6px] pt-[7px] sm:px-3 sm:pb-[7px] sm:pt-[9px]">
-              <span className="flex h-3.5 w-3.5 items-center justify-center text-[#6EE66E]">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v6M4.5 3v4M8.5 3v4M2.5 5.5v2M10.5 5.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#6EE66E]">Voice</span>
-              <span className="ml-auto text-xs tracking-[2px] opacity-20">:::</span>
+            <div
+              style={{
+                width: mw,
+                height: mh - 28,
+                background: STUDIO.frameBg,
+                border: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderRadius: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+              }}
+            >
+              <div className="text-center" style={{ color: "#666" }}>
+                <svg
+                  width={52}
+                  height={52}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="mx-auto mb-1 opacity-30"
+                >
+                  <polygon points="23 7 16 12 23 17 23 7" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+                <button
+                  type="button"
+                  className="mt-1 rounded-full px-3 py-1 text-[10px] font-medium text-white/80"
+                  style={{ background: "rgba(0,0,0,0.55)" }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  Preview
+                </button>
+              </div>
             </div>
-            <div className="p-2.5 pb-0 sm:p-3 sm:pb-0">
-              <div className="flex h-[54px] items-center justify-center gap-[3px]">
+            <div className="mt-1 px-1 text-[11px] font-bold text-white/90">Kling 1.6</div>
+            <div
+              style={{
+                ...studioDotStyle("#a78bfa"),
+                left: -DOT_OFFSET - 5,
+                top: (mh - 28) / 2 + bw,
+                transform: "translateY(-50%)",
+              }}
+            />
+          </div>
+
+          {/* === Voice / audio strip (studio border + waveform) === */}
+          <div
+            className="studio-node pointer-events-auto absolute z-[2]"
+            style={{ left: positions.voice.left, top: positions.voice.top, width: vw, height: vh }}
+            onPointerDown={(e) => startDragNode("voice", e)}
+          >
+            <div
+              style={{
+                width: vw,
+                height: vh,
+                background: STUDIO.frameBg,
+                border: `${bw}px solid ${STUDIO.frameBorder}`,
+                borderRadius: 16,
+                boxSizing: "border-box",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                className="flex items-center gap-2 border-b px-3 py-2"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[#6EE66E]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M12 2v10M8 6v6M16 6v6M5 10v4M19 10v4" strokeLinecap="round" />
+                    <path d="M4 20h16" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#6EE66E]">Music</span>
+                <span className="ml-auto text-[10px] tracking-widest text-white/20">···</span>
+              </div>
+              <div className="flex flex-1 items-center justify-center gap-0.5 px-3">
                 {[...Array(7)].map((_, i) => (
                   <div key={i} className="wb" />
                 ))}
               </div>
+              <div className="px-3 pb-2 text-[10px] font-semibold text-white/55">Suno v4</div>
             </div>
-            <div className="mt-1.5 px-2.5 pb-2 text-xs font-bold text-white sm:mt-2 sm:px-3 sm:pb-2.5">ElevenLabs</div>
-            <div id="dotDl" className="absolute left-[-6px] top-1/2 z-[5] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-[rgba(28,28,32,0.96)] bg-[#6EE66E]" />
+            <div
+              style={{
+                ...studioDotStyle("#6EE66E"),
+                left: -DOT_OFFSET - 5,
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
+            />
           </div>
         </div>
       </div>

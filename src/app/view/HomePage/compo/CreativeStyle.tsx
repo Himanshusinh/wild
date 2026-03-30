@@ -153,8 +153,8 @@ export default function CreativeStyle() {
           ref={railRef}
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {STYLES.map((style) => (
-            <Link key={style.id} href={style.href} className="w-full md:w-[340px] shrink-0 snap-start">
+          {STYLES.map((style, index) => (
+            <Link key={`${style.id}-${index}`} href={style.href} className="w-full md:w-[340px] shrink-0 snap-start">
               <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
                 <div className="group relative h-[190px] sm:h-[220px]">
                   <img

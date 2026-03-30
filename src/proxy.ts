@@ -206,6 +206,24 @@ export function proxy(req: NextRequest) {
   // Allow OAuth popups to function (prevents window.closed blocking)
   res.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
 
+  // frame-src: production uses https:; local canvas dev servers use http://localhost / 127.0.0.1
+  const frameSrcParts = new Set<string>(["'self'", "https:"]);
+  if (isLocalHost) {
+    frameSrcParts.add("http://127.0.0.1:*");
+    frameSrcParts.add("http://localhost:*");
+  }
+  const showcaseEmbedBase =
+    process.env.NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL ||
+    process.env.NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL;
+  if (showcaseEmbedBase) {
+    try {
+      const u = new URL(showcaseEmbedBase);
+      frameSrcParts.add(`${u.protocol}//${u.host}`);
+    } catch {
+      /* ignore invalid env URL */
+    }
+  }
+
   // Relaxed CSP - More permissive to avoid blocking issues
   const csp = [
     "default-src 'self'",
@@ -220,8 +238,7 @@ export function proxy(req: NextRequest) {
     "media-src 'self' data: blob: https: http:",
     // Allow connections to any HTTPS endpoint
     "connect-src 'self' https: http: ws: wss:",
-    // Allow iframes from HTTPS
-    "frame-src 'self' https:",
+    `frame-src ${[...frameSrcParts].join(" ")}`,
     // Do not allow our app to be framed by other sites
     "frame-ancestors 'none'",
     // Hardening
