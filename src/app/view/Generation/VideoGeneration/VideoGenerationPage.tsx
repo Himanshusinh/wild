@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { setSidebarExpanded } from '@/store/slices/uiSlice';
+import { Menu } from 'lucide-react';
 import { getSignInUrl } from '@/routes/routes';
 import InputBox from './TextToVideo/compo/InputBox';
 import AnimateInputBox from './TextToVideo/compo/AnimateInputBox';
@@ -18,6 +20,7 @@ export default function VideoGenerationPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
+    const dispatch = useAppDispatch();
     const [activeFeature, setActiveFeature] = useState<VideoFeature>('Video');
     const isInlineEditVideoPage = pathname?.startsWith('/text-to-video/edit-video');
     const authUser = useAppSelector((state: any) => state.auth?.user);
@@ -96,6 +99,13 @@ export default function VideoGenerationPage() {
                         <div className="mb-0 md:mb-1 pt-8 md:pt-0">
                             <div className="flex items-center justify-between md:mb-2 mb-0">
                                 <div className="flex items-center gap-2 md:pt-2">
+                                    <button
+                                        onClick={() => dispatch(setSidebarExpanded(true))}
+                                        className="md:hidden p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+                                        aria-label="Toggle Menu"
+                                    >
+                                        <Menu size={24} />
+                                    </button>
                                     <h2 className="text-white md:text-2xl text-md font-semibold">
                                         Video Generation
                                     </h2>

@@ -12,8 +12,8 @@ import { HistoryEntry, HistoryFilters } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory, removeHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
-import { setCurrentView } from '@/store/slices/uiSlice';
-import { Download, Trash2 } from 'lucide-react';
+import { setCurrentView, setSidebarExpanded } from '@/store/slices/uiSlice';
+import { Download, Trash2, Menu } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 import HistoryControls from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls';
@@ -180,8 +180,15 @@ const History = () => {
       if (!user) return; // Suppress fetching if not logged in
       if (loadLockRef.current) return; // prevent duplicate initial loads
       loadLockRef.current = true;
-      const initialLimit = computeDynamicLimit(0);
-      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, backendFilters: filtersObj, paginationParams: { limit: initialLimit }, forceRefresh: true })).unwrap();
+      const initialLimit = quickFilter === 'user-uploads' || quickFilter === 'all' ? 100 : computeDynamicLimit(0);
+      const result: any = await (dispatch as any)(loadHistory({ 
+        filters: { ...filtersObj, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
+        backendFilters: { ...filtersObj, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
+        paginationParams: { limit: initialLimit }, 
+        expectedType: quickFilter === 'all' || quickFilter === 'user-uploads' ? undefined : 'text-to-image',
+        skipBackendGenerationFilter: quickFilter === 'all' || quickFilter === 'user-uploads' || quickFilter === 'images',
+        forceRefresh: true 
+      })).unwrap();
       const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
       let nextHasMore: boolean;
       if (typeof (result && result.hasMore) !== 'undefined') {
@@ -220,6 +227,7 @@ const History = () => {
     dispatch(setFilters(nextFilters));
     // Clear immediately so stale tiles don't linger while backend fetch happens
     dispatch(clearHistory());
+    loadLockRef.current = false; // unlock so date-change fetch isn't blocked by an in-flight request
     await loadFirstPage(nextFilters);
     setPage(1);
     if (closeCalendar) setShowCalendar(false);
@@ -233,6 +241,7 @@ const History = () => {
     isFetchingMoreRef.current = false;
     hasUserScrolledRef.current = false;
     autoLoadAttemptsRef.current = 0;
+    loadLockRef.current = false; // unlock so the new fetch isn't blocked by an in-flight request
 
     const f: any = { ...filters, sortOrder: newSortOrder };
     if (dateRange.start && dateRange.end) f.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end?.toISOString() };
@@ -272,6 +281,9 @@ const History = () => {
 
         // Reset history to ensure a clean initial load on refresh
         dispatch(clearHistory());
+        loadLockRef.current = false; // unlock so view/search changes aren't blocked by a previous in-flight request
+        isFetchingMoreRef.current = false;
+        autoLoadAttemptsRef.current = 0;
         if (viewMode === 'global') {
           const base: any = {};
           if (sortOrder) base.sortOrder = sortOrder;
@@ -313,9 +325,13 @@ const History = () => {
       const baseFilters = { ...filters } as any;
       if (sortOrder) baseFilters.sortOrder = sortOrder;
       if (searchQuery.trim()) baseFilters.search = searchQuery.trim();
-      const limit = sortOrder === 'asc' ? 30 : 10;
+      const limit = (quickFilter === 'user-uploads' || quickFilter === 'all') ? 100 : (sortOrder === 'asc' ? 30 : 10);
 
-      dispatch(loadMoreHistory({ filters: baseFilters, backendFilters: baseFilters, paginationParams: { limit } }))
+      dispatch(loadMoreHistory({ 
+        filters: { ...baseFilters, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
+        backendFilters: { ...baseFilters, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
+        paginationParams: { limit }
+      }))
         .then((action: any) => {
           // Only update paging state on fulfilled requests; rejected conditions should not kill pagination.
           if (action?.meta?.requestStatus !== 'fulfilled') return;
@@ -329,7 +345,7 @@ const History = () => {
     } catch {
       isFetchingMoreRef.current = false;
     }
-  }, [dispatch, filters, hasMore, loading, searchQuery, sortOrder]);
+  }, [dispatch, filters, hasMore, loading, searchQuery, sortOrder, quickFilter]);
 
   useEffect(() => {
     const el = scrollContainerRef.current;
@@ -373,11 +389,16 @@ const History = () => {
     if (loading || isFetchingMoreRef.current || !hasMore) return;
     // If the content doesn't overflow, we can't scroll, so trigger loadMore automatically.
     const isScrollable = el.scrollHeight > el.clientHeight + 20;
-    if (isScrollable) return;
-    if (autoLoadAttemptsRef.current >= 4) return; // safety cap
+    const hasFilteredItems = getFilteredItemsCount() > 0;
+    // For regular tabs, we stop after 4 attempts to avoid infinite loops.
+    // For Uploads tab, we're more aggressive (up to 12 attempts) because matching items are rare.
+    const maxAttempts = (quickFilter === 'user-uploads' || quickFilter === 'all') ? 12 : 4;
+    
+    if (isScrollable && hasFilteredItems) return;
+    if (autoLoadAttemptsRef.current >= maxAttempts) return; // safety cap
     autoLoadAttemptsRef.current += 1;
     triggerLoadMore('autofill');
-  }, [historyEntries.length, hasMore, loading, triggerLoadMore]);
+  }, [historyEntries.length, hasMore, loading, triggerLoadMore, quickFilter]);
 
   // Handle click outside to close filter popover
   useEffect(() => {
@@ -952,6 +973,10 @@ const History = () => {
     setDateRange({ start: null, end: null });
     setSortOrder('desc');
     dispatch(clearFilters());
+    dispatch(clearHistory());
+    loadLockRef.current = false; // unlock so clear-filters fetch isn't blocked by an in-flight request
+    isFetchingMoreRef.current = false;
+    autoLoadAttemptsRef.current = 0;
     const base = {};
     await loadFirstPage(base);
 
@@ -1109,9 +1134,16 @@ const History = () => {
       {/* Fixed Header with title and controls */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12] backdrop-blur-xl shadow-xl px-3">
         <div className="pt-10 md:pt-4  md:px-3">
-          <div className="flex  md:items-center gap-4 md:pl-14 pb-2">
+          <div className="flex md:items-center gap-4 md:pl-14 pb-2">
+            <button
+              onClick={() => dispatch(setSidebarExpanded(true))}
+              className="md:hidden p-2 -ml-2 mt-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+              aria-label="Toggle Menu"
+            >
+              <Menu size={24} />
+            </button>
             <div>
-              <h2 className="text-xl md:text-2xl font-semibold text-white pb-2 ">{headerTitle}</h2>
+              <h2 className="text-xl md:text-2xl font-semibold text-white pb-0 md:pb-2 leading-tight">{headerTitle}</h2>
               <div className="hidden md:flex text-white/80 text-sm mt-0">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</div>
             </div>
 
@@ -1143,6 +1175,10 @@ const History = () => {
                     setLocalFilters(f);
                     dispatch(setFilters(f));
                     dispatch(clearHistory());
+                    // Reset all load guards so the new tab's fetch is never blocked by a previous in-flight request
+                    loadLockRef.current = false;
+                    isFetchingMoreRef.current = false;
+                    autoLoadAttemptsRef.current = 0;
                     await loadFirstPage(f);
                     setPage(1);
                     setPillLoading(false);
@@ -1162,19 +1198,20 @@ const History = () => {
             <div className="flex items-center ml-auto gap-3 -mt-3">
               <div className="hidden md:flex items-center justify-end gap-2">
                 <HistoryControls
-                  mode={currentGenerationType === 'text-to-video' ? 'video' : 'image'}
-                  onSearchChange={(s) => {
-                    setSearchQuery(String(s || ''));
+                  mode={
+                    (quickFilter === 'all' || quickFilter === 'user-uploads') ? 'all' :
+                    quickFilter === 'videos' ? 'video' :
+                    quickFilter === 'music' ? 'music' :
+                    (quickFilter === 'logo' || quickFilter === 'sticker' || quickFilter === 'product') ? 'branding' :
+                    currentGenerationType === 'text-to-video' ? 'video' : 'image'
+                  }
+                  onSearchChange={(search) => {
+                    setSearchQuery(search);
                     setPage(1);
+                    // The actual search fetch is handled via useEffect dependency on searchQuery or onSearchChange
                   }}
-                  onSortChange={(order) => {
-                    setSortOrder(order);
-                    setPage(1);
-                  }}
-                  onDateChange={(dr) => {
-                    setDateRange({ start: dr.start, end: dr.end });
-                    setDateInput(dr.start ? dr.start.toISOString().slice(0, 10) : '');
-                  }}
+                  onSortChange={onSortChange}
+                  onDateChange={(dr) => onDateChange(dr.start, dr.end)}
                 />
               </div>
             </div>
@@ -1210,6 +1247,10 @@ const History = () => {
                   setLocalFilters(f);
                   dispatch(setFilters(f));
                   dispatch(clearHistory());
+                  // Reset all load guards so the new tab's fetch is never blocked by a previous in-flight request
+                  loadLockRef.current = false;
+                  isFetchingMoreRef.current = false;
+                  autoLoadAttemptsRef.current = 0;
                   await loadFirstPage(f);
                   setPage(1);
                   setPillLoading(false);

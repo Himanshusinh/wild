@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Zap, Image as ImageIcon, Video, ArrowUpRight, Sparkles } from 'lucide-react';
+import { Check, Zap, Image as ImageIcon, Video, ArrowUpRight, Sparkles, Menu } from 'lucide-react';
+import { useAppDispatch } from '@/store/hooks';
+import { setSidebarExpanded } from '@/store/slices/uiSlice';
 import FooterNew from '../core/FooterNew';
 
 const PricingPage: React.FC = () => {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [trialStartDate, setTrialStartDate] = useState<Date | null>(null);
@@ -133,8 +136,19 @@ const PricingPage: React.FC = () => {
         <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/[0.05] rounded-full blur-[100px]" />
       </div>
 
+      {/* Mobile Header */}
+      <div className="md:hidden sticky top-0 z-50 bg-[#07070B]/80 backdrop-blur-md px-4 py-3 flex items-center mb-6">
+        <button
+          onClick={() => dispatch(setSidebarExpanded(true))}
+          className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+          aria-label="Toggle Menu"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+
       {/* --- Hero Section --- */}
-      <div className="relative z-10 pt-10  md:pt-24 pb-12 px-6 text-center animate-in fade-in duration-700 slide-in-from-bottom-4">
+      <div className="relative z-10 pt-4 md:pt-24 pb-12 px-6 text-center animate-in fade-in duration-700 slide-in-from-bottom-4">
         <div className="inline-flex items-center gap-2 border border-[#60a5fa]/30 bg-[#60a5fa]/10 rounded-full md:px-3 px-2 py-1 md:text-[10px] text-[9px] uppercase tracking-widest text-[#60a5fa] mb-8 shadow-[0_0_10px_rgba(96,165,250,0.2)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse"></span>
           Generate unlimited images from z image turbo

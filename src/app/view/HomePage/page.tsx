@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { useAppDispatch } from '@/store/hooks'
+import { setSidebarExpanded } from '@/store/slices/uiSlice'
+import { Menu } from 'lucide-react'
 // Import session checker utilities (available in browser console)
 import '@/utils/checkSessionStatus'
 // Nav and SidePannelFeatures are provided by the persistent root layout
@@ -57,6 +60,7 @@ import ImageVideoToggle from './compo/ImageVideoToggle';
 
 const HomePage: React.FC = () => {
     const router = useRouter();
+    const dispatch = useAppDispatch();
     const [currentView, setCurrentView] = useState<ViewType>('home');
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
@@ -212,6 +216,16 @@ const HomePage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#0E0E12]">
+            {/* Mobile Header */}
+            <div className="md:hidden sticky top-0 z-[60] bg-[#0E0E12]/80 backdrop-blur-md px-4 py-3 flex items-center">
+                <button
+                    onClick={() => dispatch(setSidebarExpanded(true))}
+                    className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+                    aria-label="Toggle Menu"
+                >
+                    <Menu size={24} />
+                </button>
+            </div>
             <div className="flex  md:ml-[68px] pt-2">
                 <div className="flex-1 min-w-0">
                     {/* <Header /> */}
