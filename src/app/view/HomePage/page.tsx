@@ -46,7 +46,7 @@ import AIToolsSection from './compo/AIToolsSection';
 import CompactFeatureStrip from './CompactFeatureStrip';
 import AllFeatures from './compo/AllFeatures';
 import VideoModelCards from './compo/VideoModelCards';
-import InfiniteCanvas from './compo/InfiniteCanvas';
+import StudioHomeShowcase from './compo/StudioHomeShowcase';
 import WildMindAIAPPS from './compo/WildMindAIAPPS';
 import CreatorsSection from './compo/CreatorsSection';
 import CreationCTASection from './compo/CreationCTASection';
@@ -229,7 +229,7 @@ const HomePage: React.FC = () => {
 
 
                     {/* <Recentcreation /> */}
-                    <InfiniteCanvas />
+                    <StudioHomeShowcase />
                     <WildMindAIAPPS />
                     <CreatorsSection />
 
