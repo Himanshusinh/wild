@@ -46,7 +46,7 @@ import AIToolsSection from './compo/AIToolsSection';
 import CompactFeatureStrip from './CompactFeatureStrip';
 import AllFeatures from './compo/AllFeatures';
 import VideoModelCards from './compo/VideoModelCards';
-import InfiniteCanvas from './compo/InfiniteCanvas';
+import StudioHomeShowcase from './compo/StudioHomeShowcase';
 import WildMindAIAPPS from './compo/WildMindAIAPPS';
 import CreatorsSection from './compo/CreatorsSection';
 import CreationCTASection from './compo/CreationCTASection';
@@ -229,7 +229,7 @@ const HomePage: React.FC = () => {
 
 
                     {/* <Recentcreation /> */}
-                    <InfiniteCanvas />
+                    <StudioHomeShowcase />
                     <WildMindAIAPPS />
                     <CreatorsSection />
 
@@ -316,6 +316,9 @@ const HomePage: React.FC = () => {
                             className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
                             onClick={(e) => e.stopPropagation()}
                         >
+
+
+                            
                             {/* Header */}
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-white text-3xl font-bold">Choose Style</h2>
