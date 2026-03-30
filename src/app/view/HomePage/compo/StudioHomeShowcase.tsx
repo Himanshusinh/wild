@@ -3,6 +3,32 @@
 import { useEffect, useState } from "react";
 import InfiniteCanvas from "./InfiniteCanvas";
 
+/**
+ * True when the page is served from a real domain (e.g. Vercel / wildmindai.com) but the env
+ * still points the iframe at localhost — that never works for visitors and is the usual reason
+ * “production doesn’t show my local canvas.”
+ */
+function useShowcaseLocalhostOnProduction(showcaseSrc: string): boolean {
+  const [mismatch, setMismatch] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !showcaseSrc) {
+      setMismatch(false);
+      return;
+    }
+    try {
+      const u = new URL(showcaseSrc);
+      const h = window.location.hostname;
+      const pageIsLocalDev = h === "localhost" || h === "127.0.0.1";
+      const embedPointsAtLocalMachine =
+        u.hostname === "localhost" || u.hostname === "127.0.0.1";
+      setMismatch(!pageIsLocalDev && embedPointsAtLocalMachine);
+    } catch {
+      setMismatch(false);
+    }
+  }, [showcaseSrc]);
+  return mismatch;
+}
+
 /** Ensure marketing / iframe targets use `/embed` so COEP does not block framing (wildmindcanvas/next.config.ts). */
 function normalizeStudioEmbedUrl(raw: string): string {
   try {
@@ -19,13 +45,11 @@ function normalizeStudioEmbedUrl(raw: string): string {
   }
 }
 
-/** Full URL copied from canvas → Share → “Homepage showcase” (view-only, `/embed`, `showcase=1`). */
+/** Build-time public env (may be empty in production if only server env is Vercel). Runtime URLs come from `/api/home/showcase-url`. */
 const SHOWCASE_URL_RAW = process.env.NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL?.trim() ?? "";
-const SHOWCASE_URL = SHOWCASE_URL_RAW ? normalizeStudioEmbedUrl(SHOWCASE_URL_RAW) : "";
 
 /** Legacy: iframe-only embed URL. */
 const LEGACY_EMBED_RAW = process.env.NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL?.trim() ?? "";
-const LEGACY_EMBED_URL = LEGACY_EMBED_RAW ? normalizeStudioEmbedUrl(LEGACY_EMBED_RAW) : "";
 
 /** Iframe in-page by default; set to `false` or `0` only if the browser blocks the embed. */
 const SHOWCASE_IFRAME_DISABLED =
@@ -103,13 +127,71 @@ function ShowcaseStudioIframe({ src, title }: { src: string; title: string }) {
 
 /**
  * Homepage canvas block:
- * 1) `NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL` — embeds live studio here (iframe). Use `/embed?...` link from Share → Homepage showcase.
- *    Disable iframe: `NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_IFRAME=false`.
- * 2) `NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL` — iframe-only (legacy).
- * 3) Else local `InfiniteCanvas` demo.
+ * 1) `WILDMIND_CANVAS_SHOWCASE_URL` (server, recommended on Vercel) or `NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL` (build-time) — live iframe.
+ * 2) `WILDMIND_STUDIO_EMBED_URL` / `NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL` — legacy.
+ * 3) Else `InfiniteCanvas` demo.
+ *
+ * Server env is merged via `GET /api/home/showcase-url` so production picks up URLs without relying on a client rebuild.
  */
 export default function StudioHomeShowcase() {
-  if (SHOWCASE_URL) {
+  const [resolved, setResolved] = useState(() => ({
+    showcase: SHOWCASE_URL_RAW ? normalizeStudioEmbedUrl(SHOWCASE_URL_RAW) : "",
+    legacy: LEGACY_EMBED_RAW ? normalizeStudioEmbedUrl(LEGACY_EMBED_RAW) : "",
+    useIframe: SHOWCASE_USE_IFRAME,
+  }));
+  const [configReady, setConfigReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/home/showcase-url", { cache: "no-store" });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as {
+          showcaseUrl?: string;
+          legacyEmbedUrl?: string;
+          useIframe?: boolean;
+        };
+        if (cancelled) return;
+        const s = (data.showcaseUrl ?? "").trim();
+        const l = (data.legacyEmbedUrl ?? "").trim();
+        setResolved({
+          showcase: s ? normalizeStudioEmbedUrl(s) : "",
+          legacy: l ? normalizeStudioEmbedUrl(l) : "",
+          useIframe: data.useIframe !== false,
+        });
+      } catch {
+        /* keep build-time NEXT_PUBLIC values */
+      } finally {
+        if (!cancelled) setConfigReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const embedUrlForMismatchCheck = (resolved.showcase || resolved.legacy || "").trim();
+  const showcasePointsAtLocalhostOnProd =
+    useShowcaseLocalhostOnProduction(embedUrlForMismatchCheck);
+
+  if (!configReady && !resolved.showcase && !resolved.legacy) {
+    return (
+      <section className="bg-[#0E0E12] px-4 sm:px-4 md:px-6 lg:px-8">
+        <div className="mb-3 flex flex-col gap-2 sm:mb-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="h-20 max-w-md animate-pulse rounded-lg bg-white/[0.06]" />
+          <div className="h-9 w-32 animate-pulse rounded-full bg-white/[0.06]" />
+        </div>
+        <div
+          className="min-h-[clamp(440px,58vw,640px)] w-full animate-pulse rounded-2xl bg-white/[0.04]"
+          aria-busy="true"
+          aria-label="Loading studio showcase"
+        />
+      </section>
+    );
+  }
+
+  if (resolved.showcase) {
     return (
       <section className="bg-[#0E0E12] px-4 sm:px-4 md:px-6 lg:px-8">
         <div className="mb-3 flex flex-col gap-2 sm:mb-2 sm:flex-row sm:items-end sm:justify-between">
@@ -134,7 +216,7 @@ export default function StudioHomeShowcase() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={SHOWCASE_URL}
+              href={resolved.showcase}
               target="_blank"
               rel="noopener noreferrer"
               className="w-fit rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-medium text-white/70 transition hover:border-white/25 hover:text-white sm:px-4 sm:py-2 sm:text-xs"
@@ -142,7 +224,7 @@ export default function StudioHomeShowcase() {
               Open in new tab
             </a>
             <a
-              href={studioOrigin(SHOWCASE_URL)}
+              href={studioOrigin(resolved.showcase)}
               target="_blank"
               rel="noopener noreferrer"
               className="w-fit rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/45 transition-all duration-200 hover:border-white/20 hover:text-[#F0EFE9] sm:px-[18px] sm:py-2 sm:text-xs"
@@ -153,13 +235,31 @@ export default function StudioHomeShowcase() {
         </div>
 
         <div className="relative w-full bg-[#0E0E12]">
-          {SHOWCASE_USE_IFRAME ? (
+          {showcasePointsAtLocalhostOnProd ? (
+            <div
+              className="flex min-h-[clamp(440px,58vw,640px)] flex-col items-center justify-center gap-3 px-6 py-10 text-center"
+              role="status"
+            >
+              <p className="max-w-lg text-[12px] leading-relaxed text-amber-200/90 sm:text-sm">
+                This deploy still embeds <code className="text-white/80">localhost</code> — only you can load that URL.
+                In your host&apos;s env (e.g. Vercel → Environment Variables), set{" "}
+                <code className="text-white/70">NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL</code> to your{" "}
+                <strong className="font-medium text-white">HTTPS</strong> studio link, for example{" "}
+                <code className="break-all text-white/60">
+                  https://studio.wildmindai.com/embed?projectId=…&amp;view=1&amp;mode=view&amp;showcase=1
+                </code>
+                . Then redeploy. The <code className="text-white/70">projectId</code> must be a project that exists on{" "}
+                <strong className="font-medium text-white">production</strong> studio (open studio on the web, use Share
+                → Homepage showcase to copy the link).
+              </p>
+            </div>
+          ) : resolved.useIframe ? (
             <div className="overflow-x-auto overflow-y-hidden">
               <div
                 className="relative w-full min-w-[768px]"
                 style={{ height: SHOWCASE_IFRAME_HEIGHT, minHeight: SHOWCASE_IFRAME_HEIGHT }}
               >
-                <ShowcaseStudioIframe src={SHOWCASE_URL} title="Wildmind Studio showcase" />
+                <ShowcaseStudioIframe src={resolved.showcase} title="Wildmind Studio showcase" />
                 <ShowcaseEdgeFades />
               </div>
             </div>
@@ -179,7 +279,7 @@ export default function StudioHomeShowcase() {
     );
   }
 
-  if (LEGACY_EMBED_URL) {
+  if (resolved.legacy) {
     return (
       <section className="bg-[#0E0E12] px-4 sm:px-4 md:px-6 lg:px-8">
         <div className="mb-3 flex flex-col gap-2 sm:mb-2 sm:flex-row sm:items-end sm:justify-between">
@@ -203,7 +303,7 @@ export default function StudioHomeShowcase() {
             </p>
           </div>
           <a
-            href={studioOrigin(LEGACY_EMBED_URL)}
+            href={studioOrigin(resolved.legacy)}
             target="_blank"
             rel="noopener noreferrer"
             className="w-fit rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/45 transition-all duration-200 hover:border-white/20 hover:text-[#F0EFE9] sm:px-[18px] sm:py-2 sm:text-xs"
@@ -213,15 +313,29 @@ export default function StudioHomeShowcase() {
         </div>
 
         <div className="relative w-full bg-[#0E0E12]">
-          <div className="overflow-x-auto overflow-y-hidden">
+          {showcasePointsAtLocalhostOnProd ? (
             <div
-              className="relative w-full min-w-[768px]"
-              style={{ height: SHOWCASE_IFRAME_HEIGHT, minHeight: SHOWCASE_IFRAME_HEIGHT }}
+              className="flex min-h-[clamp(440px,58vw,640px)] flex-col items-center justify-center gap-3 px-6 py-10 text-center"
+              role="status"
             >
-              <ShowcaseStudioIframe src={LEGACY_EMBED_URL} title="Wildmind Studio" />
-              <ShowcaseEdgeFades />
+              <p className="max-w-lg text-[12px] leading-relaxed text-amber-200/90 sm:text-sm">
+                This deploy still embeds <code className="text-white/80">localhost</code> — only you can load that URL.
+                Set <code className="text-white/70">NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL</code> (or prefer{" "}
+                <code className="text-white/70">NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL</code>) to an{" "}
+                <strong className="font-medium text-white">HTTPS</strong> production studio embed URL and redeploy.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="overflow-x-auto overflow-y-hidden">
+              <div
+                className="relative w-full min-w-[768px]"
+                style={{ height: SHOWCASE_IFRAME_HEIGHT, minHeight: SHOWCASE_IFRAME_HEIGHT }}
+              >
+                <ShowcaseStudioIframe src={resolved.legacy} title="Wildmind Studio" />
+                <ShowcaseEdgeFades />
+              </div>
+            </div>
+          )}
         </div>
       </section>
     );
