@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { getMeCached } from '@/lib/me'
-import { setUser } from '@/store/slices/authSlice'
+import { setAuthLoading, setUser } from '@/store/slices/authSlice'
 import { auth } from '@/lib/firebase'
 
 // Prefetches the authenticated user once per app mount and stores it in Redux.
@@ -12,6 +12,7 @@ export default function AuthBootstrap() {
 
   useEffect(() => {
     let mounted = true
+    dispatch(setAuthLoading(true))
       ; (async () => {
         try {
           const currentPath =
@@ -173,6 +174,10 @@ export default function AuthBootstrap() {
             }
           }
           // ignore other errors; anonymous users are valid
+        } finally {
+          if (mounted) {
+            dispatch(setAuthLoading(false))
+          }
         }
       })()
     return () => { mounted = false }

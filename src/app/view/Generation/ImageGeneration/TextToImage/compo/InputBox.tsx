@@ -131,6 +131,7 @@ const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const userData = useAppSelector((state: any) => state.auth?.user);
+  const authLoading = useAppSelector((state: any) => state.auth?.loading ?? true);
   const pathname = usePathname();
   const isInlineEditImagePage = (pathname || '').startsWith('/text-to-image/edit-image');
   const searchParams = useSearchParams();
@@ -6105,7 +6106,7 @@ const InputBox = () => {
           ) : (
             <>
               {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-              {(!userData || (hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
+              {((!authLoading && !userData) || (userData && hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
                 ((currentFilters as any)?.search || (currentFilters as any)?.dateRange) ? (
                   <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
                     <div className="w-16 h-16 md:w-20 md:h-20 bg-[#60a5fa]/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-[#60a5fa]/20">
@@ -6127,7 +6128,7 @@ const InputBox = () => {
                       Clear all filters
                     </button>
                   </div>
-                ) : !userData ? (
+                ) : (!authLoading && !userData) ? (
                   <ImageGenerationGuide />
                 ) : (!loading && !isFiltering) && (
                   <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">

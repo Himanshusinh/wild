@@ -88,6 +88,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAppSelector((state: any) => state.auth?.user);
+  const authLoading = useAppSelector((state: any) => state.auth?.loading ?? true);
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     video: any;
@@ -5160,7 +5161,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       {/* Active Generations Queue Panel */}
       <ActiveGenerationsPanel />
 
-      {user && activeFeature !== 'Edit' ? (
+      {authLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-white/70 text-sm">Loading your workspace...</div>
+        </div>
+      ) : user && activeFeature !== 'Edit' ? (
         <HistorySection
           loading={loading}
           showHistory={showHistory}
