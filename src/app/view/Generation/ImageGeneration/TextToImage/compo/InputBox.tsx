@@ -63,6 +63,7 @@ const saveHistoryEntry = async (_entry: any): Promise<string | undefined> => und
 
 // Import the new components
 import ModelsDropdown from "./ModelsDropdown";
+import ImageGenerationGuide from "./ImageGenerationGuide";
 import ImageCountDropdown from "./ImageCountDropdown";
 import FrameSizeDropdown from "./FrameSizeDropdown";
 import StyleSelector from "./StyleSelector";
@@ -85,6 +86,8 @@ const CharacterModal = dynamic(() => import("./CharacterModal"), { ssr: false })
 import type { Character } from "./CharacterModal";
 import { waitForRunwayCompletion } from "@/lib/runwayService";
 import { uploadGeneratedImage } from "@/lib/imageUpload";
+import { extractFalErrorDetails, showFalErrorToast } from "@/lib/falToast";
+import { extractReplicateErrorDetails, showReplicateErrorToast } from "@/lib/replicateToast";
 import { getIsPublic } from '@/lib/publicFlag';
 import { useGenerationCredits } from "@/hooks/useCredits";
 import { getImageGenerationCreditCost, formatCredits } from '@/utils/creditValidation';
@@ -487,6 +490,18 @@ const InputBox = () => {
 
   // Helper function to check if URL is blob or data URL
   const isBlobOrDataUrl = (u?: string) => !!u && (u.startsWith('blob:') || u.startsWith('data:'));
+  const hasMeaningfulPromptText = (text?: string) => /[\p{L}\p{N}]/u.test(String(text || ''));
+  const blockedUploadExtensionRegex = /\.(exe|msi|bat|cmd|com|dll|scr|jar|apk|app|dmg|iso|bin|ps1|sh|zip|rar|7z|tar|gz)(\?|#|$)/i;
+
+  // Accepts typical image sources (http/https image links, blob URLs, and data:image/* URLs).
+  // Explicitly rejects data URLs that are not images and known executable/archive extensions.
+  const isSupportedUploadedImageSource = (value?: string): boolean => {
+    const url = String(value || '').trim();
+    if (!url) return false;
+    if (url.startsWith('data:')) return url.startsWith('data:image/');
+    if (url.startsWith('blob:')) return true;
+    return !blockedUploadExtensionRegex.test(url);
+  };
 
   // Helper function for frontend proxy resource URL
   // NOTE: For regenerate/remix flows we prefer direct Zata URLs instead of localhost paths,
@@ -2113,9 +2128,20 @@ const InputBox = () => {
 
   const expectedCredits = useMemo(() => {
     try {
-      const resolution = selectedModel === 'google/nano-banana-pro'
+      const resolution =
+        selectedModel === 'google/nano-banana-pro' || selectedModel === 'gemini-25-flash-image'
         ? nanoBananaProResolution
-        : (selectedModel === 'flux-2-pro' ? flux2ProResolution : (selectedModel === 'qwen-image-edit-2512' ? qwenResolution : undefined));
+        : (selectedModel === 'google/nano-banana-2'
+          ? nanoBananaResolution
+          : (selectedModel === 'flux-2-pro'
+            ? flux2ProResolution
+            : (selectedModel === 'qwen-image-edit-2512'
+              ? qwenResolution
+              : (selectedModel === 'seedream-4.5'
+                ? seedream45Resolution
+                : (selectedModel === 'seedream-5-lite'
+                  ? seedream5LiteResolution
+                  : (selectedModel === 'seedream-v4' ? seedreamSize : undefined))))));
       return getImageGenerationCreditCost(selectedModel, imageCount, frameSize, style, resolution, getCombinedUploadedImages());
     } catch {
       return 0;
@@ -2126,12 +2152,38 @@ const InputBox = () => {
     frameSize,
     style,
     nanoBananaProResolution,
+    nanoBananaResolution,
     flux2ProResolution,
     qwenResolution,
+    seedream45Resolution,
+    seedream5LiteResolution,
+    seedreamSize,
     prompt,
     uploadedImages,
     selectedCharacters,
   ]);
+
+  const nanoBananaProResolutionCredits = useMemo(() => ({
+    '1K': getImageGenerationCreditCost('google/nano-banana-pro', 1, frameSize, style, '1K', getCombinedUploadedImages()),
+    '2K': getImageGenerationCreditCost('google/nano-banana-pro', 1, frameSize, style, '2K', getCombinedUploadedImages()),
+    '4K': getImageGenerationCreditCost('google/nano-banana-pro', 1, frameSize, style, '4K', getCombinedUploadedImages()),
+  }), [frameSize, style, prompt, uploadedImages, selectedCharacters]);
+
+  const nanoBanana2ResolutionCredits = useMemo(() => ({
+    '1K': getImageGenerationCreditCost('google/nano-banana-2', 1, frameSize, style, '1K', getCombinedUploadedImages()),
+    '2K': getImageGenerationCreditCost('google/nano-banana-2', 1, frameSize, style, '2K', getCombinedUploadedImages()),
+    '4K': getImageGenerationCreditCost('google/nano-banana-2', 1, frameSize, style, '4K', getCombinedUploadedImages()),
+  }), [frameSize, style, prompt, uploadedImages, selectedCharacters]);
+
+  const seedream45ResolutionCredits = useMemo(() => ({
+    '2K': getImageGenerationCreditCost('seedream-4.5', 1, frameSize, style, '2K', getCombinedUploadedImages()),
+    '4K': getImageGenerationCreditCost('seedream-4.5', 1, frameSize, style, '4K', getCombinedUploadedImages()),
+  }), [frameSize, style, prompt, uploadedImages, selectedCharacters]);
+
+  const seedream5LiteResolutionCredits = useMemo(() => ({
+    '2K': getImageGenerationCreditCost('seedream-5-lite', 1, frameSize, style, '2K', getCombinedUploadedImages()),
+    '3K': getImageGenerationCreditCost('seedream-5-lite', 1, frameSize, style, '3K', getCombinedUploadedImages()),
+  }), [frameSize, style, prompt, uploadedImages, selectedCharacters]);
 
   // Function to remove character reference (removes from selectedCharacters)
   const removeCharacterReference = (characterName: string) => {
@@ -2331,7 +2383,6 @@ const InputBox = () => {
 
   // Helper function to handle FAL errors with structured error messages
   const handleFalError = async (error: any, context: { generationId?: string; tempEntryId: string; tempEntry?: HistoryEntry; transactionId?: string; modelName?: string }) => {
-    const { extractFalErrorDetails, showFalErrorToast } = await import('@/lib/falToast');
     const errorDetails = extractFalErrorDetails(error);
 
     // Get user-friendly error message
@@ -2391,7 +2442,6 @@ const InputBox = () => {
 
   // Helper function to handle Replicate errors with structured error messages
   const handleReplicateError = async (error: any, context: { generationId?: string; tempEntryId: string; tempEntry?: HistoryEntry; transactionId?: string; modelName?: string }) => {
-    const { extractReplicateErrorDetails, showReplicateErrorToast } = await import('@/lib/replicateToast');
     const errorDetails = extractReplicateErrorDetails(error);
 
     // Get user-friendly error message
@@ -2451,6 +2501,7 @@ const InputBox = () => {
 
   const handleGenerate = async (generationId?: string, overridePrompt?: string) => {
     const currentPrompt = overridePrompt || prompt;
+    const promptTrimmed = currentPrompt.trim();
 
     if (!document.hasFocus() && !generationId) {
       console.log('Document not focused, skipping explicit generation click handle. Wait for programmatic trigger.');
@@ -2464,11 +2515,26 @@ const InputBox = () => {
       return;
     }
 
-    if (!currentPrompt.trim()) {
+    if (!promptTrimmed) {
       // Allow generation if using specific models with uploads, otherwise block
       if (!(uploadedImages.length > 0 && selectedModel === 'black-forest-labs/flux-1.1-pro')) {
         return;
       }
+    }
+
+    if (promptTrimmed && !hasMeaningfulPromptText(promptTrimmed)) {
+      toast.error('Prompt cannot contain only special characters. Please enter words or numbers.');
+      if (generationId) {
+        dispatch(removeActiveGeneration(generationId));
+      }
+      return;
+    }
+
+    const combinedUploads = getCombinedUploadedImages();
+    const hasUnsupportedUpload = combinedUploads.some((url) => !isSupportedUploadedImageSource(url));
+    if (hasUnsupportedUpload) {
+      toast.error('Unsupported upload detected. Remove it and upload image files only.');
+      return;
     }
 
     // CRITICAL: Set loading state IMMEDIATELY at the start, before any async operations
@@ -5377,8 +5443,6 @@ const InputBox = () => {
       console.error("Error generating images:", error);
 
       // Check if this is a FAL or Replicate error (has structured error details)
-      const { extractFalErrorDetails } = await import('@/lib/falToast');
-      const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
       const falErrorDetails = extractFalErrorDetails(error);
       const replicateErrorDetails = extractReplicateErrorDetails(error);
       const isFalError = falErrorDetails !== null;
@@ -5417,11 +5481,9 @@ const InputBox = () => {
       if (!runwayBaseRespToastShownRef.current) {
         if (isFalError) {
           // Use structured FAL error toast
-          const { showFalErrorToast } = await import('@/lib/falToast');
           await showFalErrorToast(error, errorMessage);
         } else if (isReplicateError) {
           // Use structured Replicate error toast
-          const { showReplicateErrorToast } = await import('@/lib/replicateToast');
           await showReplicateErrorToast(error, errorMessage);
         } else {
           // Use simple error toast for other errors
@@ -6065,6 +6127,8 @@ const InputBox = () => {
                       Clear all filters
                     </button>
                   </div>
+                ) : !userData ? (
+                  <ImageGenerationGuide />
                 ) : (!loading && !isFiltering) && (
                   <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
                     <GifLoader size={120} alt="Loading" />
@@ -6867,12 +6931,12 @@ const InputBox = () => {
 
               {/* Fixed position Generate button - Desktop only */}
               <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
-                {/* {error && <div className="text-red-500 text-xs">{error}</div>}
-              {expectedCredits > 0 && (
-                <div className="text-[11px] text-white/70">
-                  Cost: {formatCredits(expectedCredits)} credits
-                </div>
-              )} */}
+                {error && <div className="text-red-500 text-xs">{error}</div>}
+                {expectedCredits > 0 && (
+                  <div className="text-white/60 text-[11px] pr-1">
+                    Total credits: <span className="font-medium text-white/80">{Math.round(expectedCredits).toLocaleString()}</span>
+                  </div>
+                )}
                 <button
                   onClick={async () => {
                     if (!userData) {
@@ -6945,7 +7009,7 @@ const InputBox = () => {
                 {error && <div className="text-red-500 text-sm">{error}</div>}
                 {expectedCredits > 0 && (
                   <div className="text-[11px] text-white/70 whitespace-nowrap">
-                    {formatCredits(expectedCredits)} credits
+                    {Math.round(expectedCredits).toLocaleString()} credits
                   </div>
                 )}
                 <button
@@ -7017,6 +7081,7 @@ const InputBox = () => {
                       onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
                       options={['1K', '2K', '4K']}
                       dropdownId="nanoBananaProResolution"
+                      optionCredits={nanoBananaProResolutionCredits as any}
                     />
                   </div>
                 )}
@@ -7027,6 +7092,7 @@ const InputBox = () => {
                       onResolutionChange={(val) => dispatch(setNanoBananaResolution(val as '1K' | '2K' | '4K'))}
                       options={['1K', '2K', '4K']}
                       dropdownId="nanoBananaResolutionMb"
+                      optionCredits={nanoBanana2ResolutionCredits as any}
                     />
                     {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
                     {/* <button
@@ -7070,6 +7136,7 @@ const InputBox = () => {
                       onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
                       options={['2K', '4K']}
                       dropdownId="seedream45Resolution"
+                      optionCredits={seedream45ResolutionCredits as any}
                     />
                   </div>
                 )}
@@ -7112,6 +7179,7 @@ const InputBox = () => {
                       onResolutionChange={(val) => setSeedream5LiteResolution(val as '2K' | '3K')}
                       options={['2K', '3K']}
                       dropdownId="seedream5LiteResolution"
+                      optionCredits={seedream5LiteResolutionCredits as any}
                     />
                   </div>
                 )}
@@ -7161,6 +7229,7 @@ const InputBox = () => {
                         onResolutionChange={(val) => setNanoBananaProResolution(val as '1K' | '2K' | '4K')}
                         options={['1K', '2K', '4K']}
                         dropdownId="nanoBananaProResolution"
+                        optionCredits={nanoBananaProResolutionCredits as any}
                       />
                     </div>
                   )}
@@ -7171,6 +7240,7 @@ const InputBox = () => {
                         onResolutionChange={(val) => dispatch(setNanoBananaResolution(val as '1K' | '2K' | '4K'))}
                         options={['1K', '2K', '4K']}
                         dropdownId="nanoBananaResolution"
+                        optionCredits={nanoBanana2ResolutionCredits as any}
                       />
                       {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
                       {/* <button
@@ -7214,6 +7284,7 @@ const InputBox = () => {
                         onResolutionChange={(val) => setSeedream45Resolution(val as '2K' | '4K')}
                         options={['2K', '4K']}
                         dropdownId="seedream45Resolution"
+                        optionCredits={seedream45ResolutionCredits as any}
                       />
                     </div>
                   )}
@@ -7256,6 +7327,7 @@ const InputBox = () => {
                         onResolutionChange={(val) => setSeedream5LiteResolution(val as '2K' | '3K')}
                         options={['2K', '3K']}
                         dropdownId="seedream5LiteResolutionDesk"
+                        optionCredits={seedream5LiteResolutionCredits as any}
                       />
                     </div>
                   )}
@@ -7329,7 +7401,11 @@ const InputBox = () => {
           remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
           onAdd={(urls: string[]) => {
             try {
-              const next = [...(uploadedImages || []), ...urls];
+              const sanitizedUrls = (urls || []).filter((url) => isSupportedUploadedImageSource(url));
+              if (sanitizedUrls.length !== (urls || []).length) {
+                toast.error('Only image files are allowed.');
+              }
+              const next = [...(uploadedImages || []), ...sanitizedUrls];
               dispatch(setUploadedImages(next.slice(0, 10)));
             } catch { }
           }}

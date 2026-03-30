@@ -21,6 +21,26 @@ type ReplicateErrorEnvelope = {
   retryable?: boolean;
 };
 
+const FRIENDLY_RETRY_MESSAGE = 'We could not complete this image right now. Please try again in a moment.';
+
+const toFriendlyReplicateMessage = (message?: string): string => {
+  const raw = String(message || '').trim();
+  if (!raw) return FRIENDLY_RETRY_MESSAGE;
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes('fetch failed') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('network error') ||
+    lower.includes('err_network') ||
+    lower.includes('timeout') ||
+    lower.includes('econnreset') ||
+    lower.includes('socket hang up')
+  ) {
+    return FRIENDLY_RETRY_MESSAGE;
+  }
+  return raw;
+};
+
 // User-friendly error messages based on error type and status code
 const REPLICATE_ERROR_MESSAGES: Record<number, (detail: ReplicateErrorDetail) => string> = {
   400: (detail) => {
@@ -134,7 +154,7 @@ const extractReplicateEnvelope = (error: any): ReplicateErrorEnvelope | null => 
   }
   
   // Fallback to simple error message
-  const simpleMessage = error?.message || 'Replicate request failed';
+  const simpleMessage = toFriendlyReplicateMessage(error?.message || 'Replicate request failed');
   return {
     message: simpleMessage,
     status: status || 500,
@@ -149,7 +169,7 @@ const extractReplicateEnvelope = (error: any): ReplicateErrorEnvelope | null => 
 export const extractReplicateErrorMessage = (error: any, fallback = 'Request failed'): string => {
   const envelope = extractReplicateEnvelope(error);
   if (envelope?.message) return envelope.message;
-  if (typeof error?.message === 'string' && error.message.trim().length > 0) return error.message;
+  if (typeof error?.message === 'string' && error.message.trim().length > 0) return toFriendlyReplicateMessage(error.message);
   return fallback;
 };
 
@@ -165,7 +185,7 @@ export const showReplicateErrorToast = async (error: any, fallbackMessage?: stri
     try {
       const toastModule = await import('react-hot-toast');
       const toastLib = toastModule.default;
-      const message = error?.message || fallbackMessage || 'Request failed';
+      const message = toFriendlyReplicateMessage(error?.message || fallbackMessage || 'Request failed');
       if (typeof toastLib.error === 'function') {
         toastLib.error(message);
       } else {

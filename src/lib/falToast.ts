@@ -24,6 +24,26 @@ type FalErrorEnvelope = {
   status?: number;
 };
 
+const FRIENDLY_RETRY_MESSAGE = 'We could not complete this image right now. Please try again in a moment.';
+
+const toFriendlyFalMessage = (message?: string): string => {
+  const raw = String(message || '').trim();
+  if (!raw) return FRIENDLY_RETRY_MESSAGE;
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes('fetch failed') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('network error') ||
+    lower.includes('err_network') ||
+    lower.includes('timeout') ||
+    lower.includes('econnreset') ||
+    lower.includes('socket hang up')
+  ) {
+    return FRIENDLY_RETRY_MESSAGE;
+  }
+  return raw;
+};
+
 // User-friendly error messages based on error type
 const FAL_ERROR_MESSAGES: Record<string, (detail: FalErrorDetail) => string> = {
   internal_server_error: () => 'An internal server error occurred. Please try again in a moment.',
@@ -187,6 +207,7 @@ const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
       if (errorType && FAL_ERROR_MESSAGES[errorType]) {
         message = FAL_ERROR_MESSAGES[errorType](primaryDetail || {});
       }
+      message = toFriendlyFalMessage(message);
       
       return {
         message,
@@ -206,7 +227,7 @@ const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
   }
   
   // Fallback to simple error message
-  const simpleMessage = error?.message || 'Request failed';
+  const simpleMessage = toFriendlyFalMessage(error?.message || 'Request failed');
   return {
     message: simpleMessage,
     toast: {
@@ -220,7 +241,7 @@ const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
 export const extractFalErrorMessage = (error: any, fallback = 'Request failed'): string => {
   const envelope = extractFalEnvelope(error);
   if (envelope?.message) return envelope.message;
-  if (typeof error?.message === 'string' && error.message.trim().length > 0) return error.message;
+  if (typeof error?.message === 'string' && error.message.trim().length > 0) return toFriendlyFalMessage(error.message);
   return fallback;
 };
 
@@ -236,7 +257,7 @@ export const showFalErrorToast = async (error: any, fallbackMessage?: string): P
     try {
       const toastModule = await import('react-hot-toast');
       const toastLib = toastModule.default;
-      const message = error?.message || fallbackMessage || 'Request failed';
+      const message = toFriendlyFalMessage(error?.message || fallbackMessage || 'Request failed');
       if (typeof toastLib.error === 'function') {
         toastLib.error(message);
       } else {
