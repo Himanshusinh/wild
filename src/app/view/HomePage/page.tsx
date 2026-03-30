@@ -316,6 +316,9 @@ const HomePage: React.FC = () => {
                             className="bg-black backdrop-blur-xl border border-white/20 rounded-3xl p-8 w-[90vw] max-w-4xl max-h-[80vh] overflow-y-auto"
                             onClick={(e) => e.stopPropagation()}
                         >
+
+
+                            
                             {/* Header */}
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-white text-3xl font-bold">Choose Style</h2>
