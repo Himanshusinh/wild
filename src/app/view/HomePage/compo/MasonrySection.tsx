@@ -197,7 +197,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
           }}
         >
-          Your imagination our creation
+          Your is himanshu's imagination our creation
         </h1>
 
         <p className="mb-8 max-w-[560px] text-[13px] leading-[1.55] text-white/90 sm:text-[16px] sm:leading-[1.7]">
