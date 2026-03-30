@@ -3,6 +3,7 @@
 import React from 'react';
 import { fetchLibrary, fetchUploads, LibraryItem, UploadItem, saveUpload, getLibraryPage, getUploadsPage } from '@/lib/libraryApi';
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb';
+import toast from 'react-hot-toast';
 
 type UploadModalProps = {
   isOpen: boolean;
@@ -102,6 +103,42 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const streamRef = React.useRef<MediaStream | null>(null);
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  const imageExtensionRegex = /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/i;
+
+  const isSupportedImageFile = React.useCallback((file: File) => {
+    if (file.type && file.type.startsWith('image/')) return true;
+    return imageExtensionRegex.test(file.name || '');
+  }, []);
+
+  const addFilesToLocalUploads = React.useCallback(async (rawFiles: File[]) => {
+    const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
+    if (slotsLeft <= 0) return;
+
+    const files = rawFiles.slice(0, slotsLeft);
+    const validFiles = files.filter(isSupportedImageFile);
+    const invalidFiles = files.filter((file) => !isSupportedImageFile(file));
+
+    if (invalidFiles.length > 0) {
+      const names = invalidFiles.slice(0, 2).map((file) => file.name).join(', ');
+      toast.error(`Unsupported file type: ${names}. Please upload image files only.`);
+    }
+
+    if (!validFiles.length) return;
+
+    const urls: string[] = [];
+    for (const file of validFiles) {
+      const reader = new FileReader();
+      const asDataUrl: string = await new Promise((res) => {
+        reader.onload = () => res(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      urls.push(asDataUrl);
+    }
+
+    if (urls.length) {
+      setLocalUploads((prev) => [...prev, ...urls].slice(0, remainingSlots));
+    }
+  }, [isSupportedImageFile, localUploads.length, remainingSlots]);
 
   const stopCamera = React.useCallback(() => {
     try {
@@ -798,16 +835,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onDrop={async (e) => {
                     e.preventDefault();
-                    const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
-                    if (slotsLeft <= 0) return;
-                    const files = Array.from(e.dataTransfer.files || []).slice(0, slotsLeft);
-                    const urls: string[] = [];
-                    for (const file of files) {
-                      const reader = new FileReader();
-                      const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
-                      urls.push(asDataUrl);
-                    }
-                    if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
+                    const files = Array.from(e.dataTransfer.files || []);
+                    await addFilesToLocalUploads(files);
                   }}
                   className={`border-2 border-dashed border-white/30 rounded-lg h-[51.75vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
                   onClick={() => {
@@ -816,16 +845,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
                     input.accept = accept;
                     input.multiple = true;
                     input.onchange = async () => {
-                      const slotsLeft = Math.max(0, remainingSlots - localUploads.length);
-                      if (slotsLeft <= 0) return;
-                      const files = Array.from(input.files || []).slice(0, slotsLeft);
-                      const urls: string[] = [];
-                      for (const file of files) {
-                        const reader = new FileReader();
-                        const asDataUrl: string = await new Promise((res) => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(file); });
-                        urls.push(asDataUrl);
-                      }
-                      if (urls.length) { setLocalUploads(prev => [...prev, ...urls].slice(0, remainingSlots)); }
+                      const files = Array.from(input.files || []);
+                      await addFilesToLocalUploads(files);
                     };
                     input.click();
                   }}

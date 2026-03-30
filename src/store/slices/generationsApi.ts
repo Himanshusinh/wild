@@ -1,5 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
+import { extractFalErrorDetails } from '@/lib/falToast';
+import { extractReplicateErrorDetails } from '@/lib/replicateToast';
 
 export const bflGenerate = createAsyncThunk(
   'generations/bflGenerate',
@@ -147,7 +149,6 @@ export const falGenerate = createAsyncThunk(
       return res.data?.data || res.data;
     } catch (e: any) {
       // Extract structured error information
-      const { extractFalErrorDetails } = await import('@/lib/falToast');
       const errorDetails = extractFalErrorDetails(e);
 
       // Return structured error with all details
@@ -214,7 +215,6 @@ export const replicateGenerate = createAsyncThunk(
     } catch (e: any) {
       console.error('[replicateGenerate] ERROR', e);
       // Extract structured error information
-      const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
       const errorDetails = extractReplicateErrorDetails(e);
 
       // Return structured error with all details

@@ -14,6 +14,7 @@ type ResolutionDropdownProps = {
   onResolutionChange: (resolution: ResolutionType) => void;
   options: ResolutionType[];
   dropdownId: string; // 'flux2ProResolution' | 'nanoBananaProResolution' | 'seedreamSize'
+  optionCredits?: Partial<Record<ResolutionType, number>>;
 };
 
 const ResolutionDropdown = ({
@@ -21,7 +22,8 @@ const ResolutionDropdown = ({
   resolution,
   onResolutionChange,
   options,
-  dropdownId
+  dropdownId,
+  optionCredits
 }: ResolutionDropdownProps) => {
   const dispatch = useAppDispatch();
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
@@ -31,6 +33,7 @@ const ResolutionDropdown = ({
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
   const selectingRef = useRef(false);
+  const hasCredits = options.some((opt) => typeof optionCredits?.[opt] === 'number');
 
   // Reset active instance when dropdown closes
   useEffect(() => {
@@ -61,7 +64,7 @@ const ResolutionDropdown = ({
           return;
         }
 
-        const dropdownWidth = 72; // w-18 = 4.5rem = 72px
+        const dropdownWidth = hasCredits ? 136 : 72;
         const spaceAbove = buttonRect.top;
         const spaceBelow = window.innerHeight - buttonRect.bottom;
 
@@ -141,7 +144,7 @@ const ResolutionDropdown = ({
         document.removeEventListener('mousedown', handleClickOutside, true);
       };
     }
-  }, [activeDropdown, openDirection, dispatch, isActiveInstance, dropdownId]);
+  }, [activeDropdown, openDirection, dispatch, isActiveInstance, dropdownId, hasCredits, options, optionCredits]);
 
   const handleDropdownClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -189,10 +192,11 @@ const ResolutionDropdown = ({
   const dropdownContent = activeDropdown === dropdownId && isActiveInstance && dropdownPosition ? (
     <div
       data-dropdown={dropdownId}
-      className="fixed w-18 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-[9999] md:max-h-150 max-h-100 overflow-y-auto dropdown-scrollbar"
+      className="fixed bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-[9999] md:max-h-150 max-h-100 overflow-y-auto dropdown-scrollbar"
       style={{
         top: `${dropdownPosition.top}px`,
         left: `${dropdownPosition.left}px`,
+        width: `${hasCredits ? 136 : 72}px`,
         transform: dropdownPosition.openUp ? 'translateY(calc(-100% - 8px))' : 'none',
       }}
       onMouseDown={(e) => {
@@ -216,12 +220,19 @@ const ResolutionDropdown = ({
             e.stopPropagation();
             handleResolutionSelect(opt);
           }}
-          className={`w-18 md:px-4 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] flex items-center justify-between ${resolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+          className={`w-full md:px-2.5 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] flex items-center justify-center ${resolution === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
         >
-          <span>{opt}</span>
-          {resolution === opt && (
-            <span className="w-2 h-2 bg-black rounded-full"></span>
-          )}
+          <span className="font-semibold">{opt}</span>
+          <div className="flex items-center gap-0 ml-1.5 shrink-0">
+            {typeof optionCredits?.[opt] === 'number' && (
+              <span className={`text-[10px] font-semibold min-w-[72px] text-center whitespace-nowrap ${resolution === opt ? 'text-black/80' : 'text-white/85'}`}>
+                {optionCredits[opt]} credits
+              </span>
+            )}
+            {resolution === opt && (
+              <span className="w-2 h-2 bg-black rounded-full"></span>
+            )}
+          </div>
         </button>
       ))}
     </div>
