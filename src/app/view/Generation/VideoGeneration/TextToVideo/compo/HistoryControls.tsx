@@ -14,16 +14,18 @@ interface HistoryControlsProps {
   onSearchChange?: (search: string) => void;
   onSortChange?: (sortOrder: 'asc' | 'desc') => void;
   onDateChange?: (dateRange: { start: Date | null; end: Date | null }) => void;
+  disableAutoFetch?: boolean;
 }
 
-const HistoryControls: React.FC<HistoryControlsProps> = ({
-  mode = 'video',
-  className,
+export default function HistoryControls({
+  mode = 'image',
+  className = '',
   limit,
   onSearchChange,
   onSortChange: onSortChangeCallback,
   onDateChange: onDateChangeCallback,
-}) => {
+  disableAutoFetch = false
+}: HistoryControlsProps) {
   // Default limit: 20 for video/music, 60 for image (can be overridden)
   const paginationLimit = limit || (mode === 'image' ? 60 : 20);
   const dispatch = useAppDispatch();
@@ -126,9 +128,6 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   const applySearch = useCallback(async (nextSearch: string) => {
     const s = String(nextSearch || '').trim();
     setSearchQuery(s);
-    if (onSearchChange) {
-      onSearchChange(s);
-    }
 
     // Use currentFilters.sortOrder from Redux to get the latest value, not local state
     // This prevents applySearch from being recreated when local sortOrder state changes
@@ -142,6 +141,14 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       ...(s ? { search: s } : {}),
       ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
     } as any));
+    
+    if (onSearchChange) {
+      onSearchChange(s);
+    }
+
+    // Silently return if auto-fetch is disabled
+    if (disableAutoFetch) return;
+
     await (dispatch as any)(loadHistory({
       filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
       backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
@@ -152,7 +159,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       forceRefresh: true,
       debugTag: `HistoryControls:${mode}-search:${Date.now()}`,
     } as any));
-  }, [dispatch, mode, currentFilters, dateRange, onSearchChange, paginationLimit]);
+  }, [dispatch, mode, currentFilters, dateRange, onSearchChange, paginationLimit, disableAutoFetch]);
 
   // Live prompt search (Freepik-style): as user types, debounce and query backend.
   useEffect(() => {
@@ -193,6 +200,12 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
         onSortChangeCallback(order);
       }
 
+      // If auto-fetch is disabled, we stop here (parent handles fetch)
+      if (disableAutoFetch) {
+        setSortOrder(order);
+        return;
+      }
+
       didInitialLoadRef.current = true;
       dispatch(setFilters({
         ...currentFilters,
@@ -229,6 +242,9 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
     if (onDateChangeCallback) {
       onDateChangeCallback(next);
     }
+
+    // If auto-fetch is disabled, we stop here (parent handles fetch)
+    if (disableAutoFetch) return;
 
     didInitialLoadRef.current = true;
     dispatch(setFilters({
@@ -462,5 +478,4 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   );
 };
 
-export default HistoryControls;
 

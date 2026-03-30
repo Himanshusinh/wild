@@ -175,18 +175,19 @@ const History = () => {
 
   // Helper: load only the first page; more pages load on scroll.
   // IMPORTANT: Use forceRefresh so backend ordering is preserved and we don't merge into stale entries.
-  const loadFirstPage = async (filtersObj: any) => {
+  const loadFirstPage = async (filtersObj: any, activeQuickFilter?: string) => {
     try {
       if (!user) return; // Suppress fetching if not logged in
       if (loadLockRef.current) return; // prevent duplicate initial loads
       loadLockRef.current = true;
-      const initialLimit = quickFilter === 'user-uploads' || quickFilter === 'all' ? 100 : computeDynamicLimit(0);
+      const currentQF = activeQuickFilter || quickFilter;
+      const initialLimit = currentQF === 'user-uploads' || currentQF === 'all' ? 100 : computeDynamicLimit(0);
       const result: any = await (dispatch as any)(loadHistory({ 
-        filters: { ...filtersObj, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
-        backendFilters: { ...filtersObj, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
+        filters: { ...filtersObj, mode: currentQF === 'all' || currentQF === 'user-uploads' ? 'all' : undefined }, 
+        backendFilters: { ...filtersObj, mode: currentQF === 'all' || currentQF === 'user-uploads' ? 'all' : undefined }, 
         paginationParams: { limit: initialLimit }, 
-        expectedType: quickFilter === 'all' || quickFilter === 'user-uploads' ? undefined : 'text-to-image',
-        skipBackendGenerationFilter: quickFilter === 'all' || quickFilter === 'user-uploads' || quickFilter === 'images',
+        expectedType: currentQF === 'all' || currentQF === 'user-uploads' ? undefined : 'text-to-image',
+        skipBackendGenerationFilter: currentQF === 'all' || currentQF === 'user-uploads' || currentQF === 'images',
         forceRefresh: true 
       })).unwrap();
       const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
@@ -223,15 +224,20 @@ const History = () => {
     if (sortOrder) nextFilters.sortOrder = sortOrder;
     if (searchQuery.trim()) nextFilters.search = searchQuery.trim();
 
+    // Safety net: re-apply quickFilter-specific filters if missing (prevent stale filter state)
+    if (quickFilter === 'music' && !nextFilters.generationType) nextFilters.generationType = 'text-to-music';
+    if (quickFilter === 'videos' && !nextFilters.mode) nextFilters.mode = 'video';
+    if (quickFilter === 'images' && !nextFilters.mode) nextFilters.mode = 'image';
+
     setLocalFilters(nextFilters);
     dispatch(setFilters(nextFilters));
     // Clear immediately so stale tiles don't linger while backend fetch happens
     dispatch(clearHistory());
     loadLockRef.current = false; // unlock so date-change fetch isn't blocked by an in-flight request
-    await loadFirstPage(nextFilters);
+    await loadFirstPage(nextFilters, quickFilter); // pass quickFilter explicitly to avoid stale closure
     setPage(1);
     if (closeCalendar) setShowCalendar(false);
-  }, [dispatch, filters, searchQuery, sortOrder]);
+  }, [dispatch, filters, searchQuery, sortOrder, quickFilter]);
 
   // Backend-only sorting: clear UI and force a fresh backend query when sort changes
   const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
@@ -247,12 +253,17 @@ const History = () => {
     if (dateRange.start && dateRange.end) f.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end?.toISOString() };
     if (searchQuery.trim()) f.search = searchQuery.trim();
 
+    // Safety net: re-apply quickFilter-specific filters if missing (prevent stale filter state)
+    if (quickFilter === 'music' && !f.generationType) f.generationType = 'text-to-music';
+    if (quickFilter === 'videos' && !f.mode) f.mode = 'video';
+    if (quickFilter === 'images' && !f.mode) f.mode = 'image';
+
     setLocalFilters(f);
     dispatch(setFilters(f));
     dispatch(clearHistory());
-    await loadFirstPage(f);
+    await loadFirstPage(f, quickFilter); // pass quickFilter explicitly to avoid stale closure
     setPage(1);
-  }, [filters, dateRange, searchQuery, dispatch]);
+  }, [filters, dateRange, searchQuery, dispatch, quickFilter]);
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
   const computeDynamicLimit = (existingCount: number) => {
@@ -289,13 +300,13 @@ const History = () => {
           if (sortOrder) base.sortOrder = sortOrder;
           if (searchQuery.trim()) base.search = searchQuery.trim();
           dispatch(setFilters(base));
-          await loadFirstPage(base);
+          await loadFirstPage(base, 'all');
         } else {
           const f: any = { generationType: currentGenerationType };
           if (sortOrder) f.sortOrder = sortOrder;
           if (searchQuery.trim()) f.search = searchQuery.trim();
           dispatch(setFilters(f));
-          await loadFirstPage(f);
+          await loadFirstPage(f, quickFilter);
         }
         setPage(1);
         didInitialLoadRef.current = true;
@@ -1171,6 +1182,7 @@ const History = () => {
                       default: f = {};
                     }
                     if (sortOrder) (f as any).sortOrder = sortOrder;
+                    if (searchQuery.trim()) (f as any).search = searchQuery.trim();
                     if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
                     setLocalFilters(f);
                     dispatch(setFilters(f));
@@ -1179,7 +1191,7 @@ const History = () => {
                     loadLockRef.current = false;
                     isFetchingMoreRef.current = false;
                     autoLoadAttemptsRef.current = 0;
-                    await loadFirstPage(f);
+                    await loadFirstPage(f, key);
                     setPage(1);
                     setPillLoading(false);
                     setOverlayLoading(false);
@@ -1208,10 +1220,10 @@ const History = () => {
                   onSearchChange={(search) => {
                     setSearchQuery(search);
                     setPage(1);
-                    // The actual search fetch is handled via useEffect dependency on searchQuery or onSearchChange
                   }}
                   onSortChange={onSortChange}
                   onDateChange={(dr) => onDateChange(dr.start, dr.end)}
+                  disableAutoFetch={true}
                 />
               </div>
             </div>
@@ -1243,6 +1255,7 @@ const History = () => {
                     default: f = {};
                   }
                   if (sortOrder) (f as any).sortOrder = sortOrder;
+                  if (searchQuery.trim()) (f as any).search = searchQuery.trim();
                   if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
                   setLocalFilters(f);
                   dispatch(setFilters(f));
@@ -1251,7 +1264,7 @@ const History = () => {
                   loadLockRef.current = false;
                   isFetchingMoreRef.current = false;
                   autoLoadAttemptsRef.current = 0;
-                  await loadFirstPage(f);
+                  await loadFirstPage(f, key);
                   setPage(1);
                   setPillLoading(false);
                   setOverlayLoading(false);
