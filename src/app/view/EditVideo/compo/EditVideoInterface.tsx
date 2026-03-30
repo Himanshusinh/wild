@@ -122,13 +122,12 @@ const EditVideoInterface: React.FC = () => {
           <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">AI Model</p>
           <div className="relative edit-dropdown">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'birefModel' ? '' : 'birefModel')}
-              className="h-[36px] w-full px-4 rounded-xl text-[13px] font-medium ring-1 ring-white/15 hover:ring-white/25 transition flex items-center justify-between bg-white/[0.03] text-white/90"
+              className="h-[36px] w-full px-4 rounded-xl text-[13px] font-medium ring-1 ring-white/15 hover:ring-white/25 transition flex items-center justify-between bg-white/[0.03] text-white/90 cursor-default"
             >
               <span className="truncate">
                 {selectedFeature === 'upscale' ? 'SeedVR Upscaler' : (model === 'fal-ai/birefnet/v2/video' ? 'BiRefNet v2' : 'Remove Background')}
               </span>
-              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefModel' ? 'rotate-180' : ''}`} />
+              {/* <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefModel' ? 'rotate-180' : ''}`} /> */}
             </button>
           </div>
         </div>
@@ -249,7 +248,7 @@ const EditVideoInterface: React.FC = () => {
                     <div className="space-y-2">
                       <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Format</label>
                       <div className="relative edit-dropdown">
-                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrFormat' ? '' : 'seedvrFormat')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrFormat' ? '' : 'seedvrFormat')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
                           <span className="truncate">{seedvrOutputFormat}</span>
                           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrFormat' ? 'rotate-180' : ''}`} />
                         </button>
@@ -265,7 +264,7 @@ const EditVideoInterface: React.FC = () => {
                     <div className="space-y-2">
                       <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Quality</label>
                       <div className="relative edit-dropdown">
-                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrQuality' ? '' : 'seedvrQuality')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrQuality' ? '' : 'seedvrQuality')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
                           <span className="truncate capitalize">{seedvrOutputQuality}</span>
                           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrQuality' ? 'rotate-180' : ''}`} />
                         </button>
@@ -284,7 +283,7 @@ const EditVideoInterface: React.FC = () => {
                     <div className="space-y-2">
                       <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Write Mode</label>
                       <div className="relative edit-dropdown">
-                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrWriteMode' ? '' : 'seedvrWriteMode')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                        <button onClick={() => setActiveDropdown(activeDropdown === 'seedvrWriteMode' ? '' : 'seedvrWriteMode')} className="h-[28px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
                           <span className="truncate capitalize">{seedvrOutputWriteMode}</span>
                           <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'seedvrWriteMode' ? 'rotate-180' : ''}`} />
                         </button>
@@ -318,20 +317,20 @@ const EditVideoInterface: React.FC = () => {
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Parameters</p>
+              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase"></p>
               
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Model</label>
                   <div className="relative edit-dropdown">
-                    <button onClick={() => setActiveDropdown(activeDropdown === 'birefModel' ? '' : 'birefModel')} className="h-[36px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                    <button onClick={() => setActiveDropdown(activeDropdown === 'birefModel' ? '' : 'birefModel')} className="h-[32px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
                       <span className="truncate">{birefModel}</span>
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefModel' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'birefModel' && (
-                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 shadow-xl">
+                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 shadow-xl">
                         {['General Use (Light)', 'General Use (Light 2K)', 'General Use (Heavy)', 'Matting', 'Portrait', 'General Use (Dynamic)'].map((opt) => (
-                          <button key={opt} onClick={() => { setBirefModel(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-2 text-left text-[13px] text-white/90 hover:bg-white/10">{opt}</button>
+                          <button key={opt} onClick={() => { setBirefModel(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-2 text-left text-[11px] text-white/90 hover:bg-white/10">{opt}</button>
                         ))}
                       </div>
                     )}
@@ -339,16 +338,16 @@ const EditVideoInterface: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Operating Resolution</label>
+                  <label className="block text-[11px] font-semibold tracking-widest text-white/40 uppercase">Operating Resolution</label>
                   <div className="relative edit-dropdown">
-                    <button onClick={() => setActiveDropdown(activeDropdown === 'birefOperatingResolution' ? '' : 'birefOperatingResolution')} className="h-[36px] w-full px-4 rounded-xl ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
+                    <button onClick={() => setActiveDropdown(activeDropdown === 'birefOperatingResolution' ? '' : 'birefOperatingResolution')} className="h-[32px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[13px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
                       <span className="truncate">{birefOperatingResolution}</span>
                       <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'birefOperatingResolution' ? 'rotate-180' : ''}`} />
                     </button>
                     {activeDropdown === 'birefOperatingResolution' && (
-                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 shadow-xl">
+                      <div className="absolute z-30 top-full mt-2 left-0 w-full bg-[#1A1A24] backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 shadow-xl">
                         {['1024x1024', '2048x2048', '2304x2304'].map((opt) => (
-                          <button key={opt} onClick={() => { setBirefOperatingResolution(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-2 text-left text-[13px] text-white/90 hover:bg-white/10">{opt}</button>
+                          <button key={opt} onClick={() => { setBirefOperatingResolution(opt as any); setActiveDropdown(''); }} className="w-full px-4 py-2 text-left text-[11px] text-white/90 hover:bg-white/10">{opt}</button>
                         ))}
                       </div>
                     )}
@@ -356,7 +355,7 @@ const EditVideoInterface: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Mask</label>
+                  <label className="block text-[11px] font-semibold tracking-widest text-white/40 uppercase">Output Mask</label>
                   <button 
                     onClick={() => setBirefOutputMask(!birefOutputMask)}
                     className={`h-[28px] px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-center ${birefOutputMask ? 'bg-[white] text-black ring-transparent hover:ring-transparent' : 'bg-white/[0.03] text-white/90'}`}
@@ -366,7 +365,7 @@ const EditVideoInterface: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pb-2">
-                  <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Refine Foreground</label>
+                  <label className="block text-[11px] font-semibold tracking-widest text-white/40 uppercase">Refine Foreground</label>
                   <button 
                     onClick={() => setBirefRefineFg(!birefRefineFg)}
                     className={`h-[28px] px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-center ${birefRefineFg ? 'bg-[white] text-black ring-transparent hover:ring-transparent' : 'bg-white/[0.03] text-white/90'}`}
@@ -383,7 +382,7 @@ const EditVideoInterface: React.FC = () => {
                 <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">Additional Settings</span>
                 <button
                   onClick={() => setShowRemoveBgAdvanced(!showRemoveBgAdvanced)}
-                  className="px-2.5 py-1 rounded-md text-[10px] font-semibold bg-white/[0.05] ring-1 ring-white/10 text-white/80 hover:bg-white/[0.08] hover:text-white transition-colors"
+                  className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white/[0.05] ring-1 ring-white/10 text-white/80 hover:bg-white/[0.08] hover:text-white transition-colors"
                 >
                   {showRemoveBgAdvanced ? 'Less' : 'More'}
                 </button>
@@ -393,7 +392,7 @@ const EditVideoInterface: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase">Output Format</label>
+                      <label className="block text-[11px] font-semibold tracking-widest text-white/40 uppercase">Output Format</label>
                       <div className="relative edit-dropdown">
                         <button onClick={() => setActiveDropdown(activeDropdown === 'birefOutputType' ? '' : 'birefOutputType')} className="h-[28px] w-full px-4 rounded-lg ring-1 ring-white/15 hover:ring-white/25 text-[11px] font-medium transition flex items-center justify-between bg-white/[0.03] text-white/90">
                           <span className="truncate">{birefOutputType}</span>

@@ -131,6 +131,7 @@ const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const userData = useAppSelector((state: any) => state.auth?.user);
+  const authLoading = useAppSelector((state: any) => state.auth?.loading ?? true);
   const pathname = usePathname();
   const isInlineEditImagePage = (pathname || '').startsWith('/text-to-image/edit-image');
   const searchParams = useSearchParams();
@@ -5803,9 +5804,9 @@ const InputBox = () => {
       >
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
+          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
             <div className="flex items-center justify-between md:mb-0 mb-0 pl-10 md:pl-0 ">
-              <div className="flex items-center gap-2 md:pt-2">
+              <div className="flex items-center gap-2 md:mt-3">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation </h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
@@ -5881,7 +5882,7 @@ const InputBox = () => {
             </div>
 
             {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
-              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
+              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2">
                 <HistoryControls 
                   mode="image" 
                   onSearchChange={setSearchQuery}
@@ -6105,7 +6106,7 @@ const InputBox = () => {
           ) : (
             <>
               {/* Show guide when no generations exist - ONLY after initial load attempt AND loading completes */}
-              {(!userData || (hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
+              {((!authLoading && !userData) || (userData && hasAttemptedInitialLoadRef.current && !loading && !isFiltering && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0)) && (
                 ((currentFilters as any)?.search || (currentFilters as any)?.dateRange) ? (
                   <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
                     <div className="w-16 h-16 md:w-20 md:h-20 bg-[#60a5fa]/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-[#60a5fa]/20">
@@ -6127,7 +6128,7 @@ const InputBox = () => {
                       Clear all filters
                     </button>
                   </div>
-                ) : !userData ? (
+                ) : (!authLoading && !userData) ? (
                   <ImageGenerationGuide />
                 ) : (!loading && !isFiltering) && (
                   <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
