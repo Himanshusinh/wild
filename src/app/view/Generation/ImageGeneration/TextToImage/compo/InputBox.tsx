@@ -5803,9 +5803,9 @@ const InputBox = () => {
       >
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 pt-2 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
+          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
             <div className="flex items-center justify-between md:mb-0 mb-0 pl-10 md:pl-0 ">
-              <div className="flex items-center gap-2 md:pt-2">
+              <div className="flex items-center gap-2 md:mt-3">
                 <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation </h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
@@ -5881,7 +5881,7 @@ const InputBox = () => {
             </div>
 
             {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
-              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2 -mt-1">
+              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2">
                 <HistoryControls 
                   mode="image" 
                   onSearchChange={setSearchQuery}

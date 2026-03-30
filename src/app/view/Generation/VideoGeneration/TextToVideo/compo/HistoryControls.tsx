@@ -248,7 +248,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
 
   return (
-    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 pt-2 md:pt-2 sticky', className].filter(Boolean).join(' ')}>
+    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 md:pt-2  ', className].filter(Boolean).join(' ')}>
       {/* Prompt search (backend-driven) */}
       <div className="relative flex items-center md:mr-0 mr-auto">
         <input
@@ -256,7 +256,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search prompt..."
-          className={`px-3 h-[32px] rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-white/10 border border-white/20 bg-white/5 text-white placeholder-white/70 w-44 md:w-64 ${searchInput ? 'pr-8' : ''}`}
+          className={`px-2 h-[28px] rounded-lg text-[12px] focus:outline-none focus:ring-1 focus:ring-white/10 border border-white/20 bg-white/5 text-white placeholder-white/70 placeholder:text-[11px] w-44 md:w-64 ${searchInput ? 'pr-8' : ''}`}
         />
         {searchInput && (
           <button
@@ -278,7 +278,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </div>
       <button
         onClick={() => onSortChange('desc')}
-        className={`flex items-center gap-1.5 px-3 h-[32px] rounded-lg text-[13px] transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/10 border border-white/20'}`}
+        className={`flex items-center gap-1.5 px-2 h-[28px] rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/10 border border-white/20'}`}
         aria-label="Recent"
       >
         <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
@@ -286,7 +286,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </button>
       <button
         onClick={() => onSortChange('asc')}
-        className={`flex items-center gap-1.5 px-3 h-[32px] rounded-lg text-[13px] transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/10 border border-white/20'}`}
+        className={`flex items-center gap-1.5 px-2 h-[28px] rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/10 border border-white/20'}`}
         aria-label="Oldest"
       >
         <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
@@ -322,7 +322,7 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
             setCalendarYear(base.getFullYear());
             setShowCalendar((v) => !v);
           }}
-          className={`relative group h-[32px] w-[32px] flex items-center justify-center rounded-lg text-[13px] transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/10 text-white/80'}`}
+          className={`relative group h-[26px] w-[28px] flex items-center justify-center rounded-lg text-[13px] transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/10 text-white/80'}`}
           aria-label="Date"
         >
           <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
