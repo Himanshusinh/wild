@@ -1565,10 +1565,25 @@ const InputBox = (props: InputBoxProps = {}) => {
   }, [isUploadModalOpen, uploadModalType]);
 
   // Group entries by date while PRESERVING backend order (do not sort dates in frontend).
+  const visibleHistoryEntries = useMemo(() => {
+    if (!(dateRange.start && dateRange.end)) return historyEntries;
+    const startMs = dateRange.start.getTime();
+    const endMs = dateRange.end.getTime();
+    return historyEntries.filter((entry: HistoryEntry) => {
+      try {
+        const raw = entry.timestamp || entry.createdAt || (entry as any).updatedAt;
+        const ms = new Date(raw as any).getTime();
+        return !Number.isNaN(ms) && ms >= startMs && ms <= endMs;
+      } catch {
+        return false;
+      }
+    });
+  }, [historyEntries, dateRange]);
+
   const groupedByDate = useMemo(() => {
     const groups: { [key: string]: HistoryEntry[] } = {};
     const dateOrder: string[] = [];
-    for (const entry of historyEntries) {
+    for (const entry of visibleHistoryEntries) {
       const date = new Date(entry.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
@@ -1577,7 +1592,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       groups[date].push(entry);
     }
     return { groups, dateOrder };
-  }, [historyEntries]);
+  }, [visibleHistoryEntries]);
 
   const sortedDates = groupedByDate.dateOrder;
   // Today key for injecting local preview into today's row

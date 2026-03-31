@@ -182,6 +182,21 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 8, label: "8 seconds", description: "Standard length" }
       ];
     }
+    if (selectedModel === 'kling-v3-pro') {
+      return [
+        { value: 5, label: "5 seconds", description: "Standard" },
+        { value: 6, label: "6 seconds", description: "Medium" },
+        { value: 7, label: "7 seconds", description: "Medium long" },
+        { value: 8, label: "8 seconds", description: "Long" },
+        { value: 9, label: "9 seconds", description: "Extended" },
+        { value: 10, label: "10 seconds", description: "Extended" },
+        { value: 11, label: "11 seconds", description: "Extended" },
+        { value: 12, label: "12 seconds", description: "Extended" },
+        { value: 13, label: "13 seconds", description: "Extended" },
+        { value: 14, label: "14 seconds", description: "Extended" },
+        { value: 15, label: "15 seconds", description: "Maximum length" }
+      ];
+    }
     if (selectedModel?.startsWith('kling-v3')) {
       return [
         { value: 3, label: "3 seconds", description: "Quick video" },
@@ -252,6 +267,12 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
   };
 
   const availableDurations = getAvailableDurations();
+
+  useEffect(() => {
+    if (selectedModel === 'kling-v3-pro' && (selectedDuration === 3 || selectedDuration === 4)) {
+      onDurationChange(5);
+    }
+  }, [selectedDuration, selectedModel, onDurationChange]);
 
   const selectedDurationInfo = availableDurations.find(duration => duration.value === selectedDuration);
 

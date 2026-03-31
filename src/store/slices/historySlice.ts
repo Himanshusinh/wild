@@ -736,12 +736,31 @@ const historySlice = createSlice({
         state.inFlight = false;
         state.currentRequestKey = null;
 
-        // Drop stale responses that don't match the currently selected sortOrder.
-        // This prevents a "newest" response finishing late and overwriting an "oldest" feed.
+        // Drop stale responses that don't match the currently selected filters.
+        // This prevents an older unfiltered request from overwriting a newer
+        // date/search/mode-filtered request that finished earlier.
         const incomingFilters: any = (action.meta as any)?.arg?.filters || (action.meta as any)?.arg?.backendFilters || {};
-        const incomingSort = incomingFilters?.sortOrder;
-        const currentSort = (state.filters as any)?.sortOrder;
-        if ((incomingSort === 'asc' || incomingSort === 'desc') && (currentSort === 'asc' || currentSort === 'desc') && incomingSort !== currentSort) {
+        const currentSelectedFilters: any = state.filters || {};
+        const normalizeFilterSignature = (filters: any) => {
+          const generationType = Array.isArray(filters?.generationType)
+            ? [...filters.generationType].map((v: any) => String(v)).sort()
+            : (filters?.generationType ? String(filters.generationType) : '');
+          const dateStart = filters?.dateRange?.start
+            ? new Date(filters.dateRange.start).toISOString()
+            : '';
+          const dateEnd = filters?.dateRange?.end
+            ? new Date(filters.dateRange.end).toISOString()
+            : '';
+          return JSON.stringify({
+            mode: filters?.mode || '',
+            sortOrder: filters?.sortOrder || '',
+            search: typeof filters?.search === 'string' ? filters.search.trim() : '',
+            generationType,
+            dateStart,
+            dateEnd,
+          });
+        };
+        if (normalizeFilterSignature(incomingFilters) !== normalizeFilterSignature(currentSelectedFilters)) {
           return;
         }
 
@@ -919,11 +938,29 @@ const historySlice = createSlice({
         state.inFlight = false;
         state.currentRequestKey = null;
 
-        // Drop stale pagination responses that don't match current sortOrder.
+        // Drop stale pagination responses that don't match the currently selected filters.
         const incomingFilters: any = (action.meta as any)?.arg?.filters || (action.meta as any)?.arg?.backendFilters || {};
-        const incomingSort = incomingFilters?.sortOrder;
-        const currentSort = (state.filters as any)?.sortOrder;
-        if ((incomingSort === 'asc' || incomingSort === 'desc') && (currentSort === 'asc' || currentSort === 'desc') && incomingSort !== currentSort) {
+        const currentSelectedFilters: any = state.filters || {};
+        const normalizeFilterSignature = (filters: any) => {
+          const generationType = Array.isArray(filters?.generationType)
+            ? [...filters.generationType].map((v: any) => String(v)).sort()
+            : (filters?.generationType ? String(filters.generationType) : '');
+          const dateStart = filters?.dateRange?.start
+            ? new Date(filters.dateRange.start).toISOString()
+            : '';
+          const dateEnd = filters?.dateRange?.end
+            ? new Date(filters.dateRange.end).toISOString()
+            : '';
+          return JSON.stringify({
+            mode: filters?.mode || '',
+            sortOrder: filters?.sortOrder || '',
+            search: typeof filters?.search === 'string' ? filters.search.trim() : '',
+            generationType,
+            dateStart,
+            dateEnd,
+          });
+        };
+        if (normalizeFilterSignature(incomingFilters) !== normalizeFilterSignature(currentSelectedFilters)) {
           return;
         }
 
@@ -1071,7 +1108,7 @@ const historySlice = createSlice({
           backendCursor: action.payload.nextCursor,
           newEntriesAdded: newEntries.length,
           originalPayloadCount: payloadEntries.length,
-          incomingSortOrder: incomingSort,
+          incomingFilters,
         });
       })
       .addCase(loadMoreHistory.rejected, (state, action) => {

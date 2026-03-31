@@ -1266,6 +1266,30 @@ const InputBox = () => {
   const [page, setPage] = useState(1);
 
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
+  const reduxSortOrder = (currentFilters as any)?.sortOrder || 'desc';
+  const reduxSearchQuery = (currentFilters as any)?.search || '';
+  const reduxDateRange = (currentFilters as any)?.dateRange ? {
+    start: (currentFilters as any).dateRange.start ? new Date((currentFilters as any).dateRange.start) : null,
+    end: (currentFilters as any).dateRange.end ? new Date((currentFilters as any).dateRange.end) : null,
+  } : { start: null, end: null };
+  const reduxDateStartMs = reduxDateRange.start ? reduxDateRange.start.getTime() : null;
+  const reduxDateEndMs = reduxDateRange.end ? reduxDateRange.end.getTime() : null;
+
+  useEffect(() => {
+    if (sortOrder !== reduxSortOrder) {
+      setSortOrder(reduxSortOrder);
+    }
+    if (searchQuery !== reduxSearchQuery) {
+      setSearchQuery(reduxSearchQuery);
+    }
+
+    const localStart = dateRange.start ? dateRange.start.getTime() : null;
+    const localEnd = dateRange.end ? dateRange.end.getTime() : null;
+    if (localStart !== reduxDateStartMs || localEnd !== reduxDateEndMs) {
+      setDateRange(reduxDateRange);
+      setDateInput(reduxDateRange.start ? reduxDateRange.start.toISOString().slice(0, 10) : '');
+    }
+  }, [reduxSortOrder, reduxSearchQuery, reduxDateStartMs, reduxDateEndMs]);
 
   // Get current UI generation type to detect feature switches
   const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
@@ -1360,17 +1384,29 @@ const InputBox = () => {
     const switchedToImage = isImagePage && normalizedLast !== normalizedCurrent;
     const currentFilterMode = (currentFilters as any)?.mode;
     const currentFilterSort = (currentFilters as any)?.sortOrder;
+    const currentFilterSearch = (currentFilters as any)?.search || '';
+    const currentFilterDateRange = (currentFilters as any)?.dateRange;
     const filtersAreForImage = !currentFilterMode || currentFilterMode === 'image';
     const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
+    const searchMismatch = currentFilterSearch !== (searchQuery || '');
+    const currentFilterStart = currentFilterDateRange?.start ? new Date(currentFilterDateRange.start).getTime() : null;
+    const currentFilterEnd = currentFilterDateRange?.end ? new Date(currentFilterDateRange.end).getTime() : null;
+    const localDateStart = dateRange.start ? dateRange.start.getTime() : null;
+    const localDateEnd = dateRange.end ? dateRange.end.getTime() : null;
+    const dateMismatch = currentFilterStart !== localDateStart || currentFilterEnd !== localDateEnd;
     const hasEntries = historyEntries && historyEntries.length > 0;
 
-    // HistoryControls dispatches `setFilters` + `loadHistory` on sort changes.
-    // During that in-flight window, Redux sortOrder updates before this component's local
-    // `sortOrder` state, causing a transient mismatch and an extra duplicate request.
-    // Fix: if we're already on the image page and filters are for image, just sync local
-    // sort state and let HistoryControls own the request.
-    if (!switchedToImage && filtersAreForImage && sortMismatch) {
-      setSortOrder(currentFilterSort);
+    // Match the shared HistoryControls flow used by the working tabs:
+    // when Redux filters already changed for the current image page,
+    // sync local UI state and let that in-flight HistoryControls request own the fetch.
+    if (!switchedToImage && filtersAreForImage && (sortMismatch || searchMismatch || dateMismatch)) {
+      if (currentFilterSort) setSortOrder(currentFilterSort);
+      setSearchQuery(currentFilterSearch);
+      setDateRange({
+        start: currentFilterDateRange?.start ? new Date(currentFilterDateRange.start) : null,
+        end: currentFilterDateRange?.end ? new Date(currentFilterDateRange.end) : null,
+      });
+      setDateInput(currentFilterDateRange?.start ? new Date(currentFilterDateRange.start).toISOString().slice(0, 10) : '');
       lastUIGenerationTypeRef.current = currentUIGenerationType;
       return;
     }
@@ -1720,8 +1756,22 @@ const InputBox = () => {
       });
     }
 
+    if (dateRange.start && dateRange.end) {
+      const startMs = dateRange.start.getTime();
+      const endMs = dateRange.end.getTime();
+      filtered = filtered.filter((entry: HistoryEntry) => {
+        try {
+          const raw = entry.timestamp || entry.createdAt || (entry as any).updatedAt;
+          const ms = new Date(raw as any).getTime();
+          return !Number.isNaN(ms) && ms >= startMs && ms <= endMs;
+        } catch {
+          return false;
+        }
+      });
+    }
+
     return filtered;
-  }, [historyEntries, searchQuery]);
+  }, [historyEntries, searchQuery, dateRange]);
 
   // Mark that we've attempted initial load once loading starts or completes
   useEffect(() => {
@@ -5930,12 +5980,6 @@ const InputBox = () => {
                   <HistoryControls 
                     mode="image" 
                     className="mb-0 pt-0"
-                    onSearchChange={setSearchQuery}
-                    onSortChange={onSortChange}
-                    onDateChange={(range) => {
-                      setDateRange(range);
-                      setDateInput(range.start ? range.start.toLocaleDateString() : '');
-                    }}
                   />
                 </div>
               )}
