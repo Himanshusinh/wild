@@ -1109,6 +1109,17 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
+    const hasRenderableVideoMedia = (entry: any) => {
+      const hasVideoInImages = Array.isArray(entry?.images) && entry.images.some((m: any) =>
+        isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl)
+      );
+      const hasVideoInVideos = Array.isArray(entry?.videos) && entry.videos.some((v: any) =>
+        isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl)
+      );
+      return hasVideoInImages || hasVideoInVideos;
+    };
+    const isPendingVideoEntry = (entry: any) =>
+      isVideoType(entry) && (entry?.status === 'generating' || entry?.status === 'pending');
 
     // Helper functions now imported from videoUtils
 
@@ -1118,7 +1129,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Get entries that have video URLs (fallback for entries that might not have correct generationType)
     const urlVideoTypes = allEntries.filter((entry: any) =>
-      Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
+      hasRenderableVideoMedia(entry)
     );
 
     // Also get entries that have videos array with video URLs
@@ -1133,9 +1144,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     for (const entry of allEntries) {
       const id = String(entry?.id || '');
       if (!id || seen.has(id)) continue;
-      const hasVideoInImages = Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url));
-      const hasVideoInVideos = Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl));
-      if (isVideoType(entry) || hasVideoInImages || hasVideoInVideos) {
+      const hasMedia = hasRenderableVideoMedia(entry);
+      if (hasMedia || isPendingVideoEntry(entry)) {
         mergedEntries.push(entry);
         seen.add(id);
       }
@@ -1770,7 +1780,16 @@ const InputBox = (props: InputBoxProps = {}) => {
     const byId: Record<string, any> = {};
     historyEntries.forEach((e: any) => { byId[e.id] = e; });
     extraVideoEntries.forEach((e: any) => { byId[e.id] = e; });
-    const list = Object.values(byId);
+    const list = Object.values(byId).filter((entry: any) => {
+      const hasVideoInImages = Array.isArray(entry?.images) && entry.images.some((m: any) =>
+        isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl)
+      );
+      const hasVideoInVideos = Array.isArray(entry?.videos) && entry.videos.some((v: any) =>
+        isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl)
+      );
+      const isPending = entry?.status === 'generating' || entry?.status === 'pending';
+      return hasVideoInImages || hasVideoInVideos || (isVideoType(entry) && isPending);
+    });
 
     // Sort by timestamp (newest first) to match global history behavior
     const sortedList = list.sort((a: any, b: any) => {

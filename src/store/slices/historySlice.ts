@@ -802,7 +802,9 @@ const historySlice = createSlice({
             const backendTimestamp = new Date(backendEntry.timestamp || backendEntry.createdAt || 0).getTime();
             if (
               existingTimestamp > backendTimestamp ||
-              (existingEntry.status === 'generating' && backendEntry.status !== 'generating') ||
+              // Preserve an existing terminal entry if the backend somehow regresses to generating,
+              // but never let a stale generating placeholder override a completed backend result.
+              (existingEntry.status !== 'generating' && backendEntry.status === 'generating') ||
               (Array.isArray(existingEntry.audios) && existingEntry.audios.length > 0 && (!Array.isArray(backendEntry.audios) || backendEntry.audios.length === 0))
             ) {
               return existingEntry;
