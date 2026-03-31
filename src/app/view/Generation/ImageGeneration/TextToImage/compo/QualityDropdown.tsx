@@ -255,7 +255,7 @@ const QualityDropdown = ({
         <button
           ref={buttonRef}
           onClick={handleDropdownClick}
-          className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+          className="h-[23px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
         >
           <div className="flex flex-col items-start">
             <span>{qualityLabels[quality]}</span>

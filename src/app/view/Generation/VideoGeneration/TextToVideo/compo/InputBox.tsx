@@ -442,7 +442,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       })();
 
       // Pass generateAudio only for models whose pricing depends on it
-      const audioParam = (normalizedModelForCredits === 'kling-2.6-pro' || normalizedModelForCredits.includes('seedance-1.5'))
+      const audioParam = (normalizedModelForCredits === 'kling-2.6-pro' || normalizedModelForCredits.startsWith('kling-v3') || normalizedModelForCredits.includes('seedance-1.5'))
         ? generateAudio
         : undefined;
       return Math.max(0, Number(getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam)) || 0);
@@ -2556,8 +2556,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     let transactionId: string | null = null;
     try {
       const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
-        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1') ? 'fal' :
-          (selectedModel.includes("wan-2.5") || selectedModel.startsWith('kling-') || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
+        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1' || selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) ? 'fal' :
+          (selectedModel.includes("wan-2.5") || (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro' && !selectedModel.startsWith('kling-v3')) || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
 
       if (selectedModel === 'wan-2.2-animate-replace') {
         if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
@@ -2704,6 +2704,25 @@ const InputBox = (props: InputBoxProps = {}) => {
           generationType = "text-to-video";
           // Use fast alias route when selected fast model
           apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
+        } else if (selectedModel.startsWith('kling-v3') && !hasImage) {
+          // Kling 3 text-to-video (FAL)
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = String(Math.min(15, Math.max(3, duration || 5)));
+          const isPro = selectedModel === 'kling-v3-pro';
+          requestBody = {
+            model: isPro ? 'fal-ai/kling-video/v3/pro/text-to-video' : 'fal-ai/kling-video/v3/standard/text-to-video',
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            duration: modelDuration,
+            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+            negative_prompt: 'blur, distort, and low quality',
+            cfg_scale: 0.5,
+            generate_audio: generateAudio,
+            generationType: 'text-to-video',
+            isPublic
+          };
+          generationType = 'text-to-video';
+          apiEndpoint = isPro ? '/api/fal/kling-v3/pro/text-to-video/submit' : '/api/fal/kling-v3/standard/text-to-video/submit';
         } else if (selectedModel === 'kling-2.6-pro' && !hasImage) {
           // Kling 2.6 Pro text-to-video (FAL)
           const apiPrompt = getApiPrompt(prompt);
@@ -3177,6 +3196,31 @@ const InputBox = (props: InputBoxProps = {}) => {
             generationType = 'image-to-video';
             apiEndpoint = '/api/fal/kling-o1/reference-to-video/submit';
           }
+        } else if (selectedModel.startsWith('kling-v3') && hasImage) {
+          // Kling 3 image-to-video (FAL)
+          if (uploadedImages.length === 0) {
+            toast.error('Kling 3 image-to-video requires an input image. Please upload an image.');
+            setIsGenerating(false);
+            return;
+          }
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration = String(Math.min(15, Math.max(3, duration || 5)));
+          const isPro = selectedModel === 'kling-v3-pro';
+          requestBody = {
+            model: isPro ? 'fal-ai/kling-video/v3/pro/image-to-video' : 'fal-ai/kling-video/v3/standard/image-to-video',
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            start_image_url: uploadedImages[0],
+            ...(uploadedImages[1] ? { end_image_url: uploadedImages[1] } : {}),
+            duration: modelDuration,
+            negative_prompt: 'blur, distort, and low quality',
+            cfg_scale: 0.5,
+            generate_audio: generateAudio,
+            generationType: 'image-to-video',
+            isPublic
+          };
+          generationType = 'image-to-video';
+          apiEndpoint = isPro ? '/api/fal/kling-v3/pro/image-to-video/submit' : '/api/fal/kling-v3/standard/image-to-video/submit';
         } else if (selectedModel === 'kling-2.6-pro' && hasImage) {
           // Kling 2.6 Pro image-to-video (FAL)
           if (uploadedImages.length === 0) {
@@ -4229,9 +4273,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           console.error('❌ Sora 2 video generation did not complete properly');
           throw new Error('Sora 2 video generation did not complete in time');
         }
-      } else if (selectedModel === 'kling-2.6-pro') {
-        // Kling 2.6 Pro flow - queue-based polling (FAL)
-        console.log('🎬 Kling 2.6 Pro video generation started, request ID:', result.requestId);
+      } else if (selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) {
+        // Kling 2.6 Pro / Kling 3 flow - queue-based polling (FAL)
+        console.log('🎬 Kling FAL video generation started, request ID:', result.requestId);
         console.log('🎬 Model:', result.model);
         console.log('🎬 History ID:', result.historyId);
 
@@ -4254,7 +4298,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               break;
             }
             if (s === 'failed' || s === 'error') {
-              throw new Error('Kling 2.6 Pro video generation failed');
+              throw new Error('Kling video generation failed');
             }
           } catch (statusError) {
             console.error('Status check failed:', statusError);
@@ -4525,7 +4569,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           console.error('❌ Expected videos array or video object with URL');
           throw new Error('WAN 2.2 Animate Replace video generation did not complete in time');
         }
-      } else if (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro') {
+      } else if (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro' && !selectedModel.startsWith('kling-v3')) {
         // Kling flow - queue-based polling via replicate queue endpoints (excludes Kling 2.6 Pro which uses FAL)
         console.log('🎬 Kling video generation started, request ID:', result.requestId);
         console.log('🎬 Model:', result.model);
@@ -5504,7 +5548,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
                 />
                 {/* Audio toggle button for models that support it (mobile only) */}
-                {(selectedModel === 'kling-2.6-pro' ||
+                {((selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) ||
                   selectedModel.includes('seedance-1.5') ||
                   (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
                   selectedModel.includes('ltx2') ||
@@ -6095,8 +6139,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
-                // Kling 2.6 Pro Models: Aspect ratio, duration, and audio
-                if (selectedModel === 'kling-2.6-pro') {
+                // Kling 2.6 Pro / Kling 3 Models: aspect ratio, duration, and audio
+                if (selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio */}
@@ -6111,7 +6155,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         }}
                         onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
                       />
-                      {/* Duration - 5s or 10s */}
+                      {/* Duration */}
                       <VideoDurationDropdown
                         selectedDuration={duration}
                         onDurationChange={setDuration}

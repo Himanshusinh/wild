@@ -124,16 +124,8 @@ const Nav = () => {
           {/* Credits button removed */}
 
           {/* Profile trigger removed for signed-in users */}
-          {!authLoading && !userData && (
-            <div className="pointer-events-auto">
-              <button
-                onClick={() => router.push(getSignInUrl())}
-                className='flex items-center gap-2 bg-white/10 mt-2 backdrop-blur-xl border border-white/20 text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-white/20 hover:border-white/30 transition-all duration-200 shadow-lg'
-              >
-                Sign In
-              </button>
-            </div>
-          )}
+          {/* Sign-in button intentionally removed from top-right.
+              Unauthenticated CTA is shown in sidebar footer to avoid duplicate buttons. */}
         </div>
       </div>
     </div>

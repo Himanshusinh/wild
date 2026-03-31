@@ -227,6 +227,10 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     // WAN 2.5 supports both T2V and I2V
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
+  } else if (model.startsWith('kling-v3-')) {
+    // Kling 3 standard/pro supports both T2V and I2V
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
   } else if (model === 'kling-2.6-pro') {
     // Kling 2.6 Pro supports both T2V and I2V
     capabilities.supportsTextToVideo = true;

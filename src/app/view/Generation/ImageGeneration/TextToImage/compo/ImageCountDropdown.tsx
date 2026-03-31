@@ -22,7 +22,7 @@ const ImageCountDropdown = () => {
   };
 
   return (
-    <div className="flex items-center md:gap-2 gap-0 bg-transparent rounded-lg border border-white/20 md:p-1.5 p-1">
+    <div className="flex items-center md:gap-2 gap-0 bg-transparent rounded-lg border border-white/20 md:p-1.5 p-0.75">
       <button
         onClick={handleDecrease}
         disabled={imageCount <= 1}
@@ -35,7 +35,7 @@ const ImageCountDropdown = () => {
         <Minus className="w-4 h-4" />
       </button>
       
-      <span className="px-1 md:text-md text-sm font-medium text-white/90  text-center">
+      <span className="px-1 md:text-md text-xs font-medium text-white/90  text-center">
         {imageCount}
       </span>
       

@@ -79,7 +79,7 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
     const defaultDuration = duration || 5;
     const defaultResolution = resolution || '720p';
     // For models where pricing depends on audio, pass generateAudio through
-    const audioParam = (frontendModel === 'kling-2.6-pro' || frontendModel.includes('seedance-1.5')) ? generateAudio : undefined;
+    const audioParam = (frontendModel === 'kling-2.6-pro' || frontendModel.startsWith('kling-v3') || frontendModel.includes('seedance-1.5')) ? generateAudio : undefined;
     const cost = getCreditsForModel(frontendModel, `${defaultDuration}s`, defaultResolution, audioParam);
     if (cost !== null && cost > 0) {
       console.log(`Found cost via getCreditsForModel: ${cost} for model: ${frontendModel}`);
@@ -99,7 +99,7 @@ export const getVideoCreditCost = (frontendModel: string, resolution?: string, d
   // Build the complete model name with options
   // For Kling 2.6 Pro, include generateAudio in options
   const buildOptions: any = { resolution, duration };
-  if (frontendModel === 'kling-2.6-pro') {
+  if (frontendModel === 'kling-2.6-pro' || frontendModel.startsWith('kling-v3')) {
     buildOptions.generateAudio = generateAudio;
   }
   const creditModelName = buildCreditModelName(frontendModel, buildOptions);

@@ -94,19 +94,19 @@ export default function VideoGenerationPage() {
             <div className="flex">
                 <div className="flex-1 min-w-0 px-2 sm:px-6 md:px-8">
                     {/* Sticky header + filters (pinned under navbar) */}
-                    <div className="sticky top-0 z-40 bg-[#0E0E12] backdrop-blur-lg shadow-xl">
+                    <div className="sticky top-0 z-40 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
 
-                        <div className="mb-0 md:mb-1 pt-8 md:pt-0">
-                            <div className="flex items-center justify-between md:mb-2 mb-0">
-                                <div className="flex items-center gap-2 md:pt-2">
+                        <div className="mb-0 md:mb-1 pt-2 md:pt-0">
+                            <div className="flex items-center justify-between md:mb-2 mb-0 min-h-14">
+                                <div className="flex min-w-0 items-center gap-2 md:pt-2">
                                     <button
                                         onClick={() => dispatch(setSidebarExpanded(true))}
-                                        className="md:hidden p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+                                        className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
                                         aria-label="Toggle Menu"
                                     >
                                         <Menu size={24} />
                                     </button>
-                                    <h2 className="text-white md:text-2xl text-md font-semibold">
+                                    <h2 className="truncate whitespace-nowrap text-white md:text-2xl text-base font-bold leading-none tracking-tight">
                                         Video Generation
                                     </h2>
 
@@ -128,79 +128,81 @@ export default function VideoGenerationPage() {
                                         </button>
                                     )}
 
-                                    <button
-                                        onClick={() => {
-                                            setActiveFeature('Video');
-                                            router.push('/text-to-video', { scroll: false });
-                                        }}
-                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === 'Video' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
-                                        aria-label="Video"
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <span className="hidden md:block">Video</span>
-                                    </button>
+                                    <div className="hidden md:flex items-center gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setActiveFeature('Video');
+                                                router.push('/text-to-video', { scroll: false });
+                                            }}
+                                            className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === 'Video' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
+                                            aria-label="Video"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span className="hidden md:block">Video</span>
+                                        </button>
 
-                                    <button
-                                        onClick={() => {
-                                            setActiveFeature('Lipsync');
-                                            router.push('/text-to-video?feature=lipsync', { scroll: false });
-                                        }}
-                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/20 transition-all ${activeFeature === 'Lipsync' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
-                                        aria-label="Lipsync"
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <span className="hidden md:block">Lipsync</span>
-                                    </button>
+                                        <button
+                                            onClick={() => {
+                                                setActiveFeature('Lipsync');
+                                                router.push('/text-to-video?feature=lipsync', { scroll: false });
+                                            }}
+                                            className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/20 transition-all ${activeFeature === 'Lipsync' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
+                                            aria-label="Lipsync"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span className="hidden md:block">Lipsync</span>
+                                        </button>
 
-                                    <button
-                                        onClick={() => {
-                                            setActiveFeature('Animate');
-                                            router.push('/text-to-video?feature=animation', { scroll: false });
-                                        }}
-                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === 'Animate' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
-                                        aria-label="Animate"
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <span className="hidden md:block">Animate</span>
-                                    </button>
+                                        <button
+                                            onClick={() => {
+                                                setActiveFeature('Animate');
+                                                router.push('/text-to-video?feature=animation', { scroll: false });
+                                            }}
+                                            className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === 'Animate' ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
+                                            aria-label="Animate"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span className="hidden md:block">Animate</span>
+                                        </button>
 
-                                    <button
-                                        onClick={() => router.push('/text-to-video/edit-video?feature=upscale')}
-                                        className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${pathname?.startsWith('/text-to-video/edit-video') ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
-                                        aria-label="Edit"
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <span className="hidden md:block">Edit</span>
-                                    </button>
+                                        <button
+                                            onClick={() => router.push('/text-to-video/edit-video?feature=upscale')}
+                                            className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${pathname?.startsWith('/text-to-video/edit-video') ? 'bg-white text-black font-medium border border-transparent' : 'bg-white/0 text-white/100 border border-white/20 hover:bg-white/5'}`}
+                                            aria-label="Edit"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span className="hidden md:block">Edit</span>
+                                        </button>
 
-                                    <button
-                                        onClick={() => {
-                                            const hostname = window.location.hostname;
-                                            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                                                window.open('http://localhost:3003', '_blank');
-                                            } else {
-                                                window.open('https://editor-video.wildmindai.com/', '_blank');
-                                            }
-                                        }}
-                                        className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/5 border border-white/10 transition-all bg-white/0 text-white/100"
-                                        aria-label="Video editor"
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <span className="hidden md:block">Video editor</span>
-                                    </button>
+                                        <button
+                                            onClick={() => {
+                                                const hostname = window.location.hostname;
+                                                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                                                    window.open('http://localhost:3003', '_blank');
+                                                } else {
+                                                    window.open('https://editor-video.wildmindai.com/', '_blank');
+                                                }
+                                            }}
+                                            className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/5 border border-white/10 transition-all bg-white/0 text-white/100"
+                                            aria-label="Video editor"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span className="hidden md:block">Video editor</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Desktop: Search, Sort, and Date controls - positioned at right end of Video Generation text */}

@@ -63,7 +63,13 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'sora2-v2v-remix': 'Sora 2 Remix',
   'kling-v2.5-turbo-pro-t2v': 'Kling 2.5 Turbo Pro',
   'kling-v2.1-t2v': 'Kling 2.1',
+  'kling-v3-standard': 'Kling 3 Standard',
+  'kling-v3-pro': 'Kling 3 Pro',
   'kling-2.6-pro': 'Kling 2.6 Pro',
+  'fal-ai/kling-video/v3/standard/text-to-video': 'Kling 3 Standard',
+  'fal-ai/kling-video/v3/standard/image-to-video': 'Kling 3 Standard',
+  'fal-ai/kling-video/v3/pro/text-to-video': 'Kling 3 Pro',
+  'fal-ai/kling-video/v3/pro/image-to-video': 'Kling 3 Pro',
   'fal-ai/kling-video/v2.6/pro/text-to-video': 'Kling 2.6 Pro',
   'fal-ai/kling-video/v2.6/pro/image-to-video': 'Kling 2.6 Pro',
   'wan-2.5-t2v': 'WAN 2.5 T2V',
@@ -183,6 +189,11 @@ export function getModelDisplayName(modelId: string | undefined | null): string 
   if (lower.includes('kling')) {
     const isMaster = /master/i.test(normalized);
     if (lower.includes('o1') || lower.includes('o-1')) return 'Kling o1';
+    if (lower.includes('v3') || lower.includes('3.0')) {
+      if (lower.includes('standard')) return 'Kling 3 Standard';
+      if (lower.includes('pro')) return 'Kling 3 Pro';
+      return 'Kling 3';
+    }
     if (lower.includes('2.6')) return 'Kling 2.6 Pro';
     if (lower.includes('2.5')) return `Kling 2.5${isMaster ? ' Master' : ''}`;
     if (lower.includes('2.1')) return `Kling 2.1${isMaster ? ' Master' : ''}`;

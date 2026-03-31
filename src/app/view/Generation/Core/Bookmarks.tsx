@@ -169,7 +169,7 @@ const Bookmarks = () => {
         <div className="flex items-center gap-2 md:gap-4">
           <button
             onClick={() => dispatch(setSidebarExpanded(true))}
-            className="md:hidden p-2 -ml-4 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
             aria-label="Toggle Menu"
           >
             <Menu size={24} />

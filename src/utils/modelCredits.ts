@@ -434,6 +434,15 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
 
   // Handle Kling models
   if (modelValue.startsWith('kling')) {
+    if (modelValue === 'kling-v3-standard' || modelValue === 'kling-v3-pro') {
+      const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+      const durationSeconds = Number.isFinite(d) ? Math.min(15, Math.max(3, d)) : 5;
+      const isPro = modelValue === 'kling-v3-pro';
+      const creditsPerSecond = isPro
+        ? (generateAudio !== false ? 356 : 244)
+        : (generateAudio !== false ? 272 : 188);
+      return Math.ceil(durationSeconds * creditsPerSecond);
+    }
     // Special case: kling-o1 is a simple FAL model with only duration-based pricing (5s / 10s)
     if (modelValue === 'kling-o1') {
       const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
@@ -469,6 +478,20 @@ export const getCreditsForModel = (modelValue: string, duration?: string, resolu
     }
     const key = `kling-v2.1-${kind}-${d}s-${res}`;
     return MODEL_CREDITS_MAPPING[key] || null;
+  }
+
+  const lowerModelValue = String(modelValue || '').toLowerCase();
+  if (lowerModelValue.includes('fal-ai/kling-video/v3/standard/') || lowerModelValue.includes('kling 3 standard')) {
+    const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const durationSeconds = Number.isFinite(d) ? Math.min(15, Math.max(3, d)) : 5;
+    const creditsPerSecond = generateAudio !== false ? 272 : 188;
+    return Math.ceil(durationSeconds * creditsPerSecond);
+  }
+  if (lowerModelValue.includes('fal-ai/kling-video/v3/pro/') || lowerModelValue.includes('kling 3 pro')) {
+    const d = duration ? parseInt(String(duration).replace('s', '')) : 5;
+    const durationSeconds = Number.isFinite(d) ? Math.min(15, Math.max(3, d)) : 5;
+    const creditsPerSecond = generateAudio !== false ? 356 : 244;
+    return Math.ceil(durationSeconds * creditsPerSecond);
   }
 
   // Handle Seedance models

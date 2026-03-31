@@ -66,7 +66,7 @@ const VIDEO_MODELS: VideoModel[] = [
     seed: "kling3",
     name: "Kling 3.0",
     brand: "Kuaishou",
-    href: "/text-to-video?model=kling-2.6-pro",
+    href: "/text-to-video?model=kling-v3-pro",
     accent: "#c084fc",
     brandColor: "#c084fc",
     brandBorder: "rgba(192,132,252,0.4)",

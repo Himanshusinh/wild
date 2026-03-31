@@ -216,16 +216,14 @@ const HomePage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#0E0E12]">
-            {/* Mobile Header */}
-            <div className="md:hidden sticky top-0 z-[60] bg-[#0E0E12]/80 backdrop-blur-md px-4 py-3 flex items-center">
-                <button
-                    onClick={() => dispatch(setSidebarExpanded(true))}
-                    className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
-                    aria-label="Toggle Menu"
-                >
-                    <Menu size={24} />
-                </button>
-            </div>
+            {/* Mobile Sidebar Toggle */}
+            <button
+                onClick={() => dispatch(setSidebarExpanded(true))}
+                className="md:hidden fixed top-2 left-2 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+                aria-label="Toggle Menu"
+            >
+                <Menu size={24} />
+            </button>
             <div className="flex  md:ml-[68px] pt-2">
                 <div className="flex-1 min-w-0">
                     {/* <Header /> */}

@@ -125,7 +125,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
       <div className="md:hidden pt-6 pb-2 px-0 bg-[#07070B] flex items-start gap-2">
         <button
           onClick={() => dispatch(setSidebarExpanded(true))}
-          className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+          className="flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
           aria-label="Toggle Menu"
         >
           <Menu size={24} />

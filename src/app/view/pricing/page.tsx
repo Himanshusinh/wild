@@ -140,7 +140,7 @@ const PricingPage: React.FC = () => {
       <div className="md:hidden sticky top-0 z-50 bg-[#07070B]/80 backdrop-blur-md px-4 py-3 flex items-center mb-6">
         <button
           onClick={() => dispatch(setSidebarExpanded(true))}
-          className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+          className="flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
           aria-label="Toggle Menu"
         >
           <Menu size={24} />

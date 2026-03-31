@@ -278,7 +278,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
         <button
           ref={buttonRef}
           onClick={handleDropdownClick}
-          className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
+          className="md:h-[32px] h-[23px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
         >
           <FileImage className="w-4 h-4 mr-1" />
           {selectedFileType?.name || 'File Type'}
