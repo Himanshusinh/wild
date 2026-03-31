@@ -6823,7 +6823,7 @@ const InputBox = () => {
         </div>
       )}
       {!isInlineEditImagePage && (
-        <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
             className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${isInputBoxHovered
               ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
