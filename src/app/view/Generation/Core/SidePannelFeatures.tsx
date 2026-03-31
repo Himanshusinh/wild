@@ -200,9 +200,9 @@ const SidePannelFeatures = () => {
   const [popoutAnchor, setPopoutAnchor] = React.useState<number>(0);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
+  const authLoading = useAppSelector((state: any) => state?.auth?.loading ?? true);
   const sidebarExpanded = useAppSelector((state: any) => state?.ui?.sidebarExpanded);
   const dispatch = useDispatch();
-  const authLoading = useAppSelector((state: any) => state?.auth?.loading ?? true);
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
 
   const storageKey = React.useMemo(() => getStorageKey(userData?.uid || userData?.email || userData?.username || 'guest'), [userData?.uid, userData?.email, userData?.username]);
