@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DEFAULT_PUBLIC_CANVAS_SHOWCASE_EMBED_URL } from "@/config/homeShowcaseDefaults";
 import InfiniteCanvas from "./InfiniteCanvas";
 
 /**
@@ -45,8 +46,13 @@ function normalizeStudioEmbedUrl(raw: string): string {
   }
 }
 
-/** Build-time public env (may be empty in production if only server env is Vercel). Runtime URLs come from `/api/home/showcase-url`. */
+/** Build-time public showcase URL, or built-in default so the homepage always embeds the public project. */
 const SHOWCASE_URL_RAW = process.env.NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL?.trim() ?? "";
+
+/** Effective initial showcase (never empty unless we deliberately skip to InfiniteCanvas). */
+const INITIAL_SHOWCASE_FROM_ENV = SHOWCASE_URL_RAW
+  ? normalizeStudioEmbedUrl(SHOWCASE_URL_RAW)
+  : normalizeStudioEmbedUrl(DEFAULT_PUBLIC_CANVAS_SHOWCASE_EMBED_URL);
 
 /** Legacy: iframe-only embed URL. */
 const LEGACY_EMBED_RAW = process.env.NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL?.trim() ?? "";
@@ -127,15 +133,16 @@ function ShowcaseStudioIframe({ src, title }: { src: string; title: string }) {
 
 /**
  * Homepage canvas block:
- * 1) `WILDMIND_CANVAS_SHOWCASE_URL` (server, recommended on Vercel) or `NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL` (build-time) — live iframe.
- * 2) `WILDMIND_STUDIO_EMBED_URL` / `NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL` — legacy.
- * 3) Else `InfiniteCanvas` demo.
+ * 1) `WILDMIND_CANVAS_SHOWCASE_URL` (server) or `NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL` (build-time) — live iframe.
+ * 2) If unset, built-in public embed (`DEFAULT_PUBLIC_CANVAS_SHOWCASE_EMBED_URL`) so all visitors see the same showcase without env.
+ * 3) `WILDMIND_STUDIO_EMBED_URL` — legacy.
+ * 4) Else `InfiniteCanvas` offline demo.
  *
- * Server env is merged via `GET /api/home/showcase-url` so production picks up URLs without relying on a client rebuild.
+ * Server env is merged via `GET /api/home/showcase-url` when set.
  */
 export default function StudioHomeShowcase() {
   const [resolved, setResolved] = useState(() => ({
-    showcase: SHOWCASE_URL_RAW ? normalizeStudioEmbedUrl(SHOWCASE_URL_RAW) : "",
+    showcase: INITIAL_SHOWCASE_FROM_ENV,
     legacy: LEGACY_EMBED_RAW ? normalizeStudioEmbedUrl(LEGACY_EMBED_RAW) : "",
     useIframe: SHOWCASE_USE_IFRAME,
   }));
@@ -156,7 +163,9 @@ export default function StudioHomeShowcase() {
         const s = (data.showcaseUrl ?? "").trim();
         const l = (data.legacyEmbedUrl ?? "").trim();
         setResolved({
-          showcase: s ? normalizeStudioEmbedUrl(s) : "",
+          showcase: s
+            ? normalizeStudioEmbedUrl(s)
+            : normalizeStudioEmbedUrl(DEFAULT_PUBLIC_CANVAS_SHOWCASE_EMBED_URL),
           legacy: l ? normalizeStudioEmbedUrl(l) : "",
           useIframe: data.useIframe !== false,
         });
