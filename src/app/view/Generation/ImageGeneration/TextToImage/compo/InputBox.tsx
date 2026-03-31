@@ -5857,17 +5857,17 @@ const InputBox = () => {
       >
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 md:pl-20 mr-1 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between md:mb-0 mb-0 pl-2 md:pl-0 h-14 md:h-auto">
-              <div className="flex min-w-0 items-center gap-2 md:mt-3">
+          <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
+            <div className="mb-0 flex h-10 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
+              <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
-                  className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white md:hidden"
                   aria-label="Open menu"
                 >
-                  <Menu size={24} />
+                  <Menu size={20} />
                 </button>
-                <h2 className="truncate whitespace-nowrap md:text-2xl text-base font-bold leading-none text-white tracking-tight">Image Generation</h2>
+                <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 text-[15px] font-bold leading-none tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">Image Generation</h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
 
@@ -5875,10 +5875,10 @@ const InputBox = () => {
                 {historyEntries.length > 0 && sortedDates.length > 0 && (
                   <button
                     onClick={() => setIsGuideModalOpen(true)}
-                    className="relative group h-5 w-5 md:h-6 md:w-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+                    className="relative group flex h-4.5 w-4.5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20 md:h-6 md:w-6"
                     aria-label="Show guide"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:h-4 md:w-4">
                       <path d="M10.9199 10.4384C10.9199 9.84191 11.4034 9.3584 11.9999 9.3584C12.5963 9.3584 13.0798 9.84191 13.0798 10.4384C13.0798 10.804 12.8988 11.1275 12.6181 11.3241C12.3474 11.5136 12.0203 11.7667 11.757 12.0846C11.4909 12.406 11.2499 12.8431 11.2499 13.3846C11.2499 13.7988 11.5857 14.1346 11.9999 14.1346C12.4141 14.1346 12.7499 13.7988 12.7499 13.3846C12.7499 13.3096 12.7806 13.2004 12.9123 13.0413C13.047 12.8786 13.2441 12.7169 13.4784 12.5528C14.1428 12.0876 14.5798 11.3141 14.5798 10.4384C14.5798 9.01348 13.4247 7.8584 11.9999 7.8584C10.575 7.8584 9.41992 9.01348 9.41992 10.4384C9.41992 10.8526 9.75571 11.1884 10.1699 11.1884C10.5841 11.1884 10.9199 10.8526 10.9199 10.4384Z" fill="#ffffff" />
                       <path d="M11.9991 14.6426C11.5849 14.6426 11.2491 14.9783 11.2491 15.3926C11.2491 15.8068 11.5849 16.1426 11.9991 16.1426C12.4134 16.1426 12.7499 15.8068 12.7499 15.3926C12.7499 14.9783 12.4134 14.6426 11.9991 14.6426Z" fill="#ffffff" />
                       <path fillRule="evenodd" clipRule="evenodd" d="M12 4C7.58172 4 4 7.58172 4 12V20H12C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12C21.5 17.2467 17.2467 21.5 12 21.5H3.25C2.83579 21.5 2.5 21.1642 2.5 20.75V12Z" fill="#ffffff" />
@@ -5891,10 +5891,10 @@ const InputBox = () => {
 
                 <button
                   onClick={() => router.push('/text-to-image')}
-                  className={`flex h-8 w-8 md:h-auto md:w-auto items-center justify-center gap-1.5 px-0 md:px-2 py-0 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center gap-1 px-0 py-0 text-[11px] transition-all whitespace-nowrap rounded-md md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'border border-transparent bg-white font-medium text-black' : 'border border-white/20 text-white/100 hover:bg-white/5'}`}
                   aria-label="Image"
                 >
-                  <ImageIcon size={15} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <ImageIcon size={14} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
                   <span className="hidden md:block">Image</span>
                 </button>
 
@@ -5903,10 +5903,10 @@ const InputBox = () => {
                     console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
                     router.push('/text-to-image/edit-image');
                   }}
-                  className={`flex h-8 w-8 md:h-auto md:w-auto items-center justify-center gap-1.5 px-0 md:px-2 py-0 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center gap-1 px-0 py-0 text-[11px] transition-all whitespace-nowrap rounded-md md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs ${pathname?.startsWith('/text-to-image/edit-image') ? 'border border-transparent bg-white font-medium text-black' : 'border border-white/20 text-white/100 hover:bg-white/5'}`}
                   aria-label="Edit Image"
                 >
-                  <Edit3 size={15} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <Edit3 size={14} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
                   <span className="hidden md:block">Edit</span>
                 </button>
 
@@ -5916,10 +5916,10 @@ const InputBox = () => {
                     const url = isLocal ? 'http://localhost:3002' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
                   }}
-                  className={`flex h-8 w-8 md:h-auto md:w-auto items-center justify-center gap-1.5 px-0 md:px-2 py-0 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center gap-1 rounded-md border border-white/20 px-0 py-0 text-[11px] text-white/100 transition-all whitespace-nowrap hover:bg-white/5 md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs"
                   aria-label="Image Editor"
                 >
-                  <Edit3 size={15} className="text-white" />
+                  <Edit3 size={14} className="text-white" />
                   <span className="hidden md:block">Image editor</span>
                 </button>
               </div>
@@ -5942,10 +5942,10 @@ const InputBox = () => {
             </div>
 
             {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
-              <div className="md:hidden px-3 pb-3">
+              <div className="px-3 pb-1 md:hidden">
                 <div className="flex items-center gap-2">
                   <div className="relative min-w-0 flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/35" />
                     <input
                       type="text"
                       value={searchQuery}
@@ -5957,7 +5957,7 @@ const InputBox = () => {
                         }
                       }}
                       placeholder="Search prompt..."
-                      className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-white/20 focus:bg-white/[0.06]"
+                      className="h-6 w-full rounded-lg border border-white/10 bg-white/[0.04] pl-8.5 pr-8 text-[13px] text-white outline-none transition placeholder:text-white/35 focus:border-white/20 focus:bg-white/[0.06]"
                     />
                     {searchQuery && (
                       <button
@@ -5965,10 +5965,10 @@ const InputBox = () => {
                           setSearchQuery('');
                           await refreshHistoryFromBackend({ search: '' });
                         }}
-                        className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-white/50 transition hover:bg-white/10 hover:text-white/80"
+                        className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-white/50 transition hover:bg-white/10 hover:text-white/80"
                         aria-label="Clear search"
                       >
-                        <X size={14} />
+                        <X size={13} />
                       </button>
                     )}
                   </div>
@@ -6000,11 +6000,11 @@ const InputBox = () => {
                         setIsMobileFilterMenuOpen((prev) => !prev);
                         setShowCalendar(false);
                       }}
-                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition ${isMobileFilterMenuOpen || sortOrder === 'asc' || !!dateRange.start ? 'border-white/20 bg-white text-black' : 'border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08]'}`}
+                      className={`relative flex h-6 w-6 items-center justify-center rounded-lg border transition ${isMobileFilterMenuOpen || sortOrder === 'asc' || !!dateRange.start ? 'border-white/20 bg-white text-black' : 'border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08]'}`}
                       aria-label="Open filters"
                       aria-expanded={isMobileFilterMenuOpen}
                     >
-                      <SlidersHorizontal size={16} />
+                      <SlidersHorizontal size={15} />
                       {(sortOrder === 'asc' || !!dateRange.start) && (
                         <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
                       )}
@@ -6395,7 +6395,7 @@ const InputBox = () => {
 
               {/* History Entries - Grouped by Date */}
               {userData && sortedDates.length > 0 && (
-                <div className=" space-y-4 md:px-0 px-2  mt-18 md:mt-14">
+                <div className="mt-18 space-y-4 px-2 md:mt-14 md:px-0">
                   {sortedDates.map((date) => (
                     <div key={date} className="space-y-2 md:-mt-2">
                       {/* Date Header */}
@@ -6823,7 +6823,7 @@ const InputBox = () => {
         </div>
       )}
       {!isInlineEditImagePage && (
-        <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
+        <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
             className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${isInputBoxHovered
               ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
