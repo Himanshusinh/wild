@@ -25,6 +25,9 @@ const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
 const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
     ssr: false
 })
+const WarliFullscreenWalkthrough = dynamic(() => import('./compo/WarliFullscreenWalkthrough'), {
+    ssr: false
+})
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -65,6 +68,7 @@ const HomePage: React.FC = () => {
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const onViewChange = (view: ViewType) => {
@@ -231,7 +235,12 @@ const HomePage: React.FC = () => {
 
                     {/* Promotional Banner */}
                     <MasonrySection mode={homepageMode} onModeChange={setHomepageMode} />
-                    <CreativeStyle />
+                    <CreativeStyle
+                        onWarliOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowWarliWalkthrough(true);
+                        }}
+                    />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
                     <AllFeatures mode={homepageMode} />
@@ -407,6 +416,12 @@ const HomePage: React.FC = () => {
                     </div>
                 </>
             )}
+
+            {/* Welcome Modal */}
+            <WarliFullscreenWalkthrough
+                isOpen={showWarliWalkthrough}
+                onClose={() => setShowWarliWalkthrough(false)}
+            />
 
             {/* Welcome Modal */}
             <WelcomeModal

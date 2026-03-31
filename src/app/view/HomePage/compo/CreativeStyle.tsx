@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 
 type StyleItem = {
@@ -84,10 +84,23 @@ const STYLES: StyleItem[] = [
   },
 ];
 
-export default function CreativeStyle() {
+type CreativeStyleProps = {
+  onWarliOpen?: () => void;
+};
+
+export default function CreativeStyle({ onWarliOpen }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+
+  const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
+    if (style.title.toLowerCase() !== "warli" || !onWarliOpen) {
+      return;
+    }
+
+    event.preventDefault();
+    onWarliOpen();
+  };
 
   const scrollRight = () => {
     const el = railRef.current;
@@ -154,7 +167,12 @@ export default function CreativeStyle() {
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {STYLES.map((style, index) => (
-            <Link key={`${style.id}-${index}`} href={style.href} className="w-full md:w-[340px] shrink-0 snap-start">
+            <Link
+              key={`${style.id}-${index}`}
+              href={style.href}
+              onClick={(event) => handleStyleClick(event, style)}
+              className="w-full md:w-[340px] shrink-0 snap-start"
+            >
               <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
                 <div className="group relative h-[190px] sm:h-[220px]">
                   <img

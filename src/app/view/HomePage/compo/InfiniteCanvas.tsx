@@ -28,6 +28,87 @@ const ZOOM_STEP = 1.12;
 const PRESET_PROMPT =
   "Neon city at dusk, rain on wet streets, cinematic lighting, ultra detailed, 8k";
 
+/** Offline showcase images (no network requests). */
+const DEMO_IMAGE_DATA_URIS: string[] = [
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#0b1220"/>
+          <stop offset="0.55" stop-color="#0e2b55"/>
+          <stop offset="1" stop-color="#60a5fa"/>
+        </linearGradient>
+        <radialGradient id="r" cx="0.72" cy="0.42" r="0.7">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="18"/>
+        </filter>
+      </defs>
+      <rect width="800" height="440" fill="url(#g)"/>
+      <circle cx="610" cy="180" r="190" fill="url(#r)"/>
+      <g opacity="0.45">
+        <path d="M0 315 C 120 265, 220 340, 360 300 C 520 255, 610 345, 800 280 L 800 440 L 0 440 Z" fill="#000" opacity="0.35"/>
+      </g>
+      <g filter="url(#blur)" opacity="0.55">
+        <circle cx="140" cy="110" r="70" fill="#60a5fa"/>
+        <circle cx="210" cy="150" r="30" fill="#a78bfa"/>
+      </g>
+      <text x="32" y="392" font-family="Inter, system-ui, -apple-system" font-size="18" fill="rgba(255,255,255,0.85)">Wildmind Showcase</text>
+      <text x="32" y="416" font-family="Inter, system-ui, -apple-system" font-size="12" fill="rgba(255,255,255,0.55)">Offline demo image</text>
+    </svg>`
+  )}`,
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#090916"/>
+          <stop offset="0.6" stop-color="#2a0f53"/>
+          <stop offset="1" stop-color="#a78bfa"/>
+        </linearGradient>
+        <radialGradient id="r" cx="0.35" cy="0.35" r="0.75">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="800" height="440" fill="url(#g)"/>
+      <circle cx="280" cy="170" r="240" fill="url(#r)"/>
+      <g opacity="0.25">
+        <path d="M0 290 L 800 240" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+        <path d="M0 320 L 800 270" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+        <path d="M0 350 L 800 300" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+      </g>
+      <text x="32" y="392" font-family="Inter, system-ui, -apple-system" font-size="18" fill="rgba(255,255,255,0.85)">Neon City Study</text>
+      <text x="32" y="416" font-family="Inter, system-ui, -apple-system" font-size="12" fill="rgba(255,255,255,0.55)">Offline demo image</text>
+    </svg>`
+  )}`,
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="440" viewBox="0 0 800 440">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#06131a"/>
+          <stop offset="0.55" stop-color="#083341"/>
+          <stop offset="1" stop-color="#2dd4bf"/>
+        </linearGradient>
+        <radialGradient id="r" cx="0.7" cy="0.55" r="0.8">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="0.13"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="800" height="440" fill="url(#g)"/>
+      <circle cx="580" cy="260" r="280" fill="url(#r)"/>
+      <g opacity="0.30">
+        <rect x="56" y="70" width="260" height="10" rx="5" fill="rgba(255,255,255,0.16)"/>
+        <rect x="56" y="94" width="340" height="10" rx="5" fill="rgba(255,255,255,0.12)"/>
+        <rect x="56" y="118" width="210" height="10" rx="5" fill="rgba(255,255,255,0.10)"/>
+      </g>
+      <text x="32" y="392" font-family="Inter, system-ui, -apple-system" font-size="18" fill="rgba(255,255,255,0.85)">Cinematic Lighting</text>
+      <text x="32" y="416" font-family="Inter, system-ui, -apple-system" font-size="12" fill="rgba(255,255,255,0.55)">Offline demo image</text>
+    </svg>`
+  )}`,
+];
+
 type NodeId = "input" | "generate" | "motion" | "voice";
 
 /** Per-node size for clamping & ports (matches composed studio-style chrome). */
@@ -266,11 +347,21 @@ export default function InfiniteCanvas() {
     setIsGenerating(true);
     generateNonceRef.current += 1;
     const n = generateNonceRef.current;
-    await new Promise((r) => window.setTimeout(r, 900 + Math.random() * 400));
+    // Fake generation delay (no backend request).
+    await new Promise((r) => window.setTimeout(r, 4200 + Math.random() * 900));
     if (n !== generateNonceRef.current) return;
-    const seed = `hero-${Date.now()}-${n}`;
-    setGeneratedImageUrl(`https://picsum.photos/seed/${encodeURIComponent(seed)}/400/220`);
+    const pick = DEMO_IMAGE_DATA_URIS[n % DEMO_IMAGE_DATA_URIS.length];
+    setGeneratedImageUrl(pick);
     setIsGenerating(false);
+
+    // After the demo result appears, redirect user to Studio projects.
+    window.setTimeout(() => {
+      try {
+        window.location.assign('/canvas-projects');
+      } catch {
+        // ignore
+      }
+    }, 650);
   }
 
   const connections = [
@@ -339,14 +430,7 @@ export default function InfiniteCanvas() {
             <span className="text-white/70">Generate image</span> for a quick demo.
           </p>
         </div>
-        <a
-          href="https://wildmindai.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-fit rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/45 transition-all duration-200 hover:border-white/20 hover:text-[#F0EFE9] sm:px-[18px] sm:py-2 sm:text-xs"
-        >
-          Open Canvas
-        </a>
+        {/* Removed Open-in-new-tab button for homepage dummy canvas */}
       </div>
 
       <div

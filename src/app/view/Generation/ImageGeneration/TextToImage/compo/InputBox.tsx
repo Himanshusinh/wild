@@ -45,6 +45,7 @@ import {
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance, { getApiClient } from "@/lib/axiosInstance";
 import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
+import { getStudioDraft, clearStudioDraft } from '@/lib/studioDraft';
 import { qlog, qwarn, qerr } from '@/lib/queueDebug';
 import toast from 'react-hot-toast';
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
@@ -386,6 +387,7 @@ const InputBox = () => {
   // the queue rendering relies on Redux `activeGenerations` instead for per-job placeholders.
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
+  // or from the homepage studio draft handoff.
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
@@ -399,6 +401,8 @@ const InputBox = () => {
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
       const remixNonce = current.searchParams.get('remixNonce');
+      const studioDraft = getStudioDraft();
+      const draftImages = Array.isArray(studioDraft?.uploadedImages) ? studioDraft.uploadedImages : [];
 
       // Handle image upload - prioritize sp (storage path) over image URL.
       // Collect all URLs from sp/image params so multiple uploads are supported.
@@ -426,44 +430,68 @@ const InputBox = () => {
         });
       }
 
+      if (!collectedUrls.length && draftImages.length > 0) {
+        draftImages.forEach((imageUrl) => {
+          if (!imageUrl || imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')) return;
+          collectedUrls.push(imageUrl);
+        });
+      }
+
       if (collectedUrls.length > 0) {
         // Cap to first 10 uploads to avoid overloading the UI
         dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
-      if (prm) {
-        dispatch(setPrompt(prm));
+      const promptToApply = prm || studioDraft?.prompt;
+      if (promptToApply) {
+        dispatch(setPrompt(promptToApply));
         // Force the visible contentEditable prompt editor to reflect the new prompt immediately.
         // This avoids cases where the editor is mid-update (isUpdatingRef=true) and would otherwise
         // ignore the prompt change, causing Remix to keep showing the old prompt.
         try {
           const el = document.querySelector('[data-prompt-editor="true"]') as HTMLElement | null;
           if (el) {
-            el.textContent = prm;
+            el.textContent = promptToApply;
             el.style.height = 'auto';
             el.style.height = Math.min(el.scrollHeight, 96) + 'px';
           }
         } catch { }
       }
-      if (mdl) {
-        const mapIncomingModel = (m: string): string => {
-          if (!m) return m;
-          // Normalize known backend → UI mappings
-          if (m === 'bytedance/seedream-4') return 'seedream-v4';
-          if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
-          if (m === 'z-image-turbo') return 'new-turbo-model';
-          // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
-          if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
-          return m;
-        };
-        dispatch(setSelectedModel(mapIncomingModel(mdl)));
+
+      const mapIncomingModel = (m: string): string => {
+        if (!m) return m;
+        // Normalize known backend → UI mappings
+        if (m === 'bytedance/seedream-4') return 'seedream-v4';
+        if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
+        if (m === 'z-image-turbo') return 'new-turbo-model';
+        // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
+        if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
+        return m;
+      };
+
+      const modelToApply = mdl || studioDraft?.model;
+      if (modelToApply) {
+        dispatch(setSelectedModel(mapIncomingModel(modelToApply)));
       }
-      if (frm) {
-        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frm }); } catch { }
+
+      const frameToApply = frm || studioDraft?.frameSize;
+      if (frameToApply) {
+        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frameToApply }); } catch { }
       }
-      if (sty) {
-        try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
+
+      const styleToApply = sty || studioDraft?.style;
+      if (styleToApply) {
+        try { (dispatch as any)({ type: 'generation/setStyle', payload: styleToApply }); } catch { }
       }
+
+      if (studioDraft?.imageCount) {
+        try { (dispatch as any)({ type: 'generation/setImageCount', payload: studioDraft.imageCount }); } catch { }
+      }
+
+      if (studioDraft) {
+        clearStudioDraft();
+      }
+
       // Consume params once so a refresh doesn't keep re-applying Remix values.
       // IMPORTANT: Use Next router.replace (not window.history.replaceState) to avoid
       // desyncing Next.js searchParams, which can prevent subsequent Remix clicks from being detected.
