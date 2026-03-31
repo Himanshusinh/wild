@@ -420,8 +420,8 @@ const SidePannelFeatures = () => {
           {renderNavItems(desktopBottomItems, true)}
         </div>
 
-        <div className="mt-auto flex w-full flex-col items-center border-t border-white/5 py-5">
-          <div className="group relative flex flex-col items-center gap-1.5" onMouseEnter={(e) => handleMouseEnterItem(null, e)}>
+        <div className="mt-auto flex w-full flex-col items-center border-t border-white/5 py-3">
+          <div className="group relative flex flex-col items-center gap-1" onMouseEnter={(e) => handleMouseEnterItem(null, e)}>
             <div className="relative cursor-pointer" onClick={() => nav(NAV_ROUTES.ACCOUNT_MANAGEMENT)}>
               <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-gradient-to-tr from-slate-900 to-slate-800 transition-all group-hover:border-[#60a5fa]/50">
                 {userData?.photoURL && !imgError ? (
@@ -436,17 +436,17 @@ const SidePannelFeatures = () => {
               </div>
             </div>
 
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                refreshCredits();
-              }}
-              className="translate-y-1 cursor-pointer opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
-            >
-              <div className="mb-1 rounded-full border border-[#60a5fa]/20 bg-[#60a5fa]/10 px-2 py-0.5 text-center text-[9px] font-black text-[#60a5fa] shadow-lg transition-colors hover:bg-[#60a5fa]/20">
-                {creditsLoading ? '...' : (creditBalance ?? 0)}
-              </div>
-              {userData && (
+            {userData && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  refreshCredits();
+                }}
+                className="translate-y-1 cursor-pointer opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+              >
+                <div className="mb-1 rounded-full border border-[#60a5fa]/20 bg-[#60a5fa]/10 px-2 py-0.5 text-center text-[9px] font-black text-[#60a5fa] shadow-lg transition-colors hover:bg-[#60a5fa]/20">
+                  {creditsLoading ? '...' : (creditBalance ?? 0)}
+                </div>
                 <div className="flex min-w-[60px] flex-col gap-0.5">
                   <div className="h-1 w-full overflow-hidden rounded-full bg-slate-800">
                     <div
@@ -458,13 +458,13 @@ const SidePannelFeatures = () => {
                     {((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           {!authLoading && !userData && (
             <button
               onClick={() => nav(getSignInUrl())}
-              className="mt-2 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold text-white/90 transition hover:bg-white/20 hover:text-white"
+              className="mt-1 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold text-white/90 transition hover:bg-white/20 hover:text-white"
             >
               Sign In
             </button>
@@ -538,29 +538,52 @@ const SidePannelFeatures = () => {
               </div>
 
               {/* Mobile User Profile in Drawer */}
-              <div className="py-4 px-3 border-t border-white/[0.06] bg-black/20">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-gradient-to-tr from-slate-900 to-slate-800">
-                    {userData?.photoURL && !imgError ? (
-                      <img src={userData.photoURL} alt="Avatar" className="h-full w-full object-cover" onError={() => setImgError(true)} />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-400">
-                        {userData?.username?.charAt(0).toUpperCase() || 'U'}
+              {userData ? (
+                <div className="py-4 px-3 border-t border-white/[0.06] bg-black/20">
+                  <button
+                    onClick={() => nav(NAV_ROUTES.ACCOUNT_MANAGEMENT)}
+                    className="flex w-full items-center gap-3 rounded-xl text-left transition hover:bg-white/[0.03]"
+                  >
+                    <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-gradient-to-tr from-slate-900 to-slate-800">
+                      {userData?.photoURL && !imgError ? (
+                        <img src={userData.photoURL} alt="Avatar" className="h-full w-full object-cover" onError={() => setImgError(true)} />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-400">
+                          {userData?.username?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-white truncate">
+                        {userData?.username || userData?.displayName || 'User'}
                       </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-white truncate">
-                      {userData?.username || userData?.displayName || 'User'}
+                      <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
+                        <span>Credits: {creditBalance ?? 0}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-600" />
+                        <span>{((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB</span>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
-                      <span>Credits: {creditBalance ?? 0}</span>
-                      <span className="w-1 h-1 rounded-full bg-slate-600" />
-                      <span>{((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB</span>
-                    </div>
+                  </button>
+                </div>
+              ) : (
+                <div className="py-3 px-3 border-t border-white/[0.06] bg-black/20">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => nav(getSignInUrl())}
+                      className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gradient-to-tr from-slate-900 to-slate-800 text-xs font-bold text-slate-400 transition hover:border-white/20 hover:text-white"
+                      aria-label="Sign in profile"
+                    >
+                      U
+                    </button>
+                    <button
+                      onClick={() => nav(getSignInUrl())}
+                      className="flex-1 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white/90 transition hover:bg-white/20 hover:text-white"
+                    >
+                      Sign In
+                    </button>
                   </div>
                 </div>
-              </div>
+              )}
             </motion.aside>
           </>
         )}

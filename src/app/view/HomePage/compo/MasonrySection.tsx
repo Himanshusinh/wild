@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, Clapperboard, Image as ImageIcon } from "lucide-react";
 import { saveAutoResumeIntent } from "@/lib/autoResume";
 import { enhancePromptAPI } from "@/lib/api/geminiApi";
 import { getSignInUrl } from "@/routes/routes";
@@ -13,6 +14,14 @@ interface MasonrySectionProps {
   mode?: GenerationMode;
   onModeChange?: (mode: GenerationMode) => void;
 }
+
+const generateTypeIcon = (type: GenerationMode, className = "h-3.5 w-3.5") => {
+  if (type === "video") {
+    return <Clapperboard className={className} strokeWidth={1.9} />;
+  }
+
+  return <ImageIcon className={className} strokeWidth={1.9} />;
+};
 
 const IMAGE_SUGGESTED_PROMPTS = [
   {
@@ -206,7 +215,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
           One prompt away from something extraordinary.
         </p>
 
-        <div className="mb-4 flex w-full max-w-[920px] items-center gap-1 rounded-full border border-[#E5E4E0] bg-white p-1 pl-2.5 pr-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)] sm:p-1.5 sm:pl-5">
+        <div className="mb-2 flex w-full max-w-[920px] items-center gap-0.5 rounded-full border border-[#E5E4E0] bg-white p-1 pl-2.5 pr-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)] sm:gap-1 sm:mb-3 sm:p-1.5 sm:pl-5">
           <span className="mr-1 flex shrink-0 text-[#8f9199] sm:mr-1.5">
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
               <rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.4" />
@@ -248,7 +257,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             type="button"
             onClick={handleEnhancePrompt}
             disabled={!prompt.trim() || isEnhancing}
-            className="group relative mr-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E5E4E0] bg-[#f5f4f2] text-[#999] transition-colors hover:bg-[#e8e7e3] hover:text-[#333] sm:mr-1 sm:h-10 sm:w-10"
+            className="group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd9d2] bg-[#e8e7e3] text-[#333] transition-colors hover:bg-[#e8e7e3] hover:text-[#333] sm:mr-1 sm:h-10 sm:w-10 sm:border-[#E5E4E0] sm:bg-[#f5f4f2] sm:text-[#999]"
             aria-label="Enhance prompt"
           >
             {isEnhancing ? (
@@ -287,15 +296,18 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             </span>
           </button>
 
-          <div ref={generateMenuRef} className="relative mr-1 shrink-0">
+          <div ref={generateMenuRef} className="relative shrink-0 sm:mr-1">
             <button
               type="button"
               onClick={() => setShowGenerateMenu((prev) => !prev)}
               disabled={isGenerating}
               aria-label="Choose generation type"
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-[#E5E4E0] bg-[#f5f4f2] px-2.5 text-[12px] font-medium text-[#555] transition-colors hover:bg-[#e8e7e3] hover:text-[#222] disabled:cursor-default disabled:opacity-75 sm:h-10 sm:px-3 sm:text-[13px]"
+              className="inline-flex h-8 items-center gap-1 rounded-full border border-[#ddd9d2] bg-[#e8e7e3] px-2 text-[12px] font-medium text-[#222] transition-colors hover:bg-[#e8e7e3] hover:text-[#222] disabled:cursor-default disabled:opacity-75 sm:h-10 sm:border-[#E5E4E0] sm:bg-[#f5f4f2] sm:px-3 sm:text-[13px] sm:text-[#555]"
             >
-              <span className="capitalize">{selectedGenerateType}</span>
+              <span className="flex items-center text-[#222] sm:hidden">
+                {generateTypeIcon(selectedGenerateType)}
+              </span>
+              <span className="hidden capitalize sm:inline">{selectedGenerateType}</span>
               <svg
                 width="12"
                 height="12"
@@ -313,16 +325,18 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
                   type="button"
                   onClick={() => handleModeToggle("image")}
                   disabled={isGenerating}
-                  className="flex w-full items-center px-3 py-2 text-left text-[13px] text-[#111] transition-colors hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#111] transition-colors hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  {generateTypeIcon("image")}
                   Image
                 </button>
                 <button
                   type="button"
                   onClick={() => handleModeToggle("video")}
                   disabled={isGenerating}
-                  className="flex w-full items-center border-t border-[#E5E7EB] px-3 py-2 text-left text-[13px] text-[#111] transition-colors hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center gap-2 border-t border-[#E5E7EB] px-3 py-2 text-left text-[13px] text-[#111] transition-colors hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  {generateTypeIcon("video")}
                   Video
                 </button>
               </div>
@@ -334,7 +348,8 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             id="genBtn"
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#3B82F6] px-4 py-2 text-[13px] font-bold text-white shadow-[0_4px_18px_rgba(59,130,246,0.42)] transition-all hover:bg-[#60a5fa] hover:shadow-[0_8px_26px_rgba(59,130,246,0.55)] disabled:cursor-default disabled:opacity-75 sm:px-7 sm:py-3 sm:text-[14px]"
+            aria-label="Generate"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B82F6] text-white shadow-[0_4px_18px_rgba(59,130,246,0.42)] transition-all hover:bg-[#60a5fa] hover:shadow-[0_8px_26px_rgba(59,130,246,0.55)] disabled:cursor-default disabled:opacity-75 sm:h-auto sm:w-auto sm:gap-2 sm:px-7 sm:py-3 sm:text-[14px]"
           >
             {isGenerating ? (
               <>
@@ -358,15 +373,18 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
                     />
                   </circle>
                 </svg>
-                Generating...
+                <span className="hidden sm:inline">Generating...</span>
               </>
             ) : (
-              "Generate"
+              <>
+                <ArrowRight className="h-4 w-4 sm:hidden" strokeWidth={2.4} />
+                <span className="hidden sm:inline">Generate</span>
+              </>
             )}
           </button>
         </div>
 
-        <div className="w-full max-w-[920px] overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="w-full max-w-[920px] overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="mx-auto flex w-max min-w-full flex-nowrap justify-center gap-1.5 sm:gap-2">
             {suggestedPrompts.map((item) => (
               <button

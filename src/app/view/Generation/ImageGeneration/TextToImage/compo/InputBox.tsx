@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon, Sparkles, Menu } from 'lucide-react';
+import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon, Sparkles, Menu, ArrowRight, Search, SlidersHorizontal, CalendarDays, X } from 'lucide-react';
 // HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -45,6 +45,7 @@ import {
 import useHistoryLoader from '@/hooks/useHistoryLoader';
 import axiosInstance, { getApiClient } from "@/lib/axiosInstance";
 import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
+import { getStudioDraft, clearStudioDraft } from '@/lib/studioDraft';
 import { qlog, qwarn, qerr } from '@/lib/queueDebug';
 import toast from 'react-hot-toast';
 import { enhancePromptAPI } from '@/lib/api/geminiApi';
@@ -259,10 +260,12 @@ const InputBox = () => {
   const [dateInput, setDateInput] = useState<string>("");
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isMobileFilterMenuOpen, setIsMobileFilterMenuOpen] = useState(false);
   const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
   const calendarRef = useRef<HTMLDivElement | null>(null);
+  const mobileFilterMenuRef = useRef<HTMLDivElement | null>(null);
   const [isFiltering, setIsFiltering] = useState(false);
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
@@ -282,6 +285,29 @@ const InputBox = () => {
       document.removeEventListener('keydown', onEsc);
     };
   }, [showCalendar]);
+
+  useEffect(() => {
+    if (!isMobileFilterMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (mobileFilterMenuRef.current && !mobileFilterMenuRef.current.contains(t)) {
+        setIsMobileFilterMenuOpen(false);
+        setShowCalendar(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMobileFilterMenuOpen(false);
+        setShowCalendar(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [isMobileFilterMenuOpen]);
 
   // Handle search query changes with loading state
   useEffect(() => {
@@ -361,6 +387,7 @@ const InputBox = () => {
   // the queue rendering relies on Redux `activeGenerations` instead for per-job placeholders.
 
   // Prefill uploaded image and prompt from query params (?image=, ?prompt=, ?sp=, ?model=, ?frame=, ?style=)
+  // or from the homepage studio draft handoff.
   useEffect(() => {
     try {
       const current = new URL(window.location.href);
@@ -374,6 +401,8 @@ const InputBox = () => {
       const frm = current.searchParams.get('frame');
       const sty = current.searchParams.get('style');
       const remixNonce = current.searchParams.get('remixNonce');
+      const studioDraft = getStudioDraft();
+      const draftImages = Array.isArray(studioDraft?.uploadedImages) ? studioDraft.uploadedImages : [];
 
       // Handle image upload - prioritize sp (storage path) over image URL.
       // Collect all URLs from sp/image params so multiple uploads are supported.
@@ -401,44 +430,68 @@ const InputBox = () => {
         });
       }
 
+      if (!collectedUrls.length && draftImages.length > 0) {
+        draftImages.forEach((imageUrl) => {
+          if (!imageUrl || imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')) return;
+          collectedUrls.push(imageUrl);
+        });
+      }
+
       if (collectedUrls.length > 0) {
         // Cap to first 10 uploads to avoid overloading the UI
         dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
       }
 
-      if (prm) {
-        dispatch(setPrompt(prm));
+      const promptToApply = prm || studioDraft?.prompt;
+      if (promptToApply) {
+        dispatch(setPrompt(promptToApply));
         // Force the visible contentEditable prompt editor to reflect the new prompt immediately.
         // This avoids cases where the editor is mid-update (isUpdatingRef=true) and would otherwise
         // ignore the prompt change, causing Remix to keep showing the old prompt.
         try {
           const el = document.querySelector('[data-prompt-editor="true"]') as HTMLElement | null;
           if (el) {
-            el.textContent = prm;
+            el.textContent = promptToApply;
             el.style.height = 'auto';
             el.style.height = Math.min(el.scrollHeight, 96) + 'px';
           }
         } catch { }
       }
-      if (mdl) {
-        const mapIncomingModel = (m: string): string => {
-          if (!m) return m;
-          // Normalize known backend → UI mappings
-          if (m === 'bytedance/seedream-4') return 'seedream-v4';
-          if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
-          if (m === 'z-image-turbo') return 'new-turbo-model';
-          // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
-          if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
-          return m;
-        };
-        dispatch(setSelectedModel(mapIncomingModel(mdl)));
+
+      const mapIncomingModel = (m: string): string => {
+        if (!m) return m;
+        // Normalize known backend → UI mappings
+        if (m === 'bytedance/seedream-4') return 'seedream-v4';
+        if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
+        if (m === 'z-image-turbo') return 'new-turbo-model';
+        // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
+        if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
+        return m;
+      };
+
+      const modelToApply = mdl || studioDraft?.model;
+      if (modelToApply) {
+        dispatch(setSelectedModel(mapIncomingModel(modelToApply)));
       }
-      if (frm) {
-        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frm }); } catch { }
+
+      const frameToApply = frm || studioDraft?.frameSize;
+      if (frameToApply) {
+        try { (dispatch as any)({ type: 'generation/setFrameSize', payload: frameToApply }); } catch { }
       }
-      if (sty) {
-        try { (dispatch as any)({ type: 'generation/setStyle', payload: sty }); } catch { }
+
+      const styleToApply = sty || studioDraft?.style;
+      if (styleToApply) {
+        try { (dispatch as any)({ type: 'generation/setStyle', payload: styleToApply }); } catch { }
       }
+
+      if (studioDraft?.imageCount) {
+        try { (dispatch as any)({ type: 'generation/setImageCount', payload: studioDraft.imageCount }); } catch { }
+      }
+
+      if (studioDraft) {
+        clearStudioDraft();
+      }
+
       // Consume params once so a refresh doesn't keep re-applying Remix values.
       // IMPORTANT: Use Next router.replace (not window.history.replaceState) to avoid
       // desyncing Next.js searchParams, which can prevent subsequent Remix clicks from being detected.
@@ -5806,15 +5859,15 @@ const InputBox = () => {
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 md:py-0 md:pl-20 mr-1 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300">
             <div className="flex items-center justify-between md:mb-0 mb-0 pl-2 md:pl-0 h-14 md:h-auto">
-              <div className="flex items-center gap-2 md:mt-3">
+              <div className="flex min-w-0 items-center gap-2 md:mt-3">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
-                  className="md:hidden p-2 -ml-2 text-white/70 hover:text-white transition-colors"
+                  className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors"
                   aria-label="Open menu"
                 >
-                  <Menu size={20} />
+                  <Menu size={24} />
                 </button>
-                <h2 className="md:text-2xl text-base font-bold text-white tracking-tight">Image Generation</h2>
+                <h2 className="truncate whitespace-nowrap md:text-2xl text-base font-bold leading-none text-white tracking-tight">Image Generation</h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
 
@@ -5822,7 +5875,7 @@ const InputBox = () => {
                 {historyEntries.length > 0 && sortedDates.length > 0 && (
                   <button
                     onClick={() => setIsGuideModalOpen(true)}
-                    className="relative group w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+                    className="relative group h-5 w-5 md:h-6 md:w-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
                     aria-label="Show guide"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -5838,10 +5891,10 @@ const InputBox = () => {
 
                 <button
                   onClick={() => router.push('/text-to-image')}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+                  className={`flex h-8 w-8 md:h-auto md:w-auto items-center justify-center gap-1.5 px-0 md:px-2 py-0 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Image"
                 >
-                  <ImageIcon size={16} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <ImageIcon size={15} className={`${pathname?.startsWith('/text-to-image') && !pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
                   <span className="hidden md:block">Image</span>
                 </button>
 
@@ -5850,10 +5903,10 @@ const InputBox = () => {
                     console.log('[Edit Button] Clicked! Navigating to /text-to-image/edit-image');
                     router.push('/text-to-image/edit-image');
                   }}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
+                  className={`flex h-8 w-8 md:h-auto md:w-auto items-center justify-center gap-1.5 px-0 md:px-2 py-0 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap ${pathname?.startsWith('/text-to-image/edit-image') ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/5 border border-white/20'}`}
                   aria-label="Edit Image"
                 >
-                  <Edit3 size={16} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
+                  <Edit3 size={15} className={`${pathname?.startsWith('/text-to-image/edit-image') ? 'text-black ' : 'text-white '}`} />
                   <span className="hidden md:block">Edit</span>
                 </button>
 
@@ -5863,10 +5916,10 @@ const InputBox = () => {
                     const url = isLocal ? 'http://localhost:3002' : 'https://editor-image.wildmindai.com/';
                     window.open(url, '_blank');
                   }}
-                  className={`flex items-center gap-1.5 px-2 py-1 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
+                  className={`flex h-8 w-8 md:h-auto md:w-auto items-center justify-center gap-1.5 px-0 md:px-2 py-0 md:py-1 rounded-lg text-xs transition-all whitespace-nowrap text-white/100 hover:bg-white/5 border border-white/20`}
                   aria-label="Image Editor"
                 >
-                  <Edit3 size={16} className="text-white" />
+                  <Edit3 size={15} className="text-white" />
                   <span className="hidden md:block">Image editor</span>
                 </button>
               </div>
@@ -5889,16 +5942,208 @@ const InputBox = () => {
             </div>
 
             {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
-              <div className="flex md:hidden items-center justify-end px-4 gap-2 pb-2 h-10">
-                <HistoryControls 
-                  mode="image" 
-                  onSearchChange={setSearchQuery}
-                  onSortChange={onSortChange}
-                  onDateChange={(range) => {
-                    setDateRange(range);
-                    setDateInput(range.start ? range.start.toLocaleDateString() : '');
-                  }}
-                />
+              <div className="md:hidden px-3 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          await refreshHistoryFromBackend({ search: searchQuery });
+                        }
+                      }}
+                      placeholder="Search prompt..."
+                      className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-white/20 focus:bg-white/[0.06]"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={async () => {
+                          setSearchQuery('');
+                          await refreshHistoryFromBackend({ search: '' });
+                        }}
+                        className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-white/50 transition hover:bg-white/10 hover:text-white/80"
+                        aria-label="Clear search"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div ref={mobileFilterMenuRef} className="relative shrink-0">
+                    <input
+                      ref={dateInputRef}
+                      type="date"
+                      value={dateInput}
+                      onChange={async (e) => {
+                        const value = e.target.value;
+                        setDateInput(value);
+                        if (!value) {
+                          await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                          return;
+                        }
+                        const d = new Date(value + 'T00:00:00');
+                        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                        const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                        await refreshHistoryFromBackend({ dateRange: { start, end } });
+                      }}
+                      className="sr-only"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    />
+
+                    <button
+                      onClick={() => {
+                        setIsMobileFilterMenuOpen((prev) => !prev);
+                        setShowCalendar(false);
+                      }}
+                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition ${isMobileFilterMenuOpen || sortOrder === 'asc' || !!dateRange.start ? 'border-white/20 bg-white text-black' : 'border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08]'}`}
+                      aria-label="Open filters"
+                      aria-expanded={isMobileFilterMenuOpen}
+                    >
+                      <SlidersHorizontal size={16} />
+                      {(sortOrder === 'asc' || !!dateRange.start) && (
+                        <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
+                      )}
+                    </button>
+
+                    {isMobileFilterMenuOpen && (
+                      <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-2xl border border-white/10 bg-[#111117]/95 p-2 shadow-2xl backdrop-blur-xl">
+                        <button
+                          onClick={async () => {
+                            setIsMobileFilterMenuOpen(false);
+                            setShowCalendar(false);
+                            await onSortChange('desc');
+                          }}
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${sortOrder === 'desc' ? 'bg-white text-black' : 'text-white/80 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          <span>Newest</span>
+                          <img src="/icons/upload-square-2 (1).svg" alt="Newest" className={`h-4 w-4 ${sortOrder === 'desc' ? '' : 'invert opacity-80'}`} />
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            setIsMobileFilterMenuOpen(false);
+                            setShowCalendar(false);
+                            await onSortChange('asc');
+                          }}
+                          className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${sortOrder === 'asc' ? 'bg-white text-black' : 'text-white/80 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          <span>Oldest</span>
+                          <img src="/icons/download-square-2.svg" alt="Oldest" className={`h-4 w-4 ${sortOrder === 'asc' ? '' : 'invert opacity-80'}`} />
+                        </button>
+
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const base = dateRange.start ? new Date(dateRange.start) : new Date();
+                            setCalendarMonth(base.getMonth());
+                            setCalendarYear(base.getFullYear());
+                            setShowCalendar((prev) => !prev);
+                          }}
+                          className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${(showCalendar || !!dateRange.start) ? 'bg-white text-black' : 'text-white/80 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          <span>{dateRange.start ? 'Change date' : 'Pick date'}</span>
+                          <CalendarDays size={16} />
+                        </button>
+
+                        {showCalendar && (
+                          <div ref={calendarRef} className="mt-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                            <div className="mb-2 flex items-center justify-between text-white">
+                              <button
+                                className="rounded-lg px-2 py-1 hover:bg-white/10"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                                  setCalendarYear(prev.getFullYear());
+                                  setCalendarMonth(prev.getMonth());
+                                }}
+                              >
+                                ‹
+                              </button>
+                              <div className="text-sm font-semibold">
+                                {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                              </div>
+                              <button
+                                className="rounded-lg px-2 py-1 hover:bg-white/10"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const next = new Date(calendarYear, calendarMonth + 1, 1);
+                                  setCalendarYear(next.getFullYear());
+                                  setCalendarMonth(next.getMonth());
+                                }}
+                              >
+                                ›
+                              </button>
+                            </div>
+                            <div className="mb-1 grid grid-cols-7 text-[10px] text-white/45">
+                              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                                <div key={day} className="py-1 text-center">{day}</div>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-7 gap-1">
+                              {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                                <div key={`mobile-pad-${i}`} className="h-8" />
+                              ))}
+                              {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                                const day = i + 1;
+                                const thisDate = new Date(calendarYear, calendarMonth, day);
+                                const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                                return (
+                                  <button
+                                    key={day}
+                                    className={`h-8 rounded-lg text-center text-xs transition ${isSelected ? 'bg-white text-black' : 'bg-white/5 text-white hover:bg-white/15'}`}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
+                                      const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
+                                      setDateInput(thisDate.toISOString().slice(0, 10));
+                                      await refreshHistoryFromBackend({ dateRange: { start, end } });
+                                      setShowCalendar(false);
+                                      setIsMobileFilterMenuOpen(false);
+                                    }}
+                                  >
+                                    {day}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="mt-3 flex items-center justify-between">
+                              <button
+                                className="rounded-lg px-2 py-1 text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                                onClick={async () => {
+                                  setDateInput('');
+                                  await refreshHistoryFromBackend({ dateRange: { start: null, end: null } });
+                                  setShowCalendar(false);
+                                  setIsMobileFilterMenuOpen(false);
+                                }}
+                              >
+                                Clear
+                              </button>
+                              <button
+                                className="rounded-lg px-2 py-1 text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                                onClick={() => {
+                                  const now = new Date();
+                                  setCalendarMonth(now.getMonth());
+                                  setCalendarYear(now.getFullYear());
+                                }}
+                              >
+                                Today
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -6580,7 +6825,7 @@ const InputBox = () => {
       {!isInlineEditImagePage && (
         <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
           <div
-            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-2 space-y-4 transition-all duration-300 ${isInputBoxHovered
+            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${isInputBoxHovered
               ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
               : 'bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl'
               }`}
@@ -6822,10 +7067,10 @@ const InputBox = () => {
                     const inputEvent = new Event('input', { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 -mb-4 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}`}
+                  className={`flex-1 -mb-4 pr-7 md:pr-1 pt-1 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}`}
                   style={{
-                    minHeight: '100px',
-                    maxHeight: '120px',
+                    minHeight: '80px',
+                    maxHeight: '90px',
                     lineHeight: '1.2',
                     scrollbarWidth: 'thin',
                     scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
@@ -6834,8 +7079,37 @@ const InputBox = () => {
                   }}
                   data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
                 />
-                <div className="flex flex-col md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 pt-1 md:-mb-6">
-                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
+                {prompt.trim() && (
+                  <button
+                    onClick={() => {
+                      dispatch(setPrompt(''));
+                      if (contentEditableRef.current) {
+                        contentEditableRef.current.textContent = '';
+                      }
+                      if (inputEl.current) {
+                        inputEl.current.focus();
+                      }
+                    }}
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/75 transition hover:bg-white/10 md:hidden"
+                    aria-label="Clear prompt"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+                <div className="hidden md:flex md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 pt-1 md:-mb-6">
+                  <div className="relative flex md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
                     {/* Clear prompt button - only show when there's text */}
                     {prompt.trim() && (
                       <div className="relative group">
@@ -7006,10 +7280,54 @@ const InputBox = () => {
 
             {/* Bottom row: pill options */}
 
-            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2 md:gap-1 pt-1 md:pt-0">
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-1 md:pt-0">
+              <div className="md:hidden flex items-center justify-end gap-1.5 px-1 pb-1">
+                <button
+                  onClick={handleEnhancePrompt}
+                  disabled={isEnhancing || !prompt.trim()}
+                  type="button"
+                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10 disabled:opacity-50"
+                  aria-label="Enhance prompt"
+                  aria-pressed={isEnhancing}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
+                    <path d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z" fill="currentColor" opacity="0.95" />
+                    <path d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z" fill="currentColor" opacity="0.6" />
+                  </svg>
+                </button>
+
+                <button
+                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
+                  onClick={() => setIsCharacterModalOpen(true)}
+                  type="button"
+                  aria-label="Upload character"
+                >
+                  <Image src="/icons/character.svg" alt="Attach" width={14} height={14} className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
+                  onClick={() => setIsAssistantOpen(prev => !prev)}
+                  type="button"
+                  aria-label="Toggle Assistant"
+                  aria-pressed={isAssistantOpen}
+                >
+                  <Sparkles className={`w-3 h-3 transition-colors ${isAssistantOpen ? 'text-blue-400' : 'text-white/90'}`} />
+                </button>
+
+                <button
+                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
+                  onClick={() => setIsUploadOpen(true)}
+                  type="button"
+                  aria-label="Upload image"
+                >
+                  <Image src="/icons/fileupload.svg" alt="Attach" width={14} height={14} className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
 
-              <div className="flex items-center justify-between gap-2 md:hidden w-full px-0 mt-2 relative z-50">
+              <div className="flex items-center justify-between gap-2 md:hidden w-full px-1 md:px-0 mt-1 relative z-50">
                 <div className="flex-shrink-0 max-w-[45%]">
                   <ModelsDropdown />
                 </div>
@@ -7020,11 +7338,6 @@ const InputBox = () => {
                    <div className="flex-1 min-w-0" />
                 )}
 
-                {expectedCredits > 0 && !error && (
-                  <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
-                    {Math.round(expectedCredits).toLocaleString()} credits
-                  </div>
-                )}
                 <button
                   onClick={async () => {
                     if (!userData) {
@@ -7072,17 +7385,48 @@ const InputBox = () => {
                     }
                   }}
                   disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
-                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-xl md:rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
+                  className="flex h-6 w-8 items-center justify-center bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white rounded-md transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
                   aria-busy={isEnhancing}
+                  aria-label={isEnhancing ? 'Enhancing prompt' : runningGenerationsCount >= 4 ? 'Queue full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
                 >
-                  {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
+                  {isEnhancing ? (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <circle
+                        cx="6"
+                        cy="6"
+                        r="4.5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeDasharray="7 18"
+                        strokeLinecap="round"
+                      >
+                        <animateTransform
+                          attributeName="transform"
+                          type="rotate"
+                          from="0 6 6"
+                          to="360 6 6"
+                          dur="0.6s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                    </svg>
+                  ) : runningGenerationsCount >= 4 ? (
+                    <span className="text-[10px] font-semibold">4/4</span>
+                  ) : (
+                    <ArrowRight size={16} strokeWidth={2.5} />
+                  )}
                 </button>
+                {expectedCredits > 0 && !error && (
+                  <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
+                    {Math.round(expectedCredits).toLocaleString()} credits
+                  </div>
+                )}
               </div>
 
               {/* Removed Mobile Separator Line for cleaner look matching Image 2 */}
 
               {/* Mobile/Tablet: Second row - Other dropdowns */}
-              <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative py-1.5 px-1 bg-transparent" style={{ zIndex: 70 }}>
+              <div className="flex flex-nowrap items-center gap-1.5 md:gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative py-1 md:py-1.5 px-1 bg-transparent" style={{ zIndex: 70 }}>
                 <ImageCountDropdown />
                 <FrameSizeDropdown />
                 <StyleSelector />

@@ -528,6 +528,20 @@ export const MODEL_MAPPING: ModelMapping[] = [
 
   // Kling Models (Replicate)
   {
+    frontendValue: 'kling-v3-standard',
+    creditModelName: 'Kling 3 Standard T2V/I2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] }
+  },
+  {
+    frontendValue: 'kling-v3-pro',
+    creditModelName: 'Kling 3 Pro T2V/I2V',
+    generationType: 'video',
+    provider: 'fal',
+    options: { duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] }
+  },
+  {
     frontendValue: 'kling-2.6-pro',
     creditModelName: 'Kling 2.6 Pro T2V', // Base name, audio and duration appended dynamically
     generationType: 'video',
@@ -1111,7 +1125,12 @@ export const buildCreditModelName = (
   // Handle Kling models
   else if (mapping.frontendValue.startsWith('kling') && options?.duration) {
     const d = options.duration;
-    if (mapping.frontendValue === 'kling-2.6-pro') {
+    if (mapping.frontendValue === 'kling-v3-standard' || mapping.frontendValue === 'kling-v3-pro') {
+      const hasAudio = (options as any)?.generateAudio !== false;
+      const audioSuffix = hasAudio ? ' Audio On' : ' Audio Off';
+      const tierLabel = mapping.frontendValue === 'kling-v3-pro' ? 'Pro' : 'Standard';
+      modelName = `Kling 3 ${tierLabel} T2V/I2V ${d}s${audioSuffix}`;
+    } else if (mapping.frontendValue === 'kling-2.6-pro') {
       // Kling 2.6 Pro: duration and audio-based
       const hasAudio = (options as any)?.generateAudio !== false; // Default to true
       const audioSuffix = hasAudio ? '' : ' Audio Off';
@@ -1208,6 +1227,14 @@ export const buildCreditModelName = (
     const res = String(options.resolution).toLowerCase();
     const resNormalized = res.includes('2k') ? '2k' : (res.includes('1080') ? '1080p' : '720p');
     modelName = `SeedVR2 ${d}s ${resNormalized}`;
+  }
+  // Handle Kling 3 (duration and audio-based)
+  else if ((mapping.frontendValue === 'kling-v3-standard' || mapping.frontendValue === 'kling-v3-pro') && options?.duration) {
+    const d = options.duration;
+    const hasAudio = (options as any)?.generateAudio !== false;
+    const audioSuffix = hasAudio ? ' Audio On' : ' Audio Off';
+    const tierLabel = mapping.frontendValue === 'kling-v3-pro' ? 'Pro' : 'Standard';
+    modelName = `Kling 3 ${tierLabel} T2V/I2V ${d}s${audioSuffix}`;
   }
   // Handle Kling 2.6 Pro (duration and audio-based) - matches creditDistribution.ts format
   else if (mapping.frontendValue === 'kling-2.6-pro' && options?.duration) {

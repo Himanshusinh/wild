@@ -1148,7 +1148,7 @@ const History = () => {
           <div className="flex md:items-center gap-4 md:pl-14 pb-2">
             <button
               onClick={() => dispatch(setSidebarExpanded(true))}
-              className="md:hidden p-2 -ml-2 mt-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+              className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
               aria-label="Toggle Menu"
             >
               <Menu size={24} />

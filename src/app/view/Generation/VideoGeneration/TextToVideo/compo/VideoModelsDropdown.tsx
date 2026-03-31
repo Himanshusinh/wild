@@ -119,6 +119,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
       { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
       { value: "kling-o1", label: "Kling o1", description: "First frame required, last frame optional, 5s/10s", provider: "fal" },
+      { value: "kling-v3-standard", label: "Kling 3 Standard", description: "Text→Video & Image→Video, 3s-15s, 16:9/9:16/1:1, Audio On/Off", provider: "fal" },
+      { value: "kling-v3-pro", label: "Kling 3 Pro", description: "Text→Video & Image→Video, 3s-15s, 16:9/9:16/1:1, Audio On/Off", provider: "fal" },
       { value: "sora2-t2v", label: "Sora 2", description: "OpenAI's Sora 2, 4s/8s/12s, 720p, 16:9/9:16", provider: "fal" },
       { value: "sora2-pro-t2v", label: "Sora 2 Pro", description: "OpenAI's Sora 2 Pro, 4s/8s/12s, 720p/1080p, 16:9/9:16", provider: "fal" },
       // { value: "sora2-v2v-remix", label: "Sora 2 Remix", description: "OpenAI's Sora 2 V2V remix, transforms existing videos", provider: "fal" },

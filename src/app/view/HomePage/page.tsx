@@ -25,6 +25,9 @@ const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
 const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
     ssr: false
 })
+const WarliFullscreenWalkthrough = dynamic(() => import('./compo/WarliFullscreenWalkthrough'), {
+    ssr: false
+})
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -65,6 +68,7 @@ const HomePage: React.FC = () => {
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const onViewChange = (view: ViewType) => {
@@ -216,16 +220,14 @@ const HomePage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#0E0E12]">
-            {/* Mobile Header */}
-            <div className="md:hidden sticky top-0 z-[60] bg-[#0E0E12]/80 backdrop-blur-md px-4 py-3 flex items-center">
-                <button
-                    onClick={() => dispatch(setSidebarExpanded(true))}
-                    className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
-                    aria-label="Toggle Menu"
-                >
-                    <Menu size={24} />
-                </button>
-            </div>
+            {/* Mobile Sidebar Toggle */}
+            <button
+                onClick={() => dispatch(setSidebarExpanded(true))}
+                className="md:hidden fixed top-2 left-2 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+                aria-label="Toggle Menu"
+            >
+                <Menu size={24} />
+            </button>
             <div className="flex  md:ml-[68px] pt-2">
                 <div className="flex-1 min-w-0">
                     {/* <Header /> */}
@@ -233,7 +235,12 @@ const HomePage: React.FC = () => {
 
                     {/* Promotional Banner */}
                     <MasonrySection mode={homepageMode} onModeChange={setHomepageMode} />
-                    <CreativeStyle />
+                    <CreativeStyle
+                        onWarliOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowWarliWalkthrough(true);
+                        }}
+                    />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
                     <AllFeatures mode={homepageMode} />
@@ -409,6 +416,12 @@ const HomePage: React.FC = () => {
                     </div>
                 </>
             )}
+
+            {/* Welcome Modal */}
+            <WarliFullscreenWalkthrough
+                isOpen={showWarliWalkthrough}
+                onClose={() => setShowWarliWalkthrough(false)}
+            />
 
             {/* Welcome Modal */}
             <WelcomeModal
