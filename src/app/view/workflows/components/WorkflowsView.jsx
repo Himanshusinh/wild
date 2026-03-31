@@ -5,11 +5,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Search, LayoutGrid, List, Menu, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
+import { useDispatch } from 'react-redux';
+import { setSidebarExpanded } from '@/store/slices/uiSlice';
 
 // ... imports
 export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows", workflows = null }) {
   const router = useRouter();
   const pathname = usePathname();
+  const dispatch = useDispatch();
 
   // ... slugify ...
   const slugify = (cat) => cat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').trim();
@@ -119,7 +122,14 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
   return (
     <div className="animate-in">
       {/* Mobile Title (Static - Scrolls away) */}
-      <div className="md:hidden pt-8 pb-2 px-0 bg-[#07070B]">
+      <div className="md:hidden pt-6 pb-2 px-0 bg-[#07070B] flex items-start gap-2">
+        <button
+          onClick={() => dispatch(setSidebarExpanded(true))}
+          className="p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+          aria-label="Toggle Menu"
+        >
+          <Menu size={24} />
+        </button>
         <div className="mb-2">
           <h3 className="text-white text-xl font-semibold mb-0">
             Explore Apps

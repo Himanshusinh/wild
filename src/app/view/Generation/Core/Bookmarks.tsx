@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useAppDispatch } from '@/store/hooks';
-import { setCurrentView } from '@/store/slices/uiSlice';
+import { setCurrentView, setSidebarExpanded } from '@/store/slices/uiSlice';
+import { Menu } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { toDirectUrl, toMediaProxy } from '@/lib/thumb';
 import type { PublicItem } from '@/components/ArtStationPreview';
@@ -165,10 +166,17 @@ const Bookmarks = () => {
   return (
     <div className="min-h-screen bg-[#0E0E12] text-theme-primary p-6">
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          <button
+            onClick={() => dispatch(setSidebarExpanded(true))}
+            className="md:hidden p-2 -ml-4 text-white/70 hover:text-white transition-colors cursor-pointer"
+            aria-label="Toggle Menu"
+          >
+            <Menu size={24} />
+          </button>
           <button
             onClick={handleBackToGeneration}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+            className="p-2 rounded-full hover:bg-white/10 transition-colors hidden md:block"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z" />

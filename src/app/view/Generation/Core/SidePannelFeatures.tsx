@@ -11,6 +11,10 @@ import { ImagePopout } from './ImagePopout';
 import { VideoPopout } from './VideoPopout';
 import { AudioPopout } from './AudioPopout';
 import { AppsPopout } from './AppsPopout';
+import { useDispatch } from 'react-redux';
+import { setSidebarExpanded } from '@/store/slices/uiSlice';
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 interface IconProps {
   className?: string;
@@ -197,7 +201,10 @@ const SidePannelFeatures = () => {
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const authLoading = useAppSelector((state: any) => state?.auth?.loading ?? true);
+  const sidebarExpanded = useAppSelector((state: any) => state?.ui?.sidebarExpanded);
+  const dispatch = useDispatch();
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
+
   const storageKey = React.useMemo(() => getStorageKey(userData?.uid || userData?.email || userData?.username || 'guest'), [userData?.uid, userData?.email, userData?.username]);
 
   const [order, setOrder] = React.useState<string[]>(() => {
@@ -240,7 +247,12 @@ const SidePannelFeatures = () => {
 
   const nav = (url: string) => {
     router.push(url);
+    // Close sidebar on mobile after navigation
+    if (window.innerWidth < 768) {
+      dispatch(setSidebarExpanded(false));
+    }
   };
+
 
   const computeInsertBeforeId = React.useCallback((clientY: number): string | null => {
     if (!listRef.current) return null;
@@ -460,11 +472,100 @@ const SidePannelFeatures = () => {
         </div>
       </aside>
 
-      <nav className="fixed inset-x-0 bottom-0 z-[110] border-t border-white/[0.08] bg-[#0E0E12]/95 px-2 pt-1.5 pb-[calc(4px+env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
-        <div className="flex items-center justify-between gap-1">
-          {renderNavItems(mobileItems, false)}
-        </div>
-      </nav>
+      {/* Mobile Drawer Sidebar */}
+      <AnimatePresence>
+        {sidebarExpanded && (
+          <>
+            {/* Backdrop for Mobile Drawer */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[190] md:hidden"
+              onClick={() => dispatch(setSidebarExpanded(false))}
+            />
+
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 z-[200] w-[280px] bg-[#0E0E12] border-r border-white/[0.06] flex flex-col md:hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between py-4 px-3 border-b border-white/[0.06]">
+                <div onClick={() => nav(APP_ROUTES.LANDING)} className="flex items-center gap-3 cursor-pointer">
+                  <LogoSvg />
+                  <span className="text-white font-bold text-[17px] tracking-wide">WildMind AI</span>
+                </div>
+                <button 
+                  onClick={() => dispatch(setSidebarExpanded(false))}
+                  className="p-2 text-white/60 hover:text-white transition-colors"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-4 px-0 space-y-1 no-scrollbar">
+                {orderedItems.map((item) => {
+                  const isActive = item.getIsActive(pathname);
+                  return (
+                    <a
+                      href={item.url}
+                      key={`mobile-${item.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        nav(item.url);
+                      }}
+                      className={`flex items-center gap-3 px-3 py-2.5 mx-1 rounded-xl transition-all ${
+                        isActive 
+                          ? 'bg-[#1f2128] text-[#3B82F6] ring-1 ring-white/10' 
+                          : 'text-[#8b8e98] hover:bg-white/[0.03] hover:text-white'
+                      }`}
+                    >
+                      <span className="flex h-6 w-6 items-center justify-center shrink-0">
+                        {item.renderIcon()}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {item.label}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+
+              {/* Mobile User Profile in Drawer */}
+              <div className="py-4 px-3 border-t border-white/[0.06] bg-black/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-gradient-to-tr from-slate-900 to-slate-800">
+                    {userData?.photoURL && !imgError ? (
+                      <img src={userData.photoURL} alt="Avatar" className="h-full w-full object-cover" onError={() => setImgError(true)} />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-400">
+                        {userData?.username?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white truncate">
+                      {userData?.username || userData?.displayName || 'User'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
+                      <span>Credits: {creditBalance ?? 0}</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-600" />
+                      <span>{((credits?.storageUsed || 0) / (1024 * 1024 * 1024)).toFixed(1)}GB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
 
       <ImagePopout
         isVisible={activePopout === 'image'}

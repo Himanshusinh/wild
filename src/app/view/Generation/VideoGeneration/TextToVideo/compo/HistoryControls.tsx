@@ -8,23 +8,25 @@ import { clearHistory, setFilters } from '@/store/slices/historySlice';
 import { loadHistory } from '@/store/slices/historySlice';
 
 interface HistoryControlsProps {
-  mode: 'video' | 'image';
+  mode: 'video' | 'image' | 'music' | 'branding' | 'all';
   className?: string;
   limit?: number; // Pagination limit (default: 20 for video, can be overridden for image)
   onSearchChange?: (search: string) => void;
   onSortChange?: (sortOrder: 'asc' | 'desc') => void;
   onDateChange?: (dateRange: { start: Date | null; end: Date | null }) => void;
+  disableAutoFetch?: boolean;
 }
 
-const HistoryControls: React.FC<HistoryControlsProps> = ({
-  mode = 'video',
-  className,
+export default function HistoryControls({
+  mode = 'image',
+  className = '',
   limit,
   onSearchChange,
   onSortChange: onSortChangeCallback,
   onDateChange: onDateChangeCallback,
-}) => {
-  // Default limit: 20 for video, 60 for image (can be overridden)
+  disableAutoFetch = false
+}: HistoryControlsProps) {
+  // Default limit: 20 for video/music, 60 for image (can be overridden)
   const paginationLimit = limit || (mode === 'image' ? 60 : 20);
   const dispatch = useAppDispatch();
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
@@ -126,9 +128,6 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   const applySearch = useCallback(async (nextSearch: string) => {
     const s = String(nextSearch || '').trim();
     setSearchQuery(s);
-    if (onSearchChange) {
-      onSearchChange(s);
-    }
 
     // Use currentFilters.sortOrder from Redux to get the latest value, not local state
     // This prevents applySearch from being recreated when local sortOrder state changes
@@ -136,22 +135,31 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
 
     didInitialLoadRef.current = true;
     dispatch(setFilters({
+      ...currentFilters,
       mode,
       sortOrder: currentSortOrder,
       ...(s ? { search: s } : {}),
       ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
     } as any));
+    
+    if (onSearchChange) {
+      onSearchChange(s);
+    }
+
+    // Silently return if auto-fetch is disabled
+    if (disableAutoFetch) return;
+
     await (dispatch as any)(loadHistory({
-      filters: { mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+      backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
       paginationParams: { limit: paginationLimit },
       requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'text-to-video' : 'text-to-image',
-      skipBackendGenerationFilter: mode === 'image', // Image mode uses skipBackendGenerationFilter
+      expectedType: mode === 'video' ? 'text-to-video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
+      skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
       forceRefresh: true,
       debugTag: `HistoryControls:${mode}-search:${Date.now()}`,
     } as any));
-  }, [dispatch, mode, currentFilters, dateRange, onSearchChange, paginationLimit]);
+  }, [dispatch, mode, currentFilters, dateRange, onSearchChange, paginationLimit, disableAutoFetch]);
 
   // Live prompt search (Freepik-style): as user types, debounce and query backend.
   useEffect(() => {
@@ -192,20 +200,27 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
         onSortChangeCallback(order);
       }
 
+      // If auto-fetch is disabled, we stop here (parent handles fetch)
+      if (disableAutoFetch) {
+        setSortOrder(order);
+        return;
+      }
+
       didInitialLoadRef.current = true;
       dispatch(setFilters({
+        ...currentFilters,
         mode,
         sortOrder: order,
         ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
         ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
       } as any));
       await (dispatch as any)(loadHistory({
-        filters: { mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        backendFilters: { mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+        filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
+        backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
         paginationParams: { limit: paginationLimit },
         requestOrigin: 'page',
-        expectedType: mode === 'video' ? 'text-to-video' : 'text-to-image',
-        skipBackendGenerationFilter: mode === 'image', // Image mode uses skipBackendGenerationFilter
+        expectedType: mode === 'video' ? 'text-to-video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
+        skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
         forceRefresh: true,
         debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
       } as any));
@@ -228,36 +243,46 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       onDateChangeCallback(next);
     }
 
+    // If auto-fetch is disabled, we stop here (parent handles fetch)
+    if (disableAutoFetch) return;
+
     didInitialLoadRef.current = true;
     dispatch(setFilters({
+      ...currentFilters,
       mode,
       sortOrder,
       ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
       ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {})
     } as any));
     await (dispatch as any)(loadHistory({
-      filters: { mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
-      backendFilters: { mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
+      filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
+      backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
       paginationParams: { limit: paginationLimit },
       requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'text-to-video' : 'text-to-image',
-      skipBackendGenerationFilter: mode === 'image', // Image mode uses skipBackendGenerationFilter
+      expectedType: mode === 'video' ? 'text-to-video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
+      skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
       forceRefresh: true,
       debugTag: `HistoryControls:${mode}-date:${Date.now()}`,
     } as any));
   }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
 
   return (
-    <div className={['flex items-center justify-end gap-2 px-0 md:px-0 mb-2 md:pt-2  ', className].filter(Boolean).join(' ')}>
+    <div className={['flex items-center justify-between md:justify-end gap-2 px-0 md:px-0 mb-2 md:pt-2 w-full md:w-auto', className].filter(Boolean).join(' ')}>
       {/* Prompt search (backend-driven) */}
-      <div className="relative flex items-center md:mr-0 mr-auto">
+      <div className="relative flex-1 md:flex-none flex items-center">
         <input
           type="text"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search prompt..."
-          className={`px-2 h-[28px] rounded-lg text-[12px] focus:outline-none focus:ring-1 focus:ring-white/10 border border-white/20 bg-white/5 text-white placeholder-white/70 placeholder:text-[11px] w-44 md:w-64 ${searchInput ? 'pr-8' : ''}`}
+          placeholder="Search..."
+          className={`pl-8 pr-2 h-[34px] md:h-[28px] rounded-xl md:rounded-lg text-[13px] md:text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500/40 border border-white/10 bg-white/5 text-white placeholder-white/40 w-full md:w-64 transition-all ${searchInput ? 'pr-8' : ''}`}
         />
+        <div className="absolute left-2.5 text-white/40 pointer-events-none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
         {searchInput && (
           <button
             type="button"
@@ -278,18 +303,18 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       </div>
       <button
         onClick={() => onSortChange('desc')}
-        className={`flex items-center gap-1.5 px-2 h-[28px] rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/10 border border-white/20'}`}
+        className={`flex items-center justify-center gap-1.5 px-2 md:px-3 h-[34px] md:h-[28px] min-w-[34px] md:min-w-0 rounded-xl md:rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-semibold shadow-lg' : 'text-white/70 hover:bg-white/10 border border-white/10'}`}
         aria-label="Recent"
       >
-        <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
+        <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert md:opacity-100 opacity-70'} w-4 h-4`} />
         <span className="hidden md:block">Recent</span>
       </button>
       <button
         onClick={() => onSortChange('asc')}
-        className={`flex items-center gap-1.5 px-2 h-[28px] rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-medium border border-transparent' : 'text-white/100 hover:bg-white/10 border border-white/20'}`}
+        className={`flex items-center justify-center gap-1.5 px-2 md:px-3 h-[34px] md:h-[28px] min-w-[34px] md:min-w-0 rounded-xl md:rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-semibold shadow-lg' : 'text-white/70 hover:bg-white/10 border border-white/10'}`}
         aria-label="Oldest"
       >
-        <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
+        <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert md:opacity-100 opacity-70'} w-4 h-4`} />
         <span className="hidden md:block">Oldest</span>
       </button>
 
@@ -322,10 +347,10 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
             setCalendarYear(base.getFullYear());
             setShowCalendar((v) => !v);
           }}
-          className={`relative group h-[26px] w-[28px] flex items-center justify-center rounded-lg text-[13px] transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-medium border border-transparent' : 'bg-transparent border border-white/20 hover:bg-white/10 text-white/80'}`}
+          className={`relative group h-[34px] md:h-[26px] w-[34px] md:w-[28px] flex items-center justify-center rounded-xl md:rounded-lg text-[13px] transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-semibold shadow-lg' : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white/70'}`}
           aria-label="Date"
         >
-          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-4 h-4`} />
+          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert md:opacity-100 opacity-70'} w-4 h-4`} />
         </button>
         {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
           <div
@@ -453,5 +478,4 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   );
 };
 
-export default HistoryControls;
 

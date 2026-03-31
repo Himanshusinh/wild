@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setCurrentGenerationType } from '@/store/slices/uiSlice';
+import { setCurrentGenerationType, setSidebarExpanded } from '@/store/slices/uiSlice';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Menu } from 'lucide-react';
 import { getSignInUrl } from '@/routes/routes';
 import MusicGenerationInputBox from './TextToMusic/compo/InputBox';
 import TextToSpeechInputBox from './TextToMusic/compo/TextToSpeechInputBox';
@@ -153,7 +154,14 @@ export default function MusicGenerationPage() {
                     {/* Sticky header - moved down slightly to avoid Nav overlap */}
                     <div className="sticky top-0 z-[50] bg-[#0E0E12] pt-4 pb-2">
                         <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <button
+                                    onClick={() => dispatch(setSidebarExpanded(true))}
+                                    className="md:hidden p-2 -ml-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+                                    aria-label="Toggle Menu"
+                                >
+                                    <Menu size={24} />
+                                </button>
                                 <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold whitespace-nowrap">
                                     Music Generation
                                 </h3>

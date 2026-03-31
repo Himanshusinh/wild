@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon, Sparkles } from 'lucide-react';
+import { ChevronUp, Trash2, Edit3, PhoneOutgoing, PhoneOutgoingIcon, ImageIcon, Sparkles, Menu } from 'lucide-react';
 // HistoryEntry import follows below
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -32,7 +32,7 @@ import {
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { runwayGenerate, runwayStatus, bflGenerate, falGenerate, replicateGenerate } from "@/store/slices/generationsApi";
-import { toggleDropdown, addNotification, setCurrentGenerationType } from "@/store/slices/uiSlice";
+import { toggleDropdown, addNotification, setCurrentGenerationType, setSidebarExpanded } from "@/store/slices/uiSlice";
 import {
   loadMoreHistory,
   removeHistoryEntry,
@@ -5804,10 +5804,17 @@ const InputBox = () => {
       >
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
-          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 md:pl-20 mr-1 bg-[#0E0E12] backdrop-blur-lg shadow-xl ">
-            <div className="flex items-center justify-between md:mb-0 mb-0 pl-10 md:pl-0 ">
+          <div className="fixed top-0 left-0 right-0 z-50 md:py-0 md:pl-20 mr-1 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between md:mb-0 mb-0 pl-2 md:pl-0 h-14 md:h-auto">
               <div className="flex items-center gap-2 md:mt-3">
-                <h2 className="md:text-2xl text-md font-semibold text-white">Image Generation </h2>
+                <button
+                  onClick={() => dispatch(setSidebarExpanded(true))}
+                  className="md:hidden p-2 -ml-2 text-white/70 hover:text-white transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu size={20} />
+                </button>
+                <h2 className="md:text-2xl text-base font-bold text-white tracking-tight">Image Generation</h2>
 
                 {/* Edit Button - Styled like Recent/Oldest */}
 
@@ -5882,7 +5889,7 @@ const InputBox = () => {
             </div>
 
             {userData && !pathname?.startsWith('/text-to-image/edit-image') && (
-              <div className="flex md:hidden items-start justify-left px-0 gap-2 pb-0 pl-2">
+              <div className="flex md:hidden items-center justify-end px-4 gap-2 pb-2 h-10">
                 <HistoryControls 
                   mode="image" 
                   onSearchChange={setSearchQuery}
@@ -6815,11 +6822,10 @@ const InputBox = () => {
                     const inputEvent = new Event('input', { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 -mb-4 md:pr-0 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}
-                  }`}
+                  className={`flex-1 -mb-4 pr-1 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? 'text-white/70' : 'text-white'} ${isEnhancing ? 'animate-text-shine' : ''}`}
                   style={{
                     minHeight: '100px',
-                    maxHeight: '96px',
+                    maxHeight: '120px',
                     lineHeight: '1.2',
                     scrollbarWidth: 'thin',
                     scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent',
@@ -6828,8 +6834,8 @@ const InputBox = () => {
                   }}
                   data-placeholder={!prompt && selectedCharacters.length === 0 ? "Type your prompt..." : ""}
                 />
-                <div className="flex md:flex-row flex-row -mb-6 md:items-center items-start md:gap-2 gap-1 flex-shrink-0">
-                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-2 self-start pt-0 pb-0 pr-0">
+                <div className="flex flex-col md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 pt-1 md:-mb-6">
+                  <div className="relative flex flex-col md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
                     {/* Clear prompt button - only show when there's text */}
                     {prompt.trim() && (
                       <div className="relative group">
@@ -7000,16 +7006,22 @@ const InputBox = () => {
 
             {/* Bottom row: pill options */}
 
-            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1 pt-0">
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2 md:gap-1 pt-1 md:pt-0">
               {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
 
-              <div className="flex items-center justify-between gap-3 md:hidden w-full">
-                <div className="flex-1">
+              <div className="flex items-center justify-between gap-2 md:hidden w-full px-0 mt-2 relative z-50">
+                <div className="flex-shrink-0 max-w-[45%]">
                   <ModelsDropdown />
                 </div>
-                {error && <div className="text-red-500 text-sm">{error}</div>}
-                {expectedCredits > 0 && (
-                  <div className="text-[11px] text-white/70 whitespace-nowrap">
+                
+                {error ? (
+                   <div className="text-red-500 text-[10px] truncate flex-1 text-center">{error}</div>
+                ) : (
+                   <div className="flex-1 min-w-0" />
+                )}
+
+                {expectedCredits > 0 && !error && (
+                  <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
                     {Math.round(expectedCredits).toLocaleString()} credits
                   </div>
                 )}
@@ -7060,15 +7072,17 @@ const InputBox = () => {
                     }
                   }}
                   disabled={!prompt.trim() || runningGenerationsCount >= 4 || isEnhancing}
-                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white md:px-6 px-4 md:py-2.5 py-1.5 rounded-xl md:rounded-lg md:text-[15px] text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
                   aria-busy={isEnhancing}
                 >
                   {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : runningGenerationsCount > 0 ? `Generate (${runningGenerationsCount}/4)` : 'Generate'}
                 </button>
               </div>
 
+              {/* Removed Mobile Separator Line for cleaner look matching Image 2 */}
+
               {/* Mobile/Tablet: Second row - Other dropdowns */}
-              <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative" style={{ zIndex: 70 }}>
+              <div className="flex flex-nowrap items-center gap-2 md:hidden w-full overflow-x-auto no-scrollbar relative py-1.5 px-1 bg-transparent" style={{ zIndex: 70 }}>
                 <ImageCountDropdown />
                 <FrameSizeDropdown />
                 <StyleSelector />

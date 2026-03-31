@@ -149,12 +149,15 @@ export const loadHistory = createAsyncThunk(
       const state: any = getState();
       const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
       const uiType: string = (state && state.ui && state.ui.currentGenerationType) || 'text-to-image';
+      const uiView: string = (state && state.ui && state.ui.currentView) || 'home';
       const currentType = normalize(uiType === 'image-to-image' ? 'text-to-image' : uiType);
       const expected = normalize(expectedType);
       // Allow logo/logo-generation synonym
       // Allow character-modal requests to bypass UI type check
+      // Allow history/bookmarks views to bypass UI type check
       const isCharacterModal = requestOrigin === 'character-modal';
-      const expectedMatches = !expected || expected === currentType || (expected === 'logo' && currentType === 'logo-generation') || (expected === 'logo-generation' && currentType === 'logo') || isCharacterModal;
+      const isGlobalHistoryView = uiView === 'history' || uiView === 'bookmarks';
+      const expectedMatches = !expected || expected === currentType || (expected === 'logo' && currentType === 'logo-generation') || (expected === 'logo-generation' && currentType === 'logo') || isCharacterModal || isGlobalHistoryView;
       if (!expectedMatches) {
         return rejectWithValue('__CONDITION_ABORT__');
       }
@@ -326,6 +329,7 @@ export const loadHistory = createAsyncThunk(
 
         const state: any = getState();
         const uiType: string = (state && state.ui && state.ui.currentGenerationType) || 'text-to-image';
+        const uiView: string = (state && state.ui && state.ui.currentView) || 'home';
         const normalize = (t?: string) => (t ? String(t).replace(/[_-]/g, '-').toLowerCase() : '');
         const isVideoType = (t: string) => ['text-to-video', 'image-to-video', 'video-to-video', 'video', 'video-generation'].includes(normalize(t));
         const currentType = normalize(uiType === 'image-to-image' ? 'text-to-image' : uiType);
@@ -336,9 +340,10 @@ export const loadHistory = createAsyncThunk(
         const fMode = (args as any)?.filters?.mode;
 
         // Global guard: if caller provided an expectedType and it no longer matches current UI type, skip for any origin
-        // Exception: character-modal requests can bypass this check
+        // Exceptions: character-modal, history view, bookmarks view
         const isCharacterModal = origin === 'character-modal';
-        if (expected && expected !== currentType && !(expected === 'logo' && currentType === 'logo-generation') && !(expected === 'logo-generation' && currentType === 'logo') && !isCharacterModal) {
+        const isGlobalHistoryView = uiView === 'history' || uiView === 'bookmarks';
+        if (expected && expected !== currentType && !(expected === 'logo' && currentType === 'logo-generation') && !(expected === 'logo-generation' && currentType === 'logo') && !isCharacterModal && !isGlobalHistoryView) {
           return false;
         }
         // Only gatekeep central-origin requests; page-origin always allowed
