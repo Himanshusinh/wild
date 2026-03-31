@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { CreditCard, GripVertical, History } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { useCredits } from '@/hooks/useCredits';
-import { APP_ROUTES, NAV_ROUTES } from '@/routes/routes';
+import { APP_ROUTES, NAV_ROUTES, getSignInUrl } from '@/routes/routes';
 import { ImagePopout } from './ImagePopout';
 import { VideoPopout } from './VideoPopout';
 import { AudioPopout } from './AudioPopout';
@@ -202,6 +202,7 @@ const SidePannelFeatures = () => {
   const userData = useAppSelector((state: any) => state?.auth?.user || null);
   const sidebarExpanded = useAppSelector((state: any) => state?.ui?.sidebarExpanded);
   const dispatch = useDispatch();
+  const authLoading = useAppSelector((state: any) => state?.auth?.loading ?? true);
   const { creditBalance, credits, loading: creditsLoading, refreshCredits } = useCredits();
 
   const storageKey = React.useMemo(() => getStorageKey(userData?.uid || userData?.email || userData?.username || 'guest'), [userData?.uid, userData?.email, userData?.username]);
@@ -425,6 +426,8 @@ const SidePannelFeatures = () => {
               <div className="h-9 w-9 overflow-hidden rounded-lg border border-white/10 bg-gradient-to-tr from-slate-900 to-slate-800 transition-all group-hover:border-[#60a5fa]/50">
                 {userData?.photoURL && !imgError ? (
                   <img src={userData.photoURL} alt="Avatar" className="h-full w-full object-cover" onError={() => setImgError(true)} />
+                ) : authLoading ? (
+                  <div className="h-full w-full animate-pulse bg-slate-700/50" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-slate-400">
                     {userData?.username?.charAt(0).toUpperCase() || 'U'}
@@ -458,6 +461,14 @@ const SidePannelFeatures = () => {
               )}
             </div>
           </div>
+          {!authLoading && !userData && (
+            <button
+              onClick={() => nav(getSignInUrl())}
+              className="mt-2 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold text-white/90 transition hover:bg-white/20 hover:text-white"
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </aside>
 

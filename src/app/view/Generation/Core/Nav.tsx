@@ -29,6 +29,7 @@ interface UserData {
 const Nav = () => {
   const [showDropdown, setShowDropdown] = useState(false)
   const userData = useAppSelector((state: any) => state?.auth?.user || null) as UserData | null
+  const authLoading = useAppSelector((state: any) => state?.auth?.loading ?? true)
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [isPublic, setIsPublic] = useState<boolean>(() => {
     try {
@@ -123,7 +124,7 @@ const Nav = () => {
           {/* Credits button removed */}
 
           {/* Profile trigger removed for signed-in users */}
-          {!userData && (
+          {!authLoading && !userData && (
             <div className="pointer-events-auto">
               <button
                 onClick={() => router.push(getSignInUrl())}
