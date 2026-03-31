@@ -63,14 +63,6 @@ const SHOWCASE_IFRAME_DISABLED =
   process.env.NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_IFRAME === "false";
 const SHOWCASE_USE_IFRAME = !SHOWCASE_IFRAME_DISABLED;
 
-function studioOrigin(url: string): string {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return "https://wildmindai.com";
-  }
-}
-
 /** `localhost` and `127.0.0.1` are different origins; match iframe host to the marketing page. */
 function alignEmbedHostWithParent(url: string): string {
   if (typeof window === "undefined") return url;
@@ -85,13 +77,15 @@ function alignEmbedHostWithParent(url: string): string {
   }
 }
 
-/** Marketing iframe: ensure studio treats this as homepage showcase (hides profile/FPS, correct toolbar). */
-function ensureShowcaseEmbedParams(url: string): string {
+/** Marketing iframe: enforce showcase/view + dark theme and bypass browser cache on each reload. */
+function ensureShowcaseEmbedParams(url: string, reloadNonce: string): string {
   try {
     const u = new URL(url);
     if (!u.searchParams.get("showcase")) u.searchParams.set("showcase", "1");
     if (!u.searchParams.get("view")) u.searchParams.set("view", "1");
     if (!u.searchParams.get("mode")) u.searchParams.set("mode", "view");
+    u.searchParams.set("theme", "dark");
+    u.searchParams.set("cb", reloadNonce);
     return u.toString();
   } catch {
     return url;
@@ -114,10 +108,11 @@ const SHOWCASE_IFRAME_HEIGHT = "clamp(440px, 58vw, 640px)";
 
 function ShowcaseStudioIframe({ src, title }: { src: string; title: string }) {
   const [effectiveSrc, setEffectiveSrc] = useState(src);
+  const [reloadNonce] = useState(() => Date.now().toString(36));
 
   useEffect(() => {
-    setEffectiveSrc(ensureShowcaseEmbedParams(alignEmbedHostWithParent(src)));
-  }, [src]);
+    setEffectiveSrc(ensureShowcaseEmbedParams(alignEmbedHostWithParent(src), reloadNonce));
+  }, [src, reloadNonce]);
 
   return (
     <iframe
@@ -223,24 +218,6 @@ export default function StudioHomeShowcase() {
               + view-only).
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={resolved.showcase}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-fit rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-medium text-white/70 transition hover:border-white/25 hover:text-white sm:px-4 sm:py-2 sm:text-xs"
-            >
-              Open in new tab
-            </a>
-            <a
-              href={studioOrigin(resolved.showcase)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-fit rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/45 transition-all duration-200 hover:border-white/20 hover:text-[#F0EFE9] sm:px-[18px] sm:py-2 sm:text-xs"
-            >
-              Open Canvas
-            </a>
-          </div>
         </div>
 
         <div className="relative w-full bg-[#0E0E12]">
@@ -277,9 +254,9 @@ export default function StudioHomeShowcase() {
               className="flex min-h-[clamp(240px,36vw,320px)] flex-col items-center justify-center gap-3 px-6 py-10 text-center"
             >
               <p className="max-w-md text-[12px] leading-relaxed text-white/45 sm:text-sm">
-                Iframe embed is turned off. Use the buttons above to open the showcase, or remove{" "}
+                Iframe embed is turned off. Remove{" "}
                 <code className="text-white/50">NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_IFRAME=false</code> from env to
-                embed here again.
+                embed the homepage showcase here again.
               </p>
             </div>
           )}
@@ -311,14 +288,6 @@ export default function StudioHomeShowcase() {
               <code className="text-white/55">NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL</code> if embedding fails.
             </p>
           </div>
-          <a
-            href={studioOrigin(resolved.legacy)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-fit rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/45 transition-all duration-200 hover:border-white/20 hover:text-[#F0EFE9] sm:px-[18px] sm:py-2 sm:text-xs"
-          >
-            Open Canvas
-          </a>
         </div>
 
         <div className="relative w-full bg-[#0E0E12]">
