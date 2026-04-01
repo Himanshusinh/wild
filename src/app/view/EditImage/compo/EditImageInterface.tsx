@@ -1327,7 +1327,10 @@ const EditImageInterface: React.FC = () => {
         "resize",
         "fill",
         "vectorize",
+        "erase",
+        "expand",
         "reimagine",
+        "live-chat",
       ].includes(featureParam)
         ? (featureParam as EditFeature)
         : null;
