@@ -26,7 +26,7 @@ const ImageGenerationGuide = () => {
     const [activeTab, setActiveTab] = useState('image');
 
     return (
-        <section className="h-auto text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-12 md:pt-16 lg:pt-20 xl:pt-20 2xl:pt-24 pb-16 md:pb-20 lg:pb-24 xl:pb-24 2xl:pb-40">
+        <section className="h-auto text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-0 pb-40">
 
             {/* --- Ambient Background (Matches WildCanvas) --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
@@ -41,15 +41,15 @@ const ImageGenerationGuide = () => {
                 <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/[0.08] rounded-full blur-[100px]" />
             </div> */}
 
-            <div className="max-w-[1180px] lg:max-w-[1280px] xl:max-w-[1360px] 2xl:max-w-[1500px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 xl:px-12 2xl:px-6 relative z-10">
+            <div className="max-w-[1500px] mx-auto px-6 relative z-0">
 
                 {/* --- Header --- */}
-                <div className="text-center mb-6 md:mb-7 lg:mb-8">
+                <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 border border-[#60a5fa]/30 bg-[#60a5fa]/10 rounded-full px-3 py-1 text-[10px] uppercase tracking-widest text-[#60a5fa] mb-4 shadow-[0_0_15px_rgba(96,165,250,0.3)]">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse"></span>
                         How To Use
                     </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl xl:text-4xl 2xl:text-5xl font-medium tracking-tight text-white mb-3 md:mb-4">
+                    <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-white mb-4">
                         Create Your First  <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-400 to-slate-600">AI Masterpiece in 3 Steps.</span>
                     </h1>
@@ -62,7 +62,7 @@ const ImageGenerationGuide = () => {
                 </div>
 
                 {/* --- The 3 Steps Grid --- */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-4 lg:gap-4 xl:gap-5 2xl:gap-6 mb-6 md:mb-8 relative">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 relative overflow-visible">
 
                     {/* STEP 01: PROMPT + IMG2IMG */}
                     <StepCard
@@ -73,7 +73,7 @@ const ImageGenerationGuide = () => {
                     >
                         <BackgroundDots />
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-[60%] z-20">
-                            <div className="bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl relative overflow-hidden flex flex-col gap-4 md:gap-7 xl:gap-7 2xl:gap-10">
+                            <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl relative overflow-hidden flex flex-col gap-4 md:gap-7 xl:gap-7 2xl:gap-10">
                                 {/* Prompt */}
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-2 border-b border-white/5 pb-2">
@@ -140,16 +140,16 @@ function StepCard({ number, title, desc, children, color }: { number: string; ti
             ? "from-blue-500/20 to-cyan-500/20"
             : "from-indigo-500/20 to-purple-500/20";
 
-     return (
-        <div className={`group relative h-[20.5rem] sm:h-[21.5rem] md:h-[21.5rem] lg:h-[20.5rem] xl:h-[22rem] 2xl:h-[28rem] rounded-2xl md:rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-[#60a5fa]/40 transition-all duration-500 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}>
+      return (
+          <div className={`group relative h-[24rem] md:max-h-[26rem] rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-[#60a5fa]/40 transition-all duration-500 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}>
             {/* Outline Glow Effect */}
             <div className={`absolute inset-0 bg-gradient-to-br ${glowGradient} opacity-0 group-hover:opacity-20 transition-opacity duration-700 blur-xl pointer-events-none`}></div>
 
             {children}
-            <div className="absolute top-2 left-2 w-7 h-7 md:w-8 md:h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-[10px] md:text-xs font-mono font-bold text-white/70 z-20 group-hover:bg-white group-hover:text-black transition-colors">{number}</div>
-            <div className="absolute bottom-0 left-0 right-0 h-[32%] md:h-[35%] p-2 pl-3 md:pl-4 flex flex-col justify-end pointer-events-none z-20">
-                <h3 className={`text-lg md:text-xl font-medium text-white mb-1 transition-colors ${color}`}>{title}</h3>
-                <p className="text-[11px] md:text-xs text-slate-400 leading-relaxed">{desc}</p>
+            <div className="absolute top-2 md:top-2 left-2 md:left-2 w-8 h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-xs font-mono font-bold text-white/70 z-50 group-hover:bg-white group-hover:text-black transition-colors">{number}</div>
+            <div className="absolute bottom-0 left-0 right-0 h-[35%] p-2 pl-4 flex flex-col justify-end pointer-events-none z-20">
+                <h3 className={`text-xl font-medium text-white mb-1 transition-colors ${color}`}>{title}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
             </div>
         </div>
     );

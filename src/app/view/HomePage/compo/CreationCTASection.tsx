@@ -77,7 +77,7 @@ function ArrowBetween() {
 
 export default function CreationCTASection() {
   return (
-    <section className="bg-[#0E0E12] px-4 sm:px-6 md:px-0 pb-4">
+    <section className="bg-[#0E0E12] px-4 pb-4 sm:px-6 md:px-0">
       <div className="relative overflow-hidden  bg-[#0E0E12]">
         {/* <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.08)_0%,transparent_52%,rgba(99,102,241,0.05)_100%)]" />
         <div className="pointer-events-none absolute left-[20%] top-[-80px] h-[300px] w-[400px] bg-[radial-gradient(ellipse,rgba(59,130,246,0.18)_0%,transparent_65%)]" />
@@ -85,14 +85,14 @@ export default function CreationCTASection() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]" /> */}
 
         <div className="relative flex flex-col xl:flex-row xl:items-center">
-          <div className="flex-1  px-6 py-10 sm:px-10 lg:px-10  xl:py-12">
-            <div className="mb-4 inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#3B82F6]">
+          <div className="flex-1 px-4 py-2 sm:px-8 sm:py-10 lg:px-10 xl:py-12">
+            <div className="mb-0 inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#3B82F6]">
               <span className="inline-block h-[1.5px] w-[18px] bg-[#3B82F6]" />
               Pricing
             </div>
 
             <h2
-              className="mb-4 text-[44px] uppercase leading-[0.95] tracking-[0.01em] text-[#F0EFE9] sm:text-[52px]"
+              className="mb-4 text-[40px] uppercase leading-[0.95] tracking-[0.01em] text-[#F0EFE9] sm:text-[52px]"
               style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
             >
               Start free.
@@ -102,7 +102,7 @@ export default function CreationCTASection() {
               </span>
             </h2>
 
-            <p className="mb-6 max-w-[360px] text-[13.5px] leading-[1.7] text-white/45 text-nowrap">
+            <p className="mb-6 max-w-[360px] text-[13.5px] leading-[1.7] text-white/45">
               Simple plans for every creator - pricing details dropping soon.
             </p>
 
@@ -148,14 +148,14 @@ export default function CreationCTASection() {
             </div> */}
           </div>
 
-          <div className=" px-6 py-8 sm:px-10 lg:px-12 xl:border-b-0 xl:py-12">
-            <div className="flex items-stretch justify-center gap-2 lg:gap-3">
+          <div className="px-4 py-0 sm:px-8 sm:py-8 lg:px-12 xl:border-b-0 xl:py-12">
+            <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory items-stretch gap-2 overflow-x-auto px-1 pb-2 lg:justify-center lg:overflow-visible">
               {planCards.map((plan, index) => (
-                <div key={plan.name} className="flex items-stretch">
+                <div key={plan.name} className="flex snap-start items-stretch">
                   {index > 0 ? <ArrowBetween /> : null}
 
                   <div
-                    className={`relative flex w-[130px] flex-col items-center gap-2.5 rounded-2xl px-4 py-5 transition-all duration-200 ${
+                    className={`relative flex w-[108px] flex-col items-center gap-2.5 rounded-2xl px-3 py-4 transition-all duration-200 sm:w-[124px] sm:px-4 sm:py-5 lg:w-[130px] ${
                       plan.highlighted
                         ? "border border-[#3B82F6]/35 bg-[#3B82F6]/10 shadow-[0_0_30px_rgba(59,130,246,0.12)] hover:shadow-[0_0_40px_rgba(59,130,246,0.22)]"
                         : "border border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
@@ -186,7 +186,7 @@ export default function CreationCTASection() {
                     </div>
 
                     <div
-                      className={`whitespace-nowrap rounded-lg border px-2.5 py-[5px] text-[10px] font-semibold tracking-[0.04em] ${
+                      className={`rounded-lg border px-2 py-[5px] text-[10px] font-semibold tracking-[0.04em] ${
                         plan.highlighted
                           ? "border-[#3B82F6]/25 bg-[#3B82F6]/12 text-[#3B82F6]"
                           : "border-white/10 bg-white/[0.06] text-white/30"
@@ -200,7 +200,7 @@ export default function CreationCTASection() {
             </div>
           </div>
 
-          <div className="min-w-[220px] px-6 py-8 sm:px-10 lg:px-12 xl:py-12">
+          <div className="min-w-0 px-4 py-8 sm:px-8 lg:px-12 xl:min-w-[220px] xl:py-12">
             <div className="mb-4">
               <div className="mb-1 text-[13px] font-semibold text-white/65">Get early access</div>
               <div className="text-[11px] text-white/35">Be first to know when pricing goes live.</div>
