@@ -56,6 +56,7 @@ import KlingModeDropdown from "./KlingModeDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
 import { toThumbUrl } from '@/lib/thumb';
 import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
+import { useQueueManagement } from '@/hooks/useQueueManagement';
 import AssetViewerModal from '@/components/AssetViewerModal';
 import {
   toProxyPath,
@@ -1083,6 +1084,11 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Redux & Filter State
   const activeGenerations = useAppSelector((state: any) => state.generation?.activeGenerations || []);
   const runningGenerationsCount = activeGenerations.filter((g: any) => g.status === 'pending' || g.status === 'generating').length;
+
+  useQueueManagement({
+    showSuccessToast: false,
+    showErrorToast: false,
+  });
 
   console.log('[InputBox DEBUG] activeGenerations:', activeGenerations.length, activeGenerations);
 

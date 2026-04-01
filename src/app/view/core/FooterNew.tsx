@@ -41,9 +41,9 @@ const FooterNew: React.FC = () => {
   ]
 
   const columnHeadingClass =
-    'mb-[18px] text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#F0EFE9]'
+    'mb-[18px] text-[13px] font-bold uppercase tracking-[0.14em] text-[#F0EFE9]'
   const footerLinkClass =
-    'text-[15px] leading-[1.35] text-[rgba(255,255,255,0.78)] transition-colors duration-200 hover:text-white'
+    'text-[14px] leading-[1.35] text-[rgba(255,255,255,0.78)] transition-colors duration-200 hover:text-white'
 
   return (
     <footer className="relative z-[10] w-full">
@@ -56,10 +56,10 @@ const FooterNew: React.FC = () => {
             <div className="mb-0 text-[13px] font-bold tracking-[-0.01em] text-[#F0EFE9]">
               <span className="font-light">WILD</span>MIND AI
             </div>
-            <div className="mb-2 text-[11px] leading-[1.6] text-[rgba(255,255,255,0.6)]">
+            {/* <div className="mb-2 text-[11px] leading-[1.6] text-[rgba(255,255,255,0.6)]">
               Imagination to Creation
-            </div>
-            <div className="flex gap-2">
+            </div> */}
+            {/* <div className="flex gap-2">
               <Link
                 href={SOCIAL_LINKS.X}
                 target="_blank"
@@ -84,7 +84,7 @@ const FooterNew: React.FC = () => {
               >
                 ▶
               </Link>
-            </div>
+            </div> */}
           </div>
 
           <div className="relative z-[1]">
@@ -177,7 +177,7 @@ const FooterNew: React.FC = () => {
 
         <div className="flex flex-col items-start justify-between gap-5 border-t border-white/10 px-6 py-7 sm:px-8 md:flex-row md:items-center md:px-10">
           <div className="text-xs text-[rgba(255,255,255,0.6)]">
-            Copyright © 2025 WildMind AI Pvt Ltd. All rights reserved.
+            Copyright © 2026 WildMind AI Pvt Ltd. All rights reserved.
           </div>
           <div className="flex flex-wrap items-center gap-4 md:gap-6">
             {legalLinks.map((link) => (

@@ -9,6 +9,32 @@ import VideoGenerationGuide from "./VideoGenerationGuide";
 import HistoryControls from "./HistoryControls";
 import { useAppSelector } from "@/store/hooks";
 
+const MAX_GENERATING_PLACEHOLDER_AGE_MS = 30 * 60 * 1000;
+
+const getGenerationTimestampMs = (entry: any): number => {
+  const rawValues = [entry?.updatedAt, entry?.timestamp, entry?.createdAt, entry?.startedAt];
+
+  for (const rawValue of rawValues) {
+    if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+      return rawValue;
+    }
+
+    if (typeof rawValue === 'string' && rawValue.trim()) {
+      const parsed = new Date(rawValue).getTime();
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return Date.now();
+};
+
+const isRecentGeneratingPlaceholder = (entry: any): boolean => {
+  const timestamp = getGenerationTimestampMs(entry);
+  return Date.now() - timestamp <= MAX_GENERATING_PLACEHOLDER_AGE_MS;
+};
+
 const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> = ({ size = 64, alt = 'Loading', className }) => {
   return (
     <div className={`relative flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
@@ -90,11 +116,6 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
     // 1. Process History Entries
     historyEntries.forEach((entry) => {
-      const date = new Date(entry.timestamp || entry.createdAt).toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-
       let mediaItems: any[] = [];
       if (Array.isArray(entry.videos) && entry.videos.length > 0) {
         mediaItems = entry.videos;
@@ -102,9 +123,24 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         mediaItems = entry.images.filter(m => isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl));
       }
 
+      const shouldShowGeneratingPlaceholder =
+        mediaItems.length === 0 &&
+        entry.status === 'generating' &&
+        isVideoType(entry) &&
+        isRecentGeneratingPlaceholder(entry);
+
+      if (mediaItems.length === 0 && !shouldShowGeneratingPlaceholder) {
+        return;
+      }
+
+      const date = new Date(getGenerationTimestampMs(entry)).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+
       if (mediaItems.length === 0) {
-        // If it's a "generating" history entry with no media yet, add it as a placeholder
-        if (entry.status === 'generating') {
+        // Only keep recent video placeholders to avoid stale "still generating" cards.
+        if (shouldShowGeneratingPlaceholder) {
           groups[date].push({ entry, video: null });
         }
       } else {
@@ -121,6 +157,9 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
       // Type-Safety: Only show video types on this page
       if (!isVideoType(gen)) return;
+
+      // Ignore stale local queue items that never reconciled with backend history.
+      if (!isRecentGeneratingPlaceholder(gen)) return;
 
       const genId = String(gen.id);
       const historyId = String(gen.historyId || '');
@@ -145,9 +184,9 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         prompt: gen.prompt,
         model: gen.model,
         status: 'generating',
-        timestamp: new Date(gen.createdAt || Date.now()).toISOString(),
+        timestamp: new Date(getGenerationTimestampMs(gen)).toISOString(),
         createdAt: new Date(gen.createdAt || Date.now()).toISOString(),
-        generationType: 'text-to-video' as any,
+        generationType: normalizeGenerationType(gen.generationType || gen.params?.generationType || 'text-to-video') as any,
         images: [],
         videos: [],
         imageCount: 1,
