@@ -1875,55 +1875,20 @@ const EditImageInterface: React.FC = () => {
       window.removeEventListener("keydown", handleSpaceScrollBlock as any);
   }, []);
 
-  // Allow page scroll so actions are reachable on small screens
-  // (removed the global overflow lock)
-
-  // Hide empty page scrollbar when content doesn't exceed viewport
+  // Lock page scroll while Edit Image is mounted.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const html = document.documentElement;
     const body = document.body;
-    const prevHtmlOverflowY = html.style.overflowY;
-    const prevBodyOverflowY = body.style.overflowY;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
 
-    const update = () => {
-      const contentHeight = Math.max(
-        body.scrollHeight,
-        html.scrollHeight,
-        body.offsetHeight,
-        html.offsetHeight,
-        body.clientHeight,
-        html.clientHeight,
-      );
-      const needsScroll = contentHeight > window.innerHeight + 1;
-      const val = needsScroll ? "auto" : "hidden";
-      html.style.overflowY = val;
-      body.style.overflowY = val;
-    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
 
-    const onResize = () => {
-      requestAnimationFrame(update);
-    };
-
-    const observer = new MutationObserver(() => requestAnimationFrame(update));
-    try {
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        characterData: true,
-      });
-    } catch {}
-
-    update();
-    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("resize", onResize);
-      try {
-        observer.disconnect();
-      } catch {}
-      html.style.overflowY = prevHtmlOverflowY;
-      body.style.overflowY = prevBodyOverflowY;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, []);
 
@@ -5035,7 +5000,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="body flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12 pl-4">
+    <div className="body box-border flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12 pl-4">
       {/* Sticky header like ArtStation */}
       {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#0E0E12] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
@@ -8827,9 +8792,10 @@ const EditImageInterface: React.FC = () => {
               </div>
 
               {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
-              {selectedFeature === "live-chat" && (
-                <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
-                  <div className="hidden md:block">
+              {selectedFeature === "live-chat" &&
+                (liveOriginalInput || inputs["live-chat"]) && (
+                  <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
+                    {/* <div className="hidden md:block">
                     <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
                       Secondary Preview
                     </h3>
@@ -8846,97 +8812,97 @@ const EditImageInterface: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
-                  <div className="flex flex-col flex-1 min-h-0">
-                    <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
-                      History
-                    </h3>
-                    <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
-                      <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
-                        {/* Generated images (latest first) */}
-                        {(liveHistory || [])
-                          .slice()
-                          .reverse()
-                          .map((item, revIdx) => {
-                            // revIdx 0 is latest; compute original index
-                            const origIdx = liveHistory.length - 1 - revIdx;
-                            const isActive =
-                              outputs["live-chat"] === item.url &&
-                              activeLiveIndex === origIdx;
-                            const isHovered = hoveredThumbnailIdx === origIdx;
-                            const showMenu = showThumbnailMenuIdx === origIdx;
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
+                        Preview
+                      </h3>
+                      <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
+                        <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
+                          {/* Generated images (latest first) */}
+                          {(liveHistory || [])
+                            .filter((item) => item.url !== outputs["live-chat"])
+                            .slice()
+                            .reverse()
+                            .map((item, revIdx) => {
+                              // revIdx 0 is latest; compute original index
+                              const origIdx = liveHistory.length - 1 - revIdx;
+                              const isActive =
+                                outputs["live-chat"] === item.url &&
+                                activeLiveIndex === origIdx;
+                              const isHovered = hoveredThumbnailIdx === origIdx;
+                              const showMenu = showThumbnailMenuIdx === origIdx;
 
-                            return (
-                              <button
-                                key={`gen-${origIdx}-${item.url}`}
-                                onClick={() => {
-                                  setActiveLiveIndex(origIdx);
-                                  setOutputs((prev) => ({
-                                    ...prev,
-                                    ["live-chat"]: item.url,
-                                  }));
-                                  setInputs((prev) => ({
-                                    ...prev,
-                                    ["live-chat"]: item.url,
-                                  }));
-                                  setCurrentHistoryId(item.id || null);
-                                }}
-                                className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? "border-white/50" : "border-white/20 hover:border-white/40"}`}
-                                title={`Generation ${origIdx + 1}`}
-                              >
-                                <img
-                                  src={normalizeEditImageUrl(item.url)}
-                                  alt={`Gen ${origIdx + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </button>
-                            );
-                          })}
+                              return (
+                                <button
+                                  key={`gen-${origIdx}-${item.url}`}
+                                  onClick={() => {
+                                    setActiveLiveIndex(origIdx);
+                                    setOutputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: item.url,
+                                    }));
+                                    setInputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: item.url,
+                                    }));
+                                    setCurrentHistoryId(item.id || null);
+                                  }}
+                                  className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? "border-white/50" : "border-white/20 hover:border-white/40"}`}
+                                  title={`Generation ${origIdx + 1}`}
+                                >
+                                  <img
+                                    src={normalizeEditImageUrl(item.url)}
+                                    alt={`Gen ${origIdx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </button>
+                              );
+                            })}
 
-                        {/* Input image thumbnail shown below generated images if present and not duplicate */}
-                        {(liveOriginalInput || inputs["live-chat"]) &&
-                          (() => {
-                            const inputUrl = (liveOriginalInput ||
-                              inputs["live-chat"]) as string;
-                            const alreadyShown =
-                              liveHistory.length > 0 &&
-                              liveHistory[liveHistory.length - 1]?.url ===
-                                inputUrl;
-                            if (alreadyShown) return null;
-                            const isActiveInput =
-                              outputs["live-chat"] === inputUrl &&
-                              activeLiveIndex === -1;
-                            return (
-                              <button
-                                key={`input-thumb`}
-                                onClick={() => {
-                                  setActiveLiveIndex(-1);
-                                  setOutputs((prev) => ({
-                                    ...prev,
-                                    ["live-chat"]: inputUrl,
-                                  }));
-                                  setInputs((prev) => ({
-                                    ...prev,
-                                    ["live-chat"]: inputUrl,
-                                  }));
-                                }}
-                                className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? "border-white/5" : "border-white/10 hover:border-white/30"}`}
-                                title={`Input image`}
-                              >
-                                <img
-                                  src={normalizeEditImageUrl(inputUrl)}
-                                  alt={`Input`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </button>
-                            );
-                          })()}
+                          {/* Input image thumbnail shown below generated images if present and not duplicate */}
+                          {liveOriginalInput &&
+                            (() => {
+                              const inputUrl = liveOriginalInput as string;
+                              const alreadyShown =
+                                liveHistory.length > 0 &&
+                                liveHistory[liveHistory.length - 1]?.url ===
+                                  inputUrl;
+                              if (alreadyShown) return null;
+                              const isActiveInput =
+                                outputs["live-chat"] === inputUrl &&
+                                activeLiveIndex === -1;
+                              return (
+                                <button
+                                  key={`input-thumb`}
+                                  onClick={() => {
+                                    setActiveLiveIndex(-1);
+                                    setOutputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: inputUrl,
+                                    }));
+                                    setInputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: inputUrl,
+                                    }));
+                                  }}
+                                  className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? "border-white/5" : "border-white/10 hover:border-white/30"}`}
+                                  title={`Input image`}
+                                >
+                                  <img
+                                    src={normalizeEditImageUrl(inputUrl)}
+                                    alt={`Input`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </button>
+                              );
+                            })()}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
         }
