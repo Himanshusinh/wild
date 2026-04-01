@@ -39,32 +39,33 @@ const VIDEO_MODELS: VideoModel[] = [
         background: "rgba(59,130,246,0.08)",
         border: "rgba(59,130,246,0.3)",
       },
-      { label: "Fast" },
+      { label: "Audio" },
     ],
-    specs: ["4K", "60fps", "60s"],
+    specs: ["4s / 6s / 8s", "720p / 1080p", "T2V / I2V"],
   },
   {
     seed: "seed2",
-    name: "Seedance 2",
+    name: "Seedance 1.5 Pro Fast",
     brand: "ByteDance",
-    href: "/text-to-video?model=seedance-1.0-pro-fast-t2v",
+    href: "/text-to-video?model=seedance-1.5-pro-t2v",
     accent: "#3B82F6",
     brandColor: "#3B82F6",
     brandBorder: "rgba(59,130,246,0.4)",
     pills: [
       {
-        label: "2 Pro",
+        label: "1.5 Pro",
         active: true,
         color: "#3B82F6",
         background: "rgba(59,130,246,0.07)",
         border: "rgba(59,130,246,0.3)",
       },
+      { label: "Audio" },
     ],
-    specs: ["1080p", "30fps", "30s"],
+    specs: ["4s - 12s", "16:9 / 4:3 / 1:1", "T2V / I2V"],
   },
   {
     seed: "kling3",
-    name: "Kling 3.0",
+    name: "Kling 3 Pro",
     brand: "Kuaishou",
     href: "/text-to-video?model=kling-v3-pro",
     accent: "#c084fc",
@@ -78,12 +79,13 @@ const VIDEO_MODELS: VideoModel[] = [
         background: "rgba(192,132,252,0.07)",
         border: "rgba(192,132,252,0.3)",
       },
+      { label: "Audio" },
     ],
-    specs: ["4K", "30fps", "180s"],
+    specs: ["3s - 15s", "16:9 / 9:16 / 1:1", "T2V / I2V"],
   },
   {
     seed: "ltx23",
-    name: "LTX 2.3",
+    name: "LTX 2.3 Pro",
     brand: "Lightricks",
     href: "/text-to-video?model=ltx-2.3-pro-t2v",
     accent: "#fbbf24",
@@ -97,29 +99,29 @@ const VIDEO_MODELS: VideoModel[] = [
         background: "rgba(251,191,36,0.07)",
         border: "rgba(251,191,36,0.3)",
       },
-      { label: "Fast" },
+      { label: "Audio" },
     ],
-    specs: ["1080p", "24fps", "45s"],
+    specs: ["6s / 8s / 10s", "1080p / 2K / 4K", "T2V / I2V"],
   },
   {
     seed: "sora2",
-    name: "Sora 2",
-    brand: "OpenAI",
-    href: "/text-to-video?model=sora2-pro-t2v",
+    name: "LTX 2.3 Fast",
+    brand: "Lightricks",
+    href: "/text-to-video?model=ltx-2.3-fast-t2v",
     accent: "#34d399",
     brandColor: "#34d399",
     brandBorder: "rgba(52,211,153,0.4)",
     pills: [
       {
-        label: "2",
+        label: "2.3 Fast",
         active: true,
         color: "#34d399",
         background: "rgba(52,211,153,0.07)",
         border: "rgba(52,211,153,0.3)",
       },
-      { label: "2 Pro" },
+      { label: "Audio" },
     ],
-    specs: ["4K", "60fps", "120s"],
+    specs: ["2s - 20s", "1080p / 2K / 4K", "T2V / I2V"],
   },
 ];
 
@@ -132,8 +134,11 @@ const IMAGE_MODELS: VideoModel[] = [
     accent: "#3B82F6",
     brandColor: "#3B82F6",
     brandBorder: "rgba(59,130,246,0.4)",
-    pills: [{ label: "5 Lite", active: true, color: "#3B82F6", background: "rgba(59,130,246,0.07)", border: "rgba(59,130,246,0.3)" }],
-    specs: ["2K", "3K", "Fast"],
+    pills: [
+      { label: "5 Lite", active: true, color: "#3B82F6", background: "rgba(59,130,246,0.07)", border: "rgba(59,130,246,0.3)" },
+      { label: "Image" },
+    ],
+    specs: ["2K", "3K", "Lite"],
   },
   {
     seed: "seedream45",
@@ -143,8 +148,11 @@ const IMAGE_MODELS: VideoModel[] = [
     accent: "#60a5fa",
     brandColor: "#60a5fa",
     brandBorder: "rgba(96,165,250,0.4)",
-    pills: [{ label: "4.5", active: true, color: "#60a5fa", background: "rgba(96,165,250,0.07)", border: "rgba(96,165,250,0.3)" }],
-    specs: ["2K", "4K", "Pro"],
+    pills: [
+      { label: "4.5", active: true, color: "#60a5fa", background: "rgba(96,165,250,0.07)", border: "rgba(96,165,250,0.3)" },
+      { label: "Image" },
+    ],
+    specs: ["2K", "4K", "Quality"],
   },
   {
     seed: "nanobanana",
@@ -154,8 +162,11 @@ const IMAGE_MODELS: VideoModel[] = [
     accent: "#34d399",
     brandColor: "#34d399",
     brandBorder: "rgba(52,211,153,0.4)",
-    pills: [{ label: "Pro", active: true, color: "#34d399", background: "rgba(52,211,153,0.07)", border: "rgba(52,211,153,0.3)" }],
-    specs: ["2K", "4K", "Accurate"],
+    pills: [
+      { label: "Pro", active: true, color: "#34d399", background: "rgba(52,211,153,0.07)", border: "rgba(52,211,153,0.3)" },
+      { label: "Image" },
+    ],
+    specs: ["1K", "2K", "4K"],
   },
   {
     seed: "gptimage15",
@@ -165,8 +176,11 @@ const IMAGE_MODELS: VideoModel[] = [
     accent: "#c084fc",
     brandColor: "#c084fc",
     brandBorder: "rgba(192,132,252,0.4)",
-    pills: [{ label: "1.5", active: true, color: "#c084fc", background: "rgba(192,132,252,0.07)", border: "rgba(192,132,252,0.3)" }],
-    specs: ["HD", "Prompt+", "Creative"],
+    pills: [
+      { label: "1.5", active: true, color: "#c084fc", background: "rgba(192,132,252,0.07)", border: "rgba(192,132,252,0.3)" },
+      { label: "Image" },
+    ],
+    specs: ["Low", "Medium", "High", "Auto"],
   },
   {
     seed: "flux2pro",
@@ -176,14 +190,18 @@ const IMAGE_MODELS: VideoModel[] = [
     accent: "#fbbf24",
     brandColor: "#fbbf24",
     brandBorder: "rgba(251,191,36,0.4)",
-    pills: [{ label: "2 Pro", active: true, color: "#fbbf24", background: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.3)" }],
-    specs: ["2K", "Fast", "Detail"],
+    pills: [
+      { label: "2 Pro", active: true, color: "#fbbf24", background: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.3)" },
+      { label: "T2I / I2I" },
+    ],
+    specs: ["1K", "2K", "Detail"],
   },
 ];
 
 export default function VideoModelCards({ mode = "video" }: { mode?: "image" | "video" }) {
   const models = mode === "video" ? VIDEO_MODELS : IMAGE_MODELS;
   const heading = mode === "video" ? "Video Models" : "Image Models";
+  const exploreHref = mode === "video" ? "/text-to-video" : "/text-to-image";
 
   return (
     <section className="pt-8 mx-4 md:mx-[34px] mb-[36px] bg-[#0E0E12]">
@@ -197,7 +215,12 @@ export default function VideoModelCards({ mode = "video" }: { mode?: "image" | "
             {models.length} models
           </span>
         </div>
-        {/* <span className="text-[10px] text-white/40">Updated weekly</span> */}
+        <Link
+          href={exploreHref}
+          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold text-white transition-all duration-200 hover:bg-white/10 hover:border-white/20"
+        >
+          Explore Models
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
