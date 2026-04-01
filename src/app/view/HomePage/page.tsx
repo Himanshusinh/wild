@@ -252,7 +252,7 @@ const HomePage: React.FC = () => {
                     {/* <Recentcreation /> */}
                     <StudioHomeShowcase />
                     <WildMindAIAPPS />
-                    <CreatorsSection />
+                    {/* <CreatorsSection /> */}
 
                     <CreationCTASection />
 
