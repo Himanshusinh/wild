@@ -8796,10 +8796,9 @@ const EditImageInterface: React.FC = () => {
               </div>
 
               {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
-              {selectedFeature === "live-chat" &&
-                liveHistory.length > 0 && (
-                  <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
-                    {/* <div className="hidden md:block">
+              {selectedFeature === "live-chat" && liveHistory.length > 0 && (
+                <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
+                  {/* <div className="hidden md:block">
                     <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
                       Secondary Preview
                     </h3>
@@ -8818,95 +8817,95 @@ const EditImageInterface: React.FC = () => {
                     </div>
                   </div> */}
 
-                    <div className="flex flex-col flex-1 min-h-0">
-                      <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
-                        Preview
-                      </h3>
-                      <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
-                        <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
-                          {/* Generated images (latest first) */}
-                          {(liveHistory || [])
-                            .filter((item) => item.url !== outputs["live-chat"])
-                            .slice()
-                            .reverse()
-                            .map((item, revIdx) => {
-                              // revIdx 0 is latest; compute original index
-                              const origIdx = liveHistory.length - 1 - revIdx;
-                              const isActive =
-                                outputs["live-chat"] === item.url &&
-                                activeLiveIndex === origIdx;
-                              const isHovered = hoveredThumbnailIdx === origIdx;
-                              const showMenu = showThumbnailMenuIdx === origIdx;
+                  <div className="flex flex-col flex-1 min-h-0">
+                    <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
+                      Preview
+                    </h3>
+                    <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
+                      <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
+                        {/* Generated images (latest first) */}
+                        {(liveHistory || [])
+                          .filter((item) => item.url !== outputs["live-chat"])
+                          .slice()
+                          .reverse()
+                          .map((item, revIdx) => {
+                            // revIdx 0 is latest; compute original index
+                            const origIdx = liveHistory.length - 1 - revIdx;
+                            const isActive =
+                              outputs["live-chat"] === item.url &&
+                              activeLiveIndex === origIdx;
+                            const isHovered = hoveredThumbnailIdx === origIdx;
+                            const showMenu = showThumbnailMenuIdx === origIdx;
 
-                              return (
-                                <button
-                                  key={`gen-${origIdx}-${item.url}`}
-                                  onClick={() => {
-                                    setActiveLiveIndex(origIdx);
-                                    setOutputs((prev) => ({
-                                      ...prev,
-                                      ["live-chat"]: item.url,
-                                    }));
-                                    setInputs((prev) => ({
-                                      ...prev,
-                                      ["live-chat"]: item.url,
-                                    }));
-                                    setCurrentHistoryId(item.id || null);
-                                  }}
-                                  className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? "border-white/50" : "border-white/20 hover:border-white/40"}`}
-                                  title={`Generation ${origIdx + 1}`}
-                                >
-                                  <img
-                                    src={normalizeEditImageUrl(item.url)}
-                                    alt={`Gen ${origIdx + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </button>
-                              );
-                            })}
+                            return (
+                              <button
+                                key={`gen-${origIdx}-${item.url}`}
+                                onClick={() => {
+                                  setActiveLiveIndex(origIdx);
+                                  setOutputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: item.url,
+                                  }));
+                                  setInputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: item.url,
+                                  }));
+                                  setCurrentHistoryId(item.id || null);
+                                }}
+                                className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? "border-white/50" : "border-white/20 hover:border-white/40"}`}
+                                title={`Generation ${origIdx + 1}`}
+                              >
+                                <img
+                                  src={normalizeEditImageUrl(item.url)}
+                                  alt={`Gen ${origIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            );
+                          })}
 
-                          {/* Input image thumbnail shown below generated images if present and not duplicate */}
-                          {liveOriginalInput &&
-                            (() => {
-                              const inputUrl = liveOriginalInput as string;
-                              const alreadyShown =
-                                liveHistory.length > 0 &&
-                                liveHistory[liveHistory.length - 1]?.url ===
-                                  inputUrl;
-                              if (alreadyShown) return null;
-                              const isActiveInput =
-                                outputs["live-chat"] === inputUrl &&
-                                activeLiveIndex === -1;
-                              return (
-                                <button
-                                  key={`input-thumb`}
-                                  onClick={() => {
-                                    setActiveLiveIndex(-1);
-                                    setOutputs((prev) => ({
-                                      ...prev,
-                                      ["live-chat"]: inputUrl,
-                                    }));
-                                    setInputs((prev) => ({
-                                      ...prev,
-                                      ["live-chat"]: inputUrl,
-                                    }));
-                                  }}
-                                  className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? "border-white/5" : "border-white/10 hover:border-white/30"}`}
-                                  title={`Input image`}
-                                >
-                                  <img
-                                    src={normalizeEditImageUrl(inputUrl)}
-                                    alt={`Input`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </button>
-                              );
-                            })()}
-                        </div>
+                        {/* Input image thumbnail shown below generated images if present and not duplicate */}
+                        {liveOriginalInput &&
+                          (() => {
+                            const inputUrl = liveOriginalInput as string;
+                            const alreadyShown =
+                              liveHistory.length > 0 &&
+                              liveHistory[liveHistory.length - 1]?.url ===
+                                inputUrl;
+                            if (alreadyShown) return null;
+                            const isActiveInput =
+                              outputs["live-chat"] === inputUrl &&
+                              activeLiveIndex === -1;
+                            return (
+                              <button
+                                key={`input-thumb`}
+                                onClick={() => {
+                                  setActiveLiveIndex(-1);
+                                  setOutputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: inputUrl,
+                                  }));
+                                  setInputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: inputUrl,
+                                  }));
+                                }}
+                                className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? "border-white/5" : "border-white/10 hover:border-white/30"}`}
+                                title={`Input image`}
+                              >
+                                <img
+                                  src={normalizeEditImageUrl(inputUrl)}
+                                  alt={`Input`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            );
+                          })()}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
             </div>
           </div>
         }
