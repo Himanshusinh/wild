@@ -10418,11 +10418,11 @@ const InputBox = () => {
             onClick={() => setIsGuideModalOpen(false)}
           />
           {/* Modal Content */}
-          <div className="relative z-10 w-full max-w-[1500px]  max-h-[90vh] overflow-y-auto bg-transparent rounded-xl">
+          <div className="relative z-10 w-full max-w-[1500px] max-h-[90vh] overflow-y-auto bg-transparent rounded-xl">
             {/* Close Button */}
             <button
               onClick={() => setIsGuideModalOpen(false)}
-              className="absolute md:top-4 top-0 md:right-4 right-2 z-20 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              className="absolute md:top-4 -top-0 md:right-4 right-0 z-20 md:w-8 md:h-8 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
               aria-label="Close guide"
             >
               <svg
@@ -10441,10 +10441,7 @@ const InputBox = () => {
               </svg>
             </button>
             {/* Guide Content */}
-            {/* <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full">
-              <GifLoader size={120} alt="Loading" />
-              <div className="text-white text-lg text-center mt-4">Loading generations...</div>
-            </div> */}
+            <ImageGenerationGuide />
           </div>
         </div>
       )}
