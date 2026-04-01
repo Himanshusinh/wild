@@ -223,7 +223,7 @@ const HomePage: React.FC = () => {
             {/* Mobile Sidebar Toggle */}
             <button
                 onClick={() => dispatch(setSidebarExpanded(true))}
-                className="md:hidden fixed top-2 left-2 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+                className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
                 aria-label="Toggle Menu"
             >
                 <Menu size={24} />
