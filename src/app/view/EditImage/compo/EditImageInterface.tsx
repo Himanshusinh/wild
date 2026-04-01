@@ -5085,11 +5085,13 @@ const EditImageInterface: React.FC = () => {
           ) : null
         }
         parameters={
-          <div className="flex flex-col gap-4 pt-4 pb-40 thin-scrollbar">
+          <div
+            className={`flex flex-col pt-4 thin-scrollbar ${selectedFeature === "live-chat" ? "h-full min-h-0 gap-3" : "gap-4"}`}
+          >
             {/* Reimagine Reference Image */}
             {selectedFeature === "reimagine" && (
               <div className="px-1 md:px-4">
-                <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-2 md:text-sm">
+                <label className="block text-[10px] font-medium text-white/70 mb-2 md:text-sm">
                   Reference Image (Optional)
                 </label>
 
@@ -5566,13 +5568,15 @@ const EditImageInterface: React.FC = () => {
             {/* Action Buttons moved to bottom under Parameters */}
 
             {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-            <div className="flex-1 min-h-0 md:p-4 p-2 overflow-visible">
+            <div
+              className={`flex-1 min-h-0 md:p-4 p-2 ${selectedFeature === "live-chat" ? "overflow-hidden flex flex-col" : "overflow-visible"}`}
+            >
               {selectedFeature === "live-chat" && (
                 <>
                   <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
                     Live Chat Controls
                   </p>
-                  <div className="space-y-2">
+                  <div className="h-full min-h-0 flex flex-col gap-2">
                     <div className="grid grid-cols-2 gap-2">
                       {/* Model dropdown */}
                       <div>
@@ -5747,12 +5751,12 @@ const EditImageInterface: React.FC = () => {
                     )}
 
                     {/* Chat UI */}
-                    <div className="mt-3">
+                    <div className="mt-3 flex-1 min-h-0 flex flex-col">
                       <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
                         Chat to Edit
                       </label>
                       <div
-                        className={`bg-white/3 border border-white/12 rounded-xl p-2.5 flex flex-col ${liveResolutionOptions.length > 0 ? "md:h-[23rem] h-[16rem]" : "md:h-[27rem] h-[20rem]"}`}
+                        className={`bg-white/3 border border-white/12 rounded-xl p-2.5 flex flex-col flex-1 min-h-0 ${liveResolutionOptions.length > 0 ? "h-[16rem] md:h-full" : "h-[20rem] md:h-full"}`}
                       >
                         <div
                           ref={(el) => {
