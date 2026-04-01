@@ -7145,11 +7145,11 @@ const EditImageInterface: React.FC = () => {
           </div>
         }
         canvas={
-          <div className="flex-1 flex flex-col relative w-full h-full p-4  bg-[#0E0E12] overflow-hidden">
+          <div className="flex-1 flex flex-col relative w-full h-full p-10  bg-[#0E0E12] overflow-hidden">
             {/* Right Main Area - Output preview parallel to input image */}
             <div className="md:p-0 p-0 flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-1 lg:pt-2 xl:pt-3 pt-0">
               <div
-                className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[34rem] xl:min-h-[45rem]" : "min-h-[24rem] md:h-auto md:max-h-[50rem]"}`}
+                className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem]"}`}
                 onDragOver={(e) => {
                   try {
                     e.preventDefault();
@@ -7391,7 +7391,7 @@ const EditImageInterface: React.FC = () => {
                     {inputs[selectedFeature] ? (
                       // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
                       <div
-                        className={`w-full h-full relative ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[34rem] xl:min-h-[45rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
+                        className={`w-full h-full relative ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
                       >
                         {selectedFeature === "resize" && (
                           <div className="absolute inset-0 z-10">
@@ -7550,7 +7550,7 @@ const EditImageInterface: React.FC = () => {
                           // Zoom mode (all features)
                           <div
                             ref={imageContainerRef}
-                            className={`w-full h-full relative cursor-move select-none ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[34rem] xl:min-h-[45rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
+                            className={`w-full h-full relative cursor-move select-none ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
@@ -7648,7 +7648,7 @@ const EditImageInterface: React.FC = () => {
                       // Regular image viewer with zoom controls
                       <div
                         ref={imageContainerRef}
-                        className={`w-full h-full relative cursor-move select-none ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[34rem] xl:min-h-[45rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
+                        className={`w-full h-full relative cursor-move select-none ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -7743,9 +7743,7 @@ const EditImageInterface: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div
-                    className={`w-full h-full flex items-center justify-center ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[34rem] xl:min-h-[45rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
-                  >
+                  <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]">
                     {inputs[selectedFeature] ? (
                       <div className="absolute inset-0">
                         {selectedFeature === "resize" ||
