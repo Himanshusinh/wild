@@ -174,7 +174,11 @@ export function getModelDisplayName(
   }
 
   // Veo 3.1 models (check before generic Veo3)
-  if (lower.includes("veo3.1/lite") || lower.includes("veo 3.1 lite") || lower.includes("veo3.1-lite")) {
+  if (
+    lower.includes("veo3.1/lite") ||
+    lower.includes("veo 3.1 lite") ||
+    lower.includes("veo3.1-lite")
+  ) {
     return "Veo 3.1 Lite";
   }
 

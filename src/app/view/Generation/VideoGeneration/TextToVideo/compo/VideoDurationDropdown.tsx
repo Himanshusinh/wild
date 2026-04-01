@@ -27,7 +27,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -81,41 +84,46 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       // MiniMax-Hailuo-02 supports only 6s and 10s
       return [
         { value: 6, label: "6 seconds", description: "Short video" },
-        { value: 10, label: "10 seconds", description: "Standard length" }
+        { value: 10, label: "10 seconds", description: "Standard length" },
       ];
     }
-    if (selectedModel === 'T2V-01-Director' || selectedModel === 'I2V-01-Director' || selectedModel === 'S2V-01') {
+    if (
+      selectedModel === "T2V-01-Director" ||
+      selectedModel === "I2V-01-Director" ||
+      selectedModel === "S2V-01"
+    ) {
       // Director variants are fixed at 6s
-      return [
-        { value: 6, label: "6 seconds", description: "Fixed duration" }
-      ];
+      return [{ value: 6, label: "6 seconds", description: "Fixed duration" }];
     }
     if (selectedModel?.includes("sora2")) {
       // Sora 2 supports 4s, 8s, and 12s
       return [
         { value: 4, label: "4 seconds", description: "Short video" },
         { value: 8, label: "8 seconds", description: "Standard length" },
-        { value: 12, label: "12 seconds", description: "Long video" }
+        { value: 12, label: "12 seconds", description: "Long video" },
       ];
     }
     if (selectedModel?.includes("pixverse")) {
       // PixVerse supports 5s and 8s
       return [
         { value: 5, label: "5 seconds", description: "Standard" },
-        { value: 8, label: "8 seconds", description: "Long" }
+        { value: 8, label: "8 seconds", description: "Long" },
       ];
     }
-    if (selectedModel?.startsWith('ltx-2.3-pro')) {
+    if (selectedModel?.startsWith("ltx-2.3-pro")) {
       // LTX 2.3 Pro supports only 6s/8s/10s
       return [
         { value: 6, label: "6 seconds", description: "Short video" },
         { value: 8, label: "8 seconds", description: "Standard length" },
-        { value: 10, label: "10 seconds", description: "Long video" }
+        { value: 10, label: "10 seconds", description: "Long video" },
       ];
     }
-    if (selectedModel?.includes("ltx2") || selectedModel?.startsWith('ltx-2.3-fast')) {
+    if (
+      selectedModel?.includes("ltx2") ||
+      selectedModel?.startsWith("ltx-2.3-fast")
+    ) {
       // LTX V2 and LTX 2.3 Fast support various durations
-      if (selectedModel?.startsWith('ltx-2.3-fast')) {
+      if (selectedModel?.startsWith("ltx-2.3-fast")) {
         return [
           { value: 6, label: "6 seconds", description: "Short video" },
           { value: 8, label: "8 seconds", description: "Standard" },
@@ -124,13 +132,13 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
           { value: 14, label: "14 seconds", description: "Medium long" },
           { value: 16, label: "16 seconds", description: "Very long" },
           { value: 18, label: "18 seconds", description: "Extra long" },
-          { value: 20, label: "20 seconds", description: "Maximum length" }
+          { value: 20, label: "20 seconds", description: "Maximum length" },
         ];
       }
       return [
         { value: 6, label: "6 seconds", description: "Short video" },
         { value: 8, label: "8 seconds", description: "Standard length" },
-        { value: 10, label: "10 seconds", description: "Long video" }
+        { value: 10, label: "10 seconds", description: "Long video" },
       ];
     }
     if (selectedModel?.includes("seedance-1.5")) {
@@ -144,52 +152,52 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 9, label: "9 seconds", description: "Very long" },
         { value: 10, label: "10 seconds", description: "Maximum" },
         { value: 11, label: "11 seconds", description: "Maximum" },
-        { value: 12, label: "12 seconds", description: "Maximum" }
+        { value: 12, label: "12 seconds", description: "Maximum" },
       ];
     }
     if (selectedModel?.includes("seedance")) {
       // Seedance 1.0 pricing is bucketed on the frontend (5s/10s)
       return [
         { value: 5, label: "5 seconds", description: "Standard" },
-        { value: 10, label: "10 seconds", description: "Long" }
+        { value: 10, label: "10 seconds", description: "Long" },
       ];
     }
     if (selectedModel?.includes("veo3.1-lite")) {
       return [
         { value: 4, label: "4 seconds", description: "Quick video" },
         { value: 6, label: "6 seconds", description: "Short video" },
-        { value: 8, label: "8 seconds", description: "Standard length" }
+        { value: 8, label: "8 seconds", description: "Standard length" },
       ];
     }
     if (selectedModel?.includes("veo3.1")) {
       // For Veo 3.1 image-to-video, only show 8s
       if (generationMode === "image_to_video") {
         return [
-          { value: 8, label: "8 seconds", description: "Standard length" }
+          { value: 8, label: "8 seconds", description: "Standard length" },
         ];
       }
       // For Veo 3.1 text-to-video, show all options
       return [
         { value: 4, label: "4 seconds", description: "Quick video" },
         { value: 6, label: "6 seconds", description: "Short video" },
-        { value: 8, label: "8 seconds", description: "Standard length" }
+        { value: 8, label: "8 seconds", description: "Standard length" },
       ];
     }
     if (selectedModel?.includes("veo3") && !selectedModel.includes("veo3.1")) {
       // For Veo3 image-to-video, only show 8s
       if (generationMode === "image_to_video") {
         return [
-          { value: 8, label: "8 seconds", description: "Standard length" }
+          { value: 8, label: "8 seconds", description: "Standard length" },
         ];
       }
       // For Veo3 text-to-video, show all options
       return [
         { value: 4, label: "4 seconds", description: "Quick video" },
         { value: 6, label: "6 seconds", description: "Short video" },
-        { value: 8, label: "8 seconds", description: "Standard length" }
+        { value: 8, label: "8 seconds", description: "Standard length" },
       ];
     }
-    if (selectedModel === 'kling-v3-pro') {
+    if (selectedModel === "kling-v3-pro") {
       return [
         { value: 5, label: "5 seconds", description: "Standard" },
         { value: 6, label: "6 seconds", description: "Medium" },
@@ -201,10 +209,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 12, label: "12 seconds", description: "Extended" },
         { value: 13, label: "13 seconds", description: "Extended" },
         { value: 14, label: "14 seconds", description: "Extended" },
-        { value: 15, label: "15 seconds", description: "Maximum length" }
+        { value: 15, label: "15 seconds", description: "Maximum length" },
       ];
     }
-    if (selectedModel?.startsWith('kling-v3')) {
+    if (selectedModel?.startsWith("kling-v3")) {
       return [
         { value: 3, label: "3 seconds", description: "Quick video" },
         { value: 4, label: "4 seconds", description: "Short video" },
@@ -218,14 +226,14 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 12, label: "12 seconds", description: "Extended" },
         { value: 13, label: "13 seconds", description: "Extended" },
         { value: 14, label: "14 seconds", description: "Extended" },
-        { value: 15, label: "15 seconds", description: "Maximum length" }
+        { value: 15, label: "15 seconds", description: "Maximum length" },
       ];
     }
-    if (selectedModel?.startsWith('kling-')) {
+    if (selectedModel?.startsWith("kling-")) {
       // Kling supports 5s and 10s
       return [
         { value: 5, label: "5 seconds", description: "Short video" },
-        { value: 10, label: "10 seconds", description: "Standard length" }
+        { value: 10, label: "10 seconds", description: "Standard length" },
       ];
     }
     if (selectedModel === "kling-lip-sync") {
@@ -239,21 +247,21 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 7, label: "7 seconds", description: "Medium long" },
         { value: 8, label: "8 seconds", description: "Long" },
         { value: 9, label: "9 seconds", description: "Very long" },
-        { value: 10, label: "10 seconds", description: "Maximum length" }
+        { value: 10, label: "10 seconds", description: "Maximum length" },
       ];
     }
     if (selectedModel?.includes("wan-2.5")) {
       // WAN 2.5 models support 5s and 10s
       return [
         { value: 5, label: "5 seconds", description: "Short video" },
-        { value: 10, label: "10 seconds", description: "Standard length" }
+        { value: 10, label: "10 seconds", description: "Standard length" },
       ];
     }
     if (selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo") {
       // Gen-4 Turbo and Gen-3a Turbo support only 5s and 10s (per backend validation)
       return [
         { value: 5, label: "5 seconds", description: "Short video" },
-        { value: 10, label: "10 seconds", description: "Standard length" }
+        { value: 10, label: "10 seconds", description: "Standard length" },
       ];
     }
     // Legacy check for other gen4/gen3a models (should not match gen4_turbo or gen3a_turbo)
@@ -262,26 +270,31 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       return [
         { value: 4, label: "4 seconds", description: "Quick video" },
         { value: 6, label: "6 seconds", description: "Short video" },
-        { value: 10, label: "10 seconds", description: "Standard length" }
+        { value: 10, label: "10 seconds", description: "Standard length" },
       ];
     }
     // Default fallback
     return [
       { value: 4, label: "4 seconds", description: "Quick video" },
       { value: 6, label: "6 seconds", description: "Short video" },
-      { value: 10, label: "10 seconds", description: "Standard length" }
+      { value: 10, label: "10 seconds", description: "Standard length" },
     ];
   };
 
   const availableDurations = getAvailableDurations();
 
   useEffect(() => {
-    if (selectedModel === 'kling-v3-pro' && (selectedDuration === 3 || selectedDuration === 4)) {
+    if (
+      selectedModel === "kling-v3-pro" &&
+      (selectedDuration === 3 || selectedDuration === 4)
+    ) {
       onDurationChange(5);
     }
   }, [selectedDuration, selectedModel, onDurationChange]);
 
-  const selectedDurationInfo = availableDurations.find(duration => duration.value === selectedDuration);
+  const selectedDurationInfo = availableDurations.find(
+    (duration) => duration.value === selectedDuration,
+  );
 
   return (
     <div className="relative dropdown-container">
@@ -291,14 +304,16 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
             if (onCloseOtherDropdowns) {
               onCloseOtherDropdowns();
             }
-          } catch { }
+          } catch {}
           setIsOpen(!isOpen);
         }}
         className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5`}
       >
         <Clock className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedDurationInfo?.label || `${selectedDuration}s`}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronUp
+          className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
       {isOpen && (
         <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
@@ -309,10 +324,11 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
                 onDurationChange(duration.value);
                 setIsOpen(false);
               }}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedDuration === duration.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
-                }`}
+              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                selectedDuration === duration.value
+                  ? "bg-white text-black"
+                  : "text-white/90 hover:bg-white/10"
+              }`}
             >
               <span className="md:text-sm text-xs">{duration.label}</span>
               {selectedDuration === duration.value && (

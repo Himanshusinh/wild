@@ -3,15 +3,21 @@
  * Restores active generations from localStorage on app initialization
  */
 
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useAppDispatch } from '@/store/hooks';
-import { hydrateGenerations, clearOldGenerations } from '@/store/slices/generationSlice';
-import { loadGenerations, cleanupCompletedGenerations } from '@/lib/generationPersistence';
+import { useEffect } from "react";
+import { useAppDispatch } from "@/store/hooks";
+import {
+  hydrateGenerations,
+  clearOldGenerations,
+} from "@/store/slices/generationSlice";
+import {
+  loadGenerations,
+  cleanupCompletedGenerations,
+} from "@/lib/generationPersistence";
 
 // Import axios to make checking requests
-import { getApiClient } from '@/lib/axiosInstance';
+import { getApiClient } from "@/lib/axiosInstance";
 
 export function useGenerationHydration() {
   const dispatch = useAppDispatch();
@@ -25,60 +31,90 @@ export function useGenerationHydration() {
       const persistedGenerations = loadGenerations();
 
       if (persistedGenerations.length > 0) {
-        console.log('[useGenerationHydration] Restoring', persistedGenerations.length, 'generations');
+        console.log(
+          "[useGenerationHydration] Restoring",
+          persistedGenerations.length,
+          "generations",
+        );
         const api = getApiClient();
 
         // Process generations in parallel to reconcile with backend. If we cannot resume
         // an in-flight generation after reload, drop it silently instead of surfacing a synthetic failure toast.
-        const reconciledGenerations = await Promise.all(persistedGenerations.map(async (gen) => {
-          // Only check pending/generating items
-          if (gen.status === 'pending' || gen.status === 'generating') {
-            try {
-              // If we have a historyId, check the actual status on the backend
-              if (gen.historyId) {
-                try {
-                  const res = await api.get(`/api/generations/${gen.historyId}`);
-                  const entry = res.data?.data?.item || res.data?.item || res.data?.data || res.data;
+        const reconciledGenerations = await Promise.all(
+          persistedGenerations.map(async (gen) => {
+            // Only check pending/generating items
+            if (gen.status === "pending" || gen.status === "generating") {
+              try {
+                // If we have a historyId, check the actual status on the backend
+                if (gen.historyId) {
+                  try {
+                    const res = await api.get(
+                      `/api/generations/${gen.historyId}`,
+                    );
+                    const entry =
+                      res.data?.data?.item ||
+                      res.data?.item ||
+                      res.data?.data ||
+                      res.data;
 
-                  if (entry) {
-                    // Check status map
-                    const status = String(entry.status || '').toLowerCase();
-                    if (status === 'completed' || status === 'succeeded' || status === 'success') {
-                      console.log(`[useGenerationHydration] Reconciled ${gen.id} -> completed`);
-                      return {
-                        ...gen,
-                        status: 'completed' as const,
-                        // Try to recover media if available
-                        images: entry.images || gen.images,
-                        videos: entry.videos || gen.videos,
-                        updatedAt: Date.now()
-                      };
-                    } else if (status === 'failed' || status === 'error') {
-                      console.log(`[useGenerationHydration] Reconciled ${gen.id} -> failed`);
-                      return {
-                        ...gen,
-                        status: 'failed' as const,
-                        error: entry.error || 'Generation failed on backend',
-                        updatedAt: Date.now()
-                      };
+                    if (entry) {
+                      // Check status map
+                      const status = String(entry.status || "").toLowerCase();
+                      if (
+                        status === "completed" ||
+                        status === "succeeded" ||
+                        status === "success"
+                      ) {
+                        console.log(
+                          `[useGenerationHydration] Reconciled ${gen.id} -> completed`,
+                        );
+                        return {
+                          ...gen,
+                          status: "completed" as const,
+                          // Try to recover media if available
+                          images: entry.images || gen.images,
+                          videos: entry.videos || gen.videos,
+                          updatedAt: Date.now(),
+                        };
+                      } else if (status === "failed" || status === "error") {
+                        console.log(
+                          `[useGenerationHydration] Reconciled ${gen.id} -> failed`,
+                        );
+                        return {
+                          ...gen,
+                          status: "failed" as const,
+                          error: entry.error || "Generation failed on backend",
+                          updatedAt: Date.now(),
+                        };
+                      }
                     }
+                  } catch (apiError) {
+                    console.warn(
+                      `[useGenerationHydration] Failed to check history status for ${gen.id}`,
+                      apiError,
+                    );
                   }
-                } catch (apiError) {
-                  console.warn(`[useGenerationHydration] Failed to check history status for ${gen.id}`, apiError);
                 }
+
+                console.log(
+                  `[useGenerationHydration] Dropping unrecoverable in-flight generation ${gen.id} after reload`,
+                );
+                return null;
+              } catch (e) {
+                console.warn(
+                  `[useGenerationHydration] Failed to restore generation ${gen.id}`,
+                  e,
+                );
+                return null;
               }
-
-              console.log(`[useGenerationHydration] Dropping unrecoverable in-flight generation ${gen.id} after reload`);
-              return null;
-            } catch (e) {
-              console.warn(`[useGenerationHydration] Failed to restore generation ${gen.id}`, e);
-              return null;
             }
-          }
-          return gen;
-        }));
+            return gen;
+          }),
+        );
 
-        const updatedGenerations = reconciledGenerations.filter((gen): gen is NonNullable<typeof gen> => Boolean(gen));
+        const updatedGenerations = reconciledGenerations.filter(
+          (gen): gen is NonNullable<typeof gen> => Boolean(gen),
+        );
 
         // Hydrate Redux state with updated status
         dispatch(hydrateGenerations(updatedGenerations));

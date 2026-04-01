@@ -395,9 +395,13 @@ export const getCreditsForModel = (
     if (modelValue.includes("veo3.1-lite")) {
       const isI2V = modelValue.includes("i2v");
       const mode = isI2V ? "i2v" : "t2v";
-      const res = String(resolution || "720p").toLowerCase().includes("1080") ? "1080p" : "720p";
+      const res = String(resolution || "720p")
+        .toLowerCase()
+        .includes("1080")
+        ? "1080p"
+        : "720p";
       const dur = duration === "4s" || duration === "6s" ? duration : "8s";
-      const key = `veo3.1-lite-${mode}-${res === '1080p' ? '8s' : dur}-${res}`;
+      const key = `veo3.1-lite-${mode}-${res === "1080p" ? "8s" : dur}-${res}`;
       return MODEL_CREDITS_MAPPING[key] || null;
     }
 

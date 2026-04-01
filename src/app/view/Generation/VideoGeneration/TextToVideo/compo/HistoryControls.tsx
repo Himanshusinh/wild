@@ -1,43 +1,57 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import Image from 'next/image';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { clearHistory, setFilters } from '@/store/slices/historySlice';
-import { loadHistory } from '@/store/slices/historySlice';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import { createPortal } from "react-dom";
+import Image from "next/image";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { clearHistory, setFilters } from "@/store/slices/historySlice";
+import { loadHistory } from "@/store/slices/historySlice";
 
 interface HistoryControlsProps {
-  mode: 'video' | 'image' | 'music' | 'branding' | 'all';
+  mode: "video" | "image" | "music" | "branding" | "all";
   className?: string;
   limit?: number; // Pagination limit (default: 20 for video, can be overridden for image)
   onSearchChange?: (search: string) => void;
-  onSortChange?: (sortOrder: 'asc' | 'desc') => void;
+  onSortChange?: (sortOrder: "asc" | "desc") => void;
   onDateChange?: (dateRange: { start: Date | null; end: Date | null }) => void;
   disableAutoFetch?: boolean;
 }
 
 export default function HistoryControls({
-  mode = 'image',
-  className = '',
+  mode = "image",
+  className = "",
   limit,
   onSearchChange,
   onSortChange: onSortChangeCallback,
   onDateChange: onDateChangeCallback,
-  disableAutoFetch = false
+  disableAutoFetch = false,
 }: HistoryControlsProps) {
   // Default limit: 20 for video/music, 60 for image (can be overridden)
-  const paginationLimit = limit || (mode === 'image' ? 60 : 20);
+  const paginationLimit = limit || (mode === "image" ? 60 : 20);
   const dispatch = useAppDispatch();
-  const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
+  const currentFilters = useAppSelector(
+    (state: any) => state.history?.filters || {},
+  );
 
   // Initialize from Redux state if available
-  const initialSortOrder = currentFilters.sortOrder || 'desc';
-  const initialSearch = currentFilters.search || '';
-  const initialDateRange = currentFilters.dateRange ? {
-    start: currentFilters.dateRange.start ? new Date(currentFilters.dateRange.start) : null,
-    end: currentFilters.dateRange.end ? new Date(currentFilters.dateRange.end) : null,
-  } : { start: null, end: null };
+  const initialSortOrder = currentFilters.sortOrder || "desc";
+  const initialSearch = currentFilters.search || "";
+  const initialDateRange = currentFilters.dateRange
+    ? {
+        start: currentFilters.dateRange.start
+          ? new Date(currentFilters.dateRange.start)
+          : null,
+        end: currentFilters.dateRange.end
+          ? new Date(currentFilters.dateRange.end)
+          : null,
+      }
+    : { start: null, end: null };
 
   // Search state
   const [searchInput, setSearchInput] = useState<string>(initialSearch);
@@ -46,18 +60,36 @@ export default function HistoryControls({
   const didInitSearchRef = useRef(false);
 
   // Sort state
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>(initialSortOrder);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">(initialSortOrder);
 
   // Date state
-  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>(initialDateRange);
-  const [dateInput, setDateInput] = useState<string>(initialDateRange.start ? initialDateRange.start.toISOString().slice(0, 10) : "");
+  const [dateRange, setDateRange] = useState<{
+    start: Date | null;
+    end: Date | null;
+  }>(initialDateRange);
+  const [dateInput, setDateInput] = useState<string>(
+    initialDateRange.start
+      ? initialDateRange.start.toISOString().slice(0, 10)
+      : "",
+  );
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState<number>(initialDateRange.start ? initialDateRange.start.getMonth() : new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState<number>(initialDateRange.start ? initialDateRange.start.getFullYear() : new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(
+    initialDateRange.start
+      ? initialDateRange.start.getMonth()
+      : new Date().getMonth(),
+  );
+  const [calendarYear, setCalendarYear] = useState<number>(
+    initialDateRange.start
+      ? initialDateRange.start.getFullYear()
+      : new Date().getFullYear(),
+  );
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const calendarButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [calendarPosition, setCalendarPosition] = useState<{ top: number; right: number } | null>(null);
+  const [calendarPosition, setCalendarPosition] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const didInitialLoadRef = useRef(false);
@@ -68,8 +100,14 @@ export default function HistoryControls({
     setMounted(true);
   }, []);
 
-  const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
-  const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
+  const calendarDaysInMonth = useMemo(
+    () => new Date(calendarYear, calendarMonth + 1, 0).getDate(),
+    [calendarYear, calendarMonth],
+  );
+  const calendarFirstWeekday = useMemo(
+    () => new Date(calendarYear, calendarMonth, 1).getDay(),
+    [calendarYear, calendarMonth],
+  );
 
   // Calculate calendar position when it opens (for both mobile and desktop)
   useEffect(() => {
@@ -79,16 +117,16 @@ export default function HistoryControls({
           const rect = calendarButtonRef.current.getBoundingClientRect();
           setCalendarPosition({
             top: rect.bottom + 8,
-            right: window.innerWidth - rect.right
+            right: window.innerWidth - rect.right,
           });
         }
       };
       updatePosition();
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
       return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
       };
     } else {
       setCalendarPosition(null);
@@ -101,7 +139,10 @@ export default function HistoryControls({
     const onDocClick = (e: MouseEvent) => {
       const target = e.target as Node;
       // Don't close if clicking on the calendar button (it will toggle itself)
-      if (calendarButtonRef.current && calendarButtonRef.current.contains(target)) {
+      if (
+        calendarButtonRef.current &&
+        calendarButtonRef.current.contains(target)
+      ) {
         return;
       }
       // Don't close if clicking inside the calendar popup
@@ -111,55 +152,114 @@ export default function HistoryControls({
       // Close if clicking outside both button and calendar
       setShowCalendar(false);
     };
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCalendar(false); };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCalendar(false);
+    };
     // Use a slight delay to ensure the button's onClick runs first
     const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', onDocClick);
+      document.addEventListener("mousedown", onDocClick);
     }, 0);
-    document.addEventListener('keydown', onEsc);
+    document.addEventListener("keydown", onEsc);
     return () => {
       clearTimeout(timeoutId);
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onEsc);
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
     };
   }, [showCalendar]);
 
   // Search handler - use currentFilters.sortOrder from Redux to avoid dependency on local sortOrder state
-  const applySearch = useCallback(async (nextSearch: string) => {
-    const s = String(nextSearch || '').trim();
-    setSearchQuery(s);
+  const applySearch = useCallback(
+    async (nextSearch: string) => {
+      const s = String(nextSearch || "").trim();
+      setSearchQuery(s);
 
-    // Use currentFilters.sortOrder from Redux to get the latest value, not local state
-    // This prevents applySearch from being recreated when local sortOrder state changes
-    const currentSortOrder = (currentFilters as any)?.sortOrder || 'desc';
+      // Use currentFilters.sortOrder from Redux to get the latest value, not local state
+      // This prevents applySearch from being recreated when local sortOrder state changes
+      const currentSortOrder = (currentFilters as any)?.sortOrder || "desc";
 
-    didInitialLoadRef.current = true;
-    dispatch(setFilters({
-      ...currentFilters,
+      didInitialLoadRef.current = true;
+      dispatch(
+        setFilters({
+          ...currentFilters,
+          mode,
+          sortOrder: currentSortOrder,
+          ...(s ? { search: s } : {}),
+          ...(dateRange.start && dateRange.end
+            ? {
+                dateRange: {
+                  start: dateRange.start.toISOString(),
+                  end: dateRange.end.toISOString(),
+                },
+              }
+            : {}),
+        } as any),
+      );
+
+      if (onSearchChange) {
+        onSearchChange(s);
+      }
+
+      // Silently return if auto-fetch is disabled
+      if (disableAutoFetch) return;
+
+      await (dispatch as any)(
+        loadHistory({
+          filters: {
+            ...currentFilters,
+            mode: mode === "all" ? undefined : mode,
+            sortOrder: currentSortOrder,
+            ...(s ? { search: s } : {}),
+            ...(dateRange.start && dateRange.end
+              ? {
+                  dateRange: {
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                  },
+                }
+              : {}),
+          } as any,
+          backendFilters: {
+            ...currentFilters,
+            mode: mode === "all" ? undefined : mode,
+            sortOrder: currentSortOrder,
+            ...(s ? { search: s } : {}),
+            ...(dateRange.start && dateRange.end
+              ? {
+                  dateRange: {
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                  },
+                }
+              : {}),
+          } as any,
+          paginationParams: { limit: paginationLimit },
+          requestOrigin: "page",
+          expectedType:
+            mode === "video"
+              ? "video"
+              : mode === "music"
+                ? "text-to-music"
+                : mode === "branding"
+                  ? "branding"
+                  : mode === "all"
+                    ? undefined
+                    : "text-to-image",
+          skipBackendGenerationFilter: mode === "image" || mode === "all", // Image and All modes use skipBackendGenerationFilter
+          forceRefresh: true,
+          debugTag: `HistoryControls:${mode}-search:${Date.now()}`,
+        } as any),
+      );
+    },
+    [
+      dispatch,
       mode,
-      sortOrder: currentSortOrder,
-      ...(s ? { search: s } : {}),
-      ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
-    } as any));
-    
-    if (onSearchChange) {
-      onSearchChange(s);
-    }
-
-    // Silently return if auto-fetch is disabled
-    if (disableAutoFetch) return;
-
-    await (dispatch as any)(loadHistory({
-      filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: paginationLimit },
-      requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
-      skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
-      forceRefresh: true,
-      debugTag: `HistoryControls:${mode}-search:${Date.now()}`,
-    } as any));
-  }, [dispatch, mode, currentFilters, dateRange, onSearchChange, paginationLimit, disableAutoFetch]);
+      currentFilters,
+      dateRange,
+      onSearchChange,
+      paginationLimit,
+      disableAutoFetch,
+    ],
+  );
 
   // Live prompt search (Freepik-style): as user types, debounce and query backend.
   useEffect(() => {
@@ -169,8 +269,8 @@ export default function HistoryControls({
       return;
     }
 
-    const next = String(searchInput || '').trim();
-    const applied = String(searchQuery || '').trim();
+    const next = String(searchInput || "").trim();
+    const applied = String(searchQuery || "").trim();
     if (next === applied) return;
 
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -184,90 +284,206 @@ export default function HistoryControls({
   }, [searchInput, searchQuery, applySearch]);
 
   // Sort handler
-  const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
-    // Prevent duplicate requests: check if already set to this order or request in flight
-    if (sortOrder === order || sortRequestInFlightRef.current) {
-      return;
-    }
-
-    // Set loading guard
-    sortRequestInFlightRef.current = true;
-
-    try {
-      // Update state AFTER API call to prevent triggering other effects
-      // Use the order parameter directly in API calls, not state
-      if (onSortChangeCallback) {
-        onSortChangeCallback(order);
-      }
-
-      // If auto-fetch is disabled, we stop here (parent handles fetch)
-      if (disableAutoFetch) {
-        setSortOrder(order);
+  const onSortChange = useCallback(
+    async (order: "asc" | "desc") => {
+      // Prevent duplicate requests: check if already set to this order or request in flight
+      if (sortOrder === order || sortRequestInFlightRef.current) {
         return;
       }
 
-      didInitialLoadRef.current = true;
-      dispatch(setFilters({
-        ...currentFilters,
-        mode,
-        sortOrder: order,
-        ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
-        ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {})
-      } as any));
-      await (dispatch as any)(loadHistory({
-        filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        paginationParams: { limit: paginationLimit },
-        requestOrigin: 'page',
-        expectedType: mode === 'video' ? 'video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
-        skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
-        forceRefresh: true,
-        debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
-      } as any));
+      // Set loading guard
+      sortRequestInFlightRef.current = true;
 
-      // Update local state AFTER successful API call to prevent triggering applySearch recreation
-      setSortOrder(order);
-    } finally {
-      // Release loading guard after a short delay to prevent rapid clicks
-      setTimeout(() => {
-        sortRequestInFlightRef.current = false;
-      }, 500);
-    }
-  }, [dispatch, mode, dateRange, searchQuery, sortOrder, onSortChangeCallback, paginationLimit]);
+      try {
+        // Update state AFTER API call to prevent triggering other effects
+        // Use the order parameter directly in API calls, not state
+        if (onSortChangeCallback) {
+          onSortChangeCallback(order);
+        }
+
+        // If auto-fetch is disabled, we stop here (parent handles fetch)
+        if (disableAutoFetch) {
+          setSortOrder(order);
+          return;
+        }
+
+        didInitialLoadRef.current = true;
+        dispatch(
+          setFilters({
+            ...currentFilters,
+            mode,
+            sortOrder: order,
+            ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+            ...(dateRange.start && dateRange.end
+              ? {
+                  dateRange: {
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                  },
+                }
+              : {}),
+          } as any),
+        );
+        await (dispatch as any)(
+          loadHistory({
+            filters: {
+              ...currentFilters,
+              mode: mode === "all" ? undefined : mode,
+              sortOrder: order,
+              ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+              ...(dateRange.start && dateRange.end
+                ? {
+                    dateRange: {
+                      start: dateRange.start.toISOString(),
+                      end: dateRange.end.toISOString(),
+                    },
+                  }
+                : {}),
+            } as any,
+            backendFilters: {
+              ...currentFilters,
+              mode: mode === "all" ? undefined : mode,
+              sortOrder: order,
+              ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+              ...(dateRange.start && dateRange.end
+                ? {
+                    dateRange: {
+                      start: dateRange.start.toISOString(),
+                      end: dateRange.end.toISOString(),
+                    },
+                  }
+                : {}),
+            } as any,
+            paginationParams: { limit: paginationLimit },
+            requestOrigin: "page",
+            expectedType:
+              mode === "video"
+                ? "video"
+                : mode === "music"
+                  ? "text-to-music"
+                  : mode === "branding"
+                    ? "branding"
+                    : mode === "all"
+                      ? undefined
+                      : "text-to-image",
+            skipBackendGenerationFilter: mode === "image" || mode === "all", // Image and All modes use skipBackendGenerationFilter
+            forceRefresh: true,
+            debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
+          } as any),
+        );
+
+        // Update local state AFTER successful API call to prevent triggering applySearch recreation
+        setSortOrder(order);
+      } finally {
+        // Release loading guard after a short delay to prevent rapid clicks
+        setTimeout(() => {
+          sortRequestInFlightRef.current = false;
+        }, 500);
+      }
+    },
+    [
+      dispatch,
+      mode,
+      dateRange,
+      searchQuery,
+      sortOrder,
+      onSortChangeCallback,
+      paginationLimit,
+    ],
+  );
 
   // Date change handler
-  const onDateChange = useCallback(async (next: { start: Date | null; end: Date | null }, nextInput?: string) => {
-    setDateRange(next);
-    if (typeof nextInput === 'string') setDateInput(nextInput);
-    if (onDateChangeCallback) {
-      onDateChangeCallback(next);
-    }
+  const onDateChange = useCallback(
+    async (
+      next: { start: Date | null; end: Date | null },
+      nextInput?: string,
+    ) => {
+      setDateRange(next);
+      if (typeof nextInput === "string") setDateInput(nextInput);
+      if (onDateChangeCallback) {
+        onDateChangeCallback(next);
+      }
 
-    // If auto-fetch is disabled, we stop here (parent handles fetch)
-    if (disableAutoFetch) return;
+      // If auto-fetch is disabled, we stop here (parent handles fetch)
+      if (disableAutoFetch) return;
 
-    didInitialLoadRef.current = true;
-    dispatch(setFilters({
-      ...currentFilters,
-      mode,
-      sortOrder,
-      ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
-      ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {})
-    } as any));
-    await (dispatch as any)(loadHistory({
-      filters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
-      backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
-      paginationParams: { limit: paginationLimit },
-      requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
-      skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
-      forceRefresh: true,
-      debugTag: `HistoryControls:${mode}-date:${Date.now()}`,
-    } as any));
-  }, [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback]);
+      didInitialLoadRef.current = true;
+      dispatch(
+        setFilters({
+          ...currentFilters,
+          mode,
+          sortOrder,
+          ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+          ...(next.start && next.end
+            ? {
+                dateRange: {
+                  start: next.start.toISOString(),
+                  end: next.end.toISOString(),
+                },
+              }
+            : {}),
+        } as any),
+      );
+      await (dispatch as any)(
+        loadHistory({
+          filters: {
+            ...currentFilters,
+            mode: mode === "all" ? undefined : mode,
+            sortOrder,
+            ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+            ...(next.start && next.end
+              ? {
+                  dateRange: {
+                    start: next.start.toISOString(),
+                    end: next.end.toISOString(),
+                  },
+                }
+              : {}),
+          } as any,
+          backendFilters: {
+            ...currentFilters,
+            mode: mode === "all" ? undefined : mode,
+            sortOrder,
+            ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+            ...(next.start && next.end
+              ? {
+                  dateRange: {
+                    start: next.start.toISOString(),
+                    end: next.end.toISOString(),
+                  },
+                }
+              : {}),
+          } as any,
+          paginationParams: { limit: paginationLimit },
+          requestOrigin: "page",
+          expectedType:
+            mode === "video"
+              ? "video"
+              : mode === "music"
+                ? "text-to-music"
+                : mode === "branding"
+                  ? "branding"
+                  : mode === "all"
+                    ? undefined
+                    : "text-to-image",
+          skipBackendGenerationFilter: mode === "image" || mode === "all", // Image and All modes use skipBackendGenerationFilter
+          forceRefresh: true,
+          debugTag: `HistoryControls:${mode}-date:${Date.now()}`,
+        } as any),
+      );
+    },
+    [dispatch, mode, sortOrder, searchQuery, onDateChangeCallback],
+  );
 
   return (
-    <div className={['flex items-center justify-between md:justify-end gap-2 px-0 md:px-0 mb-2 md:pt-2 w-full md:w-auto', className].filter(Boolean).join(' ')}>
+    <div
+      className={[
+        "flex items-center justify-between md:justify-end gap-2 px-0 md:px-0 mb-2 md:pt-2 w-full md:w-auto",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {/* Prompt search (backend-driven) */}
       <div className="relative flex-1 md:flex-none flex items-center">
         <input
@@ -275,10 +491,19 @@ export default function HistoryControls({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search..."
-          className={`pl-8 pr-2 h-[34px] md:h-[28px] rounded-xl md:rounded-lg text-[13px] md:text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500/40 border border-white/10 bg-white/5 text-white placeholder-white/40 w-full md:w-64 transition-all ${searchInput ? 'pr-8' : ''}`}
+          className={`pl-8 pr-2 h-[34px] md:h-[28px] rounded-xl md:rounded-lg text-[13px] md:text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500/40 border border-white/10 bg-white/5 text-white placeholder-white/40 w-full md:w-64 transition-all ${searchInput ? "pr-8" : ""}`}
         />
         <div className="absolute left-2.5 text-white/40 pointer-events-none">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
@@ -288,13 +513,22 @@ export default function HistoryControls({
             type="button"
             onClick={() => {
               // X behaves like clear: remove applied backend search and reload.
-              setSearchInput('');
-              applySearch('');
+              setSearchInput("");
+              applySearch("");
             }}
             className="absolute right-1 p-1 rounded bg-white/5 hover:bg-white/10 text-white/80"
             aria-label="Clear search input"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -302,19 +536,27 @@ export default function HistoryControls({
         )}
       </div>
       <button
-        onClick={() => onSortChange('desc')}
-        className={`flex items-center justify-center gap-1.5 px-2 md:px-3 h-[34px] md:h-[28px] min-w-[34px] md:min-w-0 rounded-xl md:rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-black font-semibold shadow-lg' : 'text-white/70 hover:bg-white/10 border border-white/10'}`}
+        onClick={() => onSortChange("desc")}
+        className={`flex items-center justify-center gap-1.5 px-2 md:px-3 h-[34px] md:h-[28px] min-w-[34px] md:min-w-0 rounded-xl md:rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === "desc" ? "bg-white text-black font-semibold shadow-lg" : "text-white/70 hover:bg-white/10 border border-white/10"}`}
         aria-label="Recent"
       >
-        <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert md:opacity-100 opacity-70'} w-4 h-4`} />
+        <img
+          src="/icons/upload-square-2 (1).svg"
+          alt="Recent"
+          className={`${sortOrder === "desc" ? "" : "invert md:opacity-100 opacity-70"} w-4 h-4`}
+        />
         <span className="hidden md:block">Recent</span>
       </button>
       <button
-        onClick={() => onSortChange('asc')}
-        className={`flex items-center justify-center gap-1.5 px-2 md:px-3 h-[34px] md:h-[28px] min-w-[34px] md:min-w-0 rounded-xl md:rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-black font-semibold shadow-lg' : 'text-white/70 hover:bg-white/10 border border-white/10'}`}
+        onClick={() => onSortChange("asc")}
+        className={`flex items-center justify-center gap-1.5 px-2 md:px-3 h-[34px] md:h-[28px] min-w-[34px] md:min-w-0 rounded-xl md:rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === "asc" ? "bg-white text-black font-semibold shadow-lg" : "text-white/70 hover:bg-white/10 border border-white/10"}`}
         aria-label="Oldest"
       >
-        <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert md:opacity-100 opacity-70'} w-4 h-4`} />
+        <img
+          src="/icons/download-square-2.svg"
+          alt="Oldest"
+          className={`${sortOrder === "asc" ? "" : "invert md:opacity-100 opacity-70"} w-4 h-4`}
+        />
         <span className="hidden md:block">Oldest</span>
       </button>
 
@@ -328,146 +570,238 @@ export default function HistoryControls({
             const value = e.target.value;
             setDateInput(value);
             if (!value) {
-              await onDateChange({ start: null, end: null }, '');
+              await onDateChange({ start: null, end: null }, "");
               return;
             }
-            const d = new Date(value + 'T00:00:00');
-            const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-            const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+            const d = new Date(value + "T00:00:00");
+            const start = new Date(
+              d.getFullYear(),
+              d.getMonth(),
+              d.getDate(),
+              0,
+              0,
+              0,
+            );
+            const end = new Date(
+              d.getFullYear(),
+              d.getMonth(),
+              d.getDate(),
+              23,
+              59,
+              59,
+              999,
+            );
             await onDateChange({ start, end }, value);
           }}
-          style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: 1,
+            height: 1,
+            opacity: 0,
+          }}
         />
         <button
           ref={calendarButtonRef}
           onClick={(e) => {
             e.stopPropagation();
-            const base = dateRange.start ? new Date(dateRange.start) : new Date();
+            const base = dateRange.start
+              ? new Date(dateRange.start)
+              : new Date();
             setCalendarMonth(base.getMonth());
             setCalendarYear(base.getFullYear());
             setShowCalendar((v) => !v);
           }}
-          className={`relative group h-[34px] md:h-[26px] w-[34px] md:w-[28px] flex items-center justify-center rounded-xl md:rounded-lg text-[13px] transition-all ${(showCalendar || dateRange.start) ? 'bg-white text-black font-semibold shadow-lg' : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white/70'}`}
+          className={`relative group h-[34px] md:h-[26px] w-[34px] md:w-[28px] flex items-center justify-center rounded-xl md:rounded-lg text-[13px] transition-all ${showCalendar || dateRange.start ? "bg-white text-black font-semibold shadow-lg" : "bg-white/5 border border-white/10 hover:bg-white/10 text-white/70"}`}
           aria-label="Date"
         >
-          <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert md:opacity-100 opacity-70'} w-4 h-4`} />
+          <img
+            src="/icons/calendar-days.svg"
+            alt="Date"
+            className={`${showCalendar || dateRange.start ? "" : "invert md:opacity-100 opacity-70"} w-4 h-4`}
+          />
         </button>
-        {showCalendar && mounted && typeof document !== 'undefined' && calendarPosition && createPortal(
-          <div
-            ref={calendarRef}
-            data-calendar-popup="true"
-            className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              top: `${calendarPosition.top}px`,
-              right: `${calendarPosition.right}px`,
-              zIndex: 99999,
-            }}
-          >
-            <div className="flex items-center justify-between mb-2 text-white">
-              <button
-                className="px-2 py-1 rounded hover:bg-white/10"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                  setCalendarYear(prev.getFullYear());
-                  setCalendarMonth(prev.getMonth());
-                }}
-              >‹</button>
-              <div className="text-sm font-semibold">
-                {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+        {showCalendar &&
+          mounted &&
+          typeof document !== "undefined" &&
+          calendarPosition &&
+          createPortal(
+            <div
+              ref={calendarRef}
+              data-calendar-popup="true"
+              className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                top: `${calendarPosition.top}px`,
+                right: `${calendarPosition.right}px`,
+                zIndex: 99999,
+              }}
+            >
+              <div className="flex items-center justify-between mb-2 text-white">
+                <button
+                  className="px-2 py-1 rounded hover:bg-white/10"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                    setCalendarYear(prev.getFullYear());
+                    setCalendarMonth(prev.getMonth());
+                  }}
+                >
+                  ‹
+                </button>
+                <div className="text-sm font-semibold">
+                  {new Date(calendarYear, calendarMonth, 1).toLocaleString(
+                    undefined,
+                    { month: "long", year: "numeric" },
+                  )}
+                </div>
+                <button
+                  className="px-2 py-1 rounded hover:bg-white/10"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const next = new Date(calendarYear, calendarMonth + 1, 1);
+                    setCalendarYear(next.getFullYear());
+                    setCalendarMonth(next.getMonth());
+                  }}
+                >
+                  ›
+                </button>
               </div>
-              <button
-                className="px-2 py-1 rounded hover:bg-white/10"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  const next = new Date(calendarYear, calendarMonth + 1, 1);
-                  setCalendarYear(next.getFullYear());
-                  setCalendarMonth(next.getMonth());
-                }}
-              >›</button>
-            </div>
-            <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                <div key={`pad-${i}`} className="h-8" />
-              ))}
-              {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const thisDate = new Date(calendarYear, calendarMonth, day);
-                const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
-                const isFuture = thisDate.getTime() > new Date().setHours(23, 59, 59, 999);
-                return (
-                  <button
-                    key={day}
-                    disabled={isFuture}
-                    className={`h-8 rounded text-sm text-center ${isFuture ? 'text-white/20 cursor-not-allowed' : 'text-white hover:bg-white/15'} ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={async (e) => {
-                      if (isFuture) return;
-                      e.stopPropagation();
-                      e.preventDefault();
-                      const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
-                      const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                      const iso = thisDate.toISOString().slice(0, 10);
-                      setDateInput(iso);
-                      await onDateChange({ start, end }, iso);
-                      setShowCalendar(false);
-                    }}
-                  >{day}</button>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between mt-3">
-              <button
-                className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setDateInput('');
-                  await onDateChange({ start: null, end: null }, '');
-                  setShowCalendar(false);
-                }}
-              >Clear</button>
-              <button
-                className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  const now = new Date();
-                  setCalendarMonth(now.getMonth());
-                  setCalendarYear(now.getFullYear());
-                  
-                  // Bug 60 fix: Selecting 'Today' should apply the filter
-                  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-                  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-                  const iso = now.toISOString().slice(0, 10);
-                  setDateInput(iso);
-                  await onDateChange({ start, end }, iso);
-                  setShowCalendar(false);
-                }}
-              >Today</button>
-            </div>
-          </div>,
-          document.body
-        )}
+              <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                  <div key={d} className="text-center py-1">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                  <div key={`pad-${i}`} className="h-8" />
+                ))}
+                {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const thisDate = new Date(calendarYear, calendarMonth, day);
+                  const isSelected =
+                    !!dateRange.start &&
+                    new Date(dateRange.start).toDateString() ===
+                      thisDate.toDateString();
+                  const isFuture =
+                    thisDate.getTime() > new Date().setHours(23, 59, 59, 999);
+                  return (
+                    <button
+                      key={day}
+                      disabled={isFuture}
+                      className={`h-8 rounded text-sm text-center ${isFuture ? "text-white/20 cursor-not-allowed" : "text-white hover:bg-white/15"} ${isSelected ? "bg-white/25 ring-1 ring-white/40" : "bg-white/5"}`}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={async (e) => {
+                        if (isFuture) return;
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const start = new Date(
+                          thisDate.getFullYear(),
+                          thisDate.getMonth(),
+                          thisDate.getDate(),
+                          0,
+                          0,
+                          0,
+                        );
+                        const end = new Date(
+                          thisDate.getFullYear(),
+                          thisDate.getMonth(),
+                          thisDate.getDate(),
+                          23,
+                          59,
+                          59,
+                          999,
+                        );
+                        const iso = thisDate.toISOString().slice(0, 10);
+                        setDateInput(iso);
+                        await onDateChange({ start, end }, iso);
+                        setShowCalendar(false);
+                      }}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between mt-3">
+                <button
+                  className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setDateInput("");
+                    await onDateChange({ start: null, end: null }, "");
+                    setShowCalendar(false);
+                  }}
+                >
+                  Clear
+                </button>
+                <button
+                  className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const now = new Date();
+                    setCalendarMonth(now.getMonth());
+                    setCalendarYear(now.getFullYear());
+
+                    // Bug 60 fix: Selecting 'Today' should apply the filter
+                    const start = new Date(
+                      now.getFullYear(),
+                      now.getMonth(),
+                      now.getDate(),
+                      0,
+                      0,
+                      0,
+                    );
+                    const end = new Date(
+                      now.getFullYear(),
+                      now.getMonth(),
+                      now.getDate(),
+                      23,
+                      59,
+                      59,
+                      999,
+                    );
+                    const iso = now.toISOString().slice(0, 10);
+                    setDateInput(iso);
+                    await onDateChange({ start, end }, iso);
+                    setShowCalendar(false);
+                  }}
+                >
+                  Today
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )}
         {dateRange.start && (
           <button
             className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
             onClick={async () => {
-              setDateInput('');
-              await onDateChange({ start: null, end: null }, '');
+              setDateInput("");
+              await onDateChange({ start: null, end: null }, "");
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -476,6 +810,4 @@ export default function HistoryControls({
       </div>
     </div>
   );
-};
-
-
+}

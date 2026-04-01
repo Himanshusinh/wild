@@ -1263,16 +1263,18 @@ export const buildCreditModelName = (
     const modelType = isI2V ? "I2V" : "T2V";
     const speedPrefix = isFast ? "Fast " : "";
     modelName = `Wan 2.5 ${speedPrefix}${modelType} ${options.duration}s ${options.resolution}`;
-  }
-  else if (
+  } else if (
     mapping.frontendValue.includes("veo3.1-lite") &&
     options?.duration &&
     options?.resolution
   ) {
-    const d = options.duration === 4 || options.duration === 6 ? options.duration : 8;
-    const res = String(options.resolution).toLowerCase().includes("1080") ? "1080p" : "720p";
+    const d =
+      options.duration === 4 || options.duration === 6 ? options.duration : 8;
+    const res = String(options.resolution).toLowerCase().includes("1080")
+      ? "1080p"
+      : "720p";
     const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
-    modelName = `Veo 3.1 Lite ${mode} ${res === '1080p' ? 8 : d}s ${res}`;
+    modelName = `Veo 3.1 Lite ${mode} ${res === "1080p" ? 8 : d}s ${res}`;
   }
   // Handle Kling models
   else if (mapping.frontendValue.startsWith("kling") && options?.duration) {
