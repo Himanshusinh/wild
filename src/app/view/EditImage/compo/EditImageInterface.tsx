@@ -8742,7 +8742,7 @@ const EditImageInterface: React.FC = () => {
                               />
                               <circle
                                 cx="12"
-                                cy="13"
+                                cy="13" 
                                 r="3"
                                 stroke="currentColor"
                                 strokeWidth="1.5"

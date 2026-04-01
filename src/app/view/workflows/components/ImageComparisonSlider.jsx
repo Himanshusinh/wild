@@ -112,7 +112,7 @@ export default function ImageComparisonSlider({
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden select-none group"
-      style={{ touchAction: 'pan-y pinch-zoom' }}
+      style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
