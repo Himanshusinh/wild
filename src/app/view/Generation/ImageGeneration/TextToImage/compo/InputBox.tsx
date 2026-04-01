@@ -7989,7 +7989,7 @@ const InputBox = () => {
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
-            <div className="mb-0 flex h-10 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
+            <div className="mb-0 flex min-h-14 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
               <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
@@ -7998,7 +7998,7 @@ const InputBox = () => {
                 >
                   <Menu size={20} />
                 </button>
-                <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 text-[15px] font-bold leading-none tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
+                <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 pb-[1px] text-base font-bold leading-tight tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
                   Image Generation
                 </h2>
 
@@ -8671,9 +8671,9 @@ const InputBox = () => {
 
               {/* History Entries - Grouped by Date */}
               {userData && sortedDates.length > 0 && (
-                <div className="mt-18 space-y-4 px-2 md:mt-14 md:px-0">
+                <div className="mt-18 space-y-4 px-2 md:mt-16 md:px-0">
                   {sortedDates.map((date) => (
-                    <div key={date} className="space-y-2 md:-mt-2">
+                    <div key={date} className="space-y-2 md:mt-0">
                       {/* Date Header */}
                       <div className="flex items-center md:mx-8  md:gap-2 gap-2">
                         <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
