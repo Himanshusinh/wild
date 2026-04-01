@@ -7494,7 +7494,7 @@ const EditImageInterface: React.FC = () => {
                                 fill
                                 unoptimized
                                 className="object-contain object-center"
-                                style={{ objectPosition: "center 55%" }}
+                                style={{ objectPosition: "center center" }}
                                 onError={(e) => {
                                   console.error(
                                     "[EditImage] Output image failed to load:",
@@ -7572,7 +7572,7 @@ const EditImageInterface: React.FC = () => {
                               style={{
                                 transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                                 transformOrigin: "center center",
-                                objectPosition: "center 55%",
+                                objectPosition: "center center",
                               }}
                               onLoad={(e) => {
                                 const img = e.target as HTMLImageElement;
@@ -7670,7 +7670,7 @@ const EditImageInterface: React.FC = () => {
                           style={{
                             transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                             transformOrigin: "center center",
-                            objectPosition: "center 55%",
+                            objectPosition: "center center",
                           }}
                           onLoad={(e) => {
                             const img = e.target as HTMLImageElement;
@@ -8797,7 +8797,7 @@ const EditImageInterface: React.FC = () => {
 
               {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
               {selectedFeature === "live-chat" &&
-                (liveOriginalInput || inputs["live-chat"]) && (
+                liveHistory.length > 0 && (
                   <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
                     {/* <div className="hidden md:block">
                     <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
@@ -8910,14 +8910,7 @@ const EditImageInterface: React.FC = () => {
             </div>
           </div>
         }
-        statusBar={
-          <EditImageStatusBar
-            isProcessing={Object.values(processing).some((p) => p)}
-            statusText={`Processing: ${featureDisplayName[selectedFeature]}...`}
-            progress={65}
-            credits={creditBalance}
-          />
-        }
+        statusBar={null}
       />
     </div>
   );
