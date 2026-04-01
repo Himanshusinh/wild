@@ -191,6 +191,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     provider: 'replicate'
   },
   {
+    frontendValue: 'recraft-ai/recraft-v4',
+    creditModelName: 'replicate/recraft-ai/recraft-v4',
+    generationType: 'image',
+    provider: 'replicate',
+    options: {
+      aspect_ratio: ['1:1', '4:3', '3:4', '3:2', '2:3', '16:9', '9:16', '1:2', '2:1', '14:10', '10:14', '4:5', '5:4', '6:10']
+    }
+  },
+  {
     frontendValue: 'ideogram-ai/ideogram-v3',
     creditModelName: 'replicate/ideogram-ai/ideogram-v3-turbo',
     generationType: 'image',

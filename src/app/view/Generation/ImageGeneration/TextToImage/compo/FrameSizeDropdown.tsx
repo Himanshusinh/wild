@@ -182,6 +182,9 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     // Additional ratios for various models
     { name: 'Portrait 4:5', value: '4:5', icon: 'portrait', hideValue: true },
     { name: 'Landscape 5:4', value: '5:4', icon: 'landscape', hideValue: true },
+    { name: 'Landscape 14:10', value: '14:10', icon: 'landscape', hideValue: true },
+    { name: 'Portrait 10:14', value: '10:14', icon: 'portrait', hideValue: true },
+    { name: 'Poster 6:10', value: '6:10', icon: 'portrait', hideValue: true },
     { name: 'Ultra Wide 2:1', value: '2:1', icon: 'ultrawide', hideValue: true },
     { name: 'Portrait 1:2', value: '1:2', icon: 'portrait', hideValue: true },
     { name: 'Ultra Wide 3:1', value: '3:1', icon: 'ultrawide', hideValue: true },
@@ -210,6 +213,7 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
   const isSeedream45 = selectedModel === 'seedream-4.5';
   const isGoogleNanoBanana = selectedModel === 'gemini-25-flash-image' || selectedModel === 'google/nano-banana-pro' || selectedModel === 'nano-banana-pro' || selectedModel === 'google/nano-banana-2';
   const isFlux2Pro = selectedModel === 'flux-2-pro';
+  const isRecraftV4 = selectedModel === 'recraft-ai/recraft-v4' || selectedModel === 'recraft-v4';
   const isIdeogram = selectedModel === 'ideogram-ai/ideogram-v3' || selectedModel === 'ideogram-ai/ideogram-v3-quality';
   const isZTurbo = selectedModel === 'new-turbo-model';
   const isPImage = selectedModel === 'prunaai/p-image';
@@ -221,6 +225,10 @@ const FrameSizeDropdown = ({ openDirection = 'up' }: FrameSizeDropdownProps) => 
     if (isQwen2) {
       // Qwen Image 2: supported aspect ratios
       const allowed = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '2:1', '1:2']);
+      return baseSizes.filter(s => allowed.has(s.value));
+    }
+    if (isRecraftV4) {
+      const allowed = new Set(['1:1', '4:3', '3:4', '3:2', '2:3', '16:9', '9:16', '1:2', '2:1', '14:10', '10:14', '4:5', '5:4', '6:10']);
       return baseSizes.filter(s => allowed.has(s.value));
     }
     if (isQwenImageEdit) {

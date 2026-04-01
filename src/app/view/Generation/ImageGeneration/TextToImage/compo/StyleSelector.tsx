@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const StyleSelector = () => {
   const style = useAppSelector((state: any) => state.generation?.style || 'none');
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel || 'new-turbo-model');
   const [isStylePopupOpen, setIsStylePopupOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 

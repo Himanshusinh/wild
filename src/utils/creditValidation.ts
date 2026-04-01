@@ -216,6 +216,13 @@ export const getImageGenerationCreditCost = (
     return (baseCost && baseCost > 0) ? baseCost : (frontendModel === 'qwen-image-edit-2512' ? 60 : 80);
   }
 
+  if (frontendModel === 'recraft-ai/recraft-v4' || frontendModel === 'recraft-v4') {
+    const mapping = getModelMapping('recraft-ai/recraft-v4');
+    const baseCost = mapping ? getCreditCostForModel(mapping.creditModelName) : 0;
+    const resolvedBaseCost = (baseCost && baseCost > 0) ? baseCost : 100;
+    return resolvedBaseCost * Math.max(1, Math.min(count, 4));
+  }
+
   // Special case: z-image-turbo (new-turbo-model) is free for launch offer
   // Special case: z-image-turbo (new-turbo-model) is now 25 credits
   // if (frontendModel === 'new-turbo-model') {

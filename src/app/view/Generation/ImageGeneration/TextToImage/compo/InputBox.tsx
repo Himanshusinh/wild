@@ -463,6 +463,7 @@ const InputBox = () => {
         // Normalize known backend → UI mappings
         if (m === 'bytedance/seedream-4') return 'seedream-v4';
         if (m === 'bytedance/seedream-4.5') return 'seedream-4.5';
+        if (m === 'recraft-v4') return 'recraft-ai/recraft-v4';
         if (m === 'z-image-turbo') return 'new-turbo-model';
         // Bug 62: Fallback background-remover models to nano-banana-2 for generation tasks
         if (m === '851-labs/background-remover' || m === 'lucataco/remove-bg') return 'google/nano-banana-2';
@@ -4396,6 +4397,70 @@ const InputBox = () => {
             tempEntry,
             transactionId,
             modelName: 'Ideogram v3',
+          });
+          return;
+        }
+      } else if (selectedModel === 'recraft-ai/recraft-v4') {
+        try {
+          const allowedAspect = new Set([
+            '1:1', '4:3', '3:4', '3:2', '2:3', '16:9', '9:16', '1:2', '2:1', '14:10', '10:14', '4:5', '5:4', '6:10'
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : '1:1';
+          const promptAdjusted = adjustPromptImageNumbers(finalPrompt, getCombinedUploadedImages(), selectedCharacters);
+          const payload: any = {
+            prompt: `${promptAdjusted} [Style: ${style}]`,
+            model: 'recraft-ai/recraft-v4',
+            aspect_ratio: aspect,
+            num_images: Math.min(Math.max(imageCount, 1), 4),
+            isPublic,
+          };
+
+          const result = await dispatch(replicateGenerate(payload)).unwrap();
+
+          try {
+            const completedEntry: HistoryEntry = {
+              ...tempEntry,
+              id: tempEntryId,
+              images: (result.images || []),
+              status: 'completed',
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: result.images?.length || 1,
+            } as any;
+            upsertLocalGeneratingEntry(completedEntry);
+
+            if (generationId) {
+              const resultHistoryId = (result as any)?.historyId;
+              dispatch(updateActiveGeneration({
+                id: generationId,
+                updates: {
+                  status: 'completed',
+                  images: result.images || [],
+                  historyId: resultHistoryId,
+                }
+              }));
+            }
+          } catch { }
+
+          clearInputs();
+
+          const resultHistoryId = (result as any)?.historyId || firebaseHistoryId || generationId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
+          }
+
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
+          }
+        } catch (error) {
+          await handleReplicateError(error, {
+            generationId,
+            tempEntryId,
+            tempEntry,
+            transactionId,
+            modelName: 'Recraft v4',
           });
           return;
         }

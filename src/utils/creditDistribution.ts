@@ -171,6 +171,21 @@ export const creditDistributionData: ModelCreditInfo[] = [
       free: 33.33333333,
     },
   },
+  {
+    srNo: 12.1,
+    modelName: "replicate/recraft-ai/recraft-v4",
+    priceToPay: 0.04,
+    overCharge: 0.01,
+    userCost: 0.05,
+    creditsPerGeneration: 100,
+    plans: {
+      planA: 123.6,
+      planB: 247.2,
+      planC: 618,
+      planD: 1977.6,
+      free: 20,
+    },
+  },
   // Kling video models (Replicate)
   {
     srNo: 50.1,

@@ -16,6 +16,7 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
   'seedream-4.5': "Generates ultra-high-resolution (4K) detailed images.",
   'gemini-25-flash-image': "Lightweight creative image model for decent quality at lower cost.",
   'seedream-5-lite': "Cost-efficient model for decent-quality images with faster speed.",
+  'recraft-ai/recraft-v4': "Clean text-to-image generation on Replicate with aspect-ratio control and a fixed single-image output.",
   'flux-kontext-max': "Advanced contextual image editing and generation with deep understanding.",
   'qwen/qwen-image-2': "General-purpose image generation with multilingual prompt support.",
   'flux-kontext-pro': "Professional-grade contextual editing and controlled image generation.",
@@ -59,6 +60,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     // { name: 'Seedream v4 4k', value: 'seedream-v4' },
     { name: 'Seedream 4.5 4K', value: 'seedream-4.5' },
     { name: 'Seedream 5 Lite ', value: 'seedream-5-lite' },
+    { name: 'Recraft v4', value: 'recraft-ai/recraft-v4' },
      { name: "Qwen Image 2", value: "qwen/qwen-image-2" },
     { name: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
 
@@ -217,6 +219,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     const isImagen4 = typeof selectedModel === 'string' && (selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'imagen-4-ultra');
     const isLucidOrPhoenix = typeof selectedModel === 'string' && (selectedModel === 'leonardoai/lucid-origin' || selectedModel === 'leonardoai/phoenix-1.0');
     const isMiniMax = typeof selectedModel === 'string' && selectedModel === 'minimax-image-01';
+    const isRecraftV4 = typeof selectedModel === 'string' && (selectedModel === 'recraft-ai/recraft-v4' || selectedModel === 'recraft-v4');
     const isZImageTurbo = typeof selectedModel === 'string' && (selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo');
     const isWildmindImage = typeof selectedModel === 'string' && selectedModel === 'wildmindimage';
     const isQwenNonEdit = typeof selectedModel === 'string' && (selectedModel === 'qwen-image-2511' || selectedModel === 'qwen-image-2512');
@@ -229,7 +232,7 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
       return;
     }
     // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
-    if (isZImageTurbo || isWildmindImage || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax) {
+    if (isZImageTurbo || isWildmindImage || isIdeogram || isImagen4 || isLucidOrPhoenix || isMiniMax || isRecraftV4) {
       // Prefer nano banana (gemini-25-flash-image) for image-to-image
       const nanoBanana = filteredModels.find(m => m.value === 'gemini-25-flash-image');
       const fallback = nanoBanana?.value || filteredModels[0]?.value || 'gemini-25-flash-image';
@@ -285,6 +288,9 @@ const ModelsDropdown = ({ openDirection = 'up', imageOnly = false }: ModelsDropd
     }
     if (modelValue === 'prunaai/p-image') {
       dispatch(setFrameSize('16:9')); // schema default aspect ratio
+    }
+    if (modelValue === 'recraft-ai/recraft-v4') {
+      dispatch(setFrameSize('1:1'));
     }
     dispatch(setSelectedModel(modelValue));
     dispatch(toggleDropdown(''));
