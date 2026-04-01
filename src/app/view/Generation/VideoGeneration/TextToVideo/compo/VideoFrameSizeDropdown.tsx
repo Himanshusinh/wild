@@ -96,6 +96,18 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
         ];
       }
+    } else if (selectedModel?.includes("veo3.1-lite")) {
+      if (generationMode === "image_to_video") {
+        return [
+          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
+          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+        ];
+      }
+      return [
+        { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
+        { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+      ];
     } else if (selectedModel?.includes("veo3.1")) {
       // Veo 3.1 models support limited aspect ratios
       if (generationMode === "image_to_video") {

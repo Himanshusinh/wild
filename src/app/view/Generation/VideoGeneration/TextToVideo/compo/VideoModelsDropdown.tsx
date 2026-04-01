@@ -96,6 +96,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     if (activeFeature === 'Lipsync') {
       return [
         { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
+        { value: "veo3.1-lite-t2v-8s", label: "Veo 3.1 Lite", description: "Lower-cost Veo, 4s/6s/8s at 720p, 8s at 1080p, audio always on", provider: "fal" },
         { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
         { value: "wan-2.5-t2v", label: "WAN 2.5 Speak", description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p", provider: "replicate" },
         { value: "wan-2.5-t2v-fast", label: "WAN 2.5 Fast Speak", description: "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only", provider: "replicate" },
@@ -117,6 +118,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     // This ensures consistent visibility regardless of current mode
     return [
       { value: "veo3.1-t2v-8s", label: "Veo 3.1", description: "Google's latest video model, 4s/6s/8s, 720p/1080p", provider: "fal" },
+      { value: "veo3.1-lite-t2v-8s", label: "Veo 3.1 Lite", description: "Lower-cost Veo, 4s/6s/8s at 720p, 8s at 1080p, audio always on", provider: "fal" },
       { value: "veo3.1-fast-t2v-8s", label: "Veo 3.1 Fast", description: "Faster generation, 4s/6s/8s, 720p/1080p", provider: "fal" },
       { value: "kling-o1", label: "Kling o1", description: "First frame required, last frame optional, 5s/10s", provider: "fal" },
       { value: "kling-v3-standard", label: "Kling 3 Standard", description: "Text→Video & Image→Video, 3s-15s, 16:9/9:16/1:1, Audio On/Off", provider: "fal" },
@@ -237,7 +239,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       else r = '720p';
     } else if (model.value.includes('veo3') || model.value.includes('veo3.1')) {
       d = normalizeDuration(selectedDuration, '8s');
-      const rRaw = normalizeResolution(selectedResolution, '1080p');
+      const defaultRes = model.value.includes('veo3.1-lite') ? '720p' : '1080p';
+      const rRaw = normalizeResolution(selectedResolution, defaultRes);
       const rLower = rRaw.toLowerCase();
       if (rLower.includes('1080')) r = '1080p';
       else r = '720p';

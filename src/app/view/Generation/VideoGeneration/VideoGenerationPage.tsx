@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setSidebarExpanded } from '@/store/slices/uiSlice';
@@ -24,6 +24,7 @@ export default function VideoGenerationPage() {
     const [activeFeature, setActiveFeature] = useState<VideoFeature>('Video');
     const isInlineEditVideoPage = pathname?.startsWith('/text-to-video/edit-video');
     const authUser = useAppSelector((state: any) => state.auth?.user);
+    const allHistoryEntries = useAppSelector((state: any) => state.history?.entries || []);
 
     // If user just logged in and the URL requests opening the external video editor, do it once.
     useEffect(() => {
@@ -53,10 +54,9 @@ export default function VideoGenerationPage() {
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
     // Get history entries to check if we should show the info button
-    const historyEntries = useAppSelector((state: any) => {
-        const allEntries = state.history?.entries || [];
+    const historyEntries = useMemo(() => {
         const normalize = (t?: string) => t?.replace(/[_-]/g, '-').toLowerCase() || '';
-        const filtered = allEntries.filter((entry: any) => {
+        const filtered = allHistoryEntries.filter((entry: any) => {
             const normalizedType = normalize(entry.generationType);
             return ['text-to-video', 'image-to-video', 'video-to-video'].includes(normalizedType);
         });
@@ -73,7 +73,7 @@ export default function VideoGenerationPage() {
             new Date(b).getTime() - new Date(a).getTime()
         );
         return { entries: filtered, sortedDates };
-    });
+    }, [allHistoryEntries]);
 
     // Initialize from URL parameter
     useEffect(() => {

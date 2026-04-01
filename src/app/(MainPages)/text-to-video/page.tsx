@@ -2,14 +2,14 @@
 
 import React, { useEffect } from 'react';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppDispatch } from '@/store/hooks';
 import { setCurrentView, setCurrentGenerationType } from '@/store/slices/uiSlice';
 import { ViewType, GenerationType } from '@/types/generation';
 
 const TextToVideoPage = () => {
   const dispatch = useAppDispatch();
-  const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'generation');
-  const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
+  const currentView: ViewType = 'generation';
+  const currentGenerationType: GenerationType = 'text-to-video';
 
   // Ensure Redux reflects this route on first mount/navigation
   useEffect(() => {

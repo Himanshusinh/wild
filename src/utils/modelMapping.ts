@@ -590,6 +590,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: "video",
     provider: "fal",
   },
+  {
+    frontendValue: "veo3.1-lite-t2v-8s",
+    creditModelName: "Veo 3.1 Lite T2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [4, 6, 8],
+    },
+  },
+  {
+    frontendValue: "veo3.1-lite-i2v-8s",
+    creditModelName: "Veo 3.1 Lite I2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [4, 6, 8],
+    },
+  },
 
   // WAN 2.5 Standard Models
   {
@@ -1243,6 +1263,16 @@ export const buildCreditModelName = (
     const modelType = isI2V ? "I2V" : "T2V";
     const speedPrefix = isFast ? "Fast " : "";
     modelName = `Wan 2.5 ${speedPrefix}${modelType} ${options.duration}s ${options.resolution}`;
+  }
+  else if (
+    mapping.frontendValue.includes("veo3.1-lite") &&
+    options?.duration &&
+    options?.resolution
+  ) {
+    const d = options.duration === 4 || options.duration === 6 ? options.duration : 8;
+    const res = String(options.resolution).toLowerCase().includes("1080") ? "1080p" : "720p";
+    const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
+    modelName = `Veo 3.1 Lite ${mode} ${res === '1080p' ? 8 : d}s ${res}`;
   }
   // Handle Kling models
   else if (mapping.frontendValue.startsWith("kling") && options?.duration) {

@@ -851,7 +851,17 @@ axiosInstance.interceptors.response.use(
         requestUrl.startsWith("/api/minimax/generate")
       );
 
-      if (!shouldSuppress && !skipGlobalErrorToast && !hasCustomGenerationToast) {
+      // Queue status/result requests are background polling. Let callers decide how to surface
+      // a final failure instead of emitting a toast for every retry attempt.
+      const isBackgroundPollingRequest = (
+        requestUrl.startsWith("/api/fal/queue/status") ||
+        requestUrl.startsWith("/api/fal/queue/result") ||
+        requestUrl.startsWith("/api/replicate/queue/status") ||
+        requestUrl.startsWith("/api/replicate/queue/result") ||
+        requestUrl.startsWith("/api/runway/tasks/")
+      );
+
+      if (!shouldSuppress && !skipGlobalErrorToast && !hasCustomGenerationToast && !isBackgroundPollingRequest) {
         await showFalErrorToast(error);
       }
     } catch {}

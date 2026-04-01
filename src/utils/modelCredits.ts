@@ -155,6 +155,14 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "veo3.1-fast-i2v-4s-audio-off": 860,
   "veo3.1-fast-i2v-6s-audio-off": 1260,
   "veo3.1-fast-i2v-8s-audio-off": 1660,
+  "veo3.1-lite-t2v-4s-720p": 460,
+  "veo3.1-lite-t2v-6s-720p": 660,
+  "veo3.1-lite-t2v-8s-720p": 860,
+  "veo3.1-lite-t2v-8s-1080p": 1340,
+  "veo3.1-lite-i2v-4s-720p": 460,
+  "veo3.1-lite-i2v-6s-720p": 660,
+  "veo3.1-lite-i2v-8s-720p": 860,
+  "veo3.1-lite-i2v-8s-1080p": 1340,
 
   // WAN 2.5 Standard T2V (updated per provided sheet)
   "wan-2.5-t2v-5s-480p": 480,
@@ -384,6 +392,15 @@ export const getCreditsForModel = (
 
   // Handle veo3.1 models (check before veo3)
   if (modelValue.includes("veo3.1")) {
+    if (modelValue.includes("veo3.1-lite")) {
+      const isI2V = modelValue.includes("i2v");
+      const mode = isI2V ? "i2v" : "t2v";
+      const res = String(resolution || "720p").toLowerCase().includes("1080") ? "1080p" : "720p";
+      const dur = duration === "4s" || duration === "6s" ? duration : "8s";
+      const key = `veo3.1-lite-${mode}-${res === '1080p' ? '8s' : dur}-${res}`;
+      return MODEL_CREDITS_MAPPING[key] || null;
+    }
+
     const isFast = modelValue.includes("fast");
     const isI2V =
       modelValue.includes("i2v") ||

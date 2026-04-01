@@ -55,10 +55,14 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "veo3.1-fast-t2v-4s": "Veo 3.1 Fast",
   "veo3.1-fast-t2v-6s": "Veo 3.1 Fast",
   "veo3.1-fast-t2v-8s": "Veo 3.1 Fast",
+  "veo3.1-lite-t2v-8s": "Veo 3.1 Lite",
   "veo3-i2v-8s": "Veo3",
   "veo3-fast-i2v-8s": "Veo3 Fast",
   "veo3.1-i2v-8s": "Veo 3.1",
   "veo3.1-fast-i2v-8s": "Veo 3.1 Fast",
+  "veo3.1-lite-i2v-8s": "Veo 3.1 Lite",
+  "fal-ai/veo3.1/lite": "Veo 3.1 Lite",
+  "fal-ai/veo3.1/lite/image-to-video": "Veo 3.1 Lite",
   "sora2-t2v": "Sora 2",
   "sora2-pro-t2v": "Sora 2 Pro",
   "sora2-i2v": "Sora 2",
@@ -170,6 +174,10 @@ export function getModelDisplayName(
   }
 
   // Veo 3.1 models (check before generic Veo3)
+  if (lower.includes("veo3.1/lite") || lower.includes("veo 3.1 lite") || lower.includes("veo3.1-lite")) {
+    return "Veo 3.1 Lite";
+  }
+
   if (lower.includes("veo3.1") || lower.includes("veo 3.1")) {
     if (lower.includes("fast")) return "Veo 3.1 Fast";
     return "Veo 3.1";

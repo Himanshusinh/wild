@@ -154,6 +154,13 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Long" }
       ];
     }
+    if (selectedModel?.includes("veo3.1-lite")) {
+      return [
+        { value: 4, label: "4 seconds", description: "Quick video" },
+        { value: 6, label: "6 seconds", description: "Short video" },
+        { value: 8, label: "8 seconds", description: "Standard length" }
+      ];
+    }
     if (selectedModel?.includes("veo3.1")) {
       // For Veo 3.1 image-to-video, only show 8s
       if (generationMode === "image_to_video") {

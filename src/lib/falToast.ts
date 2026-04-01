@@ -48,8 +48,8 @@ const toFriendlyFalMessage = (message?: string): string => {
 const FAL_ERROR_MESSAGES: Record<string, (detail: FalErrorDetail) => string> = {
   internal_server_error: () => 'An internal server error occurred. Please try again in a moment.',
   generation_timeout: () => 'Generation timed out. Try simplifying your prompt or retrying.',
-  downstream_service_error: () => 'A service error occurred. Please try again.',
-  downstream_service_unavailable: () => 'Service is temporarily unavailable. Please try again later.',
+  downstream_service_error: () => 'Try again later',
+  downstream_service_unavailable: () => 'Try again later',
   content_policy_violation: () => 'Your prompt was blocked by content safety filters. Please adjust your prompt to follow our content policy.',
   image_too_small: (detail) => {
     const ctx = detail.ctx as { min_height?: number; min_width?: number } | undefined;
@@ -282,17 +282,19 @@ export const showFalErrorToast = async (error: any, fallbackMessage?: string): P
     const toastLib = toastModule.default;
     const type = payload.type === 'success' || payload.type === 'loading' ? payload.type : 'error';
     
+    const shouldSuppressProviderDetails = envelope.type === 'downstream_service_unavailable' || envelope.type === 'downstream_service_error';
+
     // Build message with retry hint if applicable
     const message = payload.message || envelope.message || fallbackMessage || 'Request failed';
-    let finalMessage = message;
+    let finalMessage = shouldSuppressProviderDetails ? 'Try again later' : message;
     
     // Add retry hint for retryable errors
-    if (payload.retryable && type === 'error') {
+    if (!shouldSuppressProviderDetails && payload.retryable && type === 'error') {
       finalMessage = `${message}\n\nYou can try again - this error may be temporary.`;
     }
     
     // Add documentation URL if available
-    if (payload.docUrl) {
+    if (!shouldSuppressProviderDetails && payload.docUrl) {
       finalMessage = `${finalMessage}\n\nLearn more: ${payload.docUrl}`;
     }
 

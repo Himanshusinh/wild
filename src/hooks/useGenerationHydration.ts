@@ -28,8 +28,9 @@ export function useGenerationHydration() {
         console.log('[useGenerationHydration] Restoring', persistedGenerations.length, 'generations');
         const api = getApiClient();
 
-        // Process generations in parallel to check status
-        const updatedGenerations = await Promise.all(persistedGenerations.map(async (gen) => {
+        // Process generations in parallel to reconcile with backend. If we cannot resume
+        // an in-flight generation after reload, drop it silently instead of surfacing a synthetic failure toast.
+        const reconciledGenerations = await Promise.all(persistedGenerations.map(async (gen) => {
           // Only check pending/generating items
           if (gen.status === 'pending' || gen.status === 'generating') {
             try {
@@ -67,26 +68,20 @@ export function useGenerationHydration() {
                 }
               }
 
-              // If still pending after check (or no historyId), mark as interrupted checks
-              // We currently don't have a way to resume polling for interrupted generations
-              return {
-                ...gen,
-                status: 'failed' as const,
-                error: 'Interrupted by page reload'
-              };
+              console.log(`[useGenerationHydration] Dropping unrecoverable in-flight generation ${gen.id} after reload`);
+              return null;
             } catch (e) {
-              return {
-                ...gen,
-                status: 'failed' as const,
-                error: 'Interrupted by page reload'
-              };
+              console.warn(`[useGenerationHydration] Failed to restore generation ${gen.id}`, e);
+              return null;
             }
           }
           return gen;
         }));
 
+        const updatedGenerations = reconciledGenerations.filter((gen): gen is NonNullable<typeof gen> => Boolean(gen));
+
         // Hydrate Redux state with updated status
-        dispatch(hydrateGenerations(updatedGenerations as any));
+        dispatch(hydrateGenerations(updatedGenerations));
 
         // Clean up old generations (completed > 1 hour ago)
         dispatch(clearOldGenerations());

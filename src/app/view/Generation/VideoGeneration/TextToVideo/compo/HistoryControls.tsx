@@ -154,7 +154,7 @@ export default function HistoryControls({
       backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: currentSortOrder, ...(s ? { search: s } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
       paginationParams: { limit: paginationLimit },
       requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'text-to-video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
+      expectedType: mode === 'video' ? 'video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
       skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
       forceRefresh: true,
       debugTag: `HistoryControls:${mode}-search:${Date.now()}`,
@@ -219,7 +219,7 @@ export default function HistoryControls({
         backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder: order, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
         paginationParams: { limit: paginationLimit },
         requestOrigin: 'page',
-        expectedType: mode === 'video' ? 'text-to-video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
+        expectedType: mode === 'video' ? 'video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
         skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
         forceRefresh: true,
         debugTag: `HistoryControls:${mode}-sort:${order}:${Date.now()}`,
@@ -259,7 +259,7 @@ export default function HistoryControls({
       backendFilters: { ...currentFilters, mode: mode === 'all' ? undefined : mode, sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(next.start && next.end ? { dateRange: { start: next.start.toISOString(), end: next.end.toISOString() } } : {}) } as any,
       paginationParams: { limit: paginationLimit },
       requestOrigin: 'page',
-      expectedType: mode === 'video' ? 'text-to-video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
+      expectedType: mode === 'video' ? 'video' : mode === 'music' ? 'text-to-music' : mode === 'branding' ? 'branding' : mode === 'all' ? undefined : 'text-to-image',
       skipBackendGenerationFilter: mode === 'image' || mode === 'all', // Image and All modes use skipBackendGenerationFilter
       forceRefresh: true,
       debugTag: `HistoryControls:${mode}-date:${Date.now()}`,
