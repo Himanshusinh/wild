@@ -9664,7 +9664,7 @@ const InputBox = () => {
                         aria-label="Upload image"
                       >
                         <Image
-                          src="/icons/fileupload.svg"
+                          src="/icons/upload-plus.svg"
                           alt="Attach"
                           width={16}
                           height={16}
@@ -9836,7 +9836,7 @@ const InputBox = () => {
                   aria-label="Upload image"
                 >
                   <Image
-                    src="/icons/fileupload.svg"
+                    src="/icons/upload-plus.svg"
                     alt="Attach"
                     width={14}
                     height={14}

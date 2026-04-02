@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
-import { X, Upload, Maximize2, Download } from 'lucide-react';
-import axiosInstance from '@/lib/axiosInstance';
-import { getIsPublic } from '@/lib/publicFlag';
-import { downloadFileWithNaming } from '@/utils/downloadUtils';
-import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
-import { useCredits } from '@/hooks/useCredits';
-import { useAppSelector } from '@/store/hooks';
-import { useRouter } from 'next/navigation';
-import { getSignInUrl } from '@/routes/routes';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState, useRef } from "react";
+import Image from "next/image";
+import { X, Plus, Maximize2, Download } from "lucide-react";
+import axiosInstance from "@/lib/axiosInstance";
+import { getIsPublic } from "@/lib/publicFlag";
+import { downloadFileWithNaming } from "@/utils/downloadUtils";
+import { estimateCrystalUpscalerCredits } from "@/utils/pricing/crystalUpscalerCredits";
+import { useCredits } from "@/hooks/useCredits";
+import { useAppSelector } from "@/store/hooks";
+import { useRouter } from "next/navigation";
+import { getSignInUrl } from "@/routes/routes";
+import toast from "react-hot-toast";
 
 interface UpscalePopupProps {
   isOpen: boolean;
@@ -21,14 +21,25 @@ interface UpscalePopupProps {
   inline?: boolean;
 }
 
-const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: UpscalePopupProps) => {
-  const [uploadedImage, setUploadedImage] = useState<string | null>(defaultImage || null);
-  const [uploadedDims, setUploadedDims] = useState<{ width: number; height: number } | null>(null);
+const UpscalePopup = ({
+  isOpen,
+  onClose,
+  defaultImage,
+  onCompleted,
+  inline,
+}: UpscalePopupProps) => {
+  const [uploadedImage, setUploadedImage] = useState<string | null>(
+    defaultImage || null,
+  );
+  const [uploadedDims, setUploadedDims] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string>("");
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [fullscreenTitle, setFullscreenTitle] = useState<string>('');
+  const [fullscreenTitle, setFullscreenTitle] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
@@ -41,31 +52,44 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   } = useCredits();
 
   // Model selection (clarity upscaler or magic refiner)
-  const [model, setModel] = useState<'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | 'mv-lab/swin2sr' | 'philz1337x/crystal-upscaler'>('philz1337x/clarity-upscaler');
+  const [model, setModel] = useState<
+    | "philz1337x/clarity-upscaler"
+    | "fermatresearch/magic-image-refiner"
+    | "nightmareai/real-esrgan"
+    | "mv-lab/swin2sr"
+    | "philz1337x/crystal-upscaler"
+  >("philz1337x/clarity-upscaler");
 
   // Shared/basic
   const [scaleFactor, setScaleFactor] = useState<number>(2); // clarity only
-  const [outputFormat, setOutputFormat] = useState<'png' | 'jpg' | 'webp'>('png'); // clarity only
-  const [crystalOutput, setCrystalOutput] = useState<'png' | 'jpg'>('png'); // crystal upscaler
+  const [outputFormat, setOutputFormat] = useState<"png" | "jpg" | "webp">(
+    "png",
+  ); // clarity only
+  const [crystalOutput, setCrystalOutput] = useState<"png" | "jpg">("png"); // crystal upscaler
   const [dynamic, setDynamic] = useState<number>(6); // clarity
   const [sharpen, setSharpen] = useState<number>(0); // clarity
-  const [seed, setSeed] = useState<number | ''>(''); // both (int)
+  const [seed, setSeed] = useState<number | "">(""); // both (int)
 
   // Clarity advanced
-  const [handfix, setHandfix] = useState<'disabled' | 'hands_only' | 'image_and_hands'>('disabled');
+  const [handfix, setHandfix] = useState<
+    "disabled" | "hands_only" | "image_and_hands"
+  >("disabled");
   const [pattern, setPattern] = useState<boolean>(false);
-  const [sdModel, setSdModel] = useState<string>('juggernaut_reborn.safetensors [338b85bc4f]');
-  const [scheduler, setScheduler] = useState<string>('DPM++ 3M SDE Karras');
+  const [sdModel, setSdModel] = useState<string>(
+    "juggernaut_reborn.safetensors [338b85bc4f]",
+  );
+  const [scheduler, setScheduler] = useState<string>("DPM++ 3M SDE Karras");
   const [creativity, setCreativity] = useState<number>(0.35);
-  const [loraLinks, setLoraLinks] = useState<string>('');
+  const [loraLinks, setLoraLinks] = useState<string>("");
   const [downscaling, setDownscaling] = useState<boolean>(false);
   const [resemblance, setResemblance] = useState<number>(0.6);
   const [tilingWidth, setTilingWidth] = useState<number>(112);
   const [tilingHeight, setTilingHeight] = useState<number>(144);
-  const [customSdModel, setCustomSdModel] = useState<string>('');
-  const [negativePrompt, setNegativePrompt] = useState<string>('');
+  const [customSdModel, setCustomSdModel] = useState<string>("");
+  const [negativePrompt, setNegativePrompt] = useState<string>("");
   const [numInferenceSteps, setNumInferenceSteps] = useState<number>(18);
-  const [downscalingResolution, setDownscalingResolution] = useState<number>(768);
+  const [downscalingResolution, setDownscalingResolution] =
+    useState<number>(768);
 
   // Magic Image Refiner fields
   const [hdr, setHdr] = useState<number>(0);
@@ -73,23 +97,35 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const [esrganScale, setEsrganScale] = useState<number>(4);
   const [esrganFaceEnhance, setEsrganFaceEnhance] = useState<boolean>(false);
   // Swin2SR
-  const [swinTask, setSwinTask] = useState<'classical_sr' | 'real_sr' | 'compressed_sr'>('real_sr');
-  const [mask, setMask] = useState<string>('');
+  const [swinTask, setSwinTask] = useState<
+    "classical_sr" | "real_sr" | "compressed_sr"
+  >("real_sr");
+  const [mask, setMask] = useState<string>("");
   const [steps, setSteps] = useState<number>(20);
-  const [mirScheduler, setMirScheduler] = useState<'DDIM' | 'DPMSolverMultistep' | 'K_EULER_ANCESTRAL' | 'K_EULER'>('DDIM');
+  const [mirScheduler, setMirScheduler] = useState<
+    "DDIM" | "DPMSolverMultistep" | "K_EULER_ANCESTRAL" | "K_EULER"
+  >("DDIM");
   const [mirCreativity, setMirCreativity] = useState<number>(0.25);
   const [guessMode, setGuessMode] = useState<boolean>(false);
-  const [resolution, setResolution] = useState<'original' | '1024' | '2048'>('original');
+  const [resolution, setResolution] = useState<"original" | "1024" | "2048">(
+    "original",
+  );
   const [mirResemblance, setMirResemblance] = useState<number>(0.75);
   const [guidanceScale, setGuidanceScale] = useState<number>(7);
-  const [mirNegative, setMirNegative] = useState<string>('');
+  const [mirNegative, setMirNegative] = useState<string>("");
   // Crystal Upscaler
-  const [crystalResolution, setCrystalResolution] = useState<'1080p' | '1440p' | '2160p' | '6K' | '8K' | '12K'>('1080p');
+  const [crystalResolution, setCrystalResolution] = useState<
+    "1080p" | "1440p" | "2160p" | "6K" | "8K" | "12K"
+  >("1080p");
 
   const crystalEstimate = React.useMemo(() => {
-    if (model !== 'philz1337x/crystal-upscaler') return null;
+    if (model !== "philz1337x/crystal-upscaler") return null;
     if (!uploadedDims) return null;
-    return estimateCrystalUpscalerCredits(uploadedDims.width, uploadedDims.height, scaleFactor);
+    return estimateCrystalUpscalerCredits(
+      uploadedDims.width,
+      uploadedDims.height,
+      scaleFactor,
+    );
   }, [model, uploadedDims, scaleFactor]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +154,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
 
     // Auth guard: redirect to sign-in if not authenticated
     if (!user) {
-      toast('Please sign in to use the upscale feature', { icon: '🔒' });
+      toast("Please sign in to use the upscale feature", { icon: "🔒" });
       router.push(getSignInUrl());
       return;
     }
@@ -134,14 +170,19 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
         model,
       };
 
-      const getDims = async (): Promise<{ width: number; height: number } | null> => {
+      const getDims = async (): Promise<{
+        width: number;
+        height: number;
+      } | null> => {
         if (uploadedDims?.width && uploadedDims?.height) return uploadedDims;
         return await new Promise((resolve) => {
           try {
             const img = new window.Image();
             img.onload = () => {
               const width = Number((img as any).naturalWidth || img.width || 0);
-              const height = Number((img as any).naturalHeight || img.height || 0);
+              const height = Number(
+                (img as any).naturalHeight || img.height || 0,
+              );
               if (width > 0 && height > 0) return resolve({ width, height });
               return resolve(null);
             };
@@ -158,14 +199,14 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
       if (dims) {
         payload = { ...payload, width: dims.width, height: dims.height };
       }
-      if (model === 'philz1337x/clarity-upscaler') {
+      if (model === "philz1337x/clarity-upscaler") {
         payload = {
           ...payload,
           scale_factor: scaleFactor,
           output_format: outputFormat,
           dynamic,
           sharpen,
-          seed: seed === '' ? undefined : Number(seed),
+          seed: seed === "" ? undefined : Number(seed),
           handfix,
           pattern,
           sd_model: sdModel,
@@ -181,13 +222,13 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           num_inference_steps: numInferenceSteps,
           downscaling_resolution: downscalingResolution,
         };
-      } else if (model === 'fermatresearch/magic-image-refiner') {
+      } else if (model === "fermatresearch/magic-image-refiner") {
         // magic-image-refiner
         payload = {
           ...payload,
           hdr,
           mask: mask || undefined,
-          seed: seed === '' ? undefined : Number(seed),
+          seed: seed === "" ? undefined : Number(seed),
           steps,
           scheduler: mirScheduler,
           creativity: mirCreativity,
@@ -197,34 +238,44 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           guidance_scale: guidanceScale,
           negative_prompt: mirNegative || undefined,
         };
-      } else if (model === 'nightmareai/real-esrgan') {
+      } else if (model === "nightmareai/real-esrgan") {
         payload = {
           ...payload,
           scale: esrganScale,
           face_enhance: esrganFaceEnhance,
         };
-      } else if (model === 'mv-lab/swin2sr') {
+      } else if (model === "mv-lab/swin2sr") {
         payload = {
           ...payload,
           task: swinTask,
         };
-      } else if (model === 'philz1337x/crystal-upscaler') {
+      } else if (model === "philz1337x/crystal-upscaler") {
         // crystal upscaler expects scale_factor and optional output_format (png/jpg)
         const clampedScale = Math.max(1, Math.min(4, Number(scaleFactor) || 2));
 
         // Calculate and validate credits BEFORE generation call.
-        const estimate = dims ? estimateCrystalUpscalerCredits(dims.width, dims.height, clampedScale) : null;
+        const estimate = dims
+          ? estimateCrystalUpscalerCredits(
+              dims.width,
+              dims.height,
+              clampedScale,
+            )
+          : null;
         const expectedCredits = estimate?.credits;
         if (!expectedCredits || expectedCredits <= 0) {
-          throw new Error('Unable to calculate credits for Crystal Upscaler. Please re-upload the image.');
+          throw new Error(
+            "Unable to calculate credits for Crystal Upscaler. Please re-upload the image.",
+          );
         }
         if ((creditBalance || 0) < expectedCredits) {
-          throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+          throw new Error(
+            `Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`,
+          );
         }
         try {
           deductCreditsOptimisticForGeneration(expectedCredits);
           optimisticDebit = expectedCredits;
-        } catch { }
+        } catch {}
 
         payload = {
           ...payload,
@@ -233,19 +284,24 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
           output_format: crystalOutput,
         };
       }
-      const res = await axiosInstance.post('/api/replicate/upscale', payload);
-      const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || '';
+      const res = await axiosInstance.post("/api/replicate/upscale", payload);
+      const first =
+        res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || "";
       if (first) setUpscaledImage(first);
       if (onCompleted) onCompleted();
 
       // Ensure UI re-syncs with backend after successful debit.
-      try { await refreshCredits(); } catch { }
+      try {
+        await refreshCredits();
+      } catch {}
     } catch (e: any) {
       if (optimisticDebit > 0) {
-        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+        try {
+          rollbackOptimisticDeduction(optimisticDebit);
+        } catch {}
       }
       // eslint-disable-next-line no-alert
-      alert(e?.response?.data?.message || e?.message || 'Upscale failed');
+      alert(e?.response?.data?.message || e?.message || "Upscale failed");
     } finally {
       setIsUpscaling(false);
     }
@@ -254,9 +310,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   const handleDownload = async (imageUrl: string, filename?: string) => {
     try {
       // Use downloadFileWithNaming for proper tracking and naming
-      await downloadFileWithNaming(imageUrl, null, 'image', 'upscaled');
+      await downloadFileWithNaming(imageUrl, null, "image", "upscaled");
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error("Download failed:", error);
     }
   };
 
@@ -267,10 +323,12 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
 
   const closeFullscreen = () => {
     setFullscreenImage(null);
-    setFullscreenTitle('');
+    setFullscreenTitle("");
   };
 
-  useEffect(() => { if (defaultImage) setUploadedImage(defaultImage); }, [defaultImage]);
+  useEffect(() => {
+    if (defaultImage) setUploadedImage(defaultImage);
+  }, [defaultImage]);
 
   useEffect(() => {
     if (!uploadedImage) {
@@ -294,12 +352,14 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   useEffect(() => {
     if (inline || !isOpen) return;
     const prevOverflow = document.body.style.overflow;
-    const prevOverscroll = (document.documentElement as HTMLElement).style.overscrollBehavior;
-    document.body.style.overflow = 'hidden';
-    (document.documentElement as HTMLElement).style.overscrollBehavior = 'none';
+    const prevOverscroll = (document.documentElement as HTMLElement).style
+      .overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    (document.documentElement as HTMLElement).style.overscrollBehavior = "none";
     return () => {
       document.body.style.overflow = prevOverflow;
-      (document.documentElement as HTMLElement).style.overscrollBehavior = prevOverscroll;
+      (document.documentElement as HTMLElement).style.overscrollBehavior =
+        prevOverscroll;
     };
   }, [isOpen, inline]);
   if (!inline && !isOpen) return null;
@@ -311,43 +371,116 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
         <div className="px-0 py-0">
           {!uploadedImage ? (
             <div className="rounded-xl px-8 py-8 text-center bg-white/5 border border-white/10">
-              <Upload className="w-12 h-40 text-white/40 mx-auto mb-2" />
-              <h3 className="text-lg font-medium text-white mb-0">Upload an image</h3>
+              <Plus className="w-12 h-40 text-white/40 mx-auto mb-2" />
+              <h3 className="text-lg font-medium text-white mb-0">
+                Upload an image
+              </h3>
               <p className="text-white/60 mb-8">PNG/JPG/WEBP up to 2 MB</p>
-              <button onClick={() => fileInputRef.current?.click()} className="bg-white text-black px-5 py-2 rounded-lg hover:bg-white/90">Select file</button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-white text-black px-5 py-2 rounded-lg hover:bg-white/90"
+              >
+                Select file
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 ">
               <div className="lg:col-span-1 space-y-6 ">
                 <div className="space-y-1 ">
-                  <h3 className="text-md font-medium text-white">Input Image</h3>
+                  <h3 className="text-md font-medium text-white">
+                    Input Image
+                  </h3>
                   <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
-                    <Image src={uploadedImage} alt="Original" fill className="object-cover" />
+                    <Image
+                      src={uploadedImage}
+                      alt="Original"
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-white">Model</label>
-                    <select value={model} onChange={(e) => setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
-                      <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
-                      <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
-                      <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
-                      <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
-                      <option className='bg-black/80' value="philz1337x/crystal-upscaler">Crystal Upscaler (Replicate)</option>
+                    <label className="text-xs font-medium text-white">
+                      Model
+                    </label>
+                    <select
+                      value={model}
+                      onChange={(e) => setModel(e.target.value as any)}
+                      className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white"
+                    >
+                      <option
+                        className="bg-black/80"
+                        value="philz1337x/clarity-upscaler"
+                      >
+                        Clarity Upscaler
+                      </option>
+                      <option
+                        className="bg-black/80"
+                        value="fermatresearch/magic-image-refiner"
+                      >
+                        Magic Image Refiner
+                      </option>
+                      <option
+                        className="bg-black/80"
+                        value="nightmareai/real-esrgan"
+                      >
+                        NightmareAI Real-ESRGAN
+                      </option>
+                      <option className="bg-black/80" value="mv-lab/swin2sr">
+                        MV-Lab Swin2SR
+                      </option>
+                      <option
+                        className="bg-black/80"
+                        value="philz1337x/crystal-upscaler"
+                      >
+                        Crystal Upscaler (Replicate)
+                      </option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-white">Prompt (optional)</label>
-                    <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe what to enhance or focus on..." className="w-full  text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y" />
+                    <label className="text-xs font-medium text-white">
+                      Prompt (optional)
+                    </label>
+                    <input
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Describe what to enhance or focus on..."
+                      className="w-full  text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y"
+                    />
                   </div>
-                  {model === 'philz1337x/clarity-upscaler' ? (
+                  {model === "philz1337x/clarity-upscaler" ? (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-white/80">Scale factor</label>
-                        <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value) || 2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <label className="text-xs text-white/80">
+                          Scale factor
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={4}
+                          step={1}
+                          value={scaleFactor}
+                          onChange={(e) =>
+                            setScaleFactor(Number(e.target.value) || 2)
+                          }
+                          className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        />
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Output</label>
-                        <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                        <select
+                          value={outputFormat}
+                          onChange={(e) =>
+                            setOutputFormat(e.target.value as any)
+                          }
+                          className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        >
                           <option value="png">PNG</option>
                           <option value="jpg">JPG</option>
                           <option value="webp">WEBP</option>
@@ -355,42 +488,112 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Dynamic</label>
-                        <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e) => setDynamic(Number(e.target.value) || 6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          step={1}
+                          value={dynamic}
+                          onChange={(e) =>
+                            setDynamic(Number(e.target.value) || 6)
+                          }
+                          className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        />
                       </div>
                       <div>
                         <label className="text-xs text-white/80">Sharpen</label>
-                        <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e) => setSharpen(Number(e.target.value) || 0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <input
+                          type="number"
+                          min={0}
+                          max={10}
+                          step={1}
+                          value={sharpen}
+                          onChange={(e) =>
+                            setSharpen(Number(e.target.value) || 0)
+                          }
+                          className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        />
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-white/80">Resolution</label>
-                        <select value={resolution} onChange={(e) => setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                          <option className='bg-black/80' value="original">Original</option>
-                          <option className='bg-black/80' value="1024">1024</option>
-                          <option className='bg-black/80' value="2048">2048</option>
+                        <label className="text-xs text-white/80">
+                          Resolution
+                        </label>
+                        <select
+                          value={resolution}
+                          onChange={(e) => setResolution(e.target.value as any)}
+                          className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        >
+                          <option className="bg-black/80" value="original">
+                            Original
+                          </option>
+                          <option className="bg-black/80" value="1024">
+                            1024
+                          </option>
+                          <option className="bg-black/80" value="2048">
+                            2048
+                          </option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs text-white/80">Guidance scale</label>
-                        <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e) => setGuidanceScale(Number(e.target.value) || 7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <label className="text-xs text-white/80">
+                          Guidance scale
+                        </label>
+                        <input
+                          type="number"
+                          min={0.1}
+                          max={30}
+                          step={0.1}
+                          value={guidanceScale}
+                          onChange={(e) =>
+                            setGuidanceScale(Number(e.target.value) || 7)
+                          }
+                          className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        />
                       </div>
                       <div className="col-span-2">
-                        <label className="text-xs text-white/80">Negative prompt</label>
-                        <input value={mirNegative} onChange={(e) => setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                        <label className="text-xs text-white/80">
+                          Negative prompt
+                        </label>
+                        <input
+                          value={mirNegative}
+                          onChange={(e) => setMirNegative(e.target.value)}
+                          className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                        />
                       </div>
                     </div>
                   )}
                   <div className="flex gap-3 pt-4">
-                    <button onClick={() => { setUploadedImage(null); setUpscaledImage(null); setScaleFactor(2); setOutputFormat('png'); setDynamic(6); setSharpen(0); }} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors">Reset</button>
-                    <button onClick={handleUpscale} disabled={isUpscaling} className="flex-1 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isUpscaling ? 'Upscaling...' : 'Run'}</button>
+                    <button
+                      onClick={() => {
+                        setUploadedImage(null);
+                        setUpscaledImage(null);
+                        setScaleFactor(2);
+                        setOutputFormat("png");
+                        setDynamic(6);
+                        setSharpen(0);
+                      }}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={handleUpscale}
+                      disabled={isUpscaling}
+                      className="flex-1 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUpscaling ? "Upscaling..." : "Run"}
+                    </button>
                   </div>
                 </div>
               </div>
               <div className="lg:col-span-2 space-y-6">
                 <div className="space-y-4">
-                  <h3 className="text-md font-medium text-white">Upscaled Image</h3>
+                  <h3 className="text-md font-medium text-white">
+                    Upscaled Image
+                  </h3>
                   {!upscaledImage ? (
                     <div className="aspect-square bg-white/5 rounded-xl border border-white/10 flex items-center justify-center">
                       <div className="text-center">
@@ -400,17 +603,28 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                             <p className="text-white/70">Upscaling...</p>
                           </div>
                         ) : (
-                          <p className="text-white/60 mb-4">Click Run to generate upscaled image</p>
+                          <p className="text-white/60 mb-4">
+                            Click Run to generate upscaled image
+                          </p>
                         )}
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
-                        <img src={upscaledImage} alt="Upscaled" className="w-full h-full object-cover" />
+                        <img
+                          src={upscaledImage}
+                          alt="Upscaled"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleDownload(upscaledImage)} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors">Download Upscaled</button>
+                        <button
+                          onClick={() => handleDownload(upscaledImage)}
+                          className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2 rounded-lg transition-colors"
+                        >
+                          Download Upscaled
+                        </button>
                       </div>
                     </div>
                   )}
@@ -426,9 +640,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
   return (
     <>
       {/* Backdrop (no outside click to close) */}
-      <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 "
-      />
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-60 " />
 
       {/* Main Popup */}
       <div className="fixed inset-0 z-70 flex items-center justify-center p-4 py-auto">
@@ -449,11 +661,24 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
             {!uploadedImage ? (
               <div className="rounded-xl px-8 py-8 text-center bg-white/5 border border-white/10">
                 <div className="max-w-md mx-auto">
-                  <Upload className="w-12 h-40 text-white/40 mx-auto mb-2" />
-                  <h3 className="text-lg font-medium text-white mb-0">Upload an image</h3>
+                  <Plus className="w-12 h-40 text-white/40 mx-auto mb-2" />
+                  <h3 className="text-lg font-medium text-white mb-0">
+                    Upload an image
+                  </h3>
                   <p className="text-white/60 mb-8">PNG/JPG/WEBP up to 2 MB</p>
-                  <button onClick={() => fileInputRef.current?.click()} className="bg-white text-black px-5 py-2 rounded-lg hover:bg-white/90">Select file</button>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-white text-black px-5 py-2 rounded-lg hover:bg-white/90"
+                  >
+                    Select file
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                 </div>
               </div>
             ) : (
@@ -465,7 +690,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
 
                   {/* Input Image Preview (small) */}
                   <div className="space-y-1">
-                    <h3 className="text-md font-medium text-white">Input Image</h3>
+                    <h3 className="text-md font-medium text-white">
+                      Input Image
+                    </h3>
                     <div className="relative aspect-square bg-white/5 rounded-xl overflow-hidden border border-white/10">
                       <Image
                         src={uploadedImage}
@@ -474,7 +701,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         className="object-cover"
                       />
                       <button
-                        onClick={() => openFullscreen(uploadedImage, 'Input Image')}
+                        onClick={() =>
+                          openFullscreen(uploadedImage, "Input Image")
+                        }
                         className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
                       >
                         <Maximize2 className="w-4 h-4 text-white" />
@@ -482,18 +711,48 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                     </div>
                     {/* Model */}
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-white">Model</label>
-                      <select value={model} onChange={(e) => setModel(e.target.value as any)} className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white">
-                        <option className='bg-black/80' value="philz1337x/clarity-upscaler">Clarity Upscaler</option>
-                        <option className='bg-black/80' value="fermatresearch/magic-image-refiner">Magic Image Refiner</option>
-                        <option className='bg-black/80' value="nightmareai/real-esrgan">NightmareAI Real-ESRGAN</option>
-                        <option className='bg-black/80' value="mv-lab/swin2sr">MV-Lab Swin2SR</option>
-                        <option className='bg-black/80' value="wildmind/crystal-upscaler">Crystal Upscaler</option>
+                      <label className="text-xs font-medium text-white">
+                        Model
+                      </label>
+                      <select
+                        value={model}
+                        onChange={(e) => setModel(e.target.value as any)}
+                        className="w-full bg-white/10 border text-sm border-white/20 rounded-lg px-3 py-2 text-white"
+                      >
+                        <option
+                          className="bg-black/80"
+                          value="philz1337x/clarity-upscaler"
+                        >
+                          Clarity Upscaler
+                        </option>
+                        <option
+                          className="bg-black/80"
+                          value="fermatresearch/magic-image-refiner"
+                        >
+                          Magic Image Refiner
+                        </option>
+                        <option
+                          className="bg-black/80"
+                          value="nightmareai/real-esrgan"
+                        >
+                          NightmareAI Real-ESRGAN
+                        </option>
+                        <option className="bg-black/80" value="mv-lab/swin2sr">
+                          MV-Lab Swin2SR
+                        </option>
+                        <option
+                          className="bg-black/80"
+                          value="wildmind/crystal-upscaler"
+                        >
+                          Crystal Upscaler
+                        </option>
                       </select>
                     </div>
                     {/* Optional Prompt */}
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-white">Prompt (optional)</label>
+                      <label className="text-xs font-medium text-white">
+                        Prompt (optional)
+                      </label>
                       <input
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
@@ -501,30 +760,74 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         className="w-full  text-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 resize-y"
                       />
                     </div>
-                    {model === 'philz1337x/clarity-upscaler' ? (
+                    {model === "philz1337x/clarity-upscaler" ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-xs text-white/80">Scale factor</label>
-                          <input type="number" min={1} max={4} step={1} value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value) || 2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <label className="text-xs text-white/80">
+                            Scale factor
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={4}
+                            step={1}
+                            value={scaleFactor}
+                            onChange={(e) =>
+                              setScaleFactor(Number(e.target.value) || 2)
+                            }
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                         <div>
-                          <label className="text-xs text-white/80">Output</label>
-                          <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
+                          <label className="text-xs text-white/80">
+                            Output
+                          </label>
+                          <select
+                            value={outputFormat}
+                            onChange={(e) =>
+                              setOutputFormat(e.target.value as any)
+                            }
+                            className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
+                          >
                             <option value="png">PNG</option>
                             <option value="jpg">JPG</option>
                             <option value="webp">WEBP</option>
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-white/80">Dynamic</label>
-                          <input type="number" min={1} max={50} step={1} value={dynamic} onChange={(e) => setDynamic(Number(e.target.value) || 6)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <label className="text-xs text-white/80">
+                            Dynamic
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={50}
+                            step={1}
+                            value={dynamic}
+                            onChange={(e) =>
+                              setDynamic(Number(e.target.value) || 6)
+                            }
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                         <div>
-                          <label className="text-xs text-white/80">Sharpen</label>
-                          <input type="number" min={0} max={10} step={1} value={sharpen} onChange={(e) => setSharpen(Number(e.target.value) || 0)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <label className="text-xs text-white/80">
+                            Sharpen
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            step={1}
+                            value={sharpen}
+                            onChange={(e) =>
+                              setSharpen(Number(e.target.value) || 0)
+                            }
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                       </div>
-                    ) : model === 'fermatresearch/magic-image-refiner' ? (
+                    ) : model === "fermatresearch/magic-image-refiner" ? (
                       <div className="grid grid-cols-2 gap-3">
                         {/* <div>
                         <label className="text-xs text-white/80">HDR</label>
@@ -556,11 +859,25 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         <label htmlFor="guess" className="text-xs text-white/80">Guess mode</label>
                       </div> */}
                         <div>
-                          <label className="text-xs text-white/80">Resolution</label>
-                          <select value={resolution} onChange={(e) => setResolution(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
-                            <option className='bg-black/80' value="original">Original</option>
-                            <option className='bg-black/80' value="1024">1024</option>
-                            <option className='bg-black/80' value="2048">2048</option>
+                          <label className="text-xs text-white/80">
+                            Resolution
+                          </label>
+                          <select
+                            value={resolution}
+                            onChange={(e) =>
+                              setResolution(e.target.value as any)
+                            }
+                            className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          >
+                            <option className="bg-black/80" value="original">
+                              Original
+                            </option>
+                            <option className="bg-black/80" value="1024">
+                              1024
+                            </option>
+                            <option className="bg-black/80" value="2048">
+                              2048
+                            </option>
                           </select>
                         </div>
                         {/* <div>
@@ -568,53 +885,119 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         <input type="number" min={0} max={1} step={0.05} value={mirResemblance} onChange={(e)=>setMirResemblance(Number(e.target.value)||0.75)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
                       </div> */}
                         <div>
-                          <label className="text-xs text-white/80">Guidance scale</label>
-                          <input type="number" min={0.1} max={30} step={0.1} value={guidanceScale} onChange={(e) => setGuidanceScale(Number(e.target.value) || 7)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <label className="text-xs text-white/80">
+                            Guidance scale
+                          </label>
+                          <input
+                            type="number"
+                            min={0.1}
+                            max={30}
+                            step={0.1}
+                            value={guidanceScale}
+                            onChange={(e) =>
+                              setGuidanceScale(Number(e.target.value) || 7)
+                            }
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                         <div className="col-span-2">
-                          <label className="text-xs text-white/80">Negative prompt</label>
-                          <input value={mirNegative} onChange={(e) => setMirNegative(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <label className="text-xs text-white/80">
+                            Negative prompt
+                          </label>
+                          <input
+                            value={mirNegative}
+                            onChange={(e) => setMirNegative(e.target.value)}
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                       </div>
-                    ) : model === 'nightmareai/real-esrgan' ? (
+                    ) : model === "nightmareai/real-esrgan" ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs text-white/80">Scale</label>
-                          <input type="number" min={0} max={10} step={1} value={esrganScale} onChange={(e) => setEsrganScale(Number(e.target.value) || 4)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            step={1}
+                            value={esrganScale}
+                            onChange={(e) =>
+                              setEsrganScale(Number(e.target.value) || 4)
+                            }
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                         <div className="flex items-end gap-2">
-                          <input id="fe" type="checkbox" checked={esrganFaceEnhance} onChange={(e) => setEsrganFaceEnhance(e.target.checked)} />
-                          <label htmlFor="fe" className="text-xs text-white/80">Face enhance</label>
+                          <input
+                            id="fe"
+                            type="checkbox"
+                            checked={esrganFaceEnhance}
+                            onChange={(e) =>
+                              setEsrganFaceEnhance(e.target.checked)
+                            }
+                          />
+                          <label htmlFor="fe" className="text-xs text-white/80">
+                            Face enhance
+                          </label>
                         </div>
                       </div>
-                    ) : model === 'mv-lab/swin2sr' ? (
+                    ) : model === "mv-lab/swin2sr" ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs text-white/80">Task</label>
-                          <select value={swinTask} onChange={(e) => setSwinTask(e.target.value as any)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm">
+                          <select
+                            value={swinTask}
+                            onChange={(e) => setSwinTask(e.target.value as any)}
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          >
                             <option value="classical_sr">classical_sr</option>
                             <option value="real_sr">real_sr</option>
                             <option value="compressed_sr">compressed_sr</option>
                           </select>
                         </div>
                       </div>
-                    ) : model === 'philz1337x/crystal-upscaler' ? (
+                    ) : model === "philz1337x/crystal-upscaler" ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-xs text-white/80">Scale factor</label>
-                          <input type="number" min={1} max={6} step={1} value={scaleFactor} onChange={(e) => setScaleFactor(Number(e.target.value) || 2)} className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm" />
+                          <label className="text-xs text-white/80">
+                            Scale factor
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={6}
+                            step={1}
+                            value={scaleFactor}
+                            onChange={(e) =>
+                              setScaleFactor(Number(e.target.value) || 2)
+                            }
+                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                          />
                         </div>
                         <div>
-                          <label className="text-xs text-white/80">Output</label>
-                          <select value={crystalOutput} onChange={(e) => setCrystalOutput(e.target.value as any)} className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white">
+                          <label className="text-xs text-white/80">
+                            Output
+                          </label>
+                          <select
+                            value={crystalOutput}
+                            onChange={(e) =>
+                              setCrystalOutput(e.target.value as any)
+                            }
+                            className="text-sm w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
+                          >
                             <option value="png">PNG</option>
                             <option value="jpg">JPG</option>
                           </select>
                         </div>
                         <div className="col-span-2 text-[11px] text-white/60">
-                          Output: {crystalEstimate ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}` : '—'}
-                          {' '}
-                          · Est. cost: {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
+                          Output:{" "}
+                          {crystalEstimate
+                            ? `${crystalEstimate.outputWidth} × ${crystalEstimate.outputHeight}`
+                            : "—"}{" "}
+                          · Est. cost:{" "}
+                          {crystalEstimate
+                            ? `${crystalEstimate.credits} credits`
+                            : "—"}
                         </div>
                       </div>
                     ) : null}
@@ -835,7 +1218,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                         setUploadedImage(null);
                         setUpscaledImage(null);
                         setScaleFactor(2);
-                        setOutputFormat('png');
+                        setOutputFormat("png");
                         setDynamic(6);
                         setSharpen(0);
                       }}
@@ -848,7 +1231,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                       disabled={isUpscaling}
                       className="flex-1 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isUpscaling ? 'Upscaling...' : 'Run'}
+                      {isUpscaling ? "Upscaling..." : "Run"}
                     </button>
                   </div>
                 </div>
@@ -857,7 +1240,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                 <div className="lg:col-span-2 space-y-6">
                   {/* Upscaled Image */}
                   <div className="space-y-4">
-                    <h3 className="text-md font-medium text-white">Upscaled Image</h3>
+                    <h3 className="text-md font-medium text-white">
+                      Upscaled Image
+                    </h3>
                     {!upscaledImage ? (
                       <div className="aspect-square bg-white/5 rounded-xl border border-white/10 flex items-center justify-center">
                         <div className="text-center">
@@ -867,7 +1252,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                               <p className="text-white/70">Upscaling...</p>
                             </div>
                           ) : (
-                            <p className="text-white/60 mb-4">Click Run to generate upscaled image</p>
+                            <p className="text-white/60 mb-4">
+                              Click Run to generate upscaled image
+                            </p>
                           )}
                         </div>
                       </div>
@@ -881,7 +1268,9 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
                           />
                           {/* Fullscreen Button */}
                           <button
-                            onClick={() => openFullscreen(upscaledImage, 'Upscaled Image')}
+                            onClick={() =>
+                              openFullscreen(upscaledImage, "Upscaled Image")
+                            }
                             className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
                           >
                             <Maximize2 className="w-4 h-4 text-white" />
@@ -930,7 +1319,7 @@ const UpscalePopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: Up
             </button>
             {/* Download Button */}
             <button
-              onClick={() => handleDownload(fullscreenImage || '')}
+              onClick={() => handleDownload(fullscreenImage || "")}
               className="absolute top-4 left-4 p-3 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
             >
               <Download className="w-6 h-6 text-white" />
