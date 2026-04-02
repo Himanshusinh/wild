@@ -10,11 +10,14 @@ const FEATURE_IDS = [
   "creatively-upscale",
   "remove-background",
   "restore-old-photo",
+  "photo-to-line-drawing",
+  "line-drawing-to-photo",
   "vintage-teleport",
   "polaroid-style",
   "remove-element",
   "replace-element",
   "remove-watermark",
+  
 ];
 
 const WildMindAIAPPS = () => {
@@ -147,7 +150,7 @@ const WildMindAIAPPS = () => {
           style={{
             scrollSnapType: "x mandatory",
             WebkitOverflowScrolling: "touch",
-            touchAction: "pan-x",
+            touchAction: "pan-x pan-y pinch-zoom",
             overscrollBehaviorX: "contain",
           }}
         >

@@ -33,7 +33,7 @@ function PlanIcon({ icon, highlighted }: { icon: "star" | "lock"; highlighted?: 
       <path
         d="M10 2l2 6h6l-5 3.5 2 6L10 14l-5 3.5 2-6L2 8h6z"
         fill="rgba(59,130,246,0.3)"
-        stroke="#93c5fd"
+        stroke="#3B82F6"
         strokeWidth="1.4"
         strokeLinejoin="round"
       />
@@ -77,34 +77,27 @@ function ArrowBetween() {
 
 export default function CreationCTASection() {
   return (
-    <section className="bg-[#0E0E12] px-4 sm:px-6 md:px-8 pb-4">
-      <div className="relative overflow-hidden border-y border-white/10 bg-[#0E0E12]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.08)_0%,transparent_52%,rgba(99,102,241,0.05)_100%)]" />
+    <section className="bg-[#0E0E12] px-4 pb-4 sm:px-6 md:px-0">
+      <div className="relative overflow-hidden  bg-[#0E0E12]">
+        {/* <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.08)_0%,transparent_52%,rgba(99,102,241,0.05)_100%)]" />
         <div className="pointer-events-none absolute left-[20%] top-[-80px] h-[300px] w-[400px] bg-[radial-gradient(ellipse,rgba(59,130,246,0.18)_0%,transparent_65%)]" />
         <div className="pointer-events-none absolute bottom-[-60px] right-[15%] h-[250px] w-[300px] bg-[radial-gradient(ellipse,rgba(99,102,241,0.15)_0%,transparent_65%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]" /> */}
 
         <div className="relative flex flex-col xl:flex-row xl:items-center">
-          <div className="flex-1 border-b border-white/10 px-6 py-10 sm:px-10 lg:px-12 xl:border-b-0 xl:border-r xl:py-12">
-            <div className="mb-4 inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#3B82F6]">
+          <div className="flex-1 px-4 py-2 sm:px-8 sm:py-10 lg:px-10 xl:py-12">
+            <div className="mb-0 inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#3B82F6]">
               <span className="inline-block h-[1.5px] w-[18px] bg-[#3B82F6]" />
               Pricing
             </div>
 
             <h2
-              className="mb-4 text-[44px] uppercase leading-[0.95] tracking-[0.01em] text-[#F0EFE9] sm:text-[52px]"
+              className="mb-4 text-[40px] uppercase leading-[0.95] tracking-[0.01em] text-[#F0EFE9] sm:text-[52px]"
               style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
             >
               Start free.
               <br />
-              <span
-                style={{
-                  background: "linear-gradient(90deg,#3B82F6,#818cf8)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
+              <span style={{ color: "#3B82F6" }}>
                 Scale as you grow.
               </span>
             </h2>
@@ -113,7 +106,7 @@ export default function CreationCTASection() {
               Simple plans for every creator - pricing details dropping soon.
             </p>
 
-            <div className="flex flex-wrap items-center gap-4">
+            {/* <div className="flex flex-wrap items-center gap-4">
               <TrustBadge
                 label="No credit card"
                 icon={
@@ -152,24 +145,24 @@ export default function CreationCTASection() {
                   </svg>
                 }
               />
-            </div>
+            </div> */}
           </div>
 
-          <div className="border-b border-white/10 px-6 py-8 sm:px-10 lg:px-12 xl:border-b-0 xl:py-12">
-            <div className="flex items-stretch justify-center gap-2 lg:gap-3">
+          <div className="px-4 py-0 sm:px-8 sm:py-8 lg:px-12 xl:border-b-0 xl:py-12">
+            <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory items-stretch gap-2 overflow-x-auto px-1 pb-2 lg:justify-center lg:overflow-visible">
               {planCards.map((plan, index) => (
-                <div key={plan.name} className="flex items-stretch">
+                <div key={plan.name} className="flex snap-start items-stretch">
                   {index > 0 ? <ArrowBetween /> : null}
 
                   <div
-                    className={`relative flex w-[130px] flex-col items-center gap-2.5 rounded-2xl px-4 py-5 transition-all duration-200 ${
+                    className={`relative flex w-[108px] flex-col items-center gap-2.5 rounded-2xl px-3 py-4 transition-all duration-200 sm:w-[124px] sm:px-4 sm:py-5 lg:w-[130px] ${
                       plan.highlighted
-                        ? "border border-[#3B82F6]/35 bg-[linear-gradient(160deg,rgba(59,130,246,0.15),rgba(59,130,246,0.06))] shadow-[0_0_30px_rgba(59,130,246,0.12)] hover:shadow-[0_0_40px_rgba(59,130,246,0.22)]"
+                        ? "border border-[#3B82F6]/35 bg-[#3B82F6]/10 shadow-[0_0_30px_rgba(59,130,246,0.12)] hover:shadow-[0_0_40px_rgba(59,130,246,0.22)]"
                         : "border border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
                     }`}
                   >
                     {plan.badge ? (
-                      <div className="absolute left-1/2 top-[-11px] -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,#3B82F6,#6366f1)] px-3 py-[3px] text-[8px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+                      <div className="absolute left-1/2 top-[-11px] -translate-x-1/2 rounded-full bg-[#3B82F6] px-3 py-[3px] text-[8px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
                         {plan.badge}
                       </div>
                     ) : null}
@@ -177,7 +170,7 @@ export default function CreationCTASection() {
                     <div
                       className={`flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border ${
                         plan.highlighted
-                          ? "border-[#3B82F6]/40 bg-[linear-gradient(135deg,rgba(59,130,246,0.3),rgba(99,102,241,0.2))]"
+                          ? "border-[#3B82F6]/40 bg-[#3B82F6]/20"
                           : "border-white/10 bg-white/[0.06]"
                       }`}
                     >
@@ -193,9 +186,9 @@ export default function CreationCTASection() {
                     </div>
 
                     <div
-                      className={`whitespace-nowrap rounded-lg border px-2.5 py-[5px] text-[10px] font-semibold tracking-[0.04em] ${
+                      className={`rounded-lg border px-2 py-[5px] text-[10px] font-semibold tracking-[0.04em] ${
                         plan.highlighted
-                          ? "border-[#3B82F6]/25 bg-[#3B82F6]/12 text-[#63a2ff]/80"
+                          ? "border-[#3B82F6]/25 bg-[#3B82F6]/12 text-[#3B82F6]"
                           : "border-white/10 bg-white/[0.06] text-white/30"
                       }`}
                     >
@@ -207,7 +200,7 @@ export default function CreationCTASection() {
             </div>
           </div>
 
-          <div className="min-w-[220px] px-6 py-8 sm:px-10 lg:px-12 xl:py-12">
+          <div className="min-w-0 px-4 py-8 sm:px-8 lg:px-12 xl:min-w-[220px] xl:py-12">
             <div className="mb-4">
               <div className="mb-1 text-[13px] font-semibold text-white/65">Get early access</div>
               <div className="text-[11px] text-white/35">Be first to know when pricing goes live.</div>
@@ -215,7 +208,7 @@ export default function CreationCTASection() {
 
             <button
               type="button"
-              className="mb-3 w-full rounded-xl bg-[linear-gradient(135deg,#3B82F6,#6366f1)] px-6 py-3 text-[14px] font-bold text-white shadow-[0_6px_20px_rgba(59,130,246,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(59,130,246,0.5)]"
+              className="mb-3 w-full rounded-xl bg-[#3B82F6] px-6 py-3 text-[14px] font-bold text-white shadow-[0_6px_20px_rgba(59,130,246,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(59,130,246,0.5)]"
             >
               Get Notified
             </button>

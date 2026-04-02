@@ -4,7 +4,13 @@ import React, { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { HistoryEntry } from "@/types/history";
 import { Trash2 } from "lucide-react";
-import { getCleanPrompt, copyPrompt, isVideoUrl, normalizeGenerationType, isVideoType } from "../utils/videoUtils";
+import {
+  getCleanPrompt,
+  copyPrompt,
+  isVideoUrl,
+  normalizeGenerationType,
+  isVideoType,
+} from "../utils/videoUtils";
 import VideoGenerationGuide from "./VideoGenerationGuide";
 import HistoryControls from "./HistoryControls";
 import { useAppSelector } from "@/store/hooks";
@@ -12,14 +18,19 @@ import { useAppSelector } from "@/store/hooks";
 const MAX_GENERATING_PLACEHOLDER_AGE_MS = 30 * 60 * 1000;
 
 const getGenerationTimestampMs = (entry: any): number => {
-  const rawValues = [entry?.updatedAt, entry?.timestamp, entry?.createdAt, entry?.startedAt];
+  const rawValues = [
+    entry?.updatedAt,
+    entry?.timestamp,
+    entry?.createdAt,
+    entry?.startedAt,
+  ];
 
   for (const rawValue of rawValues) {
-    if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
       return rawValue;
     }
 
-    if (typeof rawValue === 'string' && rawValue.trim()) {
+    if (typeof rawValue === "string" && rawValue.trim()) {
       const parsed = new Date(rawValue).getTime();
       if (Number.isFinite(parsed)) {
         return parsed;
@@ -35,9 +46,16 @@ const isRecentGeneratingPlaceholder = (entry: any): boolean => {
   return Date.now() - timestamp <= MAX_GENERATING_PLACEHOLDER_AGE_MS;
 };
 
-const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> = ({ size = 64, alt = 'Loading', className }) => {
+const GifLoader: React.FC<{
+  size?: number;
+  alt?: string;
+  className?: string;
+}> = ({ size = 64, alt = "Loading", className }) => {
   return (
-    <div className={`relative flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
+    <div
+      className={`relative flex items-center justify-center ${className}`}
+      style={{ width: size, height: size }}
+    >
       <Image
         src="/styles/Logo.gif"
         alt={alt}
@@ -52,6 +70,7 @@ const GifLoader: React.FC<{ size?: number; alt?: string; className?: string }> =
 
 interface HistorySectionProps {
   loading: boolean;
+  hasCompletedInitialHistoryLoad?: boolean;
   showHistory: boolean;
   historyEntries: HistoryEntry[];
   hasMore: boolean;
@@ -78,6 +97,7 @@ interface HistorySectionProps {
 
 const HistorySection: React.FC<HistorySectionProps> = ({
   loading,
+  hasCompletedInitialHistoryLoad = false,
   showHistory,
   historyEntries,
   hasMore,
@@ -88,7 +108,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   activeGenerations = [],
   onSearch,
   onSortChange,
-  onDateChange
+  onDateChange,
 }) => {
   // Intersection Observer for Infinite Scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -100,18 +120,21 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   const sortOrder = filters?.sortOrder || "desc";
   const isFiltered = !!(filters.search || filters.dateRange);
 
-  console.log('[HistorySection DEBUG] Render:', {
+  console.log("[HistorySection DEBUG] Render:", {
     activeGenerationsLength: activeGenerations?.length,
     activeGenerations: activeGenerations,
-    todayKey
+    todayKey,
   });
 
   const { groupedByDate, sortedDates } = useMemo(() => {
-    const groups: Record<string, Array<{ entry: HistoryEntry; video: any }>> = {};
+    const groups: Record<
+      string,
+      Array<{ entry: HistoryEntry; video: any }>
+    > = {};
 
-    console.log('[HistorySection DEBUG] useMemo start:', {
+    console.log("[HistorySection DEBUG] useMemo start:", {
       historyEntriesCount: historyEntries.length,
-      activeGenerationsCount: activeGenerations?.length
+      activeGenerationsCount: activeGenerations?.length,
     });
 
     // 1. Process History Entries
@@ -120,12 +143,14 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       if (Array.isArray(entry.videos) && entry.videos.length > 0) {
         mediaItems = entry.videos;
       } else if (Array.isArray(entry.images) && entry.images.length > 0) {
-        mediaItems = entry.images.filter(m => isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl));
+        mediaItems = entry.images.filter((m) =>
+          isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl),
+        );
       }
 
       const shouldShowGeneratingPlaceholder =
         mediaItems.length === 0 &&
-        entry.status === 'generating' &&
+        entry.status === "generating" &&
         isVideoType(entry) &&
         isRecentGeneratingPlaceholder(entry);
 
@@ -144,16 +169,16 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           groups[date].push({ entry, video: null });
         }
       } else {
-        mediaItems.forEach(video => {
+        mediaItems.forEach((video) => {
           groups[date].push({ entry, video });
         });
       }
     });
 
     // 2. Process Active Generations (Deduplicate against History)
-    activeGenerations?.forEach(gen => {
+    activeGenerations?.forEach((gen) => {
       // Keep only pending/generating
-      if (gen.status !== 'pending' && gen.status !== 'generating') return;
+      if (gen.status !== "pending" && gen.status !== "generating") return;
 
       // Type-Safety: Only show video types on this page
       if (!isVideoType(gen)) return;
@@ -162,13 +187,17 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       if (!isRecentGeneratingPlaceholder(gen)) return;
 
       const genId = String(gen.id);
-      const historyId = String(gen.historyId || '');
-      const idsToMatch = [genId, historyId].filter(id => id && id !== 'undefined');
+      const historyId = String(gen.historyId || "");
+      const idsToMatch = [genId, historyId].filter(
+        (id) => id && id !== "undefined",
+      );
 
       // Skip if already represented in history
-      const alreadyInHistory = historyEntries.some(e =>
-        idsToMatch.includes(String(e.id)) ||
-        (e as any).firebaseHistoryId && idsToMatch.includes(String((e as any).firebaseHistoryId))
+      const alreadyInHistory = historyEntries.some(
+        (e) =>
+          idsToMatch.includes(String(e.id)) ||
+          ((e as any).firebaseHistoryId &&
+            idsToMatch.includes(String((e as any).firebaseHistoryId))),
       );
 
       if (alreadyInHistory) return;
@@ -183,22 +212,29 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         id: genId,
         prompt: gen.prompt,
         model: gen.model,
-        status: 'generating',
+        status: "generating",
         timestamp: new Date(getGenerationTimestampMs(gen)).toISOString(),
         createdAt: new Date(gen.createdAt || Date.now()).toISOString(),
-        generationType: normalizeGenerationType(gen.generationType || gen.params?.generationType || 'text-to-video') as any,
+        generationType: normalizeGenerationType(
+          gen.generationType || gen.params?.generationType || "text-to-video",
+        ) as any,
         images: [],
         videos: [],
         imageCount: 1,
-        generationProgress: gen.progress ? {
-          current: Math.round(gen.progress * 100),
-          total: 100,
-          status: gen.status
-        } : undefined
+        generationProgress: gen.progress
+          ? {
+              current: Math.round(gen.progress * 100),
+              total: 100,
+              status: gen.status,
+            }
+          : undefined,
       };
 
       groups[genDate].unshift({ entry: placeholderEntry, video: null });
-      console.log('[HistorySection DEBUG] Added active gen placeholder (unshifted):', genId);
+      console.log(
+        "[HistorySection DEBUG] Added active gen placeholder (unshifted):",
+        genId,
+      );
     });
 
     const sorted = Object.keys(groups).sort((a, b) => {
@@ -206,7 +242,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       return sortOrder === "asc" ? diff : -diff;
     });
 
-    console.log('[HistorySection DEBUG] Final sortedDates:', sorted);
+    console.log("[HistorySection DEBUG] Final sortedDates:", sorted);
 
     return { groupedByDate: groups, sortedDates: sorted };
   }, [historyEntries, sortOrder, activeGenerations]);
@@ -219,7 +255,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           loadMore();
         }
       },
-      { root: scrollRef.current, threshold: 0.1 }
+      { root: scrollRef.current, threshold: 0.1 },
     );
 
     if (sentinelRef.current) {
@@ -231,11 +267,26 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
   if (!showHistory) return null;
 
+  // On page reload, keep the UI on the branded loader until the first history load finishes.
+  if (!hasCompletedInitialHistoryLoad) {
+    return (
+      <div
+        ref={scrollRef}
+        className="relative inset-0 pl-[0] pr-0 overflow-y-auto no-scrollbar z-0"
+        style={{ height: "calc(100vh - 80px)" }}
+      >
+        <div className="flex items-center justify-center py-24 md:py-36">
+          <GifLoader size={72} alt="Loading videos" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={scrollRef}
       className="relative inset-0 pl-[0] pr-0 overflow-y-auto no-scrollbar z-0"
-      style={{ height: 'calc(100vh - 80px)' }} // Adjust height as needed or let parent control layout
+      style={{ height: "calc(100vh - 80px)" }} // Adjust height as needed or let parent control layout
     >
       {/* Desktop: Search, Sort, and Date controls (Fixed Header) */}
       {/* <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-4 py-3">
@@ -258,26 +309,41 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       </div> */}
 
       {/* Guide when empty */}
-      {!loading && historyEntries.length === 0 && sortedDates.length === 0 && activeGenerations.length === 0 && (
-        isFiltered ? (
+      {!loading &&
+        historyEntries.length === 0 &&
+        sortedDates.length === 0 &&
+        activeGenerations.length === 0 &&
+        (isFiltered ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-white/20"
+              >
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-white/90 mb-2">No generations found</h3>
+            <h3 className="text-xl font-semibold text-white/90 mb-2">
+              No generations found
+            </h3>
             <p className="text-gray-400 max-w-md mx-auto">
-              {filters.dateRange 
+              {filters.dateRange
                 ? "No generations found for the selected date range. Try adjusting your filters."
                 : "No generations found matching your search. Try a different prompt or clear your filters."}
             </p>
             <button
               onClick={() => {
-                onSearch('');
+                onSearch("");
                 onDateChange({ start: null, end: null });
-                if (onSortChange) onSortChange('desc');
+                if (onSortChange) onSortChange("desc");
               }}
               className="mt-8 px-8 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-white/90 transition-all"
             >
@@ -286,8 +352,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           </div>
         ) : (
           <VideoGenerationGuide />
-        )
-      )}
+        ))}
 
       {sortedDates.map((date) => (
         <div key={date} className="md:space-y-4 space-y-2 mb-8">
@@ -307,13 +372,16 @@ const HistorySection: React.FC<HistorySectionProps> = ({
             <h3 className="text-sm font-medium text-white/70">
               {(() => {
                 const dateObj = new Date(date);
-                const isToday = dateObj.toDateString() === new Date().toDateString();
+                const isToday =
+                  dateObj.toDateString() === new Date().toDateString();
                 const formattedDate = dateObj.toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
                 });
-                return isToday ? `Today, ${formattedDate}` : `${dateObj.toLocaleDateString("en-US", { weekday: 'short' })}, ${formattedDate}`;
+                return isToday
+                  ? `Today, ${formattedDate}`
+                  : `${dateObj.toLocaleDateString("en-US", { weekday: "short" })}, ${formattedDate}`;
               })()}
             </h3>
           </div>
@@ -327,7 +395,10 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
               // Handle Placeholder (Generating/Pending)
               if (!video) {
-                console.log('[HistorySection DEBUG] Rendering placeholder card in grid:', entry.id);
+                console.log(
+                  "[HistorySection DEBUG] Rendering placeholder card in grid:",
+                  entry.id,
+                );
                 return (
                   <div
                     key={uniqueVideoKey}
@@ -340,28 +411,32 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                         <div className="flex items-center gap-1.5 justify-center">
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                           <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">
-                            {entry.model || 'Generating'}
+                            {entry.model || "Generating"}
                           </span>
                         </div>
                         <p className="text-[10px] text-white/60 line-clamp-2 px-2 italic font-medium">
                           {entry.prompt}
                         </p>
                       </div>
-                      {entry.status === 'generating' && entry.generationProgress && (
-                        <div className="w-20 bg-white/10 rounded-full h-1 mt-1">
-                          <div
-                            className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                            style={{ width: `${entry.generationProgress.current}%` }}
-                          />
-                        </div>
-                      )}
+                      {entry.status === "generating" &&
+                        entry.generationProgress && (
+                          <div className="w-20 bg-white/10 rounded-full h-1 mt-1">
+                            <div
+                              className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${entry.generationProgress.current}%`,
+                              }}
+                            />
+                          </div>
+                        )}
                     </div>
                   </div>
                 );
               }
 
               // Handle Completed Video
-              const videoUrl = video.firebaseUrl || video.url || video.originalUrl;
+              const videoUrl =
+                video.firebaseUrl || video.url || video.originalUrl;
               if (!videoUrl) return null;
 
               return (
@@ -376,7 +451,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                     loop
                     muted
                     playsInline
-                    onMouseEnter={(e) => e.currentTarget.play().catch(() => { })}
+                    onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
                     onMouseLeave={(e) => {
                       e.currentTarget.pause();
                       e.currentTarget.currentTime = 0;
@@ -385,10 +460,19 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                   {/* Controls Overlay */}
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={(e) => copyPrompt(e, getCleanPrompt(entry.prompt))}
+                      onClick={(e) =>
+                        copyPrompt(e, getCleanPrompt(entry.prompt))
+                      }
                       className="p-1.5 bg-black/60 rounded-md hover:bg-black/80 text-white"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                      </svg>
                     </button>
                     <button
                       onClick={(e) => onDeleteVideo?.(e, entry)}
@@ -399,7 +483,9 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                   </div>
                   {/* Prompt overlay at bottom */}
                   <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <p className="text-[10px] text-white/90 line-clamp-2">{entry.prompt}</p>
+                    <p className="text-[10px] text-white/90 line-clamp-2">
+                      {entry.prompt}
+                    </p>
                   </div>
                 </div>
               );
@@ -407,7 +493,6 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           </div>
         </div>
       ))}
-
 
       {/* Loader for scroll loading - centered in viewport */}
       {hasMore && loading && (

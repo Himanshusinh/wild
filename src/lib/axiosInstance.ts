@@ -833,7 +833,7 @@ axiosInstance.interceptors.response.use(
 
       // Suppress 401s when unauth. Also suppress ALL GET request errors when unauth (e.g. 429 rate limits on public feeds)
       // And explicitly suppress "No session token" errors which often happen right after logout or cookie expiry
-    const shouldSuppress =
+      const shouldSuppress =
         (isUnauth &&
           (status === 401 ||
             status === 403 ||
@@ -843,15 +843,28 @@ axiosInstance.interceptors.response.use(
 
       // Some generation flows already show domain-specific toasts in their own handlers.
       // Avoid duplicate toasts by suppressing the global interceptor toast for those endpoints.
-      const hasCustomGenerationToast = (
+      const hasCustomGenerationToast =
         requestUrl.startsWith("/api/fal/generate") ||
         requestUrl.startsWith("/api/replicate/generate") ||
         requestUrl.startsWith("/api/runway/generate") ||
         requestUrl.startsWith("/api/bfl/generate") ||
-        requestUrl.startsWith("/api/minimax/generate")
-      );
+        requestUrl.startsWith("/api/minimax/generate");
 
-      if (!shouldSuppress && !skipGlobalErrorToast && !hasCustomGenerationToast) {
+      // Queue status/result requests are background polling. Let callers decide how to surface
+      // a final failure instead of emitting a toast for every retry attempt.
+      const isBackgroundPollingRequest =
+        requestUrl.startsWith("/api/fal/queue/status") ||
+        requestUrl.startsWith("/api/fal/queue/result") ||
+        requestUrl.startsWith("/api/replicate/queue/status") ||
+        requestUrl.startsWith("/api/replicate/queue/result") ||
+        requestUrl.startsWith("/api/runway/tasks/");
+
+      if (
+        !shouldSuppress &&
+        !skipGlobalErrorToast &&
+        !hasCustomGenerationToast &&
+        !isBackgroundPollingRequest
+      ) {
         await showFalErrorToast(error);
       }
     } catch {}
