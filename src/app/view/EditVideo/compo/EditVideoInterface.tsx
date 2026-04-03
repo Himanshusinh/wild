@@ -1814,355 +1814,359 @@ const EditVideoInterface: React.FC = () => {
     }
   };
 
-  const renderCanvasArea = () => (
-    <div
-      className="bg-[#0E0E12] relative overflow-hidden min-h-[24rem] h-full w-full max-w-6xl md:max-w-[100rem] flex items-center justify-center"
-      onDragOver={(e) => {
-        try {
-          e.preventDefault();
-        } catch {}
-      }}
-      onDrop={(e) => {
-        try {
-          e.preventDefault();
-          const file = e.dataTransfer?.files?.[0];
-          if (!file || !file.type.startsWith("video/")) return;
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const video = ev.target?.result as string;
-            setInputs({ upscale: video, "remove-bg": video });
-            setOutputs({ upscale: null, "remove-bg": null });
-            setScale(1);
-            setOffset({ x: 0, y: 0 });
-          };
-          reader.readAsDataURL(file);
-        } catch {}
-      }}
-    >
-      {outputs[selectedFeature] && (
-        <div className="absolute top-5 left-4 z-10 ">
-          <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1">
-            Output {selectedFeature === "upscale" ? "Video" : "Image"}
-          </span>
-        </div>
-      )}
-      {(outputs[selectedFeature] || inputs[selectedFeature]) && (
-        <div className="absolute bottom-3 left-3 z-50 md:bottom-16 md:left-4 flex items-center gap-2">
+  const renderCanvasArea = () =>
+    (() => {
+      const isOutputVideo = Boolean(
+        outputs[selectedFeature] && isVideoUrl(outputs[selectedFeature]),
+      );
+      return (
+        <div
+          className="bg-[#0E0E12] relative overflow-hidden min-h-[24rem] h-full w-full max-w-6xl md:max-w-[100rem] flex items-center justify-center"
+          onDragOver={(e) => {
+            try {
+              e.preventDefault();
+            } catch {}
+          }}
+          onDrop={(e) => {
+            try {
+              e.preventDefault();
+              const file = e.dataTransfer?.files?.[0];
+              if (!file || !file.type.startsWith("video/")) return;
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                const video = ev.target?.result as string;
+                setInputs({ upscale: video, "remove-bg": video });
+                setOutputs({ upscale: null, "remove-bg": null });
+                setScale(1);
+                setOffset({ x: 0, y: 0 });
+              };
+              reader.readAsDataURL(file);
+            } catch {}
+          }}
+        >
           {outputs[selectedFeature] && (
-            <div className="relative">
-              <button
-                ref={menuButtonRef}
-                className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30 md:p-2"
-                aria-haspopup="menu"
-                aria-expanded={showImageMenu}
-                onClick={() => setShowImageMenu((v) => !v)}
-              >
-                <svg
-                  className="w-4 h-4 2xl:w-5 2xl:h-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <circle cx="5" cy="12" r="2" />
-                  <circle cx="12" cy="12" r="2" />
-                  <circle cx="19" cy="12" r="2" />
-                </svg>
-              </button>
+            <div className="absolute top-5 left-4 z-10 ">
+              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded md:text-sm md:px-3 md:py-1">
+                Output {selectedFeature === "upscale" ? "Video" : "Image"}
+              </span>
             </div>
           )}
-          <button
-            onClick={() => {
-              try {
-                handleOpenUploadModal();
-              } catch {}
-            }}
-            className="p-2 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30"
-            title="Upload other"
-          >
-            <Image
-              src="/icons/fileupload.svg"
-              alt="Upload"
-              width={18}
-              height={18}
-            />
-          </button>
-          {outputs[selectedFeature] && showImageMenu && (
-            <div
-              ref={menuRef}
-              className="absolute bottom-10 left-0 bg-black/80 border border-white/30 rounded-lg shadow-2xl min-w-[100px] overflow-hidden md:min-w-[150px]"
-            >
+          {(outputs[selectedFeature] || inputs[selectedFeature]) && (
+            <div className="absolute bottom-3 left-3 z-50 md:bottom-16 md:left-4 flex items-center gap-2">
+              {outputs[selectedFeature] && (
+                <div className="relative">
+                  <button
+                    ref={menuButtonRef}
+                    className="p-2.5 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30 md:p-2"
+                    aria-haspopup="menu"
+                    aria-expanded={showImageMenu}
+                    onClick={() => setShowImageMenu((v) => !v)}
+                  >
+                    <svg
+                      className="w-4 h-4 2xl:w-5 2xl:h-5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle cx="5" cy="12" r="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <circle cx="19" cy="12" r="2" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               <button
-                onClick={async () => {
-                  await handleDownloadOutput();
-                  setShowImageMenu(false);
-                }}
-                className="w-full px-4 py-3 text-left text-white hover:bg-green-500/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-2"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                  />
-                </svg>
-                Download
-              </button>
-              <button
-                onClick={async () => {
-                  await handleShareOutput();
-                  setShowImageMenu(false);
-                }}
-                className="w-full px-4 py-3 text-left text-white hover:bg-blue-500/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-2"
-              >
-                <svg
-                  className="w-4 h-4 2xl:w-5 2xl:h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z"
-                  />
-                </svg>
-                {shareCopied ? "Copied!" : "Share"}
-              </button>
-              <button
-                onClick={async () => {
+                onClick={() => {
                   try {
-                    const id = currentHistoryId;
-                    if (id) {
-                      await axiosInstance.delete(`/api/generations/${id}`);
-                    }
-                    setOutputs((prev) => ({
-                      ...prev,
-                      [selectedFeature]: null,
-                    }));
-                    setShowImageMenu(false);
-                  } catch (e) {
-                    console.error("Delete failed:", e);
-                    setShowImageMenu(false);
-                  }
+                    handleOpenUploadModal();
+                  } catch {}
                 }}
-                className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-2"
+                className="p-2 bg-black/80 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/30"
+                title="Upload other"
               >
-                <svg
-                  className="w-4 h-4 2xl:w-5 2xl:h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                  />
-                </svg>
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-      {outputs[selectedFeature] ? (
-        <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
-          <div
-            ref={imageContainerRef}
-            className="w-full max-w-xl aspect-[3/2] relative cursor-move select-none flex items-center justify-center rounded-3xl border border-white/10 bg-black/20 overflow-hidden"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onWheel={handleWheel}
-            onKeyDown={handleKeyDown}
-            tabIndex={0}
-            style={{ outline: "none" }}
-          >
-            {isVideoUrl(outputs[selectedFeature]) ? (
-              <video
-                src={outputs[selectedFeature] as string}
-                controls
-                className="w-full h-full object-contain"
-                style={{
-                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                  transformOrigin: "center center",
-                }}
-                onLoadedData={(e) => {
-                  const video = e.target as HTMLVideoElement;
-                  setNaturalSize({
-                    width: video.videoWidth,
-                    height: video.videoHeight,
-                  });
-                }}
-              />
-            ) : (
-              <Image
-                ref={imageRef}
-                src={outputs[selectedFeature] as string}
-                alt="Output"
-                fill
-                className="object-contain object-center"
-                style={{
-                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                  transformOrigin: "center center",
-                  objectPosition: "center 55%",
-                }}
-                onLoad={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  setNaturalSize({
-                    width: img.naturalWidth,
-                    height: img.naturalHeight,
-                  });
-                }}
-                onClick={handleImageClick}
-              />
-            )}
-            <div className="absolute bottom-3 right-3 z-30 2xl:bottom-16 2xl:right-4">
-              <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
-                <button
-                  onClick={() => {
-                    const newScale = Math.max(0.1, scale - 0.1);
-                    setScale(newScale);
-                    setOffset(clampOffset(offset, newScale));
-                  }}
-                  disabled={scale <= 0.1}
-                  className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                >
-                  −
-                </button>
-                <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
-                  {Math.round(scale * 100)}%
-                </span>
-                <button
-                  onClick={() => {
-                    const newScale = Math.min(6, scale + 0.1);
-                    setScale(newScale);
-                    setOffset(clampOffset(offset, newScale));
-                  }}
-                  disabled={scale >= 6}
-                  className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                >
-                  +
-                </button>
-                <button
-                  onClick={resetZoom}
-                  className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
-                >
-                  ⌂
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
-          {inputs[selectedFeature] ? (
-            <div className="w-full max-w-xl aspect-[3/2] relative rounded-3xl border border-white/10 bg-black/20 overflow-hidden">
-              {isVideoUrl(inputs[selectedFeature]) ? (
-                <video
-                  src={inputs[selectedFeature] as string}
-                  controls
-                  className="w-full h-full object-contain"
-                  onLoadedData={(e) => {
-                    const video = e.target as HTMLVideoElement;
-                    setInputNaturalSize({
-                      width: video.videoWidth,
-                      height: video.videoHeight,
-                    });
-                  }}
-                />
-              ) : (
                 <Image
-                  src={inputs[selectedFeature] as string}
-                  alt="Input"
-                  fill
-                  className="object-contain object-center"
-                  onLoad={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    setInputNaturalSize({
-                      width: img.naturalWidth,
-                      height: img.naturalHeight,
-                    });
-                  }}
+                  src="/icons/fileupload.svg"
+                  alt="Upload"
+                  width={18}
+                  height={18}
                 />
+              </button>
+              {outputs[selectedFeature] && showImageMenu && (
+                <div
+                  ref={menuRef}
+                  className="absolute bottom-10 left-0 bg-black/80 border border-white/30 rounded-lg shadow-2xl min-w-[100px] overflow-hidden md:min-w-[150px]"
+                >
+                  <button
+                    onClick={async () => {
+                      await handleDownloadOutput();
+                      setShowImageMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-white hover:bg-green-500/20 text-sm flex items-center gap-3 transition-colors duration-200 border-b border-white/10 md:text-base md:py-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                      />
+                    </svg>
+                    Download
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleShareOutput();
+                      setShowImageMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-white hover:bg-blue-500/20 text-sm flex items-center gap-3 transition-colors duration-200 md:text-base md:py-2"
+                  >
+                    <svg
+                      className="w-4 h-4 2xl:w-5 2xl:h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z"
+                      />
+                    </svg>
+                    {shareCopied ? "Copied!" : "Share"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const id = currentHistoryId;
+                        if (id) {
+                          await axiosInstance.delete(`/api/generations/${id}`);
+                        }
+                        setOutputs((prev) => ({
+                          ...prev,
+                          [selectedFeature]: null,
+                        }));
+                        setShowImageMenu(false);
+                      } catch (e) {
+                        console.error("Delete failed:", e);
+                        setShowImageMenu(false);
+                      }
+                    }}
+                    className="w-full px-4 py-3 text-left text-red-300 hover:bg-red-500/10 text-sm flex items-center gap-3 transition-colors duration-200 border-t border-white/10 md:text-base md:py-2"
+                  >
+                    <svg
+                      className="w-4 h-4 2xl:w-5 2xl:h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                      />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
-          ) : (
-            !inputs[selectedFeature] &&
-            !outputs[selectedFeature] && (
-              <button
-                onClick={() => setIsUploadOpen(true)}
-                className="group relative flex flex-col items-center justify-center w-full max-w-xl aspect-[3/2] rounded-3xl border-2 border-dashed border-white/10 hover:border-white/10 hover:bg-white/4 transition-all duration-300"
+          )}
+          {outputs[selectedFeature] ? (
+            <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
+              <div
+                ref={imageContainerRef}
+                className={`w-full max-w-xl aspect-[3/2] relative select-none flex items-center justify-center rounded-3xl border border-white/10 bg-black/20 overflow-hidden ${isOutputVideo ? "cursor-default" : "cursor-move"}`}
+                onMouseDown={isOutputVideo ? undefined : handleMouseDown}
+                onMouseMove={isOutputVideo ? undefined : handleMouseMove}
+                onMouseUp={isOutputVideo ? undefined : handleMouseUp}
+                onMouseLeave={isOutputVideo ? undefined : handleMouseUp}
+                onWheel={isOutputVideo ? undefined : handleWheel}
+                onKeyDown={isOutputVideo ? undefined : handleKeyDown}
+                tabIndex={isOutputVideo ? -1 : 0}
+                style={{ outline: "none" }}
               >
-                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-white/60"
+                {isVideoUrl(outputs[selectedFeature]) ? (
+                  <video
+                    src={outputs[selectedFeature] as string}
+                    controls
+                    className="w-full h-full object-contain object-top"
+                    onLoadedData={(e) => {
+                      const video = e.target as HTMLVideoElement;
+                      setNaturalSize({
+                        width: video.videoWidth,
+                        height: video.videoHeight,
+                      });
+                    }}
+                  />
+                ) : (
+                  <Image
+                    ref={imageRef}
+                    src={outputs[selectedFeature] as string}
+                    alt="Output"
+                    fill
+                    className="object-contain object-center"
+                    style={{
+                      transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                      transformOrigin: "center center",
+                      objectPosition: "center 55%",
+                    }}
+                    onLoad={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      setNaturalSize({
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                      });
+                    }}
+                    onClick={handleImageClick}
+                  />
+                )}
+                {!isOutputVideo && (
+                  <div className="absolute bottom-3 right-3 z-30 2xl:bottom-16 2xl:right-4">
+                    <div className="flex items-center gap-1 2xl:gap-1.5 bg-black/80 rounded-lg p-1">
+                      <button
+                        onClick={() => {
+                          const newScale = Math.max(0.1, scale - 0.1);
+                          setScale(newScale);
+                          setOffset(clampOffset(offset, newScale));
+                        }}
+                        disabled={scale <= 0.1}
+                        className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                      >
+                        −
+                      </button>
+                      <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
+                        {Math.round(scale * 100)}%
+                      </span>
+                      <button
+                        onClick={() => {
+                          const newScale = Math.min(6, scale + 0.1);
+                          setScale(newScale);
+                          setOffset(clampOffset(offset, newScale));
+                        }}
+                        disabled={scale >= 6}
+                        className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={resetZoom}
+                        className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
+                      >
+                        ⌂
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
+              {inputs[selectedFeature] ? (
+                <div className="w-full max-w-xl aspect-[3/2] relative rounded-3xl border border-white/10 bg-black/20 overflow-hidden">
+                  {isVideoUrl(inputs[selectedFeature]) ? (
+                    <video
+                      src={inputs[selectedFeature] as string}
+                      controls
+                      className="w-full h-full object-contain object-top"
+                      onLoadedData={(e) => {
+                        const video = e.target as HTMLVideoElement;
+                        setInputNaturalSize({
+                          width: video.videoWidth,
+                          height: video.videoHeight,
+                        });
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      src={inputs[selectedFeature] as string}
+                      alt="Input"
+                      fill
+                      className="object-contain object-center"
+                      onLoad={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        setInputNaturalSize({
+                          width: img.naturalWidth,
+                          height: img.naturalHeight,
+                        });
+                      }}
+                    />
+                  )}
+                </div>
+              ) : (
+                !inputs[selectedFeature] &&
+                !outputs[selectedFeature] && (
+                  <button
+                    onClick={() => setIsUploadOpen(true)}
+                    className="group relative flex flex-col items-center justify-center w-full max-w-xl aspect-[3/2] rounded-3xl border-2 border-dashed border-white/10 hover:border-white/10 hover:bg-white/4 transition-all duration-300"
                   >
-                    <path d="M12 5v14" />
-                    <path d="M5 12h14" />
-                  </svg>
-                </div>
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-semibold text-white/90">
-                    Drop your video here
-                  </h3>
-                  <p className="text-sm text-white/40">
-                    or{" "}
-                    <span className="text-white/60 font-medium">
-                      click to browse
-                    </span>{" "}
-                    from your computer
-                  </p>
-                </div>
-                <div className="absolute bottom-6 flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
-                      MP4
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
-                      MOV
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
-                      UP TO 50MB
-                    </span>
-                  </div>
-                </div>
-              </button>
-            )
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <svg
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-white/60"
+                      >
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                    </div>
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-semibold text-white/90">
+                        Drop your video here
+                      </h3>
+                      <p className="text-sm text-white/40">
+                        or{" "}
+                        <span className="text-white/60 font-medium">
+                          click to browse
+                        </span>{" "}
+                        from your computer
+                      </p>
+                    </div>
+                    <div className="absolute bottom-6 flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                        <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
+                          MP4
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                        <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
+                          MOV
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                        <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
+                          UP TO 50MB
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              )}
+            </div>
+          )}
+          {processing[selectedFeature] && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+              <img
+                src="/styles/Logo.gif"
+                alt="Generating..."
+                className="w-32 h-32 md:w-48 md:h-48 opacity-90"
+              />
+            </div>
           )}
         </div>
-      )}
-      {processing[selectedFeature] && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <img
-            src="/styles/Logo.gif"
-            alt="Generating..."
-            className="w-32 h-32 md:w-48 md:h-48 opacity-90"
-          />
-        </div>
-      )}
-    </div>
-  );
+      );
+    })();
 
   const pathname = usePathname();
   const isInline = pathname?.startsWith("/text-to-video/edit-video");
