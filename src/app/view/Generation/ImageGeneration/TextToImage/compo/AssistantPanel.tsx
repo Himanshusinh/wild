@@ -443,9 +443,9 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
         ? CLAUDE_ATTACHMENT_LIMITS
         : isGPT52Thread
           ? GPT52_ATTACHMENT_LIMITS
-        : isDeepSeekThread
-          ? DEEPSEEK_ATTACHMENT_LIMITS
-          : GEMINI_ATTACHMENT_LIMITS;
+          : isDeepSeekThread
+            ? DEEPSEEK_ATTACHMENT_LIMITS
+            : GEMINI_ATTACHMENT_LIMITS;
     const rule = attachmentLimits[type];
     const nextCount =
       (type === "image"
@@ -592,7 +592,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
               : effectiveMode === "chat" &&
                   effectiveModelId === DEEPSEEK_MODEL_ID
                 ? DEEPSEEK_DEFAULT_INPUT
-              : undefined;
+                : undefined;
       const payload =
         effectiveMode === "chat"
           ? {
@@ -621,19 +621,19 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                           ...chatModelInput,
                           prompt: text,
                         }
-                    : {
-                        ...chatModelInput,
-                        images: currentAttachments
-                          .filter((item) => item.type === "image")
-                          .map((item) => item.url),
-                        videos: currentAttachments
-                          .filter((item) => item.type === "video")
-                          .map((item) => item.url),
-                        audio:
-                          currentAttachments.find(
-                            (item) => item.type === "audio",
-                          )?.url ?? null,
-                      }
+                      : {
+                          ...chatModelInput,
+                          images: currentAttachments
+                            .filter((item) => item.type === "image")
+                            .map((item) => item.url),
+                          videos: currentAttachments
+                            .filter((item) => item.type === "video")
+                            .map((item) => item.url),
+                          audio:
+                            currentAttachments.find(
+                              (item) => item.type === "audio",
+                            )?.url ?? null,
+                        }
                 : undefined,
               threadId: activeThread?.id,
               attachments: currentAttachments,
