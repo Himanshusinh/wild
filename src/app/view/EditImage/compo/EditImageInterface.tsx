@@ -194,7 +194,7 @@ const EditImageInterface: React.FC = () => {
   );
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
   const eraseCredits = useMemo(
-    () => getCreditsForModel("google_nano_banana") ?? 98,
+    () => getCreditsForModel("seedream-5-lite") ?? 90,
     [],
   );
   const expandCredits = useMemo(
@@ -372,6 +372,7 @@ const EditImageInterface: React.FC = () => {
     | "fal-ai/bria/genfill"
     | "google_nano_banana"
     | "seedream_4"
+    | "seedream-5-lite"
   >("philz1337x/crystal-upscaler");
   const [prompt, setPrompt] = useState("");
   const [scaleFactor, setScaleFactor] = useState("");
@@ -415,6 +416,7 @@ const EditImageInterface: React.FC = () => {
     if (m === "fal-ai/bria/genfill") return "Bria GenFill";
     if (m === "google_nano_banana") return "Google Nano Banana";
     if (m === "seedream_4") return "Seedream 4";
+    if (m === "seedream-5-lite") return "Seedream 5 Lite";
     if (m === "851-labs/background-remover") return "851 Labs Remove BG";
     if (m === "lucataco/remove-bg") return "Lucataco Remove BG";
     return m;
@@ -1418,14 +1420,14 @@ const EditImageInterface: React.FC = () => {
     }
   }, [selectedFeature]);
 
-  // Ensure Google Nano Banana is the default model when switching to Replace, Erase, or Reimagine
+  // Ensure Seedream 5 Lite is the default model when switching to Replace/Erase.
+  // Reimagine keeps Google Nano Banana default behavior.
   useEffect(() => {
-    if (
-      selectedFeature === "fill" ||
-      selectedFeature === "erase" ||
-      selectedFeature === "reimagine"
-    ) {
-      // Always use Google Nano Banana for Replace, Erase, and Reimagine features
+    if (selectedFeature === "fill" || selectedFeature === "erase") {
+      if (model !== "seedream-5-lite") {
+        setModel("seedream-5-lite");
+      }
+    } else if (selectedFeature === "reimagine") {
       if (model !== "google_nano_banana") {
         setModel("google_nano_banana");
       }
@@ -3755,22 +3757,12 @@ const EditImageInterface: React.FC = () => {
           }
         }
 
-        // Unified Erase Logic using /api/canvas/erase
-        // This endpoint expects: { image, mask, prompt, meta: { projectId } }
-        // For erase, the mask should be part of the image (composited) OR passed separately.
-        // We pass it separately (maskDataUrl) as per the working plugin logic, assuming the backend handles it.
+        // Seedream 5 Lite masked edit flow for Replace/Erase.
         if (
-          selectedFeature === "erase" ||
-          (selectedFeature === "fill" && model === "google_nano_banana")
+          (selectedFeature === "erase" || selectedFeature === "fill") &&
+          model === "seedream-5-lite"
         ) {
           try {
-            // 1. Determine Project ID
-            const projectId =
-              searchParams.get("projectId") || user?.uid || "standalone-edit";
-
-            // Determine operation based on selectedFeature and eraseActionMode
-            // If selectedFeature is 'erase', it's always erase
-            // If selectedFeature is 'fill', check eraseActionMode: 'replace' = replace, 'erase' = erase
             const isReplace =
               selectedFeature === "fill"
                 ? eraseActionMode === "replace"
@@ -3779,56 +3771,45 @@ const EditImageInterface: React.FC = () => {
             // USE activePrompt to respect Fill mode's input
             const userPrompt = activePrompt ? activePrompt.trim() : "";
 
-            // Use concise prompts
+            // Keep prompts explicit but concise so the model prioritizes masked edits.
             const finalPrompt = isReplace
-              ? `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be replaced in the original image. Replace the content in the white masked regions of Image 0 with the following description: ${userPrompt}. Ensure the replaced object integrates naturally with the scene, matching the lighting, shadows, and perspective of the original background. Do not alter any unmasked areas.`
-              : `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be removed and erased from Image 0. Remove and erase the masked regions in Image 0, leaving those areas transparent/clean while keeping every unmasked area unchanged. Preserve lighting, shadows, perspective, and overall scene consistency.`;
+              ? `Image 0 is the original image and Image 1 is the mask. Replace ONLY white masked pixels in Image 0 with: ${userPrompt}. Keep all non-white masked areas unchanged and consistent with original lighting and perspective.`
+              : `Image 0 is the original image and Image 1 is the mask. Remove/fill ONLY white masked pixels in Image 0. Keep all non-white masked areas unchanged and consistent with original lighting and perspective.`;
 
-            // Determine Endpoint
-            // Refactored to use 'wildmind' namespace matching Upscale/RemoveBG patterns
-            const endpoint = isReplace
-              ? "/api/wildmind/replace"
-              : "/api/wildmind/erase";
-            const actionName = isReplace ? "Replace" : "Erase";
+            const seedreamBaseInput = String(fillSourceImage).startsWith(
+              "data:",
+            )
+              ? fillSourceImage
+              : currentInput;
+            const originalInputUrl = await ensureZataUrl(seedreamBaseInput);
+            const maskInputUrl = maskDataUrl
+              ? await ensureZataUrl(maskDataUrl)
+              : null;
 
-            // 2. Prepare Payload
-            // Note: We send Data URI directly to backend (via direct connection) to match Canvas logic
-            // The backend (falService) handles uploading to Zata if needed.
-            const payload: any = {
-              image: String(normalizedInput).startsWith("data:")
-                ? normalizedInput
-                : currentInput,
-              mask: maskDataUrl,
-              prompt: finalPrompt, // Required for replace, optional for erase
-              meta: {
-                source: "canvas",
-                projectId: projectId,
-              },
+            const seedreamPayload: any = {
+              prompt: finalPrompt,
+              model: "bytedance/seedream-5-lite",
+              size: "2K",
+              image_input: maskInputUrl
+                ? [originalInputUrl, maskInputUrl]
+                : [originalInputUrl],
+              aspect_ratio: "match_input_image",
+              sequential_image_generation: "disabled",
+              max_images: 1,
+              isPublic,
             };
 
-            // 3. Call API
-            // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel timeouts
-            // We construct the full URL to the backend service directly because these operations can be slow
-            const backendBase = (
-              process.env.NEXT_PUBLIC_API_BASE_URL || ""
-            ).replace(/\/$/, "");
-            const directEndpoint = `${backendBase}${endpoint}`;
-
-            console.log(
-              `[${actionName}] Calling DIRECT backend: ${directEndpoint} with:`,
-              {
-                hasImage: !!payload.image,
-                hasMask: !!payload.mask,
-                projectId,
-                prompt: finalPrompt,
-              },
+            const actionName = isReplace ? "Replace" : "Erase";
+            const res = await axiosInstance.post(
+              "/api/replicate/generate",
+              seedreamPayload,
             );
-            const res = await axiosInstance.post(directEndpoint, payload);
-
-            // 4. Handle Response
-            // The API returns { data: { url, ... } } or just the data object directly depending on the wrapper
-            // Based on api.ts: return result.data || result;
-            const generatedUrl = res?.data?.data?.url || res?.data?.url || "";
+            const generatedUrl =
+              res?.data?.images?.[0]?.url ||
+              res?.data?.data?.images?.[0]?.url ||
+              res?.data?.data?.url ||
+              res?.data?.url ||
+              "";
 
             if (generatedUrl) {
               setOutputs((prev) => ({
@@ -3836,18 +3817,12 @@ const EditImageInterface: React.FC = () => {
                 [selectedFeature]: generatedUrl,
               }));
 
-              // Track history if available
-              if (res?.data?.data?.historyId) {
-                try {
-                  setCurrentHistoryId(res?.data?.data?.historyId);
-                } catch {}
-              } else if (res?.data?.historyId) {
-                try {
-                  setCurrentHistoryId(res.data.historyId);
-                } catch {}
-              }
+              try {
+                setCurrentHistoryId(
+                  res?.data?.data?.historyId || res?.data?.historyId || null,
+                );
+              } catch {}
 
-              // Refresh global history
               try {
                 await (dispatch as any)(
                   loadHistory({
@@ -3863,7 +3838,7 @@ const EditImageInterface: React.FC = () => {
 
             return;
           } catch (eraseErr) {
-            console.error(`[EditImage] API Error:`, eraseErr);
+            console.error(`[EditImage] Seedream API Error:`, eraseErr);
             throw eraseErr;
           }
         }
@@ -7538,13 +7513,8 @@ const EditImageInterface: React.FC = () => {
                               />
                             </div>
 
-                            <div className="absolute top-5 left-4 z-30 2xl:top-6 2xl:left-6">
-                              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">
-                                Original
-                              </span>
-                            </div>
-                            <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
-                              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">
+                            <div className="absolute md:top-5 top-0 md:right-4 right-1 z-30 2xl:top-6 2xl:right-6">
+                              <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-lg md:text-sm md:px-3 md:py-1.5">
                                 Generated
                               </span>
                             </div>
