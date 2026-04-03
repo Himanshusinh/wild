@@ -1973,10 +1973,10 @@ const EditVideoInterface: React.FC = () => {
         </div>
       )}
       {outputs[selectedFeature] ? (
-        <div className="w-full h-full relative flex items-center justify-center">
+        <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
           <div
             ref={imageContainerRef}
-            className="w-full h-full relative cursor-move select-none flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]"
+            className="w-full max-w-xl aspect-[3/2] relative cursor-move select-none flex items-center justify-center rounded-3xl border border-white/10 bg-black/20 overflow-hidden"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -1990,7 +1990,7 @@ const EditVideoInterface: React.FC = () => {
               <video
                 src={outputs[selectedFeature] as string}
                 controls
-                className="max-w-full max-h-full w-auto h-auto object-contain"
+                className="w-full h-full object-contain"
                 style={{
                   transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                   transformOrigin: "center center",
@@ -2065,12 +2065,12 @@ const EditVideoInterface: React.FC = () => {
       ) : (
         <div className="w-full h-full relative flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]">
           {inputs[selectedFeature] ? (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-full max-w-xl aspect-[3/2] relative rounded-3xl border border-white/10 bg-black/20 overflow-hidden">
               {isVideoUrl(inputs[selectedFeature]) ? (
                 <video
                   src={inputs[selectedFeature] as string}
                   controls
-                  className="max-w-full max-h-full w-auto h-auto object-contain"
+                  className="w-full h-full object-contain"
                   onLoadedData={(e) => {
                     const video = e.target as HTMLVideoElement;
                     setInputNaturalSize({
