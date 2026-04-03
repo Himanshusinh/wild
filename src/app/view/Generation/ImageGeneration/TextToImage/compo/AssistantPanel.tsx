@@ -32,6 +32,9 @@ import {
   CLAUDE_ATTACHMENT_LIMITS,
   CLAUDE_DEFAULT_INPUT,
   CLAUDE_MODEL_ID,
+  DEEPSEEK_ATTACHMENT_LIMITS,
+  DEEPSEEK_DEFAULT_INPUT,
+  DEEPSEEK_MODEL_ID,
   GEMINI_ATTACHMENT_LIMITS,
   GEMINI_DEFAULT_INPUT,
   GEMINI_MODEL_ID,
@@ -272,6 +275,8 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
     effectiveMode === "chat" && effectiveModelId === CLAUDE_MODEL_ID;
   const isGPT52Thread =
     effectiveMode === "chat" && effectiveModelId === GPT52_MODEL_ID;
+  const isDeepSeekThread =
+    effectiveMode === "chat" && effectiveModelId === DEEPSEEK_MODEL_ID;
   const threadRailWidth = isThreadRailCollapsed
     ? THREAD_RAIL_COLLAPSED_WIDTH
     : THREAD_RAIL_EXPANDED_WIDTH;
@@ -438,6 +443,8 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
         ? CLAUDE_ATTACHMENT_LIMITS
         : isGPT52Thread
           ? GPT52_ATTACHMENT_LIMITS
+        : isDeepSeekThread
+          ? DEEPSEEK_ATTACHMENT_LIMITS
           : GEMINI_ATTACHMENT_LIMITS;
     const rule = attachmentLimits[type];
     const nextCount =
@@ -582,6 +589,9 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
             ? CLAUDE_DEFAULT_INPUT
             : effectiveMode === "chat" && effectiveModelId === GPT52_MODEL_ID
               ? GPT52_DEFAULT_INPUT
+              : effectiveMode === "chat" &&
+                  effectiveModelId === DEEPSEEK_MODEL_ID
+                ? DEEPSEEK_DEFAULT_INPUT
               : undefined;
       const payload =
         effectiveMode === "chat"
@@ -606,6 +616,11 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                           .filter((item) => item.type === "image")
                           .map((item) => item.url),
                       }
+                    : effectiveModelId === DEEPSEEK_MODEL_ID
+                      ? {
+                          ...chatModelInput,
+                          prompt: text,
+                        }
                     : {
                         ...chatModelInput,
                         images: currentAttachments

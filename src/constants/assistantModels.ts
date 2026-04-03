@@ -14,6 +14,7 @@ export type ChatModeModelId = (typeof CHAT_MODELS)[number]["id"];
 export const GEMINI_MODEL_ID: ChatModeModelId = "google/gemini-3.1-pro";
 export const CLAUDE_MODEL_ID: ChatModeModelId = "anthropic/claude-opus-4.6";
 export const GPT52_MODEL_ID: ChatModeModelId = "openai/gpt-5.2";
+export const DEEPSEEK_MODEL_ID: ChatModeModelId = "deepseek-ai/deepseek-v3.1";
 
 export const GEMINI_ATTACHMENT_LIMITS = {
   image: {
@@ -79,6 +80,27 @@ export const GPT52_ATTACHMENT_LIMITS = {
   },
 } as const;
 
+export const DEEPSEEK_ATTACHMENT_LIMITS = {
+  image: {
+    maxCount: 0,
+    maxBytes: 0,
+    accept: "",
+    helper: "Images not supported.",
+  },
+  video: {
+    maxCount: 0,
+    maxBytes: 0,
+    accept: "",
+    helper: "Videos not supported.",
+  },
+  audio: {
+    maxCount: 0,
+    maxBytes: 0,
+    accept: "",
+    helper: "Audio not supported.",
+  },
+} as const;
+
 export const GEMINI_DEFAULT_INPUT = {
   audio: null as string | null,
   images: [] as string[],
@@ -104,6 +126,16 @@ export const GPT52_DEFAULT_INPUT = {
   reasoning_effort: "low" as "none" | "low" | "medium" | "high" | "xhigh",
   max_completion_tokens: null as number | null,
   system_prompt: null as string | null,
+};
+
+export const DEEPSEEK_DEFAULT_INPUT = {
+  thinking: "None" as "None" | "medium",
+  prompt: "" as string,
+  max_tokens: 1024,
+  temperature: 0.1,
+  top_p: 1,
+  presence_penalty: 0,
+  frequency_penalty: 0,
 };
 
 export function getChatModelLabel(modelId: string): string {
