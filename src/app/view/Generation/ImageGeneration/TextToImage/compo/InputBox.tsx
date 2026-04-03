@@ -15,6 +15,7 @@ import {
   PhoneOutgoing,
   PhoneOutgoingIcon,
   ImageIcon,
+  FilePlus2,
   Sparkles,
   Menu,
   ArrowRight,
@@ -9663,12 +9664,10 @@ const InputBox = () => {
                         type="button"
                         aria-label="Upload image"
                       >
-                        <Image
-                          src="/icons/upload-plus.svg"
-                          alt="Attach"
-                          width={16}
-                          height={16}
-                          className="opacity-100"
+                        <FilePlus2
+                          size={16}
+                          className="text-white"
+                          aria-hidden="true"
                         />
                         <span className="text-white text-sm"> </span>
                       </button>
@@ -9835,12 +9834,9 @@ const InputBox = () => {
                   type="button"
                   aria-label="Upload image"
                 >
-                  <Image
-                    src="/icons/upload-plus.svg"
-                    alt="Attach"
-                    width={14}
-                    height={14}
-                    className="w-3.5 h-3.5"
+                  <FilePlus2
+                    className="w-3.5 h-3.5 text-white"
+                    aria-hidden="true"
                   />
                 </button>
               </div>
