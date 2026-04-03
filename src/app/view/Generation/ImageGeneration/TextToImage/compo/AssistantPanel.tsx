@@ -35,6 +35,9 @@ import {
   GEMINI_ATTACHMENT_LIMITS,
   GEMINI_DEFAULT_INPUT,
   GEMINI_MODEL_ID,
+  GPT52_ATTACHMENT_LIMITS,
+  GPT52_DEFAULT_INPUT,
+  GPT52_MODEL_ID,
   getChatModelLabel,
 } from "@/constants/assistantModels";
 
@@ -267,6 +270,8 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
     effectiveMode === "chat" && effectiveModelId === GEMINI_MODEL_ID;
   const isClaudeThread =
     effectiveMode === "chat" && effectiveModelId === CLAUDE_MODEL_ID;
+  const isGPT52Thread =
+    effectiveMode === "chat" && effectiveModelId === GPT52_MODEL_ID;
   const threadRailWidth = isThreadRailCollapsed
     ? THREAD_RAIL_COLLAPSED_WIDTH
     : THREAD_RAIL_EXPANDED_WIDTH;
@@ -431,7 +436,9 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
       ? GEMINI_ATTACHMENT_LIMITS
       : isClaudeThread
         ? CLAUDE_ATTACHMENT_LIMITS
-        : GEMINI_ATTACHMENT_LIMITS;
+        : isGPT52Thread
+          ? GPT52_ATTACHMENT_LIMITS
+          : GEMINI_ATTACHMENT_LIMITS;
     const rule = attachmentLimits[type];
     const nextCount =
       (type === "image"
@@ -573,7 +580,9 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
           ? GEMINI_DEFAULT_INPUT
           : effectiveMode === "chat" && effectiveModelId === CLAUDE_MODEL_ID
             ? CLAUDE_DEFAULT_INPUT
-            : undefined;
+            : effectiveMode === "chat" && effectiveModelId === GPT52_MODEL_ID
+              ? GPT52_DEFAULT_INPUT
+              : undefined;
       const payload =
         effectiveMode === "chat"
           ? {
@@ -590,18 +599,26 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                         .filter((item) => item.type === "image")
                         .map((item) => item.url),
                     }
-                  : {
-                      ...chatModelInput,
-                      images: currentAttachments
-                        .filter((item) => item.type === "image")
-                        .map((item) => item.url),
-                      videos: currentAttachments
-                        .filter((item) => item.type === "video")
-                        .map((item) => item.url),
-                      audio:
-                        currentAttachments.find((item) => item.type === "audio")
-                          ?.url ?? null,
-                    }
+                  : effectiveModelId === GPT52_MODEL_ID
+                    ? {
+                        ...chatModelInput,
+                        image_input: currentAttachments
+                          .filter((item) => item.type === "image")
+                          .map((item) => item.url),
+                      }
+                    : {
+                        ...chatModelInput,
+                        images: currentAttachments
+                          .filter((item) => item.type === "image")
+                          .map((item) => item.url),
+                        videos: currentAttachments
+                          .filter((item) => item.type === "video")
+                          .map((item) => item.url),
+                        audio:
+                          currentAttachments.find(
+                            (item) => item.type === "audio",
+                          )?.url ?? null,
+                      }
                 : undefined,
               threadId: activeThread?.id,
               attachments: currentAttachments,
@@ -1138,7 +1155,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
               )}
             </div>
 
-            {(isGeminiThread || isClaudeThread) && (
+            {(isGeminiThread || isClaudeThread || isGPT52Thread) && (
               <div className="mb-2">
                 <div className="flex flex-wrap items-center gap-1.5">
                   {isGeminiThread && (
@@ -1211,6 +1228,24 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                       </span>
                     </button>
                   )}
+                  {isGPT52Thread && (
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={
+                        isUploadingAttachments ||
+                        imageAttachmentCount >=
+                          GPT52_ATTACHMENT_LIMITS.image.maxCount
+                      }
+                      className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] text-zinc-300 hover:bg-white/[0.06] transition-colors"
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      <span>
+                        Images {imageAttachmentCount}/
+                        {GPT52_ATTACHMENT_LIMITS.image.maxCount}
+                      </span>
+                    </button>
+                  )}
                   {isUploadingAttachments && (
                     <span className="text-[10px] text-zinc-500">
                       Uploading...
@@ -1228,6 +1263,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                   {isClaudeThread && (
                     <>{CLAUDE_ATTACHMENT_LIMITS.image.helper}</>
                   )}
+                  {isGPT52Thread && <>{GPT52_ATTACHMENT_LIMITS.image.helper}</>}
                 </p>
                 {attachmentError && (
                   <div className="mt-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">

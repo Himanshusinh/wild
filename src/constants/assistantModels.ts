@@ -13,6 +13,7 @@ export type ChatModeModelId = (typeof CHAT_MODELS)[number]["id"];
 
 export const GEMINI_MODEL_ID: ChatModeModelId = "google/gemini-3.1-pro";
 export const CLAUDE_MODEL_ID: ChatModeModelId = "anthropic/claude-opus-4.6";
+export const GPT52_MODEL_ID: ChatModeModelId = "openai/gpt-5.2";
 
 export const GEMINI_ATTACHMENT_LIMITS = {
   image: {
@@ -57,6 +58,27 @@ export const CLAUDE_ATTACHMENT_LIMITS = {
   },
 } as const;
 
+export const GPT52_ATTACHMENT_LIMITS = {
+  image: {
+    maxCount: 4,
+    maxBytes: 5 * 1024 * 1024,
+    accept: "image/jpeg,image/png,image/gif,image/webp",
+    helper: "Up to 4 images, 5MB each.",
+  },
+  video: {
+    maxCount: 0,
+    maxBytes: 0,
+    accept: "",
+    helper: "Videos not supported.",
+  },
+  audio: {
+    maxCount: 0,
+    maxBytes: 0,
+    accept: "",
+    helper: "Audio not supported.",
+  },
+} as const;
+
 export const GEMINI_DEFAULT_INPUT = {
   audio: null as string | null,
   images: [] as string[],
@@ -74,6 +96,14 @@ export const CLAUDE_DEFAULT_INPUT = {
   max_tokens: 8192,
   system_prompt: null as string | null,
   max_image_resolution: 0.5,
+};
+
+export const GPT52_DEFAULT_INPUT = {
+  image_input: [] as string[],
+  verbosity: "medium" as "low" | "medium" | "high",
+  reasoning_effort: "low" as "none" | "low" | "medium" | "high" | "xhigh",
+  max_completion_tokens: null as number | null,
+  system_prompt: null as string | null,
 };
 
 export function getChatModelLabel(modelId: string): string {
