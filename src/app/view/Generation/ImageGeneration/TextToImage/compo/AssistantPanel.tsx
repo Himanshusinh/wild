@@ -446,13 +446,13 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
       ? GEMINI_ATTACHMENT_LIMITS
       : isGemini25FlashThread
         ? GEMINI25_FLASH_ATTACHMENT_LIMITS
-      : isClaudeThread
-        ? CLAUDE_ATTACHMENT_LIMITS
-        : isGPT52Thread
-          ? GPT52_ATTACHMENT_LIMITS
-          : isDeepSeekThread
-            ? DEEPSEEK_ATTACHMENT_LIMITS
-            : GEMINI_ATTACHMENT_LIMITS;
+        : isClaudeThread
+          ? CLAUDE_ATTACHMENT_LIMITS
+          : isGPT52Thread
+            ? GPT52_ATTACHMENT_LIMITS
+            : isDeepSeekThread
+              ? DEEPSEEK_ATTACHMENT_LIMITS
+              : GEMINI_ATTACHMENT_LIMITS;
     const rule = attachmentLimits[type];
     const nextCount =
       (type === "image"
@@ -595,14 +595,14 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
           : effectiveMode === "chat" &&
               effectiveModelId === GEMINI25_FLASH_MODEL_ID
             ? GEMINI25_FLASH_DEFAULT_INPUT
-          : effectiveMode === "chat" && effectiveModelId === CLAUDE_MODEL_ID
-            ? CLAUDE_DEFAULT_INPUT
-            : effectiveMode === "chat" && effectiveModelId === GPT52_MODEL_ID
-              ? GPT52_DEFAULT_INPUT
-              : effectiveMode === "chat" &&
-                  effectiveModelId === DEEPSEEK_MODEL_ID
-                ? DEEPSEEK_DEFAULT_INPUT
-                : undefined;
+            : effectiveMode === "chat" && effectiveModelId === CLAUDE_MODEL_ID
+              ? CLAUDE_DEFAULT_INPUT
+              : effectiveMode === "chat" && effectiveModelId === GPT52_MODEL_ID
+                ? GPT52_DEFAULT_INPUT
+                : effectiveMode === "chat" &&
+                    effectiveModelId === DEEPSEEK_MODEL_ID
+                  ? DEEPSEEK_DEFAULT_INPUT
+                  : undefined;
       const payload =
         effectiveMode === "chat"
           ? {
@@ -629,31 +629,31 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                           .filter((item) => item.type === "video")
                           .map((item) => item.url),
                       }
-                  : effectiveModelId === GPT52_MODEL_ID
-                    ? {
-                        ...chatModelInput,
-                        image_input: currentAttachments
-                          .filter((item) => item.type === "image")
-                          .map((item) => item.url),
-                      }
-                    : effectiveModelId === DEEPSEEK_MODEL_ID
+                    : effectiveModelId === GPT52_MODEL_ID
                       ? {
                           ...chatModelInput,
-                          prompt: text,
-                        }
-                      : {
-                          ...chatModelInput,
-                          images: currentAttachments
+                          image_input: currentAttachments
                             .filter((item) => item.type === "image")
                             .map((item) => item.url),
-                          videos: currentAttachments
-                            .filter((item) => item.type === "video")
-                            .map((item) => item.url),
-                          audio:
-                            currentAttachments.find(
-                              (item) => item.type === "audio",
-                            )?.url ?? null,
                         }
+                      : effectiveModelId === DEEPSEEK_MODEL_ID
+                        ? {
+                            ...chatModelInput,
+                            prompt: text,
+                          }
+                        : {
+                            ...chatModelInput,
+                            images: currentAttachments
+                              .filter((item) => item.type === "image")
+                              .map((item) => item.url),
+                            videos: currentAttachments
+                              .filter((item) => item.type === "video")
+                              .map((item) => item.url),
+                            audio:
+                              currentAttachments.find(
+                                (item) => item.type === "audio",
+                              )?.url ?? null,
+                          }
                 : undefined,
               threadId: activeThread?.id,
               attachments: currentAttachments,

@@ -13,7 +13,8 @@ export const CHAT_MODELS = [
 export type ChatModeModelId = (typeof CHAT_MODELS)[number]["id"];
 
 export const GEMINI_MODEL_ID: ChatModeModelId = "google/gemini-3.1-pro";
-export const GEMINI25_FLASH_MODEL_ID: ChatModeModelId = "google/gemini-2.5-flash";
+export const GEMINI25_FLASH_MODEL_ID: ChatModeModelId =
+  "google/gemini-2.5-flash";
 export const CLAUDE_MODEL_ID: ChatModeModelId = "anthropic/claude-opus-4.6";
 export const GPT52_MODEL_ID: ChatModeModelId = "openai/gpt-5.2";
 export const DEEPSEEK_MODEL_ID: ChatModeModelId = "deepseek-ai/deepseek-v3.1";
