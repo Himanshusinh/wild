@@ -461,7 +461,7 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
             ref={railRef}
             onWheel={handleRailWheel}
             className={`scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mode === "video" && !isOverflowing ? "justify-start pr-0" : "pr-12"}`}
-            style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
+            style={{ touchAction: "auto", WebkitOverflowScrolling: "touch" }}
           >
             {visibleCards.map((card) => (
               <Link
