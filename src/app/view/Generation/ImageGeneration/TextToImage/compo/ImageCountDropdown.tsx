@@ -10,6 +10,10 @@ const ImageCountDropdown = () => {
   const imageCount = useAppSelector(
     (state: any) => state.generation?.imageCount || 1,
   );
+  const selectedModel = useAppSelector(
+    (state: any) => state.generation?.selectedModel || "",
+  );
+  const maxCount = selectedModel === "google/nano-banana-2" ? 1 : 4;
 
   const handleDecrease = () => {
     if (imageCount > 1) {
@@ -18,7 +22,7 @@ const ImageCountDropdown = () => {
   };
 
   const handleIncrease = () => {
-    if (imageCount < 4) {
+    if (imageCount < maxCount) {
       dispatch(setImageCount(imageCount + 1));
     }
   };
@@ -43,9 +47,9 @@ const ImageCountDropdown = () => {
 
       <button
         onClick={handleIncrease}
-        disabled={imageCount >= 4}
+        disabled={imageCount >= maxCount}
         className={`w-4 h-4 rounded-full flex items-center justify-center transition md:mr-2 mr-0 ${
-          imageCount >= 4
+          imageCount >= maxCount
             ? " text-white cursor-not-allowed"
             : " text-white hover:bg-white/20"
         }`}
