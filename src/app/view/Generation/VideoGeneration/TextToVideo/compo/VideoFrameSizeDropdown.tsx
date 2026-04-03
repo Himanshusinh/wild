@@ -130,7 +130,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           {
             value: "auto",
             label: "Auto",
-            description: "Auto-detect aspect ratio",
+            description: "Auto-detect for single or first-last inputs",
             icon: "auto",
           },
           {

@@ -610,6 +610,16 @@ export const MODEL_MAPPING: ModelMapping[] = [
       duration: [4, 6, 8],
     },
   },
+  {
+    frontendValue: "veo3.1-lite-flf2v-8s",
+    creditModelName: "Veo 3.1 Lite FFLF2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [8],
+    },
+  },
 
   // WAN 2.5 Standard Models
   {
@@ -1268,11 +1278,17 @@ export const buildCreditModelName = (
     options?.duration &&
     options?.resolution
   ) {
-    const d =
-      options.duration === 4 || options.duration === 6 ? options.duration : 8;
     const res = String(options.resolution).toLowerCase().includes("1080")
       ? "1080p"
       : "720p";
+
+    if (mapping.frontendValue.includes("flf2v")) {
+      modelName = `Veo 3.1 Lite FFLF2V 8s ${res}`;
+      return modelName;
+    }
+
+    const d =
+      options.duration === 4 || options.duration === 6 ? options.duration : 8;
     const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
     modelName = `Veo 3.1 Lite ${mode} ${res === "1080p" ? 8 : d}s ${res}`;
   }

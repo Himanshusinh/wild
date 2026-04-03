@@ -586,19 +586,36 @@ const InputBox = (props: InputBoxProps = {}) => {
                 : selectedModel.includes("pixverse")
                   ? pixverseQuality
                   : undefined;
+
+  const hasVeo31LiteFirstFrame = Boolean(uploadedImages[0] || references[0]);
+  const hasVeo31LiteLastFrame = Boolean(
+    uploadedImages[1] || lastFrameImage || references[1],
+  );
+
+  const hasVeo31LiteFirstLastFrames =
+    selectedModel.includes("veo3.1-lite") &&
+    hasVeo31LiteFirstFrame &&
+    hasVeo31LiteLastFrame;
+
+  const creditsModel = hasVeo31LiteFirstLastFrames
+    ? "veo3.1-lite-flf2v-8s"
+    : selectedModel;
+
   const {
     validateAndReserveCredits,
     handleGenerationSuccess,
     handleGenerationFailure,
     creditBalance,
     clearCreditsError,
-  } = useGenerationCredits("video", selectedModel, {
+  } = useGenerationCredits("video", creditsModel, {
     resolution: creditsResolution,
-    duration: selectedModel.includes("MiniMax")
-      ? selectedMiniMaxDuration
-      : selectedModel === "wan-2.2-animate-replace"
-        ? uploadedVideoDurationSec || 0
-        : duration,
+    duration: hasVeo31LiteFirstLastFrames
+      ? 8
+      : selectedModel.includes("MiniMax")
+        ? selectedMiniMaxDuration
+        : selectedModel === "wan-2.2-animate-replace"
+          ? uploadedVideoDurationSec || 0
+          : duration,
   });
 
   const loadVideoDurationSeconds = useCallback(
@@ -651,6 +668,13 @@ const InputBox = (props: InputBoxProps = {}) => {
     [],
   );
 
+  // Veo 3.1 Lite first-last mode only supports 8 seconds.
+  useEffect(() => {
+    if (hasVeo31LiteFirstLastFrames && duration !== 8) {
+      setDuration(8);
+    }
+  }, [hasVeo31LiteFirstLastFrames, duration, setDuration]);
+
   // Live credit preview for current selections
   const liveCreditCost = useMemo(() => {
     try {
@@ -665,6 +689,23 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Normalize Kling 2.1/2.1 Master to i2v variant when in image_to_video mode
       // to ensure credit lookup recognizes the model and avoids warnings.
       const normalizedModelForCredits = (() => {
+        if (
+          generationMode === "image_to_video" &&
+          selectedModel.includes("veo3.1-lite")
+        ) {
+          const firstFrame = uploadedImages[0] || references[0];
+          const lastFrame =
+            uploadedImages[1] || lastFrameImage || references[1] || null;
+
+          if (firstFrame && lastFrame) {
+            return "veo3.1-lite-flf2v-8s";
+          }
+
+          if ((firstFrame || lastFrame) && /-t2v$/.test(selectedModel)) {
+            return selectedModel.replace(/-t2v$/, "-i2v");
+          }
+        }
+
         if (
           generationMode === "image_to_video" &&
           selectedModel.startsWith("kling-") &&
@@ -701,6 +742,9 @@ const InputBox = (props: InputBoxProps = {}) => {
     selectedMiniMaxDuration,
     generationMode,
     generateAudio,
+    uploadedImages,
+    references,
+    lastFrameImage,
   ]);
 
   // Memoize current model capabilities to prevent recalculations during render
@@ -731,7 +775,9 @@ const InputBox = (props: InputBoxProps = {}) => {
       return "video_to_video";
     } else if (
       supportsImageToVideo &&
-      (uploadedImages.length > 0 || references.length > 0)
+      (uploadedImages.length > 0 ||
+        references.length > 0 ||
+        (selectedModel.includes("veo3.1-lite") && !!lastFrameImage))
     ) {
       return "image_to_video";
     } else if (supportsTextToVideo) {
@@ -746,9 +792,11 @@ const InputBox = (props: InputBoxProps = {}) => {
     supportsTextToVideo,
     supportsImageToVideo,
     supportsVideoToVideo,
+    uploadedVideo,
     uploadedImages.length,
     references.length,
-    uploadedVideo,
+    selectedModel,
+    lastFrameImage,
   ]);
 
   // Auto-determine generation mode based on model selection only (not content changes to prevent loops)
@@ -3305,7 +3353,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (
       caps.requiresImage &&
       uploadedImages.length === 0 &&
-      references.length === 0
+      references.length === 0 &&
+      !(selectedModel.includes("veo3.1-lite") && !!lastFrameImage)
     ) {
       if (selectedModel === "S2V-01") {
         // Show toast with custom styling for S2V-01
@@ -3359,7 +3408,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         );
       } else if (
         selectedModel.includes("veo3.1-lite") &&
-        selectedModel.includes("i2v")
+        selectedModel.includes("i2v") &&
+        !lastFrameImage
       ) {
         toast.error(
           "An input image is required to use Veo 3.1 Lite image-to-video model. Please upload an image.",
@@ -3537,7 +3587,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       // If only text is provided and model supports T2V, use T2V
       let actualGenerationMode = generationMode;
 
-      const hasImage = uploadedImages.length > 0 || references.length > 0;
+      const hasImage =
+        uploadedImages.length > 0 || references.length > 0 || !!lastFrameImage;
       const hasText = prompt.trim().length > 0;
 
       // Smart mode detection:
@@ -4142,36 +4193,61 @@ const InputBox = (props: InputBoxProps = {}) => {
           selectedModel.includes("veo3.1-lite") &&
           (selectedModel.includes("i2v") ||
             uploadedImages.length > 0 ||
-            references.length > 0)
+            references.length > 0 ||
+            !!lastFrameImage)
         ) {
-          if (uploadedImages.length === 0 && references.length === 0) {
+          const firstFrame = uploadedImages[0] || references[0] || null;
+          const lastFrame =
+            uploadedImages[1] || lastFrameImage || references[1] || null;
+          const fallbackFrame = firstFrame || lastFrame;
+
+          if (!fallbackFrame) {
             setError("Veo 3.1 Lite image-to-video requires an input image");
             return;
           }
+
           const apiPrompt = getApiPrompt(prompt);
           const modelDuration =
             duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
-          const firstFrame = uploadedImages[0] || references[0];
-          requestBody = {
-            prompt: apiPrompt,
-            originalPrompt: prompt,
-            image_url: firstFrame,
-            aspect_ratio:
-              frameSize === "16:9"
-                ? "16:9"
-                : frameSize === "9:16"
-                  ? "9:16"
-                  : "auto",
-            duration: modelDuration,
-            resolution:
-              selectedQuality === "1080p" && modelDuration === "8s"
-                ? "1080p"
-                : "720p",
-            auto_fix: true,
-            isPublic,
-          };
-          generationType = "image-to-video";
-          apiEndpoint = "/api/fal/veo3_1/lite/image-to-video/submit";
+
+          const normalizedAspectRatio =
+            frameSize === "16:9"
+              ? "16:9"
+              : frameSize === "9:16"
+                ? "9:16"
+                : "auto";
+          const normalizedResolution =
+            selectedQuality === "1080p" && modelDuration === "8s"
+              ? "1080p"
+              : "720p";
+
+          if (firstFrame && lastFrame) {
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              first_frame_url: firstFrame,
+              last_frame_url: lastFrame,
+              aspect_ratio: normalizedAspectRatio,
+              resolution: normalizedResolution,
+              auto_fix: true,
+              isPublic,
+            };
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/veo3_1/lite/first-last/submit";
+          } else {
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              image_url: fallbackFrame,
+              aspect_ratio: normalizedAspectRatio,
+              duration: modelDuration,
+              resolution: normalizedResolution,
+              auto_fix: true,
+              isPublic,
+            };
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/veo3_1/lite/image-to-video/submit";
+          }
         } else if (
           selectedModel.includes("veo3.1") &&
           (selectedModel.includes("i2v") ||
@@ -8235,6 +8311,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                           onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
+                          hasFirstFrame={hasVeo31LiteFirstFrame}
+                          hasLastFrame={hasVeo31LiteLastFrame}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
@@ -8535,6 +8613,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                           onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
+                          hasFirstFrame={hasVeo31LiteFirstFrame}
+                          hasLastFrame={hasVeo31LiteLastFrame}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);

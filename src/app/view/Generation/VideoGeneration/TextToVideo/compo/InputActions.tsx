@@ -218,8 +218,7 @@ const InputActions: React.FC<InputActionsProps> = ({
         {/* Arrow (First -> Last Frame) */}
         {((selectedModel === "MiniMax-Hailuo-02" &&
           (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-          (selectedModel.includes("veo3.1") &&
-            !selectedModel.includes("veo3.1-lite")) ||
+          selectedModel.includes("veo3.1") ||
           selectedModel === "kling-o1" ||
           selectedModel.startsWith("ltx-2.3-fast") ||
           selectedModel.startsWith("ltx-2.3-pro") ||
@@ -241,8 +240,7 @@ const InputActions: React.FC<InputActionsProps> = ({
         {/* Last Frame Upload */}
         {((selectedModel === "MiniMax-Hailuo-02" &&
           (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-          (selectedModel.includes("veo3.1") &&
-            !selectedModel.includes("veo3.1-lite")) ||
+          selectedModel.includes("veo3.1") ||
           selectedModel === "kling-o1" ||
           selectedModel.startsWith("ltx-2.3-fast") ||
           selectedModel.startsWith("ltx-2.3-pro") ||

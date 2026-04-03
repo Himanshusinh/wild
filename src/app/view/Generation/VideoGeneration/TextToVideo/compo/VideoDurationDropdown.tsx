@@ -10,6 +10,8 @@ interface VideoDurationDropdownProps {
   onCloseThisDropdown?: () => void;
   selectedModel?: string;
   generationMode?: string;
+  hasFirstFrame?: boolean;
+  hasLastFrame?: boolean;
 }
 
 const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
@@ -19,6 +21,8 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
   onCloseThisDropdown,
   selectedModel,
   generationMode,
+  hasFirstFrame,
+  hasLastFrame,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -80,6 +84,11 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
 
   // Get available durations based on model and generation mode
   const getAvailableDurations = () => {
+    const isVeo31LiteFirstLastMode =
+      selectedModel?.includes("veo3.1-lite") &&
+      Boolean(hasFirstFrame) &&
+      Boolean(hasLastFrame);
+
     if (selectedModel?.includes("MiniMax")) {
       // MiniMax-Hailuo-02 supports only 6s and 10s
       return [
@@ -163,10 +172,24 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       ];
     }
     if (selectedModel?.includes("veo3.1-lite")) {
+      if (isVeo31LiteFirstLastMode) {
+        return [
+          {
+            value: 8,
+            label: "8 seconds",
+            description: "First-last mode",
+          },
+        ];
+      }
+
       return [
-        { value: 4, label: "4 seconds", description: "Quick video" },
-        { value: 6, label: "6 seconds", description: "Short video" },
-        { value: 8, label: "8 seconds", description: "Standard length" },
+        { value: 4, label: "4 seconds", description: "Single-frame I2V" },
+        { value: 6, label: "6 seconds", description: "Single-frame I2V" },
+        {
+          value: 8,
+          label: "8 seconds",
+          description: "Single-frame I2V or first-last mode",
+        },
       ];
     }
     if (selectedModel?.includes("veo3.1")) {

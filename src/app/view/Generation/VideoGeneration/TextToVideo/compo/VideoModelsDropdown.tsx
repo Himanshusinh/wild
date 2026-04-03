@@ -134,7 +134,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           value: "veo3.1-lite-t2v-8s",
           label: "Veo 3.1 Lite",
           description:
-            "Lower-cost Veo, 4s/6s/8s at 720p, 8s at 1080p, audio always on",
+            "Lower-cost Veo, T2V/I2V + first-last frames, 4s/6s/8s at 720p, 8s at 1080p",
           provider: "fal",
         },
         {
@@ -194,7 +194,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         value: "veo3.1-lite-t2v-8s",
         label: "Veo 3.1 Lite",
         description:
-          "Lower-cost Veo, 4s/6s/8s at 720p, 8s at 1080p, audio always on",
+          "Lower-cost Veo, T2V/I2V + first-last frames, 4s/6s/8s at 720p, 8s at 1080p",
         provider: "fal",
       },
       {

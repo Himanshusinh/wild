@@ -163,6 +163,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "veo3.1-lite-i2v-6s-720p": 660,
   "veo3.1-lite-i2v-8s-720p": 860,
   "veo3.1-lite-i2v-8s-1080p": 1340,
+  "veo3.1-lite-flf2v-8s-720p": 820,
+  "veo3.1-lite-flf2v-8s-1080p": 1300,
 
   // WAN 2.5 Standard T2V (updated per provided sheet)
   "wan-2.5-t2v-5s-480p": 480,
@@ -393,6 +395,20 @@ export const getCreditsForModel = (
   // Handle veo3.1 models (check before veo3)
   if (modelValue.includes("veo3.1")) {
     if (modelValue.includes("veo3.1-lite")) {
+      if (
+        modelValue.includes("flf2v") ||
+        modelValue.includes("first-last") ||
+        modelValue.includes("first_last")
+      ) {
+        const res = String(resolution || "720p")
+          .toLowerCase()
+          .includes("1080")
+          ? "1080p"
+          : "720p";
+        const key = `veo3.1-lite-flf2v-8s-${res}`;
+        return MODEL_CREDITS_MAPPING[key] || null;
+      }
+
       const isI2V = modelValue.includes("i2v");
       const mode = isI2V ? "i2v" : "t2v";
       const res = String(resolution || "720p")

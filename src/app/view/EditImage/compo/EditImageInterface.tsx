@@ -7394,7 +7394,7 @@ const EditImageInterface: React.FC = () => {
                     {inputs[selectedFeature] ? (
                       // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
                       <div
-                        className={`w-full h-full relative ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
+                        className={`w-full h-full relative min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
                       >
                         {selectedFeature === "resize" && (
                           <div className="absolute inset-0 z-10">
@@ -7553,7 +7553,7 @@ const EditImageInterface: React.FC = () => {
                           // Zoom mode (all features)
                           <div
                             ref={imageContainerRef}
-                            className={`w-full h-full relative cursor-move select-none ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
+                            className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
@@ -7651,7 +7651,7 @@ const EditImageInterface: React.FC = () => {
                       // Regular image viewer with zoom controls
                       <div
                         ref={imageContainerRef}
-                        className={`w-full h-full relative cursor-move select-none ${selectedFeature === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]"}`}
+                        className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
