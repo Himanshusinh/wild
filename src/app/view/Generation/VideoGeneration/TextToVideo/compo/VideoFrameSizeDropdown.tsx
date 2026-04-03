@@ -26,6 +26,8 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isKlingV3ProI2V =
+    selectedModel === "kling-v3-pro" && generationMode === "image_to_video";
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -408,6 +410,16 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         },
       ];
     } else if (selectedModel?.startsWith("kling-")) {
+      if (isKlingV3ProI2V) {
+        return [
+          {
+            value: "",
+            label: "Input Image",
+            description: "Use uploaded image aspect ratio",
+            icon: "auto",
+          },
+        ];
+      }
       // Kling models use aspect ratios
       return [
         {
@@ -597,6 +609,12 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   // Auto-adjust frame size if current selection is not available for the model
   useEffect(() => {
     const availableSizes = getAvailableFrameSizes();
+    if (isKlingV3ProI2V) {
+      if (selectedFrameSize !== "") {
+        onFrameSizeChange("");
+      }
+      return;
+    }
     if (!availableSizes.find((size) => size.value === selectedFrameSize)) {
       onFrameSizeChange(availableSizes[0].value);
     }
@@ -606,6 +624,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
     onFrameSizeChange,
     generationMode,
     miniMaxDuration,
+    isKlingV3ProI2V,
   ]);
 
   return (
@@ -622,7 +641,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5`}
       >
         <Crop className="w-4 h-4 mr-1" />
-        {selectedFrameSizeInfo?.label || selectedFrameSize}
+        {selectedFrameSizeInfo?.label || selectedFrameSize || "Aspect Ratio"}
         <ChevronUp
           className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
@@ -674,6 +693,15 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
                 {size.icon === "ultrawide" && (
                   <span
                     className={`inline-block w-5 h-2 border ${
+                      selectedFrameSize === size.value
+                        ? "border-black"
+                        : "border-white/60"
+                    }`}
+                  ></span>
+                )}
+                {size.icon === "auto" && (
+                  <span
+                    className={`inline-block w-4 h-4 rounded-full border ${
                       selectedFrameSize === size.value
                         ? "border-black"
                         : "border-white/60"
