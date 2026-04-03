@@ -1976,7 +1976,7 @@ const EditVideoInterface: React.FC = () => {
         <div className="w-full h-full relative flex items-center justify-center">
           <div
             ref={imageContainerRef}
-            className="w-full h-full relative cursor-move select-none flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[40rem]"
+            className="w-full h-full relative cursor-move select-none flex items-center justify-center min-h-[24rem] md:min-h-[35rem] lg:h-[45rem]"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

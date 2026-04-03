@@ -8740,11 +8740,15 @@ const EditImageInterface: React.FC = () => {
                                 d="M12 5v14"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                              />
+                              <path
                                 d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                               />
                               <circle
                                 cx="12"
-                                cy="13" 
+                                cy="13"
                                 r="3"
                                 stroke="currentColor"
                                 strokeWidth="1.5"
