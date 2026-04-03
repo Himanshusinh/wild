@@ -6537,7 +6537,7 @@ const InputBox = () => {
             prompt: `${promptAdjusted} [Style: ${style}]`,
             model: "google/nano-banana-2",
             aspect_ratio: frameSize,
-            num_images: imageCount,
+            num_images: 1,
             resolution: nanoBananaResolution,
             google_search: nanoBananaGoogleSearch,
             image_search: nanoBananaImageSearch,

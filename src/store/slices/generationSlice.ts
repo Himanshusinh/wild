@@ -442,9 +442,16 @@ const generationSlice = createSlice({
     },
     setSelectedModel: (state, action: PayloadAction<string>) => {
       state.selectedModel = action.payload;
+      if (action.payload === 'google/nano-banana-2') {
+        state.imageCount = 1;
+      }
     },
     setImageCount: (state, action: PayloadAction<number>) => {
-      state.imageCount = action.payload;
+      const requested = Math.max(1, Math.min(4, Number(action.payload) || 1));
+      state.imageCount =
+        state.selectedModel === 'google/nano-banana-2'
+          ? 1
+          : requested;
     },
     setFrameSize: (state, action: PayloadAction<string>) => {
       state.frameSize = action.payload;
