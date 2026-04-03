@@ -1427,6 +1427,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Keep audio if switching between WAN models
         } else if (newModel.startsWith("kling-")) {
           setDuration(5);
+          if (newModel === "kling-v3-pro") {
+            setFrameSize("");
+          }
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
