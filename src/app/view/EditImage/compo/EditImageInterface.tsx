@@ -1980,8 +1980,8 @@ const EditImageInterface: React.FC = () => {
   const featurePreviewGif: Record<EditFeature, string> = {
     upscale: "/editimage/upscale_banner.jpg",
     "remove-bg": "/editimage/RemoveBG_banner.jpg",
-    fill: "/editimage/replace_banner.jpg",
-    erase: "/editimage/replace_banner.jpg",
+    fill: eraseActionMode === "erase" ? "/editimage/erase_banner.jpg" : "/editimage/replace_banner.jpg",
+    erase: "/editimage/erase_banner.jpg",
     expand: "/editimage/resize_banner.jpg",
     resize: "/editimage/resize_banner.jpg",
     vectorize: "/editimage/vector_banner.jpg",
@@ -1991,7 +1991,7 @@ const EditImageInterface: React.FC = () => {
   const featureDisplayName: Record<EditFeature, string> = {
     upscale: "Upscale",
     "remove-bg": "Remove BG",
-    fill: "Replace",
+    fill: eraseActionMode === "erase" ? "Erase" : "Replace",
     erase: "Erase",
     expand: "Expand",
     resize: "Expand",
@@ -5053,7 +5053,7 @@ const EditImageInterface: React.FC = () => {
                 <img
                   src={featurePreviewGif[selectedFeature]}
                   alt="Feature preview"
-                  className="w-full h-full object-cover opacity-90"
+                  className="w-full h-full object-contain opacity-90"
                 />
                 <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
                   {featureDisplayName[selectedFeature]}
@@ -5734,7 +5734,7 @@ const EditImageInterface: React.FC = () => {
                         Chat to Edit
                       </label>
                       <div
-                        className={`bg-white/3 border border-white/12 rounded-xl p-2.5 flex flex-col flex-1 min-h-0 ${liveResolutionOptions.length > 0 ? "h-[16rem] md:h-full" : "h-[20rem] md:h-full"}`}
+                        className={` border border-white/12 rounded-xl p-2.5 flex flex-col flex-1 min-h-0 ${liveResolutionOptions.length > 0 ? "h-[16rem] md:h-full" : "h-[20rem] md:h-full"}`}
                       >
                         <div
                           ref={(el) => {
@@ -5743,7 +5743,7 @@ const EditImageInterface: React.FC = () => {
                           className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar"
                         >
                           {liveChatMessages.length === 0 && (
-                            <div className="text-[13px] text-white/65">
+                            <div className="text-[13px] text-white/45">
                               Start by uploading an image on the right, then
                               tell me what to change.
                             </div>

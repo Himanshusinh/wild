@@ -188,7 +188,9 @@ const GifLoader: React.FC<{
 };
 
 const getInputImageLimitForModel = (model?: string): number => {
-  const normalizedModel = String(model || "").trim().toLowerCase();
+  const normalizedModel = String(model || "")
+    .trim()
+    .toLowerCase();
   if (
     normalizedModel === "google/nano-banana-2" ||
     normalizedModel === "google/nano-banana-pro" ||
@@ -8014,7 +8016,7 @@ const InputBox = () => {
       <div
         ref={scrollRootRef}
         className={`inset-0 pl-0 md:pr-6 overflow-y-auto no-scrollbar z-0 transition-all duration-500 ${
-          isAssistantOpen ? "md:mr-[350px] assistant-open" : ""
+          isAssistantOpen ? "assistant-open" : ""
         }`}
       >
         <div className="md:py-0  py-0 md:pl-0  ">
@@ -9176,12 +9178,11 @@ const InputBox = () => {
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
           <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] px-2 py-3">
             <div
-              className={`w-full ${([
-                ...selectedCharacters,
-                ...uploadedImages,
-              ].length > 14
-                ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-end"
-                : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-end")} py-1`}
+              className={`w-full ${
+                [...selectedCharacters, ...uploadedImages].length > 14
+                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-end"
+                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-end"
+              } py-1`}
             >
               {[
                 ...selectedCharacters.map((character: any) => ({
@@ -9200,7 +9201,10 @@ const InputBox = () => {
                 .map((item: any) => {
                   if (item.type === "character") {
                     return (
-                      <div key={item.key} className="relative group flex-shrink-0">
+                      <div
+                        key={item.key}
+                        className="relative group flex-shrink-0"
+                      >
                         <div
                           className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
                           title={`Character: ${item.data.name}`}
@@ -9232,7 +9236,10 @@ const InputBox = () => {
                   }
 
                   return (
-                    <div key={item.key} className="relative group flex-shrink-0">
+                    <div
+                      key={item.key}
+                      className="relative group flex-shrink-0"
+                    >
                       <div
                         className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
                         onClick={() => {
@@ -9338,12 +9345,14 @@ const InputBox = () => {
                   }
 
                   if (newUrls.length > 0) {
-                    const inputImageLimit = getInputImageLimitForModel(
-                      selectedModel,
-                    );
+                    const inputImageLimit =
+                      getInputImageLimitForModel(selectedModel);
                     dispatch(
                       setUploadedImages(
-                        [...uploadedImages, ...newUrls].slice(0, inputImageLimit),
+                        [...uploadedImages, ...newUrls].slice(
+                          0,
+                          inputImageLimit,
+                        ),
                       ),
                     );
                     toast.success(`Added ${newUrls.length} image(s)`);
@@ -9361,9 +9370,8 @@ const InputBox = () => {
                 (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) ||
                   url.startsWith("data:image/"))
               ) {
-                const inputImageLimit = getInputImageLimitForModel(
-                  selectedModel,
-                );
+                const inputImageLimit =
+                  getInputImageLimitForModel(selectedModel);
                 dispatch(
                   setUploadedImages(
                     [...uploadedImages, url].slice(0, inputImageLimit),
@@ -9534,9 +9542,8 @@ const InputBox = () => {
                           }
                         }
                         if (newUrls.length > 0) {
-                          const inputImageLimit = getInputImageLimitForModel(
-                            selectedModel,
-                          );
+                          const inputImageLimit =
+                            getInputImageLimitForModel(selectedModel);
                           dispatch(
                             setUploadedImages(
                               [...uploadedImages, ...newUrls].slice(
