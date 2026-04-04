@@ -53,6 +53,20 @@ interface GenerationState {
   nanoBananaImageSearch: boolean;
 }
 
+const getMaxOutputImageCountForModel = (model?: string): number => {
+  const normalizedModel = String(model || '').trim().toLowerCase();
+  if (normalizedModel === 'google/nano-banana-2') return 1;
+  if (
+    normalizedModel === 'seedream-4.5' ||
+    normalizedModel === 'bytedance/seedream-4.5' ||
+    normalizedModel === 'seedream-5-lite' ||
+    normalizedModel === 'bytedance/seedream-5-lite'
+  ) {
+    return 15;
+  }
+  return 4;
+};
+
 const initialState: GenerationState = {
   prompt: '',
   selectedModel: 'new-turbo-model', // Default to Infinite (z-image-turbo) - free unlimited
@@ -113,8 +127,10 @@ export const generateImages = createAsyncThunk(
     { rejectWithValue, getState }
   ) => {
     try {
-      // Enforce app-wide max of 4 images
-      const requestedCount = Math.min(imageCount, 4);
+      const requestedCount = Math.min(
+        imageCount,
+        getMaxOutputImageCountForModel(model),
+      );
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const api = getApiClient();
 
@@ -442,16 +458,13 @@ const generationSlice = createSlice({
     },
     setSelectedModel: (state, action: PayloadAction<string>) => {
       state.selectedModel = action.payload;
-      if (action.payload === 'google/nano-banana-2') {
-        state.imageCount = 1;
-      }
+      const maxAllowed = getMaxOutputImageCountForModel(action.payload);
+      state.imageCount = Math.min(Math.max(1, state.imageCount || 1), maxAllowed);
     },
     setImageCount: (state, action: PayloadAction<number>) => {
-      const requested = Math.max(1, Math.min(4, Number(action.payload) || 1));
-      state.imageCount =
-        state.selectedModel === 'google/nano-banana-2'
-          ? 1
-          : requested;
+      const requested = Math.max(1, Number(action.payload) || 1);
+      const maxAllowed = getMaxOutputImageCountForModel(state.selectedModel);
+      state.imageCount = Math.min(requested, maxAllowed);
     },
     setFrameSize: (state, action: PayloadAction<string>) => {
       state.frameSize = action.payload;

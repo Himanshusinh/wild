@@ -111,7 +111,6 @@ const ModelsDropdown = ({
     // { name: "P-Image", value: "prunaai/p-image" },
 
     // { name: "Qwen Image 2511", value: "qwen-image-2511" },
-    { name: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
     // { name: "Qwen Image  2512", value: "qwen-image-edit-2512" },
     // TODO: Update model name and value with actual model identifier
     // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
@@ -215,7 +214,6 @@ const ModelsDropdown = ({
         m.value === "qwen/qwen-image-2" ||
         m.value === "qwen/qwen-image-2-pro" ||
         m.value === "prunaai/p-image" ||
-        m.value === "qwen-image-edit-2511" ||
         m.value === "qwen-image-edit-2512" ||
         m.value === "openai/gpt-image-1.5",
     );
@@ -292,9 +290,9 @@ const ModelsDropdown = ({
       const preferred =
         selectedModel === "qwen-image-2512"
           ? "qwen-image-edit-2512"
-          : "qwen-image-edit-2511";
+          : "gemini-25-flash-image";
       const exists = filteredModels.find((m) => m.value === preferred);
-      dispatch(setSelectedModel(exists?.value || preferred));
+      dispatch(setSelectedModel(exists?.value || "gemini-25-flash-image"));
       return;
     }
     // If z-image-turbo or other unsupported models are selected when images are uploaded, switch to nano banana
@@ -424,7 +422,6 @@ const ModelsDropdown = ({
               "google/nano-banana-pro",
               "google/nano-banana-2",
               "gemini-25-flash-image", // Google Nano Banana
-              "qwen-image-edit-2511",
               "qwen-image-edit-2512",
               "z-image-turbo",
               "flux-kontext-max",
