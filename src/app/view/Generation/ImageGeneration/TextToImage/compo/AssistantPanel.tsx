@@ -781,13 +781,13 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
           </div>
         </div>
 
-        <div className="mt-4 flex-1 min-h-0">
+        <div className="mt-4 flex-1 min-h-0 flex flex-col">
           {!isThreadRailCollapsed && (
-            <p className="mb-2 px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+            <p className="mb-2 px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500 shrink-0">
               Chats
             </p>
           )}
-          <div className="space-y-2 overflow-y-auto pr-1 no-scrollbar">
+          <div className="space-y-2 overflow-y-auto pr-1 no-scrollbar flex-1 min-h-0">
             {isThreadsLoading && threads.length === 0 ? (
               <div
                 className={`rounded-2xl border border-white/8 bg-white/[0.03] text-[11px] text-zinc-500 ${isThreadRailCollapsed ? "p-2 text-center" : "p-3"}`}
