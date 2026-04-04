@@ -187,6 +187,22 @@ const GifLoader: React.FC<{
   );
 };
 
+const getInputImageLimitForModel = (model?: string): number => {
+  const normalizedModel = String(model || "").trim().toLowerCase();
+  if (
+    normalizedModel === "google/nano-banana-2" ||
+    normalizedModel === "google/nano-banana-pro" ||
+    normalizedModel === "nano-banana-pro" ||
+    normalizedModel === "seedream-4.5" ||
+    normalizedModel === "bytedance/seedream-4.5" ||
+    normalizedModel === "seedream-5-lite" ||
+    normalizedModel === "bytedance/seedream-5-lite"
+  ) {
+    return 14;
+  }
+  return 10;
+};
+
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -585,8 +601,10 @@ const InputBox = () => {
       }
 
       if (collectedUrls.length > 0) {
-        // Cap to first 10 uploads to avoid overloading the UI
-        dispatch(setUploadedImages(collectedUrls.slice(0, 10) as any));
+        const inputImageLimit = getInputImageLimitForModel(selectedModel);
+        dispatch(
+          setUploadedImages(collectedUrls.slice(0, inputImageLimit) as any),
+        );
       }
 
       const promptToApply = prm || studioDraft?.prompt;
@@ -4445,7 +4463,10 @@ const InputBox = () => {
             getCombinedUploadedImages(),
             selectedCharacters,
           );
-          const combinedImages = getCombinedUploadedImages();
+          const combinedImages = getCombinedUploadedImages().slice(
+            0,
+            getInputImageLimitForModel(selectedModel),
+          );
           const result = await dispatch(
             falGenerate({
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -4747,7 +4768,10 @@ const InputBox = () => {
             getCombinedUploadedImages(),
             selectedCharacters,
           );
-          const combinedImages = getCombinedUploadedImages();
+          const combinedImages = getCombinedUploadedImages().slice(
+            0,
+            getInputImageLimitForModel(selectedModel),
+          );
           const result = await dispatch(
             falGenerate({
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -5045,7 +5069,10 @@ const InputBox = () => {
             getCombinedUploadedImages(),
             selectedCharacters,
           );
-          const combinedImages = getCombinedUploadedImages();
+          const combinedImages = getCombinedUploadedImages().slice(
+            0,
+            getInputImageLimitForModel(selectedModel),
+          );
           const result = await dispatch(
             falGenerate({
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -5484,7 +5511,10 @@ const InputBox = () => {
             getCombinedUploadedImages(),
             selectedCharacters,
           );
-          const combinedImages = getCombinedUploadedImages();
+          const combinedImages = getCombinedUploadedImages().slice(
+            0,
+            getInputImageLimitForModel(selectedModel),
+          );
 
           // Map frame size to Seedream 4.5 enum values (square_hd, portrait_4_3, landscape_16_9, etc.)
           const frameSizeToEnum: Record<string, string> = {
@@ -9043,8 +9073,8 @@ const InputBox = () => {
       {/* Mobile-only: Selected images/characters grid above input box */}
       {!isInlineEditImagePage &&
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-          <div className="md:hidden fixed bottom-[200px] left-1/2 -translate-x-1/2 w-[97%] max-w-[97%] z-[49] px-2 pb-2">
-            <div className="grid grid-cols-5 gap-1 max-h-[140px] overflow-y-auto">
+          <div className="md:hidden fixed bottom-[172px] left-1/2 -translate-x-1/2 w-[96%] max-w-[96%] z-[49] px-2 pb-1">
+            <div className="grid grid-cols-5 gap-1 max-h-[100vh] overflow-y-auto overflow-x-hidden">
               {/* Combine characters and images for display */}
               {[
                 ...selectedCharacters.map((char: any, idx: number) => ({
@@ -9058,7 +9088,7 @@ const InputBox = () => {
                   index: idx,
                 })),
               ]
-                .slice(0, 10)
+                .slice(0, getInputImageLimitForModel(selectedModel))
                 .map((item: any) => {
                   if (item.type === "character") {
                     return (
@@ -9144,82 +9174,104 @@ const InputBox = () => {
       {/* Desktop-only: Selected images/characters single-row above input box */}
       {!isInlineEditImagePage &&
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-          <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] px-2 py-4 overflow-x-auto no-scrollbar justify-end">
-            <div className="flex flex-row gap-3 py-1">
-              {selectedCharacters.map((character: any) => (
-                <div
-                  key={character.id}
-                  className="relative group flex-shrink-0"
-                >
-                  <div
-                    className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
-                    title={`Character: ${character.name}`}
-                  >
-                    <img
-                      src={character.frontImageUrl}
-                      alt={character.name}
-                      decoding="async"
-                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                    />
-                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                        C
+          <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] px-2 py-3">
+            <div
+              className={`w-full ${([
+                ...selectedCharacters,
+                ...uploadedImages,
+              ].length > 14
+                ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-start"
+                : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-start")} py-1`}
+            >
+              {[
+                ...selectedCharacters.map((character: any) => ({
+                  type: "character",
+                  data: character,
+                  key: `char-${character.id}`,
+                })),
+                ...uploadedImages.map((u: string, i: number) => ({
+                  type: "image",
+                  data: u,
+                  index: i,
+                  key: `img-${i}`,
+                })),
+              ]
+                .slice(0, getInputImageLimitForModel(selectedModel))
+                .map((item: any) => {
+                  if (item.type === "character") {
+                    return (
+                      <div key={item.key} className="relative group flex-shrink-0">
+                        <div
+                          className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
+                          title={`Character: ${item.data.name}`}
+                        >
+                          <img
+                            src={item.data.frontImageUrl}
+                            alt={item.data.name}
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                          />
+                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                              C
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          aria-label="Remove character"
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch(removeSelectedCharacter(item.data.id));
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                    </div>
-                  </div>
-                  <button
-                    aria-label="Remove character"
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dispatch(removeSelectedCharacter(character.id));
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    );
+                  }
 
-              {uploadedImages.map((u: string, i: number) => (
-                <div key={i} className="relative group flex-shrink-0">
-                  <div
-                    className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
-                    onClick={() => {
-                      setAssetViewer({
-                        isOpen: true,
-                        assetUrl: u,
-                        assetType: "image",
-                        title: `Uploaded Image ${i + 1}`,
-                      });
-                    }}
-                  >
-                    <img
-                      src={u}
-                      alt=""
-                      decoding="async"
-                      className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                    />
-                    <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                      <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                        {i + 1}
+                  return (
+                    <div key={item.key} className="relative group flex-shrink-0">
+                      <div
+                        className="w-14 h-14 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40 hover:scale-105 transition-transform"
+                        onClick={() => {
+                          setAssetViewer({
+                            isOpen: true,
+                            assetUrl: item.data,
+                            assetType: "image",
+                            title: `Uploaded Image ${item.index + 1}`,
+                          });
+                        }}
+                      >
+                        <img
+                          src={item.data}
+                          alt=""
+                          decoding="async"
+                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                        />
+                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                            {item.index + 1}
+                          </div>
+                        </div>
                       </div>
+                      <button
+                        aria-label="Remove image"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = uploadedImages.filter(
+                            (_: string, idx: number) => idx !== item.index,
+                          );
+                          dispatch(setUploadedImages(next));
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    aria-label="Remove image"
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const next = uploadedImages.filter(
-                        (_: string, idx: number) => idx !== i,
-                      );
-                      dispatch(setUploadedImages(next));
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                  );
+                })}
             </div>
           </div>
         )}
@@ -9286,9 +9338,12 @@ const InputBox = () => {
                   }
 
                   if (newUrls.length > 0) {
+                    const inputImageLimit = getInputImageLimitForModel(
+                      selectedModel,
+                    );
                     dispatch(
                       setUploadedImages(
-                        [...uploadedImages, ...newUrls].slice(0, 10),
+                        [...uploadedImages, ...newUrls].slice(0, inputImageLimit),
                       ),
                     );
                     toast.success(`Added ${newUrls.length} image(s)`);
@@ -9306,8 +9361,13 @@ const InputBox = () => {
                 (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) ||
                   url.startsWith("data:image/"))
               ) {
+                const inputImageLimit = getInputImageLimitForModel(
+                  selectedModel,
+                );
                 dispatch(
-                  setUploadedImages([...uploadedImages, url].slice(0, 10)),
+                  setUploadedImages(
+                    [...uploadedImages, url].slice(0, inputImageLimit),
+                  ),
                 );
                 toast.success("Image added");
               }
@@ -9474,9 +9534,15 @@ const InputBox = () => {
                           }
                         }
                         if (newUrls.length > 0) {
+                          const inputImageLimit = getInputImageLimitForModel(
+                            selectedModel,
+                          );
                           dispatch(
                             setUploadedImages(
-                              [...uploadedImages, ...newUrls].slice(0, 10),
+                              [...uploadedImages, ...newUrls].slice(
+                                0,
+                                inputImageLimit,
+                              ),
                             ),
                           );
                           toast.success(`Pasted ${newUrls.length} image(s)`);
@@ -10369,7 +10435,11 @@ const InputBox = () => {
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
-          remainingSlots={Math.max(0, 10 - (uploadedImages?.length || 0))}
+          remainingSlots={Math.max(
+            0,
+            getInputImageLimitForModel(selectedModel) -
+              (uploadedImages?.length || 0),
+          )}
           onAdd={(urls: string[]) => {
             try {
               const sanitizedUrls = (urls || []).filter((url) =>
@@ -10379,7 +10449,11 @@ const InputBox = () => {
                 toast.error("Only image files are allowed.");
               }
               const next = [...(uploadedImages || []), ...sanitizedUrls];
-              dispatch(setUploadedImages(next.slice(0, 10)));
+              dispatch(
+                setUploadedImages(
+                  next.slice(0, getInputImageLimitForModel(selectedModel)),
+                ),
+              );
             } catch {}
           }}
         />
