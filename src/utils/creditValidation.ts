@@ -290,6 +290,7 @@ export const getImageGenerationCreditCost = (
   style?: string,
   resolution?: string,
   uploadedImages?: any[],
+  quality?: string,
 ): number => {
   // Qwen Image Edit: backend charges a flat per-generation cost (not per image)
   // Keep frontend validation/reservation aligned with backend.
@@ -381,6 +382,20 @@ export const getImageGenerationCreditCost = (
     const cost = is4K ? 240 : 120;
     console.log(`Nano Banana Pro cost: ${cost} credits for resolution: ${res}`);
     return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
+  }
+
+  // Handle GPT Image 1.5 quality-based pricing
+  if (frontendModel === "openai/gpt-image-1.5") {
+    const cost = getCreditsForModel(
+      frontendModel,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      quality || "auto",
+    );
+    const resolvedCost = cost && cost > 0 ? cost : 109;
+    return resolvedCost * Math.max(1, Math.min(count, 4));
   }
 
   // First try to get cost from MODEL_CREDITS_MAPPING (direct lookup)

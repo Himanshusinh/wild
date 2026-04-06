@@ -96,9 +96,18 @@ export const useCredits = () => {
     frameSize?: string,
     style?: string,
     resolution?: string,
-    uploadedImages?: any[]
+    uploadedImages?: any[],
+    quality?: string
   ) => {
-    const requiredCredits = getImageGenerationCreditCost(model, count, frameSize, style, resolution, uploadedImages);
+    const requiredCredits = getImageGenerationCreditCost(
+      model,
+      count,
+      frameSize,
+      style,
+      resolution,
+      uploadedImages,
+      quality,
+    );
 
     // Special case: Free models should not trigger "Unknown model"
     if (model === 'wildmindimage') {
@@ -273,7 +282,15 @@ export const useGenerationCredits = (
 
         case 'image':
           console.log('[DEBUG validateAndReserveCredits] Validating image credits...', { model, count: options?.count });
-          const imageResult = await validateImageCredits(model, options?.count, options?.frameSize, options?.style, options?.resolution, (options as any)?.uploadedImages);
+          const imageResult = await validateImageCredits(
+            model,
+            options?.count,
+            options?.frameSize,
+            options?.style,
+            options?.resolution,
+            (options as any)?.uploadedImages,
+            options?.quality,
+          );
           requiredCredits = imageResult.requiredCredits;
           validation = imageResult.validation;
           break;

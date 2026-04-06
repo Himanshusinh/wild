@@ -752,11 +752,11 @@ const EditImageInterface: React.FC = () => {
     if (selectedFeature === "remove-bg") {
       return [
         {
-          label: "851 Labs Remove BG - 10 credits",
+          label: "851 Labs Remove BG - 1 credit",
           value: "851-labs/background-remover",
         },
         {
-          label: "Lucataco Remove BG - 10 credits",
+          label: "Lucataco Remove BG - 1 credit",
           value: "lucataco/remove-bg",
         },
       ];
@@ -3985,7 +3985,7 @@ const EditImageInterface: React.FC = () => {
         );
         const expandStartTime = Date.now();
 
-        // Optimistic credit deduction for Bria Expand (100 credits)
+        // Optimistic credit deduction for Bria Expand (32 credits)
         let optimisticDeducted = false;
         try {
           deductCreditsOptimisticForGeneration(expandCredits);
@@ -6368,7 +6368,7 @@ const EditImageInterface: React.FC = () => {
                                   Est. Cost
                                 </span>
                                 <span className="text-[12px] font-semibold text-white leading-tight">
-                                  10 credits
+                                  1 credit
                                 </span>
                               </div>
                             </div>

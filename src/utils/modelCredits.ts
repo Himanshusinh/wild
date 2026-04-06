@@ -3,8 +3,8 @@ import { creditDistributionData } from "./creditDistribution";
 // Direct mapping between dropdown model values and their credit costs
 export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Image Generation Models
-  "flux-kontext-pro": 64, // FLUX.1 Kontext [pro]
-  "flux-kontext-max": 32, // FLUX.1 Kontext [max]
+  "flux-kontext-pro": 32, // FLUX.1 Kontext [pro]
+  "flux-kontext-max": 64, // FLUX.1 Kontext [max]
   "flux-pro-1.1": 110, // FLUX 1.1 [pro]
   "flux-pro-1.1-ultra": 140, // FLUX 1.1 [pro] Ultra
   "flux-pro": 130, // FLUX.1 [pro]
@@ -316,31 +316,31 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "kling-o1-10s": 1710,
 
   // Image Utility Models
-  "fal-image2svg": 30, // Image to SVG
-  "fal-recraft-vectorize": 40, // Recraft Vectorize
+  "fal-image2svg": 4, // Image to SVG
+  "fal-recraft-vectorize": 8, // Recraft Vectorize
   "fal-outpaint": 70, // fal-ai/outpaint
-  "fal-bria-genfill": 100, // fal-ai/bria/genfill
-  "fal-topaz-upscale-24mp": 180, // fal-ai/topaz/upscale/image 24MP
-  "fal-topaz-upscale-48mp": 340, // fal-ai/topaz/upscale/image 48MP
-  "fal-topaz-upscale-96mp": 660, // fal-ai/topaz/upscale/image 96MP
-  "fal-topaz-upscale-512mp": 2740, // fal-ai/topaz/upscale/image 512MP
+  "fal-bria-genfill": 32, // fal-ai/bria/genfill
+  "fal-topaz-upscale-24mp": 64, // fal-ai/topaz/upscale/image 24MP
+  "fal-topaz-upscale-48mp": 128, // fal-ai/topaz/upscale/image 48MP
+  "fal-topaz-upscale-96mp": 256, // fal-ai/topaz/upscale/image 96MP
+  "fal-topaz-upscale-512mp": 1087, // fal-ai/topaz/upscale/image 512MP
   "replicate-magic-image-refiner": 84, // replicate/fermatresearch/magic-image-refiner
   "replicate-clarity-upscaler": 62, // replicate/philz1337x/clarity-upscaler
   // Background removal (Replicate) - align with creditDistribution (10 credits)
-  "replicate-lucataco-remove-bg": 10, // Lucataco/remove-bg
-  "replicate-851-labs-remove-bg": 10, // 851-labs/background-remover
+  "replicate-lucataco-remove-bg": 1, // Lucataco/remove-bg
+  "replicate-851-labs-remove-bg": 1, // 851-labs/background-remover
   "replicate-bria-expand-image": 100, // replicate/bria/expand-image
   "replicate-real-esrgan": 32, // replicate/nightmareai/real-esrgan (32.4 rounded)
   "replicate-swin2sr": 43, // replicate/mv-lab/swin2sr
   "prunaai/p-image": 25, // P-Image (Replicate)
   "prunaai/p-image-edit": 25, // P-Image-Edit (I2I only, Replicate)
   // Crystal Upscaler variants
-  "replicate-crystal-upscaler-1080p": 220,
-  "replicate-crystal-upscaler-1440p": 420,
-  "replicate-crystal-upscaler-2160p": 820,
-  "replicate-crystal-upscaler-6k": 1620,
-  "replicate-crystal-upscaler-8k": 3220,
-  "replicate-crystal-upscaler-12k": 6420,
+  "replicate-crystal-upscaler-1080p": 40,
+  "replicate-crystal-upscaler-1440p": 80,
+  "replicate-crystal-upscaler-2160p": 160,
+  "replicate-crystal-upscaler-6k": 320,
+  "replicate-crystal-upscaler-8k": 640,
+  "replicate-crystal-upscaler-12k": 1280,
 
   // GPT Image 1.5 quality variants
   "gpt-image-1.5-auto": 109,

@@ -18,8 +18,8 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   gen4_image_turbo: "Runway Gen4 Image Turbo",
   "minimax-image-01": "MiniMax Image-01",
   // Background removal (show credits inline)
-  "replicate-lucataco-remove-bg": "Lucataco Remove BG - 10 credits",
-  "replicate-851-labs-remove-bg": "851 Labs Remove BG - 10 credits",
+  "replicate-lucataco-remove-bg": "Lucataco Remove BG - 1 credit",
+  "replicate-851-labs-remove-bg": "851 Labs Remove BG - 1 credit",
   "seedream-v4": "Seedream v4",
   "seedream-4.5": "Seedream 4.5",
   "seedream-5-lite": "Seedream 5 Lite",

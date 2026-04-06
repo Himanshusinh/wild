@@ -2996,6 +2996,7 @@ const InputBox = () => {
         style,
         resolution,
         getCombinedUploadedImages(),
+        selectedModel === "openai/gpt-image-1.5" ? gptImage15Quality : undefined,
       );
     } catch {
       return 0;
@@ -3012,6 +3013,7 @@ const InputBox = () => {
     seedream45Resolution,
     seedream5LiteResolution,
     seedreamSize,
+    gptImage15Quality,
     prompt,
     uploadedImages,
     selectedCharacters,
