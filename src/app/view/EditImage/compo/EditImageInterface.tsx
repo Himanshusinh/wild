@@ -1999,7 +1999,10 @@ const EditImageInterface: React.FC = () => {
   const featurePreviewGif: Record<EditFeature, string> = {
     upscale: "/editimage/upscale_banner.jpg",
     "remove-bg": "/editimage/RemoveBG_banner.jpg",
-    fill: eraseActionMode === "erase" ? "/editimage/erase_banner.jpg" : "/editimage/replace_banner.jpg",
+    fill:
+      eraseActionMode === "erase"
+        ? "/editimage/erase_banner.jpg"
+        : "/editimage/replace_banner.jpg",
     erase: "/editimage/erase_banner.jpg",
     expand: "/editimage/resize_banner.jpg",
     resize: "/editimage/resize_banner.jpg",
@@ -4632,7 +4635,10 @@ const EditImageInterface: React.FC = () => {
           const { width: inW, height: inH } = await getNaturalSize();
           const outW = Math.max(1, Math.round(inW * factor));
           const outH = Math.max(1, Math.round(inH * factor));
-          const expectedCredits = Math.max(1, Math.ceil((outW * outH) / 1_000_000));
+          const expectedCredits = Math.max(
+            1,
+            Math.ceil((outW * outH) / 1_000_000),
+          );
 
           if ((creditBalance || 0) < expectedCredits) {
             throw new Error(
