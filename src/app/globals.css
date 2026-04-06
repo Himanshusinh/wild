@@ -21,6 +21,12 @@
   /* Mobile 430×932px specific styles */
 }
 
+/* Warli modal shimmer loading animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* Mobile menu slide animations */
 @keyframes slide-in-from-right {
   from {

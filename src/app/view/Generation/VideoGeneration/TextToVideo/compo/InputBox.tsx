@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
 import Link from "next/link";
 import CameraMovementButton from "./CameraMovementButton";
 import PromptInput from "./PromptInput";
@@ -10,32 +16,67 @@ import { toast } from "react-hot-toast";
 import { HistoryEntry } from "@/types/history";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { shallowEqual } from "react-redux";
-import { addHistoryEntry, loadHistory, loadMoreHistory, updateHistoryEntry, clearFilters, removeHistoryEntry, clearHistory, setFilters } from "@/store/slices/historySlice";
-import { addActiveGeneration, updateActiveGeneration, removeActiveGeneration } from "@/store/slices/generationSlice";
-import useHistoryLoader from '@/hooks/useHistoryLoader';
+import {
+  addHistoryEntry,
+  loadHistory,
+  loadMoreHistory,
+  updateHistoryEntry,
+  clearFilters,
+  removeHistoryEntry,
+  clearHistory,
+  setFilters,
+} from "@/store/slices/historySlice";
+import {
+  addActiveGeneration,
+  updateActiveGeneration,
+  removeActiveGeneration,
+} from "@/store/slices/generationSlice";
+import useHistoryLoader from "@/hooks/useHistoryLoader";
 import axiosInstance from "@/lib/axiosInstance";
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from "lucide-react";
 import { addNotification } from "@/store/slices/uiSlice";
-import ActiveGenerationsPanel from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel';
-import { useSearchParams, useRouter } from "next/navigation";
-import { getSignInUrl } from '@/routes/routes';
+import ActiveGenerationsPanel from "@/app/view/Generation/ImageGeneration/TextToImage/compo/ActiveGenerationsPanel";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { getSignInUrl } from "@/routes/routes";
 // historyService removed; backend owns history persistence
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
-const updateFirebaseHistory = async (_id: string, _updates: any) => { };
-const getHistoryEntries = async (_filters?: any, _pag?: any) => ({ data: [] } as any);
+const updateFirebaseHistory = async (_id: string, _updates: any) => {};
+const getHistoryEntries = async (_filters?: any, _pag?: any) =>
+  ({ data: [] }) as any;
 import { waitForRunwayVideoCompletion } from "@/lib/runwayVideoService";
-import { buildImageToVideoBody, buildVideoToVideoBody } from "@/lib/videoGenerationBuilders";
+import {
+  buildImageToVideoBody,
+  buildVideoToVideoBody,
+} from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo, uploadLocalVideoFile } from "@/lib/videoUpload";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
-import { FilePlay, FileSliders, Crop, Clock, TvMinimalPlay, ChevronUp, FilePlus2, Music, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
+import {
+  FilePlay,
+  FileSliders,
+  Crop,
+  Clock,
+  TvMinimalPlay,
+  ChevronUp,
+  FilePlus2,
+  Music,
+  X,
+  Volume2,
+  VolumeX,
+  Sparkles,
+} from "lucide-react";
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import { getApiClient } from "@/lib/axiosInstance";
+import { extractFalErrorDetails, extractFalErrorMessage } from "@/lib/falToast";
 import { useGenerationCredits } from "@/hooks/useCredits";
 import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
 import VideoUploadModal from "./VideoUploadModal";
 import { getVideoCreditCost } from "@/utils/creditValidation";
-import { enhancePromptAPI } from '@/lib/api/geminiApi';
-import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
+import { enhancePromptAPI } from "@/lib/api/geminiApi";
+import {
+  saveAutoResumeIntent,
+  getAutoResumeIntent,
+  clearAutoResumeIntent,
+} from "@/lib/autoResume";
 
 // Extend window interface for temporary video data storage
 declare global {
@@ -54,10 +95,10 @@ import QualityDropdown from "./QualityDropdown";
 import VideoGenerationGuide from "./VideoGenerationGuide";
 import KlingModeDropdown from "./KlingModeDropdown";
 import VideoPreviewModal from "./VideoPreviewModal";
-import { toThumbUrl } from '@/lib/thumb';
-import { usePersistedGenerationState } from '@/hooks/usePersistedGenerationState';
-import { useQueueManagement } from '@/hooks/useQueueManagement';
-import AssetViewerModal from '@/components/AssetViewerModal';
+import { toThumbUrl } from "@/lib/thumb";
+import { usePersistedGenerationState } from "@/hooks/usePersistedGenerationState";
+import { useQueueManagement } from "@/hooks/useQueueManagement";
+import AssetViewerModal from "@/components/AssetViewerModal";
 import {
   toProxyPath,
   toFrontendProxyMediaUrl,
@@ -69,27 +110,32 @@ import {
   waitForMiniMaxVideoCompletion,
   getCleanPrompt,
   copyPrompt,
-  getModelCapabilities
+  getModelCapabilities,
 } from "../utils/videoUtils";
 import HistorySection from "./HistorySection";
 import { useFileHandler } from "../hooks/useFileHandler";
 import { useUrlParamsSync } from "../hooks/useUrlParamsSync";
 
-
-
 interface InputBoxProps {
   placeholder?: string;
-  activeFeature?: 'Video' | 'Lipsync' | 'Animate' | 'Edit' | 'Video editor';
+  activeFeature?: "Video" | "Lipsync" | "Animate" | "Edit" | "Video editor";
   showHistory?: boolean; // Control whether to show the history section
 }
 
 const InputBox = (props: InputBoxProps = {}) => {
-  const { placeholder = " video prompt...", activeFeature = 'Video', showHistory = true } = props;
+  const {
+    placeholder = " video prompt...",
+    activeFeature = "Video",
+    showHistory = true,
+  } = props;
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const user = useAppSelector((state: any) => state.auth?.user);
-  const authLoading = useAppSelector((state: any) => state.auth?.loading ?? true);
+  const authLoading = useAppSelector(
+    (state: any) => state.auth?.loading ?? true,
+  );
   const [preview, setPreview] = useState<{
     entry: HistoryEntry;
     video: any;
@@ -97,59 +143,80 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [assetViewer, setAssetViewer] = useState<{
     isOpen: boolean;
     assetUrl: string;
-    assetType: 'image' | 'video' | 'audio';
+    assetType: "image" | "video" | "audio";
     title: string;
   }>({
     isOpen: false,
-    assetUrl: '',
-    assetType: 'image',
-    title: 'Uploaded Asset'
+    assetUrl: "",
+    assetType: "image",
+    title: "Uploaded Asset",
   });
   const inputEl = useRef<HTMLTextAreaElement>(null);
 
-
-
   // Video generation state - persisted in localStorage
-  const [prompt, setPrompt] = usePersistedGenerationState("prompt", "", "text-to-video");
-  const [selectedModel, setSelectedModel] = usePersistedGenerationState("selectedModel", "seedance-1.0-lite-t2v", "text-to-video");
-  const [frameSize, setFrameSize] = usePersistedGenerationState("frameSize", "16:9", "text-to-video");
+  const [prompt, setPrompt] = usePersistedGenerationState(
+    "prompt",
+    "",
+    "text-to-video",
+  );
+  const [selectedModel, setSelectedModel] = usePersistedGenerationState(
+    "selectedModel",
+    "seedance-1.0-lite-t2v",
+    "text-to-video",
+  );
+  const [frameSize, setFrameSize] = usePersistedGenerationState(
+    "frameSize",
+    "16:9",
+    "text-to-video",
+  );
   const [hasUserSetFrameSize, setHasUserSetFrameSize] = useState(false);
-  const [duration, setDuration] = usePersistedGenerationState("duration", 6, "text-to-video");
+  const [duration, setDuration] = usePersistedGenerationState(
+    "duration",
+    6,
+    "text-to-video",
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
-  const [uploadedImages, setUploadedImages] = usePersistedGenerationState<string[]>("uploadedImages", [], "text-to-video");
+  const [uploadedImages, setUploadedImages] = usePersistedGenerationState<
+    string[]
+  >("uploadedImages", [], "text-to-video");
   const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
-
-
 
   // Reset scroll to top when entering Video Generation (prevents landing mid-feed on tab switch)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, behavior: "auto" });
   }, []);
 
   // State restoration for auto-resume (e.g. from Home Page)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const intent = getAutoResumeIntent();
-    console.log('[Video InputBox] Checking for auto-resume intent...', !!intent);
+    console.log(
+      "[Video InputBox] Checking for auto-resume intent...",
+      !!intent,
+    );
     // Handle both 'video' (Animate) and general prompt intents
-    if (intent && (intent.type === 'video' || intent.type === 'image')) {
-      console.log('[Video InputBox] Found intent, restoring state:', intent);
+    if (intent && (intent.type === "video" || intent.type === "image")) {
+      console.log("[Video InputBox] Found intent, restoring state:", intent);
       const data = intent.data;
       if (data.prompt) {
-        console.log('[Video InputBox] Restoring prompt:', data.prompt);
+        console.log("[Video InputBox] Restoring prompt:", data.prompt);
         setPrompt(data.prompt);
       }
       if (data.selectedModel) {
-        console.log('[Video InputBox] Restoring model:', data.selectedModel);
+        console.log("[Video InputBox] Restoring model:", data.selectedModel);
         setSelectedModel(data.selectedModel);
       }
 
       // Clear intent and trigger generation after a short delay
       clearAutoResumeIntent();
-      console.log('[Video InputBox] Intent cleared, scheduling auto-generation...');
+      console.log(
+        "[Video InputBox] Intent cleared, scheduling auto-generation...",
+      );
       setTimeout(() => {
-        console.log('[Video InputBox] Timer expired, setting shouldAutoGenerate=true');
+        console.log(
+          "[Video InputBox] Timer expired, setting shouldAutoGenerate=true",
+        );
         setShouldAutoGenerate(true);
       }, 1000);
     }
@@ -157,36 +224,74 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Handle auto-triggering generation
   useEffect(() => {
-    console.log('[Video InputBox] Auto-trigger watchdog:', { shouldAutoGenerate, isGenerating, promptLength: prompt?.length });
+    console.log("[Video InputBox] Auto-trigger watchdog:", {
+      shouldAutoGenerate,
+      isGenerating,
+      promptLength: prompt?.length,
+    });
     if (shouldAutoGenerate && !isGenerating && prompt) {
-      console.log('[Video InputBox] CONDITIONS MET: Auto-triggering handleGenerate()');
+      console.log(
+        "[Video InputBox] CONDITIONS MET: Auto-triggering handleGenerate()",
+      );
       setShouldAutoGenerate(false);
       handleGenerate();
     } else if (shouldAutoGenerate) {
-      console.log('[Video InputBox] CONDITIONS NOT MET for auto-trigger:', {
+      console.log("[Video InputBox] CONDITIONS NOT MET for auto-trigger:", {
         isGenerating,
         hasPrompt: !!prompt,
-        reason: !prompt ? 'Missing prompt' : (isGenerating ? 'Already generating' : 'Unknown')
+        reason: !prompt
+          ? "Missing prompt"
+          : isGenerating
+            ? "Already generating"
+            : "Unknown",
       });
     }
   }, [shouldAutoGenerate, isGenerating, prompt]);
 
   // Debug uploadedImages changes
   useEffect(() => {
-    console.log('Video generation - uploadedImages changed:', uploadedImages);
+    console.log("Video generation - uploadedImages changed:", uploadedImages);
   }, [uploadedImages]);
-  const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState("uploadedVideo", "", "text-to-video");
-  const [uploadedVideoDurationSec, setUploadedVideoDurationSec] = usePersistedGenerationState<number>("uploadedVideoDurationSec", 0, "text-to-video");
+  const [uploadedVideo, setUploadedVideo] = usePersistedGenerationState(
+    "uploadedVideo",
+    "",
+    "text-to-video",
+  );
+  const [uploadedVideoDurationSec, setUploadedVideoDurationSec] =
+    usePersistedGenerationState<number>(
+      "uploadedVideoDurationSec",
+      0,
+      "text-to-video",
+    );
   // Local device-selected videos (blob: URL -> File). Used to upload at Generate-time.
-  const [localVideoFilesByUrl, setLocalVideoFilesByUrl] = useState<Record<string, File>>({});
-  const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<Record<string, string>>({});
+  const [localVideoFilesByUrl, setLocalVideoFilesByUrl] = useState<
+    Record<string, File>
+  >({});
+  const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<
+    Record<string, string>
+  >({});
   // Backup of uploaded video specifically for Gen-4 Aleph (V2V)
-  const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState("alephVideoBackup", "", "text-to-video");
-  const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState("uploadedAudio", "", "text-to-video"); // For WAN models audio file
-  const [uploadedCharacterImage, setUploadedCharacterImage] = usePersistedGenerationState("uploadedCharacterImage", "", "text-to-video"); // For WAN 2.2 Animate Replace character image
+  const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState(
+    "alephVideoBackup",
+    "",
+    "text-to-video",
+  );
+  const [uploadedAudio, setUploadedAudio] = usePersistedGenerationState(
+    "uploadedAudio",
+    "",
+    "text-to-video",
+  ); // For WAN models audio file
+  const [uploadedCharacterImage, setUploadedCharacterImage] =
+    usePersistedGenerationState("uploadedCharacterImage", "", "text-to-video"); // For WAN 2.2 Animate Replace character image
   const [sourceHistoryEntryId, setSourceHistoryEntryId] = useState<string>(""); // For Sora 2 Remix source video
-  const [references, setReferences] = usePersistedGenerationState<string[]>("references", [], "text-to-video");
-  const [generationMode, setGenerationMode] = usePersistedGenerationState<"text_to_video" | "image_to_video" | "video_to_video">("generationMode", "text_to_video", "text-to-video");
+  const [references, setReferences] = usePersistedGenerationState<string[]>(
+    "references",
+    [],
+    "text-to-video",
+  );
+  const [generationMode, setGenerationMode] = usePersistedGenerationState<
+    "text_to_video" | "image_to_video" | "video_to_video"
+  >("generationMode", "text_to_video", "text-to-video");
   const [error, setError] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
 
@@ -202,13 +307,24 @@ const InputBox = (props: InputBoxProps = {}) => {
           const { width, height } = img;
           const ratio = height / width;
 
+          const isVeo31Lite = selectedModel.includes("veo3.1-lite");
+          const isVeoI2VMode =
+            generationMode === "image_to_video" &&
+            (selectedModel.includes("veo3.1") ||
+              (selectedModel.includes("veo3") &&
+                !selectedModel.includes("veo3.1")));
+
+          // Veo 3.1 Lite and Veo image-to-video modes do not support 1:1.
+          // Without this guard, auto-detection can bounce between 1:1 and 16:9.
+          const supportsSquare = !isVeo31Lite && !isVeoI2VMode;
+
           if (ratio > 1.2) {
             // Strong portrait - suggest 9:16
             console.log("Detecting portrait image, suggesting 9:16");
             setFrameSize("9:16");
           } else if (ratio < 0.8) {
             // Strong landscape - stay at 16:9 (already default)
-          } else if (ratio >= 0.9 && ratio <= 1.1) {
+          } else if (ratio >= 0.9 && ratio <= 1.1 && supportsSquare) {
             // Square-ish - suggest 1:1 if supported
             console.log("Detecting square image, suggesting 1:1");
             setFrameSize("1:1");
@@ -217,55 +333,128 @@ const InputBox = (props: InputBoxProps = {}) => {
         img.src = firstImage;
       }
     }
-  }, [uploadedImages, frameSize, setFrameSize, hasUserSetFrameSize]);
+  }, [
+    uploadedImages,
+    frameSize,
+    setFrameSize,
+    hasUserSetFrameSize,
+    selectedModel,
+    generationMode,
+  ]);
 
   const handleFrameSizeChange = (value: string) => {
     setHasUserSetFrameSize(true);
     setFrameSize(value);
   };
 
-
-
   // UploadModal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadModalType, setUploadModalType] = useState<'image' | 'reference' | 'video'>('image');
-  const [uploadModalTarget, setUploadModalTarget] = useState<'first_frame' | 'last_frame'>('first_frame');
+  const [uploadModalType, setUploadModalType] = useState<
+    "image" | "reference" | "video"
+  >("image");
+  const [uploadModalTarget, setUploadModalTarget] = useState<
+    "first_frame" | "last_frame"
+  >("first_frame");
 
   // Local image library state for UploadModal (avoids interfering with global Redux history)
   const [libraryImageEntries, setLibraryImageEntries] = useState<any[]>([]);
   const [libraryImageHasMore, setLibraryImageHasMore] = useState<boolean>(true);
-  const [libraryImageLoading, setLibraryImageLoading] = useState<boolean>(false);
+  const [libraryImageLoading, setLibraryImageLoading] =
+    useState<boolean>(false);
   const libraryImageNextCursorRef = useRef<string | undefined>(undefined);
   const libraryImageLoadingRef = useRef<boolean>(false);
   const libraryImageInitRef = useRef<boolean>(false);
 
   // MiniMax specific state - persisted
-  const [selectedResolution, setSelectedResolution] = usePersistedGenerationState("selectedResolution", "1080P", "text-to-video");
-  const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] = usePersistedGenerationState("selectedMiniMaxDuration", 6, "text-to-video");
+  const [selectedResolution, setSelectedResolution] =
+    usePersistedGenerationState("selectedResolution", "1080P", "text-to-video");
+  const [selectedMiniMaxDuration, setSelectedMiniMaxDuration] =
+    usePersistedGenerationState("selectedMiniMaxDuration", 6, "text-to-video");
   const [resolutionDropdownOpen, setResolutionDropdownOpen] = useState(false);
   const [durationDropdownOpen, setDurationDropdownOpen] = useState(false);
 
-  const [selectedCameraMovements, setSelectedCameraMovements] = usePersistedGenerationState<string[]>("selectedCameraMovements", [], "text-to-video");
-  const [lastFrameImage, setLastFrameImage] = usePersistedGenerationState("lastFrameImage", "", "text-to-video"); // For MiniMax-Hailuo-02 last frame
-  const [selectedQuality, setSelectedQuality] = usePersistedGenerationState("selectedQuality", "720p", "text-to-video"); // For Veo3 quality
+  const [selectedCameraMovements, setSelectedCameraMovements] =
+    usePersistedGenerationState<string[]>(
+      "selectedCameraMovements",
+      [],
+      "text-to-video",
+    );
+  const [lastFrameImage, setLastFrameImage] = usePersistedGenerationState(
+    "lastFrameImage",
+    "",
+    "text-to-video",
+  ); // For MiniMax-Hailuo-02 last frame
+  const [selectedQuality, setSelectedQuality] = usePersistedGenerationState(
+    "selectedQuality",
+    "720p",
+    "text-to-video",
+  ); // For Veo3 quality
   // Kling specific state (v2.1 mode determines resolution): 'standard'->720p, 'pro'->1080p
-  const [klingMode, setKlingMode] = usePersistedGenerationState<'standard' | 'pro'>("klingMode", 'standard', "text-to-video");
+  const [klingMode, setKlingMode] = usePersistedGenerationState<
+    "standard" | "pro"
+  >("klingMode", "standard", "text-to-video");
   // Seedance specific state
-  const [seedanceResolution, setSeedanceResolution] = usePersistedGenerationState("seedanceResolution", "1080p", "text-to-video"); // For Seedance resolution (480p/720p/1080p)
-  const [seedanceFirstFrameImage, setSeedanceFirstFrameImage] = usePersistedGenerationState("seedanceFirstFrameImage", "", "text-to-video"); // For Seedance first frame image
-  const [seedanceLastFrameImage, setSeedanceLastFrameImage] = usePersistedGenerationState("seedanceLastFrameImage", "", "text-to-video"); // For Seedance last frame image
+  const [seedanceResolution, setSeedanceResolution] =
+    usePersistedGenerationState("seedanceResolution", "1080p", "text-to-video"); // For Seedance resolution (480p/720p/1080p)
+  const [seedanceFirstFrameImage, setSeedanceFirstFrameImage] =
+    usePersistedGenerationState("seedanceFirstFrameImage", "", "text-to-video"); // For Seedance first frame image
+  const [seedanceLastFrameImage, setSeedanceLastFrameImage] =
+    usePersistedGenerationState("seedanceLastFrameImage", "", "text-to-video"); // For Seedance last frame image
   // PixVerse specific state
-  const [pixverseQuality, setPixverseQuality] = usePersistedGenerationState("pixverseQuality", "720p", "text-to-video"); // For PixVerse quality (360p/540p/720p/1080p)
+  const [pixverseQuality, setPixverseQuality] = usePersistedGenerationState(
+    "pixverseQuality",
+    "720p",
+    "text-to-video",
+  ); // For PixVerse quality (360p/540p/720p/1080p)
   // WAN 2.2 Animate Replace specific state
-  const [wanAnimateResolution, setWanAnimateResolution] = usePersistedGenerationState<"720" | "480">("wanAnimateResolution", "720", "text-to-video"); // For WAN Animate Replace resolution
-  const [wanAnimateRefertNum, setWanAnimateRefertNum] = usePersistedGenerationState<1 | 5>("wanAnimateRefertNum", 1, "text-to-video"); // For WAN Animate Replace reference frames
-  const [wanAnimateGoFast, setWanAnimateGoFast] = usePersistedGenerationState("wanAnimateGoFast", true, "text-to-video"); // For WAN Animate Replace go_fast
-  const [wanAnimateMergeAudio, setWanAnimateMergeAudio] = usePersistedGenerationState("wanAnimateMergeAudio", true, "text-to-video"); // For WAN Animate Replace merge_audio
-  const [wanAnimateFps, setWanAnimateFps] = usePersistedGenerationState("wanAnimateFps", 24, "text-to-video"); // For WAN Animate Replace frames_per_second
-  const [wanAnimateSeed, setWanAnimateSeed] = usePersistedGenerationState<number | undefined>("wanAnimateSeed", undefined, "text-to-video"); // For WAN Animate Replace seed (optional)
+  const [wanAnimateResolution, setWanAnimateResolution] =
+    usePersistedGenerationState<"720" | "480">(
+      "wanAnimateResolution",
+      "720",
+      "text-to-video",
+    ); // For WAN Animate Replace resolution
+  const [wanAnimateRefertNum, setWanAnimateRefertNum] =
+    usePersistedGenerationState<1 | 5>(
+      "wanAnimateRefertNum",
+      1,
+      "text-to-video",
+    ); // For WAN Animate Replace reference frames
+  const [wanAnimateGoFast, setWanAnimateGoFast] = usePersistedGenerationState(
+    "wanAnimateGoFast",
+    true,
+    "text-to-video",
+  ); // For WAN Animate Replace go_fast
+  const [wanAnimateMergeAudio, setWanAnimateMergeAudio] =
+    usePersistedGenerationState("wanAnimateMergeAudio", true, "text-to-video"); // For WAN Animate Replace merge_audio
+  const [wanAnimateFps, setWanAnimateFps] = usePersistedGenerationState(
+    "wanAnimateFps",
+    24,
+    "text-to-video",
+  ); // For WAN Animate Replace frames_per_second
+  const [wanAnimateSeed, setWanAnimateSeed] = usePersistedGenerationState<
+    number | undefined
+  >("wanAnimateSeed", undefined, "text-to-video"); // For WAN Animate Replace seed (optional)
   // LTX and audio controls
-  const [fps, setFps] = usePersistedGenerationState<25 | 50>("fps", 25, "text-to-video");
-  const [generateAudio, setGenerateAudio] = usePersistedGenerationState("generateAudio", true, "text-to-video");
+  const [fps, setFps] = usePersistedGenerationState<25 | 50>(
+    "fps",
+    25,
+    "text-to-video",
+  );
+  const [generateAudio, setGenerateAudio] = usePersistedGenerationState(
+    "generateAudio",
+    true,
+    "text-to-video",
+  );
+
+  useEffect(() => {
+    if (
+      selectedModel.includes("veo3.1-lite") &&
+      selectedQuality === "1080p" &&
+      duration !== 8
+    ) {
+      setSelectedQuality("720p");
+    }
+  }, [selectedModel, selectedQuality, duration, setSelectedQuality]);
 
   // Timeout refs for auto-close dropdowns
   const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -281,7 +470,8 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [closeDurationDropdown, setCloseDurationDropdown] = useState(false);
 
   // State to trigger closing of camera motion dropdown
-  const [closeCameraMotionDropdown, setCloseCameraMotionDropdown] = useState(false);
+  const [closeCameraMotionDropdown, setCloseCameraMotionDropdown] =
+    useState(false);
 
   // Helpers: clean prompt and copy
 
@@ -295,14 +485,13 @@ const InputBox = (props: InputBoxProps = {}) => {
     setSelectedQuality,
     setSelectedResolution,
     setGenerationMode,
-    setUploadedImages
+    setUploadedImages,
   });
-
 
   // Handle manual prompt enhancement
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) {
-      toast('Please enter a prompt to enhance');
+      toast("Please enter a prompt to enhance");
       return;
     }
 
@@ -311,7 +500,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     try {
       setIsEnhancing(true);
       // Explicitly pass 'video' as media type for video generation
-      const res = await enhancePromptAPI(prompt, 'openai/gpt-4o', 'video');
+      const res = await enhancePromptAPI(prompt, "openai/gpt-4o", "video");
       if (res.ok && res.enhancedPrompt) {
         const enhancedPrompt = res.enhancedPrompt;
 
@@ -322,16 +511,15 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (inputEl.current) {
           inputEl.current.value = enhancedPrompt;
           // Trigger height adjustment
-
         }
 
-        toast.success('Prompt enhanced');
+        toast.success("Prompt enhanced");
       } else {
-        toast.error(res.error || 'Failed to enhance prompt');
+        toast.error(res.error || "Failed to enhance prompt");
       }
     } catch (e: any) {
-      console.error('Prompt enhancement error:', e);
-      toast.error(e?.message || 'Failed to enhance prompt. Please try again.');
+      console.error("Prompt enhancement error:", e);
+      toast.error(e?.message || "Failed to enhance prompt. Please try again.");
     } finally {
       setIsEnhancing(false);
     }
@@ -339,126 +527,234 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Delete handler - same logic as ImagePreviewModal
   // Delete handler - same logic as ImagePreviewModal
-  const handleDeleteVideo = async (e: React.MouseEvent, entry: HistoryEntry) => {
+  const handleDeleteVideo = async (
+    e: React.MouseEvent,
+    entry: HistoryEntry,
+  ) => {
     try {
       e.stopPropagation();
       e.preventDefault();
-      if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
+      if (
+        !window.confirm(
+          "Delete this generation permanently? This cannot be undone.",
+        )
+      )
+        return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
-      try { dispatch(removeHistoryEntry(entry.id)); } catch { }
-      toast.success('Video deleted');
+      try {
+        dispatch(removeHistoryEntry(entry.id));
+      } catch {}
+      toast.success("Video deleted");
     } catch (err) {
-      console.error('Delete failed:', err);
-      toast.error('Failed to delete generation');
+      console.error("Delete failed:", err);
+      toast.error("Failed to delete generation");
     }
   };
 
-  const { processFiles } = useFileHandler({ setUploadedImages, setUploadedVideo });
+  const { processFiles } = useFileHandler({
+    setUploadedImages,
+    setUploadedVideo,
+  });
 
   // Credits management - after all state declarations
-  const normalizedSelectedRes = typeof selectedResolution === 'string' ? selectedResolution.toLowerCase() : '1080p';
-  const creditsResolution = (
-    selectedModel.includes("MiniMax") ? selectedResolution :
-      (selectedModel.includes("wan-2.5") ? (frameSize.includes("480") ? "480p" : (frameSize.includes("720") ? "720p" : "1080p")) :
-        (selectedModel.startsWith('kling-') ? (klingMode === 'pro' ? '1080p' : '720p') :
-          (selectedModel.includes('seedance-1.5') ? undefined : (selectedModel.includes('seedance') ? seedanceResolution :
-            (selectedModel.includes('ltx2') || selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro') ? normalizedSelectedRes :
-              (selectedModel.includes('pixverse') ? pixverseQuality : undefined))))))
+  const normalizedSelectedRes =
+    typeof selectedResolution === "string"
+      ? selectedResolution.toLowerCase()
+      : "1080p";
+  const creditsResolution = selectedModel.includes("MiniMax")
+    ? selectedResolution
+    : selectedModel.includes("veo3")
+      ? selectedQuality
+      : selectedModel.includes("wan-2.5")
+        ? frameSize.includes("480")
+          ? "480p"
+          : frameSize.includes("720")
+            ? "720p"
+            : "1080p"
+        : selectedModel.startsWith("kling-")
+          ? klingMode === "pro"
+            ? "1080p"
+            : "720p"
+          : selectedModel.includes("seedance-1.5")
+            ? undefined
+            : selectedModel.includes("seedance")
+              ? seedanceResolution
+              : selectedModel.includes("ltx2") ||
+                  selectedModel.startsWith("ltx-2.3-fast") ||
+                  selectedModel.startsWith("ltx-2.3-pro")
+                ? normalizedSelectedRes
+                : selectedModel.includes("pixverse")
+                  ? pixverseQuality
+                  : undefined;
+
+  const hasVeo31LiteFirstFrame = Boolean(uploadedImages[0] || references[0]);
+  const hasVeo31LiteLastFrame = Boolean(
+    uploadedImages[1] || lastFrameImage || references[1],
   );
+
+  const hasVeo31LiteFirstLastFrames =
+    selectedModel.includes("veo3.1-lite") &&
+    hasVeo31LiteFirstFrame &&
+    hasVeo31LiteLastFrame;
+
+  const creditsModel = hasVeo31LiteFirstLastFrames
+    ? "veo3.1-lite-flf2v-8s"
+    : selectedModel;
+
   const {
     validateAndReserveCredits,
     handleGenerationSuccess,
     handleGenerationFailure,
     creditBalance,
     clearCreditsError,
-  } = useGenerationCredits('video', selectedModel, {
+  } = useGenerationCredits("video", creditsModel, {
     resolution: creditsResolution,
-    duration: selectedModel.includes("MiniMax")
-      ? selectedMiniMaxDuration
-      : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration),
+    duration: hasVeo31LiteFirstLastFrames
+      ? 8
+      : selectedModel.includes("MiniMax")
+        ? selectedMiniMaxDuration
+        : selectedModel === "wan-2.2-animate-replace"
+          ? uploadedVideoDurationSec || 0
+          : duration,
   });
 
-  const loadVideoDurationSeconds = useCallback(async (url: string): Promise<number> => {
-    return await new Promise((resolve, reject) => {
-      if (!url) return resolve(0);
-      const video = document.createElement('video');
-      let done = false;
+  const loadVideoDurationSeconds = useCallback(
+    async (url: string): Promise<number> => {
+      return await new Promise((resolve, reject) => {
+        if (!url) return resolve(0);
+        const video = document.createElement("video");
+        let done = false;
 
-      const cleanup = () => {
+        const cleanup = () => {
+          try {
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+          } catch {}
+        };
+
+        const finish = (value: number, err?: any) => {
+          if (done) return;
+          done = true;
+          cleanup();
+          if (err) reject(err);
+          else resolve(value);
+        };
+
+        const t = window.setTimeout(
+          () => finish(0, new Error("Timed out loading video metadata")),
+          15000,
+        );
+        video.preload = "metadata";
+        (video as any).crossOrigin = "anonymous";
+        video.onloadedmetadata = () => {
+          window.clearTimeout(t);
+          const d = Number(video.duration);
+          if (Number.isFinite(d) && d > 0) return finish(d);
+          return finish(0, new Error("Invalid video duration"));
+        };
+        video.onerror = () => {
+          window.clearTimeout(t);
+          finish(0, new Error("Failed to load video metadata"));
+        };
         try {
-          video.pause();
-          video.removeAttribute('src');
-          video.load();
-        } catch { }
-      };
+          video.src = url;
+        } catch (e) {
+          window.clearTimeout(t);
+          finish(0, e);
+        }
+      });
+    },
+    [],
+  );
 
-      const finish = (value: number, err?: any) => {
-        if (done) return;
-        done = true;
-        cleanup();
-        if (err) reject(err);
-        else resolve(value);
-      };
-
-      const t = window.setTimeout(() => finish(0, new Error('Timed out loading video metadata')), 15000);
-      video.preload = 'metadata';
-      (video as any).crossOrigin = 'anonymous';
-      video.onloadedmetadata = () => {
-        window.clearTimeout(t);
-        const d = Number(video.duration);
-        if (Number.isFinite(d) && d > 0) return finish(d);
-        return finish(0, new Error('Invalid video duration'));
-      };
-      video.onerror = () => {
-        window.clearTimeout(t);
-        finish(0, new Error('Failed to load video metadata'));
-      };
-      try {
-        video.src = url;
-      } catch (e) {
-        window.clearTimeout(t);
-        finish(0, e);
-      }
-    });
-  }, []);
+  // Veo 3.1 Lite first-last mode only supports 8 seconds.
+  useEffect(() => {
+    if (hasVeo31LiteFirstLastFrames && duration !== 8) {
+      setDuration(8);
+    }
+  }, [hasVeo31LiteFirstLastFrames, duration, setDuration]);
 
   // Live credit preview for current selections
   const liveCreditCost = useMemo(() => {
     try {
       const dur = selectedModel.includes("MiniMax")
         ? selectedMiniMaxDuration
-        : (selectedModel === 'wan-2.2-animate-replace' ? (uploadedVideoDurationSec || 0) : duration);
-      const res = typeof creditsResolution === 'string' ? creditsResolution : undefined;
+        : selectedModel === "wan-2.2-animate-replace"
+          ? uploadedVideoDurationSec || 0
+          : duration;
+      const res =
+        typeof creditsResolution === "string" ? creditsResolution : undefined;
 
       // Normalize Kling 2.1/2.1 Master to i2v variant when in image_to_video mode
       // to ensure credit lookup recognizes the model and avoids warnings.
       const normalizedModelForCredits = (() => {
-        if (generationMode === 'image_to_video' && selectedModel.startsWith('kling-') && selectedModel.includes('v2.1')) {
+        if (
+          generationMode === "image_to_video" &&
+          selectedModel.includes("veo3.1-lite")
+        ) {
+          const firstFrame = uploadedImages[0] || references[0];
+          const lastFrame =
+            uploadedImages[1] || lastFrameImage || references[1] || null;
+
+          if (firstFrame && lastFrame) {
+            return "veo3.1-lite-flf2v-8s";
+          }
+
+          if ((firstFrame || lastFrame) && /-t2v$/.test(selectedModel)) {
+            return selectedModel.replace(/-t2v$/, "-i2v");
+          }
+        }
+
+        if (
+          generationMode === "image_to_video" &&
+          selectedModel.startsWith("kling-") &&
+          selectedModel.includes("v2.1")
+        ) {
           // Replace t2v suffix with i2v for v2.1 variants
           if (/-t2v$/.test(selectedModel)) {
-            return selectedModel.replace(/-t2v$/, '-i2v');
+            return selectedModel.replace(/-t2v$/, "-i2v");
           }
         }
         return selectedModel;
       })();
 
       // Pass generateAudio only for models whose pricing depends on it
-      const audioParam = (normalizedModelForCredits === 'kling-2.6-pro' || normalizedModelForCredits.startsWith('kling-v3') || normalizedModelForCredits.includes('seedance-1.5'))
-        ? generateAudio
-        : undefined;
-      return Math.max(0, Number(getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam)) || 0);
+      const audioParam =
+        normalizedModelForCredits === "kling-2.6-pro" ||
+        normalizedModelForCredits.startsWith("kling-v3") ||
+        normalizedModelForCredits.includes("seedance-1.5")
+          ? generateAudio
+          : undefined;
+      return Math.max(
+        0,
+        Number(
+          getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam),
+        ) || 0,
+      );
     } catch {
       return 0;
     }
-  }, [selectedModel, creditsResolution, duration, selectedMiniMaxDuration, generationMode, generateAudio]);
-
-
+  }, [
+    selectedModel,
+    creditsResolution,
+    duration,
+    selectedMiniMaxDuration,
+    generationMode,
+    generateAudio,
+    uploadedImages,
+    references,
+    lastFrameImage,
+  ]);
 
   // Memoize current model capabilities to prevent recalculations during render
   const currentModelCapabilities = useMemo(() => {
     const caps = getModelCapabilities(selectedModel);
     // MiniMax-Hailuo-02 requires first frame for 512P resolution
-    if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P") {
+    if (
+      selectedModel === "MiniMax-Hailuo-02" &&
+      selectedResolution === "512P"
+    ) {
       caps.requiresFirstFrame = true;
     }
     // MiniMax-Hailuo-2.3-Fast always requires first frame (I2V only)
@@ -477,7 +773,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   const computedMode = useMemo(() => {
     if (supportsVideoToVideo && uploadedVideo) {
       return "video_to_video";
-    } else if (supportsImageToVideo && (uploadedImages.length > 0 || references.length > 0)) {
+    } else if (
+      supportsImageToVideo &&
+      (uploadedImages.length > 0 ||
+        references.length > 0 ||
+        (selectedModel.includes("veo3.1-lite") && !!lastFrameImage))
+    ) {
       return "image_to_video";
     } else if (supportsTextToVideo) {
       return "text_to_video";
@@ -487,7 +788,16 @@ const InputBox = (props: InputBoxProps = {}) => {
       return "video_to_video";
     }
     return null;
-  }, [supportsTextToVideo, supportsImageToVideo, supportsVideoToVideo, uploadedImages.length, references.length, uploadedVideo]);
+  }, [
+    supportsTextToVideo,
+    supportsImageToVideo,
+    supportsVideoToVideo,
+    uploadedVideo,
+    uploadedImages.length,
+    references.length,
+    selectedModel,
+    lastFrameImage,
+  ]);
 
   // Auto-determine generation mode based on model selection only (not content changes to prevent loops)
   // Only update generation mode when model changes, not when content is uploaded
@@ -502,11 +812,16 @@ const InputBox = (props: InputBoxProps = {}) => {
     const caps = getModelCapabilities(selectedModel);
 
     // Determine appropriate generation mode based on model capabilities only
-    let newMode: "text_to_video" | "image_to_video" | "video_to_video" | null = null;
+    let newMode: "text_to_video" | "image_to_video" | "video_to_video" | null =
+      null;
 
     // Special handling for I2V-only models - they require image (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo)
-    if ((selectedModel.startsWith('kling-') && (selectedModel.includes('v2.1') || selectedModel.includes('master'))) ||
-      selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+    if (
+      (selectedModel.startsWith("kling-") &&
+        (selectedModel.includes("v2.1") || selectedModel.includes("master"))) ||
+      selectedModel === "gen4_turbo" ||
+      selectedModel === "gen3a_turbo"
+    ) {
       // These models require image, so force image-to-video mode
       newMode = "image_to_video";
     } else if (caps.supportsTextToVideo) {
@@ -520,9 +835,11 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Only update if mode actually changed
     if (newMode) {
-      setGenerationMode(prevMode => {
+      setGenerationMode((prevMode) => {
         if (newMode !== prevMode) {
-          console.log(`🔄 Mode changed from ${prevMode} to ${newMode} for model ${selectedModel}`);
+          console.log(
+            `🔄 Mode changed from ${prevMode} to ${newMode} for model ${selectedModel}`,
+          );
           return newMode;
         }
         return prevMode;
@@ -532,7 +849,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Hide uploaded video when leaving Gen-4 Aleph, and restore when returning
   useEffect(() => {
-    const isAleph = selectedModel === 'gen4_aleph';
+    const isAleph = selectedModel === "gen4_aleph";
     if (isAleph) {
       // Restore if we have a backup and nothing currently shown
       if (!uploadedVideo && alephVideoBackup) {
@@ -550,20 +867,28 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Auto-convert LTX V2, WAN 2.5, and Kling models between t2v and i2v variants when switching modes
   useEffect(() => {
     // Convert LTX V2 models
-    if (selectedModel.includes('ltx2')) {
-      const isI2V = selectedModel.includes('i2v');
-      const isPro = selectedModel.includes('pro');
-      const isFast = selectedModel.includes('fast');
+    if (selectedModel.includes("ltx2")) {
+      const isI2V = selectedModel.includes("i2v");
+      const isPro = selectedModel.includes("pro");
+      const isFast = selectedModel.includes("fast");
 
-      if (generationMode === 'text_to_video' && isI2V) {
+      if (generationMode === "text_to_video" && isI2V) {
         // Switch from i2v to t2v variant
-        const newModel = isPro ? 'ltx2-pro-t2v' : (isFast ? 'ltx2-fast-t2v' : 'ltx2-pro-t2v');
+        const newModel = isPro
+          ? "ltx2-pro-t2v"
+          : isFast
+            ? "ltx2-fast-t2v"
+            : "ltx2-pro-t2v";
         if (newModel !== selectedModel) {
           setSelectedModel(newModel);
         }
-      } else if (generationMode === 'image_to_video' && !isI2V) {
+      } else if (generationMode === "image_to_video" && !isI2V) {
         // Switch from t2v to i2v variant
-        const newModel = isPro ? 'ltx2-pro-i2v' : (isFast ? 'ltx2-fast-i2v' : 'ltx2-pro-i2v');
+        const newModel = isPro
+          ? "ltx2-pro-i2v"
+          : isFast
+            ? "ltx2-fast-i2v"
+            : "ltx2-pro-i2v";
         if (newModel !== selectedModel) {
           setSelectedModel(newModel);
         }
@@ -571,19 +896,19 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
 
     // Convert WAN 2.5 models
-    if (selectedModel.includes('wan-2.5') && !selectedModel.includes('v2v')) {
-      const isI2V = selectedModel.includes('i2v');
-      const isFast = selectedModel.includes('fast');
+    if (selectedModel.includes("wan-2.5") && !selectedModel.includes("v2v")) {
+      const isI2V = selectedModel.includes("i2v");
+      const isFast = selectedModel.includes("fast");
 
-      if (generationMode === 'text_to_video' && isI2V) {
+      if (generationMode === "text_to_video" && isI2V) {
         // Switch from i2v to t2v variant
-        const newModel = isFast ? 'wan-2.5-t2v-fast' : 'wan-2.5-t2v';
+        const newModel = isFast ? "wan-2.5-t2v-fast" : "wan-2.5-t2v";
         if (newModel !== selectedModel) {
           setSelectedModel(newModel);
         }
-      } else if (generationMode === 'image_to_video' && !isI2V) {
+      } else if (generationMode === "image_to_video" && !isI2V) {
         // Switch from t2v to i2v variant
-        const newModel = isFast ? 'wan-2.5-i2v-fast' : 'wan-2.5-i2v';
+        const newModel = isFast ? "wan-2.5-i2v-fast" : "wan-2.5-i2v";
         if (newModel !== selectedModel) {
           setSelectedModel(newModel);
         }
@@ -591,15 +916,19 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
 
     // Kling v2.1 conversions: allow Master to stay T2V; non-master stays I2V-only
-    if (selectedModel.startsWith('kling-') && selectedModel.includes('v2.1') && !selectedModel.includes('v2.5')) {
-      const isI2V = selectedModel.includes('i2v');
-      const isMaster = selectedModel.includes('master');
+    if (
+      selectedModel.startsWith("kling-") &&
+      selectedModel.includes("v2.1") &&
+      !selectedModel.includes("v2.5")
+    ) {
+      const isI2V = selectedModel.includes("i2v");
+      const isMaster = selectedModel.includes("master");
 
       // For non-master v2.1, force I2V; for master, leave as-is (supports T2V)
       if (!isMaster && !isI2V) {
-        const newModel = 'kling-v2.1-i2v';
+        const newModel = "kling-v2.1-i2v";
         if (newModel !== selectedModel) {
-          console.log('🔄 Auto-converting Kling 2.1 to I2V variant:', newModel);
+          console.log("🔄 Auto-converting Kling 2.1 to I2V variant:", newModel);
           setSelectedModel(newModel);
         }
       }
@@ -611,23 +940,26 @@ const InputBox = (props: InputBoxProps = {}) => {
     setSelectedCameraMovements([]);
   }, [selectedModel]);
 
-
   // Reset fps/audio defaults when model changes
   useEffect(() => {
-    if (selectedModel.includes('ltx2')) {
+    if (selectedModel.includes("ltx2")) {
       setFps(25);
       setGenerateAudio(true);
-    } else if (selectedModel.includes('veo3')) {
+    } else if (selectedModel.includes("veo3")) {
       // Veo 3 and 3.1 support generate_audio, keep fps unused
       setGenerateAudio(true);
-    } else if (selectedModel.includes('sora2')) {
+    } else if (selectedModel.includes("sora2")) {
       setGenerateAudio(true);
     }
   }, [selectedModel]);
 
   // Auto-set fixed settings for models that don't support customization
   useEffect(() => {
-    if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+    if (
+      selectedModel === "T2V-01-Director" ||
+      selectedModel === "I2V-01-Director" ||
+      selectedModel === "S2V-01"
+    ) {
       setSelectedResolution("720P");
       setSelectedMiniMaxDuration(6);
       // These models have fixed settings: 6s duration, 720P resolution
@@ -638,7 +970,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       } else if (selectedMiniMaxDuration === 10) {
         setSelectedResolution("768P"); // Default for 10s
       }
-    } else if (selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") {
+    } else if (
+      selectedModel === "MiniMax-Hailuo-2.3" ||
+      selectedModel === "MiniMax-Hailuo-2.3-Fast"
+    ) {
       // MiniMax-Hailuo-2.3: Set default resolution based on duration (768P/1080P only, no 512P)
       // 1080P only supports 6s, so if duration is 10s, force 768P
       if (selectedMiniMaxDuration === 10) {
@@ -663,8 +998,12 @@ const InputBox = (props: InputBoxProps = {}) => {
     prevGenerationModeRef.current = generationMode;
 
     // Only adjust if switching to text-to-video and resolution is 512P (not supported for Hailuo 2.3)
-    if (generationMode === "text_to_video" && (selectedModel === "MiniMax-Hailuo-02" || selectedModel === "MiniMax-Hailuo-2.3")) {
-      setSelectedResolution(prev => {
+    if (
+      generationMode === "text_to_video" &&
+      (selectedModel === "MiniMax-Hailuo-02" ||
+        selectedModel === "MiniMax-Hailuo-2.3")
+    ) {
+      setSelectedResolution((prev) => {
         if (prev === "512P") {
           return "768P"; // Switch to 768P for text-to-video (512P not supported for 2.3)
         }
@@ -676,8 +1015,13 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Auto-adjust resolution when duration changes for MiniMax models
   // Only update if resolution actually needs to change to prevent loops
   useEffect(() => {
-    if ((selectedModel === "MiniMax-Hailuo-02" || selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") && selectedMiniMaxDuration === 10) {
-      setSelectedResolution(prev => prev === "1080P" ? "768P" : prev); // Only update if still 1080P (1080P only supports 6s)
+    if (
+      (selectedModel === "MiniMax-Hailuo-02" ||
+        selectedModel === "MiniMax-Hailuo-2.3" ||
+        selectedModel === "MiniMax-Hailuo-2.3-Fast") &&
+      selectedMiniMaxDuration === 10
+    ) {
+      setSelectedResolution((prev) => (prev === "1080P" ? "768P" : prev)); // Only update if still 1080P (1080P only supports 6s)
     }
   }, [selectedMiniMaxDuration, selectedModel]); // Removed selectedResolution from deps to prevent loop
 
@@ -691,7 +1035,12 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
     prevModelForResetRef.current = selectedModel;
 
-    if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+    if (
+      selectedModel.includes("MiniMax") ||
+      selectedModel === "T2V-01-Director" ||
+      selectedModel === "I2V-01-Director" ||
+      selectedModel === "S2V-01"
+    ) {
       // Reset Runway-specific controls when switching to MiniMax
       // Note: MiniMax models don't support custom aspect ratios - they use fixed resolutions
       setFrameSize("16:9"); // Default aspect ratio (not used for MiniMax)
@@ -699,11 +1048,16 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       // Set appropriate MiniMax defaults based on model
       if (selectedModel === "MiniMax-Hailuo-02") {
-        setSelectedResolution(prev => prev !== "1080P" ? "1080P" : prev);
+        setSelectedResolution((prev) => (prev !== "1080P" ? "1080P" : prev));
         setSelectedMiniMaxDuration(6);
-      } else if (selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") {
+      } else if (
+        selectedModel === "MiniMax-Hailuo-2.3" ||
+        selectedModel === "MiniMax-Hailuo-2.3-Fast"
+      ) {
         // Hailuo 2.3: Default to 768P (no 512P support)
-        setSelectedResolution(prev => (prev !== "768P" && prev !== "1080P") ? "768P" : prev);
+        setSelectedResolution((prev) =>
+          prev !== "768P" && prev !== "1080P" ? "768P" : prev,
+        );
         setSelectedMiniMaxDuration(6);
         // Clear last_frame_image as these models don't support it
         if (lastFrameImage) {
@@ -711,12 +1065,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         }
       } else {
         // T2V-01, I2V-01, S2V-01 have fixed settings
-        setSelectedResolution(prev => prev !== "720P" ? "720P" : prev);
+        setSelectedResolution((prev) => (prev !== "720P" ? "720P" : prev));
         setSelectedMiniMaxDuration(6);
       }
     } else {
       // Reset MiniMax-specific controls when switching to Runway
-      setSelectedResolution(prev => prev !== "1080P" ? "1080P" : prev); // Only update if different
+      setSelectedResolution((prev) => (prev !== "1080P" ? "1080P" : prev)); // Only update if different
       setSelectedMiniMaxDuration(6); // Default duration
     }
   }, [selectedModel]);
@@ -728,7 +1082,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (!event.target) return;
 
       const target = event.target as Element;
-      if (!target.closest('.dropdown-container')) {
+      if (!target.closest(".dropdown-container")) {
         setResolutionDropdownOpen(false);
         setDurationDropdownOpen(false);
       }
@@ -796,22 +1150,43 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Handle model change with validation
   const handleModelChange = (newModel: string) => {
-    console.log('🔄 Model change requested:');
-    console.log('🔄 - From:', selectedModel);
-    console.log('🔄 - To:', newModel);
-    console.log('🔄 - Generation mode:', generationMode);
+    console.log("🔄 Model change requested:");
+    console.log("🔄 - From:", selectedModel);
+    console.log("🔄 - To:", newModel);
+    console.log("🔄 - Generation mode:", generationMode);
 
     // Determine desired generation mode for the requested model so we can
     // automatically switch modes when the user selects a model that requires
     // a different mode (e.g., selecting a T2V model while in video_to_video).
-    const desiredMode: "text_to_video" | "image_to_video" | "video_to_video" = ((): "text_to_video" | "image_to_video" | "video_to_video" => {
-      if (newModel === 'gen4_aleph' || newModel.includes('v2v') || newModel.includes('remix')) return 'video_to_video';
-      // I2V / image→video candidates
-      // MiniMax-Hailuo-2.3-Fast is I2V only, others can do both T2V and I2V
-      if (newModel === 'I2V-01-Director' || newModel === 'S2V-01' || newModel === 'MiniMax-Hailuo-2.3-Fast' || (newModel.includes('MiniMax') && newModel !== 'MiniMax-Hailuo-02' && newModel !== 'MiniMax-Hailuo-2.3') || newModel.startsWith('kling-') || newModel === 'kling-o1' || newModel.includes('veo3') || newModel.includes('ltx2') || newModel.startsWith('ltx-2.3-pro') || newModel === 'gen4_turbo' || newModel === 'gen3a_turbo') return 'image_to_video';
-      // Default to text→video for other models
-      return 'text_to_video';
-    })();
+    const desiredMode: "text_to_video" | "image_to_video" | "video_to_video" =
+      ((): "text_to_video" | "image_to_video" | "video_to_video" => {
+        if (
+          newModel === "gen4_aleph" ||
+          newModel.includes("v2v") ||
+          newModel.includes("remix")
+        )
+          return "video_to_video";
+        // I2V / image→video candidates
+        // MiniMax-Hailuo-2.3-Fast is I2V only, others can do both T2V and I2V
+        if (
+          newModel === "I2V-01-Director" ||
+          newModel === "S2V-01" ||
+          newModel === "MiniMax-Hailuo-2.3-Fast" ||
+          (newModel.includes("MiniMax") &&
+            newModel !== "MiniMax-Hailuo-02" &&
+            newModel !== "MiniMax-Hailuo-2.3") ||
+          newModel.startsWith("kling-") ||
+          newModel === "kling-o1" ||
+          newModel.includes("veo3") ||
+          newModel.includes("ltx2") ||
+          newModel.startsWith("ltx-2.3-pro") ||
+          newModel === "gen4_turbo" ||
+          newModel === "gen3a_turbo"
+        )
+          return "image_to_video";
+        // Default to text→video for other models
+        return "text_to_video";
+      })();
 
     const mode = desiredMode;
     if (desiredMode !== generationMode) {
@@ -824,7 +1199,23 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (desiredMode === "text_to_video") {
       // Text→Video: MiniMax, Veo3, Veo 3.1, WAN, Kling (except v2.1/master), Seedance, PixVerse, Sora 2, and LTX models support this
       // Note: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-2.3-Fast, and Kling 2.1/master are I2V-only and will auto-switch to image-to-video mode
-      if (newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "T2V-01-Director" || newModel.includes("veo3") || newModel.includes("wan-2.5") || (newModel.startsWith('kling-') && !newModel.includes('v2.1') && !newModel.includes('master')) || newModel === 'kling-o1' || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2') || newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
+      if (
+        newModel === "MiniMax-Hailuo-02" ||
+        newModel === "MiniMax-Hailuo-2.3" ||
+        newModel === "T2V-01-Director" ||
+        newModel.includes("veo3") ||
+        newModel.includes("wan-2.5") ||
+        (newModel.startsWith("kling-") &&
+          !newModel.includes("v2.1") &&
+          !newModel.includes("master")) ||
+        newModel === "kling-o1" ||
+        newModel.includes("seedance") ||
+        newModel.includes("pixverse") ||
+        newModel.includes("sora2") ||
+        newModel.includes("ltx2") ||
+        newModel.startsWith("ltx-2.3-fast") ||
+        newModel.startsWith("ltx-2.3-pro")
+      ) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (newModel.includes("MiniMax") || newModel === "T2V-01-Director") {
@@ -838,10 +1229,18 @@ const InputBox = (props: InputBoxProps = {}) => {
           // MiniMax-Hailuo-02: Set default resolution based on duration
           setSelectedMiniMaxDuration(6); // Default duration
           setSelectedResolution("768P"); // Default resolution for 6s
-        } else if (newModel === "MiniMax-Hailuo-2.3" || newModel === "MiniMax-Hailuo-2.3-Fast") {
+        } else if (
+          newModel === "MiniMax-Hailuo-2.3" ||
+          newModel === "MiniMax-Hailuo-2.3-Fast"
+        ) {
           // MiniMax-Hailuo-2.3: Set default resolution and duration (768P/1080P only, no 512P)
           setSelectedMiniMaxDuration(6); // Default duration
           setSelectedResolution("768P"); // Default resolution for 6s
+        } else if (newModel.includes("veo3.1-lite")) {
+          setDuration(8);
+          setFrameSize("16:9");
+          setSelectedQuality("720p");
+          setGenerateAudio(true);
         } else if (newModel.includes("veo3.1")) {
           // Veo 3.1 models: Set default duration and frame size
           setDuration(8); // Default 8s for Veo 3.1
@@ -857,22 +1256,22 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5); // Default 5s for WAN
           setFrameSize("1280*720"); // Default 720p for WAN
           // Keep audio if switching between WAN models
-        } else if (newModel.startsWith('kling-')) {
+        } else if (newModel.startsWith("kling-")) {
           // Kling models: duration default 5s; aspect via frame dropdown not used (we use separate aspect for kling)
           setDuration(5);
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel === 'kling-o1') {
+        } else if (newModel === "kling-o1") {
           // Kling o1: duration default 5s, image-to-video only
           setDuration(5);
           setFrameSize("16:9");
-        } else if (newModel.includes('seedance')) {
+        } else if (newModel.includes("seedance")) {
           // Seedance models
-          if (newModel.includes('seedance-1.5')) {
+          if (newModel.includes("seedance-1.5")) {
             setDuration(4);
-            setFrameSize('16:9');
+            setFrameSize("16:9");
             setGenerateAudio(false);
           } else {
             // Seedance 1.0: frontend pricing uses 5s/10s buckets and resolution
@@ -884,7 +1283,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.includes('pixverse')) {
+        } else if (newModel.includes("pixverse")) {
           // PixVerse models: duration default 5s, quality default 720p, aspect ratio default 16:9
           setDuration(5);
           setPixverseQuality("720p");
@@ -893,16 +1292,16 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.includes('sora2')) {
+        } else if (newModel.includes("sora2")) {
           // Sora 2 models: duration default 8s, aspect ratio default 16:9, quality default 720p (or 1080p for Pro)
           setDuration(8); // Default 8s for Sora 2
           setFrameSize("16:9"); // Default aspect ratio
-          setSelectedQuality(newModel.includes('pro') ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
+          setSelectedQuality(newModel.includes("pro") ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.includes('ltx2')) {
+        } else if (newModel.includes("ltx2")) {
           // LTX V2 T2V: default resolution 1080p, duration 6s, 16:9 fixed
           setDuration(6);
           setFrameSize("16:9");
@@ -911,7 +1310,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
+        } else if (
+          newModel.startsWith("ltx-2.3-fast") ||
+          newModel.startsWith("ltx-2.3-pro")
+        ) {
           // LTX 2.3 Fast/Pro: default 1080p, 6s
           setSelectedResolution("1080p" as any);
           setDuration(6);
@@ -944,15 +1346,38 @@ const InputBox = (props: InputBoxProps = {}) => {
         setSelectedCameraMovements([]);
       } else {
         // Model not supported for text-to-video
-        console.warn(`Model ${newModel} cannot be used for text-to-video generation`);
+        console.warn(
+          `Model ${newModel} cannot be used for text-to-video generation`,
+        );
         return; // Don't change the model
       }
     } else if (desiredMode === "image_to_video") {
       // Image→Video: gen4_turbo, gen3a_turbo, MiniMax-Hailuo-02, MiniMax-Hailuo-2.3, MiniMax-Hailuo-2.3-Fast, I2V-01-Director, S2V-01, Veo3, Veo 3.1, WAN, Kling, Seedance, PixVerse, Sora 2
-      if (newModel === "gen4_turbo" || newModel === "gen3a_turbo" || newModel === "MiniMax-Hailuo-02" || newModel === "MiniMax-Hailuo-2.3" || newModel === "MiniMax-Hailuo-2.3-Fast" || newModel === "I2V-01-Director" || newModel === "S2V-01" || newModel.includes("veo3") || newModel.includes("wan-2.5") || newModel.startsWith('kling-') || newModel.includes('seedance') || newModel.includes('pixverse') || newModel.includes('sora2') || newModel.includes('ltx2') || newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
+      if (
+        newModel === "gen4_turbo" ||
+        newModel === "gen3a_turbo" ||
+        newModel === "MiniMax-Hailuo-02" ||
+        newModel === "MiniMax-Hailuo-2.3" ||
+        newModel === "MiniMax-Hailuo-2.3-Fast" ||
+        newModel === "I2V-01-Director" ||
+        newModel === "S2V-01" ||
+        newModel.includes("veo3") ||
+        newModel.includes("wan-2.5") ||
+        newModel.startsWith("kling-") ||
+        newModel.includes("seedance") ||
+        newModel.includes("pixverse") ||
+        newModel.includes("sora2") ||
+        newModel.includes("ltx2") ||
+        newModel.startsWith("ltx-2.3-fast") ||
+        newModel.startsWith("ltx-2.3-pro")
+      ) {
         setSelectedModel(newModel);
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
-        if (newModel.includes("MiniMax") || newModel === "I2V-01-Director" || newModel === "S2V-01") {
+        if (
+          newModel.includes("MiniMax") ||
+          newModel === "I2V-01-Director" ||
+          newModel === "S2V-01"
+        ) {
           setFrameSize("16:9"); // Default, but won't be used for MiniMax
         }
         // Set appropriate settings based on model
@@ -963,10 +1388,18 @@ const InputBox = (props: InputBoxProps = {}) => {
           // MiniMax-Hailuo-02: Set default resolution based on duration
           setSelectedMiniMaxDuration(6); // Default duration
           setSelectedResolution("768P"); // Default resolution for 6s
-        } else if (newModel === "MiniMax-Hailuo-2.3" || newModel === "MiniMax-Hailuo-2.3-Fast") {
+        } else if (
+          newModel === "MiniMax-Hailuo-2.3" ||
+          newModel === "MiniMax-Hailuo-2.3-Fast"
+        ) {
           // MiniMax-Hailuo-2.3: Set default resolution and duration (768P/1080P only, no 512P)
           setSelectedMiniMaxDuration(6); // Default duration
           setSelectedResolution("768P"); // Default resolution for 6s
+        } else if (newModel.includes("veo3.1-lite")) {
+          setDuration(8);
+          setFrameSize("auto");
+          setSelectedQuality("720p");
+          setGenerateAudio(true);
         } else if (newModel.includes("veo3.1")) {
           // Veo 3.1 models: Set default duration and frame size
           if (generationMode === "image_to_video") {
@@ -992,8 +1425,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(5); // Default 5s for WAN
           setFrameSize("1280*720"); // Default 720p for WAN
           // Keep audio if switching between WAN models
-        } else if (newModel.startsWith('kling-')) {
+        } else if (newModel.startsWith("kling-")) {
           setDuration(5);
+          if (newModel === "kling-v3-pro") {
+            setFrameSize("");
+          }
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
@@ -1002,9 +1438,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Gen-4 Turbo and Gen-3a Turbo: default duration 5s (only supports 5s and 10s)
           setDuration(5);
           setFrameSize("16:9");
-        } else if (newModel.includes('seedance')) {
+        } else if (newModel.includes("seedance")) {
           // Seedance models
-          if (newModel.includes('seedance-1.5')) {
+          if (newModel.includes("seedance-1.5")) {
             setDuration(4);
             setGenerateAudio(false);
             setFrameSize("16:9");
@@ -1018,7 +1454,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.includes('pixverse')) {
+        } else if (newModel.includes("pixverse")) {
           // PixVerse models: duration default 5s, quality default 720p
           setDuration(5);
           setPixverseQuality("720p");
@@ -1027,7 +1463,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.includes('sora2')) {
+        } else if (newModel.includes("sora2")) {
           // Sora 2 models: duration default 8s, aspect ratio default auto (for I2V) or 16:9 (for T2V), quality default 720p (or 1080p for Pro)
           if (generationMode === "image_to_video") {
             setDuration(8); // Sora 2 I2V supports 4s/8s/12s
@@ -1036,12 +1472,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             setDuration(8); // Default 8s for Sora 2 T2V
             setFrameSize("16:9"); // Default aspect ratio for Sora 2 T2V
           }
-          setSelectedQuality(newModel.includes('pro') ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
+          setSelectedQuality(newModel.includes("pro") ? "1080p" : "720p"); // Pro defaults to 1080p, Standard to 720p
           // Clear audio when switching away from WAN models
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.includes('ltx2')) {
+        } else if (newModel.includes("ltx2")) {
           // LTX V2 I2V: default resolution 1080p, duration 6s, aspect ratio 16:9 (can change)
           setDuration(6);
           setFrameSize("16:9");
@@ -1050,7 +1486,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
-        } else if (newModel.startsWith('ltx-2.3-fast') || newModel.startsWith('ltx-2.3-pro')) {
+        } else if (
+          newModel.startsWith("ltx-2.3-fast") ||
+          newModel.startsWith("ltx-2.3-pro")
+        ) {
           // LTX 2.3 Fast/Pro: default 1080p, 6s
           setSelectedResolution("1080p" as any);
           setDuration(6);
@@ -1069,7 +1508,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     } else if (desiredMode === "video_to_video") {
       // Video→Video: Runway and Sora 2 models support this
-      if (newModel === "gen4_aleph" || newModel.includes('sora2-v2v')) {
+      if (newModel === "gen4_aleph" || newModel.includes("sora2-v2v")) {
         setSelectedModel(newModel);
         // Clear camera movements when switching to non-MiniMax model
         setSelectedCameraMovements([]);
@@ -1077,37 +1516,62 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
   };
 
-  const loading = useAppSelector((state: any) => state.history?.loading || false);
-  const hasMore = useAppSelector((state: any) => state.history?.hasMore || false);
+  const loading = useAppSelector(
+    (state: any) => state.history?.loading || false,
+  );
+  const hasMore = useAppSelector(
+    (state: any) => state.history?.hasMore || false,
+  );
   const [page, setPage] = useState(1);
 
   // Redux & Filter State
-  const activeGenerations = useAppSelector((state: any) => state.generation?.activeGenerations || []);
-  const runningGenerationsCount = activeGenerations.filter((g: any) => g.status === 'pending' || g.status === 'generating').length;
+  const activeGenerations = useAppSelector(
+    (state: any) => state.generation?.activeGenerations || [],
+  );
+  const runningGenerationsCount = activeGenerations.filter(
+    (g: any) => g.status === "pending" || g.status === "generating",
+  ).length;
 
   useQueueManagement({
     showSuccessToast: false,
     showErrorToast: false,
   });
 
-  console.log('[InputBox DEBUG] activeGenerations:', activeGenerations.length, activeGenerations);
+  console.log(
+    "[InputBox DEBUG] activeGenerations:",
+    activeGenerations.length,
+    activeGenerations,
+  );
 
   // Read search, sort, and date filters from Redux (managed by HistoryControls)
-  const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
-  const sortOrder = currentFilters.sortOrder || 'desc';
-  const searchQuery = currentFilters.search || '';
-  const dateRange = currentFilters.dateRange ? {
-    start: currentFilters.dateRange.start ? new Date(currentFilters.dateRange.start) : null,
-    end: currentFilters.dateRange.end ? new Date(currentFilters.dateRange.end) : null,
-  } : { start: null, end: null };
+  const currentFilters = useAppSelector(
+    (state: any) => state.history?.filters || {},
+  );
+  const sortOrder = currentFilters.sortOrder || "desc";
+  const searchQuery = currentFilters.search || "";
+  const dateRange = currentFilters.dateRange
+    ? {
+        start: currentFilters.dateRange.start
+          ? new Date(currentFilters.dateRange.start)
+          : null,
+        end: currentFilters.dateRange.end
+          ? new Date(currentFilters.dateRange.end)
+          : null,
+      }
+    : { start: null, end: null };
 
   // Track if initial load has been attempted (to prevent guide flash on refresh)
   const hasAttemptedInitialLoadRef = useRef(false);
+  const [hasCompletedInitialHistoryLoad, setHasCompletedInitialHistoryLoad] =
+    useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
+  const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(
+    null,
+  );
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
-  const [historyScrollElement, setHistoryScrollElement] = useState<HTMLDivElement | null>(null);
+  const [historyScrollElement, setHistoryScrollElement] =
+    useState<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
@@ -1115,21 +1579,41 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
     const allEntries = state.history?.entries || [];
+    const hasRenderableVideoMedia = (entry: any) => {
+      const hasVideoInImages =
+        Array.isArray(entry?.images) &&
+        entry.images.some((m: any) =>
+          isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl),
+        );
+      const hasVideoInVideos =
+        Array.isArray(entry?.videos) &&
+        entry.videos.some((v: any) =>
+          isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl),
+        );
+      return hasVideoInImages || hasVideoInVideos;
+    };
+    const isPendingVideoEntry = (entry: any) =>
+      isVideoType(entry) &&
+      (entry?.status === "generating" || entry?.status === "pending");
 
     // Helper functions now imported from videoUtils
-
 
     // Get entries that are explicitly declared as video types
     const declaredVideoTypes = allEntries.filter(isVideoType);
 
     // Get entries that have video URLs (fallback for entries that might not have correct generationType)
     const urlVideoTypes = allEntries.filter((entry: any) =>
-      Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url))
+      hasRenderableVideoMedia(entry),
     );
 
     // Also get entries that have videos array with video URLs
-    const videosArrayTypes = allEntries.filter((entry: any) =>
-      entry.videos && Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl))
+    const videosArrayTypes = allEntries.filter(
+      (entry: any) =>
+        entry.videos &&
+        Array.isArray(entry.videos) &&
+        entry.videos.some((v: any) =>
+          isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl),
+        ),
     );
 
     // IMPORTANT: Preserve backend order (do NOT sort on the frontend).
@@ -1137,11 +1621,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     const mergedEntries: any[] = [];
     const seen = new Set<string>();
     for (const entry of allEntries) {
-      const id = String(entry?.id || '');
+      const id = String(entry?.id || "");
       if (!id || seen.has(id)) continue;
-      const hasVideoInImages = Array.isArray(entry.images) && entry.images.some((m: any) => isVideoUrl(m?.firebaseUrl || m?.url));
-      const hasVideoInVideos = Array.isArray(entry.videos) && entry.videos.some((v: any) => isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl));
-      if (isVideoType(entry) || hasVideoInImages || hasVideoInVideos) {
+      const hasMedia = hasRenderableVideoMedia(entry);
+      if (hasMedia || isPendingVideoEntry(entry)) {
         mergedEntries.push(entry);
         seen.add(id);
       }
@@ -1149,59 +1632,72 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Debug: Log all video entries and specifically animate entries
     const animateEntries = mergedEntries.filter((e: any) => {
-      const model = String(e?.model || '').toLowerCase();
-      return model.includes('wan-2.2-animate') || model.includes('wan-video/wan-2.2-animate');
+      const model = String(e?.model || "").toLowerCase();
+      return (
+        model.includes("wan-2.2-animate") ||
+        model.includes("wan-video/wan-2.2-animate")
+      );
     });
     if (animateEntries.length > 0) {
-      console.log('[InputBox] ✅ Found animate entries in video history:', animateEntries.length, animateEntries.map((e: any) => ({
-        id: e.id,
-        model: e.model,
-        generationType: e.generationType,
-        status: e.status
-      })));
+      console.log(
+        "[InputBox] ✅ Found animate entries in video history:",
+        animateEntries.length,
+        animateEntries.map((e: any) => ({
+          id: e.id,
+          model: e.model,
+          generationType: e.generationType,
+          status: e.status,
+        })),
+      );
     }
 
     // Debug: Log video-to-video entries to ensure they're being included
     const videoToVideoEntries = mergedEntries.filter((e: any) => {
       const normalizedType = normalizeGenerationType(e?.generationType);
-      return normalizedType === 'video-to-video';
+      return normalizedType === "video-to-video";
     });
     const videoToVideoInAll = allEntries.filter((e: any) => {
       const normalizedType = normalizeGenerationType(e?.generationType);
-      return normalizedType === 'video-to-video';
+      return normalizedType === "video-to-video";
     });
-    console.log('[InputBox] Video-to-video entries:', {
+    console.log("[InputBox] Video-to-video entries:", {
       inAllEntries: videoToVideoInAll.length,
       inMergedEntries: videoToVideoEntries.length,
       sample: videoToVideoInAll.slice(0, 2).map((e: any) => ({
         id: e.id,
         model: e.model,
         generationType: e.generationType,
-        hasImages: !!(e.images?.length),
-        hasVideos: !!(e.videos?.length)
-      }))
+        hasImages: !!e.images?.length,
+        hasVideos: !!e.videos?.length,
+      })),
     });
 
     // Count entries by normalized generationType for debugging
-    const countsAll = allEntries.reduce((acc: any, e: any) => {
-      const normalized = normalizeGenerationType(e.generationType);
-      acc[normalized] = (acc[normalized] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const countsAll = allEntries.reduce(
+      (acc: any, e: any) => {
+        const normalized = normalizeGenerationType(e.generationType);
+        acc[normalized] = (acc[normalized] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Debug: Show raw generationType values to identify any inconsistencies
-    const rawGenerationTypes = allEntries.reduce((acc: any, e: any) => {
-      const rawType = e.generationType || 'undefined';
-      acc[rawType] = (acc[rawType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const rawGenerationTypes = allEntries.reduce(
+      (acc: any, e: any) => {
+        const rawType = e.generationType || "undefined";
+        acc[rawType] = (acc[rawType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Debug: Log history totals to diagnose missing entries
-    console.log('[InputBox] History totals:', {
+    console.log("[InputBox] History totals:", {
       all: allEntries.length,
-      textToVideo: countsAll['text-to-video'] || 0,
-      imageToVideo: countsAll['image-to-video'] || 0,
-      videoToVideo: countsAll['video-to-video'] || 0,
+      textToVideo: countsAll["text-to-video"] || 0,
+      imageToVideo: countsAll["image-to-video"] || 0,
+      videoToVideo: countsAll["video-to-video"] || 0,
       filtered: mergedEntries.length,
       declaredVideoTypes: declaredVideoTypes.length,
       urlVideoTypes: urlVideoTypes.length,
@@ -1212,7 +1708,10 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Debug: Show which entries are being filtered and why
     if (mergedEntries.length < allEntries.length) {
-      const filteredOut = allEntries.filter((entry: any) => !mergedEntries.some((merged: any) => merged.id === entry.id));
+      const filteredOut = allEntries.filter(
+        (entry: any) =>
+          !mergedEntries.some((merged: any) => merged.id === entry.id),
+      );
       /*console.log('[VideoPage] Filtered out entries:', filteredOut.map((entry: any) => ({
         id: entry.id,
         generationType: entry.generationType,
@@ -1241,6 +1740,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (loading || historyEntries.length > 0) {
       hasAttemptedInitialLoadRef.current = true;
     }
+
+    if (hasAttemptedInitialLoadRef.current && !loading) {
+      setHasCompletedInitialHistoryLoad(true);
+    }
   }, [loading, historyEntries.length]);
 
   // Get image history entries for image upload modal
@@ -1248,323 +1751,375 @@ const InputBox = (props: InputBoxProps = {}) => {
     const allEntries = state.history?.entries || [];
 
     // Filter for text-to-image entries (same as image generation component)
-    const filteredEntries = allEntries.filter((entry: any) =>
-      entry.generationType === 'text-to-image'
+    const filteredEntries = allEntries.filter(
+      (entry: any) => entry.generationType === "text-to-image",
     );
 
     // Debug: Log image entries for troubleshooting
-    console.log('[VideoPage] Image history entries:', {
+    console.log("[VideoPage] Image history entries:", {
       total: filteredEntries.length,
       allEntries: allEntries.length,
       entries: filteredEntries.slice(0, 3).map((entry: any) => ({
         id: entry.id,
         generationType: entry.generationType,
         images: entry.images?.length || 0,
-        timestamp: entry.timestamp
-      }))
+        timestamp: entry.timestamp,
+      })),
     });
 
     return filteredEntries;
   }, shallowEqual);
 
   // Fetch user's text-to-image history for the UploadModal when needed (local pagination/state)
-  const fetchLibraryImages = useCallback(async (initial: boolean = false) => {
-    try {
-      // Use ref to check loading state to avoid stale closure issues
-      if (libraryImageLoadingRef.current) {
-        console.log('[VideoPage] fetchLibraryImages: Already loading, skipping');
-        return;
-      }
-      // For non-initial loads, check if we have a cursor (hasMore) and modal is open
-      if (!initial) {
-        if (!libraryImageNextCursorRef.current) {
-          console.log('[VideoPage] fetchLibraryImages: No nextCursor, no more items');
-          setLibraryImageHasMore(false);
+  const fetchLibraryImages = useCallback(
+    async (initial: boolean = false) => {
+      try {
+        // Use ref to check loading state to avoid stale closure issues
+        if (libraryImageLoadingRef.current) {
+          console.log(
+            "[VideoPage] fetchLibraryImages: Already loading, skipping",
+          );
           return;
         }
-        if (!isUploadModalOpen) {
-          console.log('[VideoPage] fetchLibraryImages: Modal not open, skipping');
-          return;
-        }
-      }
-      libraryImageLoadingRef.current = true;
-      setLibraryImageLoading(true);
-      const api = getApiClient();
-      const params: any = { generationType: 'text-to-image', limit: 30, sortBy: 'createdAt' };
-      // For pagination, use the cursor from the previous response
-      // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
-      const currentCursor = libraryImageNextCursorRef.current;
-      if (!initial && currentCursor) {
-        // Backend expects `nextCursor` for pagination; using `cursor` causes first page to repeat
-        params.nextCursor = currentCursor;
-        console.log('[VideoPage] 🔄 Pagination request with cursor:', {
-          cursor: currentCursor,
-          cursorType: typeof currentCursor,
-          cursorLength: String(currentCursor).length,
-          isInitial: initial,
-          currentEntriesCount: libraryImageEntries.length
-        });
-      } else if (initial) {
-        // Ensure no cursor is sent for initial load
-        console.log('[VideoPage] 🆕 Initial load (no cursor)', {
-          currentCursor: currentCursor ? 'present but ignored' : 'none',
-          currentEntriesCount: libraryImageEntries.length
-        });
-      } else {
-        console.warn('[VideoPage] ⚠️ Pagination requested but no cursor available!', {
-          currentCursor,
-          hasMore: libraryImageHasMore,
-          currentEntriesCount: libraryImageEntries.length
-        });
-      }
-      // Ensure createdAt ordering always requested
-      params.sortBy = 'createdAt';
-      const res = await api.get('/api/generations', { params });
-      const payload = res.data?.data || res.data || {};
-      const items: any[] = Array.isArray(payload.items) ? payload.items : [];
-      const nextCursor: string | number | undefined = payload.nextCursor;
-
-      // Ensure all items have the images array properly structured
-      const normalizedItems = items.map((item: any) => {
-        // Clone the item to avoid mutating the original
-        const normalized = { ...item };
-
-        // If item doesn't have images array, try to extract from other properties
-        if (!Array.isArray(normalized.images) || normalized.images.length === 0) {
-          // Some APIs might return images in a different structure
-          if (normalized.media && Array.isArray(normalized.media)) {
-            normalized.images = normalized.media.filter((m: any) => m.type === 'image' || !m.type);
+        // For non-initial loads, check if we have a cursor (hasMore) and modal is open
+        if (!initial) {
+          if (!libraryImageNextCursorRef.current) {
+            console.log(
+              "[VideoPage] fetchLibraryImages: No nextCursor, no more items",
+            );
+            setLibraryImageHasMore(false);
+            return;
+          }
+          if (!isUploadModalOpen) {
+            console.log(
+              "[VideoPage] fetchLibraryImages: Modal not open, skipping",
+            );
+            return;
           }
         }
-        // Ensure images is always an array (even if empty) - don't filter out items
-        // The UploadModal will handle empty arrays gracefully
-        if (!Array.isArray(normalized.images)) {
-          normalized.images = [];
-        }
-
-        // Ensure each image has required properties
-        if (Array.isArray(normalized.images)) {
-          normalized.images = normalized.images.map((img: any) => {
-            if (typeof img === 'string') {
-              // If image is just a URL string, convert to object
-              return { url: img, id: img };
-            }
-            return img;
+        libraryImageLoadingRef.current = true;
+        setLibraryImageLoading(true);
+        const api = getApiClient();
+        const params: any = {
+          generationType: "text-to-image",
+          limit: 30,
+          sortBy: "createdAt",
+        };
+        // For pagination, use the cursor from the previous response
+        // IMPORTANT: Read cursor from ref at the time of request to ensure we have the latest value
+        const currentCursor = libraryImageNextCursorRef.current;
+        if (!initial && currentCursor) {
+          // Backend expects `nextCursor` for pagination; using `cursor` causes first page to repeat
+          params.nextCursor = currentCursor;
+          console.log("[VideoPage] 🔄 Pagination request with cursor:", {
+            cursor: currentCursor,
+            cursorType: typeof currentCursor,
+            cursorLength: String(currentCursor).length,
+            isInitial: initial,
+            currentEntriesCount: libraryImageEntries.length,
           });
+        } else if (initial) {
+          // Ensure no cursor is sent for initial load
+          console.log("[VideoPage] 🆕 Initial load (no cursor)", {
+            currentCursor: currentCursor ? "present but ignored" : "none",
+            currentEntriesCount: libraryImageEntries.length,
+          });
+        } else {
+          console.warn(
+            "[VideoPage] ⚠️ Pagination requested but no cursor available!",
+            {
+              currentCursor,
+              hasMore: libraryImageHasMore,
+              currentEntriesCount: libraryImageEntries.length,
+            },
+          );
         }
+        // Ensure createdAt ordering always requested
+        params.sortBy = "createdAt";
+        const res = await api.get("/api/generations", { params });
+        const payload = res.data?.data || res.data || {};
+        const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+        const nextCursor: string | number | undefined = payload.nextCursor;
 
-        return normalized;
-      });
+        // Ensure all items have the images array properly structured
+        const normalizedItems = items.map((item: any) => {
+          // Clone the item to avoid mutating the original
+          const normalized = { ...item };
 
-      console.log('[VideoPage] fetchLibraryImages API response:', {
-        payloadKeys: Object.keys(payload),
-        itemsCount: items.length,
-        normalizedItemsCount: normalizedItems.length,
-        itemsSample: normalizedItems.slice(0, 2).map((item: any) => ({
-          id: item.id,
-          generationType: item.generationType,
-          imagesCount: item.images?.length || 0,
-          hasImagesArray: Array.isArray(item.images),
-          images: item.images?.slice(0, 1).map((img: any) => ({
-            id: img.id,
-            url: img.url?.substring(0, 50) + '...',
-            thumbnailUrl: img.thumbnailUrl ? 'present' : 'missing',
-            avifUrl: img.avifUrl ? 'present' : 'missing'
-          }))
-        })),
-        nextCursor: nextCursor ? 'present' : 'null'
-      });
+          // If item doesn't have images array, try to extract from other properties
+          if (
+            !Array.isArray(normalized.images) ||
+            normalized.images.length === 0
+          ) {
+            // Some APIs might return images in a different structure
+            if (normalized.media && Array.isArray(normalized.media)) {
+              normalized.images = normalized.media.filter(
+                (m: any) => m.type === "image" || !m.type,
+              );
+            }
+          }
+          // Ensure images is always an array (even if empty) - don't filter out items
+          // The UploadModal will handle empty arrays gracefully
+          if (!Array.isArray(normalized.images)) {
+            normalized.images = [];
+          }
 
-      // Merge uniquely by id using functional update to avoid stale closure
-      // Always create a new array reference to ensure React detects the change
-      setLibraryImageEntries((prevEntries) => {
-        // If this is an initial load, replace all entries (don't merge with old data)
-        if (initial) {
-          console.log('[VideoPage] fetchLibraryImages initial load - replacing all entries');
-          const sorted = normalizedItems.sort((a: any, b: any) => {
+          // Ensure each image has required properties
+          if (Array.isArray(normalized.images)) {
+            normalized.images = normalized.images.map((img: any) => {
+              if (typeof img === "string") {
+                // If image is just a URL string, convert to object
+                return { url: img, id: img };
+              }
+              return img;
+            });
+          }
+
+          return normalized;
+        });
+
+        console.log("[VideoPage] fetchLibraryImages API response:", {
+          payloadKeys: Object.keys(payload),
+          itemsCount: items.length,
+          normalizedItemsCount: normalizedItems.length,
+          itemsSample: normalizedItems.slice(0, 2).map((item: any) => ({
+            id: item.id,
+            generationType: item.generationType,
+            imagesCount: item.images?.length || 0,
+            hasImagesArray: Array.isArray(item.images),
+            images: item.images?.slice(0, 1).map((img: any) => ({
+              id: img.id,
+              url: img.url?.substring(0, 50) + "...",
+              thumbnailUrl: img.thumbnailUrl ? "present" : "missing",
+              avifUrl: img.avifUrl ? "present" : "missing",
+            })),
+          })),
+          nextCursor: nextCursor ? "present" : "null",
+        });
+
+        // Merge uniquely by id using functional update to avoid stale closure
+        // Always create a new array reference to ensure React detects the change
+        setLibraryImageEntries((prevEntries) => {
+          // If this is an initial load, replace all entries (don't merge with old data)
+          if (initial) {
+            console.log(
+              "[VideoPage] fetchLibraryImages initial load - replacing all entries",
+            );
+            const sorted = normalizedItems.sort((a: any, b: any) => {
+              const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+              const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+              return timeB - timeA; // Descending (newest first)
+            });
+            console.log("[VideoPage] fetchLibraryImages initial load result:", {
+              itemsCount: normalizedItems.length,
+              sortedCount: sorted.length,
+              sample: sorted.slice(0, 2).map((e: any) => ({
+                id: e.id,
+                generationType: e.generationType,
+                imagesCount: e.images?.length || 0,
+                hasImages: Array.isArray(e.images) && e.images.length > 0,
+              })),
+            });
+            // Always return a new array reference
+            return [...sorted];
+          }
+
+          // For pagination loads, merge with existing entries
+          // IMPORTANT: Check if items are actually new by comparing IDs
+          const existingIds = new Set(
+            prevEntries.map((e: any) => e?.id).filter(Boolean),
+          );
+          const newItems = normalizedItems.filter(
+            (item: any) => item?.id && !existingIds.has(item.id),
+          );
+          const existingItems = normalizedItems.filter(
+            (item: any) => item?.id && existingIds.has(item.id),
+          );
+
+          console.log("[VideoPage] fetchLibraryImages pagination merge:", {
+            previousCount: prevEntries.length,
+            newItemsReceived: normalizedItems.length,
+            actuallyNew: newItems.length,
+            duplicates: existingItems.length,
+            newItemIds: newItems.slice(0, 5).map((e: any) => e.id),
+            newItemsWithImages: newItems.filter(
+              (e: any) => Array.isArray(e.images) && e.images.length > 0,
+            ).length,
+          });
+
+          if (newItems.length === 0) {
+            console.warn(
+              "[VideoPage] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.",
+            );
+            return [...prevEntries];
+          }
+
+          const existingById: Record<string, any> = {};
+          // Add existing entries first
+          prevEntries.forEach((e: any) => {
+            if (e?.id) {
+              existingById[e.id] = e;
+            }
+          });
+          // Then add only NEW entries (avoid unnecessary updates)
+          newItems.forEach((e: any) => {
+            if (e?.id) {
+              existingById[e.id] = e;
+            }
+          });
+          // Create a new array and sort by createdAt (newest first)
+          const merged = Object.values(existingById).sort((a: any, b: any) => {
             const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
             const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
             return timeB - timeA; // Descending (newest first)
           });
-          console.log('[VideoPage] fetchLibraryImages initial load result:', {
-            itemsCount: normalizedItems.length,
-            sortedCount: sorted.length,
-            sample: sorted.slice(0, 2).map((e: any) => ({
+
+          console.log("[VideoPage] fetchLibraryImages after merge:", {
+            previousCount: prevEntries.length,
+            newItemsCount: normalizedItems.length,
+            newItemsAdded: newItems.length,
+            mergedCount: merged.length,
+            mergedEntriesWithImages: merged.filter(
+              (e: any) => Array.isArray(e.images) && e.images.length > 0,
+            ).length,
+            mergedSample: merged.slice(0, 3).map((e: any) => ({
               id: e.id,
               generationType: e.generationType,
               imagesCount: e.images?.length || 0,
-              hasImages: Array.isArray(e.images) && e.images.length > 0
-            }))
+              hasImages: Array.isArray(e.images) && e.images.length > 0,
+              firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + "...",
+              firstImageThumbnail: e.images?.[0]?.thumbnailUrl
+                ? "present"
+                : "missing",
+            })),
           });
-          // Always return a new array reference
-          return [...sorted];
+
+          // Always return a new array reference (even if contents are the same)
+          return [...merged];
+        });
+
+        // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
+        // This ensures the cursor is available for the next pagination request
+        const previousCursor = libraryImageNextCursorRef.current;
+        // Convert cursor to string if it's a number (API might return number cursor)
+        // Handle both string and number cursors from API
+        // IMPORTANT: Store the cursor immediately so it's available for the next request
+        const newCursor = nextCursor
+          ? typeof nextCursor === "string"
+            ? nextCursor
+            : String(nextCursor)
+          : undefined;
+        libraryImageNextCursorRef.current = newCursor;
+
+        // Log cursor update immediately
+        console.log("[VideoPage] 📥 Cursor updated in ref:", {
+          previousCursor: previousCursor
+            ? `${String(previousCursor).substring(0, 20)}...`
+            : "none",
+          newCursor: newCursor
+            ? `${String(newCursor).substring(0, 20)}...`
+            : "none",
+          cursorChanged: previousCursor !== newCursor,
+          itemsReceived: items.length,
+        });
+
+        // Set hasMore: if there's a nextCursor, we definitely have more items to load
+        // The presence of nextCursor is the definitive indicator from the backend
+        const hasMoreItems = Boolean(nextCursor);
+
+        console.log("[VideoPage] 📥 fetchLibraryImages response received:", {
+          itemsCount: items.length,
+          requested: params.limit || 30,
+          previousCursor: previousCursor
+            ? `${String(previousCursor).substring(0, 20)}...`
+            : "none",
+          newCursor: newCursor
+            ? `${String(newCursor).substring(0, 20)}...`
+            : "null",
+          newCursorType: typeof nextCursor,
+          newCursorFull: newCursor,
+          cursorChanged: previousCursor !== newCursor,
+          hasMoreItems,
+          currentEntriesCount: libraryImageEntries.length,
+        });
+
+        // If cursor didn't change and we got items, it means we're getting duplicates
+        if (!initial && previousCursor === newCursor && items.length > 0) {
+          console.warn(
+            "[VideoPage] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.",
+          );
         }
 
-        // For pagination loads, merge with existing entries
-        // IMPORTANT: Check if items are actually new by comparing IDs
-        const existingIds = new Set(prevEntries.map((e: any) => e?.id).filter(Boolean));
-        const newItems = normalizedItems.filter((item: any) => item?.id && !existingIds.has(item.id));
-        const existingItems = normalizedItems.filter((item: any) => item?.id && existingIds.has(item.id));
-
-        console.log('[VideoPage] fetchLibraryImages pagination merge:', {
-          previousCount: prevEntries.length,
-          newItemsReceived: normalizedItems.length,
-          actuallyNew: newItems.length,
-          duplicates: existingItems.length,
-          newItemIds: newItems.slice(0, 5).map((e: any) => e.id),
-          newItemsWithImages: newItems.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
-        });
-
-        if (newItems.length === 0) {
-          console.warn('[VideoPage] ⚠️ ALL ITEMS ARE DUPLICATES! API is returning same items. Cursor might not be working.');
-          return [...prevEntries];
-        }
-
-        const existingById: Record<string, any> = {};
-        // Add existing entries first
-        prevEntries.forEach((e: any) => {
-          if (e?.id) {
-            existingById[e.id] = e;
-          }
-        });
-        // Then add only NEW entries (avoid unnecessary updates)
-        newItems.forEach((e: any) => {
-          if (e?.id) {
-            existingById[e.id] = e;
-          }
-        });
-        // Create a new array and sort by createdAt (newest first)
-        const merged = Object.values(existingById).sort((a: any, b: any) => {
-          const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
-          const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
-          return timeB - timeA; // Descending (newest first)
-        });
-
-        console.log('[VideoPage] fetchLibraryImages after merge:', {
-          previousCount: prevEntries.length,
-          newItemsCount: normalizedItems.length,
-          newItemsAdded: newItems.length,
-          mergedCount: merged.length,
-          mergedEntriesWithImages: merged.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length,
-          mergedSample: merged.slice(0, 3).map((e: any) => ({
-            id: e.id,
-            generationType: e.generationType,
-            imagesCount: e.images?.length || 0,
-            hasImages: Array.isArray(e.images) && e.images.length > 0,
-            firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...',
-            firstImageThumbnail: e.images?.[0]?.thumbnailUrl ? 'present' : 'missing'
-          }))
-        });
-
-        // Always return a new array reference (even if contents are the same)
-        return [...merged];
-      });
-
-      // Update cursor and hasMore IMMEDIATELY after getting response (before state update)
-      // This ensures the cursor is available for the next pagination request
-      const previousCursor = libraryImageNextCursorRef.current;
-      // Convert cursor to string if it's a number (API might return number cursor)
-      // Handle both string and number cursors from API
-      // IMPORTANT: Store the cursor immediately so it's available for the next request
-      const newCursor = nextCursor ? (typeof nextCursor === 'string' ? nextCursor : String(nextCursor)) : undefined;
-      libraryImageNextCursorRef.current = newCursor;
-
-      // Log cursor update immediately
-      console.log('[VideoPage] 📥 Cursor updated in ref:', {
-        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
-        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'none',
-        cursorChanged: previousCursor !== newCursor,
-        itemsReceived: items.length
-      });
-
-      // Set hasMore: if there's a nextCursor, we definitely have more items to load
-      // The presence of nextCursor is the definitive indicator from the backend
-      const hasMoreItems = Boolean(nextCursor);
-
-      console.log('[VideoPage] 📥 fetchLibraryImages response received:', {
-        itemsCount: items.length,
-        requested: params.limit || 30,
-        previousCursor: previousCursor ? `${String(previousCursor).substring(0, 20)}...` : 'none',
-        newCursor: newCursor ? `${String(newCursor).substring(0, 20)}...` : 'null',
-        newCursorType: typeof nextCursor,
-        newCursorFull: newCursor,
-        cursorChanged: previousCursor !== newCursor,
-        hasMoreItems,
-        currentEntriesCount: libraryImageEntries.length
-      });
-
-      // If cursor didn't change and we got items, it means we're getting duplicates
-      if (!initial && previousCursor === newCursor && items.length > 0) {
-        console.warn('[VideoPage] ⚠️ WARNING: Cursor did not change but got items! API might be returning same page.');
+        setLibraryImageHasMore(hasMoreItems);
+      } catch (e) {
+        console.error("[VideoPage] Failed to fetch library images:", e);
+      } finally {
+        libraryImageLoadingRef.current = false;
+        setLibraryImageLoading(false);
       }
-
-      setLibraryImageHasMore(hasMoreItems);
-    } catch (e) {
-      console.error('[VideoPage] Failed to fetch library images:', e);
-    } finally {
-      libraryImageLoadingRef.current = false;
-      setLibraryImageLoading(false);
-    }
-  }, [isUploadModalOpen]);
+    },
+    [isUploadModalOpen],
+  );
 
   // Debug: Log when libraryImageEntries changes to verify state updates
   useEffect(() => {
     if (isUploadModalOpen) {
-      console.log('[VideoPage] libraryImageEntries state updated:', {
+      console.log("[VideoPage] libraryImageEntries state updated:", {
         count: libraryImageEntries.length,
         sampleEntries: libraryImageEntries.slice(0, 3).map((e: any) => ({
           id: e.id,
           generationType: e.generationType,
           imagesCount: e.images?.length || 0,
           hasImages: Array.isArray(e.images) && e.images.length > 0,
-          firstImage: e.images?.[0] ? {
-            id: e.images[0].id,
-            url: e.images[0].url?.substring(0, 50) + '...',
-            thumbnailUrl: e.images[0].thumbnailUrl ? 'present' : 'missing'
-          } : null
+          firstImage: e.images?.[0]
+            ? {
+                id: e.images[0].id,
+                url: e.images[0].url?.substring(0, 50) + "...",
+                thumbnailUrl: e.images[0].thumbnailUrl ? "present" : "missing",
+              }
+            : null,
         })),
-        allEntriesWithImages: libraryImageEntries.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length
+        allEntriesWithImages: libraryImageEntries.filter(
+          (e: any) => Array.isArray(e.images) && e.images.length > 0,
+        ).length,
       });
     }
   }, [libraryImageEntries, isUploadModalOpen]);
 
-  // When opening the UploadModal for images/references, ensure initial image library is loaded
-  // IMPORTANT: Always fetch fresh data when modal opens to show newly generated images
-  // Load ALL images by fetching pages until there's no more cursor (like image generation)
+  // UploadModal now owns its own library loading via the shared library API.
+  // Keep local state reset only so stale debug state does not persist across modal sessions.
   useEffect(() => {
-    const needsLibrary = isUploadModalOpen && (uploadModalType === 'image' || uploadModalType === 'reference');
-    if (needsLibrary) {
-      // Reset pagination state when opening modal to ensure fresh load
+    if (!isUploadModalOpen) {
       libraryImageNextCursorRef.current = undefined;
-      libraryImageLoadingRef.current = false; // Reset loading ref
-      setLibraryImageHasMore(true);
-      setLibraryImageEntries([]); // Clear previous entries for fresh load
-      setLibraryImageLoading(false); // Ensure loading state is reset
-
-      // Only load the first page when modal opens - pagination will happen on scroll
-      const fetchPromise = fetchLibraryImages(true);
-      fetchPromise
-        .then(() => {
-          console.log('[VideoPage] ✅ Successfully fetched initial library images');
-        })
-        .catch((error) => {
-          console.error('[VideoPage] ❌ Error fetching library images:', error);
-          libraryImageLoadingRef.current = false;
-          setLibraryImageLoading(false);
-        });
-    } else {
-      // When modal closes, reset the guard so it can fetch fresh next time
+      libraryImageLoadingRef.current = false;
       libraryImageInitRef.current = false;
+      setLibraryImageHasMore(true);
+      setLibraryImageEntries([]);
+      setLibraryImageLoading(false);
     }
-    // Deliberately not depending on fetchLibraryImages or entries length to avoid re-running
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUploadModalOpen, uploadModalType]);
+  }, [isUploadModalOpen]);
 
   // Group entries by date while PRESERVING backend order (do not sort dates in frontend).
+  const visibleHistoryEntries = useMemo(() => {
+    if (!(dateRange.start && dateRange.end)) return historyEntries;
+    const startMs = dateRange.start.getTime();
+    const endMs = dateRange.end.getTime();
+    return historyEntries.filter((entry: HistoryEntry) => {
+      try {
+        const raw =
+          entry.timestamp || entry.createdAt || (entry as any).updatedAt;
+        const ms = new Date(raw as any).getTime();
+        return !Number.isNaN(ms) && ms >= startMs && ms <= endMs;
+      } catch {
+        return false;
+      }
+    });
+  }, [historyEntries, dateRange]);
+
   const groupedByDate = useMemo(() => {
     const groups: { [key: string]: HistoryEntry[] } = {};
     const dateOrder: string[] = [];
-    for (const entry of historyEntries) {
+    for (const entry of visibleHistoryEntries) {
       const date = new Date(entry.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
@@ -1573,14 +2128,15 @@ const InputBox = (props: InputBoxProps = {}) => {
       groups[date].push(entry);
     }
     return { groups, dateOrder };
-  }, [historyEntries]);
+  }, [visibleHistoryEntries]);
 
   const sortedDates = groupedByDate.dateOrder;
   // Today key for injecting local preview into today's row
   const todayKey = new Date().toDateString();
 
   // Local, ephemeral preview entry for video generations
-  const [localVideoPreview, setLocalVideoPreview] = useState<HistoryEntry | null>(null);
+  const [localVideoPreview, setLocalVideoPreview] =
+    useState<HistoryEntry | null>(null);
 
   // Track which videos have loaded to hide loading effects
   const [loadedVideos, setLoadedVideos] = useState<Set<string>>(new Set());
@@ -1589,7 +2145,9 @@ const InputBox = (props: InputBoxProps = {}) => {
   const historyEntryIdsRef = useRef<Set<string>>(new Set());
 
   // Get current entries from Redux
-  const existingEntries = useAppSelector((state: any) => state.history?.entries || []);
+  const existingEntries = useAppSelector(
+    (state: any) => state.history?.entries || [],
+  );
 
   useEffect(() => {
     if (!localVideoPreview) return;
@@ -1599,7 +2157,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     const entryFirebaseId = (localVideoPreview as any)?.firebaseHistoryId;
 
     // FIRST: Check ref (updated immediately when entry is added to history)
-    const existsInRef = (entryId && historyEntryIdsRef.current.has(entryId)) ||
+    const existsInRef =
+      (entryId && historyEntryIdsRef.current.has(entryId)) ||
       (entryFirebaseId && historyEntryIdsRef.current.has(entryFirebaseId));
 
     // SECOND: Check Redux state
@@ -1607,7 +2166,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       const eId = e.id;
       const eFirebaseId = (e as any)?.firebaseHistoryId;
       if (entryId && (eId === entryId || eFirebaseId === entryId)) return true;
-      if (entryFirebaseId && (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)) return true;
+      if (
+        entryFirebaseId &&
+        (eId === entryFirebaseId || eFirebaseId === entryFirebaseId)
+      )
+        return true;
       return false;
     });
 
@@ -1618,7 +2181,10 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
 
     // If entry completes/fails but not in history yet, clear after delay
-    if (localVideoPreview.status === 'completed' || localVideoPreview.status === 'failed') {
+    if (
+      localVideoPreview.status === "completed" ||
+      localVideoPreview.status === "failed"
+    ) {
       const t = setTimeout(() => setLocalVideoPreview(null), 1500);
       return () => clearTimeout(t);
     }
@@ -1631,20 +2197,32 @@ const InputBox = (props: InputBoxProps = {}) => {
       const res = await client.get(`/api/generations/${historyId}`);
       const item = res.data?.data?.item;
       if (!item) {
-        console.warn('[refreshSingleGeneration] Generation not found, falling back to full refresh');
-        dispatch(loadHistory({
-          filters: { mode: 'video' } as any,
-          paginationParams: { limit: 20 },
-          requestOrigin: 'page',
-          expectedType: 'text-to-video',
-          debugTag: `InputBox:refresh:video-mode:${Date.now()}`
-        } as any));
+        console.warn(
+          "[refreshSingleGeneration] Generation not found, falling back to full refresh",
+        );
+        const refreshFilters: any = { mode: "video" };
+        dispatch(setFilters(refreshFilters));
+        dispatch(
+          loadHistory({
+            filters: refreshFilters as any,
+            backendFilters: refreshFilters as any,
+            paginationParams: { limit: 20 },
+            requestOrigin: "page",
+            expectedType: "video",
+            debugTag: `InputBox:refresh:video-mode:${Date.now()}`,
+          } as any),
+        );
         return;
       }
 
       // Normalize the item to match HistoryEntry format
       const created = item?.createdAt || item?.updatedAt || item?.timestamp;
-      const iso = typeof created === 'string' ? created : (created && created.toString ? created.toString() : new Date().toISOString());
+      const iso =
+        typeof created === "string"
+          ? created
+          : created && created.toString
+            ? created.toString()
+            : new Date().toISOString();
       const normalizedEntry: HistoryEntry = {
         ...item,
         id: item.id || historyId,
@@ -1653,25 +2231,32 @@ const InputBox = (props: InputBoxProps = {}) => {
       } as HistoryEntry;
 
       // Check if entry already exists in current Redux state
-      const exists = existingEntries.some((e: HistoryEntry) => e.id === historyId);
+      const exists = existingEntries.some(
+        (e: HistoryEntry) => e.id === historyId,
+      );
 
       // CRITICAL: Track this entry ID in ref IMMEDIATELY before adding to Redux
       historyEntryIdsRef.current.add(historyId);
-      if (normalizedEntry.id) historyEntryIdsRef.current.add(normalizedEntry.id);
+      if (normalizedEntry.id)
+        historyEntryIdsRef.current.add(normalizedEntry.id);
       if ((normalizedEntry as any)?.firebaseHistoryId) {
-        historyEntryIdsRef.current.add((normalizedEntry as any).firebaseHistoryId);
+        historyEntryIdsRef.current.add(
+          (normalizedEntry as any).firebaseHistoryId,
+        );
       }
 
       if (exists) {
-        dispatch(updateHistoryEntry({
-          id: historyId,
-          updates: {
-            status: normalizedEntry.status,
-            images: normalizedEntry.images,
-            videos: normalizedEntry.videos,
-            timestamp: normalizedEntry.timestamp,
-          }
-        }));
+        dispatch(
+          updateHistoryEntry({
+            id: historyId,
+            updates: {
+              status: normalizedEntry.status,
+              images: normalizedEntry.images,
+              videos: normalizedEntry.videos,
+              timestamp: normalizedEntry.timestamp,
+            },
+          }),
+        );
       } else {
         dispatch(addHistoryEntry(normalizedEntry));
       }
@@ -1685,33 +2270,66 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         // Check if IDs match
         if (prevId === historyId || prevFirebaseId === historyId) return null;
-        if (normalizedEntry.id && (prevId === normalizedEntry.id || prevFirebaseId === normalizedEntry.id)) return null;
-        const normalizedFirebaseId = (normalizedEntry as any)?.firebaseHistoryId;
-        if (normalizedFirebaseId && (prevId === normalizedFirebaseId || prevFirebaseId === normalizedFirebaseId)) return null;
+        if (
+          normalizedEntry.id &&
+          (prevId === normalizedEntry.id ||
+            prevFirebaseId === normalizedEntry.id)
+        )
+          return null;
+        const normalizedFirebaseId = (normalizedEntry as any)
+          ?.firebaseHistoryId;
+        if (
+          normalizedFirebaseId &&
+          (prevId === normalizedFirebaseId ||
+            prevFirebaseId === normalizedFirebaseId)
+        )
+          return null;
 
         // If local preview is completed and we just added a completed history entry, clear it
-        if (prev.status === 'completed' && normalizedEntry.status === 'completed') return null;
+        if (
+          prev.status === "completed" &&
+          normalizedEntry.status === "completed"
+        )
+          return null;
 
         return prev;
       });
     } catch (error) {
-      console.error('[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:', error);
-      dispatch(loadHistory({
-        filters: { mode: 'video' } as any,
-        paginationParams: { limit: 20 },
-        requestOrigin: 'page',
-        expectedType: 'text-to-video',
-        debugTag: `InputBox:refresh:video-mode:${Date.now()}`
-      } as any));
+      console.error(
+        "[refreshSingleGeneration] Failed to fetch single generation, falling back to full refresh:",
+        error,
+      );
+      const refreshFilters: any = { mode: "video" };
+      dispatch(setFilters(refreshFilters));
+      dispatch(
+        loadHistory({
+          filters: refreshFilters as any,
+          backendFilters: refreshFilters as any,
+          paginationParams: { limit: 20 },
+          requestOrigin: "page",
+          expectedType: "video",
+          debugTag: `InputBox:refresh:video-mode:${Date.now()}`,
+        } as any),
+      );
     }
   };
 
-  // Fetch missing video categories directly from Firestore (image_to_video, video_to_video)
-  // NOTE: This auto-load effect should only trigger when entries exist but no non-text videos
-  // It should NOT trigger on initial load when there are no entries yet
+  // Fetch missing video categories directly from Firestore (image_to_video, video_to_video).
+  // Run after the first real history payload arrives so the initial "Recent" view is complete.
   useEffect(() => {
-    // Skip if no entries yet (initial load is handled by main useEffect below)
+    const hasActiveFilters = Boolean(
+      searchQuery.trim() || (dateRange.start && dateRange.end),
+    );
+
+    // When search/date filters are active, keep backend results as the source of truth.
+    if (hasActiveFilters) {
+      setExtraVideoEntries([]);
+      return;
+    }
+
+    // Skip until initial video history has actually loaded.
     if (historyEntries.length === 0) {
+      setExtraVideoEntries([]);
       return;
     }
 
@@ -1719,12 +2337,33 @@ const InputBox = (props: InputBoxProps = {}) => {
     (async () => {
       try {
         // Fetch entries with both underscore and hyphen patterns to ensure we get all video types
-        const [textToVideo, imageToVideoHyphen, imageToVideoUnderscore, videoToVideoHyphen, videoToVideoUnderscore] = await Promise.all([
-          getHistoryEntries({ generationType: 'text-to-video' as any }, { limit: 20 }),
-          getHistoryEntries({ generationType: 'image-to-video' as any }, { limit: 20 }),
-          getHistoryEntries({ generationType: 'image_to_video' as any }, { limit: 20 }),
-          getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
-          getHistoryEntries({ generationType: 'video_to_video' as any }, { limit: 20 })
+        const [
+          textToVideo,
+          imageToVideoHyphen,
+          imageToVideoUnderscore,
+          videoToVideoHyphen,
+          videoToVideoUnderscore,
+        ] = await Promise.all([
+          getHistoryEntries(
+            { generationType: "text-to-video" as any },
+            { limit: 20 },
+          ),
+          getHistoryEntries(
+            { generationType: "image-to-video" as any },
+            { limit: 20 },
+          ),
+          getHistoryEntries(
+            { generationType: "image_to_video" as any },
+            { limit: 20 },
+          ),
+          getHistoryEntries(
+            { generationType: "video-to-video" as any },
+            { limit: 20 },
+          ),
+          getHistoryEntries(
+            { generationType: "video_to_video" as any },
+            { limit: 20 },
+          ),
         ]);
 
         if (!isMounted) return;
@@ -1735,7 +2374,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           ...(imageToVideoHyphen.data || []),
           ...(imageToVideoUnderscore.data || []),
           ...(videoToVideoHyphen.data || []),
-          ...(videoToVideoUnderscore.data || [])
+          ...(videoToVideoUnderscore.data || []),
         ];
 
         const byId: Record<string, any> = {};
@@ -1745,15 +2384,21 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         const combined = Object.values(byId);
 
-        // Sort by timestamp (newest first) to ensure proper ordering
+        // Keep the merged fallback entries aligned with the active sort selection.
         const sortedCombined = combined.sort((a: any, b: any) => {
-          const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
-          const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
-          return timestampB - timestampA; // Descending order (newest first)
+          const timestampA = new Date(
+            a.timestamp || a.createdAt || 0,
+          ).getTime();
+          const timestampB = new Date(
+            b.timestamp || b.createdAt || 0,
+          ).getTime();
+          return sortOrder === "asc"
+            ? timestampA - timestampB
+            : timestampB - timestampA;
         });
 
         setExtraVideoEntries(sortedCombined);
-        console.log('[VideoPage] fetched extra video entries:', {
+        console.log("[VideoPage] fetched extra video entries:", {
           total: sortedCombined.length,
           textToVideo: textToVideo.data?.length || 0,
           imageToVideoHyphen: imageToVideoHyphen.data?.length || 0,
@@ -1761,28 +2406,61 @@ const InputBox = (props: InputBoxProps = {}) => {
           videoToVideoHyphen: videoToVideoHyphen.data?.length || 0,
           videoToVideoUnderscore: videoToVideoUnderscore.data?.length || 0,
           unique: sortedCombined.length,
-          firstTimestamp: sortedCombined[0]?.timestamp || 'none',
-          lastTimestamp: sortedCombined[sortedCombined.length - 1]?.timestamp || 'none'
+          firstTimestamp: sortedCombined[0]?.timestamp || "none",
+          lastTimestamp:
+            sortedCombined[sortedCombined.length - 1]?.timestamp || "none",
         });
       } catch (e) {
-        console.error('[VideoPage] extra fetch failed:', e);
+        console.error("[VideoPage] extra fetch failed:", e);
       }
     })();
-    return () => { isMounted = false; };
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    historyEntries.length,
+    sortOrder,
+    searchQuery,
+    dateRange.start,
+    dateRange.end,
+  ]);
 
   // Combine redux video entries with extra fetched ones
   const historyEntriesForDisplay = React.useMemo(() => {
     const byId: Record<string, any> = {};
-    historyEntries.forEach((e: any) => { byId[e.id] = e; });
-    extraVideoEntries.forEach((e: any) => { byId[e.id] = e; });
-    const list = Object.values(byId);
+    historyEntries.forEach((e: any) => {
+      byId[e.id] = e;
+    });
+    extraVideoEntries.forEach((e: any) => {
+      byId[e.id] = e;
+    });
+    const list = Object.values(byId).filter((entry: any) => {
+      const hasVideoInImages =
+        Array.isArray(entry?.images) &&
+        entry.images.some((m: any) =>
+          isVideoUrl(m?.firebaseUrl || m?.url || m?.originalUrl),
+        );
+      const hasVideoInVideos =
+        Array.isArray(entry?.videos) &&
+        entry.videos.some((v: any) =>
+          isVideoUrl(v?.firebaseUrl || v?.url || v?.originalUrl),
+        );
+      const isPending =
+        entry?.status === "generating" || entry?.status === "pending";
+      return (
+        hasVideoInImages ||
+        hasVideoInVideos ||
+        (isVideoType(entry) && isPending)
+      );
+    });
 
-    // Sort by timestamp (newest first) to match global history behavior
+    // Match the current history sort order so Recent/Oldest stays stable without a toggle.
     const sortedList = list.sort((a: any, b: any) => {
       const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
       const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
-      return timestampB - timestampA; // Descending order (newest first)
+      return sortOrder === "asc"
+        ? timestampA - timestampB
+        : timestampB - timestampA;
     });
 
     /*console.log('[VideoPage] display entries count:', sortedList.length);
@@ -1791,19 +2469,24 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Debug: Show the complete order of display entries
     if (sortedList.length > 0) {
-      console.log('[VideoPage] Complete display order:', sortedList.map((entry: any, index: number) => ({
-        position: index + 1,
-        id: entry.id,
-        timestamp: entry.timestamp,
-        generationType: entry.generationType,
-        source: historyEntries.some(h => h.id === entry.id) ? 'Redux' : 'Extra',
-        prompt: entry.prompt?.substring(0, 30) + '...',
-        status: entry.status,
-        images: entry.images?.length || 0,
-        videos: entry.videos?.length || 0,
-        hasImages: !!entry.images,
-        hasVideos: !!entry.videos
-      })));
+      console.log(
+        "[VideoPage] Complete display order:",
+        sortedList.map((entry: any, index: number) => ({
+          position: index + 1,
+          id: entry.id,
+          timestamp: entry.timestamp,
+          generationType: entry.generationType,
+          source: historyEntries.some((h) => h.id === entry.id)
+            ? "Redux"
+            : "Extra",
+          prompt: entry.prompt?.substring(0, 30) + "...",
+          status: entry.status,
+          images: entry.images?.length || 0,
+          videos: entry.videos?.length || 0,
+          hasImages: !!entry.images,
+          hasVideos: !!entry.videos,
+        })),
+      );
 
       // Debug: Check each entry's video/image structure
       sortedList.forEach((entry: any, index: number) => {
@@ -1817,14 +2500,13 @@ const InputBox = (props: InputBoxProps = {}) => {
           videosIsArray: Array.isArray(entry.videos),
           videosLength: entry.videos?.length,
           imageCount: entry.imageCount,
-          fullEntry: entry
+          fullEntry: entry,
         });
       });
     }
 
     return sortedList as any[];
-  }, [historyEntries, extraVideoEntries]);
-
+  }, [historyEntries, extraVideoEntries, sortOrder]);
 
   // Auto-load more history pages until we find non-text video types (bounded attempts)
   // IMPORTANT: Only run after initial load is complete to prevent duplicate requests
@@ -1832,7 +2514,11 @@ const InputBox = (props: InputBoxProps = {}) => {
   useEffect(() => {
     // Don't run autofill until initial load has completed AND we have entries
     // This prevents duplicate requests on page load
-    if (!hasAttemptedInitialLoadRef.current || loading || historyEntries.length === 0) {
+    if (
+      !hasAttemptedInitialLoadRef.current ||
+      loading ||
+      historyEntries.length === 0
+    ) {
       return;
     }
 
@@ -1843,19 +2529,27 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (!hasVideos && hasMore && !loading && autoLoadAttemptsRef.current < 10) {
       autoLoadAttemptsRef.current += 1;
       // Use consistent limit of 20 for all requests
-      dispatch(loadMoreHistory({
-        filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
-        backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}) } as any,
-        paginationParams: { limit: 20 }
-      }) as any);
+      dispatch(
+        loadMoreHistory({
+          filters: {
+            mode: "video",
+            sortOrder,
+            ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+          } as any,
+          backendFilters: {
+            mode: "video",
+            sortOrder,
+            ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+          } as any,
+          paginationParams: { limit: 20 },
+        }) as any,
+      );
     }
   }, [historyEntries, hasMore, loading, dispatch, sortOrder, searchQuery]);
-
 
   // Helpers imported from videoUtils
 
   // Auto-adjust textarea height
-
 
   // PageRouter already loads initial history, so we just set up pagination state
   useEffect(() => {
@@ -1863,8 +2557,14 @@ const InputBox = (props: InputBoxProps = {}) => {
   }, []);
 
   // Get current UI generation type to detect feature switches
-  const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
+  const currentUIGenerationType = useAppSelector(
+    (s: any) => s.ui?.currentGenerationType || "text-to-image",
+  );
   const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+  const isVideoRouteContext = Boolean(
+    pathname?.startsWith("/text-to-video") ||
+    pathname?.startsWith("/image-to-video"),
+  );
 
   // Initial history is loaded centrally by PageRouter. This component only manages pagination.
   // However, if central load doesn't run (e.g., direct navigation), trigger an initial page-origin load for videos.
@@ -1874,32 +2574,53 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Use mode: 'video' to load ALL video types at once (same as History.tsx)
   // This ensures we get text-to-video, image-to-video, AND video-to-video (including animate entries)
   useEffect(() => {
-    const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
-    const normalizedCurrentUI = norm(currentUIGenerationType === 'image-to-image' ? 'text-to-image' : currentUIGenerationType);
-    const normalizedLastUI = norm(lastUIGenerationTypeRef.current === 'image-to-image' ? 'text-to-image' : lastUIGenerationTypeRef.current);
-    const isVideoType = ['text-to-video', 'image-to-video', 'video-to-video'].includes(normalizedCurrentUI);
+    const norm = (t: string) => t.replace(/[_-]/g, "-").toLowerCase();
+    const normalizedCurrentUI = norm(
+      currentUIGenerationType === "image-to-image"
+        ? "text-to-image"
+        : currentUIGenerationType,
+    );
+    const normalizedLastUI = norm(
+      lastUIGenerationTypeRef.current === "image-to-image"
+        ? "text-to-image"
+        : lastUIGenerationTypeRef.current,
+    );
+    const isVideoType =
+      isVideoRouteContext ||
+      ["text-to-video", "image-to-video", "video-to-video"].includes(
+        normalizedCurrentUI,
+      );
 
     // Check if user switched to video generation from another feature
-    const switchedToVideo = isVideoType && normalizedLastUI !== normalizedCurrentUI;
+    const switchedToVideo =
+      isVideoType && normalizedLastUI !== normalizedCurrentUI;
 
     // Check if filters are for a different type (e.g., image filters when we're on video page)
     const currentFilterMode = currentFilters?.mode;
     const currentFilterSort = (currentFilters as any)?.sortOrder;
-    const filtersAreForVideo = currentFilterMode === 'video';
-    const filtersAreForDifferentType = currentFilterMode && currentFilterMode !== 'video';
+    const filtersAreForVideo = currentFilterMode === "video";
+    const filtersAreForDifferentType =
+      currentFilterMode && currentFilterMode !== "video";
     const sortMismatch = currentFilterSort && currentFilterSort !== sortOrder;
 
     // Reset initial load flag if user switched to video generation or filters don't match
-    if (switchedToVideo || (isVideoType && filtersAreForDifferentType) || (isVideoType && sortMismatch)) {
-      console.log('[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag', {
-        switchedToVideo,
-        filtersAreForDifferentType,
-        currentFilterMode,
-        sortMismatch,
-        currentFilterSort,
-        desiredSortOrder: sortOrder,
-        currentUIGenerationType,
-      });
+    if (
+      switchedToVideo ||
+      (isVideoType && filtersAreForDifferentType) ||
+      (isVideoType && sortMismatch)
+    ) {
+      console.log(
+        "[VideoInputBox] User switched to video generation or filters mismatch, resetting load flag",
+        {
+          switchedToVideo,
+          filtersAreForDifferentType,
+          currentFilterMode,
+          sortMismatch,
+          currentFilterSort,
+          desiredSortOrder: sortOrder,
+          currentUIGenerationType,
+        },
+      );
       didInitialLoadRef.current = false;
     }
 
@@ -1907,7 +2628,12 @@ const InputBox = (props: InputBoxProps = {}) => {
     lastUIGenerationTypeRef.current = currentUIGenerationType;
 
     // Only load if we haven't loaded yet, or if user just switched to video, or filters don't match
-    if (didInitialLoadRef.current && !switchedToVideo && !filtersAreForDifferentType && !sortMismatch) {
+    if (
+      didInitialLoadRef.current &&
+      !switchedToVideo &&
+      !filtersAreForDifferentType &&
+      !sortMismatch
+    ) {
       return;
     }
 
@@ -1920,7 +2646,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     didInitialLoadRef.current = true;
 
     try {
-      console.log('[VideoInputBox] Loading video history', {
+      console.log("[VideoInputBox] Loading video history", {
         switchedToVideo,
         filtersAreForDifferentType,
         currentUIGenerationType,
@@ -1928,27 +2654,59 @@ const InputBox = (props: InputBoxProps = {}) => {
       });
       // Use mode: 'video' which backend converts to ['text-to-video', 'image-to-video', 'video-to-video']
       // This is the same approach History.tsx uses and ensures all video types are loaded
-      dispatch(loadHistory({
-        filters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        backendFilters: { mode: 'video', sortOrder, ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}), ...(dateRange.start && dateRange.end ? { dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } } : {}) } as any,
-        paginationParams: { limit: 20 },
-        requestOrigin: 'page',
-        expectedType: 'text-to-video',
-        debugTag: `InputBox:video-mode:${Date.now()}`,
-        forceRefresh: true, // keep backend as source of truth
-      } as any));
+      const videoFilters: any = {
+        mode: "video",
+        sortOrder,
+        ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+        ...(dateRange.start && dateRange.end
+          ? {
+              dateRange: {
+                start: dateRange.start.toISOString(),
+                end: dateRange.end.toISOString(),
+              },
+            }
+          : {}),
+      };
+
+      // Keep selected filters in sync before loadHistory so stale-response protection
+      // in historySlice does not drop this response and cause retry loops.
+      dispatch(setFilters(videoFilters));
+
+      dispatch(
+        loadHistory({
+          filters: videoFilters as any,
+          backendFilters: videoFilters as any,
+          paginationParams: { limit: 20 },
+          requestOrigin: "page",
+          expectedType: "video",
+          debugTag: `InputBox:video-mode:${Date.now()}`,
+          forceRefresh: true, // keep backend as source of truth
+        } as any),
+      );
     } catch (e) {
-      console.error('[VideoInputBox] Error loading history:', e);
+      console.error("[VideoInputBox] Error loading history:", e);
     }
-  }, [dispatch, currentUIGenerationType, currentFilters, sortOrder, dateRange, searchQuery]);
+  }, [
+    dispatch,
+    currentUIGenerationType,
+    currentFilters,
+    sortOrder,
+    dateRange,
+    searchQuery,
+    isVideoRouteContext,
+  ]);
 
   // Mark user scroll inside the scrollable history container
   useEffect(() => {
     const container = historyScrollElement;
     if (!container) return;
-    const onScroll = () => { hasUserScrolledRef.current = true; };
-    container.addEventListener('scroll', onScroll, { passive: true } as any);
-    return () => { container.removeEventListener('scroll', onScroll as any); };
+    const onScroll = () => {
+      hasUserScrolledRef.current = true;
+    };
+    container.addEventListener("scroll", onScroll, { passive: true } as any);
+    return () => {
+      container.removeEventListener("scroll", onScroll as any);
+    };
   }, [historyScrollElement]);
 
   // Standardized intersection observer for video history
@@ -1958,51 +2716,89 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loadMore = useCallback(async () => {
     if (loading || !hasMore || !user) return;
     // Use functional update to avoid 'page' dependency
-    setPage(prev => prev + 1);
+    setPage((prev) => prev + 1);
     try {
       // Use currentFilters from Redux to get the latest values (sync with HistoryControls)
       // This ensures consistency with search, sort, and date filters managed by HistoryControls
-      const currentSortOrder = (currentFilters as any)?.sortOrder || sortOrder || 'desc';
-      const currentSearch = (currentFilters as any)?.search || searchQuery?.trim() || '';
-      const currentDateRange = (currentFilters as any)?.dateRange || (dateRange.start && dateRange.end ? { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() } : null);
+      const currentSortOrder =
+        (currentFilters as any)?.sortOrder || sortOrder || "desc";
+      const currentSearch =
+        (currentFilters as any)?.search || searchQuery?.trim() || "";
+      const currentDateRange =
+        (currentFilters as any)?.dateRange ||
+        (dateRange.start && dateRange.end
+          ? {
+              start: dateRange.start.toISOString(),
+              end: dateRange.end.toISOString(),
+            }
+          : null);
 
       // Use mode: 'video' which backend converts to all video types including video-to-video
       // Use consistent limit of 10 for all requests
-      const filters: any = { mode: 'video', sortOrder: currentSortOrder };
+      const filters: any = { mode: "video", sortOrder: currentSortOrder };
       if (currentSearch) filters.search = currentSearch;
       if (currentDateRange?.start && currentDateRange?.end) {
         filters.dateRange = {
-          start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
-          end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
+          start:
+            typeof currentDateRange.start === "string"
+              ? currentDateRange.start
+              : new Date(currentDateRange.start).toISOString(),
+          end:
+            typeof currentDateRange.end === "string"
+              ? currentDateRange.end
+              : new Date(currentDateRange.end).toISOString(),
         };
       }
 
       const backendFilters: any = {
-        mode: 'video',
+        mode: "video",
         sortOrder: currentSortOrder,
         ...(currentSearch ? { search: currentSearch } : {}),
-        ...(currentDateRange?.start && currentDateRange?.end ? {
-          dateRange: {
-            start: typeof currentDateRange.start === 'string' ? currentDateRange.start : new Date(currentDateRange.start).toISOString(),
-            end: typeof currentDateRange.end === 'string' ? currentDateRange.end : new Date(currentDateRange.end).toISOString()
-          }
-        } : {})
+        ...(currentDateRange?.start && currentDateRange?.end
+          ? {
+              dateRange: {
+                start:
+                  typeof currentDateRange.start === "string"
+                    ? currentDateRange.start
+                    : new Date(currentDateRange.start).toISOString(),
+                end:
+                  typeof currentDateRange.end === "string"
+                    ? currentDateRange.end
+                    : new Date(currentDateRange.end).toISOString(),
+              },
+            }
+          : {}),
       };
 
-      await (dispatch as any)(loadMoreHistory({
-        filters: filters,
-        backendFilters: backendFilters,
-        paginationParams: { limit: 30 } // Increased from 10 to 30 to load more items per page and reduce pagination gaps
-      })).unwrap();
-    } catch {/* swallow */ }
-  }, [loading, hasMore, user, currentFilters, sortOrder, searchQuery, dateRange, dispatch]);
+      await (dispatch as any)(
+        loadMoreHistory({
+          filters: filters,
+          backendFilters: backendFilters,
+          paginationParams: { limit: 30 }, // Increased from 10 to 30 to load more items per page and reduce pagination gaps
+        }),
+      ).unwrap();
+    } catch {
+      /* swallow */
+    }
+  }, [
+    loading,
+    hasMore,
+    user,
+    currentFilters,
+    sortOrder,
+    searchQuery,
+    dateRange,
+    dispatch,
+  ]);
 
   const handleVideoClick = useCallback((entry: HistoryEntry, video: any) => {
     setPreview({ entry, video });
   }, []);
 
   // Handle references upload
-  const handleReferencesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReferencesUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = event.target.files;
     if (!files) return;
 
@@ -2012,17 +2808,21 @@ const InputBox = (props: InputBoxProps = {}) => {
     Array.from(files).forEach((file) => {
       if (newReferences.length >= maxReferences) return;
 
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
           if (result) {
-            setReferences(prev => {
+            setReferences((prev) => {
               const updated = [...prev, result];
               if (updated.length > maxReferences) {
                 return updated.slice(0, maxReferences);
               }
-              console.log('📸 References updated:', updated.length, 'for S2V-01');
+              console.log(
+                "📸 References updated:",
+                updated.length,
+                "for S2V-01",
+              );
               return updated;
             });
           }
@@ -2032,23 +2832,30 @@ const InputBox = (props: InputBoxProps = {}) => {
     });
 
     // Reset input
-    event.target.value = '';
+    event.target.value = "";
   };
 
   // Remove reference
   const removeReference = (index: number) => {
-    setReferences(prev => prev.filter((_, i) => i !== index));
+    setReferences((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Handle image/video upload from UploadModal
-  const handleImageUploadFromModal = (urls: string[], entries?: any[], filesByUrl?: Record<string, File>) => {
-    if (uploadModalType === 'image') {
-      if (uploadModalTarget === 'last_frame') {
+  const handleImageUploadFromModal = (
+    urls: string[],
+    entries?: any[],
+    filesByUrl?: Record<string, File>,
+  ) => {
+    if (uploadModalType === "image") {
+      if (uploadModalTarget === "last_frame") {
         // Handle last frame image
         setLastFrameImage(urls[0] || "");
       } else {
         // For WAN 2.2 Animate Replace, set character image instead of uploaded images
-        if (selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) {
+        if (
+          selectedModel === "wan-2.2-animate-replace" ||
+          (activeFeature === "Animate" && selectedModel.includes("wan-2.2"))
+        ) {
           setUploadedCharacterImage(urls[0] || "");
         } else {
           // Replace existing images instead of appending
@@ -2056,14 +2863,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           setUploadedImages(urls);
         }
       }
-    } else if (uploadModalType === 'reference') {
-      setReferences(prev => [...prev, ...urls]);
-    } else if (uploadModalType === 'video') {
+    } else if (uploadModalType === "reference") {
+      setReferences((prev) => [...prev, ...urls]);
+    } else if (uploadModalType === "video") {
       const url = urls[0] || "";
       setUploadedVideo(url);
       setUploadedVideoDurationSec(0);
       if (filesByUrl && Object.keys(filesByUrl).length) {
-        setLocalVideoFilesByUrl(prev => ({ ...prev, ...filesByUrl }));
+        setLocalVideoFilesByUrl((prev) => ({ ...prev, ...filesByUrl }));
       }
       if (url) {
         (async () => {
@@ -2071,13 +2878,13 @@ const InputBox = (props: InputBoxProps = {}) => {
             const d = await loadVideoDurationSeconds(url);
             setUploadedVideoDurationSec(d);
           } catch (e) {
-            console.warn('[VideoInputBox] Failed to read video duration', e);
+            console.warn("[VideoInputBox] Failed to read video duration", e);
             setUploadedVideoDurationSec(0);
           }
         })();
       }
       // For Sora 2 Remix, use the entry ID from the modal if provided
-      if (urls[0] && selectedModel.includes('sora2-v2v')) {
+      if (urls[0] && selectedModel.includes("sora2-v2v")) {
         if (entries && entries.length > 0 && entries[0]?.id) {
           // Use the entry ID directly from the modal
           setSourceHistoryEntryId(entries[0].id);
@@ -2085,8 +2892,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Fallback: Try to find the matching history entry by URL
           const matchingEntry = historyEntries.find((entry: any) => {
             const entryVideos = entry?.images || [];
-            return entryVideos.some((img: any) =>
-              img?.url === urls[0] || img?.firebaseUrl === urls[0] || img?.originalUrl === urls[0]
+            return entryVideos.some(
+              (img: any) =>
+                img?.url === urls[0] ||
+                img?.firebaseUrl === urls[0] ||
+                img?.originalUrl === urls[0],
             );
           });
           if (matchingEntry?.id) {
@@ -2106,12 +2916,12 @@ const InputBox = (props: InputBoxProps = {}) => {
     let firstImageUrl: string | null = null;
 
     Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
           if (result) {
-            setUploadedImages(prev => [...prev, result]);
+            setUploadedImages((prev) => [...prev, result]);
 
             // Store the first image URL for aspect ratio detection
             if (!firstImageUrl) {
@@ -2123,12 +2933,9 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     });
 
-
     // Reset input
-    event.target.value = '';
+    event.target.value = "";
   };
-
-
 
   // Handle video upload
   const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2138,27 +2945,27 @@ const InputBox = (props: InputBoxProps = {}) => {
     const file = files[0];
     // Validate file type and size (≤14MB client-side; service hard limit is 16MB)
     const allowedMimes = new Set([
-      'video/mp4',
-      'video/webm',
-      'video/ogg',
-      'video/quicktime',
-      'video/mov',
-      'video/h264',
+      "video/mp4",
+      "video/webm",
+      "video/ogg",
+      "video/quicktime",
+      "video/mov",
+      "video/h264",
     ]);
 
     const maxBytes = 14 * 1024 * 1024;
     if (!allowedMimes.has(file.type)) {
-      toast.error('Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264');
-      event.target.value = '';
+      toast.error("Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264");
+      event.target.value = "";
       return;
     }
     if (file.size > maxBytes) {
-      toast.error('Video too large. Please upload a video ≤ 14MB');
-      event.target.value = '';
+      toast.error("Video too large. Please upload a video ≤ 14MB");
+      event.target.value = "";
       return;
     }
 
-    if (file.type.startsWith('video/')) {
+    if (file.type.startsWith("video/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
@@ -2170,7 +2977,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
 
     // Reset input
-    event.target.value = '';
+    event.target.value = "";
   };
 
   // Handle audio upload for WAN models
@@ -2181,89 +2988,97 @@ const InputBox = (props: InputBoxProps = {}) => {
     const file = files[0];
     // Validate file type and size (wav/mp3, ≤15MB, 3-30s)
     const allowedMimes = new Set([
-      'audio/wav',
-      'audio/wave',
-      'audio/x-wav',
-      'audio/mpeg',
-      'audio/mp3',
-      'audio/mpeg3',
-      'audio/x-mpeg-3',
+      "audio/wav",
+      "audio/wave",
+      "audio/x-wav",
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/mpeg3",
+      "audio/x-mpeg-3",
     ]);
 
     const maxBytes = 15 * 1024 * 1024; // 15MB max
     if (!allowedMimes.has(file.type) && !file.name.match(/\.(wav|mp3)$/i)) {
-      toast.error('Unsupported audio type. Use WAV or MP3 format');
-      event.target.value = '';
+      toast.error("Unsupported audio type. Use WAV or MP3 format");
+      event.target.value = "";
       return;
     }
     if (file.size > maxBytes) {
-      toast.error('Audio file too large. Please upload an audio file ≤ 15MB');
-      event.target.value = '';
+      toast.error("Audio file too large. Please upload an audio file ≤ 15MB");
+      event.target.value = "";
       return;
     }
 
-    if (file.type.startsWith('audio/') || file.name.match(/\.(wav|mp3)$/i)) {
+    if (file.type.startsWith("audio/") || file.name.match(/\.(wav|mp3)$/i)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
         if (result) {
           setUploadedAudio(result);
-          toast.success('Audio file uploaded successfully');
+          toast.success("Audio file uploaded successfully");
         }
       };
       reader.readAsDataURL(file);
     }
 
     // Reset input
-    event.target.value = '';
+    event.target.value = "";
   };
 
   // Handle character image upload for WAN 2.2 Animate Replace
-  const handleCharacterImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCharacterImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = event.target.files;
     if (!files) return;
 
     const file = files[0];
     // Validate file type and size
     const allowedMimes = new Set([
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/webp',
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
     ]);
 
     const maxBytes = 10 * 1024 * 1024; // 10MB max
-    if (!allowedMimes.has(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
-      toast.error('Unsupported image type. Use JPG, PNG, or WebP format');
-      event.target.value = '';
+    if (
+      !allowedMimes.has(file.type) &&
+      !file.name.match(/\.(jpg|jpeg|png|webp)$/i)
+    ) {
+      toast.error("Unsupported image type. Use JPG, PNG, or WebP format");
+      event.target.value = "";
       return;
     }
     if (file.size > maxBytes) {
-      toast.error('Image file too large. Please upload an image ≤ 10MB');
-      event.target.value = '';
+      toast.error("Image file too large. Please upload an image ≤ 10MB");
+      event.target.value = "";
       return;
     }
 
-    if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp)$/i)) {
+    if (
+      file.type.startsWith("image/") ||
+      file.name.match(/\.(jpg|jpeg|png|webp)$/i)
+    ) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
         if (result) {
           setUploadedCharacterImage(result);
-          toast.success('Character image uploaded successfully');
+          toast.success("Character image uploaded successfully");
         }
       };
       reader.readAsDataURL(file);
     }
 
     // Reset input
-    event.target.value = '';
+    event.target.value = "";
   };
 
   // Helper function to get the prompt for API (with hardcoded prefix for Lipsync)
   const getApiPrompt = (originalPrompt: string): string => {
     // For Lipsync feature with uploaded image, add hardcoded prefix
-    if (activeFeature === 'Lipsync' && uploadedImages.length > 0) {
+    if (activeFeature === "Lipsync" && uploadedImages.length > 0) {
       return `The model or person in the uploaded image will speak this: ${originalPrompt}`;
     }
     return originalPrompt;
@@ -2311,70 +3126,129 @@ const InputBox = (props: InputBoxProps = {}) => {
   // Filter Handlers for HistorySection
   const onSearchChange = (query: string) => {
     // Local state removed, relying on Redux
-    dispatch(setFilters({
-      ...currentFilters,
-      search: query,
-      mode: 'video'
-    }));
+    dispatch(
+      setFilters({
+        ...currentFilters,
+        search: query,
+        mode: "video",
+      }),
+    );
   };
 
   const onSortOrderChange = (sort: any) => {
-    const order = typeof sort === 'string' ? sort : sort?.value || 'desc';
-    dispatch(setFilters({
-      ...currentFilters,
-      sortOrder: order,
-      mode: 'video'
-    }));
+    const order = typeof sort === "string" ? sort : sort?.value || "desc";
+    dispatch(
+      setFilters({
+        ...currentFilters,
+        sortOrder: order,
+        mode: "video",
+      }),
+    );
 
-    dispatch(loadHistory({
-      filters: { mode: 'video', sortOrder: order, ...(searchQuery ? { search: searchQuery } : {}) } as any,
-      paginationParams: { limit: 20 },
-      requestOrigin: 'sort_change',
-      expectedType: 'text-to-video'
-    } as any));
+    dispatch(
+      loadHistory({
+        filters: {
+          mode: "video",
+          sortOrder: order,
+          ...(searchQuery ? { search: searchQuery } : {}),
+        } as any,
+        paginationParams: { limit: 20 },
+        requestOrigin: "sort_change",
+        expectedType: "video",
+      } as any),
+    );
   };
 
   const onDateRangeChange = (range: any) => {
     // Local state removed, relying on Redux
-    const dateFilter = range?.start && range?.end ? {
-      start: range.start.toISOString(),
-      end: range.end.toISOString()
-    } : undefined;
+    const dateFilter =
+      range?.start && range?.end
+        ? {
+            start: range.start.toISOString(),
+            end: range.end.toISOString(),
+          }
+        : undefined;
 
-    dispatch(setFilters({
-      ...currentFilters,
-      dateRange: dateFilter,
-      mode: 'video'
-    }));
+    dispatch(
+      setFilters({
+        ...currentFilters,
+        dateRange: dateFilter,
+        mode: "video",
+      }),
+    );
 
-    dispatch(loadHistory({
-      filters: {
-        mode: 'video',
-        sortOrder: currentFilters?.sortOrder || 'desc',
-        ...(dateFilter ? { dateRange: dateFilter } : {}),
-        ...(searchQuery ? { search: searchQuery } : {})
-      } as any,
-      paginationParams: { limit: 20 },
-      requestOrigin: 'date_change',
-      expectedType: 'text-to-video'
-    } as any));
+    dispatch(
+      loadHistory({
+        filters: {
+          mode: "video",
+          sortOrder: currentFilters?.sortOrder || "desc",
+          ...(dateFilter ? { dateRange: dateFilter } : {}),
+          ...(searchQuery ? { search: searchQuery } : {}),
+        } as any,
+        paginationParams: { limit: 20 },
+        requestOrigin: "date_change",
+        expectedType: "video",
+      } as any),
+    );
+  };
+
+  const getTerminalFalErrorMessage = (error: any): string | null => {
+    const details = extractFalErrorDetails(error);
+    const type = details?.type || details?.detail?.[0]?.type;
+    const message = extractFalErrorMessage(error, "").toLowerCase();
+    const status = Number(error?.response?.status || error?.status || 0);
+
+    if (
+      type === "downstream_service_unavailable" ||
+      type === "downstream_service_error" ||
+      message.includes("downstream service is currently unavailable") ||
+      message.includes("downstream_service_unavailable")
+    ) {
+      return "Try again later";
+    }
+
+    // Queue polling should stop once the backend/provider has already returned a concrete error.
+    // Keep retries only for transport-level failures with no response.
+    if (status >= 400 && status !== 408 && status !== 429) {
+      if (status >= 500) {
+        return "Try again later";
+      }
+      return extractFalErrorMessage(error, "Request failed");
+    }
+
+    return null;
+  };
+
+  const stopActiveGeneration = (
+    id?: string,
+    errorMessage: string = "Try again later",
+  ) => {
+    if (!id) return;
+    dispatch(
+      updateActiveGeneration({
+        id,
+        updates: { status: "failed", error: errorMessage },
+      }),
+    );
+    dispatch(removeActiveGeneration(id));
   };
 
   // Handle video generation
 
-
   const handleGenerate = async () => {
-    console.log('[DEBUG VideoGeneration InputBox] handleGenerate triggered');
+    console.log("[DEBUG VideoGeneration InputBox] handleGenerate triggered");
     // CRITICAL: Check authentication FIRST before any other validation
     if (!user) {
-      console.log('[VideoGeneration] User not authenticated, saving intent and redirecting to sign-in');
-      saveAutoResumeIntent('video', {
+      console.log(
+        "[VideoGeneration] User not authenticated, saving intent and redirecting to sign-in",
+      );
+      saveAutoResumeIntent("video", {
         isTextToVideo: true,
         prompt,
         model: selectedModel,
-        aspectRatio: frameSize
+        aspectRatio: frameSize,
       });
-      router.push('/login?redirect=/text-to-video');
+      router.push("/login?redirect=/text-to-video");
       return;
     }
 
@@ -2385,7 +3259,9 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Check if we already have too many running generations
     if (runningGenerationsCount >= 3) {
-      setError("You have reached the maximum number of concurrent generations (3). Please wait for one to finish.");
+      setError(
+        "You have reached the maximum number of concurrent generations (3). Please wait for one to finish.",
+      );
       return;
     }
 
@@ -2395,45 +3271,52 @@ const InputBox = (props: InputBoxProps = {}) => {
     const optimisticId = `gen-${Date.now()}`;
     let generationId = optimisticId;
     // Optimistic active generation
-    dispatch(addActiveGeneration({
-      id: optimisticId,
-      prompt: prompt.trim(),
-      model: selectedModel,
-      status: 'pending',
-      generationType: 'text-to-video',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      params: {
-        generationType: 'text-to-video',
-        aspectRatio: frameSize,
-        duration: duration,
-        resolution: selectedQuality,
-        quality: selectedQuality,
-      }
-    }));
+    dispatch(
+      addActiveGeneration({
+        id: optimisticId,
+        prompt: prompt.trim(),
+        model: selectedModel,
+        status: "pending",
+        generationType: "text-to-video",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        params: {
+          generationType: "text-to-video",
+          aspectRatio: frameSize,
+          duration: duration,
+          resolution: selectedQuality,
+          quality: selectedQuality,
+        },
+      }),
+    );
 
     // Variables for generation logic
-    let apiEndpoint = '';
+    let apiEndpoint = "";
     let requestBody: any = {};
-    let generationType: any = 'text-to-video';
+    let generationType: any = "text-to-video";
 
     // Continue with validation and API call logic...
     const caps = currentModelCapabilities;
 
     // Validate I2V-only models require image (Kling 2.1 non-master, Gen-4 Turbo, Gen-3a Turbo)
-    if ((selectedModel.startsWith('kling-') && selectedModel.includes('v2.1') && !selectedModel.includes('master')) ||
-      selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+    if (
+      (selectedModel.startsWith("kling-") &&
+        selectedModel.includes("v2.1") &&
+        !selectedModel.includes("master")) ||
+      selectedModel === "gen4_turbo" ||
+      selectedModel === "gen3a_turbo"
+    ) {
       if (uploadedImages.length === 0 && references.length === 0) {
         // Get model display name
-        let modelName = '';
-        if (selectedModel.startsWith('kling-')) {
-          if (selectedModel.includes('v2.1')) {
-            modelName = 'Kling 2.1';
+        let modelName = "";
+        if (selectedModel.startsWith("kling-")) {
+          if (selectedModel.includes("v2.1")) {
+            modelName = "Kling 2.1";
           }
-        } else if (selectedModel === 'gen4_turbo') {
-          modelName = 'Gen-4 Turbo';
-        } else if (selectedModel === 'gen3a_turbo') {
-          modelName = 'Gen-3a Turbo';
+        } else if (selectedModel === "gen4_turbo") {
+          modelName = "Gen-4 Turbo";
+        } else if (selectedModel === "gen3a_turbo") {
+          modelName = "Gen-3a Turbo";
         }
         // Show toast with custom styling
         toast.error(
@@ -2442,20 +3325,25 @@ const InputBox = (props: InputBoxProps = {}) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg> */}
             <div>
-              <p className="font-semibold text-white">{modelName} needs one image as input to generate video.</p>
-              <p className="text-sm text-white/70 mt-1">Please upload an image to continue.</p>
+              <p className="font-semibold text-white">
+                {modelName} needs one image as input to generate video.
+              </p>
+              <p className="text-sm text-white/70 mt-1">
+                Please upload an image to continue.
+              </p>
             </div>
           </div>,
           {
             duration: 8000, // 8 seconds
             style: {
-              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
-              border: '1px solid rgba(251, 146, 60, 0.3)',
-              borderRadius: '12px',
-              padding: '16px',
-              backdropFilter: 'blur(10px)',
+              background:
+                "linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)",
+              border: "1px solid rgba(251, 146, 60, 0.3)",
+              borderRadius: "12px",
+              padding: "16px",
+              backdropFilter: "blur(10px)",
             },
-          } as any
+          } as any,
         );
         setIsGenerating(false);
         return;
@@ -2465,82 +3353,153 @@ const InputBox = (props: InputBoxProps = {}) => {
     // Validate model requirements
     // Check if model requires image (like Runway models)
     // Note: I2V-only models (Kling 2.1, Gen-4 Turbo, Gen-3a Turbo) are already handled above
-    if (caps.requiresImage && uploadedImages.length === 0 && references.length === 0) {
+    if (
+      caps.requiresImage &&
+      uploadedImages.length === 0 &&
+      references.length === 0 &&
+      !(selectedModel.includes("veo3.1-lite") && !!lastFrameImage)
+    ) {
       if (selectedModel === "S2V-01") {
         // Show toast with custom styling for S2V-01
         toast.error(
           <div className="flex items-start gap-3">
             <div>
-              <p className="font-semibold text-white">S2V-01 needs one image as input to generate video.</p>
-              <p className="text-sm text-white/70 mt-1">Please upload a character reference image to continue.</p>
+              <p className="font-semibold text-white">
+                S2V-01 needs one image as input to generate video.
+              </p>
+              <p className="text-sm text-white/70 mt-1">
+                Please upload a character reference image to continue.
+              </p>
             </div>
           </div>,
           {
             duration: 8000, // 8 seconds
             style: {
-              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
-              border: '1px solid rgba(251, 146, 60, 0.3)',
-              borderRadius: '12px',
-              padding: '16px',
-              backdropFilter: 'blur(10px)',
+              background:
+                "linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)",
+              border: "1px solid rgba(251, 146, 60, 0.3)",
+              borderRadius: "12px",
+              padding: "16px",
+              backdropFilter: "blur(10px)",
             },
-          } as any
+          } as any,
         );
       } else if (selectedModel === "I2V-01-Director") {
         // Show toast with custom styling for I2V-01-Director
         toast.error(
           <div className="flex items-start gap-3">
             <div>
-              <p className="font-semibold text-white">I2V-01-Director needs one image as input to generate video.</p>
-              <p className="text-sm text-white/70 mt-1">Please upload a first frame image to continue.</p>
+              <p className="font-semibold text-white">
+                I2V-01-Director needs one image as input to generate video.
+              </p>
+              <p className="text-sm text-white/70 mt-1">
+                Please upload a first frame image to continue.
+              </p>
             </div>
           </div>,
           {
             duration: 8000, // 8 seconds
             style: {
-              background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
-              border: '1px solid rgba(251, 146, 60, 0.3)',
-              borderRadius: '12px',
-              padding: '16px',
-              backdropFilter: 'blur(10px)',
+              background:
+                "linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)",
+              border: "1px solid rgba(251, 146, 60, 0.3)",
+              borderRadius: "12px",
+              padding: "16px",
+              backdropFilter: "blur(10px)",
             },
-          } as any
+          } as any,
         );
-      } else if (selectedModel.includes("veo3.1") && selectedModel.includes("i2v")) {
-        toast.error('An input image is required to use Veo 3.1 image-to-video model. Please upload an image.');
-      } else if (selectedModel.includes("veo3") && selectedModel.includes("i2v")) {
-        toast.error('An input image is required to use Veo 3 image-to-video model. Please upload an image.');
-      } else if (selectedModel.includes("wan-2.5") && selectedModel.includes("i2v")) {
-        toast.error('An input image is required to use WAN 2.5 image-to-video model. Please upload an image.');
-      } else if (selectedModel.startsWith('kling-') && selectedModel.includes('i2v')) {
-        toast.error('An input image is required to use Kling image-to-video model. Please upload an image.');
-      } else if (selectedModel.includes('seedance') && selectedModel.includes('i2v')) {
-        toast.error('An input image is required to use Seedance image-to-video model. Please upload an image.');
-      } else if (selectedModel.includes('pixverse') && selectedModel.includes('i2v')) {
-        toast.error('An input image is required to use PixVerse image-to-video model. Please upload an image.');
-      } else if (selectedModel.includes('sora2') && selectedModel.includes('i2v')) {
-        toast.error('An input image is required to use Sora 2 image-to-video model. Please upload an image.');
-      } else if (selectedModel === "gen4_turbo" || selectedModel === "gen3a_turbo") {
-        toast.error('An input image is required to use this Runway model. Please upload an image.');
+      } else if (
+        selectedModel.includes("veo3.1-lite") &&
+        selectedModel.includes("i2v") &&
+        !lastFrameImage
+      ) {
+        toast.error(
+          "An input image is required to use Veo 3.1 Lite image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.includes("veo3.1") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use Veo 3.1 image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.includes("veo3") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use Veo 3 image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.includes("wan-2.5") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use WAN 2.5 image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.startsWith("kling-") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use Kling image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.includes("seedance") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use Seedance image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.includes("pixverse") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use PixVerse image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel.includes("sora2") &&
+        selectedModel.includes("i2v")
+      ) {
+        toast.error(
+          "An input image is required to use Sora 2 image-to-video model. Please upload an image.",
+        );
+      } else if (
+        selectedModel === "gen4_turbo" ||
+        selectedModel === "gen3a_turbo"
+      ) {
+        toast.error(
+          "An input image is required to use this Runway model. Please upload an image.",
+        );
       } else {
-        toast.error('An input image is required to use this model. Please upload an image.');
+        toast.error(
+          "An input image is required to use this model. Please upload an image.",
+        );
       }
       return;
     }
 
     if (caps.requiresReferenceImage && references.length === 0) {
-      toast.error('A reference image is required to use this model. Please upload a character reference image.');
+      toast.error(
+        "A reference image is required to use this model. Please upload a character reference image.",
+      );
       return;
     }
 
     if (caps.requiresVideo && !uploadedVideo) {
-      toast.error('A source video is required to use this model. Please upload a video.');
+      toast.error(
+        "A source video is required to use this model. Please upload a video.",
+      );
       return;
     }
 
     // Validate model compatibility with generation mode
     if (generationMode === "text_to_video" && !caps.supportsTextToVideo) {
-      toast.error('This model does not support text-to-video generation. An input image is required. Please upload an image or select a different model.');
+      toast.error(
+        "This model does not support text-to-video generation. An input image is required. Please upload an image or select a different model.",
+      );
       return;
     }
 
@@ -2550,10 +3509,12 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     // Update queue status to generating
     if (generationId) {
-      dispatch(updateActiveGeneration({
-        id: generationId,
-        updates: { status: 'generating' }
-      }));
+      dispatch(
+        updateActiveGeneration({
+          id: generationId,
+          updates: { status: "generating" },
+        }),
+      );
     }
 
     // Validate credits before generation
@@ -2561,27 +3522,55 @@ const InputBox = (props: InputBoxProps = {}) => {
     // Avoid any frontend reservation to prevent double-charging.
     let transactionId: string | null = null;
     try {
-      const provider = selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" ? 'minimax' :
-        (selectedModel.includes("veo3") || selectedModel.includes('sora2') || selectedModel.includes('ltx2') || selectedModel === 'kling-o1' || selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) ? 'fal' :
-          (selectedModel.includes("wan-2.5") || (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro' && !selectedModel.startsWith('kling-v3')) || selectedModel.includes('seedance') || selectedModel.includes('pixverse') || selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro') || selectedModel === 'wan-2.2-animate-replace') ? 'replicate' : 'runway';
+      const provider =
+        selectedModel.includes("MiniMax") ||
+        selectedModel === "T2V-01-Director" ||
+        selectedModel === "I2V-01-Director" ||
+        selectedModel === "S2V-01"
+          ? "minimax"
+          : selectedModel.includes("veo3") ||
+              selectedModel.includes("sora2") ||
+              selectedModel.includes("ltx2") ||
+              selectedModel === "kling-o1" ||
+              selectedModel === "kling-2.6-pro" ||
+              selectedModel.startsWith("kling-v3")
+            ? "fal"
+            : selectedModel.includes("wan-2.5") ||
+                (selectedModel.startsWith("kling-") &&
+                  selectedModel !== "kling-2.6-pro" &&
+                  !selectedModel.startsWith("kling-v3")) ||
+                selectedModel.includes("seedance") ||
+                selectedModel.includes("pixverse") ||
+                selectedModel.includes("ltx-2.3-fast") ||
+                selectedModel.includes("ltx-2.3-pro") ||
+                selectedModel === "wan-2.2-animate-replace"
+              ? "replicate"
+              : "runway";
 
-      if (selectedModel === 'wan-2.2-animate-replace') {
+      if (selectedModel === "wan-2.2-animate-replace") {
         if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
-          throw new Error('Could not determine input video duration. Please re-upload the video.');
+          throw new Error(
+            "Could not determine input video duration. Please re-upload the video.",
+          );
         }
         const required = Math.ceil(uploadedVideoDurationSec * 8);
         if (Number(creditBalance) < required) {
-          throw new Error(`Insufficient credits. You need ${required} credits but have ${creditBalance}.`);
+          throw new Error(
+            `Insufficient credits. You need ${required} credits but have ${creditBalance}.`,
+          );
         }
-        console.log('✅ Credits validated (no reservation):', required);
+        console.log("✅ Credits validated (no reservation):", required);
       } else {
         const creditResult = await validateAndReserveCredits(provider);
         transactionId = creditResult.transactionId;
-        console.log('✅ Credits validated and reserved:', creditResult.requiredCredits);
+        console.log(
+          "✅ Credits validated and reserved:",
+          creditResult.requiredCredits,
+        );
       }
     } catch (creditError: any) {
-      console.error('❌ Credit validation failed:', creditError);
-      setError(creditError.message || 'Insufficient credits for generation');
+      console.error("❌ Credit validation failed:", creditError);
+      setError(creditError.message || "Insufficient credits for generation");
       setIsGenerating(false);
       return;
     }
@@ -2590,7 +3579,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     try {
       // Resolve isPublic from backend policy so completed videos appear in the public feed when enabled
-      const { getIsPublic } = await import('@/lib/publicFlag');
+      const { getIsPublic } = await import("@/lib/publicFlag");
       const isPublic = await getIsPublic();
       let requestBody;
       let generationType: string;
@@ -2601,7 +3590,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       // If only text is provided and model supports T2V, use T2V
       let actualGenerationMode = generationMode;
 
-      const hasImage = uploadedImages.length > 0 || references.length > 0;
+      const hasImage =
+        uploadedImages.length > 0 || references.length > 0 || !!lastFrameImage;
       const hasText = prompt.trim().length > 0;
 
       // Smart mode detection:
@@ -2613,92 +3603,151 @@ const InputBox = (props: InputBoxProps = {}) => {
       if (hasImage && caps.supportsImageToVideo) {
         // Image uploaded and model supports I2V -> use image-to-video
         actualGenerationMode = "image_to_video";
-        console.log('🖼️ Image detected, switching to image-to-video mode');
+        console.log("🖼️ Image detected, switching to image-to-video mode");
       } else if (hasText && !hasImage && caps.supportsTextToVideo) {
         // Only text provided and model supports T2V -> use text-to-video
         // But check if model requires image (like Kling 2.1)
         if (caps.requiresImage && !caps.supportsTextToVideo) {
           // Model requires image but user only provided text
-          toast.error('This model requires an input image. Please upload an image to use this model.');
+          toast.error(
+            "This model requires an input image. Please upload an image to use this model.",
+          );
           setIsGenerating(false);
           return;
         }
         actualGenerationMode = "text_to_video";
-        console.log('📝 Text only, using text-to-video mode');
+        console.log("📝 Text only, using text-to-video mode");
       } else if (caps.supportsTextToVideo && caps.supportsImageToVideo) {
         // Model supports both - check if image is uploaded
         if (hasImage) {
           actualGenerationMode = "image_to_video";
-          console.log('🖼️ Model supports both, image provided -> using image-to-video');
+          console.log(
+            "🖼️ Model supports both, image provided -> using image-to-video",
+          );
         } else {
           actualGenerationMode = "text_to_video";
-          console.log('📝 Model supports both, no image -> using text-to-video');
+          console.log(
+            "📝 Model supports both, no image -> using text-to-video",
+          );
         }
       } else if (caps.supportsImageToVideo && !caps.supportsTextToVideo) {
         // Model only supports I2V (like Runway models: gen4_turbo, gen3a_turbo)
         actualGenerationMode = "image_to_video";
-        console.log('🎬 Model only supports I2V -> using image-to-video mode');
+        console.log("🎬 Model only supports I2V -> using image-to-video mode");
         // Image requirement will be validated below
       }
 
       if (actualGenerationMode === "text_to_video") {
         // Text to video generation (MiniMax, Veo3, and WAN models)
-        if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director") {
+        if (
+          selectedModel.includes("MiniMax") ||
+          selectedModel === "T2V-01-Director"
+        ) {
           // Text-to-video: No image requirements (pure text generation)
 
           requestBody = {
             model: selectedModel,
             prompt: prompt,
             // MiniMax models: Include duration and resolution only (no images for text-to-video)
-            ...((selectedModel === "MiniMax-Hailuo-02" || selectedModel === "MiniMax-Hailuo-2.3") && {
+            ...((selectedModel === "MiniMax-Hailuo-02" ||
+              selectedModel === "MiniMax-Hailuo-2.3") && {
               duration: selectedMiniMaxDuration,
-              resolution: selectedResolution
+              resolution: selectedResolution,
             }),
             generationType: "text-to-video",
             isPublic,
           };
           generationType = "text-to-video";
-          apiEndpoint = '/api/minimax/video';
-        } else if (selectedModel.includes("veo3.1") && !selectedModel.includes("i2v")) {
+          apiEndpoint = "/api/minimax/video";
+        } else if (
+          selectedModel.includes("veo3.1-lite") &&
+          !selectedModel.includes("i2v")
+        ) {
+          const modelDuration =
+            duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const apiPrompt = getApiPrompt(prompt);
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            aspect_ratio: frameSize === "9:16" ? "9:16" : "16:9",
+            duration: modelDuration,
+            resolution:
+              selectedQuality === "1080p" && modelDuration === "8s"
+                ? "1080p"
+                : "720p",
+            auto_fix: true,
+            isPublic,
+          };
+          generationType = "text-to-video";
+          apiEndpoint = "/api/fal/veo3_1/lite/text-to-video/submit";
+        } else if (
+          selectedModel.includes("veo3.1") &&
+          !selectedModel.includes("i2v")
+        ) {
           // Veo 3.1 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
-          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const modelDuration =
+            duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
-            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
+            aspect_ratio:
+              frameSize === "16:9"
+                ? "16:9"
+                : frameSize === "9:16"
+                  ? "9:16"
+                  : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality (720p or 1080p)
             generate_audio: true,
             auto_fix: true,
-            isPublic
+            isPublic,
           };
           generationType = "text-to-video";
-          apiEndpoint = isFast ? '/api/fal/veo3_1/text-to-video/fast/submit' : '/api/fal/veo3_1/text-to-video/submit';
-        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && !selectedModel.includes("i2v")) {
+          apiEndpoint = isFast
+            ? "/api/fal/veo3_1/text-to-video/fast/submit"
+            : "/api/fal/veo3_1/text-to-video/submit";
+        } else if (
+          selectedModel.includes("veo3") &&
+          !selectedModel.includes("veo3.1") &&
+          !selectedModel.includes("i2v")
+        ) {
           // Veo3 text-to-video generation
           const isFast = selectedModel.includes("fast");
-          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const modelDuration =
+            duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
-            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "1:1",
+            aspect_ratio:
+              frameSize === "16:9"
+                ? "16:9"
+                : frameSize === "9:16"
+                  ? "9:16"
+                  : "1:1",
             duration: modelDuration,
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
             auto_fix: true,
-            isPublic
+            isPublic,
           };
           generationType = "text-to-video";
-          apiEndpoint = isFast ? '/api/fal/veo3/text-to-video/fast/submit' : '/api/fal/veo3/text-to-video/submit';
-        } else if (selectedModel.includes("wan-2.5") && !selectedModel.includes("i2v")) {
+          apiEndpoint = isFast
+            ? "/api/fal/veo3/text-to-video/fast/submit"
+            : "/api/fal/veo3/text-to-video/submit";
+        } else if (
+          selectedModel.includes("wan-2.5") &&
+          !selectedModel.includes("i2v")
+        ) {
           // WAN 2.5 text-to-video generation (only if not i2v variant)
           const isFast = selectedModel.includes("fast");
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            model: isFast ? "wan-video/wan-2.5-t2v-fast" : "wan-video/wan-2.5-t2v",
+            model: isFast
+              ? "wan-video/wan-2.5-t2v-fast"
+              : "wan-video/wan-2.5-t2v",
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             duration: duration, // 5 or 10 seconds
@@ -2709,102 +3758,142 @@ const InputBox = (props: InputBoxProps = {}) => {
           };
           generationType = "text-to-video";
           // Use fast alias route when selected fast model
-          apiEndpoint = isFast ? '/api/replicate/wan-2-5-t2v/fast/submit' : '/api/replicate/wan-2-5-t2v/submit';
-        } else if (selectedModel.startsWith('kling-v3') && !hasImage) {
+          apiEndpoint = isFast
+            ? "/api/replicate/wan-2-5-t2v/fast/submit"
+            : "/api/replicate/wan-2-5-t2v/submit";
+        } else if (selectedModel.startsWith("kling-v3") && !hasImage) {
           // Kling 3 text-to-video (FAL)
           const apiPrompt = getApiPrompt(prompt);
-          const modelDuration = String(Math.min(15, Math.max(3, duration || 5)));
-          const isPro = selectedModel === 'kling-v3-pro';
+          const modelDuration = String(
+            Math.min(15, Math.max(3, duration || 5)),
+          );
+          const isPro = selectedModel === "kling-v3-pro";
           requestBody = {
-            model: isPro ? 'fal-ai/kling-video/v3/pro/text-to-video' : 'fal-ai/kling-video/v3/standard/text-to-video',
+            model: isPro
+              ? "fal-ai/kling-video/v3/pro/text-to-video"
+              : "fal-ai/kling-video/v3/standard/text-to-video",
             prompt: apiPrompt,
             originalPrompt: prompt,
             duration: modelDuration,
-            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
-            negative_prompt: 'blur, distort, and low quality',
+            aspect_ratio:
+              frameSize === "9:16"
+                ? "9:16"
+                : frameSize === "1:1"
+                  ? "1:1"
+                  : "16:9",
+            negative_prompt: "blur, distort, and low quality",
             cfg_scale: 0.5,
             generate_audio: generateAudio,
-            generationType: 'text-to-video',
-            isPublic
+            generationType: "text-to-video",
+            isPublic,
           };
-          generationType = 'text-to-video';
-          apiEndpoint = isPro ? '/api/fal/kling-v3/pro/text-to-video/submit' : '/api/fal/kling-v3/standard/text-to-video/submit';
-        } else if (selectedModel === 'kling-2.6-pro' && !hasImage) {
+          generationType = "text-to-video";
+          apiEndpoint = isPro
+            ? "/api/fal/kling-v3/pro/text-to-video/submit"
+            : "/api/fal/kling-v3/standard/text-to-video/submit";
+        } else if (selectedModel === "kling-2.6-pro" && !hasImage) {
           // Kling 2.6 Pro text-to-video (FAL)
           const apiPrompt = getApiPrompt(prompt);
-          const modelDuration = duration === 5 ? '5' : '10';
+          const modelDuration = duration === 5 ? "5" : "10";
           requestBody = {
-            model: 'fal-ai/kling-video/v2.6/pro/text-to-video',
+            model: "fal-ai/kling-video/v2.6/pro/text-to-video",
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             duration: modelDuration,
-            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
-            negative_prompt: 'blur, distort, and low quality',
+            aspect_ratio:
+              frameSize === "9:16"
+                ? "9:16"
+                : frameSize === "1:1"
+                  ? "1:1"
+                  : "16:9",
+            negative_prompt: "blur, distort, and low quality",
             cfg_scale: 0.5,
             generate_audio: generateAudio, // Explicitly pass true or false
-            generationType: 'text-to-video',
-            isPublic
+            generationType: "text-to-video",
+            isPublic,
           };
-          generationType = 'text-to-video';
-          apiEndpoint = '/api/fal/kling-2.6-pro/text-to-video/submit';
-        } else if (selectedModel.startsWith('kling-') && !selectedModel.includes('i2v') && selectedModel !== 'kling-2.6-pro') {
+          generationType = "text-to-video";
+          apiEndpoint = "/api/fal/kling-2.6-pro/text-to-video/submit";
+        } else if (
+          selectedModel.startsWith("kling-") &&
+          !selectedModel.includes("i2v") &&
+          selectedModel !== "kling-2.6-pro"
+        ) {
           // Kling T2V (other models)
-          const isV25 = selectedModel.includes('v2.5');
-          const isV21Master = selectedModel.includes('v2.1-master');
-          const isV21 = selectedModel.includes('v2.1') && !isV21Master;
+          const isV25 = selectedModel.includes("v2.5");
+          const isV21Master = selectedModel.includes("v2.1-master");
+          const isV21 = selectedModel.includes("v2.1") && !isV21Master;
 
           if (!isV25 && !isV21Master) {
             // Only Kling 2.5 Turbo Pro and Kling 2.1 Master allow pure T2V
-            toast.error('This Kling model requires an input image. Please upload an image or select Kling 2.1 Master / Kling 2.5 Turbo Pro for text-to-video.');
+            toast.error(
+              "This Kling model requires an input image. Please upload an image or select Kling 2.1 Master / Kling 2.5 Turbo Pro for text-to-video.",
+            );
             setIsGenerating(false);
             return;
           }
 
           const apiPrompt = getApiPrompt(prompt);
-          const modelName = isV21Master ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.5-turbo-pro';
+          const modelName = isV21Master
+            ? "kwaivgi/kling-v2.1-master"
+            : "kwaivgi/kling-v2.5-turbo-pro";
           requestBody = {
             model: modelName,
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             duration,
-            aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
-            generationType: 'text-to-video',
-            isPublic
+            aspect_ratio:
+              frameSize === "9:16"
+                ? "9:16"
+                : frameSize === "1:1"
+                  ? "1:1"
+                  : "16:9",
+            generationType: "text-to-video",
+            isPublic,
           };
-          generationType = 'text-to-video';
-          apiEndpoint = '/api/replicate/kling-t2v/submit';
-        } else if (selectedModel.includes('seedance') && !selectedModel.includes('i2v')) {
+          generationType = "text-to-video";
+          apiEndpoint = "/api/replicate/kling-t2v/submit";
+        } else if (
+          selectedModel.includes("seedance") &&
+          !selectedModel.includes("i2v")
+        ) {
           // Seedance T2V
-          const isSeedance15 = selectedModel.includes('seedance-1.5');
+          const isSeedance15 = selectedModel.includes("seedance-1.5");
           // Seedance 1.0: supports first/last frame only for Pro/Lite (not Pro Fast)
-          const isLite = selectedModel.includes('lite');
-          const isProFast = selectedModel.includes('pro-fast');
+          const isLite = selectedModel.includes("lite");
+          const isProFast = selectedModel.includes("pro-fast");
           const apiPrompt = getApiPrompt(prompt);
           // First frame and last frame support (Pro and Lite only)
-          const firstFrame = !isProFast && uploadedImages.length > 0 ? uploadedImages[0] : null;
-          const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : (!isProFast && uploadedImages.length > 1 ? uploadedImages[1] : null);
+          const firstFrame =
+            !isProFast && uploadedImages.length > 0 ? uploadedImages[0] : null;
+          const lastFrame =
+            !isProFast && lastFrameImage
+              ? lastFrameImage
+              : !isProFast && uploadedImages.length > 1
+                ? uploadedImages[1]
+                : null;
           const hasFirstFrame = Boolean(firstFrame);
           const hasLastFrame = Boolean(lastFrame);
 
           if (isSeedance15) {
             requestBody = {
-              model: 'bytedance/seedance-1.5-pro',
+              model: "bytedance/seedance-1.5-pro",
               prompt: apiPrompt,
               originalPrompt: prompt,
               duration,
               aspect_ratio: frameSize,
               generate_audio: generateAudio,
-              generationType: 'text-to-video',
+              generationType: "text-to-video",
               isPublic,
               ...(hasFirstFrame ? { image: firstFrame } : {}),
               ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
             };
           } else {
-            let modelName = 'bytedance/seedance-1-pro';
+            let modelName = "bytedance/seedance-1-pro";
             if (isLite) {
-              modelName = 'bytedance/seedance-1-lite';
+              modelName = "bytedance/seedance-1-lite";
             } else if (isProFast) {
-              modelName = 'bytedance/seedance-1-pro-fast';
+              modelName = "bytedance/seedance-1-pro-fast";
             }
             requestBody = {
               model: modelName,
@@ -2813,40 +3902,54 @@ const InputBox = (props: InputBoxProps = {}) => {
               duration,
               resolution: seedanceResolution,
               aspect_ratio: frameSize, // Seedance supports multiple aspect ratios for T2V
-              generationType: 'text-to-video',
+              generationType: "text-to-video",
               isPublic,
               ...(hasFirstFrame ? { image: firstFrame } : {}),
               ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
-              ...((!hasFirstFrame && !hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
-                reference_images: references.slice(0, 4)
-              } : {}),
+              ...(!hasFirstFrame &&
+              !hasLastFrame &&
+              seedanceResolution !== "1080p" &&
+              references.length > 0
+                ? {
+                    reference_images: references.slice(0, 4),
+                  }
+                : {}),
             };
           }
-          generationType = 'text-to-video';
-          apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-t2v/submit' : '/api/replicate/seedance-t2v/submit';
-        } else if (selectedModel.includes('pixverse') && !selectedModel.includes('i2v')) {
+          generationType = "text-to-video";
+          apiEndpoint = isProFast
+            ? "/api/replicate/seedance-pro-fast-t2v/submit"
+            : "/api/replicate/seedance-t2v/submit";
+        } else if (
+          selectedModel.includes("pixverse") &&
+          !selectedModel.includes("i2v")
+        ) {
           // PixVerse T2V
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            model: 'pixverse/pixverse-v5',
+            model: "pixverse/pixverse-v5",
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             duration,
             quality: pixverseQuality,
             aspect_ratio: frameSize, // PixVerse supports 16:9, 9:16, 1:1
-            generationType: 'text-to-video',
+            generationType: "text-to-video",
             isPublic,
           };
-          generationType = 'text-to-video';
-          apiEndpoint = '/api/replicate/pixverse-v5-t2v/submit';
-        } else if (selectedModel.includes('sora2') && !selectedModel.includes('i2v') && !selectedModel.includes('v2v')) {
+          generationType = "text-to-video";
+          apiEndpoint = "/api/replicate/pixverse-v5-t2v/submit";
+        } else if (
+          selectedModel.includes("sora2") &&
+          !selectedModel.includes("i2v") &&
+          !selectedModel.includes("v2v")
+        ) {
           // Sora 2 T2V
-          const isPro = selectedModel.includes('pro');
+          const isPro = selectedModel.includes("pro");
           const apiPrompt = getApiPrompt(prompt);
 
           // Ensure duration is a number and one of [4, 8, 12]
           let soraDuration = duration;
-          if (typeof duration !== 'number') {
+          if (typeof duration !== "number") {
             soraDuration = parseInt(String(duration), 10) || 8;
           }
           // Clamp to valid values: 4, 8, or 12
@@ -2858,19 +3961,24 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
 
           // Ensure resolution is valid
-          let soraResolution = selectedQuality || '720p';
+          let soraResolution = selectedQuality || "720p";
           if (isPro) {
             // Pro supports 720p or 1080p
-            if (soraResolution !== '720p' && soraResolution !== '1080p') {
-              soraResolution = '1080p'; // Default to 1080p for Pro
+            if (soraResolution !== "720p" && soraResolution !== "1080p") {
+              soraResolution = "1080p"; // Default to 1080p for Pro
             }
           } else {
             // Standard only supports 720p
-            soraResolution = '720p';
+            soraResolution = "720p";
           }
 
           // Ensure aspect_ratio is valid
-          const soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "16:9");
+          const soraAspectRatio =
+            frameSize === "16:9"
+              ? "16:9"
+              : frameSize === "9:16"
+                ? "9:16"
+                : "16:9";
 
           // Sora 2 supports generate_audio parameter
           requestBody = {
@@ -2882,66 +3990,87 @@ const InputBox = (props: InputBoxProps = {}) => {
             originalPrompt: prompt, // Backend uses this for history display
             isPublic, // Backend uses this for history
           };
-          generationType = 'text-to-video';
-          apiEndpoint = isPro ? '/api/fal/sora2/text-to-video/pro/submit' : '/api/fal/sora2/text-to-video/submit';
-        } else if (selectedModel.includes('ltx2') && !selectedModel.includes('i2v')) {
+          generationType = "text-to-video";
+          apiEndpoint = isPro
+            ? "/api/fal/sora2/text-to-video/pro/submit"
+            : "/api/fal/sora2/text-to-video/submit";
+        } else if (
+          selectedModel.includes("ltx2") &&
+          !selectedModel.includes("i2v")
+        ) {
           // LTX V2 Text-to-Video (Pro/Fast)
-          const isPro = selectedModel.includes('pro');
-          const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const isPro = selectedModel.includes("pro");
+          const normalizedRes = (selectedResolution || "1080p").toLowerCase();
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             resolution: normalizedRes,
-            aspect_ratio: '16:9',
+            aspect_ratio: "16:9",
             duration,
             fps: fps,
             generate_audio: generateAudio,
-            generationType: 'text-to-video',
+            generationType: "text-to-video",
             isPublic,
           } as any;
-          generationType = 'text-to-video';
-          apiEndpoint = isPro ? '/api/fal/ltx2/text-to-video/pro/submit' : '/api/fal/ltx2/text-to-video/fast/submit';
-        } else if ((selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro')) && !selectedModel.includes('i2v')) {
+          generationType = "text-to-video";
+          apiEndpoint = isPro
+            ? "/api/fal/ltx2/text-to-video/pro/submit"
+            : "/api/fal/ltx2/text-to-video/fast/submit";
+        } else if (
+          (selectedModel.includes("ltx-2.3-fast") ||
+            selectedModel.includes("ltx-2.3-pro")) &&
+          !selectedModel.includes("i2v")
+        ) {
           // LTX 2.3 Fast/Pro Text-to-Video (Replicate)
-          const isPro = selectedModel.includes('ltx-2.3-pro');
-          const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const isPro = selectedModel.includes("ltx-2.3-pro");
+          const normalizedRes = (selectedResolution || "1080p").toLowerCase();
           const apiPrompt = getApiPrompt(prompt);
-          const ltxAspect = frameSize === '9:16' ? '9:16' : '16:9';
+          const ltxAspect = frameSize === "9:16" ? "9:16" : "16:9";
           const ltxFps = fps || 25;
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt,
-            resolution: normalizedRes.includes('4k') || normalizedRes.includes('2160') ? '4k' : (normalizedRes.includes('2k') || normalizedRes.includes('1440') ? '2k' : '1080p'),
+            resolution:
+              normalizedRes.includes("4k") || normalizedRes.includes("2160")
+                ? "4k"
+                : normalizedRes.includes("2k") || normalizedRes.includes("1440")
+                  ? "2k"
+                  : "1080p",
             aspect_ratio: ltxAspect,
             duration,
             fps: ltxFps,
-            camera_motion: selectedCameraMovements[0] || 'none',
+            camera_motion: selectedCameraMovements[0] || "none",
             generate_audio: generateAudio,
             ...(isPro && uploadedAudio ? { audio: uploadedAudio } : {}),
             ...(isPro && uploadedVideo ? { video: uploadedVideo } : {}),
-            generationType: 'text-to-video',
+            generationType: "text-to-video",
             isPublic,
           } as any;
-          generationType = 'text-to-video';
-          apiEndpoint = isPro ? '/api/replicate/ltx-2-3-pro-t2v/submit' : '/api/replicate/ltx-2-3-fast-t2v/submit';
+          generationType = "text-to-video";
+          apiEndpoint = isPro
+            ? "/api/replicate/ltx-2-3-pro-t2v/submit"
+            : "/api/replicate/ltx-2-3-fast-t2v/submit";
         } else {
           // Runway models don't support text-to-video (they require an image)
-          setError("Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.");
+          setError(
+            "Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.",
+          );
           return;
         }
       } else if (actualGenerationMode === "image_to_video") {
         // Check if we need uploaded images
         // S2V-01 uses references, others need uploadedImages
-        const needsImage = selectedModel !== "S2V-01" &&
+        const needsImage =
+          selectedModel !== "S2V-01" &&
           !selectedModel.includes("veo3") &&
           !selectedModel.includes("wan-2.5") &&
-          !selectedModel.includes('seedance') &&
-          !selectedModel.includes('pixverse') &&
-          !selectedModel.includes('sora2') &&
-          !selectedModel.includes('ltx2') &&
-          !selectedModel.includes('ltx-2.3-fast') &&
-          !selectedModel.includes('kling-');
+          !selectedModel.includes("seedance") &&
+          !selectedModel.includes("pixverse") &&
+          !selectedModel.includes("sora2") &&
+          !selectedModel.includes("ltx2") &&
+          !selectedModel.includes("ltx-2.3-fast") &&
+          !selectedModel.includes("kling-");
 
         if (needsImage && uploadedImages.length === 0) {
           setError("Please upload at least one image");
@@ -2953,39 +4082,63 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (uploadedImages.length === 0 && references.length === 0) {
           // If model supports both, we could fall back to T2V, but for I2V-only models we must error
           if (!caps.supportsTextToVideo) {
-            setError("An input image is required for image-to-video generation with this model");
+            setError(
+              "An input image is required for image-to-video generation with this model",
+            );
             return;
           } else {
             // Model supports both but no image - should not happen due to mode detection, but handle gracefully
-            console.warn('⚠️ Image-to-video mode selected but no image provided, this should not happen');
-            setError("Please upload an image for image-to-video generation, or switch to text-to-video mode");
+            console.warn(
+              "⚠️ Image-to-video mode selected but no image provided, this should not happen",
+            );
+            setError(
+              "Please upload an image for image-to-video generation, or switch to text-to-video mode",
+            );
             return;
           }
         }
 
-        if (selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+        if (
+          selectedModel.includes("MiniMax") ||
+          selectedModel === "I2V-01-Director" ||
+          selectedModel === "S2V-01"
+        ) {
           // MiniMax image to video - validate specific requirements
 
           // I2V-01-Director: Always requires first frame image
-          if (selectedModel === "I2V-01-Director" && uploadedImages.length === 0) {
+          if (
+            selectedModel === "I2V-01-Director" &&
+            uploadedImages.length === 0
+          ) {
             setError("I2V-01-Director requires a first frame image");
             return;
           }
 
           // S2V-01: Requires subject reference image (character image)
           if (selectedModel === "S2V-01" && references.length === 0) {
-            setError("S2V-01 requires a subject reference image (character image)");
+            setError(
+              "S2V-01 requires a subject reference image (character image)",
+            );
             return;
           }
 
           // MiniMax-Hailuo-02: first_frame_image required for 512P, optional for 768P/1080P
-          if (selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) {
-            setError("MiniMax-Hailuo-02 requires a first frame image for 512P resolution");
+          if (
+            selectedModel === "MiniMax-Hailuo-02" &&
+            selectedResolution === "512P" &&
+            uploadedImages.length === 0
+          ) {
+            setError(
+              "MiniMax-Hailuo-02 requires a first frame image for 512P resolution",
+            );
             return;
           }
 
           // MiniMax-Hailuo-2.3-Fast: Always requires first_frame_image (I2V only)
-          if (selectedModel === "MiniMax-Hailuo-2.3-Fast" && uploadedImages.length === 0) {
+          if (
+            selectedModel === "MiniMax-Hailuo-2.3-Fast" &&
+            uploadedImages.length === 0
+          ) {
             setError("MiniMax-Hailuo-2.3-Fast requires a first frame image");
             return;
           }
@@ -3001,40 +4154,109 @@ const InputBox = (props: InputBoxProps = {}) => {
               resolution: selectedResolution,
               // first_frame_image is required for 512P, optional for 768P/1080P
               ...(uploadedImages.length > 0 && {
-                first_frame_image: uploadedImages[0]
+                first_frame_image: uploadedImages[0],
               }),
               // last_frame_image is optional for supported resolutions
-              ...(lastFrameImage && (selectedResolution === "768P" || selectedResolution === "1080P") && {
-                last_frame_image: lastFrameImage
-              })
+              ...(lastFrameImage &&
+                (selectedResolution === "768P" ||
+                  selectedResolution === "1080P") && {
+                  last_frame_image: lastFrameImage,
+                }),
             }),
             // MiniMax-Hailuo-2.3: Include duration and resolution, first_frame_image only (no last_frame_image support)
-            ...((selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") && {
+            ...((selectedModel === "MiniMax-Hailuo-2.3" ||
+              selectedModel === "MiniMax-Hailuo-2.3-Fast") && {
               duration: selectedMiniMaxDuration,
               resolution: selectedResolution,
               // first_frame_image is required for Fast model, optional for standard 2.3
               // Note: These models do NOT support last_frame_image (First-and-Last-Frame-Video mode)
               ...(uploadedImages.length > 0 && {
-                first_frame_image: uploadedImages[0]
-              })
+                first_frame_image: uploadedImages[0],
+              }),
             }),
             // I2V-01-Director: Always requires first_frame_image
             ...(selectedModel === "I2V-01-Director" && {
-              first_frame_image: uploadedImages[0]
+              first_frame_image: uploadedImages[0],
             }),
             // S2V-01: Uses subject_reference instead of first_frame_image
             ...(selectedModel === "S2V-01" && {
-              subject_reference: [{
-                type: "character",
-                image: [references[0]]
-              }]
+              subject_reference: [
+                {
+                  type: "character",
+                  image: [references[0]],
+                },
+              ],
             }),
             generationType: "image-to-video",
             isPublic,
           };
           generationType = "image-to-video";
-          apiEndpoint = '/api/minimax/video';
-        } else if (selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
+          apiEndpoint = "/api/minimax/video";
+        } else if (
+          selectedModel.includes("veo3.1-lite") &&
+          (selectedModel.includes("i2v") ||
+            uploadedImages.length > 0 ||
+            references.length > 0 ||
+            !!lastFrameImage)
+        ) {
+          const firstFrame = uploadedImages[0] || references[0] || null;
+          const lastFrame =
+            uploadedImages[1] || lastFrameImage || references[1] || null;
+          const fallbackFrame = firstFrame || lastFrame;
+
+          if (!fallbackFrame) {
+            setError("Veo 3.1 Lite image-to-video requires an input image");
+            return;
+          }
+
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration =
+            duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+
+          const normalizedAspectRatio =
+            frameSize === "16:9"
+              ? "16:9"
+              : frameSize === "9:16"
+                ? "9:16"
+                : "auto";
+          const normalizedResolution =
+            selectedQuality === "1080p" && modelDuration === "8s"
+              ? "1080p"
+              : "720p";
+
+          if (firstFrame && lastFrame) {
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              first_frame_url: firstFrame,
+              last_frame_url: lastFrame,
+              aspect_ratio: normalizedAspectRatio,
+              resolution: normalizedResolution,
+              auto_fix: true,
+              isPublic,
+            };
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/veo3_1/lite/first-last/submit";
+          } else {
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              image_url: fallbackFrame,
+              aspect_ratio: normalizedAspectRatio,
+              duration: modelDuration,
+              resolution: normalizedResolution,
+              auto_fix: true,
+              isPublic,
+            };
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/veo3_1/lite/image-to-video/submit";
+          }
+        } else if (
+          selectedModel.includes("veo3.1") &&
+          (selectedModel.includes("i2v") ||
+            uploadedImages.length > 0 ||
+            references.length > 0)
+        ) {
           // Veo 3.1: if two frames are present use first-last-frame model; otherwise image-to-video
           if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo 3.1 image-to-video requires an input image");
@@ -3042,9 +4264,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           const isFast = selectedModel.includes("fast");
           const apiPrompt = getApiPrompt(prompt);
-          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const modelDuration =
+            duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           const firstFrame = uploadedImages[0] || references[0];
-          const lastFrame = uploadedImages[1] || lastFrameImage || references[1] || null;
+          const lastFrame =
+            uploadedImages[1] || lastFrameImage || references[1] || null;
 
           const isFirstLastMode = Boolean(firstFrame && lastFrame);
 
@@ -3055,16 +4279,21 @@ const InputBox = (props: InputBoxProps = {}) => {
               originalPrompt: prompt,
               first_frame_url: firstFrame,
               last_frame_url: lastFrame,
-              aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
+              aspect_ratio:
+                frameSize === "16:9"
+                  ? "16:9"
+                  : frameSize === "9:16"
+                    ? "9:16"
+                    : "auto",
               duration: modelDuration,
               resolution: selectedQuality,
               generate_audio: true,
-              isPublic
+              isPublic,
             };
             generationType = "image-to-video";
             apiEndpoint = isFast
-              ? '/api/fal/veo3_1/first-last/fast/submit'
-              : '/api/fal/veo3_1/first-last/submit';
+              ? "/api/fal/veo3_1/first-last/fast/submit"
+              : "/api/fal/veo3_1/first-last/submit";
           } else {
             // Single frame -> standard I2V
             requestBody = {
@@ -3073,16 +4302,29 @@ const InputBox = (props: InputBoxProps = {}) => {
               image_url: firstFrame, // single image
               first_frame_url: firstFrame,
               ...(lastFrameImage && { last_frame_url: lastFrameImage }),
-              aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
+              aspect_ratio:
+                frameSize === "16:9"
+                  ? "16:9"
+                  : frameSize === "9:16"
+                    ? "9:16"
+                    : "auto",
               duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
               resolution: selectedQuality, // Use selected quality (720p or 1080p)
               generate_audio: true,
-              isPublic
+              isPublic,
             };
             generationType = "image-to-video";
-            apiEndpoint = isFast ? '/api/fal/veo3_1/image-to-video/fast/submit' : '/api/fal/veo3_1/image-to-video/submit';
+            apiEndpoint = isFast
+              ? "/api/fal/veo3_1/image-to-video/fast/submit"
+              : "/api/fal/veo3_1/image-to-video/submit";
           }
-        } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1") && (selectedModel.includes("i2v") || uploadedImages.length > 0 || references.length > 0)) {
+        } else if (
+          selectedModel.includes("veo3") &&
+          !selectedModel.includes("veo3.1") &&
+          (selectedModel.includes("i2v") ||
+            uploadedImages.length > 0 ||
+            references.length > 0)
+        ) {
           // Veo3 image-to-video generation (i2v variant or when image is uploaded)
           if (uploadedImages.length === 0 && references.length === 0) {
             setError("Veo3 image-to-video requires an input image");
@@ -3090,19 +4332,27 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           const isFast = selectedModel.includes("fast");
           const apiPrompt = getApiPrompt(prompt);
-          const modelDuration = duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
+          const modelDuration =
+            duration === 4 ? "4s" : duration === 6 ? "6s" : "8s";
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0], // Veo3 expects a single image URL
-            aspect_ratio: frameSize === "16:9" ? "16:9" : frameSize === "9:16" ? "9:16" : "auto",
+            aspect_ratio:
+              frameSize === "16:9"
+                ? "16:9"
+                : frameSize === "9:16"
+                  ? "9:16"
+                  : "auto",
             duration: modelDuration, // Use selected duration (4s, 6s, or 8s)
             resolution: selectedQuality, // Use selected quality
             generate_audio: true,
-            isPublic
+            isPublic,
           };
           generationType = "image-to-video";
-          apiEndpoint = isFast ? '/api/fal/veo3/image-to-video/fast/submit' : '/api/fal/veo3/image-to-video/submit';
+          apiEndpoint = isFast
+            ? "/api/fal/veo3/image-to-video/fast/submit"
+            : "/api/fal/veo3/image-to-video/submit";
         } else if (selectedModel.includes("wan-2.5")) {
           // WAN 2.5 image-to-video generation
           if (uploadedImages.length === 0) {
@@ -3112,20 +4362,28 @@ const InputBox = (props: InputBoxProps = {}) => {
           const isFast = selectedModel.includes("fast");
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            model: isFast ? "wan-video/wan-2.5-i2v-fast" : "wan-video/wan-2.5-i2v",
+            model: isFast
+              ? "wan-video/wan-2.5-i2v-fast"
+              : "wan-video/wan-2.5-i2v",
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0], // WAN expects image URL
             duration: duration, // 5 or 10 seconds
-            resolution: frameSize.includes("480") ? "480p" : frameSize.includes("720") ? "720p" : "1080p",
+            resolution: frameSize.includes("480")
+              ? "480p"
+              : frameSize.includes("720")
+                ? "720p"
+                : "1080p",
             ...(uploadedAudio && { audio: uploadedAudio }), // Include audio if uploaded
             generationType: "image-to-video",
             isPublic,
           };
           generationType = "image-to-video";
           // Use fast alias route when selected fast model
-          apiEndpoint = isFast ? '/api/replicate/wan-2-5-i2v/fast/submit' : '/api/replicate/wan-2-5-i2v/submit';
-        } else if (selectedModel === 'kling-o1') {
+          apiEndpoint = isFast
+            ? "/api/replicate/wan-2-5-i2v/fast/submit"
+            : "/api/replicate/wan-2-5-i2v/submit";
+        } else if (selectedModel === "kling-o1") {
           // Kling o1 conditional logic:
           // - If only first frame: use reference-to-video model
           // - If both first and last frame: use image-to-video model
@@ -3142,7 +4400,8 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
 
           // Duration must be "5" or "10" as string
-          const durationStr = duration === 5 ? '5' : duration === 10 ? '10' : '5';
+          const durationStr =
+            duration === 5 ? "5" : duration === 10 ? "10" : "5";
 
           // Check if both frames are provided
           if (lastFrame) {
@@ -3151,11 +4410,11 @@ const InputBox = (props: InputBoxProps = {}) => {
             const basePrompt = getApiPrompt(prompt);
             let formattedPrompt = basePrompt;
             // Ensure both @Image1 and @Image2 are present in the prompt
-            if (!formattedPrompt.includes('@Image1')) {
-              formattedPrompt += ' @Image1';
+            if (!formattedPrompt.includes("@Image1")) {
+              formattedPrompt += " @Image1";
             }
-            if (!formattedPrompt.includes('@Image2')) {
-              formattedPrompt += ' @Image2';
+            if (!formattedPrompt.includes("@Image2")) {
+              formattedPrompt += " @Image2";
             }
 
             requestBody = {
@@ -3164,11 +4423,11 @@ const InputBox = (props: InputBoxProps = {}) => {
               start_image_url: firstFrame,
               end_image_url: lastFrame,
               duration: durationStr,
-              generationType: 'image-to-video',
+              generationType: "image-to-video",
               isPublic,
             };
-            generationType = 'image-to-video';
-            apiEndpoint = '/api/fal/kling-o1/first-last-frame-to-video/submit';
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/kling-o1/first-last-frame-to-video/submit";
           } else {
             // Only first frame provided - use reference-to-video model
             const basePrompt = getApiPrompt(prompt);
@@ -3176,19 +4435,22 @@ const InputBox = (props: InputBoxProps = {}) => {
             // No need to force add @Image1 since user should control the prompt
             let formattedPrompt = basePrompt;
             // If no image reference in prompt, add @Image1 for the single uploaded image
-            if (!formattedPrompt.includes('@Image') && !formattedPrompt.includes('@Element')) {
-              formattedPrompt += ' @Image1';
+            if (
+              !formattedPrompt.includes("@Image") &&
+              !formattedPrompt.includes("@Element")
+            ) {
+              formattedPrompt += " @Image1";
             }
 
             // Map aspect ratio to valid values
             const aspectRatioMap: Record<string, string> = {
-              '16:9': '16:9',
-              '9:16': '9:16',
-              '1:1': '1:1',
-              '4:3': '16:9', // Default to 16:9 if not supported
-              '3:4': '9:16',
+              "16:9": "16:9",
+              "9:16": "9:16",
+              "1:1": "1:1",
+              "4:3": "16:9", // Default to 16:9 if not supported
+              "3:4": "9:16",
             };
-            const aspectRatio = aspectRatioMap[frameSize] || '16:9';
+            const aspectRatio = aspectRatioMap[frameSize] || "16:9";
 
             requestBody = {
               prompt: formattedPrompt,
@@ -3196,91 +4458,115 @@ const InputBox = (props: InputBoxProps = {}) => {
               image_urls: [firstFrame], // Single image in array
               duration: durationStr,
               aspect_ratio: aspectRatio,
-              generationType: 'image-to-video',
+              generationType: "image-to-video",
               isPublic,
             };
-            generationType = 'image-to-video';
-            apiEndpoint = '/api/fal/kling-o1/reference-to-video/submit';
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/kling-o1/reference-to-video/submit";
           }
-        } else if (selectedModel.startsWith('kling-v3') && hasImage) {
+        } else if (selectedModel.startsWith("kling-v3") && hasImage) {
           // Kling 3 image-to-video (FAL)
           if (uploadedImages.length === 0) {
-            toast.error('Kling 3 image-to-video requires an input image. Please upload an image.');
+            toast.error(
+              "Kling 3 image-to-video requires an input image. Please upload an image.",
+            );
             setIsGenerating(false);
             return;
           }
           const apiPrompt = getApiPrompt(prompt);
-          const modelDuration = String(Math.min(15, Math.max(3, duration || 5)));
-          const isPro = selectedModel === 'kling-v3-pro';
+          const modelDuration = String(
+            Math.min(15, Math.max(3, duration || 5)),
+          );
+          const isPro = selectedModel === "kling-v3-pro";
           requestBody = {
-            model: isPro ? 'fal-ai/kling-video/v3/pro/image-to-video' : 'fal-ai/kling-video/v3/standard/image-to-video',
+            model: isPro
+              ? "fal-ai/kling-video/v3/pro/image-to-video"
+              : "fal-ai/kling-video/v3/standard/image-to-video",
             prompt: apiPrompt,
             originalPrompt: prompt,
             start_image_url: uploadedImages[0],
             ...(uploadedImages[1] ? { end_image_url: uploadedImages[1] } : {}),
             duration: modelDuration,
-            negative_prompt: 'blur, distort, and low quality',
+            negative_prompt: "blur, distort, and low quality",
             cfg_scale: 0.5,
             generate_audio: generateAudio,
-            generationType: 'image-to-video',
-            isPublic
+            generationType: "image-to-video",
+            isPublic,
           };
-          generationType = 'image-to-video';
-          apiEndpoint = isPro ? '/api/fal/kling-v3/pro/image-to-video/submit' : '/api/fal/kling-v3/standard/image-to-video/submit';
-        } else if (selectedModel === 'kling-2.6-pro' && hasImage) {
+          generationType = "image-to-video";
+          apiEndpoint = isPro
+            ? "/api/fal/kling-v3/pro/image-to-video/submit"
+            : "/api/fal/kling-v3/standard/image-to-video/submit";
+        } else if (selectedModel === "kling-2.6-pro" && hasImage) {
           // Kling 2.6 Pro image-to-video (FAL)
           if (uploadedImages.length === 0) {
-            toast.error('Kling 2.6 Pro image-to-video requires an input image. Please upload an image.');
+            toast.error(
+              "Kling 2.6 Pro image-to-video requires an input image. Please upload an image.",
+            );
             setIsGenerating(false);
             return;
           }
           const apiPrompt = getApiPrompt(prompt);
-          const modelDuration = duration === 5 ? '5' : '10';
+          const modelDuration = duration === 5 ? "5" : "10";
           requestBody = {
-            model: 'fal-ai/kling-video/v2.6/pro/image-to-video',
+            model: "fal-ai/kling-video/v2.6/pro/image-to-video",
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             image_url: uploadedImages[0],
             duration: modelDuration,
-            negative_prompt: 'blur, distort, and low quality',
+            negative_prompt: "blur, distort, and low quality",
             cfg_scale: 0.5,
             generate_audio: generateAudio, // Explicitly pass true or false
-            generationType: 'image-to-video',
-            isPublic
+            generationType: "image-to-video",
+            isPublic,
           };
-          generationType = 'image-to-video';
-          apiEndpoint = '/api/fal/kling-2.6-pro/image-to-video/submit';
-        } else if (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro') {
+          generationType = "image-to-video";
+          apiEndpoint = "/api/fal/kling-2.6-pro/image-to-video/submit";
+        } else if (
+          selectedModel.startsWith("kling-") &&
+          selectedModel !== "kling-2.6-pro"
+        ) {
           // Kling I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           // Kling v2.1 and v2.1-master REQUIRE start_image (cannot do pure T2V)
           if (uploadedImages.length === 0) {
-            const isV21 = selectedModel.includes('v2.1');
+            const isV21 = selectedModel.includes("v2.1");
             if (isV21) {
-              toast.error('Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.');
+              toast.error(
+                "Kling 2.1 and Kling 2.1 Master require an input image. Please upload an image to use these models.",
+              );
             } else {
-              toast.error('Kling image-to-video requires an input image. Please upload an image.');
+              toast.error(
+                "Kling image-to-video requires an input image. Please upload an image.",
+              );
             }
             setIsGenerating(false);
             return;
           }
-          const isV25 = selectedModel.includes('v2.5');
+          const isV25 = selectedModel.includes("v2.5");
           if (isV25) {
             // Kling 2.5 Turbo Pro - uses 'image' parameter for I2V
             const apiPrompt = getApiPrompt(prompt);
             requestBody = {
-              model: 'kwaivgi/kling-v2.5-turbo-pro',
+              model: "kwaivgi/kling-v2.5-turbo-pro",
               prompt: apiPrompt,
               originalPrompt: prompt, // Store original prompt for display
               image: uploadedImages[0],
               duration,
-              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
-              generationType: 'image-to-video',
-              isPublic
+              aspect_ratio:
+                frameSize === "9:16"
+                  ? "9:16"
+                  : frameSize === "1:1"
+                    ? "1:1"
+                    : "16:9",
+              generationType: "image-to-video",
+              isPublic,
             };
           } else {
             // Kling v2.1 and v2.1-master - use 'start_image' parameter (required)
-            const isMaster = selectedModel.includes('master');
-            const modelName = isMaster ? 'kwaivgi/kling-v2.1-master' : 'kwaivgi/kling-v2.1';
+            const isMaster = selectedModel.includes("master");
+            const modelName = isMaster
+              ? "kwaivgi/kling-v2.1-master"
+              : "kwaivgi/kling-v2.1";
             const apiPrompt = getApiPrompt(prompt);
             requestBody = {
               model: modelName,
@@ -3288,47 +4574,58 @@ const InputBox = (props: InputBoxProps = {}) => {
               originalPrompt: prompt, // Store original prompt for display
               start_image: uploadedImages[0], // Required for v2.1
               duration,
-              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              aspect_ratio:
+                frameSize === "9:16"
+                  ? "9:16"
+                  : frameSize === "1:1"
+                    ? "1:1"
+                    : "16:9",
               mode: isMaster ? undefined : klingMode, // Only send mode for base v2.1, not master
-              generationType: 'image-to-video',
-              isPublic
+              generationType: "image-to-video",
+              isPublic,
             };
           }
-          generationType = 'image-to-video';
-          apiEndpoint = '/api/replicate/kling-i2v/submit';
-        } else if (selectedModel.includes('seedance')) {
+          generationType = "image-to-video";
+          apiEndpoint = "/api/replicate/kling-i2v/submit";
+        } else if (selectedModel.includes("seedance")) {
           // Seedance I2V - Image-to-video mode
           if (uploadedImages.length === 0) {
             setError("Seedance image-to-video requires an input image");
             return;
           }
-          const isSeedance15 = selectedModel.includes('seedance-1.5');
-          const isLite = selectedModel.includes('lite');
-          const isProFast = selectedModel.includes('pro-fast');
+          const isSeedance15 = selectedModel.includes("seedance-1.5");
+          const isLite = selectedModel.includes("lite");
+          const isProFast = selectedModel.includes("pro-fast");
           const apiPrompt = getApiPrompt(prompt);
           // Last frame support (Pro and Lite only, not Pro Fast)
-          const lastFrame = !isProFast && lastFrameImage ? lastFrameImage : null;
+          const lastFrame =
+            !isProFast && lastFrameImage ? lastFrameImage : null;
           const hasLastFrame = Boolean(lastFrame);
 
           if (isSeedance15) {
             requestBody = {
-              model: 'bytedance/seedance-1.5-pro',
+              model: "bytedance/seedance-1.5-pro",
               prompt: apiPrompt,
               originalPrompt: prompt,
               image: uploadedImages[0],
               duration,
-              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
+              aspect_ratio:
+                frameSize === "9:16"
+                  ? "9:16"
+                  : frameSize === "1:1"
+                    ? "1:1"
+                    : "16:9",
               generate_audio: generateAudio,
-              generationType: 'image-to-video',
+              generationType: "image-to-video",
               isPublic,
               ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
             } as any;
           } else {
-            let modelName = 'bytedance/seedance-1-pro';
+            let modelName = "bytedance/seedance-1-pro";
             if (isLite) {
-              modelName = 'bytedance/seedance-1-lite';
+              modelName = "bytedance/seedance-1-lite";
             } else if (isProFast) {
-              modelName = 'bytedance/seedance-1-pro-fast';
+              modelName = "bytedance/seedance-1-pro-fast";
             }
             requestBody = {
               model: modelName,
@@ -3337,18 +4634,29 @@ const InputBox = (props: InputBoxProps = {}) => {
               image: uploadedImages[0], // First frame image for I2V
               duration,
               resolution: seedanceResolution,
-              aspect_ratio: frameSize === '9:16' ? '9:16' : (frameSize === '1:1' ? '1:1' : '16:9'),
-              generationType: 'image-to-video',
+              aspect_ratio:
+                frameSize === "9:16"
+                  ? "9:16"
+                  : frameSize === "1:1"
+                    ? "1:1"
+                    : "16:9",
+              generationType: "image-to-video",
               isPublic,
               ...(hasLastFrame ? { last_frame_image: lastFrame } : {}),
-              ...((!hasLastFrame && seedanceResolution !== '1080p' && references.length > 0) ? {
-                reference_images: references.slice(0, 4)
-              } : {}),
+              ...(!hasLastFrame &&
+              seedanceResolution !== "1080p" &&
+              references.length > 0
+                ? {
+                    reference_images: references.slice(0, 4),
+                  }
+                : {}),
             } as any;
           }
-          generationType = 'image-to-video';
-          apiEndpoint = isProFast ? '/api/replicate/seedance-pro-fast-i2v/submit' : '/api/replicate/seedance-i2v/submit';
-        } else if (selectedModel.includes('pixverse')) {
+          generationType = "image-to-video";
+          apiEndpoint = isProFast
+            ? "/api/replicate/seedance-pro-fast-i2v/submit"
+            : "/api/replicate/seedance-i2v/submit";
+        } else if (selectedModel.includes("pixverse")) {
           // PixVerse I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("PixVerse image-to-video requires an input image");
@@ -3356,30 +4664,33 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
-            model: 'pixverse/pixverse-v5',
+            model: "pixverse/pixverse-v5",
             prompt: apiPrompt,
             originalPrompt: prompt, // Store original prompt for display
             image: uploadedImages[0],
             duration,
             quality: pixverseQuality,
             aspect_ratio: frameSize, // PixVerse supports 16:9, 9:16, 1:1
-            generationType: 'image-to-video',
+            generationType: "image-to-video",
             isPublic,
           };
-          generationType = 'image-to-video';
-          apiEndpoint = '/api/replicate/pixverse-v5-i2v/submit';
-        } else if (selectedModel.includes('sora2') && !selectedModel.includes('v2v')) {
+          generationType = "image-to-video";
+          apiEndpoint = "/api/replicate/pixverse-v5-i2v/submit";
+        } else if (
+          selectedModel.includes("sora2") &&
+          !selectedModel.includes("v2v")
+        ) {
           // Sora 2 I2V - supports both t2v and i2v variants, use I2V when image is uploaded
           if (uploadedImages.length === 0) {
             setError("Sora 2 image-to-video requires an input image");
             return;
           }
-          const isPro = selectedModel.includes('pro');
+          const isPro = selectedModel.includes("pro");
           const apiPrompt = getApiPrompt(prompt);
 
           // Ensure duration is a number and one of [4, 8, 12]
           let soraDuration = duration;
-          if (typeof duration !== 'number') {
+          if (typeof duration !== "number") {
             soraDuration = parseInt(String(duration), 10) || 8;
           }
           // Clamp to valid values: 4, 8, or 12
@@ -3391,21 +4702,30 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
 
           // Ensure resolution is valid for I2V
-          let soraResolution = selectedQuality || 'auto';
+          let soraResolution = selectedQuality || "auto";
           if (isPro) {
             // Pro supports auto, 720p, or 1080p
-            if (soraResolution !== 'auto' && soraResolution !== '720p' && soraResolution !== '1080p') {
-              soraResolution = 'auto'; // Default to auto for Pro I2V
+            if (
+              soraResolution !== "auto" &&
+              soraResolution !== "720p" &&
+              soraResolution !== "1080p"
+            ) {
+              soraResolution = "auto"; // Default to auto for Pro I2V
             }
           } else {
             // Standard supports auto or 720p
-            if (soraResolution !== 'auto' && soraResolution !== '720p') {
-              soraResolution = 'auto'; // Default to auto for Standard I2V
+            if (soraResolution !== "auto" && soraResolution !== "720p") {
+              soraResolution = "auto"; // Default to auto for Standard I2V
             }
           }
 
           // Ensure aspect_ratio is valid
-          let soraAspectRatio = frameSize === "16:9" ? "16:9" : (frameSize === "9:16" ? "9:16" : "auto");
+          let soraAspectRatio =
+            frameSize === "16:9"
+              ? "16:9"
+              : frameSize === "9:16"
+                ? "9:16"
+                : "auto";
 
           requestBody = {
             prompt: apiPrompt,
@@ -3417,15 +4737,17 @@ const InputBox = (props: InputBoxProps = {}) => {
             originalPrompt: prompt, // Backend uses this for history display
             isPublic, // Backend uses this for history
           };
-          generationType = 'image-to-video';
-          apiEndpoint = isPro ? '/api/fal/sora2/image-to-video/pro/submit' : '/api/fal/sora2/image-to-video/submit';
-        } else if (selectedModel.includes('ltx2')) {
+          generationType = "image-to-video";
+          apiEndpoint = isPro
+            ? "/api/fal/sora2/image-to-video/pro/submit"
+            : "/api/fal/sora2/image-to-video/submit";
+        } else if (selectedModel.includes("ltx2")) {
           // LTX V2 Image-to-Video (Pro/Fast) - model currently outputs fixed 16:9
-          const isPro = selectedModel.includes('pro');
-          const normalizedRes = (selectedResolution || '1080p').toLowerCase();
-          const ratio = '16:9';
+          const isPro = selectedModel.includes("pro");
+          const normalizedRes = (selectedResolution || "1080p").toLowerCase();
+          const ratio = "16:9";
           if (uploadedImages.length === 0) {
-            setError('LTX V2 image-to-video requires an input image');
+            setError("LTX V2 image-to-video requires an input image");
             return;
           }
           const apiPrompt = getApiPrompt(prompt);
@@ -3438,66 +4760,90 @@ const InputBox = (props: InputBoxProps = {}) => {
             duration,
             fps: fps,
             generate_audio: generateAudio,
-            generationType: 'image-to-video',
+            generationType: "image-to-video",
             isPublic,
           } as any;
-          generationType = 'image-to-video';
-          apiEndpoint = isPro ? '/api/fal/ltx2/image-to-video/pro/submit' : '/api/fal/ltx2/image-to-video/fast/submit';
-        } else if (selectedModel.includes('ltx-2.3-fast') || selectedModel.includes('ltx-2.3-pro')) {
+          generationType = "image-to-video";
+          apiEndpoint = isPro
+            ? "/api/fal/ltx2/image-to-video/pro/submit"
+            : "/api/fal/ltx2/image-to-video/fast/submit";
+        } else if (
+          selectedModel.includes("ltx-2.3-fast") ||
+          selectedModel.includes("ltx-2.3-pro")
+        ) {
           // LTX 2.3 Fast/Pro Image-to-Video (Replicate) - supports first frame + optional last frame
-          const isPro = selectedModel.includes('ltx-2.3-pro');
+          const isPro = selectedModel.includes("ltx-2.3-pro");
           if (uploadedImages.length === 0) {
             setError("LTX 2.3 image-to-video requires an input image");
             return;
           }
-          const normalizedRes = (selectedResolution || '1080p').toLowerCase();
+          const normalizedRes = (selectedResolution || "1080p").toLowerCase();
           const apiPrompt = getApiPrompt(prompt);
-          const ltxAspect = frameSize === '9:16' ? '9:16' : '16:9';
+          const ltxAspect = frameSize === "9:16" ? "9:16" : "16:9";
           const ltxFps = fps || 25;
-          const lastFrame = lastFrameImage || (uploadedImages.length > 1 ? uploadedImages[1] : null);
+          const lastFrame =
+            lastFrameImage ||
+            (uploadedImages.length > 1 ? uploadedImages[1] : null);
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt,
             image: uploadedImages[0],
             ...(lastFrame ? { last_frame_image: lastFrame } : {}),
-            resolution: normalizedRes.includes('4k') || normalizedRes.includes('2160') ? '4k' : (normalizedRes.includes('2k') || normalizedRes.includes('1440') ? '2k' : '1080p'),
+            resolution:
+              normalizedRes.includes("4k") || normalizedRes.includes("2160")
+                ? "4k"
+                : normalizedRes.includes("2k") || normalizedRes.includes("1440")
+                  ? "2k"
+                  : "1080p",
             aspect_ratio: ltxAspect,
             duration,
             fps: ltxFps,
-            camera_motion: selectedCameraMovements[0] || 'none',
+            camera_motion: selectedCameraMovements[0] || "none",
             generate_audio: generateAudio,
             ...(isPro && uploadedAudio ? { audio: uploadedAudio } : {}),
             ...(isPro && uploadedVideo ? { video: uploadedVideo } : {}),
-            generationType: 'image-to-video',
+            generationType: "image-to-video",
             isPublic,
           } as any;
-          generationType = 'image-to-video';
-          apiEndpoint = isPro ? '/api/replicate/ltx-2-3-pro-i2v/submit' : '/api/replicate/ltx-2-3-fast-i2v/submit';
-        } else if (selectedModel === 'gen4_turbo' || selectedModel === 'gen3a_turbo') {
+          generationType = "image-to-video";
+          apiEndpoint = isPro
+            ? "/api/replicate/ltx-2-3-pro-i2v/submit"
+            : "/api/replicate/ltx-2-3-fast-i2v/submit";
+        } else if (
+          selectedModel === "gen4_turbo" ||
+          selectedModel === "gen3a_turbo"
+        ) {
           // Runway image to video - only for gen4_turbo and gen3a_turbo
           // Ensure image is provided
           if (uploadedImages.length === 0) {
-            setError("An input image is required for Runway image-to-video generation");
+            setError(
+              "An input image is required for Runway image-to-video generation",
+            );
             return;
           }
 
-          const runwaySku = selectedModel === 'gen4_turbo' ? `Gen-4  Turbo ${duration}s` : `Gen-3a  Turbo ${duration}s`;
+          const runwaySku =
+            selectedModel === "gen4_turbo"
+              ? `Gen-4  Turbo ${duration}s`
+              : `Gen-3a  Turbo ${duration}s`;
           const apiPrompt = getApiPrompt(prompt);
           const imageToVideoBody = buildImageToVideoBody({
             model: selectedModel as "gen4_turbo" | "gen3a_turbo",
             ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
             promptText: apiPrompt,
             duration: duration as 5 | 10,
-            promptImage: uploadedImages[0]
+            promptImage: uploadedImages[0],
           });
 
-          console.log('🎬 Runway I2V payload:', {
+          console.log("🎬 Runway I2V payload:", {
             mode: "image_to_video",
             sku: runwaySku,
             imageToVideo: {
               ...imageToVideoBody,
-              promptImage: imageToVideoBody.promptImage ? 'provided' : 'missing'
-            }
+              promptImage: imageToVideoBody.promptImage
+                ? "provided"
+                : "missing",
+            },
           });
 
           requestBody = {
@@ -3508,20 +4854,24 @@ const InputBox = (props: InputBoxProps = {}) => {
             generationType: "image-to-video",
             isPublic,
           };
-          apiEndpoint = '/api/runway/video';
+          apiEndpoint = "/api/runway/video";
         } else {
           // Unknown model for image-to-video mode
-          setError(`Model "${selectedModel}" does not support image-to-video generation. Please select a different model.`);
+          setError(
+            `Model "${selectedModel}" does not support image-to-video generation. Please select a different model.`,
+          );
           return;
         }
         generationType = "image-to-video";
       } else {
         // Video to video generation
-        if (selectedModel.includes('sora2-v2v')) {
+        if (selectedModel.includes("sora2-v2v")) {
           // Sora 2 V2V Remix - requires source_history_id pointing to a Sora 2 video
           // The source video must be from a previous Sora 2 generation (T2V or I2V)
           if (!sourceHistoryEntryId && !uploadedVideo) {
-            setError("Sora 2 Remix requires selecting a source video from history. Please upload or select a Sora 2 video from your history.");
+            setError(
+              "Sora 2 Remix requires selecting a source video from history. Please upload or select a Sora 2 video from your history.",
+            );
             return;
           }
 
@@ -3532,13 +4882,18 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           if (sourceHistoryId) {
             // Find the entry by ID
-            sourceEntry = historyEntries.find((entry: any) => entry.id === sourceHistoryId);
+            sourceEntry = historyEntries.find(
+              (entry: any) => entry.id === sourceHistoryId,
+            );
           } else if (uploadedVideo) {
             // Find the matching history entry by video URL
             const matchingEntry = historyEntries.find((entry: any) => {
               const entryVideos = entry?.images || entry?.videos || [];
-              return entryVideos.some((img: any) =>
-                img?.url === uploadedVideo || img?.firebaseUrl === uploadedVideo || img?.originalUrl === uploadedVideo
+              return entryVideos.some(
+                (img: any) =>
+                  img?.url === uploadedVideo ||
+                  img?.firebaseUrl === uploadedVideo ||
+                  img?.originalUrl === uploadedVideo,
               );
             });
             if (matchingEntry?.id) {
@@ -3548,59 +4903,77 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
 
           if (!sourceHistoryId || !sourceEntry) {
-            setError("Could not find source video in history. Please select a Sora 2 video from your history for remix.");
+            setError(
+              "Could not find source video in history. Please select a Sora 2 video from your history for remix.",
+            );
             return;
           }
 
           // Validate that the source video is from a Sora 2 generation
-          const entryModel = String(sourceEntry?.model || '').toLowerCase();
-          const hasSoraVideoId = !!(sourceEntry?.soraVideoId || (Array.isArray(sourceEntry?.videos) && sourceEntry?.videos[0]?.soraVideoId));
-          const isSoraModel = entryModel.includes('sora-2') || entryModel.includes('sora2');
+          const entryModel = String(sourceEntry?.model || "").toLowerCase();
+          const hasSoraVideoId = !!(
+            sourceEntry?.soraVideoId ||
+            (Array.isArray(sourceEntry?.videos) &&
+              sourceEntry?.videos[0]?.soraVideoId)
+          );
+          const isSoraModel =
+            entryModel.includes("sora-2") || entryModel.includes("sora2");
 
           if (!isSoraModel && !hasSoraVideoId) {
-            setError("The selected video is not from a Sora 2 generation. Please select a video generated with Sora 2 (T2V or I2V).");
+            setError(
+              "The selected video is not from a Sora 2 generation. Please select a video generated with Sora 2 (T2V or I2V).",
+            );
             return;
           }
 
           // Extract soraVideoId if available (preferred by backend)
-          const soraVideoId = sourceEntry?.soraVideoId || (Array.isArray(sourceEntry?.videos) && sourceEntry?.videos[0]?.soraVideoId);
+          const soraVideoId =
+            sourceEntry?.soraVideoId ||
+            (Array.isArray(sourceEntry?.videos) &&
+              sourceEntry?.videos[0]?.soraVideoId);
 
           requestBody = {
             prompt,
             // Prefer video_id if available, otherwise use source_history_id
-            ...(soraVideoId ? { video_id: soraVideoId } : { source_history_id: sourceHistoryId }),
-            generationType: 'video-to-video',
+            ...(soraVideoId
+              ? { video_id: soraVideoId }
+              : { source_history_id: sourceHistoryId }),
+            generationType: "video-to-video",
             isPublic,
           };
-          generationType = 'video-to-video';
-          apiEndpoint = '/api/fal/sora2/video-to-video/remix/submit';
+          generationType = "video-to-video";
+          apiEndpoint = "/api/fal/sora2/video-to-video/remix/submit";
         } else if (selectedModel === "kling-lip-sync") {
           // Kling Lipsync - requires video_url or video_id, and text or audio_file
           if (!uploadedVideo && !sourceHistoryEntryId) {
-            setError("Kling Lip Sync requires a video input. Please upload a video or select a source video.");
+            setError(
+              "Kling Lip Sync requires a video input. Please upload a video or select a source video.",
+            );
             setIsGenerating(false);
             return;
           }
           if (!prompt.trim() && !uploadedAudio) {
-            setError("Kling Lip Sync requires either text or audio file input.");
+            setError(
+              "Kling Lip Sync requires either text or audio file input.",
+            );
             setIsGenerating(false);
             return;
           }
 
           requestBody = {
-            model: 'kwaivgi/kling-lip-sync',
+            model: "kwaivgi/kling-lip-sync",
             video_url: uploadedVideo || undefined, // Use video_url if uploaded
             video_id: sourceHistoryEntryId || undefined, // Use video_id if from history
             text: prompt.trim() || undefined, // Text for lip sync
             audio_file: uploadedAudio || undefined, // Audio file if uploaded
-            voice_id: 'en_AOT', // Default voice_id (can be made configurable later)
+            voice_id: "en_AOT", // Default voice_id (can be made configurable later)
             voice_speed: 1, // Default voice speed (can be made configurable later)
-            generationType: 'video-to-video',
+            generationType: "video-to-video",
             isPublic,
-            originalPrompt: prompt.trim() || '', // Store original prompt for display
+            originalPrompt: prompt.trim() || "", // Store original prompt for display
           };
-          generationType = 'video-to-video';
-          apiEndpoint = '/api/replicate/kling-lipsync/submit';
+          generationType = "video-to-video";
+          apiEndpoint = "/api/replicate/kling-lipsync/submit";
         } else if (selectedModel === "wan-2.2-animate-replace") {
           // WAN 2.2 Animate Replace - requires video and character_image
           if (!uploadedVideo) {
@@ -3614,7 +4987,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           if (!uploadedVideoDurationSec || uploadedVideoDurationSec <= 0) {
-            toast.error("Could not determine input video duration. Please re-upload the video.");
+            toast.error(
+              "Could not determine input video duration. Please re-upload the video.",
+            );
             setIsGenerating(false);
             return;
           }
@@ -3624,43 +4999,61 @@ const InputBox = (props: InputBoxProps = {}) => {
           // IMPORTANT: blob: URLs are NOT valid outside the browser.
           // Upload local device-selected video on Generate so backend/Replicate can access it.
           let videoForRequest = uploadedVideo;
-          if (videoForRequest.startsWith('blob:')) {
+          if (videoForRequest.startsWith("blob:")) {
             const cached = uploadedUrlByLocalUrl[videoForRequest];
             if (cached) {
               videoForRequest = cached;
             } else {
               const file = localVideoFilesByUrl[videoForRequest];
               if (!file) {
-                throw new Error('Selected local video is not available. Please re-select the video from device.');
+                throw new Error(
+                  "Selected local video is not available. Please re-select the video from device.",
+                );
               }
               const uploaded = await uploadLocalVideoFile(file);
-              if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+              if (!uploaded?.url)
+                throw new Error("Video upload failed: no URL returned");
               const remoteUrl = uploaded.url;
-              setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
+              setUploadedUrlByLocalUrl((prev) => ({
+                ...prev,
+                [videoForRequest]: remoteUrl,
+              }));
               setUploadedVideo(remoteUrl);
-              try { URL.revokeObjectURL(videoForRequest); } catch { }
+              try {
+                URL.revokeObjectURL(videoForRequest);
+              } catch {}
               videoForRequest = remoteUrl;
             }
-          } else if (videoForRequest.startsWith('data:video')) {
+          } else if (videoForRequest.startsWith("data:video")) {
             // Fallback for legacy flows that store the video as a data URI.
             const match = /^data:([^;]+);base64,(.*)$/.exec(videoForRequest);
-            if (!match) throw new Error('Invalid local video data');
-            const contentType = match[1] || 'video/mp4';
-            const base64 = match[2] || '';
+            if (!match) throw new Error("Invalid local video data");
+            const contentType = match[1] || "video/mp4";
+            const base64 = match[2] || "";
             const binary = atob(base64);
             const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            for (let i = 0; i < binary.length; i++)
+              bytes[i] = binary.charCodeAt(i);
             const blob = new Blob([bytes], { type: contentType });
-            const ext = contentType.includes('webm') ? 'webm' : contentType.includes('ogg') ? 'ogg' : contentType.includes('quicktime') ? 'mov' : 'mp4';
-            const file = new File([blob], `upload.${ext}`, { type: contentType });
+            const ext = contentType.includes("webm")
+              ? "webm"
+              : contentType.includes("ogg")
+                ? "ogg"
+                : contentType.includes("quicktime")
+                  ? "mov"
+                  : "mp4";
+            const file = new File([blob], `upload.${ext}`, {
+              type: contentType,
+            });
             const uploaded = await uploadLocalVideoFile(file);
-            if (!uploaded?.url) throw new Error('Video upload failed: no URL returned');
+            if (!uploaded?.url)
+              throw new Error("Video upload failed: no URL returned");
             setUploadedVideo(uploaded.url);
             videoForRequest = uploaded.url;
           }
 
           requestBody = {
-            model: 'wan-video/wan-2.2-animate-replace',
+            model: "wan-video/wan-2.2-animate-replace",
             video: videoForRequest,
             character_image: characterImage,
             video_duration: uploadedVideoDurationSec,
@@ -3670,15 +5063,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             merge_audio: wanAnimateMergeAudio,
             frames_per_second: wanAnimateFps,
             ...(wanAnimateSeed !== undefined && { seed: wanAnimateSeed }),
-            generationType: 'video-to-video',
+            generationType: "video-to-video",
             isPublic,
-            originalPrompt: prompt.trim() || '', // Store original prompt for display
+            originalPrompt: prompt.trim() || "", // Store original prompt for display
           };
-          generationType = 'video-to-video';
-          apiEndpoint = '/api/replicate/wan-2-2-animate-replace/submit';
-        } else if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01" || selectedModel.includes("wan-2.5")) {
+          generationType = "video-to-video";
+          apiEndpoint = "/api/replicate/wan-2-2-animate-replace/submit";
+        } else if (
+          selectedModel.includes("MiniMax") ||
+          selectedModel === "T2V-01-Director" ||
+          selectedModel === "I2V-01-Director" ||
+          selectedModel === "S2V-01" ||
+          selectedModel.includes("wan-2.5")
+        ) {
           // MiniMax and WAN models don't support video to video
-          setError("MiniMax and WAN models don't support video to video generation");
+          setError(
+            "MiniMax and WAN models don't support video to video generation",
+          );
           return;
         } else {
           // Runway video to video
@@ -3686,7 +5087,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             setError("Please upload a video");
             return;
           }
-          const runwayAlephSku = 'Gen-4 Aleph 10s';
+          const runwayAlephSku = "Gen-4 Aleph 10s";
           requestBody = {
             mode: "video_to_video",
             sku: runwayAlephSku,
@@ -3695,15 +5096,18 @@ const InputBox = (props: InputBoxProps = {}) => {
               ratio: convertFrameSizeToRunwayRatio(frameSize) as any,
               promptText: prompt,
               videoUri: uploadedVideo,
-              references: references.length > 0 ? references.map(ref => ({
-                type: "image",
-                uri: ref
-              })) : undefined,
+              references:
+                references.length > 0
+                  ? references.map((ref) => ({
+                      type: "image",
+                      uri: ref,
+                    }))
+                  : undefined,
             }),
             generationType: "video-to-video",
             isPublic,
           };
-          apiEndpoint = '/api/runway/video';
+          apiEndpoint = "/api/runway/video";
         }
         generationType = "video-to-video";
       }
@@ -3714,40 +5118,62 @@ const InputBox = (props: InputBoxProps = {}) => {
         prompt,
         model: selectedModel,
         generationType: generationType as any,
-        images: [{ id: 'video-loading', url: '', originalUrl: '' }] as any,
+        images: [{ id: "video-loading", url: "", originalUrl: "" }] as any,
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         imageCount: 1,
-        status: 'generating'
+        status: "generating",
       } as any);
 
       // Backend will handle history creation - no frontend history creation needed
 
       // Make API call
-      console.log('🚀 Making API call to:', apiEndpoint);
-      console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
-      console.log('📤 Selected model:', selectedModel);
-      console.log('📤 Generation mode:', generationMode);
-      console.log('📤 API Endpoint being used:', apiEndpoint);
-      console.log('📤 Is this a MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
-      console.log('📤 Is this a Runway model?', !(selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01"));
+      console.log("🚀 Making API call to:", apiEndpoint);
+      console.log("📤 Request body:", JSON.stringify(requestBody, null, 2));
+      console.log("📤 Selected model:", selectedModel);
+      console.log("📤 Generation mode:", generationMode);
+      console.log("📤 API Endpoint being used:", apiEndpoint);
+      console.log(
+        "📤 Is this a MiniMax model?",
+        selectedModel.includes("MiniMax") ||
+          selectedModel === "T2V-01-Director" ||
+          selectedModel === "I2V-01-Director" ||
+          selectedModel === "S2V-01",
+      );
+      console.log(
+        "📤 Is this a Runway model?",
+        !(
+          selectedModel.includes("MiniMax") ||
+          selectedModel === "T2V-01-Director" ||
+          selectedModel === "I2V-01-Director" ||
+          selectedModel === "S2V-01"
+        ),
+      );
 
       // Debug MiniMax specific fields
-      if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-        console.log('📤 MiniMax Debug Info:');
-        console.log('📤 - Model:', selectedModel);
+      if (
+        selectedModel.includes("MiniMax") ||
+        selectedModel === "T2V-01-Director" ||
+        selectedModel === "I2V-01-Director" ||
+        selectedModel === "S2V-01"
+      ) {
+        console.log("📤 MiniMax Debug Info:");
+        console.log("📤 - Model:", selectedModel);
         const rb: any = requestBody as any;
-        console.log('📤 - Duration:', rb?.duration);
-        console.log('📤 - Resolution:', rb?.resolution);
-        console.log('📤 - First frame image:', !!rb?.first_frame_image);
-        console.log('📤 - Subject reference:', rb?.subject_reference);
-        console.log('📤 - Prompt length:', rb?.prompt?.length || 0);
+        console.log("📤 - Duration:", rb?.duration);
+        console.log("📤 - Resolution:", rb?.resolution);
+        console.log("📤 - First frame image:", !!rb?.first_frame_image);
+        console.log("📤 - Subject reference:", rb?.subject_reference);
+        console.log("📤 - Prompt length:", rb?.prompt?.length || 0);
 
         if (selectedModel === "S2V-01") {
-          console.log('📤 S2V-01 specific debug:');
+          console.log("📤 S2V-01 specific debug:");
           const rb2: any = requestBody as any;
-          console.log('📤 - References array length:', references.length);
-          console.log('📤 - Subject reference structure:', JSON.stringify(rb2?.subject_reference, null, 2));
+          console.log("📤 - References array length:", references.length);
+          console.log(
+            "📤 - Subject reference structure:",
+            JSON.stringify(rb2?.subject_reference, null, 2),
+          );
         }
       }
 
@@ -3758,17 +5184,24 @@ const InputBox = (props: InputBoxProps = {}) => {
         result = data?.data || data;
       } catch (e: any) {
         // Check if this is a network error (no response from server)
-        const isNetworkError = !e?.response && (e?.code === 'ECONNABORTED' || e?.code === 'ERR_NETWORK' || e?.code === 'ETIMEDOUT' || e?.message?.includes('Network Error') || e?.message?.includes('Failed to fetch') || e?.message?.includes('timeout'));
+        const isNetworkError =
+          !e?.response &&
+          (e?.code === "ECONNABORTED" ||
+            e?.code === "ERR_NETWORK" ||
+            e?.code === "ETIMEDOUT" ||
+            e?.message?.includes("Network Error") ||
+            e?.message?.includes("Failed to fetch") ||
+            e?.message?.includes("timeout"));
 
         if (isNetworkError) {
-          const baseUrl = api.defaults.baseURL || 'the server';
+          const baseUrl = api.defaults.baseURL || "the server";
           const errorMsg = `Network error: Unable to connect to ${baseUrl}. Please check your internet connection and try again.`;
-          console.error('❌ Network error details:', {
+          console.error("❌ Network error details:", {
             code: e?.code,
             message: e?.message,
             endpoint: apiEndpoint,
             baseURL: baseUrl,
-            stack: e?.stack
+            stack: e?.stack,
           });
           throw new Error(errorMsg);
         }
@@ -3776,41 +5209,60 @@ const InputBox = (props: InputBoxProps = {}) => {
         // Some providers may return 5xx while the task actually got queued; try to salvage known success fields
         const statusCode = e?.response?.status;
         const body = e?.response?.data;
-        const msg = body?.message || e?.message || 'Request failed';
+        const msg = body?.message || e?.message || "Request failed";
         const queuedRequestId = body?.data?.requestId || body?.requestId;
 
-        if (String(statusCode) === '413' || /request entity too large/i.test(String(msg))) {
-          toast.error('Video too large for provider. Max 16MB. Please upload ≤ 14MB');
-          console.error('❌ API 413 payload too large');
+        if (
+          String(statusCode) === "413" ||
+          /request entity too large/i.test(String(msg))
+        ) {
+          toast.error(
+            "Video too large for provider. Max 16MB. Please upload ≤ 14MB",
+          );
+          console.error("❌ API 413 payload too large");
           throw new Error(`HTTP ${statusCode || 500}: ${msg}`);
         }
 
         // If a requestId is present despite error status, proceed as submitted
         if (queuedRequestId) {
-          console.warn('⚠️ Provider returned error but included requestId; proceeding as submitted', { statusCode, msg, queuedRequestId });
-          result = { requestId: queuedRequestId, historyId: body?.data?.historyId || body?.historyId, status: 'submitted' };
+          console.warn(
+            "⚠️ Provider returned error but included requestId; proceeding as submitted",
+            { statusCode, msg, queuedRequestId },
+          );
+          result = {
+            requestId: queuedRequestId,
+            historyId: body?.data?.historyId || body?.historyId,
+            status: "submitted",
+          };
         } else {
           // Provide more detailed error information
           const errorDetails = {
-            statusCode: statusCode || 'No status',
+            statusCode: statusCode || "No status",
             message: msg,
             endpoint: apiEndpoint,
             baseURL: api.defaults.baseURL,
             responseData: body,
-            originalError: e?.message
+            originalError: e?.message,
           };
-          console.error('❌ API response not ok:', errorDetails);
+          console.error("❌ API response not ok:", errorDetails);
 
           // Create a more helpful error message
           let userFriendlyMsg = msg;
           if (statusCode === 401) {
-            userFriendlyMsg = 'Authentication failed. Please try logging out and back in.';
+            userFriendlyMsg =
+              "Authentication failed. Please try logging out and back in.";
           } else if (statusCode === 403) {
-            userFriendlyMsg = 'Access denied. You may not have permission to perform this action.';
+            userFriendlyMsg =
+              "Access denied. You may not have permission to perform this action.";
           } else if (statusCode === 404) {
             userFriendlyMsg = `API endpoint not found: ${apiEndpoint}. Please contact support.`;
-          } else if (statusCode === 500 || statusCode === 502 || statusCode === 503) {
-            userFriendlyMsg = 'Server error. The service may be temporarily unavailable. Please try again in a few moments.';
+          } else if (
+            statusCode === 500 ||
+            statusCode === 502 ||
+            statusCode === 503
+          ) {
+            userFriendlyMsg =
+              "Server error. The service may be temporarily unavailable. Please try again in a few moments.";
           } else if (!statusCode) {
             userFriendlyMsg = `Request failed: ${msg}. Please check your connection and try again.`;
           }
@@ -3818,533 +5270,884 @@ const InputBox = (props: InputBoxProps = {}) => {
           throw new Error(userFriendlyMsg);
         }
       }
-      console.log('📥 API response:', result);
+      console.log("📥 API response:", result);
 
       // Debug MiniMax response structure
-      if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
-        console.log('📥 MiniMax Response Debug:');
-        console.log('📥 - Response type:', typeof result);
-        console.log('📥 - Response keys:', Object.keys(result));
-        console.log('📥 - Success field:', result.success);
-        console.log('📥 - TaskId field:', result.taskId);
-        console.log('📥 - TaskId type:', typeof result.taskId);
-        console.log('📥 - Error field:', result.error);
-        console.log('📥 - Full response structure:', JSON.stringify(result, null, 2));
+      if (
+        selectedModel.includes("MiniMax") ||
+        selectedModel === "T2V-01-Director" ||
+        selectedModel === "I2V-01-Director" ||
+        selectedModel === "S2V-01"
+      ) {
+        console.log("📥 MiniMax Response Debug:");
+        console.log("📥 - Response type:", typeof result);
+        console.log("📥 - Response keys:", Object.keys(result));
+        console.log("📥 - Success field:", result.success);
+        console.log("📥 - TaskId field:", result.taskId);
+        console.log("📥 - TaskId type:", typeof result.taskId);
+        console.log("📥 - Error field:", result.error);
+        console.log(
+          "📥 - Full response structure:",
+          JSON.stringify(result, null, 2),
+        );
       }
 
       if (result.error) {
-        console.error('❌ API returned error:', result.error);
+        console.error("❌ API returned error:", result.error);
         throw new Error(result.error);
       }
 
       // Validate that we have a taskId for MiniMax models
-      console.log('🔍 Validation Debug:');
-      console.log('🔍 - Selected model:', selectedModel);
-      console.log('🔍 - Is MiniMax model?', selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01");
-      console.log('🔍 - Has taskId?', !!result.taskId);
-      console.log('🔍 - Result object:', result);
+      console.log("🔍 Validation Debug:");
+      console.log("🔍 - Selected model:", selectedModel);
+      console.log(
+        "🔍 - Is MiniMax model?",
+        selectedModel.includes("MiniMax") ||
+          selectedModel === "T2V-01-Director" ||
+          selectedModel === "I2V-01-Director" ||
+          selectedModel === "S2V-01",
+      );
+      console.log("🔍 - Has taskId?", !!result.taskId);
+      console.log("🔍 - Result object:", result);
 
-      if ((selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") && !result.taskId) {
-        console.error('❌ MiniMax API response missing taskId:', result);
-        throw new Error('MiniMax API response missing taskId');
+      if (
+        (selectedModel.includes("MiniMax") ||
+          selectedModel === "T2V-01-Director" ||
+          selectedModel === "I2V-01-Director" ||
+          selectedModel === "S2V-01") &&
+        !result.taskId
+      ) {
+        console.error("❌ MiniMax API response missing taskId:", result);
+        throw new Error("MiniMax API response missing taskId");
       }
 
       // Validate that we have a requestId for WAN models
       if (selectedModel.includes("wan-2.5") && !result.requestId) {
-        console.error('❌ WAN API response missing requestId:', result);
-        throw new Error('WAN API response missing requestId');
+        console.error("❌ WAN API response missing requestId:", result);
+        throw new Error("WAN API response missing requestId");
       }
 
       // Validate that we have a requestId for Seedance models
-      if (selectedModel.includes('seedance') && !result.requestId) {
-        console.error('❌ Seedance API response missing requestId:', result);
-        throw new Error('Seedance API response missing requestId');
+      if (selectedModel.includes("seedance") && !result.requestId) {
+        console.error("❌ Seedance API response missing requestId:", result);
+        throw new Error("Seedance API response missing requestId");
       }
 
       // Validate that we have a requestId for PixVerse models
-      if (selectedModel.includes('pixverse') && !result.requestId) {
-        console.error('❌ PixVerse API response missing requestId:', result);
-        throw new Error('PixVerse API response missing requestId');
+      if (selectedModel.includes("pixverse") && !result.requestId) {
+        console.error("❌ PixVerse API response missing requestId:", result);
+        throw new Error("PixVerse API response missing requestId");
       }
 
       // Validate that we have a requestId for Kling models
-      if (selectedModel.startsWith('kling-') && !result.requestId) {
-        console.error('❌ Kling API response missing requestId:', result);
-        throw new Error('Kling API response missing requestId');
+      if (selectedModel.startsWith("kling-") && !result.requestId) {
+        console.error("❌ Kling API response missing requestId:", result);
+        throw new Error("Kling API response missing requestId");
       }
 
       // Validate that we have a requestId for WAN 2.2 Animate Replace
       if (selectedModel === "wan-2.2-animate-replace" && !result.requestId) {
-        console.error('❌ WAN Animate Replace API response missing requestId:', result);
-        throw new Error('WAN Animate Replace API response missing requestId');
+        console.error(
+          "❌ WAN Animate Replace API response missing requestId:",
+          result,
+        );
+        throw new Error("WAN Animate Replace API response missing requestId");
       }
 
       // Validate that we have a requestId for Sora 2 models
-      if (selectedModel.includes('sora2') && !result.requestId) {
-        console.error('❌ Sora 2 API response missing requestId:', result);
-        throw new Error('Sora 2 API response missing requestId');
+      if (selectedModel.includes("sora2") && !result.requestId) {
+        console.error("❌ Sora 2 API response missing requestId:", result);
+        throw new Error("Sora 2 API response missing requestId");
       }
 
       // Validate that we have a requestId for LTX 2.3 Replicate models
-      if ((selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) && !result.requestId) {
-        console.error('❌ LTX 2.3 API response missing requestId:', result);
-        throw new Error('LTX 2.3 API response missing requestId');
+      if (
+        (selectedModel.startsWith("ltx-2.3-fast") ||
+          selectedModel.startsWith("ltx-2.3-pro")) &&
+        !result.requestId
+      ) {
+        console.error("❌ LTX 2.3 API response missing requestId:", result);
+        throw new Error("LTX 2.3 API response missing requestId");
       }
 
       let videoUrl: string | undefined;
 
-      if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+      if (
+        selectedModel.includes("MiniMax") ||
+        selectedModel === "T2V-01-Director" ||
+        selectedModel === "I2V-01-Director" ||
+        selectedModel === "S2V-01"
+      ) {
         // MiniMax flow - same as Runway with polling
-        console.log('🎬 MiniMax video generation started, task ID:', result.taskId);
-        console.log('🎬 TaskId type:', typeof result.taskId);
-        console.log('🎬 TaskId length:', result.taskId ? result.taskId.length : 'undefined');
-        console.log('🎬 Using MiniMax status checking for model:', selectedModel);
-        console.log('🎬 Model type:', selectedModel);
+        console.log(
+          "🎬 MiniMax video generation started, task ID:",
+          result.taskId,
+        );
+        console.log("🎬 TaskId type:", typeof result.taskId);
+        console.log(
+          "🎬 TaskId length:",
+          result.taskId ? result.taskId.length : "undefined",
+        );
+        console.log(
+          "🎬 Using MiniMax status checking for model:",
+          selectedModel,
+        );
+        console.log("🎬 Model type:", selectedModel);
 
         // Poll for completion like Runway
-        const videoResult = await waitForMiniMaxVideoCompletion(result.taskId, { historyId: result.historyId });
-        console.log('🎬 MiniMax video result received:', videoResult);
+        const videoResult = await waitForMiniMaxVideoCompletion(result.taskId, {
+          historyId: result.historyId,
+        });
+        console.log("🎬 MiniMax video result received:", videoResult);
 
-        if (videoResult.status === 'Success') {
+        if (videoResult.status === "Success") {
           // Video generation completed successfully
-          if (videoResult.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+          if (
+            videoResult.videos &&
+            Array.isArray(videoResult.videos) &&
+            videoResult.videos[0]?.url
+          ) {
             // File retrieval succeeded - use Zata URL
             videoUrl = videoResult.videos[0].url;
-            console.log('✅ MiniMax video completed with Zata URL:', videoUrl);
-            console.log('📹 Video storage path:', videoResult.videos[0].storagePath);
-            console.log('📹 Original URL:', videoResult.videos[0].originalUrl);
+            console.log("✅ MiniMax video completed with Zata URL:", videoUrl);
+            console.log(
+              "📹 Video storage path:",
+              videoResult.videos[0].storagePath,
+            );
+            console.log("📹 Original URL:", videoResult.videos[0].originalUrl);
 
             // Store video data for later use
             window.miniMaxVideoData = videoResult.videos[0];
           } else if (videoResult.download_url) {
             // Fallback to download_url if videos array is not available
             videoUrl = videoResult.download_url;
-            console.log('✅ MiniMax video completed with download URL:', videoUrl);
+            console.log(
+              "✅ MiniMax video completed with download URL:",
+              videoUrl,
+            );
           } else {
             // File retrieval failed, but video generation succeeded - video should be in database
-            console.log('✅ MiniMax video generation completed successfully. Video stored in database.');
-            videoUrl = ''; // We'll rely on the video being in the database
+            console.log(
+              "✅ MiniMax video generation completed successfully. Video stored in database.",
+            );
+            videoUrl = ""; // We'll rely on the video being in the database
           }
-        } else if (videoResult.status === 'Fail') {
-          console.error('❌ MiniMax video generation failed:', videoResult);
-          throw new Error('MiniMax video generation failed');
+        } else if (videoResult.status === "Fail") {
+          console.error("❌ MiniMax video generation failed:", videoResult);
+          throw new Error("MiniMax video generation failed");
         } else {
-          console.error('❌ Unexpected MiniMax status:', videoResult);
-          throw new Error('Unexpected MiniMax video generation status');
+          console.error("❌ Unexpected MiniMax status:", videoResult);
+          throw new Error("Unexpected MiniMax video generation status");
         }
-      } else if (selectedModel === 'kling-o1') {
+      } else if (selectedModel === "kling-o1") {
         // Kling o1 (FAL queue) first/last frame flow
-        console.log('🎬 Kling o1 video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Kling o1 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
 
-        for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
+        for (let attempts = 0; attempts < 360; attempts++) {
+          // up to 6 minutes
           try {
-            const statusRes = await api.get('/api/fal/queue/status', {
+            const statusRes = await api.get("/api/fal/queue/status", {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 1200000 // 20 minute timeout
+              timeout: 1200000, // 20 minute timeout
             });
             const status = statusRes.data?.data || statusRes.data;
-            const s = String(status?.status || '').toLowerCase();
+            const s = String(status?.status || "").toLowerCase();
             consecutiveErrors = 0; // Reset on success
 
-            if (s === 'completed' || s === 'success' || s === 'succeeded') {
+            if (s === "completed" || s === "success" || s === "succeeded") {
               try {
-                const resultRes = await api.get('/api/fal/queue/result', {
+                const resultRes = await api.get("/api/fal/queue/result", {
                   params: { model: result.model, requestId: result.requestId },
-                  timeout: 1200000
+                  timeout: 1200000,
                 });
                 videoResult = resultRes.data?.data || resultRes.data;
                 // CRITICAL: Update queue status immediately to mark as completed
                 if (generationId) {
-                  dispatch(updateActiveGeneration({
-                    id: generationId,
-                    updates: { status: 'completed', historyId: result.historyId }
-                  }));
-                  console.log('[queue] Kling o1 marked as completed in queue');
+                  dispatch(
+                    updateActiveGeneration({
+                      id: generationId,
+                      updates: {
+                        status: "completed",
+                        historyId: result.historyId,
+                      },
+                    }),
+                  );
+                  console.log("[queue] Kling o1 marked as completed in queue");
                 }
               } catch (resultErr: any) {
-                console.error('[queue] Kling o1 - Failed to fetch result:', resultErr?.message);
+                console.error(
+                  "[queue] Kling o1 - Failed to fetch result:",
+                  resultErr?.message,
+                );
                 throw resultErr;
               }
               break;
             }
-            if (s === 'failed' || s === 'error') {
-              throw new Error('Kling o1 video generation failed');
+            if (s === "failed" || s === "error") {
+              throw new Error("Kling o1 video generation failed");
             }
           } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (isNetworkError) {
-              console.warn(`[queue] Kling o1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              console.warn(
+                `[queue] Kling o1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
             } else {
-              console.error(`[queue] Kling o1 - Error (${attempts + 1}/360):`, errorMsg);
+              console.error(
+                `[queue] Kling o1 - Error (${attempts + 1}/360):`,
+                errorMsg,
+              );
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Kling o1: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === 359) throw new Error(`Kling o1: Timeout after 360 attempts. ${errorMsg}`);
+            if (attempts === 359)
+              throw new Error(
+                `Kling o1: Timeout after 360 attempts. ${errorMsg}`,
+              );
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Kling o1 video completed with URL:', videoUrl);
+          console.log("✅ Kling o1 video completed with URL:", videoUrl);
         } else if (videoResult?.video?.url) {
           videoUrl = videoResult.video.url;
-          console.log('✅ Kling o1 video completed with URL (video.url):', videoUrl);
+          console.log(
+            "✅ Kling o1 video completed with URL (video.url):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ Kling o1 video generation did not complete properly');
-          throw new Error('Kling o1 video generation did not complete in time');
+          console.error(
+            "❌ Kling o1 video generation did not complete properly",
+          );
+          throw new Error("Kling o1 video generation did not complete in time");
+        }
+      } else if (selectedModel.includes("veo3.1-lite")) {
+        console.log(
+          "🎬 Veo 3.1 Lite video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
+
+        let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
+        for (let attempts = 0; attempts < 360; attempts++) {
+          try {
+            const statusRes = await api.get("/api/fal/queue/status", {
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000,
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
+
+            if (
+              status?.status === "COMPLETED" ||
+              status?.status === "completed"
+            ) {
+              const resultRes = await api.get("/api/fal/queue/result", {
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000,
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              if (generationId) {
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+              }
+              break;
+            }
+            if (status?.status === "FAILED" || status?.status === "failed") {
+              throw new Error("Veo 3.1 Lite video generation failed");
+            }
+          } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `Veo 3.1 Lite: Too many network errors. ${errorMsg}`,
+              );
+            }
+            if (attempts === 359)
+              throw new Error(
+                `Veo 3.1 Lite: Timeout after 360 attempts. ${errorMsg}`,
+              );
+          }
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+
+        if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log("✅ Veo 3.1 Lite video completed with URL:", videoUrl);
+        } else if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
+          videoUrl = videoResult.videos[0].url;
+          console.log("✅ Veo 3.1 Lite video completed with URL:", videoUrl);
+        } else {
+          throw new Error(
+            "Veo 3.1 Lite video generation did not complete in time",
+          );
         }
       } else if (selectedModel.includes("veo3.1")) {
         // Veo 3.1 flow - queue-based polling
-        console.log('🎬 Veo 3.1 video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Veo 3.1 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         // Poll for completion using FAL queue status
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
 
-        for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
+        for (let attempts = 0; attempts < 360; attempts++) {
+          // 6 minutes max
           try {
-            const statusRes = await api.get('/api/fal/queue/status', {
+            const statusRes = await api.get("/api/fal/queue/status", {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
 
-            if (status?.status === 'COMPLETED' || status?.status === 'completed') {
+            if (
+              status?.status === "COMPLETED" ||
+              status?.status === "completed"
+            ) {
               // Get the result
-              const resultRes = await api.get('/api/fal/queue/result', {
+              const resultRes = await api.get("/api/fal/queue/result", {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] Veo 3.1 marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] Veo 3.1 marked as completed in queue");
               }
               break;
             }
-            if (status?.status === 'FAILED' || status?.status === 'failed') {
-              throw new Error('Veo 3.1 video generation failed');
+            if (status?.status === "FAILED" || status?.status === "failed") {
+              throw new Error("Veo 3.1 video generation failed");
             }
           } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (isNetworkError) {
-              console.warn(`[queue] Veo 3.1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              console.warn(
+                `[queue] Veo 3.1 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
             } else {
-              console.error(`[queue] Veo 3.1 - Error (${attempts + 1}/360):`, errorMsg);
+              console.error(
+                `[queue] Veo 3.1 - Error (${attempts + 1}/360):`,
+                errorMsg,
+              );
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Veo 3.1: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === 359) throw new Error(`Veo 3.1: Timeout after 360 attempts. ${errorMsg}`);
+            if (attempts === 359)
+              throw new Error(
+                `Veo 3.1: Timeout after 360 attempts. ${errorMsg}`,
+              );
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Veo 3.1 video completed with URL:', videoUrl);
+          console.log("✅ Veo 3.1 video completed with URL:", videoUrl);
         } else {
-          console.error('❌ Veo 3.1 video generation did not complete properly');
-          throw new Error('Veo 3.1 video generation did not complete in time');
+          console.error(
+            "❌ Veo 3.1 video generation did not complete properly",
+          );
+          throw new Error("Veo 3.1 video generation did not complete in time");
         }
-      } else if (selectedModel.includes('ltx2')) {
+      } else if (selectedModel.includes("ltx2")) {
         // LTX V2 flow - queue-based polling (same pattern as Veo 3.1)
-        console.log('🎬 LTX V2 video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 LTX V2 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
 
-        for (let attempts = 0; attempts < 360; attempts++) { // up to 6 minutes
+        for (let attempts = 0; attempts < 360; attempts++) {
+          // up to 6 minutes
           try {
-            const statusRes = await api.get('/api/fal/queue/status', {
+            const statusRes = await api.get("/api/fal/queue/status", {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
 
-            const s = String(status?.status || '').toLowerCase();
-            if (s === 'completed' || s === 'success' || s === 'succeeded') {
-              const resultRes = await api.get('/api/fal/queue/result', {
+            const s = String(status?.status || "").toLowerCase();
+            if (s === "completed" || s === "success" || s === "succeeded") {
+              const resultRes = await api.get("/api/fal/queue/result", {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] LTX V2 marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] LTX V2 marked as completed in queue");
               }
               break;
             }
-            if (s === 'failed' || s === 'error') {
-              throw new Error('LTX V2 video generation failed');
+            if (s === "failed" || s === "error") {
+              throw new Error("LTX V2 video generation failed");
             }
           } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (isNetworkError) {
-              console.warn(`[queue] LTX V2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              console.warn(
+                `[queue] LTX V2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
             } else {
-              console.error(`[queue] LTX V2 - Error (${attempts + 1}/360):`, errorMsg);
+              console.error(
+                `[queue] LTX V2 - Error (${attempts + 1}/360):`,
+                errorMsg,
+              );
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`LTX V2: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === 359) throw new Error(`LTX V2: Timeout after 360 attempts. ${errorMsg}`);
+            if (attempts === 359)
+              throw new Error(
+                `LTX V2: Timeout after 360 attempts. ${errorMsg}`,
+              );
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
         // Parse LTX result shapes: { video: { url } } or { videos: [{url}]} or output fields
         if (videoResult?.video?.url) {
           videoUrl = videoResult.video.url;
-          console.log('✅ LTX V2 video completed with URL (video.url):', videoUrl);
-        } else if (Array.isArray(videoResult?.videos) && videoResult.videos[0]?.url) {
+          console.log(
+            "✅ LTX V2 video completed with URL (video.url):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ LTX V2 video completed with URL (videos[0].url):', videoUrl);
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          console.log(
+            "✅ LTX V2 video completed with URL (videos[0].url):",
+            videoUrl,
+          );
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           videoUrl = videoResult.output;
-          console.log('✅ LTX V2 video completed with URL (output string):', videoUrl);
-        } else if (Array.isArray(videoResult?.output) && typeof videoResult.output[0] === 'string') {
+          console.log(
+            "✅ LTX V2 video completed with URL (output string):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          typeof videoResult.output[0] === "string"
+        ) {
           videoUrl = videoResult.output[0];
-          console.log('✅ LTX V2 video completed with URL (output array):', videoUrl);
+          console.log(
+            "✅ LTX V2 video completed with URL (output array):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ LTX V2 video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          throw new Error('LTX V2 video generation did not complete in time');
+          console.error("❌ LTX V2 video generation did not complete properly");
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          throw new Error("LTX V2 video generation did not complete in time");
         }
-      } else if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+      } else if (
+        selectedModel.includes("veo3") &&
+        !selectedModel.includes("veo3.1")
+      ) {
         // Veo3 flow - queue-based polling
-        console.log('🎬 Veo3 video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Veo3 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         // Poll for completion using FAL queue status
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
 
-        for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
+        for (let attempts = 0; attempts < 360; attempts++) {
+          // 6 minutes max
           try {
-            const statusRes = await api.get('/api/fal/queue/status', {
+            const statusRes = await api.get("/api/fal/queue/status", {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
 
-            if (status?.status === 'COMPLETED' || status?.status === 'completed') {
+            if (
+              status?.status === "COMPLETED" ||
+              status?.status === "completed"
+            ) {
               // Get the result
-              const resultRes = await api.get('/api/fal/queue/result', {
+              const resultRes = await api.get("/api/fal/queue/result", {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] Veo3 marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] Veo3 marked as completed in queue");
               }
               break;
             }
-            if (status?.status === 'FAILED' || status?.status === 'failed') {
-              throw new Error('Veo3 video generation failed');
+            if (status?.status === "FAILED" || status?.status === "failed") {
+              throw new Error("Veo3 video generation failed");
             }
           } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (isNetworkError) {
-              console.warn(`[queue] Veo3 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              console.warn(
+                `[queue] Veo3 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
             } else {
-              console.error(`[queue] Veo3 - Error (${attempts + 1}/360):`, errorMsg);
+              console.error(
+                `[queue] Veo3 - Error (${attempts + 1}/360):`,
+                errorMsg,
+              );
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Veo3: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === 359) throw new Error(`Veo3: Timeout after 360 attempts. ${errorMsg}`);
+            if (attempts === 359)
+              throw new Error(`Veo3: Timeout after 360 attempts. ${errorMsg}`);
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Veo3 video completed with URL:', videoUrl);
+          console.log("✅ Veo3 video completed with URL:", videoUrl);
         } else {
-          console.error('❌ Veo3 video generation did not complete properly');
-          throw new Error('Veo3 video generation did not complete in time');
+          console.error("❌ Veo3 video generation did not complete properly");
+          throw new Error("Veo3 video generation did not complete in time");
         }
-      } else if (selectedModel.includes('sora2')) {
+      } else if (selectedModel.includes("sora2")) {
         // Sora 2 flow - queue-based polling (same as Veo3/Veo 3.1)
-        console.log('🎬 Sora 2 video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Sora 2 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         // Poll for completion using FAL queue status
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
 
-        for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
+        for (let attempts = 0; attempts < 360; attempts++) {
+          // 6 minutes max
           try {
-            const statusRes = await api.get('/api/fal/queue/status', {
+            const statusRes = await api.get("/api/fal/queue/status", {
               params: { model: result.model, requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
 
-            if (status?.status === 'COMPLETED' || status?.status === 'completed') {
+            if (
+              status?.status === "COMPLETED" ||
+              status?.status === "completed"
+            ) {
               // Get the result
-              const resultRes = await api.get('/api/fal/queue/result', {
+              const resultRes = await api.get("/api/fal/queue/result", {
                 params: { model: result.model, requestId: result.requestId },
-                timeout: 15000
+                timeout: 15000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] Sora2 marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] Sora2 marked as completed in queue");
               }
               break;
             }
-            if (status?.status === 'FAILED' || status?.status === 'failed') {
-              throw new Error('Sora 2 video generation failed');
+            if (status?.status === "FAILED" || status?.status === "failed") {
+              throw new Error("Sora 2 video generation failed");
             }
           } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (isNetworkError) {
-              console.warn(`[queue] Sora2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              console.warn(
+                `[queue] Sora2 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
             } else {
-              console.error(`[queue] Sora2 - Error (${attempts + 1}/360):`, errorMsg);
+              console.error(
+                `[queue] Sora2 - Error (${attempts + 1}/360):`,
+                errorMsg,
+              );
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Sora2: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === 359) throw new Error(`Sora2: Timeout after 360 attempts. ${errorMsg}`);
+            if (attempts === 359)
+              throw new Error(`Sora2: Timeout after 360 attempts. ${errorMsg}`);
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Sora 2 video completed with URL:', videoUrl);
+          console.log("✅ Sora 2 video completed with URL:", videoUrl);
         } else {
-          console.error('❌ Sora 2 video generation did not complete properly');
-          throw new Error('Sora 2 video generation did not complete in time');
+          console.error("❌ Sora 2 video generation did not complete properly");
+          throw new Error("Sora 2 video generation did not complete in time");
         }
-      } else if (selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) {
+      } else if (
+        selectedModel === "kling-2.6-pro" ||
+        selectedModel.startsWith("kling-v3")
+      ) {
         // Kling 2.6 Pro / Kling 3 flow - queue-based polling (FAL)
-        console.log('🎬 Kling FAL video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Kling FAL video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         // Poll for completion using FAL queue status
         let videoResult: any;
-        for (let attempts = 0; attempts < 360; attempts++) { // 6 minutes max
+        for (let attempts = 0; attempts < 360; attempts++) {
+          // 6 minutes max
           try {
-            const statusRes = await api.get('/api/fal/queue/status', {
-              params: { model: result.model, requestId: result.requestId }
+            const statusRes = await api.get("/api/fal/queue/status", {
+              params: { model: result.model, requestId: result.requestId },
             });
             const status = statusRes.data?.data || statusRes.data;
-            const s = String(status?.status || '').toLowerCase();
+            const s = String(status?.status || "").toLowerCase();
 
-            if (s === 'completed' || s === 'success' || s === 'succeeded') {
+            if (s === "completed" || s === "success" || s === "succeeded") {
               // Get the result
-              const resultRes = await api.get('/api/fal/queue/result', {
-                params: { model: result.model, requestId: result.requestId }
+              const resultRes = await api.get("/api/fal/queue/result", {
+                params: { model: result.model, requestId: result.requestId },
               });
               videoResult = resultRes.data?.data || resultRes.data;
               break;
             }
-            if (s === 'failed' || s === 'error') {
-              throw new Error('Kling video generation failed');
+            if (s === "failed" || s === "error") {
+              throw new Error("Kling video generation failed");
             }
           } catch (statusError) {
-            console.error('Status check failed:', statusError);
+            console.error("Status check failed:", statusError);
             if (attempts === 359) throw statusError;
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
         // Parse Kling 2.6 Pro result: { video: { url } } format
         if (videoResult?.video?.url) {
           videoUrl = videoResult.video.url;
-          console.log('✅ Kling 2.6 Pro video completed with URL (video.url):', videoUrl);
-        } else if (Array.isArray(videoResult?.videos) && videoResult.videos[0]?.url) {
+          console.log(
+            "✅ Kling 2.6 Pro video completed with URL (video.url):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Kling 2.6 Pro video completed with URL (videos[0].url):', videoUrl);
+          console.log(
+            "✅ Kling 2.6 Pro video completed with URL (videos[0].url):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ Kling 2.6 Pro video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          throw new Error('Kling 2.6 Pro video generation did not complete in time');
+          console.error(
+            "❌ Kling 2.6 Pro video generation did not complete properly",
+          );
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          throw new Error(
+            "Kling 2.6 Pro video generation did not complete in time",
+          );
         }
       } else if (selectedModel.includes("wan-2.5")) {
         // WAN 2.5 flow - queue-based polling
-        console.log('🎬 WAN 2.5 video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 WAN 2.5 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models (they can take longer)
-        console.log(`🎬 Starting WAN 2.5 polling with ${maxAttempts} attempts (15 minutes max)`);
+        console.log(
+          `🎬 Starting WAN 2.5 polling with ${maxAttempts} attempts (15 minutes max)`,
+        );
 
         for (let attempts = 0; attempts < maxAttempts; attempts++) {
           try {
-            console.log(`🎬 WAN 2.5 polling attempt ${attempts + 1}/${maxAttempts}`);
-            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
-            const statusRes = await api.get('/api/replicate/queue/status', {
+            console.log(
+              `🎬 WAN 2.5 polling attempt ${attempts + 1}/${maxAttempts}`,
+            );
+            console.log(
+              `🎬 Checking status for requestId: ${result.requestId}`,
+            );
+            const statusRes = await api.get("/api/replicate/queue/status", {
               params: { requestId: result.requestId },
-              timeout: 20000
+              timeout: 20000,
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
@@ -4352,77 +6155,125 @@ const InputBox = (props: InputBoxProps = {}) => {
 
             console.log(`🎬 WAN 2.5 status check result:`, status);
             // Normalize status for robust comparisons
-            const statusValue = String(status?.status || '').toLowerCase();
-            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
-              console.log('✅ WAN 2.5 generation completed, fetching result...');
+            const statusValue = String(status?.status || "").toLowerCase();
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              console.log(
+                "✅ WAN 2.5 generation completed, fetching result...",
+              );
               // Get the result
-              const resultRes = await api.get('/api/replicate/queue/result', {
+              const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
-                timeout: 20000
+                timeout: 20000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
-              console.log('✅ WAN 2.5 result fetched:', videoResult);
+              console.log("✅ WAN 2.5 result fetched:", videoResult);
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] WAN 2.5 marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] WAN 2.5 marked as completed in queue");
               }
               break;
             }
-            if (statusValue === 'failed' || statusValue === 'error') {
-              console.error('❌ WAN 2.5 generation failed with status:', status);
-              throw new Error('WAN 2.5 video generation failed');
+            if (statusValue === "failed" || statusValue === "error") {
+              console.error(
+                "❌ WAN 2.5 generation failed with status:",
+                status,
+              );
+              throw new Error("WAN 2.5 video generation failed");
             }
 
             // Handle other possible statuses
-            if (statusValue === 'processing' || statusValue === 'pending') {
-              console.log(`🎬 WAN 2.5 status: ${status.status} - continuing to poll...`);
+            if (statusValue === "processing" || statusValue === "pending") {
+              console.log(
+                `🎬 WAN 2.5 status: ${status.status} - continuing to poll...`,
+              );
             } else if (statusValue) {
-              console.log(`🎬 WAN 2.5 unknown status: ${status.status} - continuing to poll...`);
+              console.log(
+                `🎬 WAN 2.5 unknown status: ${status.status} - continuing to poll...`,
+              );
             } else {
-              console.log('🎬 WAN 2.5 no status returned - continuing to poll...');
+              console.log(
+                "🎬 WAN 2.5 no status returned - continuing to poll...",
+              );
             }
 
             // Log progress every 30 seconds
             if (attempts % 30 === 0 && attempts > 0) {
-              console.log(`🎬 WAN 2.5 still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+              console.log(
+                `🎬 WAN 2.5 still processing... (${Math.floor(attempts / 60)} minutes elapsed)`,
+              );
 
               // Fallback: Check if video is available in history after 2 minutes
               if (attempts >= 120 && result.historyId) {
                 try {
-                  console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
-                    timeout: 20000
-                  });
+                  console.log(
+                    `🎬 Fallback: Checking history entry for completed video...`,
+                  );
+                  const historyRes = await api.get(
+                    `/api/generations/${result.historyId}`,
+                    {
+                      timeout: 20000,
+                    },
+                  );
                   const historyData = historyRes.data?.data || historyRes.data;
 
-                  if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
-                    const completedVideo = historyData.videos.find((v: any) => v.status === 'completed' || v.url);
+                  if (
+                    historyData?.videos &&
+                    Array.isArray(historyData.videos) &&
+                    historyData.videos.length > 0
+                  ) {
+                    const completedVideo = historyData.videos.find(
+                      (v: any) => v.status === "completed" || v.url,
+                    );
                     if (completedVideo?.url) {
-                      console.log('✅ WAN 2.5 video found in history:', completedVideo);
+                      console.log(
+                        "✅ WAN 2.5 video found in history:",
+                        completedVideo,
+                      );
                       videoResult = { videos: [completedVideo] };
                       break;
                     }
                   }
                 } catch (historyError) {
-                  console.log('🎬 Fallback history check failed:', historyError);
+                  console.log(
+                    "🎬 Fallback history check failed:",
+                    historyError,
+                  );
                 }
               }
             }
           } catch (statusError: any) {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             // Log less frequently for long-polling (every 10 attempts)
             if (attempts % 10 === 0 || isNetworkError) {
               if (isNetworkError) {
-                console.warn(`[queue] WAN 2.5 - Network error (${attempts + 1}/${maxAttempts}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                console.warn(
+                  `[queue] WAN 2.5 - Network error (${attempts + 1}/${maxAttempts}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                  errorMsg,
+                );
               } else {
-                console.error(`[queue] WAN 2.5 - Error (${attempts + 1}/${maxAttempts}):`, errorMsg);
+                console.error(
+                  `[queue] WAN 2.5 - Error (${attempts + 1}/${maxAttempts}):`,
+                  errorMsg,
+                );
               }
             }
 
@@ -4430,156 +6281,281 @@ const InputBox = (props: InputBoxProps = {}) => {
               throw new Error(`WAN 2.5: Too many network errors. ${errorMsg}`);
             }
             if (attempts === maxAttempts - 1) {
-              throw new Error(`WAN 2.5: Timeout after ${maxAttempts} attempts. ${errorMsg}`);
+              throw new Error(
+                `WAN 2.5: Timeout after ${maxAttempts} attempts. ${errorMsg}`,
+              );
             }
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ WAN 2.5 video completed with URL:', videoUrl);
+          console.log("✅ WAN 2.5 video completed with URL:", videoUrl);
         } else if (videoResult?.video && videoResult.video?.url) {
           // Fallback: check for single video object
           videoUrl = videoResult.video.url;
-          console.log('✅ WAN 2.5 video completed with URL (fallback):', videoUrl);
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          console.log(
+            "✅ WAN 2.5 video completed with URL (fallback):",
+            videoUrl,
+          );
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           // Replicate-like payload where 'output' is a direct URL
           videoUrl = videoResult.output;
-          console.log('✅ WAN 2.5 video completed with URL (output string):', videoUrl);
-        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          console.log(
+            "✅ WAN 2.5 video completed with URL (output string):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
           // Replicate-like payload where 'output' is an array of URLs
           videoUrl = videoResult.output[0];
-          console.log('✅ WAN 2.5 video completed with URL (output array):', videoUrl);
+          console.log(
+            "✅ WAN 2.5 video completed with URL (output array):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ WAN 2.5 video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          console.error('❌ Expected videos array or video object with URL');
-          throw new Error('WAN 2.5 video generation did not complete in time');
+          console.error(
+            "❌ WAN 2.5 video generation did not complete properly",
+          );
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          console.error("❌ Expected videos array or video object with URL");
+          throw new Error("WAN 2.5 video generation did not complete in time");
         }
       } else if (selectedModel === "wan-2.2-animate-replace") {
         // WAN 2.2 Animate Replace flow - queue-based polling (same as WAN 2.5)
-        console.log('🎬 WAN 2.2 Animate Replace video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 WAN 2.2 Animate Replace video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         // Poll for completion using Replicate queue status
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttempts = 900; // 15 minutes max for WAN models
-        console.log(`🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`);
+        console.log(
+          `🎬 Starting WAN 2.2 Animate Replace polling with ${maxAttempts} attempts (15 minutes max)`,
+        );
 
         for (let attempts = 0; attempts < maxAttempts; attempts++) {
           try {
-            console.log(`🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`);
-            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
-            const statusRes = await api.get('/api/replicate/queue/status', {
+            console.log(
+              `🎬 WAN 2.2 Animate Replace polling attempt ${attempts + 1}/${maxAttempts}`,
+            );
+            console.log(
+              `🎬 Checking status for requestId: ${result.requestId}`,
+            );
+            const statusRes = await api.get("/api/replicate/queue/status", {
               params: { requestId: result.requestId },
-              timeout: 20000
+              timeout: 20000,
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
             consecutiveErrors = 0;
 
-            console.log(`🎬 WAN 2.2 Animate Replace status check result:`, status);
+            console.log(
+              `🎬 WAN 2.2 Animate Replace status check result:`,
+              status,
+            );
             // Normalize status for robust comparisons
-            const statusValue = String(status?.status || '').toLowerCase();
-            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
-              console.log('✅ WAN 2.2 Animate Replace generation completed, fetching result...');
+            const statusValue = String(status?.status || "").toLowerCase();
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              console.log(
+                "✅ WAN 2.2 Animate Replace generation completed, fetching result...",
+              );
               // Get the result
-              const resultRes = await api.get('/api/replicate/queue/result', {
+              const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
-                timeout: 20000
+                timeout: 20000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
-              console.log('✅ WAN 2.2 Animate Replace result fetched:', videoResult);
+              console.log(
+                "✅ WAN 2.2 Animate Replace result fetched:",
+                videoResult,
+              );
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] WAN 2.2 marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] WAN 2.2 marked as completed in queue");
               }
               break;
             }
-            if (statusValue === 'failed' || statusValue === 'error') {
-              console.error('❌ WAN 2.2 Animate Replace generation failed with status:', status);
-              throw new Error('WAN 2.2 Animate Replace video generation failed');
+            if (statusValue === "failed" || statusValue === "error") {
+              console.error(
+                "❌ WAN 2.2 Animate Replace generation failed with status:",
+                status,
+              );
+              throw new Error(
+                "WAN 2.2 Animate Replace video generation failed",
+              );
             }
 
             // Handle other possible statuses
-            if (statusValue === 'processing' || statusValue === 'pending') {
-              console.log(`🎬 WAN 2.2 Animate Replace status: ${status.status} - continuing to poll...`);
+            if (statusValue === "processing" || statusValue === "pending") {
+              console.log(
+                `🎬 WAN 2.2 Animate Replace status: ${status.status} - continuing to poll...`,
+              );
             } else if (statusValue) {
-              console.log(`🎬 WAN 2.2 Animate Replace unknown status: ${status.status} - continuing to poll...`);
+              console.log(
+                `🎬 WAN 2.2 Animate Replace unknown status: ${status.status} - continuing to poll...`,
+              );
             } else {
-              console.log('🎬 WAN 2.2 Animate Replace no status returned - continuing to poll...');
+              console.log(
+                "🎬 WAN 2.2 Animate Replace no status returned - continuing to poll...",
+              );
             }
 
             // Log progress every 30 seconds
             if (attempts % 30 === 0 && attempts > 0) {
-              console.log(`🎬 WAN 2.2 Animate Replace still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+              console.log(
+                `🎬 WAN 2.2 Animate Replace still processing... (${Math.floor(attempts / 60)} minutes elapsed)`,
+              );
 
               // Fallback: Check if video is available in history after 2 minutes
               if (attempts >= 120 && result.historyId) {
                 try {
-                  console.log(`🎬 Fallback: Checking history entry for completed video...`);
-                  const historyRes = await api.get(`/api/generations/${result.historyId}`, {
-                    timeout: 20000
-                  });
+                  console.log(
+                    `🎬 Fallback: Checking history entry for completed video...`,
+                  );
+                  const historyRes = await api.get(
+                    `/api/generations/${result.historyId}`,
+                    {
+                      timeout: 20000,
+                    },
+                  );
                   const historyData = historyRes.data?.data || historyRes.data;
 
-                  if (historyData?.videos && Array.isArray(historyData.videos) && historyData.videos.length > 0) {
-                    const completedVideo = historyData.videos.find((v: any) => v.status === 'completed' || v.url);
+                  if (
+                    historyData?.videos &&
+                    Array.isArray(historyData.videos) &&
+                    historyData.videos.length > 0
+                  ) {
+                    const completedVideo = historyData.videos.find(
+                      (v: any) => v.status === "completed" || v.url,
+                    );
                     if (completedVideo?.url) {
-                      console.log('✅ WAN 2.2 Animate Replace video found in history:', completedVideo);
+                      console.log(
+                        "✅ WAN 2.2 Animate Replace video found in history:",
+                        completedVideo,
+                      );
                       videoResult = { videos: [completedVideo] };
                       break;
                     }
                   }
                 } catch (historyError) {
-                  console.log('🎬 Fallback history check failed:', historyError);
+                  console.log(
+                    "🎬 Fallback history check failed:",
+                    historyError,
+                  );
                 }
               }
             }
           } catch (statusError) {
-            console.error('❌ WAN 2.2 Animate Replace status check failed:', statusError);
+            console.error(
+              "❌ WAN 2.2 Animate Replace status check failed:",
+              statusError,
+            );
             if (attempts === maxAttempts - 1) {
-              console.error('❌ WAN 2.2 Animate Replace polling exhausted all attempts');
+              console.error(
+                "❌ WAN 2.2 Animate Replace polling exhausted all attempts",
+              );
               throw statusError;
             }
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ WAN 2.2 Animate Replace video completed with URL:', videoUrl);
+          console.log(
+            "✅ WAN 2.2 Animate Replace video completed with URL:",
+            videoUrl,
+          );
         } else if (videoResult?.video && videoResult.video?.url) {
           // Fallback: check for single video object
           videoUrl = videoResult.video.url;
-          console.log('✅ WAN 2.2 Animate Replace video completed with URL (fallback):', videoUrl);
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          console.log(
+            "✅ WAN 2.2 Animate Replace video completed with URL (fallback):",
+            videoUrl,
+          );
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           // Replicate-like payload where 'output' is a direct URL
           videoUrl = videoResult.output;
-          console.log('✅ WAN 2.2 Animate Replace video completed with URL (output string):', videoUrl);
-        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          console.log(
+            "✅ WAN 2.2 Animate Replace video completed with URL (output string):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
           // Replicate-like payload where 'output' is an array of URLs
           videoUrl = videoResult.output[0];
-          console.log('✅ WAN 2.2 Animate Replace video completed with URL (output array):', videoUrl);
+          console.log(
+            "✅ WAN 2.2 Animate Replace video completed with URL (output array):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ WAN 2.2 Animate Replace video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          console.error('❌ Expected videos array or video object with URL');
-          throw new Error('WAN 2.2 Animate Replace video generation did not complete in time');
+          console.error(
+            "❌ WAN 2.2 Animate Replace video generation did not complete properly",
+          );
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          console.error("❌ Expected videos array or video object with URL");
+          throw new Error(
+            "WAN 2.2 Animate Replace video generation did not complete in time",
+          );
         }
-      } else if (selectedModel.startsWith('kling-') && selectedModel !== 'kling-2.6-pro' && !selectedModel.startsWith('kling-v3')) {
+      } else if (
+        selectedModel.startsWith("kling-") &&
+        selectedModel !== "kling-2.6-pro" &&
+        !selectedModel.startsWith("kling-v3")
+      ) {
         // Kling flow - queue-based polling via replicate queue endpoints (excludes Kling 2.6 Pro which uses FAL)
-        console.log('🎬 Kling video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Kling video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         let videoResult: any;
         const maxAttemptsK = 900; // up to 15 minutes
@@ -4588,341 +6564,567 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         for (let attempts = 0; attempts < maxAttemptsK; attempts++) {
           try {
-            const statusRes = await api.get('/api/replicate/queue/status', {
+            const statusRes = await api.get("/api/replicate/queue/status", {
               params: { requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             const status = statusRes.data?.data || statusRes.data;
-            const statusValue = String(status?.status || '').toLowerCase();
+            const statusValue = String(status?.status || "").toLowerCase();
             consecutiveErrors = 0;
 
-            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
-              const resultRes = await api.get('/api/replicate/queue/result', {
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] Kling marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] Kling marked as completed in queue");
               }
               break;
             }
-            if (statusValue === 'failed' || statusValue === 'error') {
-              throw new Error('Kling video generation failed');
+            if (statusValue === "failed" || statusValue === "error") {
+              throw new Error("Kling video generation failed");
             }
           } catch (e: any) {
             consecutiveErrors++;
             const errorMsg = e?.message || String(e);
-            const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetwork =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
             if (isNetwork) {
-              console.warn(`[queue] Kling - Network error (${attempts + 1}/${maxAttemptsK}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+              console.warn(
+                `[queue] Kling - Network error (${attempts + 1}/${maxAttemptsK}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
             } else {
-              console.error(`[queue] Kling - Error (${attempts + 1}/${maxAttemptsK}):`, errorMsg);
+              console.error(
+                `[queue] Kling - Error (${attempts + 1}/${maxAttemptsK}):`,
+                errorMsg,
+              );
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Kling: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === maxAttemptsK - 1) throw new Error(`Kling: Timeout after ${maxAttemptsK} attempts. ${errorMsg}`);
+            if (attempts === maxAttemptsK - 1)
+              throw new Error(
+                `Kling: Timeout after ${maxAttemptsK} attempts. ${errorMsg}`,
+              );
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Kling video completed with URL:', videoUrl);
+          console.log("✅ Kling video completed with URL:", videoUrl);
         } else if (videoResult?.video && videoResult.video?.url) {
           videoUrl = videoResult.video.url;
-          console.log('✅ Kling video completed with URL (fallback):', videoUrl);
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          console.log(
+            "✅ Kling video completed with URL (fallback):",
+            videoUrl,
+          );
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           videoUrl = videoResult.output;
-          console.log('✅ Kling video completed with URL (output string):', videoUrl);
-        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          console.log(
+            "✅ Kling video completed with URL (output string):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
           videoUrl = videoResult.output[0];
-          console.log('✅ Kling video completed with URL (output array):', videoUrl);
+          console.log(
+            "✅ Kling video completed with URL (output array):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ Kling video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          throw new Error('Kling video generation did not complete in time');
+          console.error("❌ Kling video generation did not complete properly");
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          throw new Error("Kling video generation did not complete in time");
         }
-      } else if (selectedModel.includes('seedance')) {
+      } else if (selectedModel.includes("seedance")) {
         // Seedance flow - queue-based polling via replicate queue endpoints (same as WAN/Kling)
-        console.log('🎬 Seedance video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 Seedance video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsSeedance = 900; // up to 15 minutes (same as WAN/Kling)
-        console.log(`🎬 Starting Seedance polling with ${maxAttemptsSeedance} attempts (15 minutes max)`);
+        console.log(
+          `🎬 Starting Seedance polling with ${maxAttemptsSeedance} attempts (15 minutes max)`,
+        );
 
         for (let attempts = 0; attempts < maxAttemptsSeedance; attempts++) {
           try {
-            console.log(`🎬 Seedance polling attempt ${attempts + 1}/${maxAttemptsSeedance}`);
-            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
-            const statusRes = await api.get('/api/replicate/queue/status', {
+            console.log(
+              `🎬 Seedance polling attempt ${attempts + 1}/${maxAttemptsSeedance}`,
+            );
+            console.log(
+              `🎬 Checking status for requestId: ${result.requestId}`,
+            );
+            const statusRes = await api.get("/api/replicate/queue/status", {
               params: { requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
-            const statusValue = String(status?.status || '').toLowerCase();
+            const statusValue = String(status?.status || "").toLowerCase();
             consecutiveErrors = 0;
 
             console.log(`🎬 Seedance status check result:`, status);
-            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
-              console.log('✅ Seedance generation completed, fetching result...');
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              console.log(
+                "✅ Seedance generation completed, fetching result...",
+              );
               // Get the result
-              const resultRes = await api.get('/api/replicate/queue/result', {
+              const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
-              console.log('✅ Seedance result fetched:', videoResult);
+              console.log("✅ Seedance result fetched:", videoResult);
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] Seedance marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] Seedance marked as completed in queue");
               }
               break;
             }
-            if (statusValue === 'failed' || statusValue === 'error') {
-              console.error('❌ Seedance generation failed with status:', status);
-              throw new Error('Seedance video generation failed');
+            if (statusValue === "failed" || statusValue === "error") {
+              console.error(
+                "❌ Seedance generation failed with status:",
+                status,
+              );
+              throw new Error("Seedance video generation failed");
             }
 
             // Log progress every 30 seconds
             if (attempts % 30 === 0 && attempts > 0) {
-              console.log(`🎬 Seedance still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+              console.log(
+                `🎬 Seedance still processing... (${Math.floor(attempts / 60)} minutes elapsed)`,
+              );
             }
           } catch (statusError: any) {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (attempts % 10 === 0 || isNetworkError) {
               if (isNetworkError) {
-                console.warn(`[queue] Seedance - Network error (${attempts + 1}/${maxAttemptsSeedance}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                console.warn(
+                  `[queue] Seedance - Network error (${attempts + 1}/${maxAttemptsSeedance}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                  errorMsg,
+                );
               } else {
-                console.error(`[queue] Seedance - Error (${attempts + 1}/${maxAttemptsSeedance}):`, errorMsg);
+                console.error(
+                  `[queue] Seedance - Error (${attempts + 1}/${maxAttemptsSeedance}):`,
+                  errorMsg,
+                );
               }
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`Seedance: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === maxAttemptsSeedance - 1) throw new Error(`Seedance: Timeout after ${maxAttemptsSeedance} attempts. ${errorMsg}`);
+            if (attempts === maxAttemptsSeedance - 1)
+              throw new Error(
+                `Seedance: Timeout after ${maxAttemptsSeedance} attempts. ${errorMsg}`,
+              );
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ Seedance video completed with URL:', videoUrl);
+          console.log("✅ Seedance video completed with URL:", videoUrl);
         } else if (videoResult?.video && videoResult.video?.url) {
           videoUrl = videoResult.video.url;
-          console.log('✅ Seedance video completed with URL (fallback):', videoUrl);
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          console.log(
+            "✅ Seedance video completed with URL (fallback):",
+            videoUrl,
+          );
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           videoUrl = videoResult.output;
-          console.log('✅ Seedance video completed with URL (output string):', videoUrl);
-        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          console.log(
+            "✅ Seedance video completed with URL (output string):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
           videoUrl = videoResult.output[0];
-          console.log('✅ Seedance video completed with URL (output array):', videoUrl);
+          console.log(
+            "✅ Seedance video completed with URL (output array):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ Seedance video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          throw new Error('Seedance video generation did not complete in time');
+          console.error(
+            "❌ Seedance video generation did not complete properly",
+          );
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          throw new Error("Seedance video generation did not complete in time");
         }
-      } else if (selectedModel.includes('pixverse')) {
+      } else if (selectedModel.includes("pixverse")) {
         // PixVerse flow - queue-based polling via replicate queue endpoints (same as WAN/Kling/Seedance)
-        console.log('🎬 PixVerse video generation started, request ID:', result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        console.log(
+          "🎬 PixVerse video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsPixverse = 900; // up to 15 minutes (same as WAN/Kling/Seedance)
-        console.log(`🎬 Starting PixVerse polling with ${maxAttemptsPixverse} attempts (15 minutes max)`);
+        console.log(
+          `🎬 Starting PixVerse polling with ${maxAttemptsPixverse} attempts (15 minutes max)`,
+        );
 
         for (let attempts = 0; attempts < maxAttemptsPixverse; attempts++) {
           try {
-            console.log(`🎬 PixVerse polling attempt ${attempts + 1}/${maxAttemptsPixverse}`);
-            console.log(`🎬 Checking status for requestId: ${result.requestId}`);
-            const statusRes = await api.get('/api/replicate/queue/status', {
+            console.log(
+              `🎬 PixVerse polling attempt ${attempts + 1}/${maxAttemptsPixverse}`,
+            );
+            console.log(
+              `🎬 Checking status for requestId: ${result.requestId}`,
+            );
+            const statusRes = await api.get("/api/replicate/queue/status", {
               params: { requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             console.log(`🎬 Raw status response:`, statusRes.data);
             const status = statusRes.data?.data || statusRes.data;
-            const statusValue = String(status?.status || '').toLowerCase();
+            const statusValue = String(status?.status || "").toLowerCase();
             consecutiveErrors = 0;
 
             console.log(`🎬 PixVerse status check result:`, status);
-            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
-              console.log('✅ PixVerse generation completed, fetching result...');
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              console.log(
+                "✅ PixVerse generation completed, fetching result...",
+              );
               // Get the result
-              const resultRes = await api.get('/api/replicate/queue/result', {
+              const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
-              console.log('✅ PixVerse result fetched:', videoResult);
+              console.log("✅ PixVerse result fetched:", videoResult);
               // CRITICAL: Update queue status immediately to mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
-                console.log('[queue] PixVerse marked as completed in queue');
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log("[queue] PixVerse marked as completed in queue");
               }
               break;
             }
-            if (statusValue === 'failed' || statusValue === 'error') {
-              console.error('❌ PixVerse generation failed with status:', status);
-              throw new Error('PixVerse video generation failed');
+            if (statusValue === "failed" || statusValue === "error") {
+              console.error(
+                "❌ PixVerse generation failed with status:",
+                status,
+              );
+              throw new Error("PixVerse video generation failed");
             }
 
             // Log progress every 30 seconds
             if (attempts % 30 === 0 && attempts > 0) {
-              console.log(`🎬 PixVerse still processing... (${Math.floor(attempts / 60)} minutes elapsed)`);
+              console.log(
+                `🎬 PixVerse still processing... (${Math.floor(attempts / 60)} minutes elapsed)`,
+              );
             }
           } catch (statusError: any) {
             consecutiveErrors++;
             const errorMsg = statusError?.message || String(statusError);
-            const isNetworkError = errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('ENOTFOUND');
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
 
             if (attempts % 10 === 0 || isNetworkError) {
               if (isNetworkError) {
-                console.warn(`[queue] PixVerse - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, errorMsg);
+                console.warn(
+                  `[queue] PixVerse - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                  errorMsg,
+                );
               } else {
-                console.error(`[queue] PixVerse - Error (${attempts + 1}/${maxAttemptsPixverse}):`, errorMsg);
+                console.error(
+                  `[queue] PixVerse - Error (${attempts + 1}/${maxAttemptsPixverse}):`,
+                  errorMsg,
+                );
               }
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
               throw new Error(`PixVerse: Too many network errors. ${errorMsg}`);
             }
-            if (attempts === maxAttemptsPixverse - 1) throw new Error(`PixVerse: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`);
+            if (attempts === maxAttemptsPixverse - 1)
+              throw new Error(
+                `PixVerse: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`,
+              );
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log('✅ PixVerse video completed with URL:', videoUrl);
+          console.log("✅ PixVerse video completed with URL:", videoUrl);
         } else if (videoResult?.video && videoResult.video?.url) {
           videoUrl = videoResult.video.url;
-          console.log('✅ PixVerse video completed with URL (fallback):', videoUrl);
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+          console.log(
+            "✅ PixVerse video completed with URL (fallback):",
+            videoUrl,
+          );
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           videoUrl = videoResult.output;
-          console.log('✅ PixVerse video completed with URL (output string):', videoUrl);
-        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+          console.log(
+            "✅ PixVerse video completed with URL (output string):",
+            videoUrl,
+          );
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
           videoUrl = videoResult.output[0];
-          console.log('✅ PixVerse video completed with URL (output array):', videoUrl);
+          console.log(
+            "✅ PixVerse video completed with URL (output array):",
+            videoUrl,
+          );
         } else {
-          console.error('❌ PixVerse video generation did not complete properly');
-          console.error('❌ Video result structure:', JSON.stringify(videoResult, null, 2));
-          throw new Error('PixVerse video generation did not complete in time');
+          console.error(
+            "❌ PixVerse video generation did not complete properly",
+          );
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          throw new Error("PixVerse video generation did not complete in time");
         }
-      } else if (selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) {
+      } else if (
+        selectedModel.startsWith("ltx-2.3-fast") ||
+        selectedModel.startsWith("ltx-2.3-pro")
+      ) {
         // LTX 2.3 Fast/Pro flow - queue-based polling via replicate queue endpoints
-        const ltxTierLabel = selectedModel.startsWith('ltx-2.3-pro') ? 'Pro' : 'Fast';
-        console.log(`🎬 LTX 2.3 ${ltxTierLabel} video generation started, request ID:`, result.requestId);
-        console.log('🎬 Model:', result.model);
-        console.log('🎬 History ID:', result.historyId);
+        const ltxTierLabel = selectedModel.startsWith("ltx-2.3-pro")
+          ? "Pro"
+          : "Fast";
+        console.log(
+          `🎬 LTX 2.3 ${ltxTierLabel} video generation started, request ID:`,
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
 
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
         const maxAttemptsLTX = 900; // up to 15 minutes
-        console.log(`🎬 Starting LTX 2.3 ${ltxTierLabel} polling with ${maxAttemptsLTX} attempts`);
+        console.log(
+          `🎬 Starting LTX 2.3 ${ltxTierLabel} polling with ${maxAttemptsLTX} attempts`,
+        );
 
         for (let attempts = 0; attempts < maxAttemptsLTX; attempts++) {
           try {
-            const statusRes = await api.get('/api/replicate/queue/status', {
+            const statusRes = await api.get("/api/replicate/queue/status", {
               params: { requestId: result.requestId },
-              timeout: 1200000
+              timeout: 1200000,
             });
             const status = statusRes.data?.data || statusRes.data;
-            const statusValue = String(status?.status || '').toLowerCase();
+            const statusValue = String(status?.status || "").toLowerCase();
             consecutiveErrors = 0;
 
-            if (statusValue === 'completed' || statusValue === 'success' || statusValue === 'succeeded') {
-              const resultRes = await api.get('/api/replicate/queue/result', {
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
-                timeout: 1200000
+                timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
               // mark as completed
               if (generationId) {
-                dispatch(updateActiveGeneration({
-                  id: generationId,
-                  updates: { status: 'completed', historyId: result.historyId }
-                }));
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
               }
               break;
             }
-            if (statusValue === 'failed' || statusValue === 'error') {
-              throw new Error(`LTX 2.3 ${ltxTierLabel} video generation failed`);
+            if (statusValue === "failed" || statusValue === "error") {
+              throw new Error(
+                `LTX 2.3 ${ltxTierLabel} video generation failed`,
+              );
             }
           } catch (e: any) {
             consecutiveErrors++;
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) throw e;
           }
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        if (videoResult?.videos && Array.isArray(videoResult.videos) && videoResult.videos[0]?.url) {
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
           videoUrl = videoResult.videos[0].url;
-          console.log(`✅ LTX 2.3 ${ltxTierLabel} video completed with URL:`, videoUrl);
+          console.log(
+            `✅ LTX 2.3 ${ltxTierLabel} video completed with URL:`,
+            videoUrl,
+          );
         } else if (videoResult?.video && videoResult.video?.url) {
           videoUrl = videoResult.video.url;
-        } else if (typeof videoResult?.output === 'string' && videoResult.output.startsWith('http')) {
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
           videoUrl = videoResult.output;
-        } else if (Array.isArray(videoResult?.output) && videoResult.output[0] && typeof videoResult.output[0] === 'string') {
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
           videoUrl = videoResult.output[0];
         } else {
-          console.error(`❌ LTX 2.3 ${ltxTierLabel} video generation did not complete properly`);
-          throw new Error(`LTX 2.3 ${ltxTierLabel} video generation did not complete in time`);
+          console.error(
+            `❌ LTX 2.3 ${ltxTierLabel} video generation did not complete properly`,
+          );
+          throw new Error(
+            `LTX 2.3 ${ltxTierLabel} video generation did not complete in time`,
+          );
         }
-      } else if (apiEndpoint === '/api/runway/video') {
+      } else if (apiEndpoint === "/api/runway/video") {
         // Runway video completion (only when using Runway endpoint)
-        console.log('🎬 Runway video generation started, task ID:', result.taskId);
-        console.log('🎬 Using Runway status checking for model:', selectedModel);
+        console.log(
+          "🎬 Runway video generation started, task ID:",
+          result.taskId,
+        );
+        console.log(
+          "🎬 Using Runway status checking for model:",
+          selectedModel,
+        );
         const videoResult = await waitForRunwayVideoCompletion(result.taskId);
 
-        if (videoResult.status === 'SUCCEEDED' && videoResult.output && videoResult.output.length > 0) {
+        if (
+          videoResult.status === "SUCCEEDED" &&
+          videoResult.output &&
+          videoResult.output.length > 0
+        ) {
           videoUrl = videoResult.output[0];
-          console.log('✅ Runway video completed, URL:', videoUrl);
-        } else if (videoResult.status === 'FAILED') {
-          console.error('❌ Runway video generation failed:', videoResult);
-          throw new Error('Video generation failed');
+          console.log("✅ Runway video completed, URL:", videoUrl);
+        } else if (videoResult.status === "FAILED") {
+          console.error("❌ Runway video generation failed:", videoResult);
+          throw new Error("Video generation failed");
         } else {
-          console.error('❌ Unexpected Runway status:', videoResult);
-          throw new Error('Unexpected video generation status');
+          console.error("❌ Unexpected Runway status:", videoResult);
+          throw new Error("Unexpected video generation status");
         }
       } else {
         // Non-Runway providers (FAL/Replicate/MiniMax) handle completion via backend/history.
         // If backend returned an immediate URL within result, prefer it.
         try {
-          const maybeUrl = (result?.video?.url) || (Array.isArray(result?.videos) && result.videos[0]?.url) || result?.output || result?.url;
-          if (typeof maybeUrl === 'string' && maybeUrl.startsWith('http')) {
+          const maybeUrl =
+            result?.video?.url ||
+            (Array.isArray(result?.videos) && result.videos[0]?.url) ||
+            result?.output ||
+            result?.url;
+          if (typeof maybeUrl === "string" && maybeUrl.startsWith("http")) {
             videoUrl = maybeUrl;
-            console.log('✅ Non-Runway provider returned video URL immediately:', videoUrl);
+            console.log(
+              "✅ Non-Runway provider returned video URL immediately:",
+              videoUrl,
+            );
           } else {
-            console.log('ℹ️ Non-Runway provider; awaiting history refresh for final URL');
+            console.log(
+              "ℹ️ Non-Runway provider; awaiting history refresh for final URL",
+            );
           }
-        } catch { }
+        } catch {}
       }
 
       // Handle video data from backend response
@@ -4931,71 +7133,75 @@ const InputBox = (props: InputBoxProps = {}) => {
       // Check if we have video data from MiniMax response (prefer this over videoUrl)
       if ((window as any).miniMaxVideoData) {
         const videoData = (window as any).miniMaxVideoData;
-        console.log('🎬 Using video data from backend response:', videoData);
+        console.log("🎬 Using video data from backend response:", videoData);
 
         firebaseVideo = {
           id: videoData.id,
           url: videoData.url, // This is the Zata URL
           firebaseUrl: videoData.url, // Same as URL since it's already in our storage
-          originalUrl: videoData.originalUrl
+          originalUrl: videoData.originalUrl,
         };
 
-        console.log('✅ Video data processed from backend:', firebaseVideo);
+        console.log("✅ Video data processed from backend:", firebaseVideo);
 
         // Clean up the temporary storage
         delete (window as any).miniMaxVideoData;
       } else if (videoUrl) {
         // Fallback: We have a video URL but no structured data
-        console.log('🎬 Using fallback video URL processing...');
+        console.log("🎬 Using fallback video URL processing...");
         const videoToUpload = {
           id: Date.now().toString(),
           url: videoUrl,
-          originalUrl: videoUrl
+          originalUrl: videoUrl,
         };
 
         // IMPORTANT: Avoid browser-side fetch of third-party URL (CORS).
         // If URL already points to our storage (returned from backend with history_id), use it directly.
-        const isOurStorage = /zata\.ai\//i.test(videoUrl) || /firebasestorage\.googleapis\.com/i.test(videoUrl);
+        const isOurStorage =
+          /zata\.ai\//i.test(videoUrl) ||
+          /firebasestorage\.googleapis\.com/i.test(videoUrl);
         try {
           if (isOurStorage) {
             firebaseVideo = {
               id: videoToUpload.id,
               url: videoUrl,
               firebaseUrl: videoUrl,
-              originalUrl: videoUrl
+              originalUrl: videoUrl,
             };
           } else {
             // Fallback to client upload utility (may CORS-fail; we catch and keep provider URL)
             firebaseVideo = await uploadGeneratedVideo(videoToUpload);
           }
-          console.log('✅ Video processed via fallback:', firebaseVideo);
+          console.log("✅ Video processed via fallback:", firebaseVideo);
         } catch (uploadError) {
-          console.error('❌ Video upload to Firebase failed:', uploadError);
+          console.error("❌ Video upload to Firebase failed:", uploadError);
           // Continue with original URL if Firebase upload fails
           firebaseVideo = {
             id: videoToUpload.id,
             url: videoUrl,
             firebaseUrl: videoUrl,
-            originalUrl: videoUrl
+            originalUrl: videoUrl,
           };
         }
       } else {
         // No videoUrl - video generation succeeded but file retrieval failed
         // The video should already be stored in the database by the backend
-        console.log('✅ Video generation completed. Video should be available in database.');
+        console.log(
+          "✅ Video generation completed. Video should be available in database.",
+        );
         firebaseVideo = {
           id: result.taskId || Date.now().toString(),
-          url: '', // Will be populated from database
-          firebaseUrl: '', // Will be populated from database
-          originalUrl: '' // Will be populated from database
+          url: "", // Will be populated from database
+          firebaseUrl: "", // Will be populated from database
+          originalUrl: "", // Will be populated from database
         };
       }
 
       // Backend handles all history updates - no frontend Redux update needed
-      console.log('🎬 Video generation completed successfully');
-      console.log('🎬 History ID:', result.historyId);
-      console.log('🎬 Model:', selectedModel);
-      console.log('🎬 Video data processed:', firebaseVideo);
+      console.log("🎬 Video generation completed successfully");
+      console.log("🎬 History ID:", result.historyId);
+      console.log("🎬 Model:", selectedModel);
+      console.log("🎬 Video data processed:", firebaseVideo);
 
       // Update queue with completed video
       if (generationId) {
@@ -5003,14 +7209,27 @@ const InputBox = (props: InputBoxProps = {}) => {
         let storagePath = (firebaseVideo as any)?.storagePath;
         if (result.historyId && !storagePath) {
           try {
-            const entryRes = await api.get(`/api/generations/${result.historyId}`);
-            const entry = entryRes?.data?.data?.item || entryRes?.data?.item || entryRes?.data?.data || entryRes?.data;
-            if (entry?.videos && Array.isArray(entry.videos) && entry.videos[0]?.storagePath) {
+            const entryRes = await api.get(
+              `/api/generations/${result.historyId}`,
+            );
+            const entry =
+              entryRes?.data?.data?.item ||
+              entryRes?.data?.item ||
+              entryRes?.data?.data ||
+              entryRes?.data;
+            if (
+              entry?.videos &&
+              Array.isArray(entry.videos) &&
+              entry.videos[0]?.storagePath
+            ) {
               storagePath = entry.videos[0].storagePath;
-              console.log('[queue] Fetched storagePath from backend:', storagePath);
+              console.log(
+                "[queue] Fetched storagePath from backend:",
+                storagePath,
+              );
             }
           } catch (e) {
-            console.warn('[queue] Failed to fetch entry for storagePath:', e);
+            console.warn("[queue] Failed to fetch entry for storagePath:", e);
           }
         }
 
@@ -5019,44 +7238,69 @@ const InputBox = (props: InputBoxProps = {}) => {
           const zataMatch = firebaseVideo.url.match(/devstoragev1\/(.+)$/i);
           if (zataMatch) {
             storagePath = zataMatch[1];
-            console.log('[queue] Extracted storagePath from URL:', storagePath);
+            console.log("[queue] Extracted storagePath from URL:", storagePath);
           }
         }
 
-        const videoArray = firebaseVideo?.url ? [{
-          id: firebaseVideo.id || generationId,
-          url: firebaseVideo.url,
-          originalUrl: firebaseVideo.originalUrl || firebaseVideo.url,
-          firebaseUrl: firebaseVideo.firebaseUrl || firebaseVideo.url,
-          ...(storagePath ? { storagePath } : {}),
-        }] : [];
-        console.log('[queue] Video generation completed, updating active generation:', { generationId, historyId: result.historyId, videoCount: videoArray.length, hasStoragePath: !!storagePath });
-        dispatch(updateActiveGeneration({
-          id: generationId,
-          updates: {
-            status: 'completed',
-            videos: videoArray,
-            historyId: result.historyId
-          }
-        }));
+        const videoArray = firebaseVideo?.url
+          ? [
+              {
+                id: firebaseVideo.id || generationId,
+                url: firebaseVideo.url,
+                originalUrl: firebaseVideo.originalUrl || firebaseVideo.url,
+                firebaseUrl: firebaseVideo.firebaseUrl || firebaseVideo.url,
+                ...(storagePath ? { storagePath } : {}),
+              },
+            ]
+          : [];
+        console.log(
+          "[queue] Video generation completed, updating active generation:",
+          {
+            generationId,
+            historyId: result.historyId,
+            videoCount: videoArray.length,
+            hasStoragePath: !!storagePath,
+          },
+        );
+        dispatch(
+          updateActiveGeneration({
+            id: generationId,
+            updates: {
+              status: "completed",
+              videos: videoArray,
+              historyId: result.historyId,
+            },
+          }),
+        );
       }
 
       // Update local preview to completed with a thumbnail frame if available
       try {
-        const previewImageUrl = firebaseVideo?.url || firebaseVideo?.firebaseUrl || '';
-        setLocalVideoPreview(prev => prev ? ({
-          ...prev,
-          status: 'completed',
-          images: [{ id: 'video-thumb', url: previewImageUrl, originalUrl: previewImageUrl }] as any,
-          timestamp: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        } as any) : prev);
-      } catch { }
+        const previewImageUrl =
+          firebaseVideo?.url || firebaseVideo?.firebaseUrl || "";
+        setLocalVideoPreview((prev) =>
+          prev
+            ? ({
+                ...prev,
+                status: "completed",
+                images: [
+                  {
+                    id: "video-thumb",
+                    url: previewImageUrl,
+                    originalUrl: previewImageUrl,
+                  },
+                ] as any,
+                timestamp: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+              } as any)
+            : prev,
+        );
+      } catch {}
 
       // Confirm credit transaction as successful (skip for WAN 2.2 Animate Replace)
       if (transactionId) {
         await handleGenerationSuccess(transactionId);
-        console.log('✅ Credits confirmed for successful generation');
+        console.log("✅ Credits confirmed for successful generation");
       }
 
       // Clear all inputs and configurations
@@ -5067,25 +7311,51 @@ const InputBox = (props: InputBoxProps = {}) => {
         await refreshSingleGeneration(result.historyId);
       } else {
         // Fallback to full refresh if no historyId
+        const fallbackFilters: any = { mode: "video" };
         dispatch(clearFilters());
-        dispatch(loadHistory({
-          filters: { mode: 'video' } as any,
-          paginationParams: { limit: 20 },
-          requestOrigin: 'page',
-          expectedType: 'text-to-video',
-          debugTag: `InputBox:refresh:video-mode:${Date.now()}`
-        } as any));
+        dispatch(setFilters(fallbackFilters));
+        dispatch(
+          loadHistory({
+            filters: fallbackFilters as any,
+            backendFilters: fallbackFilters as any,
+            paginationParams: { limit: 20 },
+            requestOrigin: "page",
+            expectedType: "video",
+            debugTag: `InputBox:refresh:video-mode:${Date.now()}`,
+          } as any),
+        );
       }
 
       // Also refresh the extra video entries to ensure text-to-video entries appear
       setTimeout(async () => {
         try {
-          const [textToVideo, imageToVideoHyphen, imageToVideoUnderscore, videoToVideoHyphen, videoToVideoUnderscore] = await Promise.all([
-            getHistoryEntries({ generationType: 'text-to-video' as any }, { limit: 20 }),
-            getHistoryEntries({ generationType: 'image-to-video' as any }, { limit: 20 }),
-            getHistoryEntries({ generationType: 'image_to_video' as any }, { limit: 20 }),
-            getHistoryEntries({ generationType: 'video-to-video' as any }, { limit: 20 }),
-            getHistoryEntries({ generationType: 'video_to_video' as any }, { limit: 20 })
+          const [
+            textToVideo,
+            imageToVideoHyphen,
+            imageToVideoUnderscore,
+            videoToVideoHyphen,
+            videoToVideoUnderscore,
+          ] = await Promise.all([
+            getHistoryEntries(
+              { generationType: "text-to-video" as any },
+              { limit: 20 },
+            ),
+            getHistoryEntries(
+              { generationType: "image-to-video" as any },
+              { limit: 20 },
+            ),
+            getHistoryEntries(
+              { generationType: "image_to_video" as any },
+              { limit: 20 },
+            ),
+            getHistoryEntries(
+              { generationType: "video-to-video" as any },
+              { limit: 20 },
+            ),
+            getHistoryEntries(
+              { generationType: "video_to_video" as any },
+              { limit: 20 },
+            ),
           ]);
 
           const allResults = [
@@ -5093,7 +7363,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             ...(imageToVideoHyphen.data || []),
             ...(imageToVideoUnderscore.data || []),
             ...(videoToVideoHyphen.data || []),
-            ...(videoToVideoUnderscore.data || [])
+            ...(videoToVideoUnderscore.data || []),
           ];
 
           const byId: Record<string, any> = {};
@@ -5103,35 +7373,50 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           const combined = Object.values(byId);
           const sortedCombined = combined.sort((a: any, b: any) => {
-            const timestampA = new Date(a.timestamp || a.createdAt || 0).getTime();
-            const timestampB = new Date(b.timestamp || b.createdAt || 0).getTime();
+            const timestampA = new Date(
+              a.timestamp || a.createdAt || 0,
+            ).getTime();
+            const timestampB = new Date(
+              b.timestamp || b.createdAt || 0,
+            ).getTime();
             return timestampB - timestampA;
           });
 
           setExtraVideoEntries(sortedCombined);
-          console.log('[VideoPage] refreshed extra video entries after generation:', sortedCombined.length);
+          console.log(
+            "[VideoPage] refreshed extra video entries after generation:",
+            sortedCombined.length,
+          );
         } catch (e) {
-          console.error('[VideoPage] failed to refresh extra video entries:', e);
+          console.error(
+            "[VideoPage] failed to refresh extra video entries:",
+            e,
+          );
         }
       }, 1000); // Small delay to ensure backend has updated
 
-      try { const toast = (await import('react-hot-toast')).default; toast.success('Video generated successfully!'); } catch { }
-
+      try {
+        const toast = (await import("react-hot-toast")).default;
+        toast.success("Video generated successfully!");
+      } catch {}
     } catch (error: any) {
-      console.error('❌ Video generation failed:', error);
+      console.error("❌ Video generation failed:", error);
 
       // Extract structured error info if available
-      let errorMessage = error instanceof Error ? error.message : 'Video generation failed';
-      let errorTitle = 'Generation Failed';
+      const terminalMessage = getTerminalFalErrorMessage(error);
+      let errorMessage =
+        terminalMessage ||
+        (error instanceof Error ? error.message : "Video generation failed");
+      let errorTitle = "Generation Failed";
       let errorCode: string | undefined;
 
       // Handle Axios/Backend API errors
-      if (error?.response?.data) {
+      if (!terminalMessage && error?.response?.data) {
         const apiData = error.response.data;
         if (apiData.message) errorMessage = apiData.message;
         if (apiData.data?.title) errorTitle = apiData.data.title;
         if (apiData.data?.code) errorCode = apiData.data.code;
-      } else if (error?.message) {
+      } else if (!terminalMessage && error?.message) {
         // Fallback if no response data
         errorMessage = error.message;
       }
@@ -5142,31 +7427,25 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
 
       setError(errorMessage);
-      setLocalVideoPreview(prev => prev ? ({ ...prev, status: 'failed' } as any) : prev);
+      setLocalVideoPreview((prev) =>
+        prev ? ({ ...prev, status: "failed" } as any) : prev,
+      );
 
-      // Update queue with failed status
-      if (generationId) {
-        dispatch(updateActiveGeneration({
-          id: generationId,
-          updates: {
-            status: 'failed',
-            error: errorMessage
-          }
-        }));
-      }
+      // Stop and remove the queue item on failure.
+      stopActiveGeneration(generationId, errorMessage);
 
       // Handle credit transaction failure (skip for WAN 2.2 Animate Replace)
       if (transactionId) {
         try {
           await handleGenerationFailure(transactionId);
-          console.log('✅ Credits rolled back for failed generation');
+          console.log("✅ Credits rolled back for failed generation");
         } catch (creditError) {
-          console.error('❌ Failed to rollback credits:', creditError);
+          console.error("❌ Failed to rollback credits:", creditError);
         }
       }
 
       try {
-        const toast = (await import('react-hot-toast')).default;
+        const toast = (await import("react-hot-toast")).default;
 
         // Custom error toast
         toast.error(
@@ -5179,29 +7458,29 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </span>
               )}
             </div>
-            <p className="text-sm text-white/80 leading-snug">
-              {errorMessage}
-            </p>
+            <p className="text-sm text-white/80 leading-snug">{errorMessage}</p>
           </div>,
           {
             duration: 6000,
             style: {
-              background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(153, 27, 27, 0.15) 100%)',
-              border: '1px solid rgba(220, 38, 38, 0.3)',
-              borderRadius: '12px',
-              padding: '12px 16px',
-              backdropFilter: 'blur(10px)',
-              maxWidth: '400px',
+              background:
+                "linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(153, 27, 27, 0.15) 100%)",
+              border: "1px solid rgba(220, 38, 38, 0.3)",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              backdropFilter: "blur(10px)",
+              maxWidth: "400px",
             },
-          } as any
+          } as any,
         );
-      } catch { }
+      } catch {}
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const newLocal = "pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50";
+  const newLocal =
+    "pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50";
   // (Removed duplicate hook declaration; initial load handled earlier)
 
   // Note: applySearch and live search logic are now handled by HistoryControls component
@@ -5215,9 +7494,10 @@ const InputBox = (props: InputBoxProps = {}) => {
         <div className="flex items-center justify-center py-20">
           <div className="text-white/70 text-sm">Loading your workspace...</div>
         </div>
-      ) : user && activeFeature !== 'Edit' ? (
+      ) : user && activeFeature !== "Edit" ? (
         <HistorySection
           loading={loading}
+          hasCompletedInitialHistoryLoad={hasCompletedInitialHistoryLoad}
           showHistory={showHistory}
           historyEntries={historyEntriesForDisplay as any[]}
           hasMore={hasMore}
@@ -5239,10 +7519,11 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed md:bottom-6 bottom-1 left-1/2 -translate-x-1/2 md:w-[90%] w-[97%] md:max-w-[900px] max-w-[97%] z-[50] h-auto">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 p-2 space-y-4 transition-all duration-300 w-full ${isInputBoxHovered
-              ? 'bg-black/40 ring-white/30 shadow-2xl scale-[1.01]'
-              : 'bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl'
-            }`}
+          className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 p-2 space-y-4 transition-all duration-300 w-full ${
+            isInputBoxHovered
+              ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
+              : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
+          }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
           onMouseLeave={() => setIsInputBoxHovered(false)}
           onClick={(e) => {
@@ -5279,17 +7560,25 @@ const InputBox = (props: InputBoxProps = {}) => {
             }
 
             // 2. Handle Dragged URLs (e.g. from History)
-            const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            const url =
+              e.dataTransfer.getData("text/uri-list") ||
+              e.dataTransfer.getData("text/plain");
             if (url) {
               // Check if Video
-              if (url.match(/\.(mp4|webm|ogg|mov)$/i) || url.startsWith('data:video/')) {
+              if (
+                url.match(/\.(mp4|webm|ogg|mov)$/i) ||
+                url.startsWith("data:video/")
+              ) {
                 setUploadedVideo(url);
-                toast.success('Video added from URL');
+                toast.success("Video added from URL");
               }
               // Check if Image
-              else if (url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || url.startsWith('data:image/')) {
-                setUploadedImages(prev => [...prev, url].slice(0, 4));
-                toast.success('Image added from URL');
+              else if (
+                url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) ||
+                url.startsWith("data:image/")
+              ) {
+                setUploadedImages((prev) => [...prev, url].slice(0, 4));
+                toast.success("Image added from URL");
               }
             }
           }}
@@ -5298,7 +7587,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           <div
             className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 transition-opacity duration-700 blur-xl pointer-events-none rounded-lg"
             style={{
-              opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0
+              opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0,
             }}
           ></div>
           {/* Input Row: prompt + actions */}
@@ -5322,7 +7611,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                 currentModelCapabilities={currentModelCapabilities}
                 selectedCameraMovements={selectedCameraMovements}
                 setSelectedCameraMovements={setSelectedCameraMovements}
-                onAddMovement={(text) => setPrompt(prev => prev + (prev.endsWith(' ') ? '' : ' ') + text)}
+                onAddMovement={(text) =>
+                  setPrompt(
+                    (prev) => prev + (prev.endsWith(" ") ? "" : " ") + text,
+                  )
+                }
                 references={references}
                 removeReference={removeReference}
                 setUploadModalType={setUploadModalType}
@@ -5339,20 +7632,32 @@ const InputBox = (props: InputBoxProps = {}) => {
           <div className="">
             {/* Uploaded Images */}
             {(() => {
-              const displayImages = (selectedModel.includes("veo3.1") || selectedModel === "kling-o1" || (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) ? uploadedImages.slice(0, 2) : uploadedImages;
+              const displayImages =
+                selectedModel.includes("veo3.1") ||
+                selectedModel === "kling-o1" ||
+                (selectedModel.includes("seedance") &&
+                  !selectedModel.includes("pro-fast") &&
+                  !selectedModel.includes("i2v"))
+                  ? uploadedImages.slice(0, 2)
+                  : uploadedImages;
               const extraLastFrame =
                 !!lastFrameImage &&
-                (
-                  selectedModel.includes("veo3.1") ||
+                (selectedModel.includes("veo3.1") ||
                   selectedModel === "kling-o1" ||
                   selectedModel.startsWith("ltx-2.3-fast") ||
                   selectedModel.startsWith("ltx-2.3-pro") ||
-                  (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v')) ||
-                  (selectedModel === "MiniMax-Hailuo-02" && ["768P", "1080P"].includes(selectedResolution) && currentModelCapabilities.supportsImageToVideo)
-                );
-              return (displayImages.length > 0 || extraLastFrame) ? (
+                  (selectedModel.includes("seedance") &&
+                    !selectedModel.includes("pro-fast") &&
+                    !selectedModel.includes("i2v")) ||
+                  (selectedModel === "MiniMax-Hailuo-02" &&
+                    ["768P", "1080P"].includes(selectedResolution) &&
+                    currentModelCapabilities.supportsImageToVideo));
+              return displayImages.length > 0 || extraLastFrame ? (
                 <div className="md:mb-0 mb-3">
-                  <div className="text-xs text-white/60 mb-1">Uploaded Images ({displayImages.length + (extraLastFrame ? 1 : 0)})</div>
+                  <div className="text-xs text-white/60 mb-1">
+                    Uploaded Images (
+                    {displayImages.length + (extraLastFrame ? 1 : 0)})
+                  </div>
                   <div className="flex gap-2 flex-wrap">
                     {displayImages.map((image, index) => (
                       <div key={index} className="relative group">
@@ -5362,8 +7667,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setAssetViewer({
                               isOpen: true,
                               assetUrl: image,
-                              assetType: 'image',
-                              title: `Uploaded Image ${index + 1}`
+                              assetType: "image",
+                              title: `Uploaded Image ${index + 1}`,
                             });
                           }}
                         >
@@ -5371,18 +7676,31 @@ const InputBox = (props: InputBoxProps = {}) => {
                             src={image}
                             alt={`Uploaded ${index + 1}`}
                             className="w-full h-full object-cover"
-                            onLoad={() => console.log('Video generation - image loaded successfully:', image)}
-                            onError={(e) => console.error('Video generation - image failed to load:', image, e)}
+                            onLoad={() =>
+                              console.log(
+                                "Video generation - image loaded successfully:",
+                                image,
+                              )
+                            }
+                            onError={(e) =>
+                              console.error(
+                                "Video generation - image failed to load:",
+                                image,
+                                e,
+                              )
+                            }
                           />
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                            {index === 0 ? 'First Frame' : `Image ${index + 1}`}
+                            {index === 0 ? "First Frame" : `Image ${index + 1}`}
                           </div>
                         </div>
                         <button
                           aria-label="Remove image"
                           className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
                           onClick={() => {
-                            setUploadedImages(prev => prev.filter((_, i) => i !== index));
+                            setUploadedImages((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
                           }}
                         >
                           ×
@@ -5399,8 +7717,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setAssetViewer({
                               isOpen: true,
                               assetUrl: lastFrameImage,
-                              assetType: 'image',
-                              title: 'Last Frame Image'
+                              assetType: "image",
+                              title: "Last Frame Image",
                             });
                           }}
                         >
@@ -5409,7 +7727,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                             alt="Last Frame"
                             className="w-full h-full object-cover"
                           />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">Last Frame</div>
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                            Last Frame
+                          </div>
                         </div>
                         <button
                           aria-label="Remove last frame"
@@ -5422,7 +7742,6 @@ const InputBox = (props: InputBoxProps = {}) => {
                         </button>
                       </div>
                     )}
-
                   </div>
                 </div>
               ) : null;
@@ -5439,15 +7758,19 @@ const InputBox = (props: InputBoxProps = {}) => {
                       setAssetViewer({
                         isOpen: true,
                         assetUrl: uploadedVideo,
-                        assetType: 'video',
-                        title: 'Uploaded Video'
+                        assetType: "video",
+                        title: "Uploaded Video",
                       });
                     }}
                   >
                     {(() => {
                       // Handle blob URLs directly, otherwise use proxy
-                      const isBlob = uploadedVideo.startsWith('blob:') || uploadedVideo.startsWith('data:');
-                      const videoSrc = isBlob ? uploadedVideo : toFrontendProxyMediaUrl(uploadedVideo);
+                      const isBlob =
+                        uploadedVideo.startsWith("blob:") ||
+                        uploadedVideo.startsWith("data:");
+                      const videoSrc = isBlob
+                        ? uploadedVideo
+                        : toFrontendProxyMediaUrl(uploadedVideo);
 
                       return (
                         <video
@@ -5459,7 +7782,14 @@ const InputBox = (props: InputBoxProps = {}) => {
                           preload="metadata"
                           onMouseEnter={(e) => {
                             const video = e.currentTarget;
-                            video.play().catch(err => console.error('Video preview play failed:', err));
+                            video
+                              .play()
+                              .catch((err) =>
+                                console.error(
+                                  "Video preview play failed:",
+                                  err,
+                                ),
+                              );
                           }}
                           onMouseLeave={(e) => {
                             const video = e.currentTarget;
@@ -5495,7 +7825,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             {/* Uploaded Character Image (for WAN 2.2 Animate Replace) */}
             {uploadedCharacterImage && (
               <div className="mb-3">
-                <div className="text-xs text-white/60 mb-2">Character Image</div>
+                <div className="text-xs text-white/60 mb-2">
+                  Character Image
+                </div>
                 <div className="relative group">
                   <div
                     className="w-32 h-32 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
@@ -5503,8 +7835,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                       setAssetViewer({
                         isOpen: true,
                         assetUrl: uploadedCharacterImage,
-                        assetType: 'image',
-                        title: 'Character Image'
+                        assetType: "image",
+                        title: "Character Image",
                       });
                     }}
                   >
@@ -5538,8 +7870,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   generationMode={generationMode}
-                  selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
-                  selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
+                  selectedDuration={
+                    selectedModel.includes("MiniMax")
+                      ? `${selectedMiniMaxDuration}s`
+                      : `${duration}s`
+                  }
+                  selectedResolution={(() => {
+                    const resolutionForCredits =
+                      selectedModel.includes("veo3") ||
+                      selectedModel.includes("sora2")
+                        ? selectedQuality
+                        : creditsResolution;
+                    return resolutionForCredits
+                      ? String(resolutionForCredits).toLowerCase()
+                      : undefined;
+                  })()}
                   activeFeature={activeFeature}
                   onCloseOtherDropdowns={() => {
                     setCloseFrameSizeDropdown(true);
@@ -5551,65 +7896,82 @@ const InputBox = (props: InputBoxProps = {}) => {
                       setCloseCameraMotionDropdown(false);
                     }, 100);
                   }}
-                  onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
+                  onCloseThisDropdown={
+                    closeModelsDropdown ? () => {} : undefined
+                  }
                 />
                 {/* Audio toggle button for models that support it (mobile only) */}
-                {((selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) ||
-                  selectedModel.includes('seedance-1.5') ||
-                  (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) ||
-                  selectedModel.includes('ltx2') ||
-                  selectedModel.includes('ltx-2.3-fast') ||
-                  selectedModel.includes('ltx-2.3-pro') ||
-                  (selectedModel.includes("veo3.1") && !(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1"))) ||
-                  (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1"))) && (
-                    <button
-                      onClick={() => setGenerateAudio(v => !v)}
-                      className={`group md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative flex-shrink-0 ${generateAudio
-                        ? 'bg-transparent text-white '
-                        : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                        }`}
-                    >
-                      <div className="relative">
-                        {generateAudio ? <Volume2 className="w-4 h-4 md:w-5 md:h-5" /> : <VolumeX className="w-4 h-4 md:w-5 md:h-5" />}
-                        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                          {generateAudio ? 'Audio: On' : 'Audio: Off'}
-                        </div>
+                {(selectedModel === "kling-2.6-pro" ||
+                  selectedModel.startsWith("kling-v3") ||
+                  selectedModel.includes("seedance-1.5") ||
+                  (selectedModel.includes("sora2") &&
+                    !selectedModel.includes("v2v")) ||
+                  selectedModel.includes("ltx2") ||
+                  selectedModel.includes("ltx-2.3-fast") ||
+                  selectedModel.includes("ltx-2.3-pro") ||
+                  (selectedModel.includes("veo3.1") &&
+                    !selectedModel.includes("veo3.1-lite") &&
+                    !(
+                      activeFeature === "Lipsync" &&
+                      selectedModel.includes("veo3.1")
+                    )) ||
+                  (selectedModel.includes("veo3") &&
+                    !selectedModel.includes("veo3.1"))) && (
+                  <button
+                    onClick={() => setGenerateAudio((v) => !v)}
+                    className={`group md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative flex-shrink-0 ${
+                      generateAudio
+                        ? "bg-transparent text-white "
+                        : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                    }`}
+                  >
+                    <div className="relative">
+                      {generateAudio ? (
+                        <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
+                      ) : (
+                        <VolumeX className="w-4 h-4 md:w-5 md:h-5" />
+                      )}
+                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                        {generateAudio ? "Audio: On" : "Audio: Off"}
                       </div>
-                    </button>
-                  )}
-                {/* Audio upload button for WAN 2.5 models (mobile only) */}
-                {selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2") && (
-                  <div className="relative flex-shrink-0">
-                    <input
-                      type="file"
-                      accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
-                      onChange={handleAudioUpload}
-                      className="hidden"
-                      id="audio-upload-wan-mobile"
-                    />
-                    <label
-                      htmlFor="audio-upload-wan-mobile"
-                      className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
-                    >
-                      <Music className="md:w-3.5 w-3 h-3 md:h-3.5" />
-                      {uploadedAudio ? 'Uploaded' : 'Audio'}
-                    </label>
-                    {uploadedAudio && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUploadedAudio("");
-                          toast.success('Audio file removed');
-                        }}
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
-                        title="Remove audio"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  </button>
                 )}
-                {selectedModel.startsWith('ltx-2.3-pro') && (
+                {/* Audio upload button for WAN 2.5 models (mobile only) */}
+                {selectedModel.includes("wan-2.5") &&
+                  selectedModel !== "wan-2.2-animate-replace" &&
+                  !selectedModel.includes("wan-2.2") && (
+                    <div className="relative flex-shrink-0">
+                      <input
+                        type="file"
+                        accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                        onChange={handleAudioUpload}
+                        className="hidden"
+                        id="audio-upload-wan-mobile"
+                      />
+                      <label
+                        htmlFor="audio-upload-wan-mobile"
+                        className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                      >
+                        <Music className="md:w-3.5 w-3 h-3 md:h-3.5" />
+                        {uploadedAudio ? "Uploaded" : "Audio"}
+                      </label>
+                      {uploadedAudio && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedAudio("");
+                            toast.success("Audio file removed");
+                          }}
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                          title="Remove audio"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                {selectedModel.startsWith("ltx-2.3-pro") && (
                   <div className="relative flex-shrink-0">
                     <input
                       type="file"
@@ -5623,11 +7985,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                       className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
                     >
                       <Music className="md:w-3.5 w-3 h-3 md:h-3.5" />
-                      {uploadedAudio ? 'Audio OK' : 'Audio'}
+                      {uploadedAudio ? "Audio OK" : "Audio"}
                     </label>
                   </div>
                 )}
-                {selectedModel.startsWith('ltx-2.3-pro') && (
+                {selectedModel.startsWith("ltx-2.3-pro") && (
                   <div className="relative flex-shrink-0">
                     <input
                       type="file"
@@ -5641,25 +8003,44 @@ const InputBox = (props: InputBoxProps = {}) => {
                       className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
                     >
                       <FilePlay className="md:w-3.5 w-3 h-3 md:h-3.5" />
-                      {uploadedVideo ? 'Video OK' : 'Video'}
+                      {uploadedVideo ? "Video OK" : "Video"}
                     </label>
                   </div>
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 pt-4">
                 <div className="text-white/80 md:text-sm text-xs">
-                  Total credits: <span className="font-semibold">{liveCreditCost}</span>
+                  Total credits:{" "}
+                  <span className="font-semibold">{liveCreditCost}</span>
                 </div>
                 <button
                   onClick={handleGenerate}
                   disabled={(() => {
-                    const disabled = runningGenerationsCount >= 4 || !prompt.trim() ||
-                      (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && !selectedModel.includes('ltx-2.3-fast') && uploadedImages.length === 0) ||
+                    const disabled =
+                      runningGenerationsCount >= 4 ||
+                      !prompt.trim() ||
+                      (generationMode === "image_to_video" &&
+                        selectedModel !== "S2V-01" &&
+                        !selectedModel.includes("wan-2.5") &&
+                        !selectedModel.startsWith("kling-") &&
+                        selectedModel !== "gen4_turbo" &&
+                        selectedModel !== "gen3a_turbo" &&
+                        !selectedModel.includes("ltx-2.3-fast") &&
+                        uploadedImages.length === 0) ||
                       (generationMode === "video_to_video" && !uploadedVideo) ||
-                      (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
-                      (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
-                      (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) ||
-                      (generationMode === "image_to_video" && selectedModel.includes("wan-2.5") && uploadedImages.length === 0);
+                      (generationMode === "image_to_video" &&
+                        selectedModel === "I2V-01-Director" &&
+                        uploadedImages.length === 0) ||
+                      (generationMode === "image_to_video" &&
+                        selectedModel === "S2V-01" &&
+                        references.length === 0) ||
+                      (generationMode === "image_to_video" &&
+                        selectedModel === "MiniMax-Hailuo-02" &&
+                        selectedResolution === "512P" &&
+                        uploadedImages.length === 0) ||
+                      (generationMode === "image_to_video" &&
+                        selectedModel.includes("wan-2.5") &&
+                        uploadedImages.length === 0);
                     return disabled;
                   })()}
                   className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white md:px-4 px-2 md:py-2.5 py-1.5 rounded-lg md:text-sm text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
@@ -5676,8 +8057,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                 selectedModel={selectedModel}
                 onModelChange={handleModelChange}
                 generationMode={generationMode}
-                selectedDuration={selectedModel.includes("MiniMax") ? `${selectedMiniMaxDuration}s` : `${duration}s`}
-                selectedResolution={(creditsResolution as any) ? String(creditsResolution).toLowerCase() : undefined}
+                selectedDuration={
+                  selectedModel.includes("MiniMax")
+                    ? `${selectedMiniMaxDuration}s`
+                    : `${duration}s`
+                }
+                selectedResolution={(() => {
+                  const resolutionForCredits =
+                    selectedModel.includes("veo3") ||
+                    selectedModel.includes("sora2")
+                      ? selectedQuality
+                      : creditsResolution;
+                  return resolutionForCredits
+                    ? String(resolutionForCredits).toLowerCase()
+                    : undefined;
+                })()}
                 activeFeature={activeFeature}
                 onCloseOtherDropdowns={() => {
                   // Close other dropdowns
@@ -5690,17 +8084,19 @@ const InputBox = (props: InputBoxProps = {}) => {
                     setCloseCameraMotionDropdown(false);
                   }, 100);
                 }}
-                onCloseThisDropdown={closeModelsDropdown ? () => { } : undefined}
+                onCloseThisDropdown={closeModelsDropdown ? () => {} : undefined}
               />
-
 
               {/* Dynamic Controls Based on Model Capabilities */}
               {(() => {
                 // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
                 // MUST BE FIRST CHECK to prevent other controls from showing
-                const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" ||
-                  (activeFeature === 'Animate' && selectedModel &&
-                    (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
+                const isWanAnimateReplace =
+                  selectedModel === "wan-2.2-animate-replace" ||
+                  (activeFeature === "Animate" &&
+                    selectedModel &&
+                    (selectedModel.includes("wan-2.2") ||
+                      selectedModel.includes("animate-replace")));
 
                 if (isWanAnimateReplace) {
                   return (
@@ -5710,14 +8106,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <div className="relative">
                           <select
                             value={wanAnimateResolution}
-                            onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
+                            onChange={(e) =>
+                              setWanAnimateResolution(
+                                e.target.value as "720" | "480",
+                              )
+                            }
                             className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
                           >
                             <option value="720">720p</option>
                             <option value="480">480p</option>
                           </select>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              className="text-white/60"
+                            >
                               <path d="M6 9l6 6 6-6" />
                             </svg>
                           </div>
@@ -5726,14 +8133,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <div className="relative">
                           <select
                             value={wanAnimateRefertNum}
-                            onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
+                            onChange={(e) =>
+                              setWanAnimateRefertNum(
+                                Number(e.target.value) as 1 | 5,
+                              )
+                            }
                             className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
                           >
                             <option value="1">Ref Frames: 1</option>
                             <option value="5">Ref Frames: 5</option>
                           </select>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              className="text-white/60"
+                            >
                               <path d="M6 9l6 6 6-6" />
                             </svg>
                           </div>
@@ -5742,10 +8160,16 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <div className="relative">
                           <input
                             type="number"
-                            value={wanAnimateSeed || ''}
+                            value={wanAnimateSeed || ""}
                             onChange={(e) => {
-                              const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
-                              if (val === undefined || (!isNaN(val) && Number.isInteger(val))) {
+                              const val =
+                                e.target.value === ""
+                                  ? undefined
+                                  : parseInt(e.target.value, 10);
+                              if (
+                                val === undefined ||
+                                (!isNaN(val) && Number.isInteger(val))
+                              ) {
                                 setWanAnimateSeed(val);
                               }
                             }}
@@ -5760,28 +8184,40 @@ const InputBox = (props: InputBoxProps = {}) => {
                           <input
                             type="checkbox"
                             checked={wanAnimateGoFast}
-                            onChange={(e) => setWanAnimateGoFast(e.target.checked)}
+                            onChange={(e) =>
+                              setWanAnimateGoFast(e.target.checked)
+                            }
                             className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
                           />
                           <span className="text-sm text-white/80">Go fast</span>
-                          <span className="text-xs text-white/50">(Default: true)</span>
+                          <span className="text-xs text-white/50">
+                            (Default: true)
+                          </span>
                         </label>
                         {/* Merge Audio Checkbox */}
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <input
                             type="checkbox"
                             checked={wanAnimateMergeAudio}
-                            onChange={(e) => setWanAnimateMergeAudio(e.target.checked)}
+                            onChange={(e) =>
+                              setWanAnimateMergeAudio(e.target.checked)
+                            }
                             className="w-4 h-4 rounded border-white/20 bg-white/10 text-white focus:ring-2 focus:ring-white/50 cursor-pointer"
                           />
-                          <span className="text-sm text-white/80">Merge audio</span>
-                          <span className="text-xs text-white/50">(Default: true)</span>
+                          <span className="text-sm text-white/80">
+                            Merge audio
+                          </span>
+                          <span className="text-xs text-white/50">
+                            (Default: true)
+                          </span>
                         </label>
                       </div>
                       {/* FPS Input with Slider */}
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                          <label className="text-sm text-white/80">Frames per second:</label>
+                          <label className="text-sm text-white/80">
+                            Frames per second:
+                          </label>
                           <input
                             type="number"
                             min={5}
@@ -5795,17 +8231,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                             }}
                             className="h-[32px] px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 w-20 text-center"
                           />
-                          <span className="text-xs text-white/50">(min: 5, max: 60)</span>
+                          <span className="text-xs text-white/50">
+                            (min: 5, max: 60)
+                          </span>
                         </div>
                         <input
                           type="range"
                           min={5}
                           max={60}
                           value={wanAnimateFps}
-                          onChange={(e) => setWanAnimateFps(parseInt(e.target.value, 10))}
+                          onChange={(e) =>
+                            setWanAnimateFps(parseInt(e.target.value, 10))
+                          }
                           className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
                           style={{
-                            background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                            background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) ${((wanAnimateFps - 5) / (60 - 5)) * 100}%, rgba(255,255,255,0.1) 100%)`,
                           }}
                         />
                       </div>
@@ -5814,7 +8254,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // Fixed Models: T2V-01, I2V-01, S2V-01 - No dropdowns, fixed 720P, 6s
-                if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                if (
+                  selectedModel === "T2V-01-Director" ||
+                  selectedModel === "I2V-01-Director" ||
+                  selectedModel === "S2V-01"
+                ) {
                   return (
                     <div className="flex flex-row gap-2">
                       {/* Fixed Resolution Display */}
@@ -5832,7 +8276,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // Sora 2 Models: Full customization (check before Veo 3.1)
-                if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
+                if (
+                  selectedModel.includes("sora2") &&
+                  !selectedModel.includes("v2v")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Sora 2 models */}
@@ -5849,7 +8296,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Resolution - Use unified ResolutionDropdown for Sora 2 */}
                       <ResolutionDropdown
@@ -5858,35 +8307,48 @@ const InputBox = (props: InputBoxProps = {}) => {
                         onResolutionChange={setSelectedQuality}
                       />
                       {/* Duration - For image→video and text→video modes */}
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
+                          hasFirstFrame={hasVeo31LiteFirstFrame}
+                          hasLastFrame={hasVeo31LiteLastFrame}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                       {/* Audio toggle for Sora 2 */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
@@ -5895,21 +8357,28 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
-                if (selectedModel.includes('ltx2')) {
+                if (selectedModel.includes("ltx2")) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
-                      {generationMode === 'image_to_video' ? (
+                      {generationMode === "image_to_video" ? (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={handleFrameSizeChange}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
-                            setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                            setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseDurationDropdown(true);
+                            setTimeout(
+                              () => setCloseDurationDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
                         />
                       ) : (
                         <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
@@ -5919,7 +8388,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {/* Resolution - LTX V2 supports 1080p/1440p/2160p */}
                       <ResolutionDropdown
                         selectedModel={selectedModel}
-                        selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
+                        selectedResolution={
+                          selectedResolution.toLowerCase?.() || "1080p"
+                        }
                         onResolutionChange={setSelectedResolution as any}
                       />
                       {/* Duration - 6/8/10s */}
@@ -5929,15 +8400,23 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                       {/* FPS selector for LTX V2 */}
                       <div className="relative">
                         <button
-                          onClick={() => {/* simple toggle between 25 and 50 */ setFps(prev => prev === 25 ? 50 : 25); }}
+                          onClick={() => {
+                            /* simple toggle between 25 and 50 */ setFps(
+                              (prev) => (prev === 25 ? 50 : 25),
+                            );
+                          }}
                           className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-transparent  text-white"
                         >
                           FPS: {fps}
@@ -5945,16 +8424,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                       </div>
                       {/* Audio toggle for LTX V2 */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
@@ -5963,7 +8447,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // LTX 2.3 Fast / Pro Models: Resolution + Duration (T2V/I2V 1080p/2k/4k)
-                if (selectedModel.startsWith('ltx-2.3-fast') || selectedModel.startsWith('ltx-2.3-pro')) {
+                if (
+                  selectedModel.startsWith("ltx-2.3-fast") ||
+                  selectedModel.startsWith("ltx-2.3-pro")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
@@ -5982,12 +8469,16 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseCameraMotionDropdown(false);
                           }, 100);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Resolution - LTX 2.3 Fast supports 1080p/2k/4k */}
                       <ResolutionDropdown
                         selectedModel={selectedModel}
-                        selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
+                        selectedResolution={
+                          selectedResolution.toLowerCase?.() || "1080p"
+                        }
                         onResolutionChange={setSelectedResolution as any}
                       />
                       {/* Duration - 2s to 20s (depending on cost calculation) */}
@@ -6006,12 +8497,16 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseCameraMotionDropdown(false);
                           }, 100);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Camera Motion selector for LTX 2.3 Fast */}
                       <CameraMotionDropdown
-                        selectedMotion={selectedCameraMovements[0] || 'none'}
-                        onMotionChange={(motion) => setSelectedCameraMovements([motion])}
+                        selectedMotion={selectedCameraMovements[0] || "none"}
+                        onMotionChange={(motion) =>
+                          setSelectedCameraMovements([motion])
+                        }
                         onCloseOtherDropdowns={() => {
                           setCloseModelsDropdown(true);
                           setCloseFrameSizeDropdown(true);
@@ -6026,21 +8521,26 @@ const InputBox = (props: InputBoxProps = {}) => {
                       />
                       {/* Audio toggle for LTX 2.3 Fast/Pro */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
                       {/* LTX 2.3 Pro extra inputs: audio + video files */}
-                      {selectedModel.startsWith('ltx-2.3-pro') && (
+                      {selectedModel.startsWith("ltx-2.3-pro") && (
                         <div className="relative">
                           <input
                             type="file"
@@ -6054,11 +8554,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                             className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
                           >
                             <Music className="w-4 h-4" />
-                            {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
+                            {uploadedAudio ? "Audio: Uploaded" : "Upload Audio"}
                           </label>
                         </div>
                       )}
-                      {selectedModel.startsWith('ltx-2.3-pro') && (
+                      {selectedModel.startsWith("ltx-2.3-pro") && (
                         <div className="relative">
                           <input
                             type="file"
@@ -6072,7 +8572,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                             className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
                           >
                             <FilePlay className="w-4 h-4" />
-                            {uploadedVideo ? 'Video: Uploaded' : 'Upload Video'}
+                            {uploadedVideo ? "Video: Uploaded" : "Upload Video"}
                           </label>
                         </div>
                       )}
@@ -6098,7 +8598,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Resolution - Veo 3.1 uses 720p/1080p */}
                       <ResolutionDropdown
@@ -6107,46 +8609,66 @@ const InputBox = (props: InputBoxProps = {}) => {
                         onResolutionChange={setSelectedQuality}
                       />
                       {/* Duration - For image→video and text→video modes */}
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
+                          hasFirstFrame={hasVeo31LiteFirstFrame}
+                          hasLastFrame={hasVeo31LiteLastFrame}
                           onCloseOtherDropdowns={() => {
                             // Close models dropdown
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                       {/* Audio toggle for Veo 3.1 - Hide in Lipsync feature */}
-                      {!(activeFeature === 'Lipsync' && selectedModel.includes("veo3.1")) && (
-                        <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                            ? 'bg-transparent text-white '
-                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
+                      {!selectedModel.includes("veo3.1-lite") &&
+                        !(
+                          activeFeature === "Lipsync" &&
+                          selectedModel.includes("veo3.1")
+                        ) && (
+                          <button
+                            onClick={() => setGenerateAudio((v) => !v)}
+                            className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                              generateAudio
+                                ? "bg-transparent text-white "
+                                : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
                             }`}
-                        >
-                          <div className="relative">
-                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                          >
+                            <div className="relative">
+                              {generateAudio ? (
+                                <Volume2 className="w-5 h-5" />
+                              ) : (
+                                <VolumeX className="w-5 h-5" />
+                              )}
+                              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                                {generateAudio ? "Audio: On" : "Audio: Off"}
+                              </div>
                             </div>
-                          </div>
-                        </button>
-                      )}
+                          </button>
+                        )}
                     </div>
                   );
                 }
 
                 // Kling 2.6 Pro / Kling 3 Models: aspect ratio, duration, and audio
-                if (selectedModel === 'kling-2.6-pro' || selectedModel.startsWith('kling-v3')) {
+                if (
+                  selectedModel === "kling-2.6-pro" ||
+                  selectedModel.startsWith("kling-v3")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio */}
@@ -6156,10 +8678,14 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseDurationDropdown(true);
+                          setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Duration */}
                       <VideoDurationDropdown
@@ -6168,23 +8694,32 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Audio toggle for Kling 2.6 Pro */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
@@ -6193,7 +8728,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // Veo3 Models: Full customization (check after Veo 3.1)
-                if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+                if (
+                  selectedModel.includes("veo3") &&
+                  !selectedModel.includes("veo3.1")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Veo3 models */}
@@ -6210,7 +8748,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Resolution - Veo3 uses 720p/1080p */}
                       <ResolutionDropdown
@@ -6219,7 +8759,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                         onResolutionChange={setSelectedQuality}
                       />
                       {/* Duration - For image→video and text→video modes */}
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -6231,23 +8772,33 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                       {/* Audio toggle for Veo 3 */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
@@ -6256,7 +8807,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // Kling Models: Full customization
-                if (selectedModel.startsWith('kling-')) {
+                if (selectedModel.startsWith("kling-")) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Kling models */}
@@ -6273,23 +8824,35 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Mode - Only for Kling v2.1 base (standard/pro), not master variant */}
-                      {selectedModel.includes('kling-v2.1') && !selectedModel.includes('master') && (
-                        <KlingModeDropdown
-                          value={klingMode}
-                          onChange={setKlingMode}
-                          onCloseOtherDropdowns={() => {
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                        />
-                      )}
+                      {selectedModel.includes("kling-v2.1") &&
+                        !selectedModel.includes("master") && (
+                          <KlingModeDropdown
+                            value={klingMode}
+                            onChange={setKlingMode}
+                            onCloseOtherDropdowns={() => {
+                              setCloseModelsDropdown(true);
+                              setTimeout(
+                                () => setCloseModelsDropdown(false),
+                                0,
+                              );
+                              setCloseFrameSizeDropdown(true);
+                              setTimeout(
+                                () => setCloseFrameSizeDropdown(false),
+                                0,
+                              );
+                              setCloseDurationDropdown(true);
+                              setTimeout(
+                                () => setCloseDurationDropdown(false),
+                                0,
+                              );
+                            }}
+                          />
+                        )}
                       {/* Duration - Always shown for Kling models */}
                       <VideoDurationDropdown
                         selectedDuration={duration}
@@ -6302,14 +8865,20 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
                 }
 
                 // WAN 2.5 Models: Full customization (exclude wan-2.2-animate-replace)
-                if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
+                if (
+                  selectedModel.includes("wan-2.5") &&
+                  selectedModel !== "wan-2.2-animate-replace" &&
+                  !selectedModel.includes("wan-2.2")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for WAN models */}
@@ -6324,7 +8893,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Duration - Always shown for WAN models */}
                       <VideoDurationDropdown
@@ -6338,7 +8909,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Audio Upload - Only for WAN models */}
                       <div className="relative">
@@ -6354,14 +8927,14 @@ const InputBox = (props: InputBoxProps = {}) => {
                           className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
                         >
                           <Music className="w-4 h-4" />
-                          {uploadedAudio ? 'Audio: Uploaded' : 'Upload Audio'}
+                          {uploadedAudio ? "Audio: Uploaded" : "Upload Audio"}
                         </label>
                         {uploadedAudio && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setUploadedAudio("");
-                              toast.success('Audio file removed');
+                              toast.success("Audio file removed");
                             }}
                             className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
                             title="Remove audio"
@@ -6391,15 +8964,20 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             // Close duration dropdown
                             setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseDurationDropdown(false),
+                              0,
+                            );
                             // Close quality dropdown (for Seedance)
                             // QualityDropdown handles its own state
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                       {/* Quality - Seedance 1.0 only (Seedance 1.5 doesn't use resolution) */}
-                      {!selectedModel.includes('seedance-1.5') && (
+                      {!selectedModel.includes("seedance-1.5") && (
                         <QualityDropdown
                           selectedModel={selectedModel}
                           selectedQuality={seedanceResolution}
@@ -6410,10 +8988,16 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                             // Close duration dropdown
                             setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseDurationDropdown(false),
+                              0,
+                            );
                           }}
                           onCloseThisDropdown={undefined}
                         />
@@ -6434,21 +9018,28 @@ const InputBox = (props: InputBoxProps = {}) => {
                           // Close quality dropdown (for Seedance)
                           // QualityDropdown handles its own state
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Audio toggle - Seedance 1.5 only */}
-                      {selectedModel.includes('seedance-1.5') && (
+                      {selectedModel.includes("seedance-1.5") && (
                         <button
-                          onClick={() => setGenerateAudio(v => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                            ? 'bg-transparent text-white '
-                            : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                            }`}
+                          onClick={() => setGenerateAudio((v) => !v)}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio
+                              ? "bg-transparent text-white "
+                              : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                          }`}
                         >
                           <div className="relative">
-                            {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                            {generateAudio ? (
+                              <Volume2 className="w-5 h-5" />
+                            ) : (
+                              <VolumeX className="w-5 h-5" />
+                            )}
                             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                              {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                              {generateAudio ? "Audio: On" : "Audio: Off"}
                             </div>
                           </div>
                         </button>
@@ -6477,7 +9068,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           // Close quality dropdown
                           // QualityDropdown handles its own state
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Quality - Always shown for PixVerse models */}
                       <QualityDropdown
@@ -6513,16 +9106,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                           // Close quality dropdown
                           // QualityDropdown handles its own state
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
                 }
 
                 // Runway Models: Full customization (exclude wan-2.2-animate-replace)
-                if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) &&
+                if (
+                  (selectedModel.includes("gen4") ||
+                    selectedModel.includes("gen3a")) &&
                   selectedModel !== "wan-2.2-animate-replace" &&
-                  !selectedModel.includes("wan-2.2-animate")) {
+                  !selectedModel.includes("wan-2.2-animate")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Aspect Ratio - Always shown for Runway models */}
@@ -6539,10 +9137,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Duration - For image→video and text→video modes */}
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -6554,9 +9155,14 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             // Close frame size dropdown
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                     </div>
@@ -6564,7 +9170,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                 }
 
                 // MiniMax & Director Models
-                if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                if (
+                  selectedModel.includes("MiniMax") ||
+                  selectedModel === "T2V-01-Director" ||
+                  selectedModel === "I2V-01-Director" ||
+                  selectedModel === "S2V-01"
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       {/* Resolution - For MiniMax models */}
@@ -6582,7 +9193,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Duration - For MiniMax models */}
                       <VideoDurationDropdown
@@ -6598,7 +9211,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
@@ -6613,9 +9228,12 @@ const InputBox = (props: InputBoxProps = {}) => {
               {/* Use the same dynamic controls logic as desktop - extract it to avoid duplication */}
               {(() => {
                 // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
-                const isWanAnimateReplace = selectedModel === "wan-2.2-animate-replace" ||
-                  (activeFeature === 'Animate' && selectedModel &&
-                    (selectedModel.includes("wan-2.2") || selectedModel.includes("animate-replace")));
+                const isWanAnimateReplace =
+                  selectedModel === "wan-2.2-animate-replace" ||
+                  (activeFeature === "Animate" &&
+                    selectedModel &&
+                    (selectedModel.includes("wan-2.2") ||
+                      selectedModel.includes("animate-replace")));
 
                 if (isWanAnimateReplace) {
                   return (
@@ -6624,14 +9242,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <div className="relative">
                           <select
                             value={wanAnimateResolution}
-                            onChange={(e) => setWanAnimateResolution(e.target.value as "720" | "480")}
+                            onChange={(e) =>
+                              setWanAnimateResolution(
+                                e.target.value as "720" | "480",
+                              )
+                            }
                             className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
                           >
                             <option value="720">720p</option>
                             <option value="480">480p</option>
                           </select>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              className="text-white/60"
+                            >
                               <path d="M6 9l6 6 6-6" />
                             </svg>
                           </div>
@@ -6639,14 +9268,25 @@ const InputBox = (props: InputBoxProps = {}) => {
                         <div className="relative">
                           <select
                             value={wanAnimateRefertNum}
-                            onChange={(e) => setWanAnimateRefertNum(Number(e.target.value) as 1 | 5)}
+                            onChange={(e) =>
+                              setWanAnimateRefertNum(
+                                Number(e.target.value) as 1 | 5,
+                              )
+                            }
                             className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:bg-white/20 transition-colors appearance-none cursor-pointer pr-8"
                           >
                             <option value="1">Ref Frames: 1</option>
                             <option value="5">Ref Frames: 5</option>
                           </select>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/60">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              className="text-white/60"
+                            >
                               <path d="M6 9l6 6 6-6" />
                             </svg>
                           </div>
@@ -6656,7 +9296,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
-                if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                if (
+                  selectedModel === "T2V-01-Director" ||
+                  selectedModel === "I2V-01-Director" ||
+                  selectedModel === "S2V-01"
+                ) {
                   return (
                     <div className="flex flex-row gap-2">
                       <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
@@ -6671,7 +9315,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
-                if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
+                if (
+                  selectedModel.includes("sora2") &&
+                  !selectedModel.includes("v2v")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -6685,14 +9332,17 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       <ResolutionDropdown
                         selectedModel={selectedModel}
                         selectedResolution={selectedQuality}
                         onResolutionChange={setSelectedQuality}
                       />
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -6702,29 +9352,41 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                     </div>
                   );
                 }
 
-                if (selectedModel.includes('ltx2')) {
+                if (selectedModel.includes("ltx2")) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
-                      {generationMode === 'image_to_video' ? (
+                      {generationMode === "image_to_video" ? (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={setFrameSize}
                           selectedModel={selectedModel}
                           generationMode={generationMode}
                           onCloseOtherDropdowns={() => {
-                            setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                            setCloseDurationDropdown(true); setTimeout(() => setCloseDurationDropdown(false), 0);
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseDurationDropdown(true);
+                            setTimeout(
+                              () => setCloseDurationDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
                         />
                       ) : (
                         <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
@@ -6733,7 +9395,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                       )}
                       <ResolutionDropdown
                         selectedModel={selectedModel}
-                        selectedResolution={(selectedResolution.toLowerCase?.() || '1080p')}
+                        selectedResolution={
+                          selectedResolution.toLowerCase?.() || "1080p"
+                        }
                         onResolutionChange={setSelectedResolution as any}
                       />
                       <VideoDurationDropdown
@@ -6742,23 +9406,32 @@ const InputBox = (props: InputBoxProps = {}) => {
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true); setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseFrameSizeDropdown(true); setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          setCloseModelsDropdown(true);
+                          setTimeout(() => setCloseModelsDropdown(false), 0);
+                          setCloseFrameSizeDropdown(true);
+                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                       {/* Audio toggle for LTX V2 */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
@@ -6780,14 +9453,17 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       <ResolutionDropdown
                         selectedModel={selectedModel}
                         selectedResolution={selectedQuality}
                         onResolutionChange={setSelectedQuality}
                       />
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -6797,16 +9473,24 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                     </div>
                   );
                 }
 
-                if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+                if (
+                  selectedModel.includes("veo3") &&
+                  !selectedModel.includes("veo3.1")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -6820,14 +9504,17 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       <ResolutionDropdown
                         selectedModel={selectedModel}
                         selectedResolution={selectedQuality}
                         onResolutionChange={setSelectedQuality}
                       />
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -6837,23 +9524,33 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                       {/* Audio toggle for Veo 3 */}
                       <button
-                        onClick={() => setGenerateAudio(v => !v)}
-                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${generateAudio
-                          ? 'bg-transparent text-white '
-                          : 'bg-transparent text-white hover:bg-white/20 hover:text-white/80'
-                          }`}
+                        onClick={() => setGenerateAudio((v) => !v)}
+                        className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                          generateAudio
+                            ? "bg-transparent text-white "
+                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                        }`}
                       >
                         <div className="relative">
-                          {generateAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                          {generateAudio ? (
+                            <Volume2 className="w-5 h-5" />
+                          ) : (
+                            <VolumeX className="w-5 h-5" />
+                          )}
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                            {generateAudio ? 'Audio: On' : 'Audio: Off'}
+                            {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
                       </button>
@@ -6861,7 +9558,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
-                if (selectedModel.startsWith('kling-')) {
+                if (selectedModel.startsWith("kling-")) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -6875,22 +9572,34 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
-                      {selectedModel.includes('kling-v2.1') && !selectedModel.includes('master') && (
-                        <KlingModeDropdown
-                          value={klingMode}
-                          onChange={setKlingMode}
-                          onCloseOtherDropdowns={() => {
-                            setCloseModelsDropdown(true);
-                            setTimeout(() => setCloseModelsDropdown(false), 0);
-                            setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                            setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
-                          }}
-                        />
-                      )}
+                      {selectedModel.includes("kling-v2.1") &&
+                        !selectedModel.includes("master") && (
+                          <KlingModeDropdown
+                            value={klingMode}
+                            onChange={setKlingMode}
+                            onCloseOtherDropdowns={() => {
+                              setCloseModelsDropdown(true);
+                              setTimeout(
+                                () => setCloseModelsDropdown(false),
+                                0,
+                              );
+                              setCloseFrameSizeDropdown(true);
+                              setTimeout(
+                                () => setCloseFrameSizeDropdown(false),
+                                0,
+                              );
+                              setCloseDurationDropdown(true);
+                              setTimeout(
+                                () => setCloseDurationDropdown(false),
+                                0,
+                              );
+                            }}
+                          />
+                        )}
                       <VideoDurationDropdown
                         selectedDuration={duration}
                         onDurationChange={setDuration}
@@ -6902,13 +9611,19 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
                 }
 
-                if (selectedModel.includes("wan-2.5") && selectedModel !== "wan-2.2-animate-replace" && !selectedModel.includes("wan-2.2")) {
+                if (
+                  selectedModel.includes("wan-2.5") &&
+                  selectedModel !== "wan-2.2-animate-replace" &&
+                  !selectedModel.includes("wan-2.2")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -6922,7 +9637,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       <VideoDurationDropdown
                         selectedDuration={duration}
@@ -6935,7 +9652,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
@@ -6954,9 +9673,14 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             setCloseDurationDropdown(true);
-                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseDurationDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                       <QualityDropdown
@@ -6984,7 +9708,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
@@ -7004,7 +9730,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       <QualityDropdown
                         selectedModel={selectedModel}
@@ -7031,15 +9759,20 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
                 }
 
-                if ((selectedModel.includes("gen4") || selectedModel.includes("gen3a")) &&
+                if (
+                  (selectedModel.includes("gen4") ||
+                    selectedModel.includes("gen3a")) &&
                   selectedModel !== "wan-2.2-animate-replace" &&
-                  !selectedModel.includes("wan-2.2-animate")) {
+                  !selectedModel.includes("wan-2.2-animate")
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -7053,9 +9786,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
-                      {(generationMode === "image_to_video" || generationMode === "text_to_video") && (
+                      {(generationMode === "image_to_video" ||
+                        generationMode === "text_to_video") && (
                         <VideoDurationDropdown
                           selectedDuration={duration}
                           onDurationChange={setDuration}
@@ -7065,16 +9801,26 @@ const InputBox = (props: InputBoxProps = {}) => {
                             setCloseModelsDropdown(true);
                             setTimeout(() => setCloseModelsDropdown(false), 0);
                             setCloseFrameSizeDropdown(true);
-                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                            setTimeout(
+                              () => setCloseFrameSizeDropdown(false),
+                              0,
+                            );
                           }}
-                          onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
                         />
                       )}
                     </div>
                   );
                 }
 
-                if (selectedModel.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+                if (
+                  selectedModel.includes("MiniMax") ||
+                  selectedModel === "T2V-01-Director" ||
+                  selectedModel === "I2V-01-Director" ||
+                  selectedModel === "S2V-01"
+                ) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
                       <VideoFrameSizeDropdown
@@ -7089,7 +9835,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseDurationDropdown(true);
                           setTimeout(() => setCloseDurationDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeFrameSizeDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeFrameSizeDropdown ? () => {} : undefined
+                        }
                       />
                       <VideoDurationDropdown
                         selectedDuration={selectedMiniMaxDuration}
@@ -7102,7 +9850,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           setCloseFrameSizeDropdown(true);
                           setTimeout(() => setCloseFrameSizeDropdown(false), 0);
                         }}
-                        onCloseThisDropdown={closeDurationDropdown ? () => { } : undefined}
+                        onCloseThisDropdown={
+                          closeDurationDropdown ? () => {} : undefined
+                        }
                       />
                     </div>
                   );
@@ -7117,26 +9867,46 @@ const InputBox = (props: InputBoxProps = {}) => {
               {error && <div className="text-red-500 text-xs">{error}</div>}
 
               <div className="text-white/60 text-[11px] pr-1">
-                Total credits: <span className="font-medium text-white/80">{liveCreditCost}</span>
+                Total credits:{" "}
+                <span className="font-medium text-white/80">
+                  {liveCreditCost}
+                </span>
               </div>
               <button
                 onClick={handleGenerate}
                 disabled={(() => {
-                  const disabled = runningGenerationsCount >= 4 || !prompt.trim() ||
-                    (generationMode === "image_to_video" && selectedModel !== "S2V-01" && !selectedModel.includes("wan-2.5") && !selectedModel.startsWith('kling-') && selectedModel !== "gen4_turbo" && selectedModel !== "gen3a_turbo" && uploadedImages.length === 0) ||
+                  const disabled =
+                    runningGenerationsCount >= 4 ||
+                    !prompt.trim() ||
+                    (generationMode === "image_to_video" &&
+                      selectedModel !== "S2V-01" &&
+                      !selectedModel.includes("wan-2.5") &&
+                      !selectedModel.startsWith("kling-") &&
+                      selectedModel !== "gen4_turbo" &&
+                      selectedModel !== "gen3a_turbo" &&
+                      uploadedImages.length === 0) ||
                     (generationMode === "video_to_video" && !uploadedVideo) ||
-                    (generationMode === "image_to_video" && selectedModel === "I2V-01-Director" && uploadedImages.length === 0) ||
-                    (generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length === 0) ||
-                    (generationMode === "image_to_video" && selectedModel === "MiniMax-Hailuo-02" && selectedResolution === "512P" && uploadedImages.length === 0) ||
-                    (generationMode === "image_to_video" && selectedModel.includes("wan-2.5") && uploadedImages.length === 0);
+                    (generationMode === "image_to_video" &&
+                      selectedModel === "I2V-01-Director" &&
+                      uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" &&
+                      selectedModel === "S2V-01" &&
+                      references.length === 0) ||
+                    (generationMode === "image_to_video" &&
+                      selectedModel === "MiniMax-Hailuo-02" &&
+                      selectedResolution === "512P" &&
+                      uploadedImages.length === 0) ||
+                    (generationMode === "image_to_video" &&
+                      selectedModel.includes("wan-2.5") &&
+                      uploadedImages.length === 0);
 
                   if (selectedModel === "S2V-01") {
-                    console.log('🔍 S2V-01 Validation Debug:', {
+                    console.log("🔍 S2V-01 Validation Debug:", {
                       runningGenerationsCount,
                       hasPrompt: !!prompt.trim(),
                       referencesLength: references.length,
                       generationMode,
-                      disabled
+                      disabled,
                     });
                   }
 
@@ -7144,75 +9914,56 @@ const InputBox = (props: InputBoxProps = {}) => {
                 })()}
                 className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
-                {isEnhancing ? 'Enhancing...' : runningGenerationsCount >= 4 ? 'Queue Full' : 'Generate'}
+                {isEnhancing
+                  ? "Enhancing..."
+                  : runningGenerationsCount >= 4
+                    ? "Queue Full"
+                    : "Generate"}
               </button>
             </div>
-
-
           </div>
         </div>
       </div>
 
       {preview && (
-        <VideoPreviewModal
-          preview={preview}
-          onClose={() => setPreview(null)}
-        />
+        <VideoPreviewModal preview={preview} onClose={() => setPreview(null)} />
       )}
 
       {/* Asset Viewer Modal for uploaded assets */}
       <AssetViewerModal
         isOpen={assetViewer.isOpen}
-        onClose={() => setAssetViewer(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setAssetViewer((prev) => ({ ...prev, isOpen: false }))}
         assetUrl={assetViewer.assetUrl}
         assetType={assetViewer.assetType}
         title={assetViewer.title}
       />
 
       {/* UploadModal for image and reference uploads */}
-      {uploadModalType !== 'video' && (() => {
-        // Use libraryImageEntries if available, otherwise fall back to imageHistoryEntries
-        // Always create a new array reference to ensure React detects changes
-        // When modal is open, always use libraryImageEntries (even if empty initially)
-        // This ensures we show the fetched data once it loads
-        const modalHistoryEntries = isUploadModalOpen
-          ? [...libraryImageEntries]
-          : (libraryImageEntries.length > 0 ? [...libraryImageEntries] : [...imageHistoryEntries]);
-
-        // Log what's being passed to the modal (only when modal is open to avoid spam)
-        if (isUploadModalOpen && libraryImageEntries.length > 0) {
-          console.log('[VideoPage] UploadModal historyEntries prop:', {
-            source: 'libraryImageEntries',
-            count: modalHistoryEntries.length,
-            libraryImageEntriesCount: libraryImageEntries.length,
-            imageHistoryEntriesCount: imageHistoryEntries.length,
-            entriesWithImages: modalHistoryEntries.filter((e: any) => Array.isArray(e.images) && e.images.length > 0).length,
-            sample: modalHistoryEntries.slice(0, 3).map((e: any) => ({
-              id: e.id,
-              imagesCount: e.images?.length || 0,
-              hasImages: Array.isArray(e.images) && e.images.length > 0,
-              firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...'
-            }))
-          });
-        }
-
-        return (
-          <UploadModal
-            isOpen={isUploadModalOpen}
-            onClose={() => setIsUploadModalOpen(false)}
-            onAdd={handleImageUploadFromModal}
-            remainingSlots={uploadModalType === 'image' ?
-              // For WAN 2.2 Animate Replace character image, only 1 slot
-              ((selectedModel === "wan-2.2-animate-replace" || (activeFeature === 'Animate' && selectedModel.includes("wan-2.2"))) ? 1 :
-                (selectedModel === "S2V-01" ? 0 : 1)) : // S2V-01 doesn't use uploadedImages
-              (generationMode === "image_to_video" && selectedModel === "S2V-01" ? 1 : 4) // S2V-01 needs 1 reference, video-to-video needs up to 4
-            }
-          />
-        );
-      })()}
+      {uploadModalType !== "video" && (
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onAdd={handleImageUploadFromModal}
+          remainingSlots={
+            uploadModalType === "image"
+              ? // For WAN 2.2 Animate Replace character image, only 1 slot
+                selectedModel === "wan-2.2-animate-replace" ||
+                (activeFeature === "Animate" &&
+                  selectedModel.includes("wan-2.2"))
+                ? 1
+                : selectedModel === "S2V-01"
+                  ? 0
+                  : 1 // S2V-01 doesn't use uploadedImages
+              : generationMode === "image_to_video" &&
+                  selectedModel === "S2V-01"
+                ? 1
+                : 4 // S2V-01 needs 1 reference, video-to-video needs up to 4
+          }
+        />
+      )}
 
       {/* VideoUploadModal for video uploads */}
-      {uploadModalType === 'video' && (
+      {uploadModalType === "video" && (
         <VideoUploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}

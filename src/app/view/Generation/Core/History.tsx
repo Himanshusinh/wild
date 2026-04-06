@@ -183,11 +183,11 @@ const History = () => {
       const currentQF = activeQuickFilter || quickFilter;
       const initialLimit = currentQF === 'user-uploads' || currentQF === 'all' ? 100 : computeDynamicLimit(0);
       const result: any = await (dispatch as any)(loadHistory({ 
-        filters: { ...filtersObj, mode: currentQF === 'all' || currentQF === 'user-uploads' ? 'all' : undefined }, 
-        backendFilters: { ...filtersObj, mode: currentQF === 'all' || currentQF === 'user-uploads' ? 'all' : undefined }, 
+        filters: { ...filtersObj }, 
+        backendFilters: { ...filtersObj }, 
         paginationParams: { limit: initialLimit }, 
         expectedType: currentQF === 'all' || currentQF === 'user-uploads' ? undefined : 'text-to-image',
-        skipBackendGenerationFilter: currentQF === 'all' || currentQF === 'user-uploads' || currentQF === 'images',
+        skipBackendGenerationFilter: currentQF !== 'music',
         forceRefresh: true 
       })).unwrap();
       const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
@@ -226,8 +226,6 @@ const History = () => {
 
     // Safety net: re-apply quickFilter-specific filters if missing (prevent stale filter state)
     if (quickFilter === 'music' && !nextFilters.generationType) nextFilters.generationType = 'text-to-music';
-    if (quickFilter === 'videos' && !nextFilters.mode) nextFilters.mode = 'video';
-    if (quickFilter === 'images' && !nextFilters.mode) nextFilters.mode = 'image';
 
     setLocalFilters(nextFilters);
     dispatch(setFilters(nextFilters));
@@ -255,8 +253,6 @@ const History = () => {
 
     // Safety net: re-apply quickFilter-specific filters if missing (prevent stale filter state)
     if (quickFilter === 'music' && !f.generationType) f.generationType = 'text-to-music';
-    if (quickFilter === 'videos' && !f.mode) f.mode = 'video';
-    if (quickFilter === 'images' && !f.mode) f.mode = 'image';
 
     setLocalFilters(f);
     dispatch(setFilters(f));
@@ -339,8 +335,8 @@ const History = () => {
       const limit = (quickFilter === 'user-uploads' || quickFilter === 'all') ? 100 : (sortOrder === 'asc' ? 30 : 10);
 
       dispatch(loadMoreHistory({ 
-        filters: { ...baseFilters, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
-        backendFilters: { ...baseFilters, mode: quickFilter === 'all' || quickFilter === 'user-uploads' ? 'all' : undefined }, 
+        filters: { ...baseFilters }, 
+        backendFilters: { ...baseFilters }, 
         paginationParams: { limit }
       }))
         .then((action: any) => {
@@ -1175,8 +1171,8 @@ const History = () => {
                     setOverlayLoading(true);
                     let f: any = {};
                     switch (key) {
-                      case 'images': f = { mode: 'image' }; break;
-                      case 'videos': f = { mode: 'video' }; break;
+                      case 'images': f = {}; break;
+                      case 'videos': f = {}; break;
                       case 'music': f = { generationType: 'text-to-music' }; break;
                       case 'user-uploads': f = { isUserUpload: true }; break;
                       default: f = {};
@@ -1248,8 +1244,8 @@ const History = () => {
                   setOverlayLoading(true);
                   let f: any = {};
                   switch (key) {
-                    case 'images': f = { mode: 'image' }; break;
-                    case 'videos': f = { mode: 'video' }; break;
+                    case 'images': f = {}; break;
+                    case 'videos': f = {}; break;
                     case 'music': f = { generationType: 'text-to-music' }; break;
                     case 'user-uploads': f = { isUserUpload: true }; break;
                     default: f = {};

@@ -1,73 +1,92 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { FilePlus, ChevronUp, Edit3 } from 'lucide-react';
-import axiosInstance from '@/lib/axiosInstance';
-import { getIsPublic } from '@/lib/publicFlag';
-import FrameSizeDropdown from '@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown';
-import StyleSelector from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
-import { loadMoreHistory, loadHistory } from '@/store/slices/historySlice';
-import { useHistoryLoader } from '@/hooks/useHistoryLoader';
-import { downloadFileWithNaming } from '@/utils/downloadUtils';
-import { getCreditsForModel } from '@/utils/modelCredits';
-import { estimateCrystalUpscalerCredits } from '@/utils/pricing/crystalUpscalerCredits';
-import { toast } from 'react-hot-toast';
-import { EditImageEraseFrame } from './EditImageEraseFrame';
-import { EditImageEraseControls } from './EditImageEraseControls';
-import { EditImageExpandFrame } from './EditImageExpandFrame';
-import { EditImageSidebar } from './EditImageSidebar';
-import { EditImageCanvasArea, CanvasTopBar } from './EditImageCanvasArea';
-import { EditImageStatusBar } from './EditImageStatusBar';
-import { EditImageExpandControls } from './EditImageExpandControls';
-import { saveUpload } from '@/lib/libraryApi';
-import { useCredits } from '@/hooks/useCredits';
-import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
-import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import { FilePlus, ChevronUp, Edit3 } from "lucide-react";
+import axiosInstance from "@/lib/axiosInstance";
+import { getIsPublic } from "@/lib/publicFlag";
+import FrameSizeDropdown from "@/app/view/Generation/ImageGeneration/TextToImage/compo/FrameSizeDropdown";
+import StyleSelector from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StyleSelector";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import UploadModal from "@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal";
+import { loadMoreHistory, loadHistory } from "@/store/slices/historySlice";
+import { useHistoryLoader } from "@/hooks/useHistoryLoader";
+import { downloadFileWithNaming } from "@/utils/downloadUtils";
+import { getCreditsForModel } from "@/utils/modelCredits";
+import { estimateCrystalUpscalerCredits } from "@/utils/pricing/crystalUpscalerCredits";
+import { toast } from "react-hot-toast";
+import { EditImageEraseFrame } from "./EditImageEraseFrame";
+import { EditImageEraseControls } from "./EditImageEraseControls";
+import { EditImageExpandFrame } from "./EditImageExpandFrame";
+import { EditImageSidebar } from "./EditImageSidebar";
+import { EditImageCanvasArea, CanvasTopBar } from "./EditImageCanvasArea";
+import { EditImageStatusBar } from "./EditImageStatusBar";
+import { EditImageExpandControls } from "./EditImageExpandControls";
+import { saveUpload } from "@/lib/libraryApi";
+import { useCredits } from "@/hooks/useCredits";
+import { AUTH_ROUTES, getSignInUrl } from "@/routes/routes";
+import {
+  saveAutoResumeIntent,
+  getAutoResumeIntent,
+  clearAutoResumeIntent,
+} from "@/lib/autoResume";
 
-type EditFeature = 'upscale' | 'remove-bg' | 'resize' | 'fill' | 'vectorize' | 'erase' | 'expand' | 'reimagine' | 'live-chat';
+type EditFeature =
+  | "upscale"
+  | "remove-bg"
+  | "resize"
+  | "fill"
+  | "vectorize"
+  | "erase"
+  | "expand"
+  | "reimagine"
+  | "live-chat";
 
 const featureDisplayName: Record<EditFeature, string> = {
-  upscale: 'Upscale',
-  'remove-bg': 'Remove Background',
-  resize: 'Resize',
-  fill: 'Erase / Replace',
-  vectorize: 'Vectorize',
-  erase: 'Erase',
-  expand: 'Expand',
-  reimagine: 'Reimagine',
-  'live-chat': 'AI Chat',
+  upscale: "Upscale",
+  "remove-bg": "Remove Background",
+  resize: "Resize",
+  fill: "Erase / Replace",
+  vectorize: "Vectorize",
+  erase: "Erase",
+  expand: "Expand",
+  reimagine: "Reimagine",
+  "live-chat": "AI Chat",
 };
 
 const featurePreviewGif: Record<EditFeature, string> = {
-  upscale: '/editimage/upscale_banner.jpg',
-  'remove-bg': '/editimage/RemoveBG_banner.jpg',
-  resize: '/editimage/resize_banner.jpg',
-  fill: '/editimage/replace_banner.jpg',
-  vectorize: '/editimage/vector_banner.jpg',
-  erase: '/editimage/replace_banner.jpg',
-  expand: '/editimage/replace_banner.jpg',
-  reimagine: '/editimage/replace_banner.jpg',
-  'live-chat': '/editimage/replace_banner.jpg',
+  upscale: "/editimage/upscale_banner.jpg",
+  "remove-bg": "/editimage/RemoveBG_banner.jpg",
+  resize: "/editimage/resize_banner.jpg",
+  fill: "/editimage/replace_banner.jpg",
+  vectorize: "/editimage/vector_banner.jpg",
+  erase: "/editimage/replace_banner.jpg",
+  expand: "/editimage/replace_banner.jpg",
+  reimagine: "/editimage/replace_banner.jpg",
+  "live-chat": "/editimage/replace_banner.jpg",
 };
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
 // This prevents passing `/_next/image?url=...` wrappers to the backend, which can't use them.
 const normalizeEditImageUrl = (raw: string | null | undefined): string => {
-  if (!raw) return '';
+  if (!raw) return "";
   let url = raw;
   try {
-    if (url.includes('/_next/image')) {
+    if (url.includes("/_next/image")) {
       // Support both absolute and relative URLs
       const base =
-        typeof window !== 'undefined' && window.location?.origin
+        typeof window !== "undefined" && window.location?.origin
           ? window.location.origin
-          : 'https://wildmindai.com';
+          : "https://wildmindai.com";
       const parsed = new URL(url, base);
-      const inner = parsed.searchParams.get('url');
+      const inner = parsed.searchParams.get("url");
       if (inner) {
         return decodeURIComponent(inner);
       }
@@ -78,17 +97,86 @@ const normalizeEditImageUrl = (raw: string | null | undefined): string => {
   return url;
 };
 
-const aspectPresets: Record<string, { label: string; sizeLabel?: string; width: number; height: number; aspectRatio: number }> = {
-  custom: { label: 'Custom', sizeLabel: 'Custom', width: 1024, height: 1024, aspectRatio: 1 },
-  '1:1': { label: '1:1', sizeLabel: '1500 × 1500', width: 1500, height: 1500, aspectRatio: 1 },
-  '2:3': { label: '2:3', sizeLabel: '1334 × 2000', width: 1334, height: 2000, aspectRatio: 2 / 3 },
-  '3:2': { label: '3:2', sizeLabel: '1800 × 1200', width: 1800, height: 1200, aspectRatio: 3 / 2 },
-  '3:4': { label: '3:4', sizeLabel: '1350 × 1800', width: 1350, height: 1800, aspectRatio: 3 / 4 },
-  '4:3': { label: '4:3', sizeLabel: '1600 × 1200', width: 1600, height: 1200, aspectRatio: 4 / 3 },
-  '4:5': { label: '4:5', sizeLabel: '1200 × 1500', width: 1200, height: 1500, aspectRatio: 4 / 5 },
-  '5:4': { label: '5:4', sizeLabel: '1500 × 1200', width: 1500, height: 1200, aspectRatio: 5 / 4 },
-  '9:16': { label: '9:16', sizeLabel: '1080 × 1920', width: 1080, height: 1920, aspectRatio: 9 / 16 },
-  '16:9': { label: '16:9', sizeLabel: '1920 × 1080', width: 1920, height: 1080, aspectRatio: 16 / 9 },
+const aspectPresets: Record<
+  string,
+  {
+    label: string;
+    sizeLabel?: string;
+    width: number;
+    height: number;
+    aspectRatio: number;
+  }
+> = {
+  custom: {
+    label: "Custom",
+    sizeLabel: "Custom",
+    width: 1024,
+    height: 1024,
+    aspectRatio: 1,
+  },
+  "1:1": {
+    label: "1:1",
+    sizeLabel: "1500 × 1500",
+    width: 1500,
+    height: 1500,
+    aspectRatio: 1,
+  },
+  "2:3": {
+    label: "2:3",
+    sizeLabel: "1334 × 2000",
+    width: 1334,
+    height: 2000,
+    aspectRatio: 2 / 3,
+  },
+  "3:2": {
+    label: "3:2",
+    sizeLabel: "1800 × 1200",
+    width: 1800,
+    height: 1200,
+    aspectRatio: 3 / 2,
+  },
+  "3:4": {
+    label: "3:4",
+    sizeLabel: "1350 × 1800",
+    width: 1350,
+    height: 1800,
+    aspectRatio: 3 / 4,
+  },
+  "4:3": {
+    label: "4:3",
+    sizeLabel: "1600 × 1200",
+    width: 1600,
+    height: 1200,
+    aspectRatio: 4 / 3,
+  },
+  "4:5": {
+    label: "4:5",
+    sizeLabel: "1200 × 1500",
+    width: 1200,
+    height: 1500,
+    aspectRatio: 4 / 5,
+  },
+  "5:4": {
+    label: "5:4",
+    sizeLabel: "1500 × 1200",
+    width: 1500,
+    height: 1200,
+    aspectRatio: 5 / 4,
+  },
+  "9:16": {
+    label: "9:16",
+    sizeLabel: "1080 × 1920",
+    width: 1080,
+    height: 1920,
+    aspectRatio: 9 / 16,
+  },
+  "16:9": {
+    label: "16:9",
+    sizeLabel: "1920 × 1080",
+    width: 1920,
+    height: 1080,
+    aspectRatio: 16 / 9,
+  },
 };
 
 const EditImageInterface: React.FC = () => {
@@ -99,14 +187,28 @@ const EditImageInterface: React.FC = () => {
   const [eraseIsDrawing, setEraseIsDrawing] = useState<boolean>(false);
   const [eraseMaskData, setEraseMaskData] = useState<string | null>(null);
   const [eraseIsPreviewing, setEraseIsPreviewing] = useState<boolean>(false);
-  const [eraseModel, setEraseModel] = useState<string>('bria/eraser');
-  const [erasePrompt, setErasePrompt] = useState<string>('');
-  const [eraseActionMode, setEraseActionMode] = useState<'replace' | 'erase'>('replace');
+  const [eraseModel, setEraseModel] = useState<string>("bria/eraser");
+  const [erasePrompt, setErasePrompt] = useState<string>("");
+  const [eraseActionMode, setEraseActionMode] = useState<"replace" | "erase">(
+    "replace",
+  );
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
-  const eraseCredits = useMemo(() => getCreditsForModel('google_nano_banana') ?? 98, []);
-  const expandCredits = useMemo(() => getCreditsForModel('replicate/bria/expand-image') ?? 100, []);
-  const vectorizeRecraftCredits = useMemo(() => getCreditsForModel('fal-recraft-vectorize') ?? 40, []);
-  const vectorizeImage2SvgCredits = useMemo(() => getCreditsForModel('fal-image2svg') ?? 30, []);
+  const eraseCredits = useMemo(
+    () => getCreditsForModel("seedream-5-lite") ?? 90,
+    [],
+  );
+  const expandCredits = useMemo(
+    () => getCreditsForModel("replicate/bria/expand-image") ?? 100,
+    [],
+  );
+  const vectorizeRecraftCredits = useMemo(
+    () => getCreditsForModel("fal-recraft-vectorize") ?? 40,
+    [],
+  );
+  const vectorizeImage2SvgCredits = useMemo(
+    () => getCreditsForModel("fal-image2svg") ?? 30,
+    [],
+  );
   const vectorizeArtExtraCredits = 80; // Additional credits when Art Vector (super mode) is selected
   const {
     deductCreditsOptimisticForGeneration,
@@ -120,45 +222,48 @@ const EditImageInterface: React.FC = () => {
   const user = useAppSelector((state: any) => state.auth?.user);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [selectedFeature, setSelectedFeature] = useState<EditFeature>('upscale');
+  const [selectedFeature, setSelectedFeature] =
+    useState<EditFeature>("upscale");
   const [inputs, setInputs] = useState<Record<EditFeature, string | null>>({
-    'upscale': null,
-    'remove-bg': null,
-    'resize': null,
-    'fill': null,
-    'vectorize': null,
-    'erase': null,
-    'expand': null,
-    'reimagine': null,
-    'live-chat': null,
+    upscale: null,
+    "remove-bg": null,
+    resize: null,
+    fill: null,
+    vectorize: null,
+    erase: null,
+    expand: null,
+    reimagine: null,
+    "live-chat": null,
   });
   // Per-feature outputs and processing flags so operations don't block each other
   const [outputs, setOutputs] = useState<Record<EditFeature, string | null>>({
-    'upscale': null,
-    'remove-bg': null,
-    'resize': null,
-    'fill': null,
-    'vectorize': null,
-    'erase': null,
-    'expand': null,
-    'reimagine': null,
-    'live-chat': null,
+    upscale: null,
+    "remove-bg": null,
+    resize: null,
+    fill: null,
+    vectorize: null,
+    erase: null,
+    expand: null,
+    reimagine: null,
+    "live-chat": null,
   });
   const [processing, setProcessing] = useState<Record<EditFeature, boolean>>({
-    'upscale': false,
-    'remove-bg': false,
-    'resize': false,
-    'fill': false,
-    'vectorize': false,
-    'erase': false,
-    'expand': false,
-    'reimagine': false,
-    'live-chat': false,
+    upscale: false,
+    "remove-bg": false,
+    resize: false,
+    fill: false,
+    vectorize: false,
+    erase: false,
+    expand: false,
+    reimagine: false,
+    "live-chat": false,
   });
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
   const [sliderPosition, setSliderPosition] = useState(50);
-  const [upscaleViewMode, setUpscaleViewMode] = useState<'comparison' | 'zoom'>('comparison');
+  const [upscaleViewMode, setUpscaleViewMode] = useState<"comparison" | "zoom">(
+    "comparison",
+  );
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [hasLeftScroll, setHasLeftScroll] = useState(false);
 
@@ -178,35 +283,69 @@ const EditImageInterface: React.FC = () => {
   const fillCanvasRef = useRef<HTMLCanvasElement>(null);
   const fillContainerRef = useRef<HTMLDivElement>(null);
   const featureTabsRef = useRef<HTMLDivElement>(null);
-  const [inputNaturalSize, setInputNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [inputNaturalSize, setInputNaturalSize] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
   const [isMasking, setIsMasking] = useState(false);
   const [hasMask, setHasMask] = useState(false);
   const [brushSize, setBrushSize] = useState(18);
   const [eraseMode, setEraseMode] = useState(false);
   // Reimagine: Selection confirmation and floating prompt
-  const [reimagineSelectionConfirmed, setReimagineSelectionConfirmed] = useState(false);
-  const [reimaginePrompt, setReimaginePrompt] = useState('');
-  const [reimagineSelectionBounds, setReimagineSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [reimagineSelectionConfirmed, setReimagineSelectionConfirmed] =
+    useState(false);
+  const [reimaginePrompt, setReimaginePrompt] = useState("");
+  const [reimagineSelectionBounds, setReimagineSelectionBounds] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   // Real-time selection bounds for visual feedback
-  const [reimagineLiveBounds, setReimagineLiveBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [reimagineLiveBounds, setReimagineLiveBounds] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   // Reimagine: Selection mode (brush or rectangle)
-  const [reimagineSelectionMode, setReimagineSelectionMode] = useState<'brush' | 'rectangle'>('rectangle');
+  const [reimagineSelectionMode, setReimagineSelectionMode] = useState<
+    "brush" | "rectangle"
+  >("rectangle");
   // Reimagine: Model selection (auto, nano-banana, seedream-4k)
-  const [reimagineModel, setReimagineModel] = useState<'auto' | 'nano-banana' | 'seedream-4k'>('auto');
+  const [reimagineModel, setReimagineModel] = useState<
+    "auto" | "nano-banana" | "seedream-4k"
+  >("auto");
   // Rectangle selection state
   const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
-  const [rectangleStart, setRectangleStart] = useState<{ x: number; y: number } | null>(null);
-  const [rectangleCurrent, setRectangleCurrent] = useState<{ x: number; y: number } | null>(null);
+  const [rectangleStart, setRectangleStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [rectangleCurrent, setRectangleCurrent] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
-  const [fillSeed, setFillSeed] = useState<string>('');
-  const [fillNegativePrompt, setFillNegativePrompt] = useState<string>('');
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [fillSeed, setFillSeed] = useState<string>("");
+  const [fillNegativePrompt, setFillNegativePrompt] = useState<string>("");
   const [fillNumImages, setFillNumImages] = useState<number>(1);
   const [fillSyncMode, setFillSyncMode] = useState<boolean>(false);
   // Expand feature state
-  const [expandOriginalSize, setExpandOriginalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-  const [expandBounds, setExpandBounds] = useState({ left: 0, top: 0, right: 0, bottom: 0 });
-  const [expandAspectRatio, setExpandAspectRatio] = useState<string>('custom');
+  const [expandOriginalSize, setExpandOriginalSize] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
+  const [expandBounds, setExpandBounds] = useState({
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+  });
+  const [expandAspectRatio, setExpandAspectRatio] = useState<string>("custom");
   const [expandCustomWidth, setExpandCustomWidth] = useState<number>(0);
   const [expandCustomHeight, setExpandCustomHeight] = useState<number>(0);
   // Effective provider-conformant size (after normalization)
@@ -219,85 +358,140 @@ const EditImageInterface: React.FC = () => {
   const [expandHoverEdge, setExpandHoverEdge] = useState<string | null>(null);
 
   // Form states
-  const [model, setModel] = useState<'' | 'philz1337x/clarity-upscaler' | 'fermatresearch/magic-image-refiner' | 'nightmareai/real-esrgan' | '851-labs/background-remover' | 'lucataco/remove-bg' | 'philz1337x/crystal-upscaler' | 'fal-ai/topaz/upscale/image' | 'fal-ai/seedvr/upscale/image' | 'fal-ai/bria/expand' | 'fal-ai/bria/genfill' | 'google_nano_banana' | 'seedream_4'>('philz1337x/crystal-upscaler');
-  const [prompt, setPrompt] = useState('');
-  const [scaleFactor, setScaleFactor] = useState('');
+  const [model, setModel] = useState<
+    | ""
+    | "philz1337x/clarity-upscaler"
+    | "fermatresearch/magic-image-refiner"
+    | "nightmareai/real-esrgan"
+    | "851-labs/background-remover"
+    | "lucataco/remove-bg"
+    | "philz1337x/crystal-upscaler"
+    | "fal-ai/topaz/upscale/image"
+    | "fal-ai/seedvr/upscale/image"
+    | "fal-ai/bria/expand"
+    | "fal-ai/bria/genfill"
+    | "google_nano_banana"
+    | "seedream_4"
+    | "seedream-5-lite"
+  >("philz1337x/crystal-upscaler");
+  const [prompt, setPrompt] = useState("");
+  const [scaleFactor, setScaleFactor] = useState("");
   const [faceEnhance, setFaceEnhance] = useState(false);
-  const [swinTask, setSwinTask] = useState<'classical_sr' | 'real_sr' | 'compressed_sr'>('real_sr');
-  const getSwinTaskLabel = (t: 'classical_sr' | 'real_sr' | 'compressed_sr') => {
-
+  const [swinTask, setSwinTask] = useState<
+    "classical_sr" | "real_sr" | "compressed_sr"
+  >("real_sr");
+  const getSwinTaskLabel = (
+    t: "classical_sr" | "real_sr" | "compressed_sr",
+  ) => {
     // Global scroll lock for Edit Image screen (Bug 51)
     useEffect(() => {
       // Lock scroll on mount
       const originalBodyStyle = window.getComputedStyle(document.body).overflow;
-      const originalHtmlStyle = window.getComputedStyle(document.documentElement).overflow;
+      const originalHtmlStyle = window.getComputedStyle(
+        document.documentElement,
+      ).overflow;
 
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
 
       // Unlock scroll on unmount
       return () => {
-        document.body.style.overflow = originalBodyStyle || 'auto';
-        document.documentElement.style.overflow = originalHtmlStyle || 'auto';
+        document.body.style.overflow = originalBodyStyle || "auto";
+        document.documentElement.style.overflow = originalHtmlStyle || "auto";
       };
     }, []);
-    if (t === 'classical_sr') return 'classical_sr: Upscale high-quality inputs (classical super-resolution).';
-    if (t === 'real_sr') return 'real_sr: Upscale real-world photos with mixed noise/compression (default).';
-    return 'compressed_sr: Upscale heavily compressed/low-bitrate images.';
+    if (t === "classical_sr")
+      return "classical_sr: Upscale high-quality inputs (classical super-resolution).";
+    if (t === "real_sr")
+      return "real_sr: Upscale real-world photos with mixed noise/compression (default).";
+    return "compressed_sr: Upscale heavily compressed/low-bitrate images.";
   };
   const getUpscaleModelLabel = (m: string) => {
-    if (m === 'philz1337x/clarity-upscaler') return 'Clarity Upscaler';
-    if (m === 'nightmareai/real-esrgan') return 'Real-ESRGAN';
-    if (m === 'philz1337x/crystal-upscaler') return 'Crystal Upscaler';
-    if (m === 'fal-ai/topaz/upscale/image') return 'Topaz Upscaler';
-    if (m === 'fal-ai/seedvr/upscale/image') return 'SeedVR Upscaler (factor)';
-    if (m === 'fal-ai/bria/expand') return 'Bria Expand (Resize)';
-    if (m === 'fal-ai/bria/genfill') return 'Bria GenFill';
-    if (m === 'google_nano_banana') return 'Google Nano Banana';
-    if (m === 'seedream_4') return 'Seedream 4';
-    if (m === '851-labs/background-remover') return '851 Labs Remove BG';
-    if (m === 'lucataco/remove-bg') return 'Lucataco Remove BG';
+    if (m === "philz1337x/clarity-upscaler") return "Clarity Upscaler";
+    if (m === "nightmareai/real-esrgan") return "Real-ESRGAN";
+    if (m === "philz1337x/crystal-upscaler") return "Crystal Upscaler";
+    if (m === "fal-ai/topaz/upscale/image") return "Topaz Upscaler";
+    if (m === "fal-ai/seedvr/upscale/image") return "SeedVR Upscaler (factor)";
+    if (m === "fal-ai/bria/expand") return "Bria Expand (Resize)";
+    if (m === "fal-ai/bria/genfill") return "Bria GenFill";
+    if (m === "google_nano_banana") return "Google Nano Banana";
+    if (m === "seedream_4") return "Seedream 4";
+    if (m === "seedream-5-lite") return "Seedream 5 Lite";
+    if (m === "851-labs/background-remover") return "851 Labs Remove BG";
+    if (m === "lucataco/remove-bg") return "Lucataco Remove BG";
     return m;
   };
-  const [output, setOutput] = useState<'' | 'png' | 'jpg' | 'jpeg' | 'webp'>('png');
+  const [output, setOutput] = useState<"" | "png" | "jpg" | "jpeg" | "webp">(
+    "png",
+  );
   // Topaz upscaler state
-  const [topazModel, setTopazModel] = useState<'Low Resolution V2' | 'Standard V2' | 'CGI' | 'High Fidelity V2' | 'Text Refine' | 'Recovery' | 'Redefine' | 'Recovery V2'>('Standard V2');
+  const [topazModel, setTopazModel] = useState<
+    | "Low Resolution V2"
+    | "Standard V2"
+    | "CGI"
+    | "High Fidelity V2"
+    | "Text Refine"
+    | "Recovery"
+    | "Redefine"
+    | "Recovery V2"
+  >("Standard V2");
   const [topazUpscaleFactor, setTopazUpscaleFactor] = useState<number>(2);
   const [seedvrUpscaleFactor, setSeedvrUpscaleFactor] = useState<number>(2);
   const [topazCropToFill, setTopazCropToFill] = useState<boolean>(false);
-  const [topazOutputFormat, setTopazOutputFormat] = useState<'jpeg' | 'png'>('jpeg');
-  const [topazSubjectDetection, setTopazSubjectDetection] = useState<'All' | 'Foreground' | 'Background'>('All');
+  const [topazOutputFormat, setTopazOutputFormat] = useState<"jpeg" | "png">(
+    "jpeg",
+  );
+  const [topazSubjectDetection, setTopazSubjectDetection] = useState<
+    "All" | "Foreground" | "Background"
+  >("All");
   const [topazFaceEnhance, setTopazFaceEnhance] = useState<boolean>(true);
   const [topazFaceCreativity, setTopazFaceCreativity] = useState<number>(0);
   const [topazFaceStrength, setTopazFaceStrength] = useState<number>(0.8);
 
   const seedvrEstimate = useMemo(() => {
-    if (selectedFeature !== 'upscale') return null;
-    if (model !== 'fal-ai/seedvr/upscale/image') return null;
+    if (selectedFeature !== "upscale") return null;
+    if (model !== "fal-ai/seedvr/upscale/image") return null;
     const w = Number(inputNaturalSize?.width || 0);
     const h = Number(inputNaturalSize?.height || 0);
-    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
-    const factor = Math.max(1, Math.min(8, Math.round(Number(seedvrUpscaleFactor) || 2)));
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0)
+      return null;
+    const factor = Math.max(
+      1,
+      Math.min(8, Math.round(Number(seedvrUpscaleFactor) || 2)),
+    );
     const outW = Math.max(1, Math.round(w * factor));
     const outH = Math.max(1, Math.round(h * factor));
     const mp = (outW * outH) / 1_000_000;
     const credits = Math.max(1, Math.ceil(mp * 4));
     return { factor, outW, outH, credits };
-  }, [inputNaturalSize?.width, inputNaturalSize?.height, model, seedvrUpscaleFactor, selectedFeature]);
+  }, [
+    inputNaturalSize?.width,
+    inputNaturalSize?.height,
+    model,
+    seedvrUpscaleFactor,
+    selectedFeature,
+  ]);
 
   const crystalEstimate = useMemo(() => {
-    if (selectedFeature !== 'upscale') return null;
-    if (model !== 'philz1337x/crystal-upscaler') return null;
+    if (selectedFeature !== "upscale") return null;
+    if (model !== "philz1337x/crystal-upscaler") return null;
     const w = Number(inputNaturalSize?.width || 0);
     const h = Number(inputNaturalSize?.height || 0);
-    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
-    const factorRaw = Number(String(scaleFactor).replace('x', '')) || 2;
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0)
+      return null;
+    const factorRaw = Number(String(scaleFactor).replace("x", "")) || 2;
     return estimateCrystalUpscalerCredits(w, h, factorRaw);
-  }, [inputNaturalSize?.width, inputNaturalSize?.height, model, scaleFactor, selectedFeature]);
+  }, [
+    inputNaturalSize?.width,
+    inputNaturalSize?.height,
+    model,
+    scaleFactor,
+    selectedFeature,
+  ]);
 
   const topazEstimate = useMemo(() => {
-    if (selectedFeature !== 'upscale') return null;
-    if (model !== 'fal-ai/topaz/upscale/image') return null;
+    if (selectedFeature !== "upscale") return null;
+    if (model !== "fal-ai/topaz/upscale/image") return null;
     const w = inputNaturalSize.width;
     const h = inputNaturalSize.height;
     if (w <= 0 || h <= 0) return null;
@@ -307,12 +501,12 @@ const EditImageInterface: React.FC = () => {
   }, [inputNaturalSize, model, selectedFeature, topazUpscaleFactor]);
 
   const realEsrganEstimate = useMemo(() => {
-    if (selectedFeature !== 'upscale') return null;
-    if (model !== 'nightmareai/real-esrgan') return null;
+    if (selectedFeature !== "upscale") return null;
+    if (model !== "nightmareai/real-esrgan") return null;
     const w = inputNaturalSize.width;
     const h = inputNaturalSize.height;
     if (w <= 0 || h <= 0) return null;
-    const factor = Number(String(scaleFactor).replace('x', '')) || 4;
+    const factor = Number(String(scaleFactor).replace("x", "")) || 4;
     const outW = Math.round(w * factor);
     const outH = Math.round(h * factor);
     return { outW, outH, credits: 14 };
@@ -322,43 +516,77 @@ const EditImageInterface: React.FC = () => {
   const [resizeExpandRight, setResizeExpandRight] = useState<number>(0);
   const [resizeExpandTop, setResizeExpandTop] = useState<number>(0);
   const [resizeExpandBottom, setResizeExpandBottom] = useState<number>(400);
-  const [resizeZoomOutPercentage, setResizeZoomOutPercentage] = useState<number>(20);
+  const [resizeZoomOutPercentage, setResizeZoomOutPercentage] =
+    useState<number>(20);
   const [resizeNumImages, setResizeNumImages] = useState<number>(1);
   const [resizeSafetyChecker, setResizeSafetyChecker] = useState<boolean>(true);
   const [resizeSyncMode, setResizeSyncMode] = useState<boolean>(false);
-  const [resizeOutputFormat, setResizeOutputFormat] = useState<'png' | 'jpeg' | 'jpg' | 'webp'>('png');
-  const [resizeAspectRatio, setResizeAspectRatio] = useState<'' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '2:3' | '3:2' | '4:5' | '5:4'>('');
+  const [resizeOutputFormat, setResizeOutputFormat] = useState<
+    "png" | "jpeg" | "jpg" | "webp"
+  >("png");
+  const [resizeAspectRatio, setResizeAspectRatio] = useState<
+    "" | "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "2:3" | "3:2" | "4:5" | "5:4"
+  >("");
   // Bria Expand specific fields
-  const [resizeCanvasW, setResizeCanvasW] = useState<number | ''>('');
-  const [resizeCanvasH, setResizeCanvasH] = useState<number | ''>('');
-  const [resizeOrigW, setResizeOrigW] = useState<number | ''>('');
-  const [resizeOrigH, setResizeOrigH] = useState<number | ''>('');
-  const [resizeOrigX, setResizeOrigX] = useState<number | ''>('');
-  const [resizeOrigY, setResizeOrigY] = useState<number | ''>('');
-  const [resizeSeed, setResizeSeed] = useState<string>('');
-  const [resizeNegativePrompt, setResizeNegativePrompt] = useState<string>('');
-  const [dynamic, setDynamic] = useState('');
-  const [sharpen, setSharpen] = useState('');
-  const [backgroundType, setBackgroundType] = useState('');
+  const [resizeCanvasW, setResizeCanvasW] = useState<number | "">("");
+  const [resizeCanvasH, setResizeCanvasH] = useState<number | "">("");
+  const [resizeOrigW, setResizeOrigW] = useState<number | "">("");
+  const [resizeOrigH, setResizeOrigH] = useState<number | "">("");
+  const [resizeOrigX, setResizeOrigX] = useState<number | "">("");
+  const [resizeOrigY, setResizeOrigY] = useState<number | "">("");
+  const [resizeSeed, setResizeSeed] = useState<string>("");
+  const [resizeNegativePrompt, setResizeNegativePrompt] = useState<string>("");
+  const [dynamic, setDynamic] = useState("");
+  const [sharpen, setSharpen] = useState("");
+  const [backgroundType, setBackgroundType] = useState("");
   // Interactive expand overlay state (left/right/top/bottom margins added around original image)
   const [expandLeftPx, setExpandLeftPx] = useState<number>(0);
   const [expandRightPx, setExpandRightPx] = useState<number>(0);
   const [expandTopPx, setExpandTopPx] = useState<number>(0);
   const [expandBottomPx, setExpandBottomPx] = useState<number>(0);
-  const [draggingEdge, setDraggingEdge] = useState<null | 'left' | 'right' | 'top' | 'bottom'>(null);
-  const dragStartRef = useRef<{ x: number; y: number; l: number; r: number; t: number; b: number } | null>(null);
+  const [draggingEdge, setDraggingEdge] = useState<
+    null | "left" | "right" | "top" | "bottom"
+  >(null);
+  const dragStartRef = useRef<{
+    x: number;
+    y: number;
+    l: number;
+    r: number;
+    t: number;
+    b: number;
+  } | null>(null);
 
-
-  const [threshold, setThreshold] = useState<string>('');
+  const [threshold, setThreshold] = useState<string>("");
   const [reverseBg, setReverseBg] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'model' | 'output' | 'swinTask' | 'backgroundType' | 'vectorizeModel' | 'vColorMode' | 'vHierarchical' | 'vMode' | 'resizeOutput' | 'resizeAspect' | 'replaceModel' | 'expandAspect' | 'topazModel' | ''>('');
+  const [activeDropdown, setActiveDropdown] = useState<
+    | "model"
+    | "output"
+    | "swinTask"
+    | "backgroundType"
+    | "vectorizeModel"
+    | "vColorMode"
+    | "vHierarchical"
+    | "vMode"
+    | "resizeOutput"
+    | "resizeAspect"
+    | "replaceModel"
+    | "expandAspect"
+    | "topazModel"
+    | ""
+  >("");
   // Live Chat dropdown keys
-  const [liveActiveDropdown, setLiveActiveDropdown] = useState<'liveModel' | 'liveFrame' | 'liveResolution' | ''>('');
+  const [liveActiveDropdown, setLiveActiveDropdown] = useState<
+    "liveModel" | "liveFrame" | "liveResolution" | ""
+  >("");
   // Vectorize controls
-  const [vectorizeModel, setVectorizeModel] = useState<'fal-ai/recraft/vectorize' | 'fal-ai/image2svg'>('fal-ai/recraft/vectorize');
-  const [vColorMode, setVColorMode] = useState<'color' | 'binary'>('color');
-  const [vHierarchical, setVHierarchical] = useState<'stacked' | 'cutout'>('stacked');
-  const [vMode, setVMode] = useState<'spline' | 'polygon'>('polygon');
+  const [vectorizeModel, setVectorizeModel] = useState<
+    "fal-ai/recraft/vectorize" | "fal-ai/image2svg"
+  >("fal-ai/recraft/vectorize");
+  const [vColorMode, setVColorMode] = useState<"color" | "binary">("color");
+  const [vHierarchical, setVHierarchical] = useState<"stacked" | "cutout">(
+    "stacked",
+  );
+  const [vMode, setVMode] = useState<"spline" | "polygon">("polygon");
   const [vFilterSpeckle, setVFilterSpeckle] = useState<number>(4);
   const [vColorPrecision, setVColorPrecision] = useState<number>(6);
   const [vLayerDifference, setVLayerDifference] = useState<number>(16);
@@ -368,24 +596,56 @@ const EditImageInterface: React.FC = () => {
   const [vSpliceThreshold, setVSpliceThreshold] = useState<number>(45);
   const [vPathPrecision, setVPathPrecision] = useState<number>(3);
   const [vectorizeSuperMode, setVectorizeSuperMode] = useState<boolean>(false);
-  const currentVectorizeCredits = useMemo(() => (
-    (vectorizeModel === 'fal-ai/recraft/vectorize' ? vectorizeRecraftCredits : vectorizeImage2SvgCredits)
-  ), [vectorizeModel, vectorizeRecraftCredits, vectorizeImage2SvgCredits]);
-  const effectiveVectorizeCredits = useMemo(() => (
-    currentVectorizeCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)
-  ), [currentVectorizeCredits, vectorizeSuperMode, vectorizeArtExtraCredits]);
+  const currentVectorizeCredits = useMemo(
+    () =>
+      vectorizeModel === "fal-ai/recraft/vectorize"
+        ? vectorizeRecraftCredits
+        : vectorizeImage2SvgCredits,
+    [vectorizeModel, vectorizeRecraftCredits, vectorizeImage2SvgCredits],
+  );
+  const effectiveVectorizeCredits = useMemo(
+    () =>
+      currentVectorizeCredits +
+      (vectorizeSuperMode ? vectorizeArtExtraCredits : 0),
+    [currentVectorizeCredits, vectorizeSuperMode, vectorizeArtExtraCredits],
+  );
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
   // Live Chat feature state
-  const [liveModel, setLiveModel] = useState<'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511'>('gemini-25-flash-image');
-  const [liveFrameSize, setLiveFrameSize] = useState<'1:1' | '3:4' | '4:3' | '16:9' | '9:16'>('1:1');
-  const [liveResolution, setLiveResolution] = useState<'1K' | '2K' | '4K'>('1K');
-  const [livePrompt, setLivePrompt] = useState<string>('');
-  const [liveChatMessages, setLiveChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string; status?: 'generating' | 'done' }>>([]);
-  const [liveHistory, setLiveHistory] = useState<{ id?: string; url: string }[]>([]);
+  const [liveModel, setLiveModel] = useState<
+    | "google/nano-banana-pro"
+    | "google/nano-banana-2"
+    | "seedream-v4.5"
+    | "seedream-5-lite"
+    | "qwen/qwen-image-2-pro"
+    | "qwen-image-edit-2511"
+  >("google/nano-banana-pro");
+  const [liveFrameSize, setLiveFrameSize] = useState<
+    "1:1" | "3:4" | "4:3" | "16:9" | "9:16"
+  >("1:1");
+  const [liveResolution, setLiveResolution] = useState<
+    "1K" | "2K" | "3K" | "4K"
+  >("1K");
+  const [livePrompt, setLivePrompt] = useState<string>("");
+  const [liveChatMessages, setLiveChatMessages] = useState<
+    Array<{
+      role: "user" | "assistant";
+      text: string;
+      status?: "generating" | "done";
+    }>
+  >([]);
+  const [liveHistory, setLiveHistory] = useState<
+    { id?: string; url: string }[]
+  >([]);
   const [activeLiveIndex, setActiveLiveIndex] = useState<number>(-1);
-  const [liveOriginalInput, setLiveOriginalInput] = useState<string | null>(null);
-  const [hoveredThumbnailIdx, setHoveredThumbnailIdx] = useState<number | null>(null);
-  const [showThumbnailMenuIdx, setShowThumbnailMenuIdx] = useState<number | null>(null);
+  const [liveOriginalInput, setLiveOriginalInput] = useState<string | null>(
+    null,
+  );
+  const [hoveredThumbnailIdx, setHoveredThumbnailIdx] = useState<number | null>(
+    null,
+  );
+  const [showThumbnailMenuIdx, setShowThumbnailMenuIdx] = useState<
+    number | null
+  >(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
   const thumbnailMenuRef = useRef<HTMLDivElement | null>(null);
@@ -394,7 +654,7 @@ const EditImageInterface: React.FC = () => {
     const el = chatListRef.current;
     if (!el) return;
     try {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     } catch (e) {
       // older browsers fallback
       el.scrollTop = el.scrollHeight;
@@ -403,112 +663,182 @@ const EditImageInterface: React.FC = () => {
 
   // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
 
-  const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511' }> = [
-    { label: 'Nano Banana', value: 'gemini-25-flash-image' },
-    { label: 'Nano Banana Pro', value: 'google/nano-banana-pro' },
-    { label: 'Seedream v4 4k', value: 'seedream-v4' },
-    { label: 'Seedream v4.5', value: 'seedream-v4.5' },
-    { label: 'GPT-IMAGE-1.5 (low)', value: 'openai/gpt-image-1.5' },
-    { label: 'Qwen Image Edit 2511', value: 'qwen-image-edit-2511' },
+  const liveAllowedModels: Array<{
+    label: string;
+    value:
+      | "google/nano-banana-pro"
+      | "google/nano-banana-2"
+      | "seedream-v4.5"
+      | "seedream-5-lite"
+      | "qwen/qwen-image-2-pro"
+      | "qwen-image-edit-2511";
+  }> = [
+    { label: "Nano Banana 2", value: "google/nano-banana-2" },
+    { label: "Nano Banana Pro", value: "google/nano-banana-pro" },
+    { label: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
+    { label: "Seedream v4.5", value: "seedream-v4.5" },
+    { label: "Seedream 5 Lite", value: "seedream-5-lite" },
+    { label: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
   ];
 
-  const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511', resolution?: string) => {
+  const liveResolutionOptionsByModel: Record<
+    (typeof liveAllowedModels)[number]["value"],
+    Array<"1K" | "2K" | "3K" | "4K">
+  > = {
+    "google/nano-banana-pro": ["1K", "2K", "4K"],
+    "google/nano-banana-2": ["1K", "2K", "4K"],
+    "seedream-v4.5": ["1K", "2K", "4K"],
+    "seedream-5-lite": ["2K", "3K"],
+    "qwen/qwen-image-2-pro": ["1K", "2K"],
+    "qwen-image-edit-2511": ["1K", "2K", "4K"],
+  };
+
+  const liveResolutionOptions = liveResolutionOptionsByModel[liveModel] || [
+    "1K",
+    "2K",
+    "4K",
+  ];
+
+  useEffect(() => {
+    if (!liveResolutionOptions.includes(liveResolution)) {
+      setLiveResolution(liveResolutionOptions[0]);
+    }
+  }, [liveModel, liveResolution, liveResolutionOptions]);
+
+  const getLiveModelCredits = (
+    value:
+      | "google/nano-banana-pro"
+      | "google/nano-banana-2"
+      | "seedream-v4.5"
+      | "seedream-5-lite"
+      | "qwen/qwen-image-2-pro"
+      | "qwen-image-edit-2511",
+    resolution?: string,
+  ) => {
     const mapped = value;
-    const quality = mapped === 'openai/gpt-image-1.5' ? 'low' : undefined;
-    const credits = getCreditsForModel(mapped, undefined, resolution, undefined, undefined, quality);
+    const quality = undefined;
+    const credits = getCreditsForModel(
+      mapped,
+      undefined,
+      resolution,
+      undefined,
+      undefined,
+      quality,
+    );
     if (credits != null) return credits;
     // Fallback defaults
-    if (mapped === 'gemini-25-flash-image') return 98;
-    if (mapped === 'google/nano-banana-pro') {
-      if (resolution === '4K') return 620;
+    if (mapped === "google/nano-banana-pro") {
+      if (resolution === "4K") return 620;
       return 320;
     }
-    if (mapped === 'seedream-v4') return 80;
-    if (mapped === 'seedream-v4.5') return 100;
-    if (mapped === 'openai/gpt-image-1.5') return 46;
-    if (mapped === 'qwen-image-edit-2511') return 80;
+    if (mapped === "google/nano-banana-2") {
+      if (resolution === "4K") return 322;
+      if (resolution === "2K") return 222;
+      return 154;
+    }
+    if (mapped === "seedream-v4.5") return 100;
+    if (mapped === "seedream-5-lite") return 90;
+    if (mapped === "qwen/qwen-image-2-pro") return 170;
+    if (mapped === "qwen-image-edit-2511") return 80;
     return 0;
   };
 
-  const liveCredits = useMemo(() => getLiveModelCredits(liveModel, liveResolution), [liveModel, liveResolution]);
+  const liveCredits = useMemo(
+    () => getLiveModelCredits(liveModel, liveResolution),
+    [liveModel, liveResolution],
+  );
 
   const availableModels = useMemo(() => {
-    if (selectedFeature === 'remove-bg') {
+    if (selectedFeature === "remove-bg") {
       return [
-        { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
-        { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
+        {
+          label: "851 Labs Remove BG - 10 credits",
+          value: "851-labs/background-remover",
+        },
+        {
+          label: "Lucataco Remove BG - 10 credits",
+          value: "lucataco/remove-bg",
+        },
       ];
     }
-    if (selectedFeature === 'resize') {
-      return [
-        { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
-      ];
+    if (selectedFeature === "resize") {
+      return [{ label: "Bria Expand", value: "fal-ai/bria/expand" }];
     }
     return [
-      { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
-      { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
-      { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
-      { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+      { label: "Crystal Upscaler", value: "philz1337x/crystal-upscaler" },
+      {
+        label: "SeedVR Upscaler (factor)",
+        value: "fal-ai/seedvr/upscale/image",
+      },
+      { label: "Topaz Upscaler", value: "fal-ai/topaz/upscale/image" },
+      { label: "Real-ESRGAN", value: "nightmareai/real-esrgan" },
     ];
   }, [selectedFeature]);
 
   const liveFrameSizes = [
-    { name: 'Square', value: '1:1' },
-    { name: 'Portrait', value: '3:4' },
-    { name: 'Landscape', value: '4:3' },
-    { name: 'Wide', value: '16:9' },
-    { name: 'Vertical', value: '9:16' },
+    { name: "Square", value: "1:1" },
+    { name: "Portrait", value: "3:4" },
+    { name: "Landscape", value: "4:3" },
+    { name: "Wide", value: "16:9" },
+    { name: "Vertical", value: "9:16" },
   ];
 
-  const parseOutputUrl = (res: any): string => (
+  const parseOutputUrl = (res: any): string =>
     res?.data?.images?.[0]?.url ||
     res?.data?.data?.images?.[0]?.url ||
     res?.data?.data?.url ||
     res?.data?.url ||
-    ''
-  );
+    "";
 
   // Helper function to upload image to Zata if it's still a blob URL or base64
   // Returns the Zata URL (either already uploaded or newly uploaded)
-  const ensureZataUrl = async (url: string | null | undefined): Promise<string | null> => {
+  const ensureZataUrl = async (
+    url: string | null | undefined,
+  ): Promise<string | null> => {
     if (!url) return null;
     const normalized = normalizeEditImageUrl(url);
 
     // If it's already a Zata URL or HTTP URL, use it directly
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
       return normalized;
     }
 
     // If it's a blob URL or base64, upload it to Zata
-    if (normalized.startsWith('data:') || normalized.startsWith('blob:')) {
+    if (normalized.startsWith("data:") || normalized.startsWith("blob:")) {
       try {
-        console.log('[ensureZataUrl] Uploading image to Zata before generation:', normalized.substring(0, 50));
-        const resp = await saveUpload({ url: normalized, type: 'image' });
+        console.log(
+          "[ensureZataUrl] Uploading image to Zata before generation:",
+          normalized.substring(0, 50),
+        );
+        const resp = await saveUpload({ url: normalized, type: "image" });
 
-        if (resp.responseStatus === 'success' && resp.data?.url) {
+        if (resp.responseStatus === "success" && resp.data?.url) {
           const zataUrl = resp.data.url;
 
           // Update inputs with the Zata URL
-          setInputs(prev => {
+          setInputs((prev) => {
             const updated: typeof prev = { ...prev };
-            Object.keys(prev).forEach(key => {
+            Object.keys(prev).forEach((key) => {
               const currentValue = prev[key as EditFeature];
               if (currentValue === normalized || currentValue === url) {
                 updated[key as EditFeature] = zataUrl;
-                console.log('[ensureZataUrl] Updated input for feature:', key);
+                console.log("[ensureZataUrl] Updated input for feature:", key);
               }
             });
             return updated;
           });
 
-          console.log('[ensureZataUrl] Successfully uploaded to Zata:', zataUrl.substring(0, 50));
+          console.log(
+            "[ensureZataUrl] Successfully uploaded to Zata:",
+            zataUrl.substring(0, 50),
+          );
           return zataUrl;
         } else {
-          console.error('[ensureZataUrl] Upload failed:', resp);
+          console.error("[ensureZataUrl] Upload failed:", resp);
           return normalized; // Fallback to original
         }
       } catch (error) {
-        console.error('[ensureZataUrl] Error uploading to Zata:', error);
+        console.error("[ensureZataUrl] Error uploading to Zata:", error);
         return normalized; // Fallback to original
       }
     }
@@ -517,7 +847,10 @@ const EditImageInterface: React.FC = () => {
   };
 
   // Handler to delete an image from the live chat history
-  const handleDeleteLiveChatImage = async (origIdx: number, generationId?: string) => {
+  const handleDeleteLiveChatImage = async (
+    origIdx: number,
+    generationId?: string,
+  ) => {
     try {
       // Close the menu first
       setShowThumbnailMenuIdx(null);
@@ -532,7 +865,7 @@ const EditImageInterface: React.FC = () => {
         try {
           await axiosInstance.delete(`/api/generations/${generationId}`);
         } catch (e) {
-          console.error('Failed to delete from server:', e);
+          console.error("Failed to delete from server:", e);
           // Continue with local deletion even if server deletion fails
         }
       }
@@ -567,13 +900,13 @@ const EditImageInterface: React.FC = () => {
           } else {
             // Fallback to input if something went wrong
             newActiveIndex = -1;
-            newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+            newImageUrl = liveOriginalInput || inputs["live-chat"] || null;
             newHistoryId = null;
           }
         } else {
           // This was the last image, reset to input
           newActiveIndex = -1;
-          newImageUrl = liveOriginalInput || inputs['live-chat'] || null;
+          newImageUrl = liveOriginalInput || inputs["live-chat"] || null;
           newHistoryId = null;
         }
       } else if (currentActiveIdx > origIdx) {
@@ -596,39 +929,40 @@ const EditImageInterface: React.FC = () => {
       // Update outputs and inputs if the active image changed
       if (currentActiveIdx === origIdx) {
         if (newImageUrl) {
-          setOutputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
-          setInputs((prev) => ({ ...prev, ['live-chat']: newImageUrl }));
+          setOutputs((prev) => ({ ...prev, ["live-chat"]: newImageUrl }));
+          setInputs((prev) => ({ ...prev, ["live-chat"]: newImageUrl }));
         } else {
-          setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
-          setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+          setOutputs((prev) => ({ ...prev, ["live-chat"]: null }));
+          setInputs((prev) => ({ ...prev, ["live-chat"]: null }));
         }
         setCurrentHistoryId(newHistoryId);
       }
     } catch (error) {
-      console.error('Error deleting live chat image:', error);
+      console.error("Error deleting live chat image:", error);
     }
   };
 
-
   const handleLiveGenerate = async () => {
     if (!user) {
-      saveAutoResumeIntent('image', {
+      saveAutoResumeIntent("image", {
         isEditImage: true,
-        selectedFeature: 'live-chat',
+        selectedFeature: "live-chat",
         inputs,
         livePrompt,
         liveModel,
         liveFrameSize,
         liveResolution,
       });
-      router.push(getSignInUrl('/text-to-image/edit-image'));
+      router.push(getSignInUrl("/text-to-image/edit-image"));
       return;
     }
     let optimisticDebit = 0;
     try {
-      const img = inputs['live-chat'] || (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex]?.url : null);
+      const img =
+        inputs["live-chat"] ||
+        (activeLiveIndex >= 0 ? liveHistory[activeLiveIndex]?.url : null);
       if (!img) {
-        setErrorMsg('Please upload or select an image for Live Chat');
+        setErrorMsg("Please upload or select an image for Live Chat");
         return;
       }
       if (!livePrompt.trim()) return;
@@ -638,73 +972,103 @@ const EditImageInterface: React.FC = () => {
         try {
           deductCreditsOptimisticForGeneration(liveCredits);
           optimisticDebit = liveCredits;
-        } catch { /* ignore optimistic errors */ }
+        } catch {
+          /* ignore optimistic errors */
+        }
       }
 
-      setProcessing((prev) => ({ ...prev, ['live-chat']: true }));
-      setErrorMsg('');
+      setProcessing((prev) => ({ ...prev, ["live-chat"]: true }));
+      setErrorMsg("");
       setLiveChatMessages((prev) => [
         ...prev,
-        { role: 'user', text: livePrompt },
-        { role: 'assistant', text: 'Generating...', status: 'generating' },
+        { role: "user", text: livePrompt },
+        { role: "assistant", text: "Generating...", status: "generating" },
       ]);
 
       // Upload image to Zata if it's still a blob URL or base64
       const imageUrl = await ensureZataUrl(img);
 
-      const coerceGptImage15AspectRatio = (raw?: string): '1:1' | '3:2' | '2:3' => {
-        const v = String(raw || '').trim();
-        if (v === '1:1') return '1:1';
+      const coerceGptImage15AspectRatio = (
+        raw?: string,
+      ): "1:1" | "3:2" | "2:3" => {
+        const v = String(raw || "").trim();
+        if (v === "1:1") return "1:1";
         // Portrait-ish ratios in this UI
-        if (v === '3:4' || v === '9:16') return '2:3';
+        if (v === "3:4" || v === "9:16") return "2:3";
         // Landscape-ish ratios in this UI
-        return '3:2';
+        return "3:2";
       };
 
-      let out = '';
+      let out = "";
       let res: any = null;
-      if (liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') {
-        const modelName = liveModel === 'seedream-v4' ? 'bytedance/seedream-4' : 'bytedance/seedream-4.5';
+      if (liveModel === "seedream-v4.5") {
         const payload: any = {
           prompt: livePrompt,
-          model: modelName,
+          model: "bytedance/seedream-4.5",
           size: liveResolution,
           aspect_ratio: liveFrameSize,
           image_input: [imageUrl],
-          sequential_image_generation: 'disabled',
+          sequential_image_generation: "disabled",
           max_images: 1,
           isPublic: true,
         };
-        res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post("/api/replicate/generate", payload);
         out = parseOutputUrl(res);
-      } else if (liveModel === 'openai/gpt-image-1.5') {
+      } else if (liveModel === "seedream-5-lite") {
         const payload: any = {
           prompt: livePrompt,
-          model: 'openai/gpt-image-1.5',
-          n: 1,
-          number_of_images: 1,
-          uploadedImages: [imageUrl],
-          aspect_ratio: coerceGptImage15AspectRatio(liveFrameSize),
-          quality: 'low',
-          output_format: 'jpeg',
-          generationType: 'live-chat',
+          model: "seedream-5-lite",
+          size: liveResolution,
+          aspect_ratio: liveFrameSize,
+          image_input: [imageUrl],
+          sequential_image_generation: "disabled",
+          max_images: 1,
+          generationType: "live-chat",
           isPublic: true,
         };
-        res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post("/api/replicate/generate", payload);
         out = parseOutputUrl(res);
-      } else if (liveModel === 'qwen-image-edit-2511') {
+      } else if (liveModel === "qwen/qwen-image-2-pro") {
         const payload: any = {
           prompt: livePrompt,
-          model: 'qwen-image-edit-2511',
+          model: "qwen/qwen-image-2-pro",
           uploadedImages: [imageUrl],
           aspect_ratio: liveFrameSize,
           size: liveResolution,
           num_images: 1,
-          output_format: 'jpg',
-          generationType: 'live-chat',
+          output_format: "jpg",
+          generationType: "live-chat",
           isPublic: true,
         };
-        res = await axiosInstance.post('/api/replicate/generate', payload);
+        res = await axiosInstance.post("/api/replicate/generate", payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === "google/nano-banana-2") {
+        const payload: any = {
+          prompt: livePrompt,
+          model: "google/nano-banana-2",
+          image_input: [imageUrl],
+          aspect_ratio: liveFrameSize,
+          resolution: liveResolution,
+          num_images: 1,
+          output_format: "jpg",
+          generationType: "live-chat",
+          isPublic: true,
+        };
+        res = await axiosInstance.post("/api/replicate/generate", payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === "qwen-image-edit-2511") {
+        const payload: any = {
+          prompt: livePrompt,
+          model: "qwen-image-edit-2511",
+          uploadedImages: [imageUrl],
+          aspect_ratio: liveFrameSize,
+          size: liveResolution,
+          num_images: 1,
+          output_format: "jpg",
+          generationType: "live-chat",
+          isPublic: true,
+        };
+        res = await axiosInstance.post("/api/replicate/generate", payload);
         out = parseOutputUrl(res);
       } else {
         const payload: any = {
@@ -712,12 +1076,12 @@ const EditImageInterface: React.FC = () => {
           model: liveModel,
           n: 1,
           uploadedImages: [imageUrl],
-          output_format: 'jpeg',
+          output_format: "jpeg",
           frameSize: liveFrameSize,
           size: liveResolution,
-          generationType: 'live-chat',
+          generationType: "live-chat",
         };
-        res = await axiosInstance.post('/api/fal/generate', payload);
+        res = await axiosInstance.post("/api/fal/generate", payload);
         out = parseOutputUrl(res);
       }
 
@@ -725,28 +1089,37 @@ const EditImageInterface: React.FC = () => {
         // Extract ID from response (support both Replicate and Fal structures)
         // Replicate: res.data.id
         // Fal: res.data.request_id (or sometimes directly in data)
-        const generationId = res?.data?.id || res?.data?.request_id || res?.data?.data?.request_id; // Try to find an ID
+        const generationId =
+          res?.data?.id || res?.data?.request_id || res?.data?.data?.request_id; // Try to find an ID
 
-        setOutputs((prev) => ({ ...prev, ['live-chat']: out }));
+        setOutputs((prev) => ({ ...prev, ["live-chat"]: out }));
         setLiveHistory((prev) => [...prev, { id: generationId, url: out }]);
-        setActiveLiveIndex((prev) => prev + 1 >= 0 ? prev + 1 : 0);
+        setActiveLiveIndex((prev) => (prev + 1 >= 0 ? prev + 1 : 0));
         setCurrentHistoryId(generationId || null); // Set current ID for deletion logic
         // Preserve the original input used for this generation so it can be shown
         // in the right-side thumbnail column below generated images.
-        if (!liveOriginalInput && inputs['live-chat']) {
-          setLiveOriginalInput(inputs['live-chat'] as string);
+        if (!liveOriginalInput && inputs["live-chat"]) {
+          setLiveOriginalInput(inputs["live-chat"] as string);
         }
         // Continue using the latest generated image as the working input
-        setInputs((prev) => ({ ...prev, ['live-chat']: out }));
+        setInputs((prev) => ({ ...prev, ["live-chat"]: out }));
       }
 
-      try { await refreshCredits(); } catch { }
+      try {
+        await refreshCredits();
+      } catch {}
 
       setLiveChatMessages((prev) => {
-        const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
+        const idx = prev.findIndex(
+          (m) => m.status === "generating" && m.role === "assistant",
+        );
         if (idx >= 0) {
           const copy = [...prev];
-          copy[idx] = { role: 'assistant', text: 'Image generated', status: 'done' };
+          copy[idx] = {
+            role: "assistant",
+            text: "Image generated",
+            status: "done",
+          };
           return copy;
         }
         return prev;
@@ -754,54 +1127,78 @@ const EditImageInterface: React.FC = () => {
     } catch (err: any) {
       // Roll back optimistic debit on failure
       if (optimisticDebit > 0) {
-        try { rollbackOptimisticDeduction(liveCredits); } catch { }
+        try {
+          rollbackOptimisticDeduction(liveCredits);
+        } catch {}
       }
-      setErrorMsg(err?.response?.data?.message || err?.message || 'Generation failed');
+      setErrorMsg(
+        err?.response?.data?.message || err?.message || "Generation failed",
+      );
       setLiveChatMessages((prev) => {
-        const idx = prev.findIndex((m) => m.status === 'generating' && m.role === 'assistant');
+        const idx = prev.findIndex(
+          (m) => m.status === "generating" && m.role === "assistant",
+        );
         if (idx >= 0) {
           const copy = [...prev];
-          copy[idx] = { role: 'assistant', text: 'Generation failed', status: 'done' };
+          copy[idx] = {
+            role: "assistant",
+            text: "Generation failed",
+            status: "done",
+          };
           return copy;
         }
         return prev;
       });
     } finally {
-      setProcessing((prev) => ({ ...prev, ['live-chat']: false }));
-      setLivePrompt('');
+      setProcessing((prev) => ({ ...prev, ["live-chat"]: false }));
+      setLivePrompt("");
     }
   };
-  const selectedGeneratorModel = useAppSelector((state: any) => state.generation?.selectedModel || 'flux-dev');
-  const frameSize = useAppSelector((state: any) => state.generation?.frameSize || '1:1');
-  const selectedStyle = useAppSelector((state: any) => state.generation?.style || 'none');
-  const reduxUploadedImages = useAppSelector((state: any) => state.generation?.uploadedImages || []);
+  const selectedGeneratorModel = useAppSelector(
+    (state: any) => state.generation?.selectedModel || "flux-dev",
+  );
+  const frameSize = useAppSelector(
+    (state: any) => state.generation?.frameSize || "1:1",
+  );
+  const selectedStyle = useAppSelector(
+    (state: any) => state.generation?.style || "none",
+  );
+  const reduxUploadedImages = useAppSelector(
+    (state: any) => state.generation?.uploadedImages || [],
+  );
   const dispatch = useAppDispatch();
 
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   // Get raw history entries from Redux
-  const allHistoryEntries = useAppSelector((s: any) => s.history?.entries || []);
-  const historyLoading = useAppSelector((s: any) => s.history?.loading || false);
-  const historyHasMore = useAppSelector((s: any) => s.history?.hasMore || false);
+  const allHistoryEntries = useAppSelector(
+    (s: any) => s.history?.entries || [],
+  );
+  const historyLoading = useAppSelector(
+    (s: any) => s.history?.loading || false,
+  );
+  const historyHasMore = useAppSelector(
+    (s: any) => s.history?.hasMore || false,
+  );
   const historyFilters = useAppSelector((s: any) => s.history?.filters || {});
   const historyError = useAppSelector((s: any) => s.history?.error || null);
 
   // Memoize filtered history entries to prevent unnecessary rerenders
   const historyEntries = useMemo(() => {
-    console.log('[EditImage] Filtering history entries:', {
+    console.log("[EditImage] Filtering history entries:", {
       totalRawEntries: allHistoryEntries.length,
       filters: historyFilters,
     });
 
     const filtered = allHistoryEntries.filter((e: any) => {
-      const isTextToImage = e.generationType === 'text-to-image';
-      const isCompleted = e.status === 'completed';
+      const isTextToImage = e.generationType === "text-to-image";
+      const isCompleted = e.status === "completed";
       const hasImages = Array.isArray(e.images) && e.images.length > 0;
       const passes = isTextToImage && isCompleted && hasImages;
 
       if (!passes && isTextToImage) {
-        console.log('[EditImage] Entry filtered out:', {
+        console.log("[EditImage] Entry filtered out:", {
           id: e.id,
           status: e.status,
           hasImages: hasImages,
@@ -812,7 +1209,7 @@ const EditImageInterface: React.FC = () => {
       return passes;
     });
 
-    console.log('[EditImage] Filtered history entries result:', {
+    console.log("[EditImage] Filtered history entries result:", {
       filteredCount: filtered.length,
       rawCount: allHistoryEntries.length,
     });
@@ -838,10 +1235,10 @@ const EditImageInterface: React.FC = () => {
           if (!url) return;
 
           items.push({
-            id: img?.id || `${entry.id || 'history'}-${index}`,
+            id: img?.id || `${entry.id || "history"}-${index}`,
             historyId: entry.id,
             url,
-            type: 'image',
+            type: "image",
             storagePath,
             originalUrl: img?.originalUrl || img?.url || storagePath,
             thumbnailUrl: img?.thumbnailUrl || img?.avifUrl || undefined,
@@ -851,7 +1248,10 @@ const EditImageInterface: React.FC = () => {
       }
     } catch (e) {
       // If anything goes wrong, fall back to empty list so modal still renders
-      console.error('[EditImage] Failed to build uploadModalHistoryEntries:', e);
+      console.error(
+        "[EditImage] Failed to build uploadModalHistoryEntries:",
+        e,
+      );
     }
     return items;
   }, [historyEntries]);
@@ -862,7 +1262,7 @@ const EditImageInterface: React.FC = () => {
   // Initialize from query params: feature and image + self-managed history load for library images
   // Use forceInitial to bypass cache on mount
   const { refreshImmediate: refreshHistoryImmediate } = useHistoryLoader({
-    generationType: 'text-to-image',
+    generationType: "text-to-image",
     initialLimit: 30,
     forceInitial: true, // Force initial load, bypass cache
   });
@@ -881,7 +1281,7 @@ const EditImageInterface: React.FC = () => {
 
   // Log history entries when they change (for debugging)
   useEffect(() => {
-    console.log('[EditImage] History state changed:', {
+    console.log("[EditImage] History state changed:", {
       allHistoryEntriesCount: allHistoryEntries.length,
       filteredHistoryEntriesCount: historyEntries.length,
       loading: historyLoading,
@@ -892,115 +1292,150 @@ const EditImageInterface: React.FC = () => {
     });
 
     if (isUploadOpen && historyEntries.length > 0) {
-      console.log('[EditImage] Sample history entries (first 3):', historyEntries.slice(0, 3).map((e: any) => ({
-        id: e.id,
-        generationType: e.generationType,
-        status: e.status,
-        imagesCount: Array.isArray(e.images) ? e.images.length : 0,
-        firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + '...',
-      })));
+      console.log(
+        "[EditImage] Sample history entries (first 3):",
+        historyEntries.slice(0, 3).map((e: any) => ({
+          id: e.id,
+          generationType: e.generationType,
+          status: e.status,
+          imagesCount: Array.isArray(e.images) ? e.images.length : 0,
+          firstImageUrl: e.images?.[0]?.url?.substring(0, 50) + "...",
+        })),
+      );
     }
-  }, [allHistoryEntries.length, historyEntries.length, historyLoading, historyHasMore, historyFilters, historyError, isUploadOpen]);
+  }, [
+    allHistoryEntries.length,
+    historyEntries.length,
+    historyLoading,
+    historyHasMore,
+    historyFilters,
+    historyError,
+    isUploadOpen,
+  ]);
   useEffect(() => {
     try {
       // Allow tab selection via query or path (for /edit-image/fill)
-      const featureParam = (searchParams?.get('feature') || '').toLowerCase() || (typeof window !== 'undefined' && window.location.pathname.includes('/edit-image/fill') ? 'fill' : '');
-      const imageParam = searchParams?.get('image') || '';
-      const storagePathParam = searchParams?.get('sp') || '';
-      const validFeature = ['upscale', 'remove-bg', 'resize', 'fill', 'vectorize', 'reimagine'].includes(featureParam)
+      const featureParam =
+        (searchParams?.get("feature") || "").toLowerCase() ||
+        (typeof window !== "undefined" &&
+        window.location.pathname.includes("/edit-image/fill")
+          ? "fill"
+          : "");
+      const imageParam = searchParams?.get("image") || "";
+      const storagePathParam = searchParams?.get("sp") || "";
+      const validFeature = [
+        "upscale",
+        "remove-bg",
+        "resize",
+        "fill",
+        "vectorize",
+        "erase",
+        "expand",
+        "reimagine",
+        "live-chat",
+      ].includes(featureParam)
         ? (featureParam as EditFeature)
         : null;
       if (validFeature) {
         setSelectedFeature(validFeature);
         // Set default model based on feature
-        if (validFeature === 'remove-bg') {
-          setModel('851-labs/background-remover');
-        } else if (validFeature === 'upscale') {
-          setModel('philz1337x/crystal-upscaler');
-        } else if (validFeature === 'resize') {
-          setModel('fal-ai/bria/expand');
-        } else if (validFeature === 'fill') {
-          setModel('fal-ai/bria/genfill' as any);
-        } else if (validFeature === 'vectorize') {
-          setModel('fal-ai/recraft/vectorize' as any);
+        if (validFeature === "remove-bg") {
+          setModel("851-labs/background-remover");
+        } else if (validFeature === "upscale") {
+          setModel("philz1337x/crystal-upscaler");
+        } else if (validFeature === "resize") {
+          setModel("fal-ai/bria/expand");
+        } else if (validFeature === "fill") {
+          setModel("fal-ai/bria/genfill" as any);
+        } else if (validFeature === "vectorize") {
+          setModel("fal-ai/recraft/vectorize" as any);
         }
         // Prefer raw storage path if provided; use frontend proxy URL for preview rendering
         if (storagePathParam) {
-          const decodedPath = decodeURIComponent(storagePathParam).replace(/^\/+/, '');
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
+          const decodedPath = decodeURIComponent(storagePathParam).replace(
+            /^\/+/,
+            "",
+          );
+          const ZATA_PREFIX = (
+            process.env.NEXT_PUBLIC_ZATA_PREFIX || ""
+          ).replace(/\/$/, "/");
           // Ensure we always pass a valid Next/Image src:
           // - If ZATA_PREFIX is configured, build absolute CDN URL.
           // - Otherwise, fall back to our resource proxy with a leading slash.
           const directUrl = decodedPath
-            ? (ZATA_PREFIX
+            ? ZATA_PREFIX
               ? `${ZATA_PREFIX}${decodedPath}`
-              : `/api/proxy/resource/${encodeURIComponent(decodedPath)}`)
-            : '';
+              : `/api/proxy/resource/${encodeURIComponent(decodedPath)}`
+            : "";
           // Apply to all features so switching tabs preserves the same input
           setInputs({
-            'upscale': directUrl,
-            'remove-bg': directUrl,
-            'resize': directUrl,
-            'fill': directUrl,
-            'vectorize': directUrl,
-            'erase': directUrl,
-            'expand': directUrl,
-            'reimagine': directUrl,
-            'live-chat': directUrl,
+            upscale: directUrl,
+            "remove-bg": directUrl,
+            resize: directUrl,
+            fill: directUrl,
+            vectorize: directUrl,
+            erase: directUrl,
+            expand: directUrl,
+            reimagine: directUrl,
+            "live-chat": directUrl,
           });
-        } else if (imageParam && imageParam.trim() !== '') {
+        } else if (imageParam && imageParam.trim() !== "") {
           const normalizedImageParam = normalizeEditImageUrl(imageParam);
           setInputs({
-            'upscale': normalizedImageParam,
-            'remove-bg': normalizedImageParam,
-            'resize': normalizedImageParam,
-            'fill': normalizedImageParam,
-            'vectorize': normalizedImageParam,
-            'erase': normalizedImageParam,
-            'expand': normalizedImageParam,
-            'reimagine': normalizedImageParam,
-            'live-chat': normalizedImageParam,
+            upscale: normalizedImageParam,
+            "remove-bg": normalizedImageParam,
+            resize: normalizedImageParam,
+            fill: normalizedImageParam,
+            vectorize: normalizedImageParam,
+            erase: normalizedImageParam,
+            expand: normalizedImageParam,
+            reimagine: normalizedImageParam,
+            "live-chat": normalizedImageParam,
           });
         }
-      } else if (imageParam && imageParam.trim() !== '') {
+      } else if (imageParam && imageParam.trim() !== "") {
         // Fallback: if only image provided, attach to current feature
         const normalizedImageParam = normalizeEditImageUrl(imageParam);
         setInputs({
-          'upscale': normalizedImageParam,
-          'remove-bg': normalizedImageParam,
-          'resize': normalizedImageParam,
-          'fill': normalizedImageParam,
-          'vectorize': normalizedImageParam,
-          'erase': normalizedImageParam,
-          'expand': normalizedImageParam,
-          'reimagine': normalizedImageParam,
-          'live-chat': normalizedImageParam,
+          upscale: normalizedImageParam,
+          "remove-bg": normalizedImageParam,
+          resize: normalizedImageParam,
+          fill: normalizedImageParam,
+          vectorize: normalizedImageParam,
+          erase: normalizedImageParam,
+          expand: normalizedImageParam,
+          reimagine: normalizedImageParam,
+          "live-chat": normalizedImageParam,
         });
       }
-    } catch { }
+    } catch {}
     // Only run once on mount for initial hydration from URL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Ensure Bria is the default model when switching to Resize
   useEffect(() => {
-    if (selectedFeature === 'resize' && model !== 'fal-ai/bria/expand') {
-      setModel('fal-ai/bria/expand');
+    if (selectedFeature === "resize" && model !== "fal-ai/bria/expand") {
+      setModel("fal-ai/bria/expand");
     }
   }, [selectedFeature]);
 
-  // Ensure Google Nano Banana is the default model when switching to Replace, Erase, or Reimagine
+  // Ensure Seedream 5 Lite is the default model when switching to Replace/Erase.
+  // Reimagine keeps Google Nano Banana default behavior.
   useEffect(() => {
-    if (selectedFeature === 'fill' || selectedFeature === 'erase' || selectedFeature === 'reimagine') {
-      // Always use Google Nano Banana for Replace, Erase, and Reimagine features
-      if (model !== 'google_nano_banana') {
-        setModel('google_nano_banana');
+    if (selectedFeature === "fill" || selectedFeature === "erase") {
+      if (model !== "seedream-5-lite") {
+        setModel("seedream-5-lite");
+      }
+    } else if (selectedFeature === "reimagine") {
+      if (model !== "google_nano_banana") {
+        setModel("google_nano_banana");
       }
     }
     // Reset reimagine state when switching features
-    if (selectedFeature !== 'reimagine') {
+    if (selectedFeature !== "reimagine") {
       setReimagineSelectionConfirmed(false);
-      setReimaginePrompt('');
+      setReimaginePrompt("");
       setReimagineSelectionBounds(null);
       setReimagineSelectionBounds(null);
       setReimagineLiveBounds(null);
@@ -1009,21 +1444,27 @@ const EditImageInterface: React.FC = () => {
   }, [selectedFeature, model]);
 
   // Reimagine State
-  const [reimagineReferenceImage, setReimagineReferenceImage] = useState<string | null>(null);
+  const [reimagineReferenceImage, setReimagineReferenceImage] = useState<
+    string | null
+  >(null);
 
   // Ensure Seedream is the default model when switching to Expand
   useEffect(() => {
-    if (selectedFeature === 'expand') {
+    if (selectedFeature === "expand") {
       // Always use Seedream for Expand feature
-      if (model !== 'seedream_4') {
-        setModel('seedream_4');
+      if (model !== "seedream_4") {
+        setModel("seedream_4");
       }
     }
   }, [selectedFeature, model]);
 
   // Initialize expand bounds when image loads
   useEffect(() => {
-    if (selectedFeature === 'expand' && expandOriginalSize.width > 0 && expandOriginalSize.height > 0) {
+    if (
+      selectedFeature === "expand" &&
+      expandOriginalSize.width > 0 &&
+      expandOriginalSize.height > 0
+    ) {
       // Initialize bounds to original image (no expansion)
       setExpandBounds({ left: 0, top: 0, right: 0, bottom: 0 });
       setExpandCustomWidth(expandOriginalSize.width);
@@ -1035,7 +1476,8 @@ const EditImageInterface: React.FC = () => {
 
   // Helper: normalize requested selection into provider constraints (Seedream: 1024..4096)
   const normalizeExpandDims = useCallback((w: number, h: number) => {
-    const MIN = 1024; const MAX = 4096;
+    const MIN = 1024;
+    const MAX = 4096;
     if ((w < MIN || h < MIN) && Math.min(w, h) >= 512) {
       const factor = MIN / Math.min(w, h);
       w = Math.round(w * factor);
@@ -1049,7 +1491,11 @@ const EditImageInterface: React.FC = () => {
 
   // Update expand dimensions when bounds change
   useEffect(() => {
-    if (selectedFeature === 'expand' && expandOriginalSize.width > 0 && expandOriginalSize.height > 0) {
+    if (
+      selectedFeature === "expand" &&
+      expandOriginalSize.width > 0 &&
+      expandOriginalSize.height > 0
+    ) {
       // Calculate cropped region (negative bounds mean cropping)
       const cropLeft = Math.max(0, -expandBounds.left);
       const cropTop = Math.max(0, -expandBounds.top);
@@ -1084,7 +1530,12 @@ const EditImageInterface: React.FC = () => {
 
   // Populate resize fields when switching to resize feature if image is already loaded
   useEffect(() => {
-    if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && inputNaturalSize.width > 0 && inputNaturalSize.height > 0) {
+    if (
+      selectedFeature === "resize" &&
+      model === "fal-ai/bria/expand" &&
+      inputNaturalSize.width > 0 &&
+      inputNaturalSize.height > 0
+    ) {
       // Update original image size to match detected dimensions
       setResizeOrigW(inputNaturalSize.width);
       setResizeOrigH(inputNaturalSize.height);
@@ -1102,10 +1553,10 @@ const EditImageInterface: React.FC = () => {
 
   // State restoration for auto-resume
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const intent = getAutoResumeIntent();
-    if (intent && intent.type === 'image' && intent.data?.isEditImage) {
-      console.log('[EditImage] Auto-resuming editor state:', intent.data);
+    if (intent && intent.type === "image" && intent.data?.isEditImage) {
+      console.log("[EditImage] Auto-resuming editor state:", intent.data);
       const data = intent.data;
       if (data.selectedFeature) setSelectedFeature(data.selectedFeature);
       if (data.inputs) setInputs(data.inputs);
@@ -1121,10 +1572,13 @@ const EditImageInterface: React.FC = () => {
       if (data.erasePrompt) setErasePrompt(data.erasePrompt);
       if (data.reimaginePrompt) setReimaginePrompt(data.reimaginePrompt);
       if (data.reimagineModel) setReimagineModel(data.reimagineModel);
-      if (data.reimagineSelectionMode) setReimagineSelectionMode(data.reimagineSelectionMode);
+      if (data.reimagineSelectionMode)
+        setReimagineSelectionMode(data.reimagineSelectionMode);
       if (data.topazModel) setTopazModel(data.topazModel);
-      if (data.topazUpscaleFactor) setTopazUpscaleFactor(data.topazUpscaleFactor);
-      if (data.seedvrUpscaleFactor) setSeedvrUpscaleFactor(data.seedvrUpscaleFactor);
+      if (data.topazUpscaleFactor)
+        setTopazUpscaleFactor(data.topazUpscaleFactor);
+      if (data.seedvrUpscaleFactor)
+        setSeedvrUpscaleFactor(data.seedvrUpscaleFactor);
       if (data.resizeAspectRatio) setResizeAspectRatio(data.resizeAspectRatio);
       if (data.livePrompt) setLivePrompt(data.livePrompt);
       if (data.liveModel) setLiveModel(data.liveModel);
@@ -1140,7 +1594,13 @@ const EditImageInterface: React.FC = () => {
   // that we export can be scaled to the image's pixel size. This runs whenever
   // inputs change and picks the first available input image across features.
   useEffect(() => {
-    const src = inputs.upscale || inputs['remove-bg'] || inputs.resize || inputs.fill || inputs.vectorize || inputs[selectedFeature];
+    const src =
+      inputs.upscale ||
+      inputs["remove-bg"] ||
+      inputs.resize ||
+      inputs.fill ||
+      inputs.vectorize ||
+      inputs[selectedFeature];
     if (!src) return;
     // Note: we intentionally run this regardless of currently selected feature
     // so mask export (fill/remove-bg) can scale to the true image pixel size.
@@ -1152,10 +1612,12 @@ const EditImageInterface: React.FC = () => {
           measurableSrc = new URL(measurableSrc, window.location.origin).href;
         }
         // If it's a proxy path that streams, load via fetch->blob to avoid CORS hiccups, then measure
-        const needsBlob = measurableSrc.startsWith(window.location.origin) || measurableSrc.startsWith('/');
+        const needsBlob =
+          measurableSrc.startsWith(window.location.origin) ||
+          measurableSrc.startsWith("/");
         if (needsBlob && !/^data:|^blob:/i.test(measurableSrc)) {
           try {
-            const resp = await fetch(measurableSrc, { cache: 'force-cache' });
+            const resp = await fetch(measurableSrc, { cache: "force-cache" });
             const blob = await resp.blob();
             measurableSrc = URL.createObjectURL(blob);
           } catch {
@@ -1169,7 +1631,10 @@ const EditImageInterface: React.FC = () => {
             const h = Math.max(1, Math.floor(img.naturalHeight || 0));
             setInputNaturalSize({ width: w, height: h });
             // Auto-populate resize fields when resize feature is selected and using Bria Expand
-            if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand') {
+            if (
+              selectedFeature === "resize" &&
+              model === "fal-ai/bria/expand"
+            ) {
               // Always update original image size to match input image dimensions
               setResizeOrigW(w);
               setResizeOrigH(h);
@@ -1183,63 +1648,75 @@ const EditImageInterface: React.FC = () => {
               setExpandTopPx(0);
               setExpandBottomPx(0);
             }
-            try { if (measurableSrc.startsWith('blob:')) URL.revokeObjectURL(measurableSrc); } catch { }
+            try {
+              if (measurableSrc.startsWith("blob:"))
+                URL.revokeObjectURL(measurableSrc);
+            } catch {}
             resolve();
           };
           img.onerror = () => resolve();
           img.src = measurableSrc;
         });
-      } catch { }
+      } catch {}
     })();
   }, [inputs, selectedFeature, model]);
 
   // Zoom and pan utility functions (improved from ImagePreviewModal)
-  const clampOffset = useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
-    if (!imageContainerRef.current) return newOffset;
-    const rect = imageContainerRef.current.getBoundingClientRect();
-    const imgW = naturalSize.width * currentScale;
-    const imgH = naturalSize.height * currentScale;
-    const maxX = Math.max(0, (imgW - rect.width) / 2);
-    const maxY = Math.max(0, (imgH - rect.height) / 2);
-    return {
-      x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
-      y: Math.max(-maxY, Math.min(maxY, newOffset.y))
-    };
-  }, [naturalSize]);
+  const clampOffset = useCallback(
+    (newOffset: { x: number; y: number }, currentScale: number) => {
+      if (!imageContainerRef.current) return newOffset;
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      const imgW = naturalSize.width * currentScale;
+      const imgH = naturalSize.height * currentScale;
+      const maxX = Math.max(0, (imgW - rect.width) / 2);
+      const maxY = Math.max(0, (imgH - rect.height) / 2);
+      return {
+        x: Math.max(-maxX, Math.min(maxX, newOffset.x)),
+        y: Math.max(-maxY, Math.min(maxY, newOffset.y)),
+      };
+    },
+    [naturalSize],
+  );
 
-  const zoomToPoint = useCallback((point: { x: number; y: number }, newScale: number) => {
-    if (!imageContainerRef.current) return;
-    const rect = imageContainerRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const newOffsetX = centerX - (point.x * newScale);
-    const newOffsetY = centerY - (point.y * newScale);
-    const clamped = clampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
-    setScale(newScale);
-    setOffset(clamped);
-  }, [clampOffset]);
+  const zoomToPoint = useCallback(
+    (point: { x: number; y: number }, newScale: number) => {
+      if (!imageContainerRef.current) return;
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const newOffsetX = centerX - point.x * newScale;
+      const newOffsetY = centerY - point.y * newScale;
+      const clamped = clampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
+      setScale(newScale);
+      setOffset(clamped);
+    },
+    [clampOffset],
+  );
 
   const resetZoom = useCallback(() => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
   }, []);
 
-  const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!imageContainerRef.current) return;
+  const handleImageClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!imageContainerRef.current) return;
 
-    const container = imageContainerRef.current;
-    const rect = container.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+      const container = imageContainerRef.current;
+      const rect = container.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
 
-    if (Math.abs(scale - fitScale) < 1e-3) {
-      // Zoom to 1.5x at click point (more reasonable)
-      zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 1.5));
-    } else {
-      // Reset to fit
-      resetZoom();
-    }
-  }, [scale, fitScale, zoomToPoint, resetZoom]);
+      if (Math.abs(scale - fitScale) < 1e-3) {
+        // Zoom to 1.5x at click point (more reasonable)
+        zoomToPoint({ x: clickX, y: clickY }, Math.min(6, fitScale * 1.5));
+      } else {
+        // Reset to fit
+        resetZoom();
+      }
+    },
+    [scale, fitScale, zoomToPoint, resetZoom],
+  );
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -1247,60 +1724,68 @@ const EditImageInterface: React.FC = () => {
     setLastPoint({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isPanning) return;
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isPanning) return;
 
-    e.preventDefault();
-    const deltaX = e.clientX - lastPoint.x;
-    const deltaY = e.clientY - lastPoint.y;
+      e.preventDefault();
+      const deltaX = e.clientX - lastPoint.x;
+      const deltaY = e.clientY - lastPoint.y;
 
-    const newOffset = {
-      x: offset.x + deltaX,
-      y: offset.y + deltaY
-    };
+      const newOffset = {
+        x: offset.x + deltaX,
+        y: offset.y + deltaY,
+      };
 
-    const clampedOffset = clampOffset(newOffset, scale);
-    setOffset(clampedOffset);
-    setLastPoint({ x: e.clientX, y: e.clientY });
-  }, [isPanning, scale, offset, lastPoint, clampOffset]);
+      const clampedOffset = clampOffset(newOffset, scale);
+      setOffset(clampedOffset);
+      setLastPoint({ x: e.clientX, y: e.clientY });
+    },
+    [isPanning, scale, offset, lastPoint, clampOffset],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsPanning(false);
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!imageContainerRef.current) return;
-    const rect = imageContainerRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const next = Math.max(0.1, Math.min(6, scale + delta));
-    if (next !== scale) zoomToPoint({ x: mx, y: my }, next);
-  }, [scale, zoomToPoint]);
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!imageContainerRef.current) return;
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const next = Math.max(0.1, Math.min(6, scale + delta));
+      if (next !== scale) zoomToPoint({ x: mx, y: my }, next);
+    },
+    [scale, zoomToPoint],
+  );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === '+' || e.key === '=') {
-      e.preventDefault();
-      const newScale = Math.min(6, scale + 0.1);
-      if (newScale !== scale) {
-        setScale(newScale);
-        setOffset(clampOffset(offset, newScale));
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        const newScale = Math.min(6, scale + 0.1);
+        if (newScale !== scale) {
+          setScale(newScale);
+          setOffset(clampOffset(offset, newScale));
+        }
+      } else if (e.key === "-") {
+        e.preventDefault();
+        const newScale = Math.max(0.1, scale - 0.1);
+        if (newScale !== scale) {
+          setScale(newScale);
+          setOffset(clampOffset(offset, newScale));
+        }
+      } else if (e.key === "0") {
+        e.preventDefault();
+        resetZoom();
       }
-    } else if (e.key === '-') {
-      e.preventDefault();
-      const newScale = Math.max(0.1, scale - 0.1);
-      if (newScale !== scale) {
-        setScale(newScale);
-        setOffset(clampOffset(offset, newScale));
-      }
-    } else if (e.key === '0') {
-      e.preventDefault();
-      resetZoom();
-    }
-  }, [scale, offset, clampOffset, resetZoom]);
-
+    },
+    [scale, offset, clampOffset, resetZoom],
+  );
 
   // Reset offsets on image change; scale will be computed on image load
   useEffect(() => {
@@ -1309,19 +1794,24 @@ const EditImageInterface: React.FC = () => {
 
   // Debug: Log when outputs change
   useEffect(() => {
-    console.log('[EditImage] outputs changed:', {
+    console.log("[EditImage] outputs changed:", {
       selectedFeature,
-      'remove-bg': outputs['remove-bg'],
+      "remove-bg": outputs["remove-bg"],
       outputs: outputs[selectedFeature],
-      allOutputs: outputs
+      allOutputs: outputs,
     });
   }, [outputs, selectedFeature]);
 
   // Recompute fit scale when container resizes or natural size changes
   useEffect(() => {
-    if (!imageContainerRef.current || !naturalSize.width || !naturalSize.height) return;
+    if (!imageContainerRef.current || !naturalSize.width || !naturalSize.height)
+      return;
     const rect = imageContainerRef.current.getBoundingClientRect();
-    const fitCandidate = Math.min(rect.width / naturalSize.width, rect.height / naturalSize.height) || 1;
+    const fitCandidate =
+      Math.min(
+        rect.width / naturalSize.width,
+        rect.height / naturalSize.height,
+      ) || 1;
     const newFit = Math.min(1, fitCandidate); // do not upscale by default
     const centerOffset = { x: 0, y: 0 };
     setFitScale(newFit);
@@ -1330,40 +1820,52 @@ const EditImageInterface: React.FC = () => {
   }, [naturalSize]);
   useEffect(() => {
     const handleResize = () => {
-      if (!imageContainerRef.current || !naturalSize.width || !naturalSize.height) return;
+      if (
+        !imageContainerRef.current ||
+        !naturalSize.width ||
+        !naturalSize.height
+      )
+        return;
       const rect = imageContainerRef.current.getBoundingClientRect();
-      const fitCandidate = Math.min(rect.width / naturalSize.width, rect.height / naturalSize.height) || 1;
+      const fitCandidate =
+        Math.min(
+          rect.width / naturalSize.width,
+          rect.height / naturalSize.height,
+        ) || 1;
       const newFit = Math.min(1, fitCandidate);
       const centerOffset = { x: 0, y: 0 };
       setFitScale(newFit);
       setScale(1); // Always reset to 100% zoom on resize
       setOffset(centerOffset);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [naturalSize]);
 
   // Prevent page scroll when mouse is over image container
   useEffect(() => {
     const handleGlobalWheel = (e: WheelEvent) => {
-      if (imageContainerRef.current && imageContainerRef.current.contains(e.target as Node)) {
+      if (
+        imageContainerRef.current &&
+        imageContainerRef.current.contains(e.target as Node)
+      ) {
         e.preventDefault();
         e.stopPropagation();
       }
     };
 
     // Add passive: false to allow preventDefault
-    document.addEventListener('wheel', handleGlobalWheel, { passive: false });
+    document.addEventListener("wheel", handleGlobalWheel, { passive: false });
 
     return () => {
-      document.removeEventListener('wheel', handleGlobalWheel);
+      document.removeEventListener("wheel", handleGlobalWheel);
     };
   }, []);
 
   // Prevent page scroll on Space when the image viewer has focus
   useEffect(() => {
     const handleSpaceScrollBlock = (e: KeyboardEvent) => {
-      if (e.key === ' ' && imageContainerRef.current) {
+      if (e.key === " " && imageContainerRef.current) {
         const active = document.activeElement;
         if (active && imageContainerRef.current.contains(active)) {
           e.preventDefault();
@@ -1371,52 +1873,27 @@ const EditImageInterface: React.FC = () => {
         }
       }
     };
-    window.addEventListener('keydown', handleSpaceScrollBlock, { passive: false } as any);
-    return () => window.removeEventListener('keydown', handleSpaceScrollBlock as any);
+    window.addEventListener("keydown", handleSpaceScrollBlock, {
+      passive: false,
+    } as any);
+    return () =>
+      window.removeEventListener("keydown", handleSpaceScrollBlock as any);
   }, []);
 
-  // Allow page scroll so actions are reachable on small screens
-  // (removed the global overflow lock)
-
-  // Hide empty page scrollbar when content doesn't exceed viewport
+  // Lock page scroll while Edit Image is mounted.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const html = document.documentElement;
     const body = document.body;
-    const prevHtmlOverflowY = html.style.overflowY;
-    const prevBodyOverflowY = body.style.overflowY;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
 
-    const update = () => {
-      const contentHeight = Math.max(
-        body.scrollHeight,
-        html.scrollHeight,
-        body.offsetHeight,
-        html.offsetHeight,
-        body.clientHeight,
-        html.clientHeight
-      );
-      const needsScroll = contentHeight > window.innerHeight + 1;
-      const val = needsScroll ? 'auto' : 'hidden';
-      html.style.overflowY = val;
-      body.style.overflowY = val;
-    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
 
-    const onResize = () => {
-      requestAnimationFrame(update);
-    };
-
-    const observer = new MutationObserver(() => requestAnimationFrame(update));
-    try {
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
-    } catch { }
-
-    update();
-    window.addEventListener('resize', onResize);
     return () => {
-      window.removeEventListener('resize', onResize);
-      try { observer.disconnect(); } catch { }
-      html.style.overflowY = prevHtmlOverflowY;
-      body.style.overflowY = prevBodyOverflowY;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, []);
 
@@ -1436,64 +1913,91 @@ const EditImageInterface: React.FC = () => {
       // Close edit dropdowns (model/output)
       if (activeDropdown) {
         const el = event.target as HTMLElement | null;
-        if (!(el && el.closest('.edit-dropdown'))) {
-          setActiveDropdown('');
+        if (!(el && el.closest(".edit-dropdown"))) {
+          setActiveDropdown("");
         }
       }
     };
 
     if (showImageMenu || activeDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showImageMenu, activeDropdown]);
 
   // Debug menu state
   useEffect(() => {
     if (showImageMenu) {
-      console.log('🎯 MENU IS NOW VISIBLE! showImageMenu:', showImageMenu);
-      console.log('TEST: Menu is now visible, outputs:', outputs[selectedFeature]);
+      console.log("🎯 MENU IS NOW VISIBLE! showImageMenu:", showImageMenu);
+      console.log(
+        "TEST: Menu is now visible, outputs:",
+        outputs[selectedFeature],
+      );
     }
   }, [showImageMenu, outputs, selectedFeature]);
 
   const features = [
-    { id: 'upscale', label: 'Upscale', description: 'Increase resolution while preserving details' },
-    { id: 'remove-bg', label: 'Remove BG', description: 'Remove background from your image' },
-    { id: 'fill', label: 'Erase/Replace', description: 'Mask areas to regenerate with a prompt' },
+    {
+      id: "upscale",
+      label: "Upscale",
+      description: "Increase resolution while preserving details",
+    },
+    {
+      id: "remove-bg",
+      label: "Remove BG",
+      description: "Remove background from your image",
+    },
+    {
+      id: "fill",
+      label: "Erase/Replace",
+      description: "Mask areas to regenerate with a prompt",
+    },
     // { id: 'erase', label: 'Erase', description: 'Erase masked areas from the image' },
     // { id: 'expand', label: 'Expand', description: 'Expand image by stretching canvas boundaries' },
-    { id: 'resize', label: 'Expand', description: 'Expand image to specific dimensions' },
-    { id: 'vectorize', label: 'Vectorize', description: 'Convert raster to SVG vector' },
+    {
+      id: "resize",
+      label: "Expand",
+      description: "Expand image to specific dimensions",
+    },
+    {
+      id: "vectorize",
+      label: "Vectorize",
+      description: "Convert raster to SVG vector",
+    },
     // Reimagine feature is temporarily hidden from the tab list but kept in state for type-safety
     // { id: 'reimagine', label: 'Reimagine', description: 'Reimagine your image with AI' },
-    { id: 'live-chat', label: 'Chat to Edit', description: 'Chat-driven edits & regenerations' },
+    {
+      id: "live-chat",
+      label: "Chat to Edit",
+      description: "Chat-driven edits & regenerations",
+    },
   ] as const;
 
   // Feature preview assets and display labels
   const featurePreviewGif: Record<EditFeature, string> = {
-    'upscale': '/editimage/upscale_banner.jpg',
-    'remove-bg': '/editimage/RemoveBG_banner.jpg',
-    'fill': '/editimage/replace_banner.jpg',
-    'erase': '/editimage/replace_banner.jpg',
-    'expand': '/editimage/resize_banner.jpg',
-    'resize': '/editimage/resize_banner.jpg',
-    'vectorize': '/editimage/vector_banner.jpg',
-    'reimagine': '/editimage/replace_banner.jpg',
-    'live-chat': '/editimage/resize_banner.jpg',
+    upscale: "/editimage/upscale_banner.jpg",
+    "remove-bg": "/editimage/RemoveBG_banner.jpg",
+    fill: eraseActionMode === "erase" ? "/editimage/erase_banner.jpg" : "/editimage/replace_banner.jpg",
+    erase: "/editimage/erase_banner.jpg",
+    expand: "/editimage/resize_banner.jpg",
+    resize: "/editimage/resize_banner.jpg",
+    vectorize: "/editimage/vector_banner.jpg",
+    reimagine: "/editimage/replace_banner.jpg",
+    "live-chat": "/editimage/resize_banner.jpg",
   };
   const featureDisplayName: Record<EditFeature, string> = {
-    'upscale': 'Upscale',
-    'remove-bg': 'Remove BG',
-    'fill': 'Replace',
-    'erase': 'Erase',
-    'expand': 'Expand',
-    'resize': 'Expand',
-    'vectorize': 'Vectorize',
-    'reimagine': 'Reimagine',
-    'live-chat': 'Live Chat',
+    upscale: "Upscale",
+    "remove-bg": "Remove BG",
+    fill: eraseActionMode === "erase" ? "Erase" : "Replace",
+    erase: "Erase",
+    expand: "Expand",
+    resize: "Expand",
+    vectorize: "Vectorize",
+    reimagine: "Reimagine",
+    "live-chat": "Live Chat",
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1504,15 +2008,15 @@ const EditImageInterface: React.FC = () => {
         const img = e.target?.result as string;
         // Apply selected image to all features
         setInputs({
-          'upscale': img,
-          'remove-bg': img,
-          'resize': img,
-          'fill': img,
-          'vectorize': img,
-          'erase': img,
-          'expand': img,
-          'reimagine': img,
-          'live-chat': img,
+          upscale: img,
+          "remove-bg": img,
+          resize: img,
+          fill: img,
+          vectorize: img,
+          erase: img,
+          expand: img,
+          reimagine: img,
+          "live-chat": img,
         });
       };
       reader.readAsDataURL(file);
@@ -1525,7 +2029,7 @@ const EditImageInterface: React.FC = () => {
   const getCanvasContext = useCallback(() => {
     const c = fillCanvasRef.current;
     if (!c) return null as any;
-    const ctx = c.getContext('2d');
+    const ctx = c.getContext("2d");
     if (!ctx) return null;
     // Ensure the transform is set correctly (it should be set in resizeCanvasToContainer)
     // But we verify it's correct here to handle edge cases
@@ -1550,7 +2054,7 @@ const EditImageInterface: React.FC = () => {
     let savedDataUrl: string | null = null;
     if (hasMask) {
       try {
-        savedDataUrl = canvas.toDataURL('image/png');
+        savedDataUrl = canvas.toDataURL("image/png");
       } catch (e) {
         // If toDataURL fails, continue without saving
       }
@@ -1576,9 +2080,9 @@ const EditImageInterface: React.FC = () => {
 
       // Restore saved content if it exists
       if (savedDataUrl) {
-        const img = document.createElement('img');
+        const img = document.createElement("img");
         img.onload = () => {
-          const currentCtx = fillCanvasRef.current?.getContext('2d');
+          const currentCtx = fillCanvasRef.current?.getContext("2d");
           if (currentCtx) {
             currentCtx.setTransform(1, 0, 0, 1, 0, 0);
             currentCtx.scale(dpr, dpr);
@@ -1596,127 +2100,161 @@ const EditImageInterface: React.FC = () => {
   }, [getCanvasContext, hasMask]);
 
   useEffect(() => {
-    if (selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'reimagine') return;
+    if (
+      selectedFeature !== "fill" &&
+      selectedFeature !== "erase" &&
+      selectedFeature !== "reimagine"
+    )
+      return;
     const onResize = () => resizeCanvasToContainer();
     // Use setTimeout to ensure DOM is ready
     const timeoutId = setTimeout(() => {
       resizeCanvasToContainer();
     }, 0);
-    window.addEventListener('resize', onResize);
+    window.addEventListener("resize", onResize);
     return () => {
       clearTimeout(timeoutId);
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener("resize", onResize);
     };
   }, [selectedFeature, resizeCanvasToContainer]);
 
   // Recreate canvas when image changes on Fill or Erase or Reimagine
   useEffect(() => {
-    if (selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'reimagine') return;
+    if (
+      selectedFeature !== "fill" &&
+      selectedFeature !== "erase" &&
+      selectedFeature !== "reimagine"
+    )
+      return;
     // Use setTimeout to ensure DOM is ready after image loads
     const timeoutId = setTimeout(() => {
       resizeCanvasToContainer();
     }, 100);
     return () => clearTimeout(timeoutId);
-  }, [inputs.fill, inputs.erase, inputs.reimagine, selectedFeature, resizeCanvasToContainer]);
+  }, [
+    inputs.fill,
+    inputs.erase,
+    inputs.reimagine,
+    selectedFeature,
+    resizeCanvasToContainer,
+  ]);
 
-  const beginMaskStroke = useCallback((x: number, y: number) => {
-    const ctx = getCanvasContext();
-    if (!ctx) return;
+  const beginMaskStroke = useCallback(
+    (x: number, y: number) => {
+      const ctx = getCanvasContext();
+      if (!ctx) return;
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = brushSize;
-    ctx.globalCompositeOperation = eraseMode ? 'destination-out' : 'source-over';
-    ctx.fillStyle = 'rgba(255,255,255,1)';
-    ctx.strokeStyle = 'rgba(255,255,255,1)';
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = brushSize;
+      ctx.globalCompositeOperation = eraseMode
+        ? "destination-out"
+        : "source-over";
+      ctx.fillStyle = "rgba(255,255,255,1)";
+      ctx.strokeStyle = "rgba(255,255,255,1)";
 
-    ctx.beginPath();
-    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsMasking(true);
-    setHasMask(true);
-  }, [brushSize, eraseMode, getCanvasContext]);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      setIsMasking(true);
+      setHasMask(true);
+    },
+    [brushSize, eraseMode, getCanvasContext],
+  );
 
-  const continueMaskStroke = useCallback((x: number, y: number) => {
-    if (!isMasking) return;
-    const ctx = getCanvasContext();
-    if (!ctx) return;
+  const continueMaskStroke = useCallback(
+    (x: number, y: number) => {
+      if (!isMasking) return;
+      const ctx = getCanvasContext();
+      if (!ctx) return;
 
-    // The context is already scaled by DPR, so we use brushSize directly
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = brushSize;
-    ctx.globalCompositeOperation = eraseMode ? 'destination-out' : 'source-over';
-    ctx.fillStyle = 'rgba(255,255,255,1)';
-    ctx.strokeStyle = 'rgba(255,255,255,1)';
+      // The context is already scaled by DPR, so we use brushSize directly
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = brushSize;
+      ctx.globalCompositeOperation = eraseMode
+        ? "destination-out"
+        : "source-over";
+      ctx.fillStyle = "rgba(255,255,255,1)";
+      ctx.strokeStyle = "rgba(255,255,255,1)";
 
-    // Continue the existing path - this creates a smooth continuous line
-    ctx.lineTo(x, y);
-    ctx.stroke();
+      // Continue the existing path - this creates a smooth continuous line
+      ctx.lineTo(x, y);
+      ctx.stroke();
 
-    // Draw a filled circle at the current point to ensure complete coverage
-    // This prevents gaps when moving the mouse quickly
-    ctx.beginPath();
-    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-    ctx.fill();
+      // Draw a filled circle at the current point to ensure complete coverage
+      // This prevents gaps when moving the mouse quickly
+      ctx.beginPath();
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Continue the path from current point (don't start a new path)
-    // This ensures smooth continuous strokes
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setHasMask(true);
+      // Continue the path from current point (don't start a new path)
+      // This ensures smooth continuous strokes
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      setHasMask(true);
 
-    // For reimagine: Update live bounds in real-time for visual feedback
-    if (selectedFeature === 'reimagine') {
-      requestAnimationFrame(() => {
-        const canvas = fillCanvasRef.current;
-        if (canvas) {
-          const ctx2 = canvas.getContext('2d');
-          if (ctx2) {
-            const imageData = ctx2.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
-            let found = false;
+      // For reimagine: Update live bounds in real-time for visual feedback
+      if (selectedFeature === "reimagine") {
+        requestAnimationFrame(() => {
+          const canvas = fillCanvasRef.current;
+          if (canvas) {
+            const ctx2 = canvas.getContext("2d");
+            if (ctx2) {
+              const imageData = ctx2.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+              );
+              const data = imageData.data;
+              let minX = canvas.width,
+                minY = canvas.height,
+                maxX = 0,
+                maxY = 0;
+              let found = false;
 
-            for (let y = 0; y < canvas.height; y++) {
-              for (let x = 0; x < canvas.width; x++) {
-                const idx = (y * canvas.width + x) * 4;
-                const r = data[idx];
-                const g = data[idx + 1];
-                const b = data[idx + 2];
-                const a = data[idx + 3];
-                if (a > 128 && r > 200 && g > 200 && b > 200) {
-                  found = true;
-                  minX = Math.min(minX, x);
-                  minY = Math.min(minY, y);
-                  maxX = Math.max(maxX, x);
-                  maxY = Math.max(maxY, y);
+              for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                  const idx = (y * canvas.width + x) * 4;
+                  const r = data[idx];
+                  const g = data[idx + 1];
+                  const b = data[idx + 2];
+                  const a = data[idx + 3];
+                  if (a > 128 && r > 200 && g > 200 && b > 200) {
+                    found = true;
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                  }
+                }
+              }
+
+              if (found) {
+                const container = fillContainerRef.current;
+                if (container) {
+                  const rect = container.getBoundingClientRect();
+                  const scaleX = rect.width / canvas.width;
+                  const scaleY = rect.height / canvas.height;
+                  setReimagineLiveBounds({
+                    x: minX * scaleX,
+                    y: minY * scaleY,
+                    width: (maxX - minX) * scaleX,
+                    height: (maxY - minY) * scaleY,
+                  });
                 }
               }
             }
-
-            if (found) {
-              const container = fillContainerRef.current;
-              if (container) {
-                const rect = container.getBoundingClientRect();
-                const scaleX = rect.width / canvas.width;
-                const scaleY = rect.height / canvas.height;
-                setReimagineLiveBounds({
-                  x: minX * scaleX,
-                  y: minY * scaleY,
-                  width: (maxX - minX) * scaleX,
-                  height: (maxY - minY) * scaleY
-                });
-              }
-            }
           }
-        }
-      });
-    }
-  }, [isMasking, brushSize, eraseMode, getCanvasContext, selectedFeature]);
+        });
+      }
+    },
+    [isMasking, brushSize, eraseMode, getCanvasContext, selectedFeature],
+  );
 
   const endMaskStroke = useCallback(() => {
     if (!isMasking) return;
@@ -1725,14 +2263,22 @@ const EditImageInterface: React.FC = () => {
     setIsMasking(false);
 
     // For reimagine: Calculate selection bounds when stroke ends
-    if (selectedFeature === 'reimagine' && hasMask) {
+    if (selectedFeature === "reimagine" && hasMask) {
       const canvas = fillCanvasRef.current;
       if (canvas) {
-        const ctx2 = canvas.getContext('2d');
+        const ctx2 = canvas.getContext("2d");
         if (ctx2) {
-          const imageData = ctx2.getImageData(0, 0, canvas.width, canvas.height);
+          const imageData = ctx2.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
           const data = imageData.data;
-          let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+          let minX = canvas.width,
+            minY = canvas.height,
+            maxX = 0,
+            maxY = 0;
           let found = false;
 
           for (let y = 0; y < canvas.height; y++) {
@@ -1762,7 +2308,7 @@ const EditImageInterface: React.FC = () => {
                 x: minX * scaleX,
                 y: minY * scaleY,
                 width: (maxX - minX) * scaleX,
-                height: (maxY - minY) * scaleY
+                height: (maxY - minY) * scaleY,
               });
             }
           }
@@ -1775,17 +2321,22 @@ const EditImageInterface: React.FC = () => {
   const getExpandCanvasContext = useCallback(() => {
     const c = expandCanvasRef.current;
     if (!c) return null as any;
-    const ctx = c.getContext('2d');
+    const ctx = c.getContext("2d");
     if (!ctx) return null;
     return ctx;
   }, []);
 
   const drawExpandCanvas = useCallback(() => {
-    if (selectedFeature !== 'expand') return;
+    if (selectedFeature !== "expand") return;
     const ctx = getExpandCanvasContext();
     if (!ctx) return;
     const container = expandContainerRef.current;
-    if (!container || expandOriginalSize.width === 0 || expandOriginalSize.height === 0) return;
+    if (
+      !container ||
+      expandOriginalSize.width === 0 ||
+      expandOriginalSize.height === 0
+    )
+      return;
 
     const rect = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -1846,67 +2397,110 @@ const EditImageInterface: React.FC = () => {
     // Convert to display coordinates
     const cropLeftDisplay = (cropLeft / expandOriginalSize.width) * imgDisplayW;
     const cropTopDisplay = (cropTop / expandOriginalSize.height) * imgDisplayH;
-    const cropRightDisplay = (cropRight / expandOriginalSize.width) * imgDisplayW;
-    const cropBottomDisplay = (cropBottom / expandOriginalSize.height) * imgDisplayH;
+    const cropRightDisplay =
+      (cropRight / expandOriginalSize.width) * imgDisplayW;
+    const cropBottomDisplay =
+      (cropBottom / expandOriginalSize.height) * imgDisplayH;
 
-    const expandLeftDisplay = (expandLeft / expandOriginalSize.width) * imgDisplayW;
-    const expandRightDisplay = (expandRight / expandOriginalSize.width) * imgDisplayW;
-    const expandTopDisplay = (expandTop / expandOriginalSize.height) * imgDisplayH;
-    const expandBottomDisplay = (expandBottom / expandOriginalSize.height) * imgDisplayH;
+    const expandLeftDisplay =
+      (expandLeft / expandOriginalSize.width) * imgDisplayW;
+    const expandRightDisplay =
+      (expandRight / expandOriginalSize.width) * imgDisplayW;
+    const expandTopDisplay =
+      (expandTop / expandOriginalSize.height) * imgDisplayH;
+    const expandBottomDisplay =
+      (expandBottom / expandOriginalSize.height) * imgDisplayH;
 
     // White border position (cropped region + expansion)
     const currentDisplayX = imgDisplayX + cropLeftDisplay - expandLeftDisplay;
     const currentDisplayY = imgDisplayY + cropTopDisplay - expandTopDisplay;
     const croppedDisplayW = imgDisplayW - cropLeftDisplay - cropRightDisplay;
     const croppedDisplayH = imgDisplayH - cropTopDisplay - cropBottomDisplay;
-    const currentDisplayW = croppedDisplayW + expandLeftDisplay + expandRightDisplay;
-    const currentDisplayH = croppedDisplayH + expandTopDisplay + expandBottomDisplay;
+    const currentDisplayW =
+      croppedDisplayW + expandLeftDisplay + expandRightDisplay;
+    const currentDisplayH =
+      croppedDisplayH + expandTopDisplay + expandBottomDisplay;
 
     // Draw green border (max limits)
-    ctx.strokeStyle = '#22c55e';
+    ctx.strokeStyle = "#22c55e";
     ctx.lineWidth = 3;
     ctx.setLineDash([]);
     ctx.strokeRect(maxDisplayX, maxDisplayY, maxDisplayW, maxDisplayH);
 
     // Draw black border (original image)
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2;
     ctx.strokeRect(imgDisplayX, imgDisplayY, imgDisplayW, imgDisplayH);
 
     // Draw current expansion border (dotted)
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(currentDisplayX, currentDisplayY, currentDisplayW, currentDisplayH);
+    ctx.strokeRect(
+      currentDisplayX,
+      currentDisplayY,
+      currentDisplayW,
+      currentDisplayH,
+    );
 
     // Draw resize handles (small squares on edges)
     const handleSize = 8;
-    ctx.fillStyle = '#22c55e';
+    ctx.fillStyle = "#22c55e";
     ctx.setLineDash([]);
 
     // Top handle
-    ctx.fillRect(currentDisplayX + currentDisplayW / 2 - handleSize / 2, currentDisplayY - handleSize / 2, handleSize, handleSize);
+    ctx.fillRect(
+      currentDisplayX + currentDisplayW / 2 - handleSize / 2,
+      currentDisplayY - handleSize / 2,
+      handleSize,
+      handleSize,
+    );
     // Bottom handle
-    ctx.fillRect(currentDisplayX + currentDisplayW / 2 - handleSize / 2, currentDisplayY + currentDisplayH - handleSize / 2, handleSize, handleSize);
+    ctx.fillRect(
+      currentDisplayX + currentDisplayW / 2 - handleSize / 2,
+      currentDisplayY + currentDisplayH - handleSize / 2,
+      handleSize,
+      handleSize,
+    );
     // Left handle
-    ctx.fillRect(currentDisplayX - handleSize / 2, currentDisplayY + currentDisplayH / 2 - handleSize / 2, handleSize, handleSize);
+    ctx.fillRect(
+      currentDisplayX - handleSize / 2,
+      currentDisplayY + currentDisplayH / 2 - handleSize / 2,
+      handleSize,
+      handleSize,
+    );
     // Right handle
-    ctx.fillRect(currentDisplayX + currentDisplayW - handleSize / 2, currentDisplayY + currentDisplayH / 2 - handleSize / 2, handleSize, handleSize);
-  }, [selectedFeature, expandOriginalSize, expandBounds, getExpandCanvasContext]);
+    ctx.fillRect(
+      currentDisplayX + currentDisplayW - handleSize / 2,
+      currentDisplayY + currentDisplayH / 2 - handleSize / 2,
+      handleSize,
+      handleSize,
+    );
+  }, [
+    selectedFeature,
+    expandOriginalSize,
+    expandBounds,
+    getExpandCanvasContext,
+  ]);
 
   // Redraw canvas when bounds or image changes
   useEffect(() => {
-    if (selectedFeature === 'expand') {
+    if (selectedFeature === "expand") {
       drawExpandCanvas();
       const handleResize = () => drawExpandCanvas();
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
     }
   }, [selectedFeature, expandBounds, expandOriginalSize, drawExpandCanvas]);
 
   const getExpandHandle = (x: number, y: number): string | null => {
     const container = expandContainerRef.current;
-    if (!container || expandOriginalSize.width === 0 || expandOriginalSize.height === 0) return null;
+    if (
+      !container ||
+      expandOriginalSize.width === 0 ||
+      expandOriginalSize.height === 0
+    )
+      return null;
 
     const rect = container.getBoundingClientRect();
     const imgAspect = expandOriginalSize.width / expandOriginalSize.height;
@@ -1939,44 +2533,69 @@ const EditImageInterface: React.FC = () => {
     // Convert to display coordinates
     const cropLeftDisplay = (cropLeft / expandOriginalSize.width) * imgDisplayW;
     const cropTopDisplay = (cropTop / expandOriginalSize.height) * imgDisplayH;
-    const cropRightDisplay = (cropRight / expandOriginalSize.width) * imgDisplayW;
-    const cropBottomDisplay = (cropBottom / expandOriginalSize.height) * imgDisplayH;
+    const cropRightDisplay =
+      (cropRight / expandOriginalSize.width) * imgDisplayW;
+    const cropBottomDisplay =
+      (cropBottom / expandOriginalSize.height) * imgDisplayH;
 
-    const expandLeftDisplay = (expandLeft / expandOriginalSize.width) * imgDisplayW;
-    const expandRightDisplay = (expandRight / expandOriginalSize.width) * imgDisplayW;
-    const expandTopDisplay = (expandTop / expandOriginalSize.height) * imgDisplayH;
-    const expandBottomDisplay = (expandBottom / expandOriginalSize.height) * imgDisplayH;
+    const expandLeftDisplay =
+      (expandLeft / expandOriginalSize.width) * imgDisplayW;
+    const expandRightDisplay =
+      (expandRight / expandOriginalSize.width) * imgDisplayW;
+    const expandTopDisplay =
+      (expandTop / expandOriginalSize.height) * imgDisplayH;
+    const expandBottomDisplay =
+      (expandBottom / expandOriginalSize.height) * imgDisplayH;
 
     // White border position (cropped region + expansion)
     const currentDisplayX = imgDisplayX + cropLeftDisplay - expandLeftDisplay;
     const currentDisplayY = imgDisplayY + cropTopDisplay - expandTopDisplay;
     const croppedDisplayW = imgDisplayW - cropLeftDisplay - cropRightDisplay;
     const croppedDisplayH = imgDisplayH - cropTopDisplay - cropBottomDisplay;
-    const currentDisplayW = croppedDisplayW + expandLeftDisplay + expandRightDisplay;
-    const currentDisplayH = croppedDisplayH + expandTopDisplay + expandBottomDisplay;
+    const currentDisplayW =
+      croppedDisplayW + expandLeftDisplay + expandRightDisplay;
+    const currentDisplayH =
+      croppedDisplayH + expandTopDisplay + expandBottomDisplay;
 
     const threshold = 10; // px distance for grabbing near an edge anywhere along it
 
     // Edge hit-tests along the full length
-    const nearTop = Math.abs(y - currentDisplayY) <= threshold && x >= currentDisplayX - threshold && x <= currentDisplayX + currentDisplayW + threshold;
-    if (nearTop) return 'top';
-    const nearBottom = Math.abs(y - (currentDisplayY + currentDisplayH)) <= threshold && x >= currentDisplayX - threshold && x <= currentDisplayX + currentDisplayW + threshold;
-    if (nearBottom) return 'bottom';
-    const nearLeft = Math.abs(x - currentDisplayX) <= threshold && y >= currentDisplayY - threshold && y <= currentDisplayY + currentDisplayH + threshold;
-    if (nearLeft) return 'left';
-    const nearRight = Math.abs(x - (currentDisplayX + currentDisplayW)) <= threshold && y >= currentDisplayY - threshold && y <= currentDisplayY + currentDisplayH + threshold;
-    if (nearRight) return 'right';
+    const nearTop =
+      Math.abs(y - currentDisplayY) <= threshold &&
+      x >= currentDisplayX - threshold &&
+      x <= currentDisplayX + currentDisplayW + threshold;
+    if (nearTop) return "top";
+    const nearBottom =
+      Math.abs(y - (currentDisplayY + currentDisplayH)) <= threshold &&
+      x >= currentDisplayX - threshold &&
+      x <= currentDisplayX + currentDisplayW + threshold;
+    if (nearBottom) return "bottom";
+    const nearLeft =
+      Math.abs(x - currentDisplayX) <= threshold &&
+      y >= currentDisplayY - threshold &&
+      y <= currentDisplayY + currentDisplayH + threshold;
+    if (nearLeft) return "left";
+    const nearRight =
+      Math.abs(x - (currentDisplayX + currentDisplayW)) <= threshold &&
+      y >= currentDisplayY - threshold &&
+      y <= currentDisplayY + currentDisplayH + threshold;
+    if (nearRight) return "right";
 
     // If inside but not near edge, consider a move hit-test
-    if (x >= currentDisplayX && x <= currentDisplayX + currentDisplayW && y >= currentDisplayY && y <= currentDisplayY + currentDisplayH) {
-      return 'move';
+    if (
+      x >= currentDisplayX &&
+      x <= currentDisplayX + currentDisplayW &&
+      y >= currentDisplayY &&
+      y <= currentDisplayY + currentDisplayH
+    ) {
+      return "move";
     }
 
     return null;
   };
 
   const handleExpandMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (selectedFeature !== 'expand' || expandOriginalSize.width === 0) return;
+    if (selectedFeature !== "expand" || expandOriginalSize.width === 0) return;
     const rect = expandContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -1984,11 +2603,18 @@ const EditImageInterface: React.FC = () => {
     const y = e.clientY - rect.top;
     const handle = getExpandHandle(x, y);
 
-    if (handle && handle !== 'move') {
+    if (handle && handle !== "move") {
       setExpandResizing(handle);
       e.preventDefault();
-      dragStartRef.current = { x, y, l: expandBounds.left, r: expandBounds.right, t: expandBounds.top, b: expandBounds.bottom };
-    } else if (handle === 'move') {
+      dragStartRef.current = {
+        x,
+        y,
+        l: expandBounds.left,
+        r: expandBounds.right,
+        t: expandBounds.top,
+        b: expandBounds.bottom,
+      };
+    } else if (handle === "move") {
       // Allow moving the entire rectangle: click inside current display region (not on a handle)
       // Recompute current display rectangle similarly to drawExpandCanvas for hit testing.
       const container = expandContainerRef.current;
@@ -1996,7 +2622,10 @@ const EditImageInterface: React.FC = () => {
       const cRect = container.getBoundingClientRect();
       const imgAspect = expandOriginalSize.width / expandOriginalSize.height;
       const containerAspect = cRect.width / cRect.height;
-      let imgDisplayW: number, imgDisplayH: number, imgDisplayX: number, imgDisplayY: number;
+      let imgDisplayW: number,
+        imgDisplayH: number,
+        imgDisplayX: number,
+        imgDisplayY: number;
       if (imgAspect > containerAspect) {
         imgDisplayW = cRect.width;
         imgDisplayH = imgDisplayW / imgAspect;
@@ -2015,26 +2644,54 @@ const EditImageInterface: React.FC = () => {
       const expandTop = Math.max(0, expandBounds.top);
       const expandRight = Math.max(0, expandBounds.right);
       const expandBottom = Math.max(0, expandBounds.bottom);
-      const cropLeftDisplay = (cropLeft / expandOriginalSize.width) * imgDisplayW;
-      const cropTopDisplay = (cropTop / expandOriginalSize.height) * imgDisplayH;
-      const expandLeftDisplay = (expandLeft / expandOriginalSize.width) * imgDisplayW;
-      const expandTopDisplay = (expandTop / expandOriginalSize.height) * imgDisplayH;
-      const croppedDisplayW = imgDisplayW - cropLeftDisplay - (cropRight / expandOriginalSize.width) * imgDisplayW;
-      const croppedDisplayH = imgDisplayH - cropTopDisplay - (cropBottom / expandOriginalSize.height) * imgDisplayH;
+      const cropLeftDisplay =
+        (cropLeft / expandOriginalSize.width) * imgDisplayW;
+      const cropTopDisplay =
+        (cropTop / expandOriginalSize.height) * imgDisplayH;
+      const expandLeftDisplay =
+        (expandLeft / expandOriginalSize.width) * imgDisplayW;
+      const expandTopDisplay =
+        (expandTop / expandOriginalSize.height) * imgDisplayH;
+      const croppedDisplayW =
+        imgDisplayW -
+        cropLeftDisplay -
+        (cropRight / expandOriginalSize.width) * imgDisplayW;
+      const croppedDisplayH =
+        imgDisplayH -
+        cropTopDisplay -
+        (cropBottom / expandOriginalSize.height) * imgDisplayH;
       const currentDisplayX = imgDisplayX + cropLeftDisplay - expandLeftDisplay;
       const currentDisplayY = imgDisplayY + cropTopDisplay - expandTopDisplay;
-      const currentDisplayW = croppedDisplayW + (expandLeft / expandOriginalSize.width) * imgDisplayW + (expandRight / expandOriginalSize.width) * imgDisplayW;
-      const currentDisplayH = croppedDisplayH + (expandTop / expandOriginalSize.height) * imgDisplayH + (expandBottom / expandOriginalSize.height) * imgDisplayH;
-      if (x >= currentDisplayX && x <= currentDisplayX + currentDisplayW && y >= currentDisplayY && y <= currentDisplayY + currentDisplayH) {
-        setExpandResizing('move');
-        dragStartRef.current = { x, y, l: expandBounds.left, r: expandBounds.right, t: expandBounds.top, b: expandBounds.bottom };
+      const currentDisplayW =
+        croppedDisplayW +
+        (expandLeft / expandOriginalSize.width) * imgDisplayW +
+        (expandRight / expandOriginalSize.width) * imgDisplayW;
+      const currentDisplayH =
+        croppedDisplayH +
+        (expandTop / expandOriginalSize.height) * imgDisplayH +
+        (expandBottom / expandOriginalSize.height) * imgDisplayH;
+      if (
+        x >= currentDisplayX &&
+        x <= currentDisplayX + currentDisplayW &&
+        y >= currentDisplayY &&
+        y <= currentDisplayY + currentDisplayH
+      ) {
+        setExpandResizing("move");
+        dragStartRef.current = {
+          x,
+          y,
+          l: expandBounds.left,
+          r: expandBounds.right,
+          t: expandBounds.top,
+          b: expandBounds.bottom,
+        };
         e.preventDefault();
       }
     }
   };
 
   const handleExpandMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (selectedFeature !== 'expand' || expandOriginalSize.width === 0) return;
+    if (selectedFeature !== "expand" || expandOriginalSize.width === 0) return;
     const rect = expandContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -2070,7 +2727,7 @@ const EditImageInterface: React.FC = () => {
       return;
     }
 
-    if (expandResizing === 'move' && dragStartRef.current) {
+    if (expandResizing === "move" && dragStartRef.current) {
       // Move the rectangle without changing its size. Translate all four bounds.
       const start = dragStartRef.current;
       const dxDisplay = x - start.x;
@@ -2088,28 +2745,40 @@ const EditImageInterface: React.FC = () => {
       return; // handled
     }
 
-    setExpandBounds(prev => {
+    setExpandBounds((prev) => {
       let newLeft = prev.left;
       let newRight = prev.right;
       let newTop = prev.top;
       let newBottom = prev.bottom;
 
-      if (expandResizing === 'left') {
+      if (expandResizing === "left") {
         // Positive = expand outward to the left, Negative = crop from left
         const delta = (imgDisplayX - x) * scaleX;
-        newLeft = Math.max(-expandOriginalSize.width + 1, Math.min(maxWidth - expandOriginalSize.width, delta));
-      } else if (expandResizing === 'right') {
+        newLeft = Math.max(
+          -expandOriginalSize.width + 1,
+          Math.min(maxWidth - expandOriginalSize.width, delta),
+        );
+      } else if (expandResizing === "right") {
         // Positive = expand outward to the right, Negative = crop from right
         const delta = (x - (imgDisplayX + imgDisplayW)) * scaleX;
-        newRight = Math.max(-expandOriginalSize.width + 1, Math.min(maxWidth - expandOriginalSize.width, delta));
-      } else if (expandResizing === 'top') {
+        newRight = Math.max(
+          -expandOriginalSize.width + 1,
+          Math.min(maxWidth - expandOriginalSize.width, delta),
+        );
+      } else if (expandResizing === "top") {
         // Positive = expand upward, Negative = crop from top
         const delta = (imgDisplayY - y) * scaleY;
-        newTop = Math.max(-expandOriginalSize.height + 1, Math.min(maxHeight - expandOriginalSize.height, delta));
-      } else if (expandResizing === 'bottom') {
+        newTop = Math.max(
+          -expandOriginalSize.height + 1,
+          Math.min(maxHeight - expandOriginalSize.height, delta),
+        );
+      } else if (expandResizing === "bottom") {
         // Positive = expand downward, Negative = crop from bottom
         const delta = (y - (imgDisplayY + imgDisplayH)) * scaleY;
-        newBottom = Math.max(-expandOriginalSize.height + 1, Math.min(maxHeight - expandOriginalSize.height, delta));
+        newBottom = Math.max(
+          -expandOriginalSize.height + 1,
+          Math.min(maxHeight - expandOriginalSize.height, delta),
+        );
       }
 
       // Ensure we don't crop more than the image size
@@ -2119,12 +2788,12 @@ const EditImageInterface: React.FC = () => {
       const newCropBottom = Math.max(0, -newBottom);
 
       if (newCropLeft + newCropRight >= expandOriginalSize.width) {
-        if (expandResizing === 'left') newLeft = prev.left;
-        if (expandResizing === 'right') newRight = prev.right;
+        if (expandResizing === "left") newLeft = prev.left;
+        if (expandResizing === "right") newRight = prev.right;
       }
       if (newCropTop + newCropBottom >= expandOriginalSize.height) {
-        if (expandResizing === 'top') newTop = prev.top;
-        if (expandResizing === 'bottom') newBottom = prev.bottom;
+        if (expandResizing === "top") newTop = prev.top;
+        if (expandResizing === "bottom") newBottom = prev.bottom;
       }
 
       return { left: newLeft, top: newTop, right: newRight, bottom: newBottom };
@@ -2140,7 +2809,8 @@ const EditImageInterface: React.FC = () => {
   // taking into account object-contain behavior (letterboxing).
   const getRenderedImageRect = () => {
     const container = fillContainerRef.current;
-    if (!container || !inputNaturalSize.width || !inputNaturalSize.height) return null;
+    if (!container || !inputNaturalSize.width || !inputNaturalSize.height)
+      return null;
 
     const rect = container.getBoundingClientRect();
     const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
@@ -2213,10 +2883,9 @@ const EditImageInterface: React.FC = () => {
     return { x, y };
   };
 
-
   const handleRun = async () => {
     if (!user) {
-      saveAutoResumeIntent('image', {
+      saveAutoResumeIntent("image", {
         isEditImage: true,
         selectedFeature,
         inputs,
@@ -2238,45 +2907,49 @@ const EditImageInterface: React.FC = () => {
         seedvrUpscaleFactor,
         resizeAspectRatio,
       });
-      router.push(getSignInUrl('/text-to-image/edit-image'));
+      router.push(getSignInUrl("/text-to-image/edit-image"));
       return;
     }
     if (processing[selectedFeature]) return;
     const toAbsoluteProxyUrl = (url: string | null | undefined) => {
       if (!url) return url as any;
-      if (url.startsWith('data:')) return url as any;
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-      const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+      if (url.startsWith("data:")) return url as any;
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      const ZATA_PREFIX = "https://idr01.zata.ai/devstoragev1/";
       // For Replicate, we must provide a publicly reachable URL. Use Zata public URL instead of localhost proxy.
       try {
-        const RESOURCE_SEG = '/api/proxy/resource/';
+        const RESOURCE_SEG = "/api/proxy/resource/";
         if (url.startsWith(RESOURCE_SEG)) {
-          const decoded = decodeURIComponent(url.substring(RESOURCE_SEG.length));
+          const decoded = decodeURIComponent(
+            url.substring(RESOURCE_SEG.length),
+          );
           return `${ZATA_PREFIX}${decoded}`;
         }
         // Absolute to frontend origin
-        if (url.startsWith('http://') || url.startsWith('https://')) {
+        if (url.startsWith("http://") || url.startsWith("https://")) {
           const u = new URL(url);
           if (u.pathname.startsWith(RESOURCE_SEG)) {
-            const decoded = decodeURIComponent(u.pathname.substring(RESOURCE_SEG.length));
+            const decoded = decodeURIComponent(
+              u.pathname.substring(RESOURCE_SEG.length),
+            );
             return `${ZATA_PREFIX}${decoded}`;
           }
           return url as any;
         }
-      } catch { }
+      } catch {}
       return url as any;
     };
 
     const toDataUriIfLocal = async (src: string): Promise<string> => {
       if (!src) return src as any;
-      if (src.startsWith('data:')) return src;
-      if (src.startsWith('blob:')) {
+      if (src.startsWith("data:")) return src;
+      if (src.startsWith("blob:")) {
         try {
           const resp = await fetch(src);
           const blob = await resp.blob();
           return await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(String(reader.result || ''));
+            reader.onloadend = () => resolve(String(reader.result || ""));
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
@@ -2288,25 +2961,28 @@ const EditImageInterface: React.FC = () => {
       // the `/api/proxy/download/:path` backend route), fetch via our proxy
       // so we avoid cross-origin/read restrictions, then convert to data URI.
       try {
-        const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+        const ZATA_PREFIX = "https://idr01.zata.ai/devstoragev1/";
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
         if (String(src).startsWith(ZATA_PREFIX)) {
           const path = src.substring(ZATA_PREFIX.length);
           const proxyUrl = `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}`;
           try {
-            const pResp = await fetch(proxyUrl, { credentials: 'include' });
+            const pResp = await fetch(proxyUrl, { credentials: "include" });
             if (pResp && pResp.ok) {
               const blob = await pResp.blob();
               return await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onloadend = () => resolve(String(reader.result || ''));
+                reader.onloadend = () => resolve(String(reader.result || ""));
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
               });
             }
           } catch (e) {
             // fallthrough to attempt direct fetch below
-            console.warn('[toDataUriIfLocal] proxy fetch failed, falling back to direct fetch', e);
+            console.warn(
+              "[toDataUriIfLocal] proxy fetch failed, falling back to direct fetch",
+              e,
+            );
           }
         }
       } catch (e) {
@@ -2321,41 +2997,52 @@ const EditImageInterface: React.FC = () => {
     const currentInputRaw = inputs[selectedFeature];
     const currentInput = toAbsoluteProxyUrl(currentInputRaw) as any;
     if (!currentInput) return;
-    setErrorMsg('');
+    setErrorMsg("");
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
 
     // Track optimistic debit so we can roll back on failure
     let optimisticDebit = 0;
     try {
-      const normalizedInput = currentInputRaw ? await toDataUriIfLocal(String(currentInputRaw)) : '';
+      const normalizedInput = currentInputRaw
+        ? await toDataUriIfLocal(String(currentInputRaw))
+        : "";
 
       // Optimistic debit: expand or vectorize
       if (optimisticDebit === 0) {
-        if (selectedFeature === 'expand' && expandCredits > 0) {
+        if (selectedFeature === "expand" && expandCredits > 0) {
           try {
             deductCreditsOptimisticForGeneration(expandCredits);
             optimisticDebit = expandCredits;
-          } catch { /* ignore */ }
-        } else if (selectedFeature === 'vectorize') {
+          } catch {
+            /* ignore */
+          }
+        } else if (selectedFeature === "vectorize") {
           const vectorizeCost = effectiveVectorizeCredits;
           if (vectorizeCost > 0) {
             try {
               deductCreditsOptimisticForGeneration(vectorizeCost);
               optimisticDebit = vectorizeCost;
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
-        } else if ((selectedFeature === 'fill' || selectedFeature === 'erase') && eraseCredits > 0) {
+        } else if (
+          (selectedFeature === "fill" || selectedFeature === "erase") &&
+          eraseCredits > 0
+        ) {
           try {
             deductCreditsOptimisticForGeneration(eraseCredits);
             optimisticDebit = eraseCredits;
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       }
       const isPublic = await getIsPublic();
-      if (selectedFeature === 'vectorize') {
+      if (selectedFeature === "vectorize") {
         const img = inputs[selectedFeature];
-        if (!img) throw new Error('Please upload an image to vectorize');
+        if (!img) throw new Error("Please upload an image to vectorize");
 
         let vectorizeInput = normalizedInput;
         let vectorizeInputUrl = currentInput;
@@ -2364,23 +3051,33 @@ const EditImageInterface: React.FC = () => {
         if (vectorizeSuperMode) {
           try {
             // Step 1: Upload image to Zata if needed, then use Seedream to convert image to 2D vector
-            const imageInput = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
+            const imageInput = String(normalizedInput).startsWith("data:")
+              ? normalizedInput
+              : currentInput;
             const seedreamImageUrl = await ensureZataUrl(imageInput);
             const seedreamPayload: any = {
-              prompt: 'convert into 2D vector image',
-              model: 'bytedance/seedream-4',
-              size: '2K',
+              prompt: "convert into 2D vector image",
+              model: "bytedance/seedream-4",
+              size: "2K",
               image_input: [seedreamImageUrl],
-              sequential_image_generation: 'disabled',
+              sequential_image_generation: "disabled",
               max_images: 1,
               isPublic: false, // Intermediate step, don't make public
             };
 
-            const seedreamRes = await axiosInstance.post('/api/replicate/generate', seedreamPayload);
-            const seedreamOut = seedreamRes?.data?.images?.[0]?.url || seedreamRes?.data?.data?.images?.[0]?.url || seedreamRes?.data?.data?.url || seedreamRes?.data?.url || '';
+            const seedreamRes = await axiosInstance.post(
+              "/api/replicate/generate",
+              seedreamPayload,
+            );
+            const seedreamOut =
+              seedreamRes?.data?.images?.[0]?.url ||
+              seedreamRes?.data?.data?.images?.[0]?.url ||
+              seedreamRes?.data?.data?.url ||
+              seedreamRes?.data?.url ||
+              "";
 
             if (!seedreamOut) {
-              throw new Error('Seedream conversion failed. Please try again.');
+              throw new Error("Seedream conversion failed. Please try again.");
             }
 
             // Step 2: Use the Seedream output as input for vectorization
@@ -2394,31 +3091,55 @@ const EditImageInterface: React.FC = () => {
               vectorizeInputUrl = seedreamOut;
             }
           } catch (seedreamError: any) {
-            console.error('[EditImage] Seedream conversion error:', seedreamError);
-            const errorMsg = seedreamError?.response?.data?.message || seedreamError?.message || 'Seedream conversion failed';
+            console.error(
+              "[EditImage] Seedream conversion error:",
+              seedreamError,
+            );
+            const errorMsg =
+              seedreamError?.response?.data?.message ||
+              seedreamError?.message ||
+              "Seedream conversion failed";
             throw new Error(`Super mode failed: ${errorMsg}`);
           }
         }
 
         // Step 3: Vectorize the image (either original or Seedream output)
-        if (vectorizeModel === 'fal-ai/recraft/vectorize') {
+        if (vectorizeModel === "fal-ai/recraft/vectorize") {
           const body: any = { isPublic };
-          if (String(vectorizeInput).startsWith('data:')) body.image = vectorizeInput;
+          if (String(vectorizeInput).startsWith("data:"))
+            body.image = vectorizeInput;
           else body.image_url = vectorizeInputUrl;
-          const res = await axiosInstance.post('/api/fal/recraft/vectorize', body);
-          const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
-          try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-          try { await refreshCredits(); } catch { }
+          const res = await axiosInstance.post(
+            "/api/fal/recraft/vectorize",
+            body,
+          );
+          const out =
+            res?.data?.data?.images?.[0]?.url ||
+            res?.data?.images?.[0]?.url ||
+            res?.data?.data?.image?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (out) setOutputs((prev) => ({ ...prev, ["vectorize"]: out }));
+          try {
+            setCurrentHistoryId(
+              res?.data?.data?.historyId || res?.data?.historyId || null,
+            );
+          } catch {}
+          try {
+            await refreshCredits();
+          } catch {}
           // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
           // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
-            await (dispatch as any)(loadHistory({
-              paginationParams: { limit: 60 },
-              requestOrigin: 'page',
-              debugTag: `refresh-after-vectorize:${Date.now()}`,
-            }));
-          } catch { }
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-vectorize:${Date.now()}`,
+              }),
+            );
+          } catch {}
         } else {
           // fal-ai/image2svg
           const body: any = {
@@ -2435,29 +3156,47 @@ const EditImageInterface: React.FC = () => {
             splice_threshold: vSpliceThreshold,
             path_precision: vPathPrecision,
           };
-          if (String(vectorizeInput).startsWith('data:')) body.image = vectorizeInput; else body.image_url = vectorizeInputUrl;
-          const res = await axiosInstance.post('/api/fal/image2svg', body);
-          const out = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) setOutputs((prev) => ({ ...prev, ['vectorize']: out }));
-          try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-          try { await refreshCredits(); } catch { }
+          if (String(vectorizeInput).startsWith("data:"))
+            body.image = vectorizeInput;
+          else body.image_url = vectorizeInputUrl;
+          const res = await axiosInstance.post("/api/fal/image2svg", body);
+          const out =
+            res?.data?.data?.images?.[0]?.url ||
+            res?.data?.images?.[0]?.url ||
+            res?.data?.data?.image?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (out) setOutputs((prev) => ({ ...prev, ["vectorize"]: out }));
+          try {
+            setCurrentHistoryId(
+              res?.data?.data?.historyId || res?.data?.historyId || null,
+            );
+          } catch {}
+          try {
+            await refreshCredits();
+          } catch {}
           // Refresh global history so the Image Generation page sees the new vectorize entry immediately.
           // Omit generationType & expectedType so the thunk is not aborted while user is on edit-image view.
           try {
-            await (dispatch as any)(loadHistory({
-              paginationParams: { limit: 60 },
-              requestOrigin: 'page',
-              debugTag: `refresh-after-vectorize:${Date.now()}`,
-            }));
-          } catch { }
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-vectorize:${Date.now()}`,
+              }),
+            );
+          } catch {}
         }
         return;
       }
-      if (selectedFeature === 'expand') {
+      if (selectedFeature === "expand") {
         const img = inputs[selectedFeature];
-        if (!img) throw new Error('Please upload an image to expand');
+        if (!img) throw new Error("Please upload an image to expand");
         if (expandOriginalSize.width === 0 || expandOriginalSize.height === 0) {
-          throw new Error('Image dimensions not detected. Please wait for image to load.');
+          throw new Error(
+            "Image dimensions not detected. Please wait for image to load.",
+          );
         }
 
         // Calculate cropped region (negative bounds = crop, positive = expand)
@@ -2479,7 +3218,8 @@ const EditImageInterface: React.FC = () => {
         // Final dimensions = cropped region + expansion (raw selection)
         const rawWidth = croppedWidth + expandLeft + expandRight;
         const rawHeight = croppedHeight + expandTop + expandBottom;
-        const roundTo8 = (n: number) => Math.max(64, Math.min(4096, Math.round(n / 8) * 8));
+        const roundTo8 = (n: number) =>
+          Math.max(64, Math.min(4096, Math.round(n / 8) * 8));
         const finalWidth = roundTo8(rawWidth);
         const finalHeight = roundTo8(rawHeight);
 
@@ -2487,30 +3227,36 @@ const EditImageInterface: React.FC = () => {
         let croppedImageDataUri = normalizedInput;
         if (cropLeft > 0 || cropTop > 0 || cropRight > 0 || cropBottom > 0) {
           // Create a canvas to crop the image
-          const cropCanvas = document.createElement('canvas');
+          const cropCanvas = document.createElement("canvas");
           cropCanvas.width = croppedWidth;
           cropCanvas.height = croppedHeight;
-          const cropCtx = cropCanvas.getContext('2d');
+          const cropCtx = cropCanvas.getContext("2d");
           if (cropCtx) {
-            const sourceImg = document.createElement('img');
-            sourceImg.crossOrigin = 'anonymous';
+            const sourceImg = document.createElement("img");
+            sourceImg.crossOrigin = "anonymous";
             await new Promise<void>((resolve, reject) => {
               sourceImg.onload = () => {
                 try {
                   // Draw the cropped region
                   cropCtx.drawImage(
                     sourceImg,
-                    cropLeft, cropTop, croppedWidth, croppedHeight, // Source region
-                    0, 0, croppedWidth, croppedHeight // Destination
+                    cropLeft,
+                    cropTop,
+                    croppedWidth,
+                    croppedHeight, // Source region
+                    0,
+                    0,
+                    croppedWidth,
+                    croppedHeight, // Destination
                   );
-                  croppedImageDataUri = cropCanvas.toDataURL('image/png');
+                  croppedImageDataUri = cropCanvas.toDataURL("image/png");
                   resolve();
                 } catch (err) {
                   reject(err);
                 }
               };
               sourceImg.onerror = reject;
-              if (String(normalizedInput).startsWith('data:')) {
+              if (String(normalizedInput).startsWith("data:")) {
                 sourceImg.src = normalizedInput;
               } else {
                 sourceImg.src = currentInput || String(img);
@@ -2521,52 +3267,88 @@ const EditImageInterface: React.FC = () => {
 
         // Use cropped image (data URI) or currentInput (URL) for image_input
         // Backend will handle uploading data URIs to Zata
-        const imageInput = String(croppedImageDataUri).startsWith('data:') ? croppedImageDataUri : (currentInput || String(img));
+        const imageInput = String(croppedImageDataUri).startsWith("data:")
+          ? croppedImageDataUri
+          : currentInput || String(img);
 
         // Provider normalization (shared helper)
         const providerDims = normalizeExpandDims(finalWidth, finalHeight);
 
         const buildPayload = (w: number, h: number) => ({
-          prompt: 'Expand image likewise',
-          model: 'bytedance/seedream-4',
-          size: 'custom',
+          prompt: "Expand image likewise",
+          model: "bytedance/seedream-4",
+          size: "custom",
           width: w,
           height: h,
           image_input: [imageInput],
-          sequential_image_generation: 'disabled',
+          sequential_image_generation: "disabled",
           max_images: 1,
           isPublic,
         });
 
         let res;
         try {
-          res = await axiosInstance.post('/api/replicate/generate', buildPayload(providerDims.w, providerDims.h));
+          res = await axiosInstance.post(
+            "/api/replicate/generate",
+            buildPayload(providerDims.w, providerDims.h),
+          );
         } catch (err: any) {
-          const msg = String(err?.response?.data?.message || '');
+          const msg = String(err?.response?.data?.message || "");
           if (/1024-4096/i.test(msg)) {
             // Fallback: force both dimensions to MIN keeping aspect
             const aspect = finalWidth / finalHeight || 1;
-            let w = 1024, h = 1024;
-            if (aspect > 1) { w = 1024; h = Math.round(1024 / aspect); } else { h = 1024; w = Math.round(1024 * aspect); }
+            let w = 1024,
+              h = 1024;
+            if (aspect > 1) {
+              w = 1024;
+              h = Math.round(1024 / aspect);
+            } else {
+              h = 1024;
+              w = Math.round(1024 * aspect);
+            }
             const fixed = normalizeExpandDims(w, h);
-            res = await axiosInstance.post('/api/replicate/generate', buildPayload(fixed.w, fixed.h));
+            res = await axiosInstance.post(
+              "/api/replicate/generate",
+              buildPayload(fixed.w, fixed.h),
+            );
           } else {
             throw err;
           }
         }
-        const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-        if (out) setOutputs((prev) => ({ ...prev, ['expand']: out }));
-        try { setCurrentHistoryId(res?.data?.data?.historyId || res?.data?.historyId || null); } catch { }
-        try { await refreshCredits(); } catch { }
+        const out =
+          res?.data?.images?.[0]?.url ||
+          res?.data?.data?.images?.[0]?.url ||
+          res?.data?.data?.url ||
+          res?.data?.url ||
+          "";
+        if (out) setOutputs((prev) => ({ ...prev, ["expand"]: out }));
+        try {
+          setCurrentHistoryId(
+            res?.data?.data?.historyId || res?.data?.historyId || null,
+          );
+        } catch {}
+        try {
+          await refreshCredits();
+        } catch {}
         return;
       }
-      if (selectedFeature === 'fill' || selectedFeature === 'erase') {
+      if (selectedFeature === "fill" || selectedFeature === "erase") {
         const img = inputs[selectedFeature];
-        if (!img) throw new Error(`Please upload an image for ${selectedFeature === 'fill' ? 'fill' : selectedFeature === 'erase' ? 'erase' : 'reimagine'}`);
+        if (!img)
+          throw new Error(
+            `Please upload an image for ${selectedFeature === "fill" ? "fill" : selectedFeature === "erase" ? "erase" : "reimagine"}`,
+          );
 
-        const hardErasePrompt = 'remove or erase the masked part of mask from the image';
-        const isEraseMode = selectedFeature === 'fill' && eraseActionMode === 'erase';
-        const activePrompt = selectedFeature === 'fill' ? (isEraseMode ? hardErasePrompt : erasePrompt) : prompt;
+        const hardErasePrompt =
+          "remove or erase the masked part of mask from the image";
+        const isEraseMode =
+          selectedFeature === "fill" && eraseActionMode === "erase";
+        const activePrompt =
+          selectedFeature === "fill"
+            ? isEraseMode
+              ? hardErasePrompt
+              : erasePrompt
+            : prompt;
 
         // Only block if we are in a mode where prompt is absolutely mandatory and we have no fallback.
         // But here, empty prompt -> Erase, so we allow it.
@@ -2584,33 +3366,47 @@ const EditImageInterface: React.FC = () => {
         // read its natural size and rescaling the mask accordingly.
         let maskDataUrl: string | undefined;
 
-        if (selectedFeature === 'fill' && eraseMaskData) {
+        if (selectedFeature === "fill" && eraseMaskData) {
           maskDataUrl = eraseMaskData;
         } else {
           const c = fillCanvasRef.current;
           if (!c) {
-            // Check if we are in new UI mode but mask is missing? 
+            // Check if we are in new UI mode but mask is missing?
             // If selectedFeature is fill and logic falls here, it implies eraseMaskData is null.
             // So we continue to return if c is null.
             return;
           }
           if (!hasMask) {
-            setErrorMsg('Please draw a mask on the image to specify the area to replace');
-            setProcessing((prev) => ({ ...prev, ['fill']: false }));
+            setErrorMsg(
+              "Please draw a mask on the image to specify the area to replace",
+            );
+            setProcessing((prev) => ({ ...prev, ["fill"]: false }));
             return;
           }
           try {
-            const off = document.createElement('canvas');
+            const off = document.createElement("canvas");
             const dispRect = fillContainerRef.current?.getBoundingClientRect();
-            const displayW = Math.max(1, Math.floor(dispRect?.width || c.width));
-            const displayH = Math.max(1, Math.floor(dispRect?.height || c.height));
-            const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
-            const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+            const displayW = Math.max(
+              1,
+              Math.floor(dispRect?.width || c.width),
+            );
+            const displayH = Math.max(
+              1,
+              Math.floor(dispRect?.height || c.height),
+            );
+            const natW = Math.max(
+              1,
+              Math.floor(inputNaturalSize.width || displayW),
+            );
+            const natH = Math.max(
+              1,
+              Math.floor(inputNaturalSize.height || displayH),
+            );
             off.width = natW;
             off.height = natH;
-            const octx = off.getContext('2d');
+            const octx = off.getContext("2d");
             if (!octx) {
-              maskDataUrl = c.toDataURL('image/png');
+              maskDataUrl = c.toDataURL("image/png");
             } else {
               // Use the canvas's internal pixel dimensions as the source when
               // resampling. `c.width`/`c.height` are the device-pixel buffer
@@ -2618,15 +3414,20 @@ const EditImageInterface: React.FC = () => {
               // display size differs (DPR scaling).
 
               // Get the source canvas image data to check what was actually drawn
-              const sourceCtx = c.getContext('2d');
+              const sourceCtx = c.getContext("2d");
               if (!sourceCtx) {
                 // Fallback: just fill with black
-                octx.fillStyle = 'rgb(0, 0, 0)';
+                octx.fillStyle = "rgb(0, 0, 0)";
                 octx.fillRect(0, 0, natW, natH);
-                maskDataUrl = off.toDataURL('image/png');
+                maskDataUrl = off.toDataURL("image/png");
               } else {
                 // Get source canvas data first to see what was actually drawn
-                const sourceImgData = sourceCtx.getImageData(0, 0, c.width, c.height);
+                const sourceImgData = sourceCtx.getImageData(
+                  0,
+                  0,
+                  c.width,
+                  c.height,
+                );
                 const sourceData = sourceImgData.data;
 
                 // Create the output image data directly from source
@@ -2635,20 +3436,27 @@ const EditImageInterface: React.FC = () => {
 
                 // Fill with black background first
                 for (let i = 0; i < outputData.length; i += 4) {
-                  outputData[i] = 0;       // R - black
-                  outputData[i + 1] = 0;   // G - black
-                  outputData[i + 2] = 0;   // B - black
-                  outputData[i + 3] = 255;  // A - fully opaque
+                  outputData[i] = 0; // R - black
+                  outputData[i + 1] = 0; // G - black
+                  outputData[i + 2] = 0; // B - black
+                  outputData[i + 3] = 255; // A - fully opaque
                 }
 
                 // Compute the rendered image rectangle inside the canvas (object-contain)
-                const containerRect = fillContainerRef.current?.getBoundingClientRect();
+                const containerRect =
+                  fillContainerRef.current?.getBoundingClientRect();
                 const imgRect = (() => {
-                  if (!containerRect || !inputNaturalSize.width || !inputNaturalSize.height) {
+                  if (
+                    !containerRect ||
+                    !inputNaturalSize.width ||
+                    !inputNaturalSize.height
+                  ) {
                     return { x: 0, y: 0, width: c.width, height: c.height };
                   }
-                  const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
-                  const containerAspect = containerRect.width / containerRect.height;
+                  const imgAspect =
+                    inputNaturalSize.width / inputNaturalSize.height;
+                  const containerAspect =
+                    containerRect.width / containerRect.height;
                   let renderWidth: number;
                   let renderHeight: number;
                   let offsetX: number;
@@ -2682,8 +3490,12 @@ const EditImageInterface: React.FC = () => {
                 for (let y = 0; y < natH; y++) {
                   for (let x = 0; x < natW; x++) {
                     // Map output coordinates in image space to source canvas coordinates
-                    const srcX = Math.floor(imgRect.x + (x / natW) * imgRect.width);
-                    const srcY = Math.floor(imgRect.y + (y / natH) * imgRect.height);
+                    const srcX = Math.floor(
+                      imgRect.x + (x / natW) * imgRect.width,
+                    );
+                    const srcY = Math.floor(
+                      imgRect.y + (y / natH) * imgRect.height,
+                    );
                     const srcIdx = (srcY * c.width + srcX) * 4;
                     const outIdx = (y * natW + x) * 4;
 
@@ -2695,9 +3507,14 @@ const EditImageInterface: React.FC = () => {
                       const srcB = sourceData[srcIdx + 2];
 
                       // Only set to white if source pixel was actually drawn (alpha > 50 and is white)
-                      if (srcAlpha > 50 && srcR > 200 && srcG > 200 && srcB > 200) {
+                      if (
+                        srcAlpha > 50 &&
+                        srcR > 200 &&
+                        srcG > 200 &&
+                        srcB > 200
+                      ) {
                         // Masked area: set to white
-                        outputData[outIdx] = 255;     // R
+                        outputData[outIdx] = 255; // R
                         outputData[outIdx + 1] = 255; // G
                         outputData[outIdx + 2] = 255; // B
                         outputData[outIdx + 3] = 255; // A
@@ -2709,7 +3526,7 @@ const EditImageInterface: React.FC = () => {
 
                 // Put the processed image data onto the canvas
                 octx.putImageData(outputImgData, 0, 0);
-                maskDataUrl = off.toDataURL('image/png');
+                maskDataUrl = off.toDataURL("image/png");
               }
             }
           } catch {
@@ -2717,31 +3534,52 @@ const EditImageInterface: React.FC = () => {
             const c2 = fillCanvasRef.current as HTMLCanvasElement | null;
             if (c2) {
               try {
-                const fallbackCanvas = document.createElement('canvas');
-                const dispRect = fillContainerRef.current?.getBoundingClientRect();
-                const displayW = Math.max(1, Math.floor(dispRect?.width || c2.width));
-                const displayH = Math.max(1, Math.floor(dispRect?.height || c2.height));
-                const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
-                const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+                const fallbackCanvas = document.createElement("canvas");
+                const dispRect =
+                  fillContainerRef.current?.getBoundingClientRect();
+                const displayW = Math.max(
+                  1,
+                  Math.floor(dispRect?.width || c2.width),
+                );
+                const displayH = Math.max(
+                  1,
+                  Math.floor(dispRect?.height || c2.height),
+                );
+                const natW = Math.max(
+                  1,
+                  Math.floor(inputNaturalSize.width || displayW),
+                );
+                const natH = Math.max(
+                  1,
+                  Math.floor(inputNaturalSize.height || displayH),
+                );
                 fallbackCanvas.width = natW;
                 fallbackCanvas.height = natH;
-                const fallbackCtx = fallbackCanvas.getContext('2d');
+                const fallbackCtx = fallbackCanvas.getContext("2d");
                 if (fallbackCtx) {
-                  const sourceCtx = c2.getContext('2d');
+                  const sourceCtx = c2.getContext("2d");
                   if (sourceCtx) {
                     // Get source canvas data
-                    const sourceImgData = sourceCtx.getImageData(0, 0, c2.width, c2.height);
+                    const sourceImgData = sourceCtx.getImageData(
+                      0,
+                      0,
+                      c2.width,
+                      c2.height,
+                    );
                     const sourceData = sourceImgData.data;
 
                     // Create output image data
-                    const outputImgData = fallbackCtx.createImageData(natW, natH);
+                    const outputImgData = fallbackCtx.createImageData(
+                      natW,
+                      natH,
+                    );
                     const outputData = outputImgData.data;
 
                     // Fill with black background first
                     for (let i = 0; i < outputData.length; i += 4) {
-                      outputData[i] = 0;       // R - black
-                      outputData[i + 1] = 0;   // G - black
-                      outputData[i + 2] = 0;   // B - black
+                      outputData[i] = 0; // R - black
+                      outputData[i + 1] = 0; // G - black
+                      outputData[i + 2] = 0; // B - black
                       outputData[i + 3] = 255; // A - fully opaque
                     }
 
@@ -2760,7 +3598,12 @@ const EditImageInterface: React.FC = () => {
                           const srcB = sourceData[srcIdx + 2];
 
                           // Only set to white if source pixel was actually drawn
-                          if (srcAlpha > 50 && srcR > 200 && srcG > 200 && srcB > 200) {
+                          if (
+                            srcAlpha > 50 &&
+                            srcR > 200 &&
+                            srcG > 200 &&
+                            srcB > 200
+                          ) {
                             outputData[outIdx] = 255;
                             outputData[outIdx + 1] = 255;
                             outputData[outIdx + 2] = 255;
@@ -2771,18 +3614,18 @@ const EditImageInterface: React.FC = () => {
                     }
 
                     fallbackCtx.putImageData(outputImgData, 0, 0);
-                    maskDataUrl = fallbackCanvas.toDataURL('image/png');
+                    maskDataUrl = fallbackCanvas.toDataURL("image/png");
                   } else {
                     // If can't get source context, just fill with black
-                    fallbackCtx.fillStyle = 'rgb(0, 0, 0)';
+                    fallbackCtx.fillStyle = "rgb(0, 0, 0)";
                     fallbackCtx.fillRect(0, 0, natW, natH);
-                    maskDataUrl = fallbackCanvas.toDataURL('image/png');
+                    maskDataUrl = fallbackCanvas.toDataURL("image/png");
                   }
                 } else {
-                  maskDataUrl = c2.toDataURL('image/png');
+                  maskDataUrl = c2.toDataURL("image/png");
                 }
               } catch {
-                maskDataUrl = c2.toDataURL('image/png');
+                maskDataUrl = c2.toDataURL("image/png");
               }
             } else {
               maskDataUrl = undefined;
@@ -2795,36 +3638,61 @@ const EditImageInterface: React.FC = () => {
         // pixels (non-zero alpha). If the mask appears empty (often caused by
         // canvas sizing/probing failures) abort with a helpful message.
         try {
-          const sanityOff = document.createElement('canvas');
+          const sanityOff = document.createElement("canvas");
           const dispRect = fillContainerRef.current?.getBoundingClientRect();
-          const displayW = Math.max(1, Math.floor(dispRect?.width || (fillCanvasRef.current?.width || 1)));
-          const displayH = Math.max(1, Math.floor(dispRect?.height || (fillCanvasRef.current?.height || 1)));
-          const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
-          const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+          const displayW = Math.max(
+            1,
+            Math.floor(dispRect?.width || fillCanvasRef.current?.width || 1),
+          );
+          const displayH = Math.max(
+            1,
+            Math.floor(dispRect?.height || fillCanvasRef.current?.height || 1),
+          );
+          const natW = Math.max(
+            1,
+            Math.floor(inputNaturalSize.width || displayW),
+          );
+          const natH = Math.max(
+            1,
+            Math.floor(inputNaturalSize.height || displayH),
+          );
           sanityOff.width = natW;
           sanityOff.height = natH;
-          const sctx = sanityOff.getContext('2d');
+          const sctx = sanityOff.getContext("2d");
           if (sctx) {
             const maskImg = new window.Image();
             await new Promise<void>((resolve) => {
               maskImg.onload = () => {
                 try {
                   sctx.drawImage(maskImg, 0, 0, natW, natH);
-                } catch (e) { }
+                } catch (e) {}
                 resolve();
               };
               maskImg.onerror = () => resolve();
               maskImg.src = maskDataUrl as string;
             });
             try {
-              const data = sctx.getImageData(0, 0, Math.max(1, natW), Math.max(1, natH)).data;
+              const data = sctx.getImageData(
+                0,
+                0,
+                Math.max(1, natW),
+                Math.max(1, natH),
+              ).data;
               let alphaNonZero = false;
               for (let i = 3; i < data.length; i += 4) {
-                if (data[i] !== 0) { alphaNonZero = true; break; }
+                if (data[i] !== 0) {
+                  alphaNonZero = true;
+                  break;
+                }
               }
               if (!alphaNonZero) {
-                setErrorMsg('Mask appears empty. Please draw a mask with the brush and try again.');
-                setProcessing((prev) => ({ ...prev, [selectedFeature]: false }));
+                setErrorMsg(
+                  "Mask appears empty. Please draw a mask with the brush and try again.",
+                );
+                setProcessing((prev) => ({
+                  ...prev,
+                  [selectedFeature]: false,
+                }));
                 return;
               }
             } catch (e) {
@@ -2837,32 +3705,40 @@ const EditImageInterface: React.FC = () => {
 
         // If we're sending an image_url (not a data URI), fetch the image to
         // obtain its true natural size and rescale the mask to match if needed.
-        const fillSourceImage = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
-        if (!String(fillSourceImage).startsWith('data:')) {
+        const fillSourceImage = String(normalizedInput).startsWith("data:")
+          ? normalizedInput
+          : currentInput;
+        if (!String(fillSourceImage).startsWith("data:")) {
           try {
             const probeImg = new window.Image();
-            probeImg.crossOrigin = 'anonymous';
+            probeImg.crossOrigin = "anonymous";
             const imgUrl = currentInput as string;
             await new Promise<void>((resolve) => {
               probeImg.onload = () => resolve();
               probeImg.onerror = () => resolve();
               probeImg.src = imgUrl;
             });
-            const imgW = Math.max(1, Math.floor((probeImg as any).naturalWidth || 0));
-            const imgH = Math.max(1, Math.floor((probeImg as any).naturalHeight || 0));
+            const imgW = Math.max(
+              1,
+              Math.floor((probeImg as any).naturalWidth || 0),
+            );
+            const imgH = Math.max(
+              1,
+              Math.floor((probeImg as any).naturalHeight || 0),
+            );
             if (imgW && imgH) {
               // Create an image from the mask data URL then draw into a canvas of the target size
               const maskImg = new window.Image();
-              maskImg.crossOrigin = 'anonymous';
+              maskImg.crossOrigin = "anonymous";
               await new Promise<void>((resolve) => {
                 maskImg.onload = () => {
                   try {
-                    const final = document.createElement('canvas');
+                    const final = document.createElement("canvas");
                     final.width = imgW;
                     final.height = imgH;
-                    const fctx = final.getContext('2d');
+                    const fctx = final.getContext("2d");
                     if (fctx) fctx.drawImage(maskImg, 0, 0, imgW, imgH);
-                    maskDataUrl = final.toDataURL('image/png');
+                    maskDataUrl = final.toDataURL("image/png");
                   } catch (e) {
                     // keep existing maskDataUrl on error
                   }
@@ -2874,107 +3750,111 @@ const EditImageInterface: React.FC = () => {
             }
           } catch (e) {
             // Ignore probe failures; fallback maskDataUrl will be used and may fail server-side if sizes mismatch
-            console.warn('[Fill] failed to probe input image size for mask rescaling', e);
+            console.warn(
+              "[Fill] failed to probe input image size for mask rescaling",
+              e,
+            );
           }
         }
 
-
-
-        // Unified Erase Logic using /api/canvas/erase
-        // This endpoint expects: { image, mask, prompt, meta: { projectId } }
-        // For erase, the mask should be part of the image (composited) OR passed separately.
-        // We pass it separately (maskDataUrl) as per the working plugin logic, assuming the backend handles it.
-        if (selectedFeature === 'erase' || (selectedFeature === 'fill' && model === 'google_nano_banana')) {
+        // Seedream 5 Lite masked edit flow for Replace/Erase.
+        if (
+          (selectedFeature === "erase" || selectedFeature === "fill") &&
+          model === "seedream-5-lite"
+        ) {
           try {
-            // 1. Determine Project ID
-            const projectId = searchParams.get('projectId') || user?.uid || 'standalone-edit';
-
-            // Determine operation based on selectedFeature and eraseActionMode
-            // If selectedFeature is 'erase', it's always erase
-            // If selectedFeature is 'fill', check eraseActionMode: 'replace' = replace, 'erase' = erase
-            const isReplace = selectedFeature === 'fill' ? eraseActionMode === 'replace' : false;
+            const isReplace =
+              selectedFeature === "fill"
+                ? eraseActionMode === "replace"
+                : false;
 
             // USE activePrompt to respect Fill mode's input
-            const userPrompt = activePrompt ? activePrompt.trim() : '';
+            const userPrompt = activePrompt ? activePrompt.trim() : "";
 
-            // Use concise prompts
+            // Keep prompts explicit but concise so the model prioritizes masked edits.
             const finalPrompt = isReplace
-              ? `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be replaced in the original image. Replace the content in the white masked regions of Image 0 with the following description: ${userPrompt}. Ensure the replaced object integrates naturally with the scene, matching the lighting, shadows, and perspective of the original background. Do not alter any unmasked areas.`
-              : `Take two input images: Image 0 is the original image, and Image 1 is the mask image. In the mask image, the white regions indicate the exact areas that must be removed and erased from Image 0. Remove and erase the masked regions in Image 0, leaving those areas transparent/clean while keeping every unmasked area unchanged. Preserve lighting, shadows, perspective, and overall scene consistency.`;
+              ? `Image 0 is the original image and Image 1 is the mask. Replace ONLY white masked pixels in Image 0 with: ${userPrompt}. Keep all non-white masked areas unchanged and consistent with original lighting and perspective.`
+              : `Image 0 is the original image and Image 1 is the mask. Remove/fill ONLY white masked pixels in Image 0. Keep all non-white masked areas unchanged and consistent with original lighting and perspective.`;
 
-            // Determine Endpoint
-            // Refactored to use 'wildmind' namespace matching Upscale/RemoveBG patterns
-            const endpoint = isReplace ? '/api/wildmind/replace' : '/api/wildmind/erase';
-            const actionName = isReplace ? 'Replace' : 'Erase';
+            const seedreamBaseInput = String(fillSourceImage).startsWith(
+              "data:",
+            )
+              ? fillSourceImage
+              : currentInput;
+            const originalInputUrl = await ensureZataUrl(seedreamBaseInput);
+            const maskInputUrl = maskDataUrl
+              ? await ensureZataUrl(maskDataUrl)
+              : null;
 
-            // 2. Prepare Payload
-            // Note: We send Data URI directly to backend (via direct connection) to match Canvas logic
-            // The backend (falService) handles uploading to Zata if needed.
-            const payload: any = {
-              image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
-              mask: maskDataUrl,
-              prompt: finalPrompt, // Required for replace, optional for erase
-              meta: {
-                source: 'canvas',
-                projectId: projectId
-              }
+            const seedreamPayload: any = {
+              prompt: finalPrompt,
+              model: "bytedance/seedream-5-lite",
+              size: "2K",
+              image_input: maskInputUrl
+                ? [originalInputUrl, maskInputUrl]
+                : [originalInputUrl],
+              aspect_ratio: "match_input_image",
+              sequential_image_generation: "disabled",
+              max_images: 1,
+              isPublic,
             };
 
-            // 3. Call API
-            // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel timeouts
-            // We construct the full URL to the backend service directly because these operations can be slow
-            const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
-            const directEndpoint = `${backendBase}${endpoint}`;
-
-            console.log(`[${actionName}] Calling DIRECT backend: ${directEndpoint} with:`, { hasImage: !!payload.image, hasMask: !!payload.mask, projectId, prompt: finalPrompt });
-            const res = await axiosInstance.post(directEndpoint, payload);
-
-            // 4. Handle Response
-            // The API returns { data: { url, ... } } or just the data object directly depending on the wrapper
-            // Based on api.ts: return result.data || result;
-            const generatedUrl = res?.data?.data?.url || res?.data?.url || '';
+            const actionName = isReplace ? "Replace" : "Erase";
+            const res = await axiosInstance.post(
+              "/api/replicate/generate",
+              seedreamPayload,
+            );
+            const generatedUrl =
+              res?.data?.images?.[0]?.url ||
+              res?.data?.data?.images?.[0]?.url ||
+              res?.data?.data?.url ||
+              res?.data?.url ||
+              "";
 
             if (generatedUrl) {
-              setOutputs((prev) => ({ ...prev, [selectedFeature]: generatedUrl }));
+              setOutputs((prev) => ({
+                ...prev,
+                [selectedFeature]: generatedUrl,
+              }));
 
-              // Track history if available
-              if (res?.data?.data?.historyId) {
-                try { setCurrentHistoryId(res?.data?.data?.historyId); } catch { }
-              } else if (res?.data?.historyId) {
-                try { setCurrentHistoryId(res.data.historyId); } catch { }
-              }
-
-              // Refresh global history
               try {
-                await (dispatch as any)(loadHistory({
-                  paginationParams: { limit: 60 },
-                  requestOrigin: 'page',
-                  debugTag: `refresh-after-${selectedFeature}:${Date.now()}`,
-                }));
-              } catch { }
+                setCurrentHistoryId(
+                  res?.data?.data?.historyId || res?.data?.historyId || null,
+                );
+              } catch {}
+
+              try {
+                await (dispatch as any)(
+                  loadHistory({
+                    paginationParams: { limit: 60 },
+                    requestOrigin: "page",
+                    debugTag: `refresh-after-${selectedFeature}:${Date.now()}`,
+                  }),
+                );
+              } catch {}
             } else {
               throw new Error(`No image URL returned from ${actionName} API`);
             }
 
             return;
           } catch (eraseErr) {
-            console.error(`[EditImage] API Error:`, eraseErr);
+            console.error(`[EditImage] Seedream API Error:`, eraseErr);
             throw eraseErr;
           }
         }
-        const promptToSend = (activePrompt || '').trim();
+        const promptToSend = (activePrompt || "").trim();
         const body: any = {
           isPublic,
           prompt: promptToSend,
         };
         // Add image (data URI or URL)
-        if (String(fillSourceImage).startsWith('data:')) {
+        if (String(fillSourceImage).startsWith("data:")) {
           body.image = fillSourceImage;
         } else {
           body.image_url = currentInput;
         }
         // Add mask (data URI or URL)
-        if (String(maskDataUrl).startsWith('data:')) {
+        if (String(maskDataUrl).startsWith("data:")) {
           body.mask = maskDataUrl;
         } else {
           body.mask_url = maskDataUrl;
@@ -2983,7 +3863,10 @@ const EditImageInterface: React.FC = () => {
         if (fillNegativePrompt && fillNegativePrompt.trim()) {
           body.negative_prompt = fillNegativePrompt.trim();
         }
-        if (String(fillSeed).trim() !== '' && Number.isFinite(Number(fillSeed))) {
+        if (
+          String(fillSeed).trim() !== "" &&
+          Number.isFinite(Number(fillSeed))
+        ) {
           body.seed = Math.floor(Number(fillSeed));
         }
         const numImages = Number(fillNumImages ?? 1);
@@ -2993,37 +3876,61 @@ const EditImageInterface: React.FC = () => {
         if (fillSyncMode) {
           body.sync_mode = true;
         }
-        console.log('[Fill] Request payload:', { ...body, image: body.image ? '[IMAGE_DATA]' : body.image_url, mask: body.mask ? '[MASK_DATA]' : body.mask_url });
+        console.log("[Fill] Request payload:", {
+          ...body,
+          image: body.image ? "[IMAGE_DATA]" : body.image_url,
+          mask: body.mask ? "[MASK_DATA]" : body.mask_url,
+        });
         try {
-          const res = await axiosInstance.post('/api/fal/bria/genfill', body);
-          const imagesArray = res?.data?.data?.images || res?.data?.images || [];
-          const out = imagesArray[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) setOutputs((prev) => ({ ...prev, ['fill']: out }));
-          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          const res = await axiosInstance.post("/api/fal/bria/genfill", body);
+          const imagesArray =
+            res?.data?.data?.images || res?.data?.images || [];
+          const out =
+            imagesArray[0]?.url ||
+            res?.data?.data?.image?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (out) setOutputs((prev) => ({ ...prev, ["fill"]: out }));
+          try {
+            setCurrentHistoryId(res?.data?.data?.historyId || null);
+          } catch {}
           // Refresh global history so the Image Generation page sees the new fill entry immediately
           try {
-            await (dispatch as any)(loadHistory({
-              paginationParams: { limit: 60 },
-              requestOrigin: 'page',
-              debugTag: `refresh-after-fill:${Date.now()}`,
-            }));
-          } catch { }
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-fill:${Date.now()}`,
+              }),
+            );
+          } catch {}
           return;
         } catch (fillError) {
-          console.error('[Fill] API Error:', fillError);
+          console.error("[Fill] API Error:", fillError);
           const fillErrorData = (fillError as any)?.response?.data;
-          console.log('[Fill] Error response:', fillErrorData);
+          console.log("[Fill] Error response:", fillErrorData);
           throw fillError;
         }
       }
 
-      if (selectedFeature === 'resize' && model === 'fal-ai/bria/expand') {
+      if (selectedFeature === "resize" && model === "fal-ai/bria/expand") {
         // Build Bria Expand payload from UI.
         // Match payload structure exactly with wildmindcanvas/lib/api.ts expandImageForCanvas
 
         // 1. Validate Aspect Ratio
         let validAspectRatio: string | undefined = resizeAspectRatio;
-        const validAspectRatios = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
+        const validAspectRatios = [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+        ];
         if (validAspectRatio && !validAspectRatios.includes(validAspectRatio)) {
           // If "custom" or any other invalid value, allow backend to calculate or ignore
           // But api.ts logic says: if invalid, set to undefined.
@@ -3034,33 +3941,48 @@ const EditImageInterface: React.FC = () => {
         // 2. Prepare Payload
         // Note: We send Data URI directly to backend (via direct connection) to match Canvas logic
         // The backend (falService) handles uploading to Zata if needed.
-        const inputStr = String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput;
+        const inputStr = String(normalizedInput).startsWith("data:")
+          ? normalizedInput
+          : currentInput;
 
         const payload: any = {
           isPublic,
           sync_mode: !!resizeSyncMode,
         };
 
-        if (String(inputStr).startsWith('data:')) {
+        if (String(inputStr).startsWith("data:")) {
           payload.image = inputStr;
         } else {
           payload.image_url = inputStr;
         }
 
         if (prompt && prompt.trim()) payload.prompt = prompt.trim();
-        if (resizeNegativePrompt && resizeNegativePrompt.trim()) payload.negative_prompt = resizeNegativePrompt.trim();
-        if (resizeSeed !== '') payload.seed = Math.round(Number(resizeSeed) || 0);
+        if (resizeNegativePrompt && resizeNegativePrompt.trim())
+          payload.negative_prompt = resizeNegativePrompt.trim();
+        if (resizeSeed !== "")
+          payload.seed = Math.round(Number(resizeSeed) || 0);
 
         // Only include aspect_ratio if it's valid
         if (validAspectRatio) payload.aspect_ratio = validAspectRatio;
 
         // Dimensions must be number arrays
-        if (resizeCanvasW && resizeCanvasH) payload.canvas_size = [Number(resizeCanvasW), Number(resizeCanvasH)];
-        if (resizeOrigW && resizeOrigH) payload.original_image_size = [Number(resizeOrigW), Number(resizeOrigH)];
-        if (resizeOrigX !== '' && resizeOrigY !== '') payload.original_image_location = [Number(resizeOrigX), Number(resizeOrigY)];
+        if (resizeCanvasW && resizeCanvasH)
+          payload.canvas_size = [Number(resizeCanvasW), Number(resizeCanvasH)];
+        if (resizeOrigW && resizeOrigH)
+          payload.original_image_size = [
+            Number(resizeOrigW),
+            Number(resizeOrigH),
+          ];
+        if (resizeOrigX !== "" && resizeOrigY !== "")
+          payload.original_image_location = [
+            Number(resizeOrigX),
+            Number(resizeOrigY),
+          ];
 
         // Bria Expand can take longer than default timeout, so set a longer timeout (300 seconds)
-        console.log('[EditImage] Specifying timeout: 300000ms for Expand request');
+        console.log(
+          "[EditImage] Specifying timeout: 300000ms for Expand request",
+        );
         const expandStartTime = Date.now();
 
         // Optimistic credit deduction for Bria Expand (100 credits)
@@ -3074,15 +3996,17 @@ const EditImageInterface: React.FC = () => {
 
         // DIRECT BACKEND CALL: Bypass Next.js proxy to avoid Vercel 60s timeout on rewrites
         // We construct the full URL to the backend service directly
-        const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+        const backendBase = (
+          process.env.NEXT_PUBLIC_API_BASE_URL || ""
+        ).replace(/\/$/, "");
         const directUrl = `${backendBase}/api/wildmind/expand`;
 
-        console.log('[EditImage] Making DIRECT backend call to:', directUrl);
+        console.log("[EditImage] Making DIRECT backend call to:", directUrl);
 
         let res;
         try {
           res = await axiosInstance.post(directUrl, payload, {
-            timeout: 300000 // 300 seconds
+            timeout: 300000, // 300 seconds
           });
         } catch (err) {
           // Rollback optimistic deduction on error
@@ -3096,115 +4020,177 @@ const EditImageInterface: React.FC = () => {
           throw err;
         }
 
-        console.log(`[EditImage] Expand request completed in ${Date.now() - expandStartTime}ms`);
-        const outUrl = res?.data?.data?.image?.url || res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-        if (outUrl) setOutputs((prev) => ({ ...prev, ['resize']: outUrl }));
-        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        console.log(
+          `[EditImage] Expand request completed in ${Date.now() - expandStartTime}ms`,
+        );
+        const outUrl =
+          res?.data?.data?.image?.url ||
+          res?.data?.data?.images?.[0]?.url ||
+          res?.data?.images?.[0]?.url ||
+          res?.data?.data?.url ||
+          res?.data?.url ||
+          "";
+        if (outUrl) setOutputs((prev) => ({ ...prev, ["resize"]: outUrl }));
+        try {
+          setCurrentHistoryId(res?.data?.data?.historyId || null);
+        } catch {}
         // Refresh credits after successful generation
-        try { await refreshCredits(); } catch { }
+        try {
+          await refreshCredits();
+        } catch {}
         // Refresh global history so the Image Generation page sees the new resize entry immediately
         try {
-          await (dispatch as any)(loadHistory({
-            paginationParams: { limit: 60 },
-            requestOrigin: 'page',
-            debugTag: `refresh-after-resize:${Date.now()}`,
-          }));
-        } catch { }
+          await (dispatch as any)(
+            loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: "page",
+              debugTag: `refresh-after-resize:${Date.now()}`,
+            }),
+          );
+        } catch {}
         return;
       }
 
-
-      if (selectedFeature === 'remove-bg') {
+      if (selectedFeature === "remove-bg") {
         const body: any = {
-          image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput,
+          image: String(normalizedInput).startsWith("data:")
+            ? normalizedInput
+            : currentInput,
           isPublic,
           model,
         };
-        if (model.startsWith('bria/eraser')) {
+        if (model.startsWith("bria/eraser")) {
           // Export mask if drawn, scaled to input natural size
           const maskDataUrl = (() => {
             const c = fillCanvasRef.current;
             if (!c) return undefined as any;
             if (!hasMask) return undefined as any;
             try {
-              const off = document.createElement('canvas');
-              const dispRect = fillContainerRef.current?.getBoundingClientRect();
-              const displayW = Math.max(1, Math.floor(dispRect?.width || c.width));
-              const displayH = Math.max(1, Math.floor(dispRect?.height || c.height));
-              const natW = Math.max(1, Math.floor(inputNaturalSize.width || displayW));
-              const natH = Math.max(1, Math.floor(inputNaturalSize.height || displayH));
+              const off = document.createElement("canvas");
+              const dispRect =
+                fillContainerRef.current?.getBoundingClientRect();
+              const displayW = Math.max(
+                1,
+                Math.floor(dispRect?.width || c.width),
+              );
+              const displayH = Math.max(
+                1,
+                Math.floor(dispRect?.height || c.height),
+              );
+              const natW = Math.max(
+                1,
+                Math.floor(inputNaturalSize.width || displayW),
+              );
+              const natH = Math.max(
+                1,
+                Math.floor(inputNaturalSize.height || displayH),
+              );
               off.width = natW;
               off.height = natH;
-              const octx = off.getContext('2d');
-              if (!octx) return c.toDataURL('image/png');
+              const octx = off.getContext("2d");
+              if (!octx) return c.toDataURL("image/png");
               // See note above: draw from the canvas's full pixel buffer.
               octx.drawImage(c, 0, 0, c.width, c.height, 0, 0, natW, natH);
               // Quick sanity: ensure mask has non-zero alpha
               try {
-                const d = octx.getImageData(0, 0, Math.max(1, natW), Math.max(1, natH)).data;
+                const d = octx.getImageData(
+                  0,
+                  0,
+                  Math.max(1, natW),
+                  Math.max(1, natH),
+                ).data;
                 let hasAlpha = false;
-                for (let i = 3; i < d.length; i += 4) { if (d[i] !== 0) { hasAlpha = true; break; } }
+                for (let i = 3; i < d.length; i += 4) {
+                  if (d[i] !== 0) {
+                    hasAlpha = true;
+                    break;
+                  }
+                }
                 if (!hasAlpha) return undefined as any;
               } catch (e) {
                 // ignore getImageData errors (CORS)
               }
-              return off.toDataURL('image/png');
+              return off.toDataURL("image/png");
             } catch {
               const c = fillCanvasRef.current as HTMLCanvasElement | null;
-              return c ? c.toDataURL('image/png') : undefined;
+              return c ? c.toDataURL("image/png") : undefined;
             }
           })();
           if (maskDataUrl) body.mask = maskDataUrl;
-          body.mask_type = 'manual';
+          body.mask_type = "manual";
           body.preserve_alpha = true;
           body.sync = true;
-        } else if (model.startsWith('851-labs/')) {
+        } else if (model.startsWith("851-labs/")) {
           if (output) body.format = output as any;
           if (backgroundType) body.background_type = backgroundType;
           if (threshold) body.threshold = Number(threshold);
           if (reverseBg) body.reverse = true;
         }
-        const res = await axiosInstance.post('/api/replicate/remove-bg', body);
-        console.log('[EditImage] remove-bg.res', res?.data);
+        const res = await axiosInstance.post("/api/replicate/remove-bg", body);
+        console.log("[EditImage] remove-bg.res", res?.data);
 
         // Extract URL from response - match upscale pattern exactly
         // Backend returns { data: { images: [{ url, storagePath }] } }
-        const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
+        const first =
+          res?.data?.data?.images?.[0]?.url ||
+          res?.data?.data?.images?.[0] ||
+          res?.data?.data?.url ||
+          res?.data?.url ||
+          "";
 
         if (first) {
-          console.log('[EditImage] remove-bg output URL:', { first, selectedFeature });
+          console.log("[EditImage] remove-bg output URL:", {
+            first,
+            selectedFeature,
+          });
           // Set output directly like upscale does - no URL conversion needed since backend returns full URL
-          setOutputs((prev) => ({ ...prev, ['remove-bg']: first }));
+          setOutputs((prev) => ({ ...prev, ["remove-bg"]: first }));
           // Default to Zoom mode for remove-bg so transparent outputs are visible
-          setUpscaleViewMode('zoom');
+          setUpscaleViewMode("zoom");
           // Ensure processing is set to false
-          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
-          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          setProcessing((prev) => ({ ...prev, ["remove-bg"]: false }));
+          try {
+            setCurrentHistoryId(res?.data?.data?.historyId || null);
+          } catch {}
           // Refresh global history so the Image Generation page sees the new remove-bg entry immediately
           try {
-            await (dispatch as any)(loadHistory({
-              paginationParams: { limit: 60 },
-              requestOrigin: 'page',
-              debugTag: `refresh-after-remove-bg:${Date.now()}`,
-            }));
-          } catch { }
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-remove-bg:${Date.now()}`,
+              }),
+            );
+          } catch {}
         } else {
-          console.error('[EditImage] remove-bg: No output URL found in response', res?.data);
-          setProcessing((prev) => ({ ...prev, ['remove-bg']: false }));
+          console.error(
+            "[EditImage] remove-bg: No output URL found in response",
+            res?.data,
+          );
+          setProcessing((prev) => ({ ...prev, ["remove-bg"]: false }));
         }
       } else if (false) {
         // Route to provider based on selected model
-        const chosenModel = selectedGeneratorModel || 'gemini-25-flash-image';
-        const isRunway = chosenModel === 'gen4_image' || chosenModel === 'gen4_image_turbo' || chosenModel === 'gemini_2.5_flash';
-        const isFalImageModel = chosenModel === 'gemini-25-flash-image' || chosenModel.toLowerCase().includes('seedream');
-        const isFluxKontext = chosenModel.startsWith('flux-kontext');
-        const isMiniMax = chosenModel === 'minimax-image-01';
+        const chosenModel = selectedGeneratorModel || "gemini-25-flash-image";
+        const isRunway =
+          chosenModel === "gen4_image" ||
+          chosenModel === "gen4_image_turbo" ||
+          chosenModel === "gemini_2.5_flash";
+        const isFalImageModel =
+          chosenModel === "gemini-25-flash-image" ||
+          chosenModel.toLowerCase().includes("seedream");
+        const isFluxKontext = chosenModel.startsWith("flux-kontext");
+        const isMiniMax = chosenModel === "minimax-image-01";
         if (isMiniMax) {
-          setErrorMsg('MiniMax is not supported for image edit with prompt. Please choose Runway Gen4, Flux Kontext Pro/Max, Google Nano Banana, or Seedream v4.');
+          setErrorMsg(
+            "MiniMax is not supported for image edit with prompt. Please choose Runway Gen4, Flux Kontext Pro/Max, Google Nano Banana, or Seedream v4.",
+          );
           return;
         }
         if (!isRunway && !isFalImageModel && !isFluxKontext) {
-          setErrorMsg('This model does not support image edit with prompt. Please select Runway Gen4, Flux Kontext Pro/Max, Google Nano Banana, or Seedream v4.');
+          setErrorMsg(
+            "This model does not support image edit with prompt. Please select Runway Gen4, Flux Kontext Pro/Max, Google Nano Banana, or Seedream v4.",
+          );
           return;
         }
 
@@ -3212,29 +4198,41 @@ const EditImageInterface: React.FC = () => {
           // Map simple aspect ratios to Runway pixel ratios
           const mapToRunwayRatio = (ratio: string): string => {
             switch (ratio) {
-              case '1:1': return '1024:1024'; // allowed
-              case '9:16': return '720:1280'; // allowed
-              case '16:9': return '1280:720'; // allowed
-              case '3:4': return '1080:1440'; // allowed
-              case '4:3': return '1440:1080'; // allowed
-              case '2:3': return '720:1080'; // not listed; use closest allowed 720:1280
-              case '3:2': return '1360:768'; // allowed set includes 1360:768
-              case '21:9': return '1680:720'; // allowed
-              default: return '1024:1024';
+              case "1:1":
+                return "1024:1024"; // allowed
+              case "9:16":
+                return "720:1280"; // allowed
+              case "16:9":
+                return "1280:720"; // allowed
+              case "3:4":
+                return "1080:1440"; // allowed
+              case "4:3":
+                return "1440:1080"; // allowed
+              case "2:3":
+                return "720:1080"; // not listed; use closest allowed 720:1280
+              case "3:2":
+                return "1360:768"; // allowed set includes 1360:768
+              case "21:9":
+                return "1680:720"; // allowed
+              default:
+                return "1024:1024";
             }
           };
           // Upload image to Zata if needed
           const runwayImageUrl = await ensureZataUrl(currentInputRaw);
           const runwayPayload: any = {
-            promptText: prompt || '',
+            promptText: prompt || "",
             model: chosenModel,
             ratio: mapToRunwayRatio(String(frameSize)),
             referenceImages: [{ uri: runwayImageUrl }],
             uploadedImages: [runwayImageUrl],
-            generationType: 'text-to-image',
+            generationType: "text-to-image",
             isPublic,
           };
-          const res = await axiosInstance.post('/api/runway/generate', runwayPayload);
+          const res = await axiosInstance.post(
+            "/api/runway/generate",
+            runwayPayload,
+          );
           const taskId = res?.data?.data?.taskId || res?.data?.taskId;
 
           if (taskId) {
@@ -3242,62 +4240,86 @@ const EditImageInterface: React.FC = () => {
             let imageUrl: string | undefined;
             for (let attempts = 0; attempts < 360; attempts++) {
               try {
-                const statusRes = await axiosInstance.get(`/api/runway/status/${taskId}`);
+                const statusRes = await axiosInstance.get(
+                  `/api/runway/status/${taskId}`,
+                );
                 const status = statusRes?.data?.data || statusRes?.data;
 
-                if (status?.status === 'completed' && Array.isArray(status?.images) && status.images.length > 0) {
-                  imageUrl = status.images[0]?.url || status.images[0]?.originalUrl;
+                if (
+                  status?.status === "completed" &&
+                  Array.isArray(status?.images) &&
+                  status.images.length > 0
+                ) {
+                  imageUrl =
+                    status.images[0]?.url || status.images[0]?.originalUrl;
                   break;
                 }
-                if (status?.status === 'failed') {
-                  throw new Error('Runway generation failed');
+                if (status?.status === "failed") {
+                  throw new Error("Runway generation failed");
                 }
               } catch (statusError) {
-                console.error('Status check failed:', statusError);
+                console.error("Status check failed:", statusError);
                 if (attempts === 359) throw statusError; // Only throw on final attempt
               }
-              await new Promise(res => setTimeout(res, 1000));
+              await new Promise((res) => setTimeout(res, 1000));
             }
 
             if (imageUrl) {
               // no-op after removing using-prompt feature
             } else {
-              throw new Error('Runway generation did not complete in time');
+              throw new Error("Runway generation did not complete in time");
             }
           } else {
-            throw new Error('No task ID returned from Runway');
+            throw new Error("No task ID returned from Runway");
           }
         } else if (isFalImageModel) {
           // FAL models
-          const promptWithStyle = selectedStyle && selectedStyle !== 'none' ? `${prompt} [Style: ${selectedStyle}]` : (prompt || '');
+          const promptWithStyle =
+            selectedStyle && selectedStyle !== "none"
+              ? `${prompt} [Style: ${selectedStyle}]`
+              : prompt || "";
           let payload: any;
-          if (chosenModel.toLowerCase().includes('seedream')) {
+          if (chosenModel.toLowerCase().includes("seedream")) {
             // Seedream v4 expects specific fields
             // Upload image to Zata if needed
             const seedreamImageUrl = await ensureZataUrl(currentInputRaw);
             payload = {
               prompt: promptWithStyle,
-              model: 'bytedance/seedream-4',
-              size: '2K',
+              model: "bytedance/seedream-4",
+              size: "2K",
               aspect_ratio: frameSize,
               image_input: [seedreamImageUrl],
-              sequential_image_generation: 'disabled',
+              sequential_image_generation: "disabled",
               max_images: 1,
               isPublic,
             };
 
             // Use Replicate generate endpoint (same as image generation flow)
-            const res = await axiosInstance.post('/api/replicate/generate', payload);
-            const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-            if (out) { }
+            const res = await axiosInstance.post(
+              "/api/replicate/generate",
+              payload,
+            );
+            const out =
+              res?.data?.images?.[0]?.url ||
+              res?.data?.data?.images?.[0]?.url ||
+              res?.data?.data?.url ||
+              res?.data?.url ||
+              "";
+            if (out) {
+            }
             return;
           } else {
             // Google Nano Banana (gemini-25-flash-image)
             // Upload image to Zata if needed
             const falImageUrl = await ensureZataUrl(currentInputRaw);
-            const imagesToUse = reduxUploadedImages && reduxUploadedImages.length > 0
-              ? await Promise.all(reduxUploadedImages.map((img: string) => ensureZataUrl(img)))
-              : [falImageUrl];
+            const imagesToUse =
+              reduxUploadedImages && reduxUploadedImages.length > 0
+                ? await Promise.all(
+                    reduxUploadedImages.map((img: string) =>
+                      ensureZataUrl(img),
+                    ),
+                  )
+                : [falImageUrl];
             payload = {
               prompt: promptWithStyle,
               model: chosenModel,
@@ -3305,49 +4327,61 @@ const EditImageInterface: React.FC = () => {
               aspect_ratio: frameSize,
               isPublic,
               num_images: 1,
-              output_format: 'jpeg'
+              output_format: "jpeg",
             };
           }
-          const res = await axiosInstance.post('/api/fal/generate', payload);
-          const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) { }
+          const res = await axiosInstance.post("/api/fal/generate", payload);
+          const out =
+            res?.data?.images?.[0]?.url ||
+            res?.data?.data?.images?.[0]?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (out) {
+          }
         } else if (isFluxKontext) {
           // Flux Kontext I2I through the same payload shape as text-to-image
           // Upload image to Zata if needed
           const fluxKontextImageUrl = await ensureZataUrl(currentInputRaw);
           const payload: any = {
-            prompt: prompt || '',
+            prompt: prompt || "",
             model: chosenModel,
             n: 1,
             frameSize: frameSize,
-            generationType: 'text-to-image',
+            generationType: "text-to-image",
             uploadedImages: [fluxKontextImageUrl],
-            style: 'none',
+            style: "none",
             isPublic,
           };
-          const res = await axiosInstance.post('/api/bfl/generate', payload);
-          const out = res?.data?.images?.[0]?.url || res?.data?.data?.images?.[0]?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (out) { }
+          const res = await axiosInstance.post("/api/bfl/generate", payload);
+          const out =
+            res?.data?.images?.[0]?.url ||
+            res?.data?.data?.images?.[0]?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (out) {
+          }
         }
-      } else if (selectedFeature === 'reimagine') {
+      } else if (selectedFeature === "reimagine") {
         if (!reimagineSelectionBounds) {
-          setErrorMsg('Please select a region to reimagine.');
+          setErrorMsg("Please select a region to reimagine.");
           return;
         }
 
         if (!reimaginePrompt || !reimaginePrompt.trim()) {
-          setErrorMsg('Please enter a prompt for reimagine.');
+          setErrorMsg("Please enter a prompt for reimagine.");
           return;
         }
 
         // Calculate selection bounds in natural image space
         const containerRect = fillContainerRef.current?.getBoundingClientRect();
-        if (!containerRect) throw new Error('Container not found');
+        if (!containerRect) throw new Error("Container not found");
 
         const natW = inputNaturalSize.width;
         const natH = inputNaturalSize.height;
 
-        if (!natW || !natH) throw new Error('Image dimensions not found');
+        if (!natW || !natH) throw new Error("Image dimensions not found");
 
         // CRITICAL FIX: When image uses object-fit:contain, we need to calculate
         // the actual displayed dimensions within the container
@@ -3390,14 +4424,26 @@ const EditImageInterface: React.FC = () => {
           height: Math.floor(adjustedSelectionBounds.height * scaleY),
         };
 
-        console.log('[Frontend] Image dimensions:', { natW, natH });
-        console.log('[Frontend] Container dimensions:', { width: containerRect.width, height: containerRect.height });
-        console.log('[Frontend] Displayed dimensions:', { displayedWidth, displayedHeight });
-        console.log('[Frontend] Offset:', { offsetX, offsetY });
-        console.log('[Frontend] Scale factors:', { scaleX, scaleY });
-        console.log('[Frontend] Original selection bounds:', reimagineSelectionBounds);
-        console.log('[Frontend] Adjusted selection bounds:', adjustedSelectionBounds);
-        console.log('[Frontend] Scaled selection bounds:', scaledBounds);
+        console.log("[Frontend] Image dimensions:", { natW, natH });
+        console.log("[Frontend] Container dimensions:", {
+          width: containerRect.width,
+          height: containerRect.height,
+        });
+        console.log("[Frontend] Displayed dimensions:", {
+          displayedWidth,
+          displayedHeight,
+        });
+        console.log("[Frontend] Offset:", { offsetX, offsetY });
+        console.log("[Frontend] Scale factors:", { scaleX, scaleY });
+        console.log(
+          "[Frontend] Original selection bounds:",
+          reimagineSelectionBounds,
+        );
+        console.log(
+          "[Frontend] Adjusted selection bounds:",
+          adjustedSelectionBounds,
+        );
+        console.log("[Frontend] Scaled selection bounds:", scaledBounds);
 
         // Call backend reimagine endpoint
         const payload: any = {
@@ -3413,152 +4459,229 @@ const EditImageInterface: React.FC = () => {
         }
 
         // Only include model if user explicitly chose one (not 'auto')
-        if (reimagineModel !== 'auto') {
+        if (reimagineModel !== "auto") {
           payload.model = reimagineModel;
-          console.log('🎯 [Frontend] MANUALLY SELECTED MODEL:', reimagineModel);
+          console.log("🎯 [Frontend] MANUALLY SELECTED MODEL:", reimagineModel);
         } else {
-          console.log('🤖 [Frontend] AUTO MODEL SELECTION (backend will decide)');
+          console.log(
+            "🤖 [Frontend] AUTO MODEL SELECTION (backend will decide)",
+          );
         }
 
-        console.log('[Frontend] Reimagine Payload:', payload);
+        console.log("[Frontend] Reimagine Payload:", payload);
 
-        const res = await axiosInstance.post('/api/reimagine/generate', payload);
-        const reimaginedUrl = res?.data?.data?.reimagined_image || res?.data?.reimagined_image || '';
+        const res = await axiosInstance.post(
+          "/api/reimagine/generate",
+          payload,
+        );
+        const reimaginedUrl =
+          res?.data?.data?.reimagined_image ||
+          res?.data?.reimagined_image ||
+          "";
 
-        if (!reimaginedUrl) throw new Error('No reimagined image returned');
+        if (!reimaginedUrl) throw new Error("No reimagined image returned");
 
-        setOutputs(prev => ({ ...prev, ['reimagine']: reimaginedUrl }));
-        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        setOutputs((prev) => ({ ...prev, ["reimagine"]: reimaginedUrl }));
+        try {
+          setCurrentHistoryId(res?.data?.data?.historyId || null);
+        } catch {}
 
         // Refresh history
         try {
-          await (dispatch as any)(loadHistory({
-            paginationParams: { limit: 60 },
-            requestOrigin: 'page',
-            debugTag: `refresh-after-reimagine:${Date.now()}`,
-          }));
-        } catch { }
+          await (dispatch as any)(
+            loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: "page",
+              debugTag: `refresh-after-reimagine:${Date.now()}`,
+            }),
+          );
+        } catch {}
 
         // Reset selection
         setReimagineSelectionConfirmed(false);
         setReimagineSelectionBounds(null);
         setReimagineLiveBounds(null);
         setHasMask(false);
-        setReimaginePrompt('');
+        setReimaginePrompt("");
 
         // Clear visual mask
-        const fillCtx = fillCanvasRef.current?.getContext('2d');
+        const fillCtx = fillCanvasRef.current?.getContext("2d");
         if (fillCtx && fillContainerRef.current) {
-          fillCtx.clearRect(0, 0, fillContainerRef.current.clientWidth, fillContainerRef.current.clientHeight);
+          fillCtx.clearRect(
+            0,
+            0,
+            fillContainerRef.current.clientWidth,
+            fillContainerRef.current.clientHeight,
+          );
         }
 
-        toast.success('Reimagine complete!');
+        toast.success("Reimagine complete!");
         return;
-
       } else {
         const parseScale = (fallback: number) => {
-          const s = String(scaleFactor || '').toLowerCase().trim();
-          const n = s.endsWith('x') ? Number(s.replace('x', '')) : Number(s);
+          const s = String(scaleFactor || "")
+            .toLowerCase()
+            .trim();
+          const n = s.endsWith("x") ? Number(s.replace("x", "")) : Number(s);
           if (!Number.isFinite(n) || n <= 0) return fallback;
           return n;
         };
         // Defaults mirror UpscalePopup: clarity 2, esrgan 4
         const clarityScale = parseScale(2);
         const esrganScale = parseScale(4);
-        let payload: any = { image: String(normalizedInput).startsWith('data:') ? normalizedInput : currentInput, model };
-        if (model === 'philz1337x/clarity-upscaler') {
+        let payload: any = {
+          image: String(normalizedInput).startsWith("data:")
+            ? normalizedInput
+            : currentInput,
+          model,
+        };
+        if (model === "philz1337x/clarity-upscaler") {
           const dyn = dynamic ? Number(dynamic) : 6;
           const shp = sharpen ? Number(sharpen) : 0;
-          payload = { ...payload, scale_factor: clarityScale, output_format: output, dynamic: Number.isFinite(dyn) ? dyn : 6, sharpen: Number.isFinite(shp) ? shp : 0 };
-        } else if (model === 'nightmareai/real-esrgan') {
-          payload = { ...payload, scale: esrganScale, face_enhance: faceEnhance };
-        } else if (model === 'philz1337x/crystal-upscaler') {
+          payload = {
+            ...payload,
+            scale_factor: clarityScale,
+            output_format: output,
+            dynamic: Number.isFinite(dyn) ? dyn : 6,
+            sharpen: Number.isFinite(shp) ? shp : 0,
+          };
+        } else if (model === "nightmareai/real-esrgan") {
+          payload = {
+            ...payload,
+            scale: esrganScale,
+            face_enhance: faceEnhance,
+          };
+        } else if (model === "philz1337x/crystal-upscaler") {
           const crystalScale = Math.max(1, Math.min(4, clarityScale));
-          const fmt = (output === 'jpg' || output === 'png') ? output : 'png';
-          payload = { ...payload, scale_factor: crystalScale, output_format: fmt };
+          const fmt = output === "jpg" || output === "png" ? output : "png";
+          payload = {
+            ...payload,
+            scale_factor: crystalScale,
+            output_format: fmt,
+          };
 
           // Pre-check credits using the same pixel-tier pricing as backend.
           const w0 = Number(inputNaturalSize?.width || 0);
           const h0 = Number(inputNaturalSize?.height || 0);
-          const estimate = (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0)
-            ? estimateCrystalUpscalerCredits(w0, h0, crystalScale)
-            : null;
+          const estimate =
+            Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0
+              ? estimateCrystalUpscalerCredits(w0, h0, crystalScale)
+              : null;
           const expectedCredits = estimate?.credits;
           if (expectedCredits && expectedCredits > 0) {
             if ((creditBalance || 0) < expectedCredits) {
-              throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+              throw new Error(
+                `Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`,
+              );
             }
             try {
               deductCreditsOptimisticForGeneration(expectedCredits);
               optimisticDebit = expectedCredits;
-            } catch { }
+            } catch {}
           }
-        } else if (model === 'fal-ai/seedvr/upscale/image') {
+        } else if (model === "fal-ai/seedvr/upscale/image") {
           // SeedVR factor-only upscaler (credits: 4 per output megapixel, rounded up)
           const getNaturalSize = async () => {
             const w0 = Number(inputNaturalSize?.width || 0);
             const h0 = Number(inputNaturalSize?.height || 0);
-            if (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0) return { width: w0, height: h0 };
-            const src = String(normalizedInput).startsWith('data:') ? normalizedInput : String(currentInput || normalizedInput);
-            return await new Promise<{ width: number; height: number }>((resolve, reject) => {
-              const img = document.createElement('img');
-              img.onload = () => {
-                const width = Number(img.naturalWidth || img.width || 0);
-                const height = Number(img.naturalHeight || img.height || 0);
-                if (!width || !height) return reject(new Error('Could not read image dimensions'));
-                resolve({ width, height });
-              };
-              img.onerror = () => reject(new Error('Failed to load image for sizing'));
-              img.src = src;
-            });
+            if (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0)
+              return { width: w0, height: h0 };
+            const src = String(normalizedInput).startsWith("data:")
+              ? normalizedInput
+              : String(currentInput || normalizedInput);
+            return await new Promise<{ width: number; height: number }>(
+              (resolve, reject) => {
+                const img = document.createElement("img");
+                img.onload = () => {
+                  const width = Number(img.naturalWidth || img.width || 0);
+                  const height = Number(img.naturalHeight || img.height || 0);
+                  if (!width || !height)
+                    return reject(new Error("Could not read image dimensions"));
+                  resolve({ width, height });
+                };
+                img.onerror = () =>
+                  reject(new Error("Failed to load image for sizing"));
+                img.src = src;
+              },
+            );
           };
 
-          const factor = Math.max(1, Math.min(8, Math.round(Number(seedvrUpscaleFactor) || 2)));
+          const factor = Math.max(
+            1,
+            Math.min(8, Math.round(Number(seedvrUpscaleFactor) || 2)),
+          );
           const { width: inW, height: inH } = await getNaturalSize();
           const outW = Math.max(1, Math.round(inW * factor));
           const outH = Math.max(1, Math.round(inH * factor));
-          const expectedCredits = Math.max(1, Math.ceil(((outW * outH) / 1_000_000) * 4));
+          const expectedCredits = Math.max(
+            1,
+            Math.ceil(((outW * outH) / 1_000_000) * 4),
+          );
 
           if ((creditBalance || 0) < expectedCredits) {
-            throw new Error(`Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`);
+            throw new Error(
+              `Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`,
+            );
           }
 
           if (expectedCredits > 0) {
             try {
               deductCreditsOptimisticForGeneration(expectedCredits);
               optimisticDebit = expectedCredits;
-            } catch { /* ignore optimistic errors */ }
+            } catch {
+              /* ignore optimistic errors */
+            }
           }
 
           const normalizedLocal = normalizedInput;
-          const isData = String(normalizedLocal).startsWith('data:');
+          const isData = String(normalizedLocal).startsWith("data:");
           const body: any = {
-            ...(isData ? { image: normalizedLocal } : { image_url: currentInput }),
-            upscale_mode: 'factor',
+            ...(isData
+              ? { image: normalizedLocal }
+              : { image_url: currentInput }),
+            upscale_mode: "factor",
             upscale_factor: factor,
             noise_scale: 0.1,
-            output_format: (output === 'jpg' || output === 'png') ? output : 'jpg',
+            output_format:
+              output === "jpg" || output === "png" ? output : "jpg",
           };
 
-          const res = await axiosInstance.post('/api/fal/seedvr/upscale/image', body);
-          const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
-          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          const res = await axiosInstance.post(
+            "/api/fal/seedvr/upscale/image",
+            body,
+          );
+          const first =
+            res?.data?.data?.images?.[0]?.url ||
+            res?.data?.images?.[0]?.url ||
+            res?.data?.data?.image?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (first) setOutputs((prev) => ({ ...prev, ["upscale"]: first }));
           try {
-            await (dispatch as any)(loadHistory({
-              paginationParams: { limit: 60 },
-              requestOrigin: 'page',
-              debugTag: `refresh-after-upscale-seedvr:${Date.now()}`,
-            }));
-          } catch { }
-          try { await refreshCredits(); } catch { }
+            setCurrentHistoryId(res?.data?.data?.historyId || null);
+          } catch {}
+          try {
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-upscale-seedvr:${Date.now()}`,
+              }),
+            );
+          } catch {}
+          try {
+            await refreshCredits();
+          } catch {}
           return;
-        } else if (model === 'fal-ai/topaz/upscale/image') {
+        } else if (model === "fal-ai/topaz/upscale/image") {
           // Use FAL Topaz Upscaler endpoint
           const normalizedLocal = normalizedInput;
-          const isData = String(normalizedLocal).startsWith('data:');
+          const isData = String(normalizedLocal).startsWith("data:");
           const body: any = {
-            ...(isData ? { image: normalizedLocal } : { image_url: currentInput }),
+            ...(isData
+              ? { image: normalizedLocal }
+              : { image_url: currentInput }),
             model: topazModel,
             upscale_factor: Number(topazUpscaleFactor) || 2,
             crop_to_fill: Boolean(topazCropToFill),
@@ -3566,20 +4689,35 @@ const EditImageInterface: React.FC = () => {
             subject_detection: topazSubjectDetection,
             face_enhancement: Boolean(topazFaceEnhance),
           };
-          if (topazFaceCreativity != null) body.face_enhancement_creativity = Number(topazFaceCreativity) || 0;
-          if (topazFaceStrength != null) body.face_enhancement_strength = Number(topazFaceStrength) || 0.8;
-          const res = await axiosInstance.post('/api/fal/topaz/upscale/image', body);
-          const first = res?.data?.data?.images?.[0]?.url || res?.data?.images?.[0]?.url || res?.data?.data?.image?.url || res?.data?.data?.url || res?.data?.url || '';
-          if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
-          try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+          if (topazFaceCreativity != null)
+            body.face_enhancement_creativity = Number(topazFaceCreativity) || 0;
+          if (topazFaceStrength != null)
+            body.face_enhancement_strength = Number(topazFaceStrength) || 0.8;
+          const res = await axiosInstance.post(
+            "/api/fal/topaz/upscale/image",
+            body,
+          );
+          const first =
+            res?.data?.data?.images?.[0]?.url ||
+            res?.data?.images?.[0]?.url ||
+            res?.data?.data?.image?.url ||
+            res?.data?.data?.url ||
+            res?.data?.url ||
+            "";
+          if (first) setOutputs((prev) => ({ ...prev, ["upscale"]: first }));
+          try {
+            setCurrentHistoryId(res?.data?.data?.historyId || null);
+          } catch {}
           // Refresh global history so the Image Generation page sees the new upscale entry immediately
           try {
-            await (dispatch as any)(loadHistory({
-              paginationParams: { limit: 60 },
-              requestOrigin: 'page',
-              debugTag: `refresh-after-upscale-topaz:${Date.now()}`,
-            }));
-          } catch { }
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-upscale-topaz:${Date.now()}`,
+              }),
+            );
+          } catch {}
           return;
         }
         // else if (model === 'fermatresearch/magic-image-refiner') {
@@ -3592,36 +4730,54 @@ const EditImageInterface: React.FC = () => {
           if (Number.isFinite(w0) && Number.isFinite(h0) && w0 > 0 && h0 > 0) {
             payload = { ...payload, width: w0, height: h0 };
           }
-        } catch { }
+        } catch {}
 
-        const res = await axiosInstance.post('/api/replicate/upscale', payload);
-        console.log('[EditImage] upscale.res', res?.data);
-        const first = res?.data?.data?.images?.[0]?.url || res?.data?.data?.images?.[0] || res?.data?.data?.url || res?.data?.url || '';
-        if (first) setOutputs((prev) => ({ ...prev, ['upscale']: first }));
-        try { setCurrentHistoryId(res?.data?.data?.historyId || null); } catch { }
+        const res = await axiosInstance.post("/api/replicate/upscale", payload);
+        console.log("[EditImage] upscale.res", res?.data);
+        const first =
+          res?.data?.data?.images?.[0]?.url ||
+          res?.data?.data?.images?.[0] ||
+          res?.data?.data?.url ||
+          res?.data?.url ||
+          "";
+        if (first) setOutputs((prev) => ({ ...prev, ["upscale"]: first }));
+        try {
+          setCurrentHistoryId(res?.data?.data?.historyId || null);
+        } catch {}
         // Refresh global history so the Image Generation page sees the new upscale entry immediately
         try {
-          await (dispatch as any)(loadHistory({
-            paginationParams: { limit: 60 },
-            requestOrigin: 'page',
-            debugTag: `refresh-after-upscale:${Date.now()}`,
-          }));
-        } catch { }
+          await (dispatch as any)(
+            loadHistory({
+              paginationParams: { limit: 60 },
+              requestOrigin: "page",
+              debugTag: `refresh-after-upscale:${Date.now()}`,
+            }),
+          );
+        } catch {}
       }
     } catch (e) {
       if (optimisticDebit > 0) {
-        try { rollbackOptimisticDeduction(optimisticDebit); } catch { }
+        try {
+          rollbackOptimisticDeduction(optimisticDebit);
+        } catch {}
       }
-      console.error('[EditImage] run.error', e);
+      console.error("[EditImage] run.error", e);
       const errorData = (e as any)?.response?.data;
-      let msg = (errorData && (errorData.message || errorData.error)) || (e as any)?.message || 'Request failed';
+      let msg =
+        (errorData && (errorData.message || errorData.error)) ||
+        (e as any)?.message ||
+        "Request failed";
       if (!msg && Array.isArray(errorData)) {
-        try { msg = errorData.map((x: any) => x?.msg || x).join(', '); } catch { }
+        try {
+          msg = errorData.map((x: any) => x?.msg || x).join(", ");
+        } catch {}
       }
-      if (typeof msg !== 'string') {
-        try { msg = JSON.stringify(errorData); } catch { }
+      if (typeof msg !== "string") {
+        try {
+          msg = JSON.stringify(errorData);
+        } catch {}
       }
-      console.log('[EditImage] Error details:', errorData);
+      console.log("[EditImage] Error details:", errorData);
       setErrorMsg(String(msg));
     } finally {
       setProcessing((prev) => ({ ...prev, [selectedFeature]: false }));
@@ -3629,25 +4785,45 @@ const EditImageInterface: React.FC = () => {
   };
 
   const handleReset = () => {
-    setInputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null });
-    setOutputs({ 'upscale': null, 'remove-bg': null, 'resize': null, 'fill': null, 'vectorize': null, 'erase': null, 'expand': null, 'reimagine': null, 'live-chat': null });
+    setInputs({
+      upscale: null,
+      "remove-bg": null,
+      resize: null,
+      fill: null,
+      vectorize: null,
+      erase: null,
+      expand: null,
+      reimagine: null,
+      "live-chat": null,
+    });
+    setOutputs({
+      upscale: null,
+      "remove-bg": null,
+      resize: null,
+      fill: null,
+      vectorize: null,
+      erase: null,
+      expand: null,
+      reimagine: null,
+      "live-chat": null,
+    });
     // Set appropriate default model based on selected feature
-    if (selectedFeature === 'remove-bg') {
-      setModel('851-labs/background-remover');
-    } else if (selectedFeature === 'upscale') {
-      setModel('philz1337x/crystal-upscaler');
-    } else if (selectedFeature === 'resize') {
-      setModel('fal-ai/bria/expand');
-    } else if (selectedFeature === 'vectorize') {
-      setModel('fal-ai/recraft/vectorize' as any);
+    if (selectedFeature === "remove-bg") {
+      setModel("851-labs/background-remover");
+    } else if (selectedFeature === "upscale") {
+      setModel("philz1337x/crystal-upscaler");
+    } else if (selectedFeature === "resize") {
+      setModel("fal-ai/bria/expand");
+    } else if (selectedFeature === "vectorize") {
+      setModel("fal-ai/recraft/vectorize" as any);
     }
-    setPrompt('');
-    setScaleFactor('');
-    setOutput('png');
-    setDynamic('');
-    setSharpen('');
-    setBackgroundType('rgba');
-    setThreshold('');
+    setPrompt("");
+    setScaleFactor("");
+    setOutput("png");
+    setDynamic("");
+    setSharpen("");
+    setBackgroundType("rgba");
+    setThreshold("");
     setResizeExpandLeft(0);
     setResizeExpandRight(0);
     setResizeExpandTop(0);
@@ -3656,29 +4832,23 @@ const EditImageInterface: React.FC = () => {
     setResizeNumImages(1);
     setResizeSafetyChecker(true);
     setResizeSyncMode(false);
-    setResizeOutputFormat('png');
-    setResizeAspectRatio('');
-    setFillSeed('');
-    setFillNegativePrompt('');
+    setResizeOutputFormat("png");
+    setResizeAspectRatio("");
+    setFillSeed("");
+    setFillNegativePrompt("");
     setFillNumImages(1);
     setFillSyncMode(false);
     setIsMasking(false);
     setHasMask(false);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
-
-
-
-
-
-
   // Helper functions from ImagePreviewModal.tsx
   const toProxyPath = React.useCallback((urlOrPath: string | undefined) => {
-    if (!urlOrPath) return '';
-    const ZATA_PREFIX = 'https://idr01.zata.ai/devstoragev1/';
+    if (!urlOrPath) return "";
+    const ZATA_PREFIX = "https://idr01.zata.ai/devstoragev1/";
     if (urlOrPath.startsWith(ZATA_PREFIX)) {
       return urlOrPath.substring(ZATA_PREFIX.length);
     }
@@ -3687,31 +4857,33 @@ const EditImageInterface: React.FC = () => {
 
   const toProxyDownloadUrl = (urlOrPath: string | undefined) => {
     const path = toProxyPath(urlOrPath);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-    return path ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}` : '';
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    return path
+      ? `${API_BASE}/api/proxy/download/${encodeURIComponent(path)}`
+      : "";
   };
 
   const handleDownloadOutput = async () => {
     try {
-      const url = outputs[selectedFeature]
+      const url = outputs[selectedFeature];
       if (!url) {
-        alert('No image available to download')
-        return
+        alert("No image available to download");
+        return;
       }
 
-      await downloadFileWithNaming(url, null, 'image', 'edited');
+      await downloadFileWithNaming(url, null, "image", "edited");
     } catch (e) {
-      console.error('[EditImage] download.error', e)
-      alert('Failed to download image. Please try again.')
+      console.error("[EditImage] download.error", e);
+      alert("Failed to download image. Please try again.");
     }
-  }
+  };
 
   const handleShareOutput = async () => {
-    const shareUrl = outputs[selectedFeature] || '';
+    const shareUrl = outputs[selectedFeature] || "";
     try {
       if (!shareUrl) {
-        alert('No image available to share')
-        return
+        alert("No image available to share");
+        return;
       }
 
       // Use the same logic as ImagePreviewModal
@@ -3720,7 +4892,7 @@ const EditImageInterface: React.FC = () => {
         await copyToClipboard(shareUrl);
         setShareCopied(true);
         setTimeout(() => setShareCopied(false), 1500);
-        alert('Image URL copied to clipboard!');
+        alert("Image URL copied to clipboard!");
         return;
       }
 
@@ -3730,66 +4902,68 @@ const EditImageInterface: React.FC = () => {
         await copyToClipboard(shareUrl);
         setShareCopied(true);
         setTimeout(() => setShareCopied(false), 1500);
-        alert('Image URL copied to clipboard!');
+        alert("Image URL copied to clipboard!");
         return;
       }
 
       const response = await fetch(downloadUrl, {
-        credentials: 'include',
-        headers: { 'ngrok-skip-browser-warning': 'true' }
+        credentials: "include",
+        headers: { "ngrok-skip-browser-warning": "true" },
       });
 
       const blob = await response.blob();
-      const fileName = (toProxyPath(shareUrl) || 'generated-image').split('/').pop() || 'generated-image.jpg';
+      const fileName =
+        (toProxyPath(shareUrl) || "generated-image").split("/").pop() ||
+        "generated-image.jpg";
 
       // Create a File from the blob
       const file = new File([blob], fileName, { type: blob.type });
 
       // Use Web Share API
       await navigator.share({
-        title: 'Wild Mind AI Generated Image',
+        title: "Wild Mind AI Generated Image",
         text: `Check out this AI-generated image!`,
-        files: [file]
+        files: [file],
       });
 
-      console.log('Image shared successfully');
+      console.log("Image shared successfully");
     } catch (error: any) {
       // Handle user cancellation gracefully
-      if (error.name === 'AbortError') {
-        console.log('Share cancelled by user');
+      if (error.name === "AbortError") {
+        console.log("Share cancelled by user");
         return;
       }
 
       // Fallback to copying URL
-      console.error('Share failed:', error);
+      console.error("Share failed:", error);
       try {
         await copyToClipboard(shareUrl);
         setShareCopied(true);
         setTimeout(() => setShareCopied(false), 1500);
-        alert('Sharing not supported. Image URL copied to clipboard!');
+        alert("Sharing not supported. Image URL copied to clipboard!");
       } catch (copyError) {
-        console.error('Copy failed:', copyError);
-        alert('Unable to share image. Please try downloading instead.');
+        console.error("Copy failed:", copyError);
+        alert("Unable to share image. Please try downloading instead.");
       }
     }
-  }
+  };
 
   const copyToClipboard = async (text: string) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text);
     } else {
       // Fallback for older browsers
-      const textArea = document.createElement('textarea');
+      const textArea = document.createElement("textarea");
       textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
       try {
-        document.execCommand('copy');
+        document.execCommand("copy");
       } catch (err) {
-        console.error('Fallback copy failed:', err);
+        console.error("Fallback copy failed:", err);
       }
       document.body.removeChild(textArea);
     }
@@ -3800,11 +4974,11 @@ const EditImageInterface: React.FC = () => {
       const el = featureTabsRef.current;
       if (!el) return;
       setHasLeftScroll(el.scrollLeft > 4);
-    } catch { }
+    } catch {}
   };
 
   return (
-    <div className="body flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12 pl-4">
+    <div className="body box-border flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12 pl-4">
       {/* Sticky header like ArtStation */}
       {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#0E0E12] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
@@ -3826,37 +5000,37 @@ const EditImageInterface: React.FC = () => {
         remainingSlots={1}
         hasMore={historyHasMore}
         loading={historyLoading}
-        onTabChange={useCallback((tab: 'library' | 'computer' | 'uploads') => {
+        onTabChange={useCallback((tab: "library" | "computer" | "uploads") => {
           // Tab change handled internally by UploadModal
         }, [])}
         onAdd={(urls: string[]) => {
-          const first = urls[0] ? normalizeEditImageUrl(urls[0]) : '';
+          const first = urls[0] ? normalizeEditImageUrl(urls[0]) : "";
           if (first) {
             // Apply selected image from modal to all features
             setInputs({
-              'upscale': first,
-              'remove-bg': first,
-              'resize': first,
-              'fill': first,
-              'vectorize': first,
-              'erase': first,
-              'expand': first,
+              upscale: first,
+              "remove-bg": first,
+              resize: first,
+              fill: first,
+              vectorize: first,
+              erase: first,
+              expand: first,
               // Keep reimagine present for type-safety but unused in UI
-              'reimagine': null,
-              'live-chat': first,
+              reimagine: null,
+              "live-chat": first,
             });
             // Clear all outputs when a new image is selected so the output area re-renders
             setOutputs({
-              'upscale': null,
-              'remove-bg': null,
-              'resize': null,
-              'fill': null,
-              'vectorize': null,
-              'erase': null,
-              'expand': null,
+              upscale: null,
+              "remove-bg": null,
+              resize: null,
+              fill: null,
+              vectorize: null,
+              erase: null,
+              expand: null,
               // Keep reimagine present for type-safety but unused in UI
-              'reimagine': null,
-              'live-chat': null,
+              reimagine: null,
+              "live-chat": null,
             });
             // Also reset zoom and pan state
             setScale(1);
@@ -3872,11 +5046,15 @@ const EditImageInterface: React.FC = () => {
       )}
       <EditImageSidebar
         imagePreview={
-          selectedFeature !== 'live-chat' ? (
+          selectedFeature !== "live-chat" ? (
             <div className="px-1 md:px-4 md:mb-2 md:pt-4 pt-2 z-10">
               <div className="preview-wrap relative h-[148px] bg-[#1a1a20] border-b border-white/10 rounded-t-[15px] shrink-0 overflow-hidden cursor-pointer group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={featurePreviewGif[selectedFeature]} alt="Feature preview" className="w-full h-full object-cover opacity-90" />
+                <img
+                  src={featurePreviewGif[selectedFeature]}
+                  alt="Feature preview"
+                  className="w-full h-full object-contain opacity-90"
+                />
                 <div className="absolute top-1 left-1 bg-black/70 text-white text-[11px] md:text-xs px-2 py-0.5 rounded">
                   {featureDisplayName[selectedFeature]}
                 </div>
@@ -3885,26 +5063,31 @@ const EditImageInterface: React.FC = () => {
           ) : null
         }
         parameters={
-          <div className="flex flex-col gap-4 pt-4 pb-40 thin-scrollbar">
-
+          <div
+            className={`flex flex-col pt-0 thin-scrollbar ${selectedFeature === "live-chat" ? "h-full min-h-0 gap-3" : "gap-4"}`}
+          >
             {/* Reimagine Reference Image */}
-            {selectedFeature === 'reimagine' && (
+            {selectedFeature === "reimagine" && (
               <div className="px-1 md:px-4">
-                <label className="block text-[10px] md:text-sm font-medium text-white/70 mb-2 md:text-sm">Reference Image (Optional)</label>
+                <label className="block text-[10px] font-medium text-white/70 mb-2 md:text-sm">
+                  Reference Image (Optional)
+                </label>
 
                 {!reimagineReferenceImage ? (
                   <div
                     className="border border-white/20 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors group"
                     onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*";
                       input.onchange = async (e) => {
                         const file = (e.target as HTMLInputElement).files?.[0];
                         if (file) {
                           const reader = new FileReader();
                           reader.onload = (ev) => {
-                            setReimagineReferenceImage(ev.target?.result as string);
+                            setReimagineReferenceImage(
+                              ev.target?.result as string,
+                            );
                           };
                           reader.readAsDataURL(file);
                         }
@@ -3913,102 +5096,175 @@ const EditImageInterface: React.FC = () => {
                     }}
                   >
                     <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
-                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-white/60"
+                      >
+                        <rect
+                          width="18"
+                          height="18"
+                          x="3"
+                          y="3"
+                          rx="2"
+                          ry="2"
+                        />
                         <circle cx="9" cy="9" r="2" />
                         <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
                       </svg>
                     </div>
-                    <span className="text-xs text-white/50 text-center">Click to upload reference</span>
+                    <span className="text-xs text-white/50 text-center">
+                      Click to upload reference
+                    </span>
                   </div>
                 ) : (
                   <div className="relative rounded-xl overflow-hidden border border-white/10 group">
-                    <img src={reimagineReferenceImage} alt="Reference" className="w-full h-32 object-cover" />
+                    <img
+                      src={reimagineReferenceImage}
+                      alt="Reference"
+                      className="w-full h-32 object-cover"
+                    />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button
                         onClick={() => setReimagineReferenceImage(null)}
                         className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white transition-colors"
                         title="Remove"
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M18 6 6 18" />
                           <path d="m6 6 12 12" />
                         </svg>
                       </button>
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                      <span className="text-[10px] text-white/80">Reference Image</span>
+                      <span className="text-[10px] text-white/80">
+                        Reference Image
+                      </span>
                     </div>
                   </div>
                 )}
                 <p className="text-[10px] text-white/40 mt-2">
-                  Upload an image to extract details, texture, or style. This will be used as a guide for the generation.
+                  Upload an image to extract details, texture, or style. This
+                  will be used as a guide for the generation.
                 </p>
               </div>
             )}
 
             {/* Vectorize model & parameters */}
-            {selectedFeature === 'vectorize' && (
+            {selectedFeature === "vectorize" && (
               <div className="px-1 md:px-4">
                 {/* <h3 className="text-xs pl-1 font-medium text-white/80 mb-1 md:text-lg">Vectorize Options</h3> */}
                 <div className="space-y-2">
                   {/* Super Mode Toggle */}
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1 mt-1 md:text-sm">Mode</label>
-                    <div className="relative bg-white/5 border border-white/20 rounded-lg md:p-1 p-0.5 flex">
+                    <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 mt-1">
+                      Mode
+                    </label>
+                    <div className="relative bg-white/3 border border-white/12 rounded-xl md:p-1 p-0.5 flex">
                       <button
                         onClick={() => setVectorizeSuperMode(false)}
-                        className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-0 md:text-xs text-[11px] font-medium rounded transition-colors ${!vectorizeSuperMode
-                          ? 'bg-white text-black'
-                          : 'text-white/70 hover:text-white'
-                          }`}
+                        className={`flex-1 md:px-3 px-2.5 md:py-2 py-1 md:text-[12px] text-[11px] font-medium rounded-lg transition-colors ${
+                          !vectorizeSuperMode
+                            ? "bg-white text-black"
+                            : "text-white/70 hover:text-white"
+                        }`}
                       >
                         Line Vector
                       </button>
                       <button
                         onClick={() => setVectorizeSuperMode(true)}
-                        className={`flex-1 md:px-3 px-2.5 md:py-1.5 py-1 md:text-xs text-[11px] font-medium rounded transition-colors whitespace-nowrap ${vectorizeSuperMode
-                          ? 'bg-white text-black'
-                          : 'text-white/70 hover:text-white'
-                          }`}
+                        className={`flex-1 md:px-3 px-2.5 md:py-2 py-1 md:text-[12px] text-[11px] font-medium rounded-lg transition-colors whitespace-nowrap ${
+                          vectorizeSuperMode
+                            ? "bg-white text-black"
+                            : "text-white/70 hover:text-white"
+                        }`}
                       >
                         Art Vector
                       </button>
                     </div>
                     {vectorizeSuperMode && (
                       <div className="text-[11px] text-white/50 mt-1">
-                        First converts image to 2D vector using Seedream, then vectorizes the result
+                        First converts image to 2D vector using Seedream, then
+                        vectorizes the result
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 mt-2">Model</label>
+                    <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 mt-2">
+                      Model
+                    </label>
                     <div className="relative edit-dropdown">
                       <button
-                        onClick={() => setActiveDropdown(activeDropdown === 'vectorizeModel' ? '' : 'vectorizeModel')}
-                        className={`md:h-[32px] h-[28px] w-full md:px-4 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
+                        onClick={() =>
+                          setActiveDropdown(
+                            activeDropdown === "vectorizeModel"
+                              ? ""
+                              : "vectorizeModel",
+                          )
+                        }
+                        className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90 z-70`}
                       >
                         <span className="truncate">
-                          {vectorizeModel === 'fal-ai/recraft/vectorize'
-                            ? 'Recraft Vectorize'
-                            : 'Image to SVG'}
+                          {vectorizeModel === "fal-ai/recraft/vectorize"
+                            ? "Recraft Vectorize"
+                            : "Image to SVG"}
                         </span>
-                        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vectorizeModel' ? 'rotate-180' : ''}`} />
+                        <ChevronUp
+                          className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === "vectorizeModel" ? "rotate-180" : ""}`}
+                        />
                       </button>
-                      {activeDropdown === 'vectorizeModel' && (
-                        <div className={`absolute top-full md:mt-2 mt-1 z-30  left-0 w-auto bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}>
+                      {activeDropdown === "vectorizeModel" && (
+                        <div
+                          className={`absolute top-full mt-1 z-30 left-0 w-auto bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-0 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                        >
                           {[
-                            { label: 'Recraft Vectorize', value: 'fal-ai/recraft/vectorize', credits: (vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
-                            { label: 'Image to SVG', value: 'fal-ai/image2svg', credits: (vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)) },
+                            {
+                              label: "Recraft Vectorize",
+                              value: "fal-ai/recraft/vectorize",
+                              credits:
+                                vectorizeRecraftCredits +
+                                (vectorizeSuperMode
+                                  ? vectorizeArtExtraCredits
+                                  : 0),
+                            },
+                            {
+                              label: "Image to SVG",
+                              value: "fal-ai/image2svg",
+                              credits:
+                                vectorizeImage2SvgCredits +
+                                (vectorizeSuperMode
+                                  ? vectorizeArtExtraCredits
+                                  : 0),
+                            },
                           ].map((opt) => (
                             <button
                               key={opt.value}
-                              onClick={() => { setVectorizeModel(opt.value as any); setActiveDropdown(''); }}
-                              className={`w-full md:px-3 px-2.5 md:py-2 py-0.5 text-left md:text-[13px] text-[12px] z-70 ${vectorizeModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
+                              onClick={() => {
+                                setVectorizeModel(opt.value as any);
+                                setActiveDropdown("");
+                              }}
+                              className={`w-full px-4 py-2.5 text-left text-[13px] z-70 ${vectorizeModel === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="truncate">{opt.label}</span>
-                                <span className="text-[11px]">{opt.credits} credits</span>
+                                <span className="text-[11px]">
+                                  {opt.credits} credits
+                                </span>
                               </div>
                             </button>
                           ))}
@@ -4016,61 +5272,131 @@ const EditImageInterface: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {vectorizeModel === 'fal-ai/image2svg' && (
+                  {vectorizeModel === "fal-ai/image2svg" && (
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Colormode</label>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Colormode
+                          </label>
                           <div className="relative edit-dropdown">
                             <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'vColorMode' ? '' : 'vColorMode')}
-                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                              onClick={() =>
+                                setActiveDropdown(
+                                  activeDropdown === "vColorMode"
+                                    ? ""
+                                    : "vColorMode",
+                                )
+                              }
+                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
                             >
                               <span className="truncate">{vColorMode}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vColorMode' ? 'rotate-180' : ''}`} />
+                              <ChevronUp
+                                className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "vColorMode" ? "" : "rotate-180"}`}
+                              />
                             </button>
-                            {activeDropdown === 'vColorMode' && (
-                              <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                {['color', 'binary'].map((opt) => (
-                                  <button key={opt} onClick={() => { setVColorMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vColorMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                            {activeDropdown === "vColorMode" && (
+                              <div
+                                className={`absolute z-30 top-full mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                              >
+                                {["color", "binary"].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      setVColorMode(opt as any);
+                                      setActiveDropdown("");
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${vColorMode === opt ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {vColorMode === opt && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                    )}
+                                    <span>{opt}</span>
+                                  </button>
                                 ))}
                               </div>
                             )}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Hierarchical</label>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Hierarchical
+                          </label>
                           <div className="relative edit-dropdown">
                             <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'vHierarchical' ? '' : 'vHierarchical')}
-                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                              onClick={() =>
+                                setActiveDropdown(
+                                  activeDropdown === "vHierarchical"
+                                    ? ""
+                                    : "vHierarchical",
+                                )
+                              }
+                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
                             >
                               <span className="truncate">{vHierarchical}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vHierarchical' ? 'rotate-180' : ''}`} />
+                              <ChevronUp
+                                className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "vHierarchical" ? "" : "rotate-180"}`}
+                              />
                             </button>
-                            {activeDropdown === 'vHierarchical' && (
-                              <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                {['stacked', 'cutout'].map((opt) => (
-                                  <button key={opt} onClick={() => { setVHierarchical(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vHierarchical === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                            {activeDropdown === "vHierarchical" && (
+                              <div
+                                className={`absolute z-30 top-full mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                              >
+                                {["stacked", "cutout"].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      setVHierarchical(opt as any);
+                                      setActiveDropdown("");
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${vHierarchical === opt ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {vHierarchical === opt && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                    )}
+                                    <span>{opt}</span>
+                                  </button>
                                 ))}
                               </div>
                             )}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Mode</label>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Mode
+                          </label>
                           <div className="relative edit-dropdown">
                             <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'vMode' ? '' : 'vMode')}
-                              className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-white/5 text-white/90`}
+                              onClick={() =>
+                                setActiveDropdown(
+                                  activeDropdown === "vMode" ? "" : "vMode",
+                                )
+                              }
+                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
                             >
                               <span className="truncate">{vMode}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'vMode' ? 'rotate-180' : ''}`} />
+                              <ChevronUp
+                                className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "vMode" ? "" : "rotate-180"}`}
+                              />
                             </button>
-                            {activeDropdown === 'vMode' && (
-                              <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                {['spline', 'polygon'].map((opt) => (
-                                  <button key={opt} onClick={() => { setVMode(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${vMode === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                            {activeDropdown === "vMode" && (
+                              <div
+                                className={`absolute z-30 top-full mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                              >
+                                {["spline", "polygon"].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      setVMode(opt as any);
+                                      setActiveDropdown("");
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${vMode === opt ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {vMode === opt && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                    )}
+                                    <span>{opt}</span>
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -4079,59 +5405,136 @@ const EditImageInterface: React.FC = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Filter Speckle</label>
-                          <input type="number" value={vFilterSpeckle} onChange={(e) => setVFilterSpeckle(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Filter Speckle
+                          </label>
+                          <input
+                            type="number"
+                            value={vFilterSpeckle}
+                            onChange={(e) =>
+                              setVFilterSpeckle(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Color Precision</label>
-                          <input type="number" value={vColorPrecision} onChange={(e) => setVColorPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Color Precision
+                          </label>
+                          <input
+                            type="number"
+                            value={vColorPrecision}
+                            onChange={(e) =>
+                              setVColorPrecision(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Layer Difference</label>
-                          <input type="number" value={vLayerDifference} onChange={(e) => setVLayerDifference(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Layer Difference
+                          </label>
+                          <input
+                            type="number"
+                            value={vLayerDifference}
+                            onChange={(e) =>
+                              setVLayerDifference(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Corner Threshold</label>
-                          <input type="number" value={vCornerThreshold} onChange={(e) => setVCornerThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Corner Threshold
+                          </label>
+                          <input
+                            type="number"
+                            value={vCornerThreshold}
+                            onChange={(e) =>
+                              setVCornerThreshold(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Length Threshold</label>
-                          <input type="number" step="0.1" value={vLengthThreshold} onChange={(e) => setVLengthThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Length Threshold
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={vLengthThreshold}
+                            onChange={(e) =>
+                              setVLengthThreshold(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Max Iterations</label>
-                          <input type="number" value={vMaxIterations} onChange={(e) => setVMaxIterations(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Max Iterations
+                          </label>
+                          <input
+                            type="number"
+                            value={vMaxIterations}
+                            onChange={(e) =>
+                              setVMaxIterations(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Splice Threshold</label>
-                          <input type="number" value={vSpliceThreshold} onChange={(e) => setVSpliceThreshold(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Splice Threshold
+                          </label>
+                          <input
+                            type="number"
+                            value={vSpliceThreshold}
+                            onChange={(e) =>
+                              setVSpliceThreshold(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Path Precision</label>
-                          <input type="number" value={vPathPrecision} onChange={(e) => setVPathPrecision(Number(e.target.value))} className="w-full h-[30px] px-2 bg-white/5 border border-white/20 rounded-lg text-white text-xs" />
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                            Path Precision
+                          </label>
+                          <input
+                            type="number"
+                            value={vPathPrecision}
+                            onChange={(e) =>
+                              setVPathPrecision(Number(e.target.value))
+                            }
+                            className="w-full h-[38px] px-3 bg-white/3 border border-white/12 rounded-xl text-white text-[13px]"
+                          />
                         </div>
                       </div>
-
                     </div>
                   )}
 
                   {/* Standardized Estimated Output card */}
                   <div className="pt-1">
-                    <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Estimated Output</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                      Estimated Output
+                    </p>
+                    <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-2">
                       <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                          Resolution
+                        </span>
                         <span className="text-[12px] font-semibold text-white leading-tight uppercase">
                           Vector (SVG)
                         </span>
                       </div>
                       <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                          Est. Cost
+                        </span>
                         <span className="text-[12px] font-semibold text-white leading-tight">
-                          {vectorizeModel === 'fal-ai/recraft/vectorize'
+                          {vectorizeModel === "fal-ai/recraft/vectorize"
                             ? `${vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`
-                            : `${vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`
-                          }
+                            : `${vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`}
                         </span>
                       </div>
                     </div>
@@ -4143,54 +5546,135 @@ const EditImageInterface: React.FC = () => {
             {/* Action Buttons moved to bottom under Parameters */}
 
             {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
-            <div className="flex-1 min-h-0 md:p-4 p-2 overflow-visible">
-              {selectedFeature === 'live-chat' && (
+            <div
+              className={`flex-1 min-h-0 md:p-4 p-2 ${selectedFeature === "live-chat" ? "overflow-hidden flex flex-col" : "overflow-visible"}`}
+            >
+              {selectedFeature === "live-chat" && (
                 <>
-                  <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Live Chat Controls</p>
-                  <div className="space-y-2">
+                  <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                    Live Chat Controls
+                  </p>
+                  <div className="h-full min-h-0 flex flex-col gap-2">
                     <div className="grid grid-cols-2 gap-2">
                       {/* Model dropdown */}
                       <div>
-                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Model</label>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Model
+                        </label>
                         <div className="relative edit-dropdown">
                           <button
-                            onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveModel' ? '' : 'liveModel')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveModel"
+                                  ? ""
+                                  : "liveModel",
+                              )
+                            }
+                            className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
                           >
-                            <span className="truncate">{liveAllowedModels.find(m => m.value === liveModel)?.label || 'Select model'}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveModel' ? 'rotate-180' : ''}`} />
+                            <span className="min-w-0 flex-1 truncate whitespace-nowrap text-left">
+                              {liveAllowedModels.find(
+                                (m) => m.value === liveModel,
+                              )?.label || "Select model"}
+                            </span>
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveModel" ? "" : "rotate-180"}`}
+                            />
                           </button>
-                          {liveActiveDropdown === 'liveModel' && (
-                            <div className={`absolute top-full z-30 left-0 min-w-50 md:min-w-60 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                          {liveAllowedModels.filter(opt => opt.value !== 'qwen-image-edit-2511' || inputs['live-chat']).map(opt => (
-                            <button key={opt.value} onClick={() => { setLiveModel(opt.value); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveModel === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate">{opt.label}</span>
-                                <span className="text-[11px]">{getLiveModelCredits(opt.value, liveResolution)} credits</span>
-                              </div>
-                            </button>
-                          ))}
+                          {liveActiveDropdown === "liveModel" && (
+                            <div className="absolute top-full z-100 left-0 w-60 bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 max-h-64 overflow-y-auto dropdown-scrollbar">
+                              {liveAllowedModels
+                                .filter(
+                                  (opt) =>
+                                    opt.value !== "qwen-image-edit-2511" ||
+                                    inputs["live-chat"],
+                                )
+                                .map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => {
+                                      setLiveModel(opt.value);
+                                      const nextResolutionOptions =
+                                        liveResolutionOptionsByModel[
+                                          opt.value
+                                        ] || ["1K", "2K", "4K"];
+                                      if (
+                                        !nextResolutionOptions.includes(
+                                          liveResolution,
+                                        )
+                                      ) {
+                                        setLiveResolution(
+                                          nextResolutionOptions[0],
+                                        );
+                                      }
+                                      setLiveActiveDropdown("");
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveModel === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {liveModel === opt.value && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                    )}
+                                    <span className="truncate flex-1">
+                                      {opt.label}
+                                    </span>
+                                    <span className="text-[11px] text-white/45">
+                                      {getLiveModelCredits(
+                                        opt.value,
+                                        liveResolution,
+                                      )}{" "}
+                                      credits
+                                    </span>
+                                  </button>
+                                ))}
                             </div>
                           )}
                         </div>
                       </div>
                       {/* Frame size */}
                       <div>
-                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Frame Size</label>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Frame Size
+                        </label>
                         <div className="relative edit-dropdown">
                           <button
-                            onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveFrame' ? '' : 'liveFrame')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveFrame"
+                                  ? ""
+                                  : "liveFrame",
+                              )
+                            }
+                            className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
                           >
-                            <span className="truncate">{liveFrameSizes.find(s => s.value === liveFrameSize)?.name || liveFrameSize}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveFrame' ? 'rotate-180' : ''}`} />
+                            <span className="truncate">
+                              {liveFrameSizes.find(
+                                (s) => s.value === liveFrameSize,
+                              )?.name || liveFrameSize}
+                            </span>
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveFrame" ? "" : "rotate-180"}`}
+                            />
                           </button>
-                          {liveActiveDropdown === 'liveFrame' && (
-                            <div className={`absolute top-full z-30 left-0 w-full bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                              {liveFrameSizes.map(opt => (
-                                <button key={opt.value} onClick={() => { setLiveFrameSize(opt.value as any); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveFrameSize === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>
-                                  <span className="truncate">{opt.name}</span>
-                                  <span className="ml-2 text-white/50 text-[11px]">{opt.value}</span>
+                          {liveActiveDropdown === "liveFrame" && (
+                            <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 max-h-64 overflow-y-auto dropdown-scrollbar">
+                              {liveFrameSizes.map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => {
+                                    setLiveFrameSize(opt.value as any);
+                                    setLiveActiveDropdown("");
+                                  }}
+                                  className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveFrameSize === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                >
+                                  {liveFrameSize === opt.value && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                  )}
+                                  <span className="truncate flex-1">
+                                    {opt.name}
+                                  </span>
+                                  <span className="text-[11px] text-white/45">
+                                    {opt.value}
+                                  </span>
                                 </button>
                               ))}
                             </div>
@@ -4199,22 +5683,44 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Resolution shown for Pro & Seedream */}
-                    {(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') && (
+                    {/* Resolution shown when supported by selected model */}
+                    {liveResolutionOptions.length > 0 && (
                       <div>
-                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">Resolution</label>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Resolution
+                        </label>
                         <div className="relative edit-dropdown">
                           <button
-                            onClick={() => setLiveActiveDropdown(liveActiveDropdown === 'liveResolution' ? '' : 'liveResolution')}
-                            className={`md:h-[32px] h-[28px] w-full md:px-4 px-3 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveResolution"
+                                  ? ""
+                                  : "liveResolution",
+                              )
+                            }
+                            className="h-[38px] w-64 px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
                           >
                             <span className="truncate">{liveResolution}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${liveActiveDropdown === 'liveResolution' ? 'rotate-180' : ''}`} />
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveResolution" ? "" : "rotate-180"}`}
+                            />
                           </button>
-                          {liveActiveDropdown === 'liveResolution' && (
-                            <div className={`absolute top-full z-30 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1`}>
-                              {(['1K', '2K', '4K'] as const).map(r => (
-                                <button key={r} onClick={() => { setLiveResolution(r); setLiveActiveDropdown(''); }} className={`w-full md:px-3 px-2 md:py-2 py-1 text-left md:text-[13px] text-[11px] ${liveResolution === r ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{r}</button>
+                          {liveActiveDropdown === "liveResolution" && (
+                            <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15">
+                              {liveResolutionOptions.map((r) => (
+                                <button
+                                  key={r}
+                                  onClick={() => {
+                                    setLiveResolution(r);
+                                    setLiveActiveDropdown("");
+                                  }}
+                                  className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveResolution === r ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                >
+                                  {liveResolution === r && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                  )}
+                                  <span className="truncate">{r}</span>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -4223,20 +5729,37 @@ const EditImageInterface: React.FC = () => {
                     )}
 
                     {/* Chat UI */}
-                    <div className="mt-3">
-                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pl-0.5">Chat to Edit</label>
-                      <div className={`bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-2  flex flex-col ${(liveModel === 'google/nano-banana-pro' || liveModel === 'seedream-v4' || liveModel === 'seedream-v4.5') ? 'md:h-[23rem] h-[16rem]' : 'md:h-[27rem] h-[20rem]'}`}>
-                        <div ref={(el) => { chatListRef.current = el; }} className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar">
+                    <div className="mt-3 flex-1 min-h-0 flex flex-col">
+                      <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                        Chat to Edit
+                      </label>
+                      <div
+                        className={` border border-white/12 rounded-xl p-2.5 flex flex-col flex-1 min-h-0 ${liveResolutionOptions.length > 0 ? "h-[16rem] md:h-full" : "h-[20rem] md:h-full"}`}
+                      >
+                        <div
+                          ref={(el) => {
+                            chatListRef.current = el;
+                          }}
+                          className="flex-1 overflow-y-auto space-y-2 md:pr-1 pr-0.5 md:pb-1 pb-0.5 very-thin-scrollbar"
+                        >
                           {liveChatMessages.length === 0 && (
-                            <div className="md:text-[12px] text-[10px] text-white/70">Start by uploading an image on the right, then tell me what to change.</div>
+                            <div className="text-[13px] text-white/45">
+                              Start by uploading an image on the right, then
+                              tell me what to change.
+                            </div>
                           )}
                           {liveChatMessages.map((m, i) => (
                             <div
                               key={i}
-                              ref={(el) => { if (i === liveChatMessages.length - 1) lastMsgRef.current = el; }}
-                              className={`flex items-start gap-2 transition-transform duration-150 ${m.role === 'user' ? 'justify-end' : ''}`}
+                              ref={(el) => {
+                                if (i === liveChatMessages.length - 1)
+                                  lastMsgRef.current = el;
+                              }}
+                              className={`flex items-start gap-2 transition-transform duration-150 ${m.role === "user" ? "justify-end" : ""}`}
                             >
-                              <div className={`md:px-2 px-1 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[11px] ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white/10 text-white/90'}`}>
+                              <div
+                                className={`px-3 py-2 rounded-xl text-[13px] ${m.role === "user" ? "bg-[#2F6BFF] text-white" : "bg-white/8 border border-white/12 text-white/90"}`}
+                              >
                                 {m.text}
                               </div>
                             </div>
@@ -4249,19 +5772,38 @@ const EditImageInterface: React.FC = () => {
                               value={livePrompt}
                               onChange={(e) => setLivePrompt(e.target.value)}
                               placeholder="Tell me your edit request"
-                              className="w-full md:h-[36px] h-[30px] md:px-3 px-2 md:pr-[40px] pr-[32px] bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLiveGenerate(); } }}
+                              className="w-full h-[38px] px-3 pr-[44px] bg-white/3 border border-white/12 rounded-xl text-[13px] text-white placeholder-white/50"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleLiveGenerate();
+                                }
+                              }}
                             />
                             <button
                               type="button"
                               onClick={handleLiveGenerate}
-                              disabled={processing['live-chat'] || !livePrompt.trim()}
+                              disabled={
+                                processing["live-chat"] || !livePrompt.trim()
+                              }
                               aria-label="Generate"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 md:w-7 md:h-7 w-5 h-5 bg-blue-500  text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 bg-[#2F6BFF] text-white rounded-xl flex items-center justify-center border border-white/12 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.8">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                width="32"
+                                height="32"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                              >
                                 {/* <circle cx="12" cy="12" r="9" /> */}
-                                <path d="M10 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                                <path
+                                  d="M10 8l4 4-4 4"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
                               </svg>
                             </button>
                           </div>
@@ -4271,659 +5813,1102 @@ const EditImageInterface: React.FC = () => {
                   </div>
                 </>
               )}
-              {selectedFeature !== 'vectorize' && selectedFeature !== 'live-chat' && (
-                <>
-                  <div className="space-y-2">
-                    {selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'expand' && (
-                      <div>
-                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">AI Model</p>
-                        <div className="relative edit-dropdown">
-                          {availableModels.length > 1 ? (
-                            <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
-                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
-                            >
-                              <span className="truncate">
-                                {model ? getUpscaleModelLabel(model) : 'Select model'}
-                              </span>
-                              <ChevronUp className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === 'model' ? '' : 'rotate-180'}`} />
-                            </button>
-                          ) : (
-                            <div className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 flex items-center text-white/90 bg-white/2">
-                              <span className="truncate">
-                                {model ? getUpscaleModelLabel(model) : 'Select model'}
-                              </span>
-                            </div>
-                          )}
-
-                          {activeDropdown === 'model' && availableModels.length > 1 && (
-                            <div className={`absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                              {availableModels.map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
-                                  className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${model === opt.value ? 'bg-white/10 text-white font-medium' : 'text-white/75 hover:bg-white/8 hover:text-white'}`}
-                                >
-                                  {model === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />}
-                                  <span className="truncate">{opt.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">Brush Size</label>
-                        <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                        <div className="text-[11px] text-white/50 mt-0">{brushSize}px</div>
-                      </div>
-                    )}
-                    {/* Remove-BG (851-labs) specialized controls */}
-                  </div>
-
-                  {selectedFeature === 'fill' && (
-                    <EditImageEraseControls
-                      brushSize={eraseBrushSize}
-                      setBrushSize={setEraseBrushSize}
-                      prompt={erasePrompt}
-                      setPrompt={setErasePrompt}
-                      mode={eraseActionMode}
-                      setMode={setEraseActionMode}
-                      model={eraseModel}
-                      setModel={setEraseModel}
-                      isProcessing={processing['fill']}
-                      onGenerate={handleRun}
-                      onClearMask={() => setEraseMaskData(null)} /* We need a way to clear mask in Frame too */
-                      onBrushAdjustStart={() => setIsAdjustingBrush(true)}
-                      onBrushAdjustEnd={() => setIsAdjustingBrush(false)}
-                    />
-                  )}
-                  {/* Removed old fill/erase controls logic */}
-                  {selectedFeature === 'erase' && (
-                    <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
-                  )
-                  }
-
-                  {/* Erase feature - no prompt input, uses hardcoded prompt */}
-                  {selectedFeature === 'erase' && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">Brush Size</label>
-                        <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
-                        <div className="text-[11px] text-white/50 mt-0">{brushSize}px</div>
-                      </div>
-                      <div className="text-xs text-white/60 mb-0">
-                        Draw on the image to mark areas you want to erase. The masked areas will be removed automatically.
-                      </div>
-                    </>
-                  )}
-
-                  {/* Expand feature */}
-                  {selectedFeature === 'expand' && (
-                    <>
-                      {expandOriginalSize.width > 0 && expandOriginalSize.height > 0 && (
-                        <div className="mb-2">
-                          <div className="text-xs text-white/70">
-                            Original: {expandOriginalSize.width} × {expandOriginalSize.height}px
-                          </div>
-                          <div className="text-xs text-white/70 mt-1">
-                            New: {expandCustomWidth} × {expandCustomHeight}px
-                            {(expandEffectiveWidth !== expandCustomWidth || expandEffectiveHeight !== expandCustomHeight) && (
-                              <>
-                                <span className="mx-1 text-white/40">•</span>
-                                <span className="text-white/70">Generated: {expandEffectiveWidth} × {expandEffectiveHeight}px</span>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExpandBounds({ left: 0, top: 0, right: 0, bottom: 0 });
-                              }}
-                              className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
-                            >Reset</button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Center the selection rectangle relative to original image
-                                const w = expandCustomWidth;
-                                const h = expandCustomHeight;
-                                const dw = w - expandOriginalSize.width; // can be negative (crop) or positive (expand)
-                                const dh = h - expandOriginalSize.height;
-                                let left: number, right: number, top: number, bottom: number;
-                                if (dw >= 0) {
-                                  left = Math.floor(dw / 2); right = dw - left;
-                                } else {
-                                  const crop = -dw; // pixels to remove
-                                  const cLeft = Math.floor(crop / 2); const cRight = crop - cLeft;
-                                  left = -cLeft; right = -cRight;
-                                }
-                                if (dh >= 0) {
-                                  top = Math.floor(dh / 2); bottom = dh - top;
-                                } else {
-                                  const crop = -dh;
-                                  const cTop = Math.floor(crop / 2); const cBottom = crop - cTop;
-                                  top = -cTop; bottom = -cBottom;
-                                }
-                                setExpandBounds({ left, top, right, bottom });
-                              }}
-                              className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
-                            >Center</button>
-                          </div>
-                        </div>
-                      )}
-                      <div>
-                        <label className="block text-xs font-medium text-white/70 mb-1 md:text-sm">Aspect Ratio</label>
-                        <div className="relative edit-dropdown">
-                          <button
-                            onClick={() => setActiveDropdown(activeDropdown === 'expandAspect' ? '' : 'expandAspect')}
-                            className={`h-[32px] w-full px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                          >
-                            <span className="truncate">{expandAspectRatio === 'custom' ? 'Custom' : expandAspectRatio}</span>
-                            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'expandAspect' ? 'rotate-180' : ''}`} />
-                          </button>
-                          {activeDropdown === 'expandAspect' && (
-                            <div className={`absolute bottom-full mb-2 z-100 left-0 w-full bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar shadow-2xl`}>
-                              {['custom', '1:1', '4:3', '3:4', '16:9', '9:16', '21:9', '3:2', '2:3'].map((ar) => (
-                                <button
-                                  key={ar}
-                                  onClick={() => {
-                                    setExpandAspectRatio(ar);
-                                    setActiveDropdown('');
-                                    if (ar !== 'custom' && expandOriginalSize.width > 0 && expandOriginalSize.height > 0) {
-                                      const [w, h] = ar.split(':').map(Number);
-                                      const aspect = w / h;
-                                      const origAspect = expandOriginalSize.width / expandOriginalSize.height;
-                                      let newWidth = expandOriginalSize.width;
-                                      let newHeight = expandOriginalSize.height;
-                                      if (aspect > origAspect) {
-                                        newWidth = Math.round(expandOriginalSize.height * aspect);
-                                      } else {
-                                        newHeight = Math.round(expandOriginalSize.width / aspect);
-                                      }
-                                      const left = Math.max(0, Math.floor((newWidth - expandOriginalSize.width) / 2));
-                                      const right = newWidth - expandOriginalSize.width - left;
-                                      const top = Math.max(0, Math.floor((newHeight - expandOriginalSize.height) / 2));
-                                      const bottom = newHeight - expandOriginalSize.height - top;
-                                      setExpandBounds({ left, top, right, bottom });
-                                    }
-                                  }}
-                                  className={`w-full px-3 py-2 text-left text-[13px] flex items-center justify-between ${expandAspectRatio === ar ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                >
-                                  <span className="truncate">{ar === 'custom' ? 'Custom' : ar}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-xs text-white/60 mt-2">
-                        Drag the edges of the image on the canvas to expand or crop. The new dimensions will be calculated automatically.
-                      </div>
-                    </>
-                  )}
-
-                  {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
-                  {selectedFeature === 'resize' && model === 'fal-ai/bria/expand' && (
+              {selectedFeature !== "vectorize" &&
+                selectedFeature !== "live-chat" && (
+                  <>
                     <div className="space-y-2">
-                      <EditImageExpandControls
-                        aspectPreset={resizeAspectRatio || 'custom'}
-                        expandPrompt={resizeNegativePrompt}
-                        isExpanding={processing.resize}
-                        sourceImageUrl={inputs.resize}
-                        onAspectPresetChange={(preset) => setResizeAspectRatio(preset as any)}
-                        onExpandPromptChange={setResizeNegativePrompt}
-                        onExpand={() => { }}
-                        aspectPresets={aspectPresets}
-                        customWidth={Number(resizeCanvasW) || 1024}
-                        customHeight={Number(resizeCanvasH) || 1024}
-                        onCustomWidthChange={(w) => setResizeCanvasW(w)}
-                        onCustomHeightChange={(h) => setResizeCanvasH(h)}
-                        imageSize={{ width: Number(resizeOrigW) || 0, height: Number(resizeOrigH) || 0 }}
-                      />
-
-                      {/* Standardized Estimated Output card */}
-                      <div className="pt-1">
-                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
-                            <span className="text-[12px] font-semibold text-white leading-tight">
-                              {resizeCanvasW && resizeCanvasH ? `${resizeCanvasW} × ${resizeCanvasH}` : '—'}
-                            </span>
-                          </div>
-                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
-                            <span className="text-[12px] font-semibold text-white leading-tight">
-                              {10} credits
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-
-
-                  {selectedFeature === 'remove-bg' && (model.startsWith('851-labs/') || String(model).startsWith('lucataco/')) && (
-                    <div className="space-y-2 w-full">
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Output format (left) */}
-                        <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Output Format</label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'output' ? '' : 'output')}
-                              className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                            >
-                              <span className="truncate uppercase">{output || 'png'}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'output' ? 'rotate-180' : ''}`} />
-                            </button>
-                            {activeDropdown === 'output' && (
-                              <div className={`absolute z-[100] top-full md:mt-2 mt-1 left-0 md:w-44 w-36 bg-black backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                                {['png', 'jpg'].map((fmt) => (
-                                  <button
-                                    key={fmt}
-                                    onClick={() => { setOutput(fmt as any); setActiveDropdown(''); }}
-                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] flex items-center justify-between ${output === fmt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                  >
-                                    <span className="uppercase">{fmt}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Background type (right) */}
-                        <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Background Type</label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')}
-                              className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg md:text-[13px] text-[12px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}
-                            >
-                              <span className="truncate">{backgroundType || 'Select type'}</span>
-                              <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
-                            </button>
-                            {activeDropdown === 'backgroundType' && (
-                              <div className={`absolute top-full z-[100] md:mt-2 mt-1 left-0 md:w-56 w-44 bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                                {[
-                                  { label: 'RGBA (Transparent)', value: 'rgba' },
-                                  { label: 'White', value: 'white' },
-                                  { label: 'Green', value: 'green' },
-                                  { label: 'Blur', value: 'blur' },
-                                  { label: 'Overlay', value: 'overlay' },
-                                  { label: 'Depth-Map', value: 'map' },
-                                ].map((opt) => (
-                                  <button
-                                    key={opt.value}
-                                    onClick={() => { setBackgroundType(opt.value); setActiveDropdown(''); }}
-                                    className={`w-full md:px-3 px-2.5 md:py-2 py-1 text-left md:text-[13px] text-[12px] ${backgroundType === opt.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}
-                                  >
-                                    {opt.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {model.startsWith('851-labs/') && (
-                        <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Reverse</label>
-                          <button
-                            type="button"
-                            onClick={() => setReverseBg(v => !v)}
-                            className={`md:h-[32px] h-[28px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${reverseBg ? 'bg-white text-black' : 'bg-transparent text-white/80 hover:bg-white/10'}`}
-                          >
-                            {reverseBg ? 'Enabled' : 'Disabled'}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Standardized Estimated Output card */}
-                      <div className="pt-1">
-                        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
-                            <span className="text-[12px] font-semibold text-white leading-tight">
-                              {inputNaturalSize.width > 0 ? `${inputNaturalSize.width} × ${inputNaturalSize.height}` : 'Original size'}
-                            </span>
-                          </div>
-                          <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
-                            <span className="text-[12px] font-semibold text-white leading-tight">
-                              10 credits
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedFeature === 'erase' && (
-                    <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
-                  )}
-
-                  {selectedFeature === 'upscale' && (
-                    <>
-                      {model === 'fal-ai/seedvr/upscale/image' && (
-                        <div className="space-y-2">
-                          {/* AI MODEL label */}
+                      {selectedFeature !== "fill" &&
+                        selectedFeature !== "erase" &&
+                        selectedFeature !== "expand" && (
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Upscale Factor (N)</p>
-                            {/* Range label row */}
-                            <div className="flex items-center justify-between mb-0">
-                              <span className="text-[12px] text-white/50">1× — 8×</span>
-                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
-                                {seedvrUpscaleFactor}×
-                              </span>
-                            </div>
-                            {/* Slider */}
-                            <input
-                              type="range"
-                              min={1}
-                              max={8}
-                              step={1}
-                              value={seedvrUpscaleFactor}
-                              onChange={(e) => setSeedvrUpscaleFactor(Number(e.target.value))}
-                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((seedvrUpscaleFactor) - 1) / 7 * 100}%, rgba(255,255,255,0.15) ${((seedvrUpscaleFactor) - 1) / 7 * 100}%, rgba(255,255,255,0.15) 100%)`
-                              }}
-                            />
-                            {/* Tick marks */}
-                            <div className="flex justify-between mt-1.5 px-[8px]">
-                              {[1, 2, 3, 4, 5, 6, 7, 8].map(v => (
-                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Standardized Estimated Output card */}
-                          <div className="pt-1">
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {seedvrEstimate ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}` : '—'}
-                                </span>
-                              </div>
-                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {seedvrEstimate ? `${seedvrEstimate.credits} credits` : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                            Uses factor-only upscaling. Estimated cost is 4 credits per output megapixel.
-                          </div>
-                        </div>
-                      )}
-                      {model === 'nightmareai/real-esrgan' && (
-                        <div className="space-y-2">
-                          {/* Scale slider */}
-                          <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Scale (1x-10x)</p>
-                            {/* Range label row */}
-                            <div className="flex items-center justify-between mb-0">
-                              <span className="text-[12px] text-white/50">1× — 10×</span>
-                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
-                                {Number(String(scaleFactor).replace('x', '')) || 4}×
-                              </span>
-                            </div>
-                            {/* Slider */}
-                            <input
-                              type="range"
-                              min={1}
-                              max={10}
-                              step={1}
-                              value={Number(String(scaleFactor).replace('x', '')) || 4}
-                              onChange={(e) => setScaleFactor(String(e.target.value))}
-                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((Number(String(scaleFactor).replace('x', '')) || 4) - 1) / 9 * 100}%, rgba(255,255,255,0.15) ${((Number(String(scaleFactor).replace('x', '')) || 4) - 1) / 9 * 100}%, rgba(255,255,255,0.15) 100%)`
-                              }}
-                            />
-                            {/* Tick marks */}
-                            <div className="flex justify-between mt-1.5 px-[8px]">
-                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
-                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Face enhance toggle */}
-                          <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Face enhance</p>
-                            <button
-                              type="button"
-                              onClick={() => setFaceEnhance(v => !v)}
-                              className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? 'bg-white text-black' : 'text-white/80 hover:bg-white/10'}`}
-                            >
-                              {faceEnhance ? 'Enabled' : 'Disabled'}
-                            </button>
-                          </div>
-
-                          {/* Standardized Estimated Output card */}
-                          <div className="pt-1">
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {realEsrganEstimate ? `${realEsrganEstimate.outW} × ${realEsrganEstimate.outH}` : '—'}
-                                </span>
-                              </div>
-                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {realEsrganEstimate ? `${realEsrganEstimate.credits} credits` : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {model === 'philz1337x/crystal-upscaler' && (
-                        <div className="space-y-2">
-                          {/* AI MODEL label */}
-                          <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Scale Factor</p>
-                            {/* Range label row */}
-                            <div className="flex items-center justify-between mb-0">
-                              <span className="text-[12px] text-white/50">1× — 6×</span>
-                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
-                                {Number(String(scaleFactor).replace('x', '')) || 2}×
-                              </span>
-                            </div>
-                            {/* Slider */}
-                            <input
-                              type="range"
-                              min={1}
-                              max={6}
-                              step={1}
-                              value={Number(String(scaleFactor).replace('x', '')) || 2}
-                              onChange={(e) => setScaleFactor(String(e.target.value))}
-                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((Number(String(scaleFactor).replace('x', '')) || 2) - 1) / 5 * 100}%, rgba(255,255,255,0.15) ${((Number(String(scaleFactor).replace('x', '')) || 2) - 1) / 5 * 100}%, rgba(255,255,255,0.15) 100%)`
-                              }}
-                            />
-                            {/* Tick marks */}
-                            <div className="flex justify-between mt-1.5 px-[8px]">
-                              {[1, 2, 3, 4, 5, 6].map(v => (
-                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Output Format */}
-                          {/* Output Format — Only for models that support explicit format selection */}
-                          {['philz1337x/crystal-upscaler', 'fal-ai/topaz/upscale/image', 'nightmareai/real-esrgan', 'philz1337x/clarity-upscaler', 'fal-ai/seedvr/upscale/image'].includes(model as any) && (
-                            <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Output Format</p>
-                              <div className="flex flex-wrap gap-2">
-                                {['png', 'jpg'].map((fmt) => (
-                                  <button
-                                    key={fmt}
-                                    onClick={() => setOutput(fmt as any)}
-                                    className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${(output || 'png') === fmt
-                                      ? 'bg-[#2F6BFF] border-[#2F6BFF] text-white'
-                                      : 'bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white/80'
-                                      }`}
-                                  >
-                                    {fmt.toUpperCase()}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Estimated Output card — always visible */}
-                          <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {inputNaturalSize.width > 0
-                                    ? `${inputNaturalSize.width * (Number(String(scaleFactor).replace('x', '')) || 2)} × ${inputNaturalSize.height * (Number(String(scaleFactor).replace('x', '')) || 2)}`
-                                    : `${Number(String(scaleFactor).replace('x', '')) || 2}× size`
-                                  }
-                                </span>
-                              </div>
-                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {crystalEstimate ? `${crystalEstimate.credits} credits` : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {model === 'fal-ai/topaz/upscale/image' && (
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">Model</label>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              AI Model
+                            </p>
                             <div className="relative edit-dropdown">
-                              <button onClick={() => setActiveDropdown(activeDropdown === 'topazModel' ? '' : 'topazModel')} className={`md:h-[30px] h-[30px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition flex items-center justify-between bg-transparent text-white/90`}>
-                                <span className="truncate">{topazModel}</span>
-                                <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'topazModel' ? 'rotate-180' : ''}`} />
-                              </button>
-                              {activeDropdown === 'topazModel' && (
-                                <div className={`absolute z-30 top-full mt-2 left-0 md:w-56 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 md:py-2 py-1 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
-                                  {['Low Resolution V2', 'Standard V2', 'CGI', 'High Fidelity V2', 'Text Refine', 'Recovery', 'Redefine', 'Recovery V2'].map((opt) => (
-                                    <button key={opt} onClick={() => { setTopazModel(opt as any); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazModel === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
-                                  ))}
+                              {availableModels.length > 1 ? (
+                                <button
+                                  onClick={() =>
+                                    setActiveDropdown(
+                                      activeDropdown === "model" ? "" : "model",
+                                    )
+                                  }
+                                  className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
+                                >
+                                  <span className="truncate">
+                                    {model
+                                      ? getUpscaleModelLabel(model)
+                                      : "Select model"}
+                                  </span>
+                                  <ChevronUp
+                                    className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "model" ? "" : "rotate-180"}`}
+                                  />
+                                </button>
+                              ) : (
+                                <div className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 flex items-center text-white/90 bg-white/2">
+                                  <span className="truncate">
+                                    {model
+                                      ? getUpscaleModelLabel(model)
+                                      : "Select model"}
+                                  </span>
                                 </div>
                               )}
+
+                              {activeDropdown === "model" &&
+                                availableModels.length > 1 && (
+                                  <div
+                                    className={`absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}
+                                  >
+                                    {availableModels.map((opt) => (
+                                      <button
+                                        key={opt.value}
+                                        onClick={() => {
+                                          setModel(opt.value as any);
+                                          setActiveDropdown("");
+                                        }}
+                                        className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${model === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                      >
+                                        {model === opt.value && (
+                                          <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                        )}
+                                        <span className="truncate">
+                                          {opt.label}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                             </div>
                           </div>
-
+                        )}
+                      {selectedFeature === "remove-bg" &&
+                        String(model).startsWith("bria/eraser") && (
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">Upscale Factor</p>
-                            {/* Range label row */}
-                            <div className="flex items-center justify-between mb-0">
-                              <span className="text-[12px] text-white/50">1× — 6×</span>
-                              <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
-                                {topazUpscaleFactor}×
-                              </span>
-                            </div>
-                            {/* Slider */}
+                            <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">
+                              Brush Size
+                            </label>
                             <input
                               type="range"
-                              min={1}
-                              max={6}
-                              step={1}
-                              value={topazUpscaleFactor}
-                              onChange={(e) => setTopazUpscaleFactor(Number(e.target.value))}
-                              className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((topazUpscaleFactor) - 1) / 5 * 100}%, rgba(255,255,255,0.15) ${((topazUpscaleFactor) - 1) / 5 * 100}%, rgba(255,255,255,0.15) 100%)`
-                              }}
+                              min={3}
+                              max={150}
+                              value={brushSize}
+                              onChange={(e) =>
+                                setBrushSize(Number(e.target.value))
+                              }
+                              className="w-full"
                             />
-                            {/* Tick marks */}
-                            <div className="flex justify-between mt-1.5 px-[8px]">
-                              {[1, 2, 3, 4, 5, 6].map(v => (
-                                <span key={v} className="text-[10px] text-white/30 w-0 flex justify-center">{v}×</span>
-                              ))}
+                            <div className="text-[11px] text-white/50 mt-0">
+                              {brushSize}px
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Subject detection</label>
-                              <div className="relative edit-dropdown">
-                                <button onClick={() => setActiveDropdown(activeDropdown === 'backgroundType' ? '' : 'backgroundType')} className={`h-[30px] w-full px-3 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90`}>
-                                  <span className="truncate">{topazSubjectDetection}</span>
-                                  <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'backgroundType' ? 'rotate-180' : ''}`} />
+                        )}
+                      {/* Remove-BG (851-labs) specialized controls */}
+                    </div>
+
+                    {selectedFeature === "fill" && (
+                      <EditImageEraseControls
+                        brushSize={eraseBrushSize}
+                        setBrushSize={setEraseBrushSize}
+                        prompt={erasePrompt}
+                        setPrompt={setErasePrompt}
+                        mode={eraseActionMode}
+                        setMode={setEraseActionMode}
+                        model={eraseModel}
+                        setModel={setEraseModel}
+                        isProcessing={processing["fill"]}
+                        onGenerate={handleRun}
+                        onClearMask={() =>
+                          setEraseMaskData(null)
+                        } /* We need a way to clear mask in Frame too */
+                        onBrushAdjustStart={() => setIsAdjustingBrush(true)}
+                        onBrushAdjustEnd={() => setIsAdjustingBrush(false)}
+                      />
+                    )}
+                    {/* Removed old fill/erase controls logic */}
+                    {selectedFeature === "erase" && (
+                      <div className="p-2 text-white/50 text-xs">
+                        Erase feature is merged into Replace/Erase.
+                      </div>
+                    )}
+
+                    {/* Erase feature - no prompt input, uses hardcoded prompt */}
+                    {selectedFeature === "erase" && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">
+                            Brush Size
+                          </label>
+                          <input
+                            type="range"
+                            min={3}
+                            max={150}
+                            value={brushSize}
+                            onChange={(e) =>
+                              setBrushSize(Number(e.target.value))
+                            }
+                            className="w-full"
+                          />
+                          <div className="text-[11px] text-white/50 mt-0">
+                            {brushSize}px
+                          </div>
+                        </div>
+                        <div className="text-xs text-white/60 mb-0">
+                          Draw on the image to mark areas you want to erase. The
+                          masked areas will be removed automatically.
+                        </div>
+                      </>
+                    )}
+
+                    {/* Expand feature */}
+                    {selectedFeature === "expand" && (
+                      <>
+                        {expandOriginalSize.width > 0 &&
+                          expandOriginalSize.height > 0 && (
+                            <div className="mb-2">
+                              <div className="text-xs text-white/70">
+                                Original: {expandOriginalSize.width} ×{" "}
+                                {expandOriginalSize.height}px
+                              </div>
+                              <div className="text-xs text-white/70 mt-1">
+                                New: {expandCustomWidth} × {expandCustomHeight}
+                                px
+                                {(expandEffectiveWidth !== expandCustomWidth ||
+                                  expandEffectiveHeight !==
+                                    expandCustomHeight) && (
+                                  <>
+                                    <span className="mx-1 text-white/40">
+                                      •
+                                    </span>
+                                    <span className="text-white/70">
+                                      Generated: {expandEffectiveWidth} ×{" "}
+                                      {expandEffectiveHeight}px
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setExpandBounds({
+                                      left: 0,
+                                      top: 0,
+                                      right: 0,
+                                      bottom: 0,
+                                    });
+                                  }}
+                                  className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
+                                >
+                                  Reset
                                 </button>
-                                {activeDropdown === 'backgroundType' && (
-                                  <div className={`absolute z-30 top-full mt-2 left-0 w-44 bg-black/80 backdrop-blur-xl rounded-xl ring-1 ring-white/30 py-2 max-h-64 overflow-y-auto dropdown-scrollbar`}>
-                                    {(['All', 'Foreground', 'Background'] as const).map((opt) => (
-                                      <button key={opt} onClick={() => { setTopazSubjectDetection(opt); setActiveDropdown(''); }} className={`w-full px-3 py-2 text-left text-[13px] ${topazSubjectDetection === opt ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'}`}>{opt}</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Center the selection rectangle relative to original image
+                                    const w = expandCustomWidth;
+                                    const h = expandCustomHeight;
+                                    const dw = w - expandOriginalSize.width; // can be negative (crop) or positive (expand)
+                                    const dh = h - expandOriginalSize.height;
+                                    let left: number,
+                                      right: number,
+                                      top: number,
+                                      bottom: number;
+                                    if (dw >= 0) {
+                                      left = Math.floor(dw / 2);
+                                      right = dw - left;
+                                    } else {
+                                      const crop = -dw; // pixels to remove
+                                      const cLeft = Math.floor(crop / 2);
+                                      const cRight = crop - cLeft;
+                                      left = -cLeft;
+                                      right = -cRight;
+                                    }
+                                    if (dh >= 0) {
+                                      top = Math.floor(dh / 2);
+                                      bottom = dh - top;
+                                    } else {
+                                      const crop = -dh;
+                                      const cTop = Math.floor(crop / 2);
+                                      const cBottom = crop - cTop;
+                                      top = -cTop;
+                                      bottom = -cBottom;
+                                    }
+                                    setExpandBounds({
+                                      left,
+                                      top,
+                                      right,
+                                      bottom,
+                                    });
+                                  }}
+                                  className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
+                                >
+                                  Center
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        <div>
+                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                            Aspect Ratio
+                          </label>
+                          <div className="relative edit-dropdown">
+                            <button
+                              onClick={() =>
+                                setActiveDropdown(
+                                  activeDropdown === "expandAspect"
+                                    ? ""
+                                    : "expandAspect",
+                                )
+                              }
+                              className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
+                            >
+                              <span className="truncate">
+                                {expandAspectRatio === "custom"
+                                  ? "Custom"
+                                  : expandAspectRatio}
+                              </span>
+                              <ChevronUp
+                                className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "expandAspect" ? "" : "rotate-180"}`}
+                              />
+                            </button>
+                            {activeDropdown === "expandAspect" && (
+                              <div
+                                className={`absolute top-full mt-1 z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-2 max-h-64 overflow-y-auto dropdown-scrollbar shadow-2xl`}
+                              >
+                                {[
+                                  "custom",
+                                  "1:1",
+                                  "4:3",
+                                  "3:4",
+                                  "16:9",
+                                  "9:16",
+                                  "21:9",
+                                  "3:2",
+                                  "2:3",
+                                ].map((ar) => (
+                                  <button
+                                    key={ar}
+                                    onClick={() => {
+                                      setExpandAspectRatio(ar);
+                                      setActiveDropdown("");
+                                      if (
+                                        ar !== "custom" &&
+                                        expandOriginalSize.width > 0 &&
+                                        expandOriginalSize.height > 0
+                                      ) {
+                                        const [w, h] = ar
+                                          .split(":")
+                                          .map(Number);
+                                        const aspect = w / h;
+                                        const origAspect =
+                                          expandOriginalSize.width /
+                                          expandOriginalSize.height;
+                                        let newWidth = expandOriginalSize.width;
+                                        let newHeight =
+                                          expandOriginalSize.height;
+                                        if (aspect > origAspect) {
+                                          newWidth = Math.round(
+                                            expandOriginalSize.height * aspect,
+                                          );
+                                        } else {
+                                          newHeight = Math.round(
+                                            expandOriginalSize.width / aspect,
+                                          );
+                                        }
+                                        const left = Math.max(
+                                          0,
+                                          Math.floor(
+                                            (newWidth -
+                                              expandOriginalSize.width) /
+                                              2,
+                                          ),
+                                        );
+                                        const right =
+                                          newWidth -
+                                          expandOriginalSize.width -
+                                          left;
+                                        const top = Math.max(
+                                          0,
+                                          Math.floor(
+                                            (newHeight -
+                                              expandOriginalSize.height) /
+                                              2,
+                                          ),
+                                        );
+                                        const bottom =
+                                          newHeight -
+                                          expandOriginalSize.height -
+                                          top;
+                                        setExpandBounds({
+                                          left,
+                                          top,
+                                          right,
+                                          bottom,
+                                        });
+                                      }
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${expandAspectRatio === ar ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {expandAspectRatio === ar && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                    )}
+                                    <span className="truncate">
+                                      {ar === "custom" ? "Custom" : ar}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-xs text-white/60 mt-2">
+                          Drag the edges of the image on the canvas to expand or
+                          crop. The new dimensions will be calculated
+                          automatically.
+                        </div>
+                      </>
+                    )}
+
+                    {/* Prompt not used by current backend operations; keep hidden unless resize later needs it */}
+                    {selectedFeature === "resize" &&
+                      model === "fal-ai/bria/expand" && (
+                        <div className="space-y-2">
+                          <EditImageExpandControls
+                            aspectPreset={resizeAspectRatio || "custom"}
+                            expandPrompt={resizeNegativePrompt}
+                            isExpanding={processing.resize}
+                            sourceImageUrl={inputs.resize}
+                            onAspectPresetChange={(preset) =>
+                              setResizeAspectRatio(preset as any)
+                            }
+                            onExpandPromptChange={setResizeNegativePrompt}
+                            onExpand={() => {}}
+                            aspectPresets={aspectPresets}
+                            customWidth={Number(resizeCanvasW) || 1024}
+                            customHeight={Number(resizeCanvasH) || 1024}
+                            onCustomWidthChange={(w) => setResizeCanvasW(w)}
+                            onCustomHeightChange={(h) => setResizeCanvasH(h)}
+                            imageSize={{
+                              width: Number(resizeOrigW) || 0,
+                              height: Number(resizeOrigH) || 0,
+                            }}
+                          />
+
+                          {/* Standardized Estimated Output card */}
+                          <div className="pt-1">
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              Estimated Output
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                  Resolution
+                                </span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {resizeCanvasW && resizeCanvasH
+                                    ? `${resizeCanvasW} × ${resizeCanvasH}`
+                                    : "—"}
+                                </span>
+                              </div>
+                              <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                  Est. Cost
+                                </span>
+                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                  {10} credits
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    {selectedFeature === "remove-bg" &&
+                      (model.startsWith("851-labs/") ||
+                        String(model).startsWith("lucataco/")) && (
+                        <div className="space-y-2 w-full">
+                          <div className="grid grid-cols-2 gap-2">
+                            {/* Output format (left) */}
+                            <div>
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
+                                Output Format
+                              </label>
+                              <div className="relative edit-dropdown">
+                                <button
+                                  onClick={() =>
+                                    setActiveDropdown(
+                                      activeDropdown === "output"
+                                        ? ""
+                                        : "output",
+                                    )
+                                  }
+                                  className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
+                                >
+                                  <span className="truncate uppercase">
+                                    {output || "png"}
+                                  </span>
+                                  <ChevronUp
+                                    className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "output" ? "" : "rotate-180"}`}
+                                  />
+                                </button>
+                                {activeDropdown === "output" && (
+                                  <div
+                                    className={`absolute z-[100] top-full mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                                  >
+                                    {["png", "jpg"].map((fmt) => (
+                                      <button
+                                        key={fmt}
+                                        onClick={() => {
+                                          setOutput(fmt as any);
+                                          setActiveDropdown("");
+                                        }}
+                                        className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${output === fmt ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                      >
+                                        {output === fmt && (
+                                          <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                        )}
+                                        <span className="uppercase">{fmt}</span>
+                                      </button>
                                     ))}
                                   </div>
                                 )}
                               </div>
                             </div>
+
+                            {/* Background type (right) */}
                             <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Face enhancement</label>
-                              <button type="button" onClick={() => setTopazFaceEnhance(v => !v)} className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? 'bg-white text-black' : 'bg-white/5 text-white/80 hover:bg-white/10'}`}>{topazFaceEnhance ? 'Enabled' : 'Disabled'}</button>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Face creativity (0-1)</label>
-                              <input type="number" min={0} max={1} step={0.1} value={topazFaceCreativity} onChange={(e) => setTopazFaceCreativity(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2" />
-                            </div>
-                            <div className="flex items-end flex-col justify-end">
-                              <label className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 cursor-pointer">
-                                <input type="checkbox" className="accent-white/90" checked={topazCropToFill} onChange={(e) => setTopazCropToFill(e.target.checked)} /> Crop to fill
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
+                                Background Type
                               </label>
+                              <div className="relative edit-dropdown">
+                                <button
+                                  onClick={() =>
+                                    setActiveDropdown(
+                                      activeDropdown === "backgroundType"
+                                        ? ""
+                                        : "backgroundType",
+                                    )
+                                  }
+                                  className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
+                                >
+                                  <span className="truncate">
+                                    {backgroundType || "Select type"}
+                                  </span>
+                                  <ChevronUp
+                                    className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "backgroundType" ? "" : "rotate-180"}`}
+                                  />
+                                </button>
+                                {activeDropdown === "backgroundType" && (
+                                  <div
+                                    className={`absolute top-full z-[100] mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                                  >
+                                    {[
+                                      {
+                                        label: "RGBA (Transparent)",
+                                        value: "rgba",
+                                      },
+                                      { label: "White", value: "white" },
+                                      { label: "Green", value: "green" },
+                                      { label: "Blur", value: "blur" },
+                                      { label: "Overlay", value: "overlay" },
+                                      { label: "Depth-Map", value: "map" },
+                                    ].map((opt) => (
+                                      <button
+                                        key={opt.value}
+                                        onClick={() => {
+                                          setBackgroundType(opt.value);
+                                          setActiveDropdown("");
+                                        }}
+                                        className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${backgroundType === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                      >
+                                        {backgroundType === opt.value && (
+                                          <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                        )}
+                                        {opt.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
 
+                          {model.startsWith("851-labs/") && (
+                            <div>
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                Reverse
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setReverseBg((v) => !v)}
+                                className={`h-[38px] w-full px-4 rounded-xl border border-white/12 text-[13px] font-medium transition ${reverseBg ? "bg-white text-black" : "bg-white/3 text-white/80 hover:bg-white/10"}`}
+                              >
+                                {reverseBg ? "Enabled" : "Disabled"}
+                              </button>
+                            </div>
+                          )}
+
                           {/* Standardized Estimated Output card */}
                           <div className="pt-1">
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">Estimated Output</p>
+                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              Estimated Output
+                            </p>
                             <div className="grid grid-cols-2 gap-2">
                               <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Resolution</span>
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                  Resolution
+                                </span>
                                 <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {topazEstimate ? `${topazEstimate.outW} × ${topazEstimate.outH}` : '—'}
+                                  {inputNaturalSize.width > 0
+                                    ? `${inputNaturalSize.width} × ${inputNaturalSize.height}`
+                                    : "Original size"}
                                 </span>
                               </div>
                               <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">Est. Cost</span>
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                  Est. Cost
+                                </span>
                                 <span className="text-[12px] font-semibold text-white leading-tight">
-                                  {topazEstimate ? `${topazEstimate.credits} credits` : '—'}
+                                  10 credits
                                 </span>
                               </div>
                             </div>
                           </div>
                         </div>
                       )}
-                    </>
-                  )}
-                </>
-              )}
+
+                    {selectedFeature === "erase" && (
+                      <div className="p-2 text-white/50 text-xs">
+                        Erase feature is merged into Replace/Erase.
+                      </div>
+                    )}
+
+                    {selectedFeature === "upscale" && (
+                      <>
+                        {model === "fal-ai/seedvr/upscale/image" && (
+                          <div className="space-y-2">
+                            {/* AI MODEL label */}
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                                Upscale Factor (N)
+                              </p>
+                              {/* Range label row */}
+                              <div className="flex items-center justify-between mb-0">
+                                <span className="text-[12px] text-white/50">
+                                  1× — 8×
+                                </span>
+                                <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                  {seedvrUpscaleFactor}×
+                                </span>
+                              </div>
+                              {/* Slider */}
+                              <input
+                                type="range"
+                                min={1}
+                                max={8}
+                                step={1}
+                                value={seedvrUpscaleFactor}
+                                onChange={(e) =>
+                                  setSeedvrUpscaleFactor(Number(e.target.value))
+                                }
+                                className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                                style={{
+                                  background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((seedvrUpscaleFactor - 1) / 7) * 100}%, rgba(255,255,255,0.15) ${((seedvrUpscaleFactor - 1) / 7) * 100}%, rgba(255,255,255,0.15) 100%)`,
+                                }}
+                              />
+                              {/* Tick marks */}
+                              <div className="flex justify-between mt-1.5 px-[8px]">
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map((v) => (
+                                  <span
+                                    key={v}
+                                    className="text-[10px] text-white/30 w-0 flex justify-center"
+                                  >
+                                    {v}×
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Standardized Estimated Output card */}
+                            <div className="pt-1">
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                Estimated Output
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Resolution
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {seedvrEstimate
+                                      ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}`
+                                      : "—"}
+                                  </span>
+                                </div>
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Est. Cost
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {seedvrEstimate
+                                      ? `${seedvrEstimate.credits} credits`
+                                      : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                              Uses factor-only upscaling. Estimated cost is 4
+                              credits per output megapixel.
+                            </div>
+                          </div>
+                        )}
+                        {model === "nightmareai/real-esrgan" && (
+                          <div className="space-y-2">
+                            {/* Scale slider */}
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                                Scale (1x-10x)
+                              </p>
+                              {/* Range label row */}
+                              <div className="flex items-center justify-between mb-0">
+                                <span className="text-[12px] text-white/50">
+                                  1× — 10×
+                                </span>
+                                <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                  {Number(
+                                    String(scaleFactor).replace("x", ""),
+                                  ) || 4}
+                                  ×
+                                </span>
+                              </div>
+                              {/* Slider */}
+                              <input
+                                type="range"
+                                min={1}
+                                max={10}
+                                step={1}
+                                value={
+                                  Number(
+                                    String(scaleFactor).replace("x", ""),
+                                  ) || 4
+                                }
+                                onChange={(e) =>
+                                  setScaleFactor(String(e.target.value))
+                                }
+                                className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                                style={{
+                                  background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${(((Number(String(scaleFactor).replace("x", "")) || 4) - 1) / 9) * 100}%, rgba(255,255,255,0.15) ${(((Number(String(scaleFactor).replace("x", "")) || 4) - 1) / 9) * 100}%, rgba(255,255,255,0.15) 100%)`,
+                                }}
+                              />
+                              {/* Tick marks */}
+                              <div className="flex justify-between mt-1.5 px-[8px]">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+                                  <span
+                                    key={v}
+                                    className="text-[10px] text-white/30 w-0 flex justify-center"
+                                  >
+                                    {v}×
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Face enhance toggle */}
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                Face enhance
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setFaceEnhance((v) => !v)}
+                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? "bg-white text-black" : "text-white/80 hover:bg-white/10"}`}
+                              >
+                                {faceEnhance ? "Enabled" : "Disabled"}
+                              </button>
+                            </div>
+
+                            {/* Standardized Estimated Output card */}
+                            <div className="pt-1">
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                Estimated Output
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Resolution
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {realEsrganEstimate
+                                      ? `${realEsrganEstimate.outW} × ${realEsrganEstimate.outH}`
+                                      : "—"}
+                                  </span>
+                                </div>
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Est. Cost
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {realEsrganEstimate
+                                      ? `${realEsrganEstimate.credits} credits`
+                                      : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {model === "philz1337x/crystal-upscaler" && (
+                          <div className="space-y-2">
+                            {/* AI MODEL label */}
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                                Scale Factor
+                              </p>
+                              {/* Range label row */}
+                              <div className="flex items-center justify-between mb-0">
+                                <span className="text-[12px] text-white/50">
+                                  1× — 6×
+                                </span>
+                                <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                  {Number(
+                                    String(scaleFactor).replace("x", ""),
+                                  ) || 2}
+                                  ×
+                                </span>
+                              </div>
+                              {/* Slider */}
+                              <input
+                                type="range"
+                                min={1}
+                                max={6}
+                                step={1}
+                                value={
+                                  Number(
+                                    String(scaleFactor).replace("x", ""),
+                                  ) || 2
+                                }
+                                onChange={(e) =>
+                                  setScaleFactor(String(e.target.value))
+                                }
+                                className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                                style={{
+                                  background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${(((Number(String(scaleFactor).replace("x", "")) || 2) - 1) / 5) * 100}%, rgba(255,255,255,0.15) ${(((Number(String(scaleFactor).replace("x", "")) || 2) - 1) / 5) * 100}%, rgba(255,255,255,0.15) 100%)`,
+                                }}
+                              />
+                              {/* Tick marks */}
+                              <div className="flex justify-between mt-1.5 px-[8px]">
+                                {[1, 2, 3, 4, 5, 6].map((v) => (
+                                  <span
+                                    key={v}
+                                    className="text-[10px] text-white/30 w-0 flex justify-center"
+                                  >
+                                    {v}×
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Output Format */}
+                            {/* Output Format — Only for models that support explicit format selection */}
+                            {[
+                              "philz1337x/crystal-upscaler",
+                              "fal-ai/topaz/upscale/image",
+                              "nightmareai/real-esrgan",
+                              "philz1337x/clarity-upscaler",
+                              "fal-ai/seedvr/upscale/image",
+                            ].includes(model as any) && (
+                              <div>
+                                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                  Output Format
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {["png", "jpg"].map((fmt) => (
+                                    <button
+                                      key={fmt}
+                                      onClick={() => setOutput(fmt as any)}
+                                      className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${
+                                        (output || "png") === fmt
+                                          ? "bg-[#2F6BFF] border-[#2F6BFF] text-white"
+                                          : "bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
+                                      }`}
+                                    >
+                                      {fmt.toUpperCase()}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Estimated Output card — always visible */}
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                Estimated Output
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Resolution
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {inputNaturalSize.width > 0
+                                      ? `${inputNaturalSize.width * (Number(String(scaleFactor).replace("x", "")) || 2)} × ${inputNaturalSize.height * (Number(String(scaleFactor).replace("x", "")) || 2)}`
+                                      : `${Number(String(scaleFactor).replace("x", "")) || 2}× size`}
+                                  </span>
+                                </div>
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Est. Cost
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {crystalEstimate
+                                      ? `${crystalEstimate.credits} credits`
+                                      : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {model === "fal-ai/topaz/upscale/image" && (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
+                                Model
+                              </label>
+                              <div className="relative edit-dropdown">
+                                <button
+                                  onClick={() =>
+                                    setActiveDropdown(
+                                      activeDropdown === "topazModel"
+                                        ? ""
+                                        : "topazModel",
+                                    )
+                                  }
+                                  className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
+                                >
+                                  <span className="truncate">{topazModel}</span>
+                                  <ChevronUp
+                                    className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "topazModel" ? "" : "rotate-180"}`}
+                                  />
+                                </button>
+                                {activeDropdown === "topazModel" && (
+                                  <div
+                                    className={`absolute z-30 top-full mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                                  >
+                                    {[
+                                      "Low Resolution V2",
+                                      "Standard V2",
+                                      "CGI",
+                                      "High Fidelity V2",
+                                      "Text Refine",
+                                      "Recovery",
+                                      "Redefine",
+                                      "Recovery V2",
+                                    ].map((opt) => (
+                                      <button
+                                        key={opt}
+                                        onClick={() => {
+                                          setTopazModel(opt as any);
+                                          setActiveDropdown("");
+                                        }}
+                                        className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${topazModel === opt ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                      >
+                                        {topazModel === opt && (
+                                          <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                        )}
+                                        <span>{opt}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                                Upscale Factor
+                              </p>
+                              {/* Range label row */}
+                              <div className="flex items-center justify-between mb-0">
+                                <span className="text-[12px] text-white/50">
+                                  1× — 6×
+                                </span>
+                                <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
+                                  {topazUpscaleFactor}×
+                                </span>
+                              </div>
+                              {/* Slider */}
+                              <input
+                                type="range"
+                                min={1}
+                                max={6}
+                                step={1}
+                                value={topazUpscaleFactor}
+                                onChange={(e) =>
+                                  setTopazUpscaleFactor(Number(e.target.value))
+                                }
+                                className="w-full h-[3px] appearance-none rounded-full cursor-pointer"
+                                style={{
+                                  background: `linear-gradient(to right, #2F6BFF 0%, #2F6BFF ${((topazUpscaleFactor - 1) / 5) * 100}%, rgba(255,255,255,0.15) ${((topazUpscaleFactor - 1) / 5) * 100}%, rgba(255,255,255,0.15) 100%)`,
+                                }}
+                              />
+                              {/* Tick marks */}
+                              <div className="flex justify-between mt-1.5 px-[8px]">
+                                {[1, 2, 3, 4, 5, 6].map((v) => (
+                                  <span
+                                    key={v}
+                                    className="text-[10px] text-white/30 w-0 flex justify-center"
+                                  >
+                                    {v}×
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                  Subject detection
+                                </label>
+                                <div className="relative edit-dropdown">
+                                  <button
+                                    onClick={() =>
+                                      setActiveDropdown(
+                                        activeDropdown === "backgroundType"
+                                          ? ""
+                                          : "backgroundType",
+                                      )
+                                    }
+                                    className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
+                                  >
+                                    <span className="truncate">
+                                      {topazSubjectDetection}
+                                    </span>
+                                    <ChevronUp
+                                      className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === "backgroundType" ? "" : "rotate-180"}`}
+                                    />
+                                  </button>
+                                  {activeDropdown === "backgroundType" && (
+                                    <div
+                                      className={`absolute z-30 top-full mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                                    >
+                                      {(
+                                        [
+                                          "All",
+                                          "Foreground",
+                                          "Background",
+                                        ] as const
+                                      ).map((opt) => (
+                                        <button
+                                          key={opt}
+                                          onClick={() => {
+                                            setTopazSubjectDetection(opt);
+                                            setActiveDropdown("");
+                                          }}
+                                          className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${topazSubjectDetection === opt ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                        >
+                                          {topazSubjectDetection === opt && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                          )}
+                                          <span>{opt}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                  Face enhancement
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setTopazFaceEnhance((v) => !v)}
+                                  className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? "bg-white text-black" : "bg-white/5 text-white/80 hover:bg-white/10"}`}
+                                >
+                                  {topazFaceEnhance ? "Enabled" : "Disabled"}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                  Face creativity (0-1)
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={1}
+                                  step={0.1}
+                                  value={topazFaceCreativity}
+                                  onChange={(e) =>
+                                    setTopazFaceCreativity(
+                                      Math.max(
+                                        0,
+                                        Math.min(
+                                          1,
+                                          Number(e.target.value) || 0,
+                                        ),
+                                      ),
+                                    )
+                                  }
+                                  className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                                />
+                              </div>
+                              <div className="flex items-end flex-col justify-end">
+                                <label className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    className="accent-white/90"
+                                    checked={topazCropToFill}
+                                    onChange={(e) =>
+                                      setTopazCropToFill(e.target.checked)
+                                    }
+                                  />{" "}
+                                  Crop to fill
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Standardized Estimated Output card */}
+                            <div className="pt-1">
+                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                Estimated Output
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Resolution
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {topazEstimate
+                                      ? `${topazEstimate.outW} × ${topazEstimate.outH}`
+                                      : "—"}
+                                  </span>
+                                </div>
+                                <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                    Est. Cost
+                                  </span>
+                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                    {topazEstimate
+                                      ? `${topazEstimate.credits} credits`
+                                      : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
             </div>
           </div>
         }
         footer={
-          selectedFeature !== 'live-chat' ? (
+          selectedFeature !== "live-chat" ? (
             <div className="flex gap-2 2xl:gap-3">
               <button
                 onClick={handleReset}
@@ -4933,14 +6918,17 @@ const EditImageInterface: React.FC = () => {
               </button>
               <button
                 onClick={handleRun}
-                disabled={!inputs[selectedFeature] || processing[selectedFeature]}
+                disabled={
+                  !inputs[selectedFeature] || processing[selectedFeature]
+                }
                 className="flex-1 px-2 py-2 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm"
               >
-                {processing[selectedFeature] ? 'Processing...' : 'Generate'}
+                {processing[selectedFeature] ? "Processing..." : "Generate"}
               </button>
-              {(selectedFeature === 'fill' || selectedFeature === 'expand') && (
+              {(selectedFeature === "fill" || selectedFeature === "expand") && (
                 <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                  {selectedFeature === 'fill' ? eraseCredits : expandCredits} credits
+                  {selectedFeature === "fill" ? eraseCredits : expandCredits}{" "}
+                  credits
                 </div>
               )}
             </div>
@@ -4952,9 +6940,7 @@ const EditImageInterface: React.FC = () => {
       <EditImageCanvasArea
         topBar={
           <div className="flex items-center w-full h-full px-4 gap-3">
-
             {/* Left: Breadcrumb */}
-
 
             {/* Center: Feature tabs */}
             <div
@@ -4968,40 +6954,87 @@ const EditImageInterface: React.FC = () => {
                     key={feature.id}
                     onClick={() => {
                       setSelectedFeature(feature.id as EditFeature);
-                      const params = new URLSearchParams(window.location.search);
-                      params.set('feature', feature.id);
-                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      const params = new URLSearchParams(
+                        window.location.search,
+                      );
+                      params.set("feature", feature.id);
+                      router.push(
+                        `${window.location.pathname}?${params.toString()}`,
+                        { scroll: false },
+                      );
 
-                      if (feature.id === 'remove-bg') {
-                        setModel('851-labs/background-remover');
-                      } else if (feature.id === 'upscale') {
-                        setModel('philz1337x/crystal-upscaler');
-                      } else if (feature.id === 'resize') {
-                        setModel('fal-ai/bria/expand');
-                      } else if (feature.id === 'vectorize') {
-                        setModel('fal-ai/recraft/vectorize' as any);
+                      if (feature.id === "remove-bg") {
+                        setModel("851-labs/background-remover");
+                      } else if (feature.id === "upscale") {
+                        setModel("philz1337x/crystal-upscaler");
+                      } else if (feature.id === "resize") {
+                        setModel("fal-ai/bria/expand");
+                      } else if (feature.id === "vectorize") {
+                        setModel("fal-ai/recraft/vectorize" as any);
                       }
                       setProcessing((p) => ({ ...p, [feature.id]: false }));
                     }}
-                    className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${selectedFeature === feature.id
-                      ? 'text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40'
-                      : 'text-white/40 font-normal hover:text-white/70'
-                      }`}
+                    className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${
+                      selectedFeature === feature.id
+                        ? "text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40"
+                        : "text-white/40 font-normal hover:text-white/70"
+                    }`}
                   >
-                    <span className={`flex items-center justify-center w-[14px] h-[14px] shrink-0 transition-opacity ${selectedFeature === feature.id ? 'opacity-80' : 'opacity-40'}`}>
-                      {feature.id === 'upscale' && (<img src="/icons/scaling.svg" alt="" className="w-[14px] h-[14px]" />)}
-                      {feature.id === 'remove-bg' && (<img src="/icons/image-minus.svg" alt="" className="w-[14px] h-[14px]" />)}
-                      {feature.id === 'resize' && (<img src="/icons/resize.svg" alt="" className="w-[13px] h-[13px]" />)}
-                      {feature.id === 'fill' && (<img src="/icons/inpaint.svg" alt="" className="w-[14px] h-[14px]" />)}
-                      {feature.id === 'vectorize' && (<img src="/icons/vector.svg" alt="" className="w-[14px] h-[14px]" />)}
-                      {feature.id === 'live-chat' && (<img src="/icons/chat.svg" alt="" className="w-[14px] h-[14px]" />)}
+                    <span
+                      className={`flex items-center justify-center w-[14px] h-[14px] shrink-0 transition-opacity ${selectedFeature === feature.id ? "opacity-80" : "opacity-40"}`}
+                    >
+                      {feature.id === "upscale" && (
+                        <img
+                          src="/icons/scaling.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "remove-bg" && (
+                        <img
+                          src="/icons/image-minus.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "resize" && (
+                        <img
+                          src="/icons/resize.svg"
+                          alt=""
+                          className="w-[13px] h-[13px]"
+                        />
+                      )}
+                      {feature.id === "fill" && (
+                        <img
+                          src="/icons/inpaint.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "vectorize" && (
+                        <img
+                          src="/icons/vector.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "live-chat" && (
+                        <img
+                          src="/icons/chat.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
                     </span>
-                    <span>{feature.id === 'fill' ? 'Erase / Replace' : feature.label}</span>
+                    <span>
+                      {feature.id === "fill"
+                        ? "Erase / Replace"
+                        : feature.label}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
-
 
             {/* Right: Action icons */}
             <div className="flex items-center gap-1 shrink-0">
@@ -5010,8 +7043,18 @@ const EditImageInterface: React.FC = () => {
                 title="Zoom in"
                 className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
                 </svg>
               </button>
               {/* Zoom out */}
@@ -5019,8 +7062,18 @@ const EditImageInterface: React.FC = () => {
                 title="Zoom out"
                 className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35M8 11h6" />
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35M8 11h6" />
                 </svg>
               </button>
               {/* Divider */}
@@ -5031,7 +7084,16 @@ const EditImageInterface: React.FC = () => {
                 onClick={handleDownloadOutput}
                 className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
                 </svg>
               </button>
@@ -5041,8 +7103,19 @@ const EditImageInterface: React.FC = () => {
                 onClick={handleShareOutput}
                 className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
                   <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
                 </svg>
               </button>
@@ -5050,14 +7123,16 @@ const EditImageInterface: React.FC = () => {
           </div>
         }
         canvas={
-          <div className="flex-1 flex flex-col relative w-full h-full p-4  bg-[#0E0E12] overflow-hidden">
-
-
+          <div className="flex-1 flex flex-col relative w-full h-full p-10  bg-[#0E0E12] overflow-hidden">
             {/* Right Main Area - Output preview parallel to input image */}
-            <div className="md:p-0 p-0  flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-3 pt-0">
+            <div className="md:p-0 p-0 flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-1 lg:pt-2 xl:pt-3 pt-0">
               <div
-                className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:h-auto md:max-h-[50rem]'}`}
-                onDragOver={(e) => { try { e.preventDefault(); } catch { } }}
+                className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem]"}`}
+                onDragOver={(e) => {
+                  try {
+                    e.preventDefault();
+                  } catch {}
+                }}
                 onDrop={(e) => {
                   try {
                     e.preventDefault();
@@ -5068,43 +7143,46 @@ const EditImageInterface: React.FC = () => {
                       const img = ev.target?.result as string;
                       // Apply dropped image to all features so switching tabs preserves the same input
                       setInputs({
-                        'upscale': img,
-                        'remove-bg': img,
-                        'resize': img,
-                        'fill': img,
-                        'vectorize': img,
-                        'erase': img,
-                        'expand': img,
-                        'reimagine': img,
-                        'live-chat': img,
+                        upscale: img,
+                        "remove-bg": img,
+                        resize: img,
+                        fill: img,
+                        vectorize: img,
+                        erase: img,
+                        expand: img,
+                        reimagine: img,
+                        "live-chat": img,
                       });
                       // Clear all outputs when a new image is dropped so the output area re-renders
                       setOutputs({
-                        'upscale': null,
-                        'remove-bg': null,
-                        'resize': null,
-                        'fill': null,
-                        'vectorize': null,
-                        'erase': null,
-                        'expand': null,
-                        'reimagine': null,
-                        'live-chat': null,
+                        upscale: null,
+                        "remove-bg": null,
+                        resize: null,
+                        fill: null,
+                        vectorize: null,
+                        erase: null,
+                        expand: null,
+                        reimagine: null,
+                        "live-chat": null,
                       });
                       // Also reset zoom and pan state
                       setScale(1);
                       setOffset({ x: 0, y: 0 });
                     };
                     reader.readAsDataURL(file);
-                  } catch { }
+                  } catch {}
                 }}
               >
-
                 {outputs[selectedFeature] && (
                   <div className="absolute md:top-5 top-0 md:left-4 left-1 z-10  ">
-                    <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">{selectedFeature === 'upscale' && upscaleViewMode === 'comparison' ? 'Input Image' : 'Output Image'}</span>
+                    <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">
+                      {selectedFeature === "upscale" &&
+                      upscaleViewMode === "comparison"
+                        ? "Input Image"
+                        : "Output Image"}
+                    </span>
                   </div>
                 )}
-
 
                 {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
                 {(outputs[selectedFeature] || inputs[selectedFeature]) && (
@@ -5116,9 +7194,13 @@ const EditImageInterface: React.FC = () => {
                           className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10 md:p-2"
                           aria-haspopup="menu"
                           aria-expanded={showImageMenu}
-                          onClick={() => setShowImageMenu(v => !v)}
+                          onClick={() => setShowImageMenu((v) => !v)}
                         >
-                          <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="w-4 h-4 2xl:w-5 2xl:h-5"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <circle cx="5" cy="12" r="2" />
                             <circle cx="12" cy="12" r="2" />
                             <circle cx="19" cy="12" r="2" />
@@ -5131,90 +7213,149 @@ const EditImageInterface: React.FC = () => {
                       onClick={() => {
                         // Do not clear existing image/output here. Only open the modal.
                         // If user picks a new image, onAdd will replace the input.
-                        try { handleOpenUploadModal(); } catch { }
+                        try {
+                          handleOpenUploadModal();
+                        } catch {}
                       }}
                       className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10"
                       title="Upload other"
                     >
-                      <Image src="/icons/fileupload.svg" alt="Upload" width={16} height={16} className="md:w-6 md:h-6 w-3 h-3" />
+                      <Image
+                        src="/icons/fileupload.svg"
+                        alt="Upload"
+                        width={16}
+                        height={16}
+                        className="md:w-6 md:h-6 w-3 h-3"
+                      />
                     </button>
-
-
 
                     {/* Themed dropdown menu */}
                     {outputs[selectedFeature] && showImageMenu && (
-                      <div ref={menuRef} className="absolute md:bottom-10 bottom-7 left-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-auto min-w-[100px] overflow-hidden md:min-w-[150px]">
+                      <div
+                        ref={menuRef}
+                        className="absolute md:bottom-10 bottom-7 left-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-auto min-w-[100px] overflow-hidden md:min-w-[150px]"
+                      >
                         <button
                           onClick={async () => {
-                            console.log('Download clicked!')
+                            console.log("Download clicked!");
                             await handleDownloadOutput();
                             setShowImageMenu(false);
                           }}
                           className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-white hover:bg-green-500/20 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 border-b border-white/10 md:text-base md:py-2"
                         >
-                          <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          <svg
+                            className="md:w-4 md:h-4 w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                            />
                           </svg>
                           Download
                         </button>
                         <button
                           onClick={async () => {
-                            console.log('Share clicked!')
+                            console.log("Share clicked!");
                             await handleShareOutput();
                             setShowImageMenu(false);
                           }}
                           className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-white hover:bg-blue-500/20 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 md:text-base md:py-2"
                         >
-                          <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z" />
+                          <svg
+                            className="md:w-4 md:h-4 w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z"
+                            />
                           </svg>
-                          {shareCopied ? 'Copied!' : 'Share'}
+                          {shareCopied ? "Copied!" : "Share"}
                         </button>
                         <button
                           onClick={async () => {
                             try {
-                              if (selectedFeature === 'live-chat') {
+                              if (selectedFeature === "live-chat") {
                                 // Special case: deleting the input/original image
                                 if (activeLiveIndex === -1) {
                                   // Clear the input images
                                   setLiveOriginalInput(null);
-                                  setInputs((prev) => ({ ...prev, ['live-chat']: null }));
+                                  setInputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: null,
+                                  }));
 
                                   // If there are generated images, switch to the last one
                                   if (liveHistory.length > 0) {
                                     const lastIdx = liveHistory.length - 1;
                                     const lastImage = liveHistory[lastIdx];
                                     setActiveLiveIndex(lastIdx);
-                                    setOutputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
-                                    setInputs((prev) => ({ ...prev, ['live-chat']: lastImage.url }));
+                                    setOutputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: lastImage.url,
+                                    }));
+                                    setInputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: lastImage.url,
+                                    }));
                                     setCurrentHistoryId(lastImage.id || null);
                                   } else {
                                     // No generated images, reset everything
-                                    setOutputs((prev) => ({ ...prev, ['live-chat']: null }));
+                                    setOutputs((prev) => ({
+                                      ...prev,
+                                      ["live-chat"]: null,
+                                    }));
                                     setCurrentHistoryId(null);
                                   }
                                 } else {
                                   // Deleting a generated image from history
-                                  await handleDeleteLiveChatImage(activeLiveIndex, currentHistoryId || undefined);
+                                  await handleDeleteLiveChatImage(
+                                    activeLiveIndex,
+                                    currentHistoryId || undefined,
+                                  );
                                 }
                               } else {
                                 // For other features, just delete from server and clear output
                                 const id = currentHistoryId;
                                 if (id) {
-                                  await axiosInstance.delete(`/api/generations/${id}`);
+                                  await axiosInstance.delete(
+                                    `/api/generations/${id}`,
+                                  );
                                 }
-                                setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
+                                setOutputs((prev) => ({
+                                  ...prev,
+                                  [selectedFeature]: null,
+                                }));
                               }
                               setShowImageMenu(false);
                             } catch (e) {
-                              console.error('Delete failed:', e);
+                              console.error("Delete failed:", e);
                               setShowImageMenu(false);
                             }
                           }}
                           className="w-full md:px-4 px-2 md:py-3 py-1 text-left text-red-300 hover:bg-red-500/10 md:text-sm text-xs flex items-center md:gap-3 gap-1 transition-colors duration-200 border-t border-white/10 md:text-base md:py-2"
                         >
-                          <svg className="md:w-4 md:h-4 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          <svg
+                            className="md:w-4 md:h-4 w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                            />
                           </svg>
                           Delete
                         </button>
@@ -5225,24 +7366,32 @@ const EditImageInterface: React.FC = () => {
 
                 {outputs[selectedFeature] ? (
                   <div className="w-full h-full relative">
-                    {(inputs[selectedFeature]) ? (
+                    {inputs[selectedFeature] ? (
                       // Upscale (toggle compare/zoom) OR Remove-BG (compare only)
-                      <div className={`w-full h-full relative ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
-                        {selectedFeature === 'resize' && (
+                      <div
+                        className={`w-full h-full relative min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
+                      >
+                        {selectedFeature === "resize" && (
                           <div className="absolute inset-0 z-10">
                             <EditImageExpandFrame
                               sourceImageUrl={inputs.resize}
                               localExpandedImageUrl={null}
                               expandedImageUrl={outputs.resize}
-                              aspectPreset={resizeAspectRatio || 'custom'}
+                              aspectPreset={resizeAspectRatio || "custom"}
                               aspectPresets={aspectPresets}
                               customWidth={Number(resizeCanvasW) || 1024}
                               customHeight={Number(resizeCanvasH) || 1024}
                               onFrameInfoChange={(info) => {
                                 if (info) {
                                   // Only update if values actually changed to avoid infinite loops
-                                  if (info.canvasSize[0] !== Number(resizeCanvasW)) setResizeCanvasW(info.canvasSize[0]);
-                                  if (info.canvasSize[1] !== Number(resizeCanvasH)) setResizeCanvasH(info.canvasSize[1]);
+                                  if (
+                                    info.canvasSize[0] !== Number(resizeCanvasW)
+                                  )
+                                    setResizeCanvasW(info.canvasSize[0]);
+                                  if (
+                                    info.canvasSize[1] !== Number(resizeCanvasH)
+                                  )
+                                    setResizeCanvasH(info.canvasSize[1]);
                                   // We don't necessarily want to overwrite original size if it was set by image load,
                                   // but the frame info reflects the current image state in the canvas.
                                   // setResizeOrigW(info.originalImageSize[0]);
@@ -5262,35 +7411,45 @@ const EditImageInterface: React.FC = () => {
                             />
                           </div>
                         )}
-                        {inputs[selectedFeature] && selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && (
-                          <div className="absolute md:bottom-3 bottom-1 md:left-1/2 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
-                            <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
-                              <button
-                                onClick={() => setUpscaleViewMode('comparison')}
-                                className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === 'comparison' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
-                              >
-                                Compare
-                              </button>
-                              <button
-                                onClick={() => setUpscaleViewMode('zoom')}
-                                className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === 'zoom' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
-                              >
-                                Zoom
-                              </button>
+                        {inputs[selectedFeature] &&
+                          selectedFeature !== "resize" &&
+                          selectedFeature !== "live-chat" && (
+                            <div className="absolute md:bottom-3 bottom-1 md:left-1/2 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
+                              <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                                <button
+                                  onClick={() =>
+                                    setUpscaleViewMode("comparison")
+                                  }
+                                  className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === "comparison" ? "bg-white text-black" : "text-white hover:bg-white/20"}`}
+                                >
+                                  Compare
+                                </button>
+                                <button
+                                  onClick={() => setUpscaleViewMode("zoom")}
+                                  className={`md:px-2 px-1 md:py-1 py-0.5 md:text-xs text-[10px] rounded transition-colors ${upscaleViewMode === "zoom" ? "bg-white text-black" : "text-white hover:bg-white/20"}`}
+                                >
+                                  Zoom
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {selectedFeature !== 'resize' && selectedFeature !== 'live-chat' && upscaleViewMode === 'comparison' ? (
+                        {selectedFeature !== "resize" &&
+                        selectedFeature !== "live-chat" &&
+                        upscaleViewMode === "comparison" ? (
                           // Comparison slider mode: Original on left, Generated on right, no overlap
                           <>
                             {/* Original (left) */}
                             <div
                               className="absolute inset-0"
-                              style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                              style={{
+                                clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
+                              }}
                             >
                               <Image
-                                src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
+                                src={normalizeEditImageUrl(
+                                  inputs[selectedFeature] as string,
+                                )}
                                 alt="Original"
                                 fill
                                 unoptimized
@@ -5301,27 +7460,37 @@ const EditImageInterface: React.FC = () => {
                             {/* Generated (right) */}
                             <div
                               className="absolute inset-0"
-                              style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
+                              style={{
+                                clipPath: `inset(0 0 0 ${sliderPosition}%)`,
+                              }}
                             >
                               <Image
-                                src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
+                                src={normalizeEditImageUrl(
+                                  outputs[selectedFeature] as string,
+                                )}
                                 alt="Generated"
                                 fill
                                 unoptimized
                                 className="object-contain object-center"
-                                style={{ objectPosition: 'center 55%' }}
+                                style={{ objectPosition: "center center" }}
                                 onError={(e) => {
-                                  console.error('[EditImage] Output image failed to load:', {
-                                    src: outputs[selectedFeature],
-                                    selectedFeature,
-                                    error: e
-                                  });
+                                  console.error(
+                                    "[EditImage] Output image failed to load:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      error: e,
+                                    },
+                                  );
                                 }}
                                 onLoad={() => {
-                                  console.log('[EditImage] Output image loaded successfully:', {
-                                    src: outputs[selectedFeature],
-                                    selectedFeature
-                                  });
+                                  console.log(
+                                    "[EditImage] Output image loaded successfully:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                    },
+                                  );
                                 }}
                               />
                             </div>
@@ -5333,7 +7502,9 @@ const EditImageInterface: React.FC = () => {
                                 min="0"
                                 max="100"
                                 value={sliderPosition}
-                                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                                onChange={(e) =>
+                                  setSliderPosition(Number(e.target.value))
+                                }
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
                               />
                               <div
@@ -5342,18 +7513,17 @@ const EditImageInterface: React.FC = () => {
                               />
                             </div>
 
-                            <div className="absolute top-5 left-4 z-30 2xl:top-6 2xl:left-6">
-                              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Original</span>
-                            </div>
-                            <div className="absolute top-5 right-4 z-30 2xl:top-6 2xl:right-6">
-                              <span className="text-xs font-medium text-white bg-black/80 px-2 py-1 rounded 2xl:text-sm 2xl:px-3 2xl:py-1.5">Generated</span>
+                            <div className="absolute md:top-5 top-0 md:right-4 right-1 z-30 2xl:top-6 2xl:right-6">
+                              <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-lg md:text-sm md:px-3 md:py-1.5">
+                                Generated
+                              </span>
                             </div>
                           </>
                         ) : (
                           // Zoom mode (all features)
                           <div
                             ref={imageContainerRef}
-                            className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
+                            className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
@@ -5361,35 +7531,49 @@ const EditImageInterface: React.FC = () => {
                             onWheel={handleWheel}
                             onKeyDown={handleKeyDown}
                             tabIndex={0}
-                            style={{ outline: 'none' }}
+                            style={{ outline: "none" }}
                           >
                             <Image
                               ref={imageRef}
-                              src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
+                              src={normalizeEditImageUrl(
+                                outputs[selectedFeature] as string,
+                              )}
                               alt="Output"
                               fill
                               unoptimized
                               className="object-contain object-center"
                               style={{
                                 transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                                transformOrigin: 'center center',
-                                objectPosition: 'center 55%'
+                                transformOrigin: "center center",
+                                objectPosition: "center center",
                               }}
                               onLoad={(e) => {
                                 const img = e.target as HTMLImageElement;
-                                setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                                console.log('[EditImage] Zoom mode output image loaded:', {
-                                  src: outputs[selectedFeature],
-                                  selectedFeature,
-                                  dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                                setNaturalSize({
+                                  width: img.naturalWidth,
+                                  height: img.naturalHeight,
                                 });
+                                console.log(
+                                  "[EditImage] Zoom mode output image loaded:",
+                                  {
+                                    src: outputs[selectedFeature],
+                                    selectedFeature,
+                                    dimensions: {
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    },
+                                  },
+                                );
                               }}
                               onError={(e) => {
-                                console.error('[EditImage] Zoom mode output image failed to load:', {
-                                  src: outputs[selectedFeature],
-                                  selectedFeature,
-                                  error: e
-                                });
+                                console.error(
+                                  "[EditImage] Zoom mode output image failed to load:",
+                                  {
+                                    src: outputs[selectedFeature],
+                                    selectedFeature,
+                                    error: e,
+                                  },
+                                );
                               }}
                               onClick={handleImageClick}
                             />
@@ -5437,7 +7621,7 @@ const EditImageInterface: React.FC = () => {
                       // Regular image viewer with zoom controls
                       <div
                         ref={imageContainerRef}
-                        className={`w-full h-full relative cursor-move select-none ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}
+                        className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -5445,35 +7629,49 @@ const EditImageInterface: React.FC = () => {
                         onWheel={handleWheel}
                         onKeyDown={handleKeyDown}
                         tabIndex={0}
-                        style={{ outline: 'none' }}
+                        style={{ outline: "none" }}
                       >
                         <Image
                           ref={imageRef}
-                          src={normalizeEditImageUrl(outputs[selectedFeature] as string)}
+                          src={normalizeEditImageUrl(
+                            outputs[selectedFeature] as string,
+                          )}
                           alt="Output"
                           fill
                           unoptimized
                           className="object-contain object-center"
                           style={{
                             transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                            transformOrigin: 'center center',
-                            objectPosition: 'center 55%'
+                            transformOrigin: "center center",
+                            objectPosition: "center center",
                           }}
                           onLoad={(e) => {
                             const img = e.target as HTMLImageElement;
-                            setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                            console.log('[EditImage] No-input mode output image loaded:', {
-                              src: outputs[selectedFeature],
-                              selectedFeature,
-                              dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+                            setNaturalSize({
+                              width: img.naturalWidth,
+                              height: img.naturalHeight,
                             });
+                            console.log(
+                              "[EditImage] No-input mode output image loaded:",
+                              {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                dimensions: {
+                                  width: img.naturalWidth,
+                                  height: img.naturalHeight,
+                                },
+                              },
+                            );
                           }}
                           onError={(e) => {
-                            console.error('[EditImage] No-input mode output image failed to load:', {
-                              src: outputs[selectedFeature],
-                              selectedFeature,
-                              error: e
-                            });
+                            console.error(
+                              "[EditImage] No-input mode output image failed to load:",
+                              {
+                                src: outputs[selectedFeature],
+                                selectedFeature,
+                                error: e,
+                              },
+                            );
                           }}
                           onClick={handleImageClick}
                         />
@@ -5518,26 +7716,39 @@ const EditImageInterface: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${selectedFeature === 'live-chat' ? 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]' : 'min-h-[24rem] md:min-h-[35rem] lg:min-h-[45rem]'}`}>
+                  <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]">
                     {inputs[selectedFeature] ? (
                       <div className="absolute inset-0">
-                        {selectedFeature === 'resize' || selectedFeature === 'fill' ? (
-                          selectedFeature === 'resize' ? (
+                        {selectedFeature === "resize" ||
+                        selectedFeature === "fill" ? (
+                          selectedFeature === "resize" ? (
                             <div className="absolute inset-0 z-10">
                               <EditImageExpandFrame
                                 sourceImageUrl={inputs.resize}
                                 localExpandedImageUrl={null}
                                 expandedImageUrl={null}
-                                aspectPreset={resizeAspectRatio || 'custom'}
+                                aspectPreset={resizeAspectRatio || "custom"}
                                 aspectPresets={aspectPresets}
                                 customWidth={Number(resizeCanvasW) || 1024}
                                 customHeight={Number(resizeCanvasH) || 1024}
                                 onFrameInfoChange={(info) => {
                                   if (info) {
-                                    if (info.canvasSize[0] !== Number(resizeCanvasW)) setResizeCanvasW(info.canvasSize[0]);
-                                    if (info.canvasSize[1] !== Number(resizeCanvasH)) setResizeCanvasH(info.canvasSize[1]);
-                                    setResizeOrigX(info.originalImageLocation[0]);
-                                    setResizeOrigY(info.originalImageLocation[1]);
+                                    if (
+                                      info.canvasSize[0] !==
+                                      Number(resizeCanvasW)
+                                    )
+                                      setResizeCanvasW(info.canvasSize[0]);
+                                    if (
+                                      info.canvasSize[1] !==
+                                      Number(resizeCanvasH)
+                                    )
+                                      setResizeCanvasH(info.canvasSize[1]);
+                                    setResizeOrigX(
+                                      info.originalImageLocation[0],
+                                    );
+                                    setResizeOrigY(
+                                      info.originalImageLocation[1],
+                                    );
                                   }
                                 }}
                                 onImageSizeChange={(size) => {
@@ -5551,7 +7762,7 @@ const EditImageInterface: React.FC = () => {
                           ) : (
                             <div className="absolute inset-0 z-10">
                               <EditImageEraseFrame
-                                sourceImageUrl={inputs['fill'] as string}
+                                sourceImageUrl={inputs["fill"] as string}
                                 brushSize={eraseBrushSize}
                                 isDrawing={eraseIsDrawing}
                                 setIsDrawing={setEraseIsDrawing}
@@ -5563,109 +7774,192 @@ const EditImageInterface: React.FC = () => {
                         ) : (
                           <>
                             <Image
-                              src={normalizeEditImageUrl(inputs[selectedFeature] as string)}
+                              src={normalizeEditImageUrl(
+                                inputs[selectedFeature] as string,
+                              )}
                               alt="Input"
                               fill
                               unoptimized
                               className="object-contain object-center"
                               onLoad={(e) => {
-                                if (selectedFeature === 'expand') {
+                                if (selectedFeature === "expand") {
                                   const img = e.target as HTMLImageElement;
-                                  setExpandOriginalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                                  setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                  setExpandOriginalSize({
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  });
+                                  setInputNaturalSize({
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  });
                                   // Trigger canvas redraw after a short delay to ensure container is ready
                                   setTimeout(() => {
                                     drawExpandCanvas();
                                   }, 100);
                                 } else {
                                   const img = e.target as HTMLImageElement;
-                                  setInputNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                  setInputNaturalSize({
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  });
                                 }
                               }}
                             />
-                            {selectedFeature === 'expand' && expandOriginalSize.width > 0 && (
-                              <div ref={expandContainerRef} className="absolute inset-0 z-10">
-                                <canvas
-                                  ref={expandCanvasRef}
-                                  className="absolute inset-0 w-full h-full"
-                                  style={{
-                                    pointerEvents: 'auto',
-                                    userSelect: 'none',
-                                    cursor: (expandResizing || expandHoverEdge) === 'left' || (expandResizing || expandHoverEdge) === 'right'
-                                      ? 'ew-resize'
-                                      : (expandResizing || expandHoverEdge) === 'top' || (expandResizing || expandHoverEdge) === 'bottom'
-                                        ? 'ns-resize'
-                                        : (expandResizing || expandHoverEdge) === 'move'
-                                          ? 'move'
-                                          : 'default'
-                                  }}
-                                  onMouseDown={handleExpandMouseDown}
-                                  onMouseMove={handleExpandMouseMove}
-                                  onMouseUp={handleExpandMouseUp}
-                                  onMouseLeave={handleExpandMouseUp}
-                                />
-                              </div>
-                            )}
+                            {selectedFeature === "expand" &&
+                              expandOriginalSize.width > 0 && (
+                                <div
+                                  ref={expandContainerRef}
+                                  className="absolute inset-0 z-10"
+                                >
+                                  <canvas
+                                    ref={expandCanvasRef}
+                                    className="absolute inset-0 w-full h-full"
+                                    style={{
+                                      pointerEvents: "auto",
+                                      userSelect: "none",
+                                      cursor:
+                                        (expandResizing || expandHoverEdge) ===
+                                          "left" ||
+                                        (expandResizing || expandHoverEdge) ===
+                                          "right"
+                                          ? "ew-resize"
+                                          : (expandResizing ||
+                                                expandHoverEdge) === "top" ||
+                                              (expandResizing ||
+                                                expandHoverEdge) === "bottom"
+                                            ? "ns-resize"
+                                            : (expandResizing ||
+                                                  expandHoverEdge) === "move"
+                                              ? "move"
+                                              : "default",
+                                    }}
+                                    onMouseDown={handleExpandMouseDown}
+                                    onMouseMove={handleExpandMouseMove}
+                                    onMouseUp={handleExpandMouseUp}
+                                    onMouseLeave={handleExpandMouseUp}
+                                  />
+                                </div>
+                              )}
                             {/* Erase Frame handled above */}
-                            {(selectedFeature === 'reimagine' || (selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser'))) && (
-                              <div ref={fillContainerRef} className="absolute inset-0 z-10">
+                            {(selectedFeature === "reimagine" ||
+                              (selectedFeature === "remove-bg" &&
+                                String(model).startsWith("bria/eraser"))) && (
+                              <div
+                                ref={fillContainerRef}
+                                className="absolute inset-0 z-10"
+                              >
                                 {/* Reimagine: Selection Mode Toggle */}
                                 {/* Reimagine: Selection Mode Toggle - Floating Dock (Rectangle Only) */}
-                                {selectedFeature === 'reimagine' && !reimagineSelectionConfirmed && (
-                                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/60 backdrop-blur-xl rounded-full p-1.5 border border-white/10 shadow-2xl transition-all hover:bg-black/70">
-                                    <button
-                                      onClick={() => {
-                                        setReimagineSelectionMode('rectangle');
-                                        setReimagineLiveBounds(null);
-                                        setReimagineSelectionBounds(null);
-                                        setHasMask(false);
-                                        setRectangleStart(null);
-                                        setRectangleCurrent(null);
-                                        const ctx = fillCanvasRef.current?.getContext('2d');
-                                        if (ctx && fillContainerRef.current) {
-                                          const rect = fillContainerRef.current.getBoundingClientRect();
-                                          ctx.clearRect(0, 0, rect.width, rect.height);
-                                        }
-                                      }}
-                                      className={`p-2.5 rounded-full transition-all duration-200 group relative bg-white text-black shadow-lg`}
-                                      title="Selection Tool"
-                                    >
-                                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                      </svg>
-                                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                        Selection Tool
-                                      </span>
-                                    </button>
-                                  </div>
-                                )}
+                                {selectedFeature === "reimagine" &&
+                                  !reimagineSelectionConfirmed && (
+                                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/60 backdrop-blur-xl rounded-full p-1.5 border border-white/10 shadow-2xl transition-all hover:bg-black/70">
+                                      <button
+                                        onClick={() => {
+                                          setReimagineSelectionMode(
+                                            "rectangle",
+                                          );
+                                          setReimagineLiveBounds(null);
+                                          setReimagineSelectionBounds(null);
+                                          setHasMask(false);
+                                          setRectangleStart(null);
+                                          setRectangleCurrent(null);
+                                          const ctx =
+                                            fillCanvasRef.current?.getContext(
+                                              "2d",
+                                            );
+                                          if (ctx && fillContainerRef.current) {
+                                            const rect =
+                                              fillContainerRef.current.getBoundingClientRect();
+                                            ctx.clearRect(
+                                              0,
+                                              0,
+                                              rect.width,
+                                              rect.height,
+                                            );
+                                          }
+                                        }}
+                                        className={`p-2.5 rounded-full transition-all duration-200 group relative bg-white text-black shadow-lg`}
+                                        title="Selection Tool"
+                                      >
+                                        <svg
+                                          width="20"
+                                          height="20"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        >
+                                          <rect
+                                            x="3"
+                                            y="3"
+                                            width="18"
+                                            height="18"
+                                            rx="2"
+                                            ry="2"
+                                          ></rect>
+                                        </svg>
+                                        <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                          Selection Tool
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )}
 
                                 <canvas
                                   ref={fillCanvasRef}
                                   className="absolute inset-0 w-full h-full touch-none"
                                   style={{
-                                    pointerEvents: selectedFeature === 'reimagine' && reimagineSelectionConfirmed ? 'none' : 'auto',
-                                    userSelect: 'none',
-                                    backgroundColor: 'transparent',
-                                    mixBlendMode: 'normal',
-                                    cursor: selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle'
-                                      ? (isDrawingRectangle ? 'crosshair' : (reimagineLiveBounds || reimagineSelectionBounds ? 'move' : 'crosshair'))
-                                      : 'crosshair'
+                                    pointerEvents:
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                        ? "none"
+                                        : "auto",
+                                    userSelect: "none",
+                                    backgroundColor: "transparent",
+                                    mixBlendMode: "normal",
+                                    cursor:
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                        ? isDrawingRectangle
+                                          ? "crosshair"
+                                          : reimagineLiveBounds ||
+                                              reimagineSelectionBounds
+                                            ? "move"
+                                            : "crosshair"
+                                        : "crosshair",
                                   }}
                                   onMouseDown={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     e.preventDefault();
                                     const p = pointFromMouseEvent(e);
 
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
                                       // Check if clicking inside existing selection
-                                      const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                      if (bounds &&
-                                        p.x >= bounds.x && p.x <= bounds.x + bounds.width &&
-                                        p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
+                                      const bounds =
+                                        reimagineLiveBounds ||
+                                        reimagineSelectionBounds;
+                                      if (
+                                        bounds &&
+                                        p.x >= bounds.x &&
+                                        p.x <= bounds.x + bounds.width &&
+                                        p.y >= bounds.y &&
+                                        p.y <= bounds.y + bounds.height
+                                      ) {
                                         // Start dragging
                                         setIsDraggingSelection(true);
-                                        setDragStart({ x: p.x - bounds.x, y: p.y - bounds.y });
+                                        setDragStart({
+                                          x: p.x - bounds.x,
+                                          y: p.y - bounds.y,
+                                        });
                                       } else {
                                         // Start drawing new rectangle
                                         setIsDrawingRectangle(true);
@@ -5675,10 +7969,19 @@ const EditImageInterface: React.FC = () => {
                                         setReimagineSelectionBounds(null);
                                         setHasMask(false);
                                         // Clear canvas
-                                        const ctx = fillCanvasRef.current?.getContext('2d');
+                                        const ctx =
+                                          fillCanvasRef.current?.getContext(
+                                            "2d",
+                                          );
                                         if (ctx && fillContainerRef.current) {
-                                          const rect = fillContainerRef.current.getBoundingClientRect();
-                                          ctx.clearRect(0, 0, rect.width, rect.height);
+                                          const rect =
+                                            fillContainerRef.current.getBoundingClientRect();
+                                          ctx.clearRect(
+                                            0,
+                                            0,
+                                            rect.width,
+                                            rect.height,
+                                          );
                                         }
                                       }
                                     } else {
@@ -5687,39 +7990,84 @@ const EditImageInterface: React.FC = () => {
                                     }
                                   }}
                                   onMouseMove={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     e.preventDefault();
                                     const p = pointFromMouseEvent(e);
 
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                      if (isDraggingSelection && dragStart && (reimagineLiveBounds || reimagineSelectionBounds)) {
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
+                                      if (
+                                        isDraggingSelection &&
+                                        dragStart &&
+                                        (reimagineLiveBounds ||
+                                          reimagineSelectionBounds)
+                                      ) {
                                         // Dragging existing selection
-                                        const bounds = reimagineLiveBounds || reimagineSelectionBounds;
+                                        const bounds =
+                                          reimagineLiveBounds ||
+                                          reimagineSelectionBounds;
                                         if (bounds) {
-                                          const containerWidth = fillContainerRef.current?.getBoundingClientRect().width || 0;
-                                          const containerHeight = fillContainerRef.current?.getBoundingClientRect().height || 0;
-                                          const newX = Math.max(0, Math.min(p.x - dragStart.x, containerWidth - bounds.width));
-                                          const newY = Math.max(0, Math.min(p.y - dragStart.y, containerHeight - bounds.height));
+                                          const containerWidth =
+                                            fillContainerRef.current?.getBoundingClientRect()
+                                              .width || 0;
+                                          const containerHeight =
+                                            fillContainerRef.current?.getBoundingClientRect()
+                                              .height || 0;
+                                          const newX = Math.max(
+                                            0,
+                                            Math.min(
+                                              p.x - dragStart.x,
+                                              containerWidth - bounds.width,
+                                            ),
+                                          );
+                                          const newY = Math.max(
+                                            0,
+                                            Math.min(
+                                              p.y - dragStart.y,
+                                              containerHeight - bounds.height,
+                                            ),
+                                          );
                                           setReimagineLiveBounds({
                                             x: newX,
                                             y: newY,
                                             width: bounds.width,
-                                            height: bounds.height
+                                            height: bounds.height,
                                           });
                                           // Update canvas mask - Do NOT draw white fill
-                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          const ctx =
+                                            fillCanvasRef.current?.getContext(
+                                              "2d",
+                                            );
                                           if (ctx) {
-                                            ctx.clearRect(0, 0, containerWidth, containerHeight);
+                                            ctx.clearRect(
+                                              0,
+                                              0,
+                                              containerWidth,
+                                              containerHeight,
+                                            );
                                           }
                                         }
-                                      } else if (isDrawingRectangle && rectangleStart) {
+                                      } else if (
+                                        isDrawingRectangle &&
+                                        rectangleStart
+                                      ) {
                                         // Drawing new rectangle
                                         setRectangleCurrent(p);
                                         const bounds = {
                                           x: Math.min(rectangleStart.x, p.x),
                                           y: Math.min(rectangleStart.y, p.y),
-                                          width: Math.abs(p.x - rectangleStart.x),
-                                          height: Math.abs(p.y - rectangleStart.y)
+                                          width: Math.abs(
+                                            p.x - rectangleStart.x,
+                                          ),
+                                          height: Math.abs(
+                                            p.y - rectangleStart.y,
+                                          ),
                                         };
                                         setReimagineLiveBounds(bounds);
                                       }
@@ -5729,83 +8077,157 @@ const EditImageInterface: React.FC = () => {
                                     }
                                   }}
                                   onMouseUp={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     e.preventDefault();
 
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
                                       if (isDraggingSelection) {
                                         setIsDraggingSelection(false);
                                         setDragStart(null);
                                         // Finalize dragged position
                                         if (reimagineLiveBounds) {
-                                          setReimagineSelectionBounds(reimagineLiveBounds);
+                                          setReimagineSelectionBounds(
+                                            reimagineLiveBounds,
+                                          );
                                         }
-                                      } else if (isDrawingRectangle && rectangleStart && rectangleCurrent) {
+                                      } else if (
+                                        isDrawingRectangle &&
+                                        rectangleStart &&
+                                        rectangleCurrent
+                                      ) {
                                         setIsDrawingRectangle(false);
                                         // Finalize rectangle
                                         let bounds = {
-                                          x: Math.min(rectangleStart.x, rectangleCurrent.x),
-                                          y: Math.min(rectangleStart.y, rectangleCurrent.y),
-                                          width: Math.abs(rectangleCurrent.x - rectangleStart.x),
-                                          height: Math.abs(rectangleCurrent.y - rectangleStart.y)
+                                          x: Math.min(
+                                            rectangleStart.x,
+                                            rectangleCurrent.x,
+                                          ),
+                                          y: Math.min(
+                                            rectangleStart.y,
+                                            rectangleCurrent.y,
+                                          ),
+                                          width: Math.abs(
+                                            rectangleCurrent.x -
+                                              rectangleStart.x,
+                                          ),
+                                          height: Math.abs(
+                                            rectangleCurrent.y -
+                                              rectangleStart.y,
+                                          ),
                                         };
 
                                         // Check for Tap (very small movement) -> Create 1024x1024 selection
-                                        const dist = Math.sqrt(Math.pow(rectangleCurrent.x - rectangleStart.x, 2) + Math.pow(rectangleCurrent.y - rectangleStart.y, 2));
+                                        const dist = Math.sqrt(
+                                          Math.pow(
+                                            rectangleCurrent.x -
+                                              rectangleStart.x,
+                                            2,
+                                          ) +
+                                            Math.pow(
+                                              rectangleCurrent.y -
+                                                rectangleStart.y,
+                                              2,
+                                            ),
+                                        );
                                         if (dist < 10) {
                                           // It's a tap! Create 1024x1024 selection centered on tap
-                                          const container = fillContainerRef.current;
+                                          const container =
+                                            fillContainerRef.current;
                                           const canvas = fillCanvasRef.current;
-                                          if (container && canvas && inputNaturalSize.width > 0) {
-                                            const rect = container.getBoundingClientRect();
+                                          if (
+                                            container &&
+                                            canvas &&
+                                            inputNaturalSize.width > 0
+                                          ) {
+                                            const rect =
+                                              container.getBoundingClientRect();
 
                                             // Calculate actual rendered image dimensions (object-contain)
-                                            const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
-                                            const containerAspect = rect.width / rect.height;
+                                            const imgAspect =
+                                              inputNaturalSize.width /
+                                              inputNaturalSize.height;
+                                            const containerAspect =
+                                              rect.width / rect.height;
 
                                             let renderWidth, renderHeight; // offsetX, offsetY not needed for scale, but needed for bounds clamping if we were strict
 
                                             if (containerAspect > imgAspect) {
                                               // Container is wider than image - image is height-constrained
                                               renderHeight = rect.height;
-                                              renderWidth = rect.height * imgAspect;
+                                              renderWidth =
+                                                rect.height * imgAspect;
                                             } else {
                                               // Container is taller than image - image is width-constrained
                                               renderWidth = rect.width;
-                                              renderHeight = rect.width / imgAspect;
+                                              renderHeight =
+                                                rect.width / imgAspect;
                                             }
 
                                             // Uniform scale factor
-                                            const scale = renderWidth / inputNaturalSize.width;
+                                            const scale =
+                                              renderWidth /
+                                              inputNaturalSize.width;
 
                                             // Target size in canvas pixels (representing 1024x1024 on image)
                                             const targetSize = 1024 * scale;
 
                                             // Center on tap location (rectangleStart)
-                                            let newX = rectangleStart.x - (targetSize / 2);
-                                            let newY = rectangleStart.y - (targetSize / 2);
+                                            let newX =
+                                              rectangleStart.x - targetSize / 2;
+                                            let newY =
+                                              rectangleStart.y - targetSize / 2;
 
-                                            // Clamp to canvas bounds (allowing it to go into letterboxed area is fine, 
+                                            // Clamp to canvas bounds (allowing it to go into letterboxed area is fine,
                                             // but ideally we clamp to the image area? For now clamp to canvas/container)
-                                            newX = Math.max(0, Math.min(newX, rect.width - targetSize));
-                                            newY = Math.max(0, Math.min(newY, rect.height - targetSize));
+                                            newX = Math.max(
+                                              0,
+                                              Math.min(
+                                                newX,
+                                                rect.width - targetSize,
+                                              ),
+                                            );
+                                            newY = Math.max(
+                                              0,
+                                              Math.min(
+                                                newY,
+                                                rect.height - targetSize,
+                                              ),
+                                            );
 
                                             bounds = {
                                               x: newX,
                                               y: newY,
                                               width: targetSize,
-                                              height: targetSize
+                                              height: targetSize,
                                             };
                                           }
                                         }
 
-                                        if (bounds.width > 10 && bounds.height > 10) {
+                                        if (
+                                          bounds.width > 10 &&
+                                          bounds.height > 10
+                                        ) {
                                           setReimagineLiveBounds(bounds);
                                           setReimagineSelectionBounds(bounds);
                                           // Do NOT draw white fill on canvas
-                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          const ctx =
+                                            fillCanvasRef.current?.getContext(
+                                              "2d",
+                                            );
                                           if (ctx) {
-                                            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                                            ctx.clearRect(
+                                              0,
+                                              0,
+                                              ctx.canvas.width,
+                                              ctx.canvas.height,
+                                            );
                                             setHasMask(true);
                                           }
                                         }
@@ -5818,15 +8240,24 @@ const EditImageInterface: React.FC = () => {
                                     }
                                   }}
                                   onMouseLeave={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     e.preventDefault();
 
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
                                       if (isDraggingSelection) {
                                         setIsDraggingSelection(false);
                                         setDragStart(null);
                                         if (reimagineLiveBounds) {
-                                          setReimagineSelectionBounds(reimagineLiveBounds);
+                                          setReimagineSelectionBounds(
+                                            reimagineLiveBounds,
+                                          );
                                         }
                                       }
                                       if (isDrawingRectangle) {
@@ -5839,16 +8270,32 @@ const EditImageInterface: React.FC = () => {
                                     }
                                   }}
                                   onTouchStart={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     // e.preventDefault(); // Removed to fix passive event listener error; touch-action: none handles this
                                     const p = pointFromTouchEvent(e);
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                      const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                      if (bounds &&
-                                        p.x >= bounds.x && p.x <= bounds.x + bounds.width &&
-                                        p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
+                                      const bounds =
+                                        reimagineLiveBounds ||
+                                        reimagineSelectionBounds;
+                                      if (
+                                        bounds &&
+                                        p.x >= bounds.x &&
+                                        p.x <= bounds.x + bounds.width &&
+                                        p.y >= bounds.y &&
+                                        p.y <= bounds.y + bounds.height
+                                      ) {
                                         setIsDraggingSelection(true);
-                                        setDragStart({ x: p.x - bounds.x, y: p.y - bounds.y });
+                                        setDragStart({
+                                          x: p.x - bounds.x,
+                                          y: p.y - bounds.y,
+                                        });
                                       } else {
                                         setIsDrawingRectangle(true);
                                         setRectangleStart(p);
@@ -5859,31 +8306,81 @@ const EditImageInterface: React.FC = () => {
                                     }
                                   }}
                                   onTouchMove={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     // e.preventDefault(); // Removed to fix passive event listener error
                                     const p = pointFromTouchEvent(e);
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
-                                      if (isDraggingSelection && dragStart && (reimagineLiveBounds || reimagineSelectionBounds)) {
-                                        const bounds = reimagineLiveBounds || reimagineSelectionBounds;
-                                        const containerWidth = fillContainerRef.current?.getBoundingClientRect().width || 0;
-                                        const containerHeight = fillContainerRef.current?.getBoundingClientRect().height || 0;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
+                                      if (
+                                        isDraggingSelection &&
+                                        dragStart &&
+                                        (reimagineLiveBounds ||
+                                          reimagineSelectionBounds)
+                                      ) {
+                                        const bounds =
+                                          reimagineLiveBounds ||
+                                          reimagineSelectionBounds;
+                                        const containerWidth =
+                                          fillContainerRef.current?.getBoundingClientRect()
+                                            .width || 0;
+                                        const containerHeight =
+                                          fillContainerRef.current?.getBoundingClientRect()
+                                            .height || 0;
                                         if (bounds) {
-                                          const newX = Math.max(0, Math.min(p.x - dragStart.x, containerWidth - bounds.width));
-                                          const newY = Math.max(0, Math.min(p.y - dragStart.y, containerHeight - bounds.height));
-                                          setReimagineLiveBounds({ x: newX, y: newY, width: bounds.width, height: bounds.height });
+                                          const newX = Math.max(
+                                            0,
+                                            Math.min(
+                                              p.x - dragStart.x,
+                                              containerWidth - bounds.width,
+                                            ),
+                                          );
+                                          const newY = Math.max(
+                                            0,
+                                            Math.min(
+                                              p.y - dragStart.y,
+                                              containerHeight - bounds.height,
+                                            ),
+                                          );
+                                          setReimagineLiveBounds({
+                                            x: newX,
+                                            y: newY,
+                                            width: bounds.width,
+                                            height: bounds.height,
+                                          });
                                           // Do NOT draw white fill on canvas
-                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          const ctx =
+                                            fillCanvasRef.current?.getContext(
+                                              "2d",
+                                            );
                                           if (ctx) {
-                                            ctx.clearRect(0, 0, containerWidth, containerHeight);
+                                            ctx.clearRect(
+                                              0,
+                                              0,
+                                              containerWidth,
+                                              containerHeight,
+                                            );
                                           }
                                         }
-                                      } else if (isDrawingRectangle && rectangleStart) {
+                                      } else if (
+                                        isDrawingRectangle &&
+                                        rectangleStart
+                                      ) {
                                         setRectangleCurrent(p);
                                         const bounds = {
                                           x: Math.min(rectangleStart.x, p.x),
                                           y: Math.min(rectangleStart.y, p.y),
-                                          width: Math.abs(p.x - rectangleStart.x),
-                                          height: Math.abs(p.y - rectangleStart.y)
+                                          width: Math.abs(
+                                            p.x - rectangleStart.x,
+                                          ),
+                                          height: Math.abs(
+                                            p.y - rectangleStart.y,
+                                          ),
                                         };
                                         setReimagineLiveBounds(bounds);
                                       }
@@ -5892,78 +8389,153 @@ const EditImageInterface: React.FC = () => {
                                     }
                                   }}
                                   onTouchEnd={(e) => {
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionConfirmed) return;
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionConfirmed
+                                    )
+                                      return;
                                     // e.preventDefault(); // Removed to fix passive event listener error
 
-                                    if (selectedFeature === 'reimagine' && reimagineSelectionMode === 'rectangle') {
+                                    if (
+                                      selectedFeature === "reimagine" &&
+                                      reimagineSelectionMode === "rectangle"
+                                    ) {
                                       if (isDraggingSelection) {
                                         setIsDraggingSelection(false);
                                         setDragStart(null);
-                                        if (reimagineLiveBounds) setReimagineSelectionBounds(reimagineLiveBounds);
-                                      } else if (isDrawingRectangle && rectangleStart && rectangleCurrent) {
+                                        if (reimagineLiveBounds)
+                                          setReimagineSelectionBounds(
+                                            reimagineLiveBounds,
+                                          );
+                                      } else if (
+                                        isDrawingRectangle &&
+                                        rectangleStart &&
+                                        rectangleCurrent
+                                      ) {
                                         setIsDrawingRectangle(false);
                                         // Finalize rectangle
                                         let bounds = {
-                                          x: Math.min(rectangleStart.x, rectangleCurrent.x),
-                                          y: Math.min(rectangleStart.y, rectangleCurrent.y),
-                                          width: Math.abs(rectangleCurrent.x - rectangleStart.x),
-                                          height: Math.abs(rectangleCurrent.y - rectangleStart.y)
+                                          x: Math.min(
+                                            rectangleStart.x,
+                                            rectangleCurrent.x,
+                                          ),
+                                          y: Math.min(
+                                            rectangleStart.y,
+                                            rectangleCurrent.y,
+                                          ),
+                                          width: Math.abs(
+                                            rectangleCurrent.x -
+                                              rectangleStart.x,
+                                          ),
+                                          height: Math.abs(
+                                            rectangleCurrent.y -
+                                              rectangleStart.y,
+                                          ),
                                         };
 
                                         // Check for Tap (very small movement) -> Create 1024x1024 selection
-                                        const dist = Math.sqrt(Math.pow(rectangleCurrent.x - rectangleStart.x, 2) + Math.pow(rectangleCurrent.y - rectangleStart.y, 2));
+                                        const dist = Math.sqrt(
+                                          Math.pow(
+                                            rectangleCurrent.x -
+                                              rectangleStart.x,
+                                            2,
+                                          ) +
+                                            Math.pow(
+                                              rectangleCurrent.y -
+                                                rectangleStart.y,
+                                              2,
+                                            ),
+                                        );
                                         if (dist < 10) {
                                           // It's a tap! Create 1024x1024 selection centered on tap
-                                          const container = fillContainerRef.current;
+                                          const container =
+                                            fillContainerRef.current;
                                           const canvas = fillCanvasRef.current;
-                                          if (container && canvas && inputNaturalSize.width > 0) {
-                                            const rect = container.getBoundingClientRect();
+                                          if (
+                                            container &&
+                                            canvas &&
+                                            inputNaturalSize.width > 0
+                                          ) {
+                                            const rect =
+                                              container.getBoundingClientRect();
 
                                             // Calculate actual rendered image dimensions (object-contain)
-                                            const imgAspect = inputNaturalSize.width / inputNaturalSize.height;
-                                            const containerAspect = rect.width / rect.height;
+                                            const imgAspect =
+                                              inputNaturalSize.width /
+                                              inputNaturalSize.height;
+                                            const containerAspect =
+                                              rect.width / rect.height;
 
                                             let renderWidth, renderHeight;
 
                                             if (containerAspect > imgAspect) {
                                               // Container is wider than image - image is height-constrained
                                               renderHeight = rect.height;
-                                              renderWidth = rect.height * imgAspect;
+                                              renderWidth =
+                                                rect.height * imgAspect;
                                             } else {
                                               // Container is taller than image - image is width-constrained
                                               renderWidth = rect.width;
-                                              renderHeight = rect.width / imgAspect;
+                                              renderHeight =
+                                                rect.width / imgAspect;
                                             }
 
                                             // Uniform scale factor
-                                            const scale = renderWidth / inputNaturalSize.width;
+                                            const scale =
+                                              renderWidth /
+                                              inputNaturalSize.width;
 
                                             // Target size in canvas pixels (representing 1024x1024 on image)
                                             const targetSize = 1024 * scale;
 
                                             // Center on tap location (rectangleStart)
-                                            let newX = rectangleStart.x - (targetSize / 2);
-                                            let newY = rectangleStart.y - (targetSize / 2);
+                                            let newX =
+                                              rectangleStart.x - targetSize / 2;
+                                            let newY =
+                                              rectangleStart.y - targetSize / 2;
 
                                             // Clamp to canvas bounds
-                                            newX = Math.max(0, Math.min(newX, rect.width - targetSize));
-                                            newY = Math.max(0, Math.min(newY, rect.height - targetSize));
+                                            newX = Math.max(
+                                              0,
+                                              Math.min(
+                                                newX,
+                                                rect.width - targetSize,
+                                              ),
+                                            );
+                                            newY = Math.max(
+                                              0,
+                                              Math.min(
+                                                newY,
+                                                rect.height - targetSize,
+                                              ),
+                                            );
 
                                             bounds = {
                                               x: newX,
                                               y: newY,
                                               width: targetSize,
-                                              height: targetSize
+                                              height: targetSize,
                                             };
                                           }
                                         }
 
-                                        if (bounds.width > 10 && bounds.height > 10) {
+                                        if (
+                                          bounds.width > 10 &&
+                                          bounds.height > 10
+                                        ) {
                                           setReimagineLiveBounds(bounds);
                                           setReimagineSelectionBounds(bounds);
-                                          const ctx = fillCanvasRef.current?.getContext('2d');
+                                          const ctx =
+                                            fillCanvasRef.current?.getContext(
+                                              "2d",
+                                            );
                                           if (ctx) {
-                                            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                                            ctx.clearRect(
+                                              0,
+                                              0,
+                                              ctx.canvas.width,
+                                              ctx.canvas.height,
+                                            );
                                             setHasMask(true);
                                           }
                                         }
@@ -5977,52 +8549,67 @@ const EditImageInterface: React.FC = () => {
                                 />
 
                                 {/* Reimagine: Visual Selection Feedback */}
-                                {selectedFeature === 'reimagine' && (reimagineLiveBounds || reimagineSelectionBounds) && (
-                                  <>
-                                    {/* Dark overlay on non-selected areas - Removed gradient, using box-shadow on selection box instead for linearity */}
+                                {selectedFeature === "reimagine" &&
+                                  (reimagineLiveBounds ||
+                                    reimagineSelectionBounds) && (
+                                    <>
+                                      {/* Dark overlay on non-selected areas - Removed gradient, using box-shadow on selection box instead for linearity */}
 
-                                    {/* Selection Bounding Box Border */}
-                                    {(reimagineLiveBounds || reimagineSelectionBounds) && (
-                                      <div
-                                        className="absolute pointer-events-none z-16 border border-white/50 rounded-lg transition-all duration-200"
-                                        style={{
-                                          left: `${(reimagineLiveBounds || reimagineSelectionBounds)?.x || 0}px`,
-                                          top: `${(reimagineLiveBounds || reimagineSelectionBounds)?.y || 0}px`,
-                                          width: `${(reimagineLiveBounds || reimagineSelectionBounds)?.width || 0}px`,
-                                          height: `${(reimagineLiveBounds || reimagineSelectionBounds)?.height || 0}px`,
-                                          boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)', // Darken outside
-                                        }}
-                                      >
-                                        {/* Minimalist Corner Handles */}
-                                        <div className="absolute -top-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
-                                        <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
-                                        <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                      {/* Selection Bounding Box Border */}
+                                      {(reimagineLiveBounds ||
+                                        reimagineSelectionBounds) && (
+                                        <div
+                                          className="absolute pointer-events-none z-16 border border-white/50 rounded-lg transition-all duration-200"
+                                          style={{
+                                            left: `${(reimagineLiveBounds || reimagineSelectionBounds)?.x || 0}px`,
+                                            top: `${(reimagineLiveBounds || reimagineSelectionBounds)?.y || 0}px`,
+                                            width: `${(reimagineLiveBounds || reimagineSelectionBounds)?.width || 0}px`,
+                                            height: `${(reimagineLiveBounds || reimagineSelectionBounds)?.height || 0}px`,
+                                            boxShadow:
+                                              "0 0 0 9999px rgba(0, 0, 0, 0.6)", // Darken outside
+                                          }}
+                                        >
+                                          {/* Minimalist Corner Handles */}
+                                          <div className="absolute -top-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                          <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-white rounded-full shadow-sm" />
+                                          <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
 
-                                        {/* Animated border effect - Linear Shadow (Clean Border) */}
-                                        <div className="absolute inset-0 border border-white/80 rounded-lg shadow-none" />
-                                      </div>
-                                    )}
-                                  </>
-                                )}
+                                          {/* Animated border effect - Linear Shadow (Clean Border) */}
+                                          <div className="absolute inset-0 border border-white/80 rounded-lg shadow-none" />
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
 
                                 {/* Reimagine: Confirm Selection Button - Removed in favor of direct prompt interaction */}
-                                {selectedFeature === 'reimagine' && hasMask && !reimagineSelectionConfirmed && (
-                                  <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                    <button
-                                      onClick={() => {
-                                        setReimagineSelectionConfirmed(true);
-                                      }}
-                                      className="px-6 py-2.5 bg-white text-black hover:bg-gray-100 rounded-full shadow-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2"
-                                    >
-                                      <span>Continue</span>
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M5 12h14"></path>
-                                        <path d="m12 5 7 7-7 7"></path>
-                                      </svg>
-                                    </button>
-                                  </div>
-                                )}
+                                {selectedFeature === "reimagine" &&
+                                  hasMask &&
+                                  !reimagineSelectionConfirmed && (
+                                    <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                      <button
+                                        onClick={() => {
+                                          setReimagineSelectionConfirmed(true);
+                                        }}
+                                        className="px-6 py-2.5 bg-white text-black hover:bg-gray-100 rounded-full shadow-xl font-medium transition-all transform hover:scale-105 flex items-center gap-2"
+                                      >
+                                        <span>Continue</span>
+                                        <svg
+                                          width="16"
+                                          height="16"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2.5"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        >
+                                          <path d="M5 12h14"></path>
+                                          <path d="m12 5 7 7-7 7"></path>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  )}
 
                                 {/* Reimagine: Floating Prompt Input - Clean Glassmorphism */}
                                 {/* {selectedFeature === 'reimagine' && reimagineSelectionConfirmed && reimagineSelectionBounds && (
@@ -6099,34 +8686,68 @@ const EditImageInterface: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                          )} */ }
+                          )} */}
                               </div>
                             )}
                           </>
                         )}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center w-full h-full p-4 md:p-8">
+                      <div className="flex flex-col items-center justify-center md:justify-start xl:justify-center w-full h-full min-h-[24rem] md:min-h-[24rem] lg:min-h-[28rem] xl:min-h-[32rem] p-4 md:px-8 md:pt-2 lg:pt-3 xl:pt-6">
                         <div
-                          className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] hover:bg-white/[0.04] transition-all cursor-pointer group"
+                          className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] md:min-h-[14rem] lg:min-h-[17rem] xl:min-h-0 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] hover:bg-white/[0.04] transition-all cursor-pointer group"
                           onClick={handleOpenUploadModal}
                         >
                           <div className="w-12 h-12 mb-6 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform duration-300">
-                            <svg className="w-6 h-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z" />
-                              <circle cx="12" cy="13" r="3" stroke="currentColor" strokeWidth="1.5" />
-                              <path d="M12 10v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            <svg
+                              className="w-6 h-6 text-white/60"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.8}
+                            >
+                              <path
+                                d="M12 5v14"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <circle
+                                cx="12"
+                                cy="13"
+                                r="3"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                              />
+                              <path
+                                d="M5 12h14"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
                             </svg>
                           </div>
 
-                          <h3 className="text-xl md:text-2xl font-semibold text-white mb-2">Drop your image here</h3>
+                          <h3 className="text-xl md:text-2xl font-semibold text-white mb-2">
+                            Drop your image here
+                          </h3>
                           <p className="text-sm md:text-base text-white/40 mb-8">
-                            or <span className="text-blue-400 font-medium">click to browse</span> from your computer
+                            or{" "}
+                            <span className="text-blue-400 font-medium">
+                              click to browse
+                            </span>{" "}
+                            from your computer
                           </p>
 
                           <div className="flex flex-wrap items-center justify-center gap-2 px-6">
-                            {['PNG', 'JPG', 'up to 50MB'].map((label) => (
-                              <span key={label} className="px-2.5 py-1 text-[10px] font-bold text-white/30 bg-white/5 rounded-md border border-white/5 tracking-wider">
+                            {["PNG", "JPG", "up to 50MB"].map((label) => (
+                              <span
+                                key={label}
+                                className="px-2.5 py-1 text-[10px] font-bold text-white/30 bg-white/5 rounded-md border border-white/5 tracking-wider"
+                              >
                                 {label}
                               </span>
                             ))}
@@ -6140,95 +8761,130 @@ const EditImageInterface: React.FC = () => {
                 {/* Fill mask overlay moved to input area */}
                 {processing[selectedFeature] && (
                   <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-                    <img src="/styles/Logo.gif" alt="Generating..." className="w-32 h-32 md:w-48 md:h-48 opacity-90" />
+                    <img
+                      src="/styles/Logo.gif"
+                      alt="Generating..."
+                      className="w-32 h-32 md:w-48 md:h-48 opacity-90"
+                    />
                   </div>
                 )}
               </div>
 
               {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
-              {selectedFeature === 'live-chat' && (
+              {selectedFeature === "live-chat" && liveHistory.length > 0 && (
                 <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
-                  <div className="hidden md:block">
-                    <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">Secondary Preview</h3>
+                  {/* <div className="hidden md:block">
+                    <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
+                      Secondary Preview
+                    </h3>
                     <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden aspect-square flex items-center justify-center mb-2">
-                      {outputs['live-chat'] ? (
-                        <img src={normalizeEditImageUrl(outputs['live-chat'])} alt="Current Preview" className="w-full h-full object-contain" />
+                      {outputs["live-chat"] ? (
+                        <img
+                          src={normalizeEditImageUrl(outputs["live-chat"])}
+                          alt="Current Preview"
+                          className="w-full h-full object-contain"
+                        />
                       ) : (
-                        <div className="text-white/20 text-xs">No output yet</div>
+                        <div className="text-white/20 text-xs">
+                          No output yet
+                        </div>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="flex flex-col flex-1 min-h-0">
-                    <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">History</h3>
-                    <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
+                    <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
+                      Preview
+                    </h3>
+                    <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
                       <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
                         {/* Generated images (latest first) */}
-                        {(liveHistory || []).slice().reverse().map((item, revIdx) => {
-                          // revIdx 0 is latest; compute original index
-                          const origIdx = liveHistory.length - 1 - revIdx;
-                          const isActive = outputs['live-chat'] === item.url && activeLiveIndex === origIdx;
-                          const isHovered = hoveredThumbnailIdx === origIdx;
-                          const showMenu = showThumbnailMenuIdx === origIdx;
+                        {(liveHistory || [])
+                          .filter((item) => item.url !== outputs["live-chat"])
+                          .slice()
+                          .reverse()
+                          .map((item, revIdx) => {
+                            // revIdx 0 is latest; compute original index
+                            const origIdx = liveHistory.length - 1 - revIdx;
+                            const isActive =
+                              outputs["live-chat"] === item.url &&
+                              activeLiveIndex === origIdx;
+                            const isHovered = hoveredThumbnailIdx === origIdx;
+                            const showMenu = showThumbnailMenuIdx === origIdx;
 
-                          return (
-                            <button
-                              key={`gen-${origIdx}-${item.url}`}
-                              onClick={() => {
-                                setActiveLiveIndex(origIdx);
-                                setOutputs((prev) => ({ ...prev, ['live-chat']: item.url }));
-                                setInputs((prev) => ({ ...prev, ['live-chat']: item.url }));
-                                setCurrentHistoryId(item.id || null);
-                              }}
-                              className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? 'border-white/50' : 'border-white/20 hover:border-white/40'}`}
-                              title={`Generation ${origIdx + 1}`}
-                            >
-                              <img src={normalizeEditImageUrl(item.url)} alt={`Gen ${origIdx + 1}`} className="w-full h-full object-cover" />
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={`gen-${origIdx}-${item.url}`}
+                                onClick={() => {
+                                  setActiveLiveIndex(origIdx);
+                                  setOutputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: item.url,
+                                  }));
+                                  setInputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: item.url,
+                                  }));
+                                  setCurrentHistoryId(item.id || null);
+                                }}
+                                className={`bg-white/5 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden transition-all ${isActive ? "border-white/50" : "border-white/20 hover:border-white/40"}`}
+                                title={`Generation ${origIdx + 1}`}
+                              >
+                                <img
+                                  src={normalizeEditImageUrl(item.url)}
+                                  alt={`Gen ${origIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            );
+                          })}
 
                         {/* Input image thumbnail shown below generated images if present and not duplicate */}
-                        {(liveOriginalInput || inputs['live-chat']) && (
+                        {liveOriginalInput &&
                           (() => {
-                            const inputUrl = (liveOriginalInput || inputs['live-chat']) as string;
-                            const alreadyShown = liveHistory.length > 0 && liveHistory[liveHistory.length - 1]?.url === inputUrl;
+                            const inputUrl = liveOriginalInput as string;
+                            const alreadyShown =
+                              liveHistory.length > 0 &&
+                              liveHistory[liveHistory.length - 1]?.url ===
+                                inputUrl;
                             if (alreadyShown) return null;
-                            const isActiveInput = outputs['live-chat'] === inputUrl && activeLiveIndex === -1;
+                            const isActiveInput =
+                              outputs["live-chat"] === inputUrl &&
+                              activeLiveIndex === -1;
                             return (
                               <button
                                 key={`input-thumb`}
                                 onClick={() => {
                                   setActiveLiveIndex(-1);
-                                  setOutputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
-                                  setInputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+                                  setOutputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: inputUrl,
+                                  }));
+                                  setInputs((prev) => ({
+                                    ...prev,
+                                    ["live-chat"]: inputUrl,
+                                  }));
                                 }}
-                                className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? 'border-white/5' : 'border-white/10 hover:border-white/30'}`}
+                                className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? "border-white/5" : "border-white/10 hover:border-white/30"}`}
                                 title={`Input image`}
                               >
-                                <img src={normalizeEditImageUrl(inputUrl)} alt={`Input`} className="w-full h-full object-cover" />
+                                <img
+                                  src={normalizeEditImageUrl(inputUrl)}
+                                  alt={`Input`}
+                                  className="w-full h-full object-cover"
+                                />
                               </button>
                             );
-                          })()
-                        )}
+                          })()}
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-
             </div>
           </div>
-
         }
-        statusBar={
-          <EditImageStatusBar
-            isProcessing={Object.values(processing).some(p => p)}
-            statusText={`Processing: ${featureDisplayName[selectedFeature]}...`}
-            progress={65}
-            credits={creditBalance}
-          />
-        }
+        statusBar={null}
       />
     </div>
   );

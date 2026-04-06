@@ -150,7 +150,7 @@ const WildMindAIAPPS = () => {
           style={{
             scrollSnapType: "x mandatory",
             WebkitOverflowScrolling: "touch",
-            touchAction: "pan-x",
+            touchAction: "pan-x pan-y pinch-zoom",
             overscrollBehaviorX: "contain",
           }}
         >

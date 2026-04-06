@@ -36,14 +36,19 @@ export const fetchCurrentSubscription = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get("/api/subscriptions/current");
-      return response.data;
+      return response.data?.data ?? null;
     } catch (error: any) {
-      if (error?.response?.status === 404) {
+      const status = error?.response?.status;
+      if (status === 404 || (status >= 500 && status <= 599)) {
         return null; // No subscription
       }
-      return rejectWithValue(error?.response?.data?.message || error.message || "Failed to fetch subscription");
+      return rejectWithValue(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to fetch subscription",
+      );
     }
-  }
+  },
 );
 
 // Create subscription
@@ -61,7 +66,7 @@ export const createSubscription = createAsyncThunk(
         billingAddress?: string;
       };
     },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const response = await api.post("/api/subscriptions/create", {
@@ -70,32 +75,46 @@ export const createSubscription = createAsyncThunk(
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error?.response?.data?.message || error.message || "Failed to create subscription");
+      return rejectWithValue(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to create subscription",
+      );
     }
-  }
+  },
 );
 
 // Cancel subscription
 export const cancelSubscription = createAsyncThunk(
   "subscription/cancel",
-  async ({ immediate = false }: { immediate?: boolean }, { rejectWithValue }) => {
+  async (
+    { immediate = false }: { immediate?: boolean },
+    { rejectWithValue },
+  ) => {
     try {
       const response = await api.post("/api/subscriptions/cancel", {
         immediate,
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error?.response?.data?.message || error.message || "Failed to cancel subscription");
+      return rejectWithValue(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to cancel subscription",
+      );
     }
-  }
+  },
 );
 
 // Change subscription plan
 export const changeSubscriptionPlan = createAsyncThunk(
   "subscription/changePlan",
   async (
-    { newPlanCode, immediate = true }: { newPlanCode: string; immediate?: boolean },
-    { rejectWithValue, getState }
+    {
+      newPlanCode,
+      immediate = true,
+    }: { newPlanCode: string; immediate?: boolean },
+    { rejectWithValue, getState },
   ) => {
     try {
       const state = getState() as RootState;
@@ -112,9 +131,13 @@ export const changeSubscriptionPlan = createAsyncThunk(
       });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error?.response?.data?.message || error.message || "Failed to change subscription plan");
+      return rejectWithValue(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to change subscription plan",
+      );
     }
-  }
+  },
 );
 
 const subscriptionSlice = createSlice({

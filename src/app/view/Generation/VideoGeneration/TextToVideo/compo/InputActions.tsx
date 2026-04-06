@@ -1,7 +1,6 @@
-
 import React from "react";
 import Image from "next/image";
-import { FilePlus2, FilePlay } from 'lucide-react';
+import { FilePlus2, FilePlay } from "lucide-react";
 import CameraMovementButton from "./CameraMovementButton";
 
 interface InputActionsProps {
@@ -14,8 +13,8 @@ interface InputActionsProps {
   onAddMovement: (movement: string) => void;
   references: string[];
   removeReference: (index: number) => void;
-  setUploadModalType: (type: 'reference' | 'image' | 'video') => void;
-  setUploadModalTarget: (target: 'first_frame' | 'last_frame') => void;
+  setUploadModalType: (type: "reference" | "image" | "video") => void;
+  setUploadModalTarget: (target: "first_frame" | "last_frame") => void;
   setIsUploadModalOpen: (open: boolean) => void;
   uploadedImages: string[];
   lastFrameImage?: string;
@@ -37,7 +36,7 @@ const InputActions: React.FC<InputActionsProps> = ({
   setIsUploadModalOpen,
   uploadedImages,
   lastFrameImage,
-  selectedResolution
+  selectedResolution,
 }) => {
   const hasImageToVideoSupport =
     currentModelCapabilities?.supportsImageToVideo ||
@@ -47,53 +46,75 @@ const InputActions: React.FC<InputActionsProps> = ({
     <>
       <div className="flex items-center gap-1 h-[40px]">
         {/* Camera Movements */}
-        {(
-          (generationMode === "text_to_video" && selectedModel === "T2V-01-Director") ||
-          (generationMode === "image_to_video" && selectedModel === "I2V-01-Director")
-        ) && (
-            <CameraMovementButton
-              selectedCameraMovements={selectedCameraMovements}
-              setSelectedCameraMovements={setSelectedCameraMovements}
-              onAddMovement={onAddMovement}
-            />
-          )}
+        {((generationMode === "text_to_video" &&
+          selectedModel === "T2V-01-Director") ||
+          (generationMode === "image_to_video" &&
+            selectedModel === "I2V-01-Director")) && (
+          <CameraMovementButton
+            selectedCameraMovements={selectedCameraMovements}
+            setSelectedCameraMovements={setSelectedCameraMovements}
+            onAddMovement={onAddMovement}
+          />
+        )}
 
         {/* References Upload */}
-        {(currentModelCapabilities.requiresReferenceImage) && (
+        {currentModelCapabilities.requiresReferenceImage && (
           <div className="relative">
             <button
-              className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
+              className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${
+                (generationMode === "image_to_video" &&
+                  selectedModel === "S2V-01" &&
+                  references.length >= 1) ||
                 (generationMode === "video_to_video" && references.length >= 4)
-                ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-white/10'
-                }`}
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-white/10"
+              }`}
               onClick={() => {
-                setUploadModalType('reference');
+                setUploadModalType("reference");
                 setIsUploadModalOpen(true);
               }}
-              disabled={(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                (generationMode === "video_to_video" && references.length >= 4)}
+              disabled={
+                (generationMode === "image_to_video" &&
+                  selectedModel === "S2V-01" &&
+                  references.length >= 1) ||
+                (generationMode === "video_to_video" && references.length >= 4)
+              }
             >
               <FilePlus2
                 size={16}
-                className={`transition-all duration-200 ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                  (generationMode === "video_to_video" && references.length >= 4)
-                  ? 'text-gray-400'
-                  : 'text-green-400'
-                  }`}
+                className={`transition-all duration-200 ${
+                  (generationMode === "image_to_video" &&
+                    selectedModel === "S2V-01" &&
+                    references.length >= 1) ||
+                  (generationMode === "video_to_video" &&
+                    references.length >= 4)
+                    ? "text-gray-400"
+                    : "text-green-400"
+                }`}
               />
             </button>
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-              {generationMode === "image_to_video" && selectedModel === "S2V-01" ? 'Upload character reference (1 max)' : 'Upload references'}
+              {generationMode === "image_to_video" && selectedModel === "S2V-01"
+                ? "Upload character reference (1 max)"
+                : "Upload references"}
             </div>
 
             {/* References Count Badge */}
             {references.length > 0 && (
-              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${(generationMode === "image_to_video" && selectedModel === "S2V-01" && references.length >= 1) ||
-                (generationMode === "video_to_video" && references.length >= 4)
-                ? 'bg-red-500' : 'bg-green-500'
-                }`}>
-                <span className="text-xs text-white font-bold">{references.length}</span>
+              <div
+                className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
+                  (generationMode === "image_to_video" &&
+                    selectedModel === "S2V-01" &&
+                    references.length >= 1) ||
+                  (generationMode === "video_to_video" &&
+                    references.length >= 4)
+                    ? "bg-red-500"
+                    : "bg-green-500"
+                }`}
+              >
+                <span className="text-xs text-white font-bold">
+                  {references.length}
+                </span>
               </div>
             )}
 
@@ -101,10 +122,10 @@ const InputActions: React.FC<InputActionsProps> = ({
             {references.length > 0 && (
               <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
                 <div className="text-xs text-white/60 mb-2">
-                  {generationMode === "image_to_video" && selectedModel === "S2V-01"
+                  {generationMode === "image_to_video" &&
+                  selectedModel === "S2V-01"
                     ? `Character Reference (${references.length}/1)`
-                    : `References (${references.length}/4)`
-                  }
+                    : `References (${references.length}/4)`}
                 </div>
                 <div className="space-y-2">
                   {references.map((ref, index) => (
@@ -116,7 +137,9 @@ const InputActions: React.FC<InputActionsProps> = ({
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <span className="text-xs text-white/80 flex-1">Reference {index + 1}</span>
+                      <span className="text-xs text-white/80 flex-1">
+                        Reference {index + 1}
+                      </span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -124,7 +147,13 @@ const InputActions: React.FC<InputActionsProps> = ({
                         }}
                         className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                        >
                           <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                       </button>
@@ -145,43 +174,57 @@ const InputActions: React.FC<InputActionsProps> = ({
               <button
                 className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
-                  setUploadModalType('image');
-                  setUploadModalTarget('first_frame');
+                  setUploadModalType("image");
+                  setUploadModalTarget("first_frame");
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2 size={16} className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? 'text-blue-300' : ''}`} />
+                <FilePlus2
+                  size={16}
+                  className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? "text-blue-300" : ""}`}
+                />
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">First Frame</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                First Frame
+              </div>
             </div>
-        )}
+          )}
 
         {/* MiniMax/I2V Direct Image Upload */}
-        {((selectedModel.includes("MiniMax") || selectedModel === "I2V-01-Director") &&
-          (currentModelCapabilities.requiresFirstFrame || currentModelCapabilities.supportsImageToVideo)) && (
+        {(selectedModel.includes("MiniMax") ||
+          selectedModel === "I2V-01-Director") &&
+          (currentModelCapabilities.requiresFirstFrame ||
+            currentModelCapabilities.supportsImageToVideo) && (
             <div className="relative">
               <button
                 className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
-                  setUploadModalType('image');
-                  setUploadModalTarget('first_frame');
+                  setUploadModalType("image");
+                  setUploadModalTarget("first_frame");
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2 size={16} className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? 'text-blue-300' : ''}`} />
+                <FilePlus2
+                  size={16}
+                  className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? "text-blue-300" : ""}`}
+                />
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">First Frame</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                First Frame
+              </div>
             </div>
           )}
 
         {/* Arrow (First -> Last Frame) */}
-        {(((selectedModel === "MiniMax-Hailuo-02") &&
+        {((selectedModel === "MiniMax-Hailuo-02" &&
           (selectedResolution === "768P" || selectedResolution === "1080P")) ||
           selectedModel.includes("veo3.1") ||
           selectedModel === "kling-o1" ||
           selectedModel.startsWith("ltx-2.3-fast") ||
           selectedModel.startsWith("ltx-2.3-pro") ||
-          (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
+          (selectedModel.includes("seedance") &&
+            !selectedModel.includes("pro-fast") &&
+            !selectedModel.includes("i2v"))) &&
           hasImageToVideoSupport && (
             <div className="flex items-center justify-center">
               <Image
@@ -195,43 +238,58 @@ const InputActions: React.FC<InputActionsProps> = ({
           )}
 
         {/* Last Frame Upload */}
-        {((((selectedModel === "MiniMax-Hailuo-02") &&
+        {((selectedModel === "MiniMax-Hailuo-02" &&
           (selectedResolution === "768P" || selectedResolution === "1080P")) ||
           selectedModel.includes("veo3.1") ||
           selectedModel === "kling-o1" ||
           selectedModel.startsWith("ltx-2.3-fast") ||
           selectedModel.startsWith("ltx-2.3-pro") ||
-          (selectedModel.includes('seedance') && !selectedModel.includes('pro-fast') && !selectedModel.includes('i2v'))) &&
-          hasImageToVideoSupport) && (
+          (selectedModel.includes("seedance") &&
+            !selectedModel.includes("pro-fast") &&
+            !selectedModel.includes("i2v"))) &&
+          hasImageToVideoSupport && (
             <div className="relative">
               <button
                 className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
-                  setUploadModalType('image');
-                  setUploadModalTarget('last_frame');
+                  setUploadModalType("image");
+                  setUploadModalTarget("last_frame");
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2 size={16} className={`text-white transition-all duration-200 ${lastFrameImage ? 'text-blue-300' : ''}`} />
+                <FilePlus2
+                  size={16}
+                  className={`text-white transition-all duration-200 ${lastFrameImage ? "text-blue-300" : ""}`}
+                />
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Last Frame (optional)</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                Last Frame (optional)
+              </div>
             </div>
           )}
 
         {/* Video Upload */}
-        {(currentModelCapabilities.supportsVideoToVideo || selectedModel === "wan-2.2-animate-replace" || selectedModel.startsWith('ltx-2.3-pro')) && (
+        {(currentModelCapabilities.supportsVideoToVideo ||
+          selectedModel === "wan-2.2-animate-replace" ||
+          selectedModel.startsWith("ltx-2.3-pro")) && (
           <div className="relative">
             <button
               className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
               onClick={() => {
-                setUploadModalType('video');
+                setUploadModalType("video");
                 setIsUploadModalOpen(true);
               }}
             >
-              <FilePlay size={16} className="text-white transition-all duration-200" />
+              <FilePlay
+                size={16}
+                className="text-white transition-all duration-200"
+              />
             </button>
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-              {selectedModel === "wan-2.2-animate-replace" && activeFeature === 'Animate' ? 'Upload video (mandatory)' : 'Upload video'}
+              {selectedModel === "wan-2.2-animate-replace" &&
+              activeFeature === "Animate"
+                ? "Upload video (mandatory)"
+                : "Upload video"}
             </div>
           </div>
         )}
