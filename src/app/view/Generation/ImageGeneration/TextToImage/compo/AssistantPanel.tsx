@@ -225,6 +225,19 @@ function formatMessageTime(value?: string | null): string {
   });
 }
 
+function formatThreadDateTime(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function attachmentIcon(attachment: AssistantAttachment) {
   if (attachment.type === "video") return <Film className="w-3 h-3" />;
   if (attachment.type === "audio") return <Music4 className="w-3 h-3" />;
@@ -565,6 +578,29 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
     if (textareaRef.current) textareaRef.current.style.height = "36px";
     setTimeout(() => textareaRef.current?.focus(), 0);
   };
+
+  const handleDeleteActiveThread = useCallback(async () => {
+    if (!activeThread) return;
+
+    const deletedThreadId = activeThread.id;
+
+    handleStartNewChat();
+    setThreads((prev) => prev.filter((item) => item.id !== deletedThreadId));
+
+    try {
+      const res = await fetch(`/api/assistant/threads/${deletedThreadId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete thread");
+      }
+    } catch (error) {
+      console.error("[AssistantPanel] Failed to delete thread", error);
+    } finally {
+      void loadThreads({ preserveDraft: true });
+    }
+  }, [activeThread, loadThreads]);
 
   const validateAttachmentSelection = (
     type: AssistantAttachment["type"],
@@ -909,11 +945,18 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                       <p className="text-[12.5px] text-[#F0F0F5] line-clamp-1 leading-5">
                         {thread.title}
                       </p>
-                      <span className="text-[10px] text-white/30">
-                        {thread.mode === "chat"
-                          ? getChatModelLabel(thread.modelId)
-                          : "Agent"}
-                      </span>
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-white/30">
+                        <span className="truncate">
+                          {thread.mode === "chat"
+                            ? getChatModelLabel(thread.modelId)
+                            : "Agent"}
+                        </span>
+                        <span className="shrink-0 text-right">
+                          {formatThreadDateTime(
+                            thread.updatedAt,
+                          )}
+                        </span>
+                      </div>
                     </button>
                   );
                 })
@@ -974,11 +1017,16 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                         <p className="text-[12.5px] text-[#F0F0F5] line-clamp-1 leading-5">
                           {thread.title}
                         </p>
-                        <span className="text-[10px] text-white/30">
-                          {thread.mode === "chat"
-                            ? getChatModelLabel(thread.modelId)
-                            : "Agent"}
-                        </span>
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/30">
+                          <span className="truncate">
+                            {thread.mode === "chat"
+                              ? getChatModelLabel(thread.modelId)
+                              : "Agent"}
+                          </span>
+                          <span className="shrink-0 text-right">
+                            {formatThreadDateTime(thread.updatedAt)}
+                          </span>
+                        </div>
                       </button>
                     );
                   })
@@ -1015,7 +1063,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                 className="text-[#F0F0F5] text-[14px] font-semibold"
                 style={{ fontFamily: "'Syne', sans-serif" }}
               >
-                AI Assistant
+                Chat with  AI
               </div>
               <div className="text-[11px] text-white/45 truncate">
                 {currentModelLabel}
@@ -1026,13 +1074,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    void fetch(`/api/assistant/threads/${activeThread.id}`, {
-                      method: "DELETE",
-                    });
-                    handleStartNewChat();
-                    setThreads((prev) =>
-                      prev.filter((item) => item.id !== activeThread.id),
-                    );
+                    void handleDeleteActiveThread();
                   }}
                   className="w-[30px] h-[30px] rounded-lg border border-white/[0.07] flex items-center justify-center text-white/45 hover:bg-[#1E2029] hover:text-[#F0F0F5] transition-colors"
                   title="Delete current thread"
@@ -1241,7 +1283,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
               onChange={(e) => void uploadAttachments("audio", e.target.files)}
             />
 
-            <div className="relative rounded-lg backdrop-blur-3xl ring-1 ring-white/20 hover:ring-white/30 shadow-2xl bg-black/20 hover:bg-black/40 p-3 space-y-2 transition-all duration-300">
+            <div className="relative rounded-lg backdrop-blur-3xl ring-1 ring-white/20 hover:ring-white/30 shadow-2xl bg-black/20 hover:bg-black/40 px-3 pt-3 pb-2 space-y-2 transition-all duration-300">
               <div className="flex items-center justify-between gap-3">
                 {/* Agent/Chat mode toggle â€“ agent mode commented out for now
               <div className="inline-flex items-center gap-1 rounded-full bg-black/40 border border-white/10 p-1">
@@ -1593,7 +1635,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="mb-0.5 shrink-0 w-8 h-8 rounded-lg bg-[#2F6BFF] hover:bg-[#2a5fe3] flex items-center justify-center text-white disabled:opacity-70 disabled:hover:bg-[#2F6BFF] transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                    className="shrink-0 w-8 h-8 rounded-lg bg-[#2F6BFF] hover:bg-[#2a5fe3] flex items-center justify-center text-white disabled:opacity-70 disabled:hover:bg-[#2F6BFF] transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                   >
                     {isAiThinking ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1604,7 +1646,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                 </AnimatePresence>
               </div>
             </div>
-            <p className="text-center text-[11px] text-white/20 mt-2">
+            <p className="text-center text-[11px] text-white/20 mt-1.5">
               WildMind AI can make mistakes.
             </p>
           </div>
