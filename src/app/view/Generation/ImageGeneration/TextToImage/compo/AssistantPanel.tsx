@@ -110,21 +110,26 @@ const MAX_PANEL_WIDTH = 760;
 const THREAD_RAIL_EXPANDED_WIDTH = 188;
 const THREAD_RAIL_COLLAPSED_WIDTH = 68;
 const GEMINI_THINKING_OPTIONS: ThinkingOption[] = [
-  { value: "low", label: "Think Low" },
-  { value: "medium", label: "Think Medium" },
-  { value: "high", label: "Think High" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
 ];
 const GPT52_REASONING_OPTIONS: ThinkingOption[] = [
-  { value: "none", label: "Reason None" },
-  { value: "low", label: "Reason Low" },
-  { value: "medium", label: "Reason Medium" },
-  { value: "high", label: "Reason High" },
-  { value: "xhigh", label: "Reason X-High" },
+  { value: "none", label: "None" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "xhigh", label: "X-High" },
 ];
 const DEEPSEEK_THINKING_OPTIONS: ThinkingOption[] = [
-  { value: "None", label: "Think None" },
-  { value: "medium", label: "Think Medium" },
+  { value: "None", label: "None" },
+  { value: "medium", label: "Medium" },
 ];
+const CHAT_MODEL_TRIGGER_MIN_WIDTH = `calc(${Math.max(...CHAT_MODELS.map((model) => model.label.length))}ch + 3.5rem)`;
+const SELECT_CONTROL_CLASSNAME =
+  "inline-flex h-9 items-center justify-between gap-3 rounded-lg border border-white/12 bg-[#0F1117] px-4 text-left text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors";
+const ICON_CONTROL_CLASSNAME =
+  "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#0F1117] text-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-white/20 hover:bg-[#131722] hover:text-white disabled:opacity-50";
 
 function detectIntent(userMsg: string): "image" | null {
   if (IMAGE_KEYWORDS.test(userMsg)) return "image";
@@ -220,6 +225,19 @@ function formatMessageTime(value?: string | null): string {
   });
 }
 
+function formatThreadDateTime(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function attachmentIcon(attachment: AssistantAttachment) {
   if (attachment.type === "video") return <Film className="w-3 h-3" />;
   if (attachment.type === "audio") return <Music4 className="w-3 h-3" />;
@@ -276,7 +294,6 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
   const [isThreadRailCollapsed, setIsThreadRailCollapsed] = useState(false);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const [isThinkingMenuOpen, setIsThinkingMenuOpen] = useState(false);
-  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -298,8 +315,6 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
   const modelMenuButtonRef = useRef<HTMLButtonElement>(null);
   const thinkingMenuRef = useRef<HTMLDivElement>(null);
   const thinkingMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const attachmentMenuRef = useRef<HTMLDivElement>(null);
-  const attachmentMenuButtonRef = useRef<HTMLButtonElement>(null);
   const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(
     null,
   );
@@ -342,6 +357,8 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
   const currentThinkingLabel =
     thinkingOptions.find((option) => option.value === currentThinkingValue)
       ?.label ?? "Thinking";
+  const shouldModelMenuScroll = CHAT_MODELS.length > 4;
+  const shouldThinkingMenuScroll = thinkingOptions.length > 4;
   const threadRailWidth = isThreadRailCollapsed
     ? THREAD_RAIL_COLLAPSED_WIDTH
     : THREAD_RAIL_EXPANDED_WIDTH;
@@ -356,6 +373,9 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
   const audioAttachmentCount = composerAttachments.filter(
     (item) => item.type === "audio",
   ).length;
+  const openPreferredAttachmentPicker = () => {
+    imageInputRef.current?.click();
+  };
 
   // Auto-scroll chat
   useEffect(() => {
@@ -514,34 +534,6 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
   }, [isModelMenuOpen]);
 
   useEffect(() => {
-    if (!isAttachmentMenuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        attachmentMenuRef.current?.contains(target) ||
-        attachmentMenuButtonRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setIsAttachmentMenuOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsAttachmentMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-    return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [isAttachmentMenuOpen]);
-
-  useEffect(() => {
     if (!isThinkingMenuOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
@@ -576,7 +568,6 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
     setAttachmentError(null);
     setIsModelMenuOpen(false);
     setIsThinkingMenuOpen(false);
-    setIsAttachmentMenuOpen(false);
     setPrompt("");
     setIsDraftingNewThread(true);
     setDraftMode("chat");
@@ -587,6 +578,29 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
     if (textareaRef.current) textareaRef.current.style.height = "36px";
     setTimeout(() => textareaRef.current?.focus(), 0);
   };
+
+  const handleDeleteActiveThread = useCallback(async () => {
+    if (!activeThread) return;
+
+    const deletedThreadId = activeThread.id;
+
+    handleStartNewChat();
+    setThreads((prev) => prev.filter((item) => item.id !== deletedThreadId));
+
+    try {
+      const res = await fetch(`/api/assistant/threads/${deletedThreadId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete thread");
+      }
+    } catch (error) {
+      console.error("[AssistantPanel] Failed to delete thread", error);
+    } finally {
+      void loadThreads({ preserveDraft: true });
+    }
+  }, [activeThread, loadThreads]);
 
   const validateAttachmentSelection = (
     type: AssistantAttachment["type"],
@@ -931,11 +945,18 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                       <p className="text-[12.5px] text-[#F0F0F5] line-clamp-1 leading-5">
                         {thread.title}
                       </p>
-                      <span className="text-[10px] text-white/30">
-                        {thread.mode === "chat"
-                          ? getChatModelLabel(thread.modelId)
-                          : "Agent"}
-                      </span>
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-white/30">
+                        <span className="truncate">
+                          {thread.mode === "chat"
+                            ? getChatModelLabel(thread.modelId)
+                            : "Agent"}
+                        </span>
+                        <span className="shrink-0 text-right">
+                          {formatThreadDateTime(
+                            thread.updatedAt,
+                          )}
+                        </span>
+                      </div>
                     </button>
                   );
                 })
@@ -996,11 +1017,16 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                         <p className="text-[12.5px] text-[#F0F0F5] line-clamp-1 leading-5">
                           {thread.title}
                         </p>
-                        <span className="text-[10px] text-white/30">
-                          {thread.mode === "chat"
-                            ? getChatModelLabel(thread.modelId)
-                            : "Agent"}
-                        </span>
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/30">
+                          <span className="truncate">
+                            {thread.mode === "chat"
+                              ? getChatModelLabel(thread.modelId)
+                              : "Agent"}
+                          </span>
+                          <span className="shrink-0 text-right">
+                            {formatThreadDateTime(thread.updatedAt)}
+                          </span>
+                        </div>
                       </button>
                     );
                   })
@@ -1037,7 +1063,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                 className="text-[#F0F0F5] text-[14px] font-semibold"
                 style={{ fontFamily: "'Syne', sans-serif" }}
               >
-                AI Assistant
+                Chat with  AI
               </div>
               <div className="text-[11px] text-white/45 truncate">
                 {currentModelLabel}
@@ -1048,13 +1074,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    void fetch(`/api/assistant/threads/${activeThread.id}`, {
-                      method: "DELETE",
-                    });
-                    handleStartNewChat();
-                    setThreads((prev) =>
-                      prev.filter((item) => item.id !== activeThread.id),
-                    );
+                    void handleDeleteActiveThread();
                   }}
                   className="w-[30px] h-[30px] rounded-lg border border-white/[0.07] flex items-center justify-center text-white/45 hover:bg-[#1E2029] hover:text-[#F0F0F5] transition-colors"
                   title="Delete current thread"
@@ -1263,7 +1283,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
               onChange={(e) => void uploadAttachments("audio", e.target.files)}
             />
 
-            <div className="relative rounded-lg backdrop-blur-3xl ring-1 ring-white/20 hover:ring-white/30 shadow-2xl bg-black/20 hover:bg-black/40 p-3 space-y-2 transition-all duration-300">
+            <div className="relative rounded-lg backdrop-blur-3xl ring-1 ring-white/20 hover:ring-white/30 shadow-2xl bg-black/20 hover:bg-black/40 px-3 pt-3 pb-2 space-y-2 transition-all duration-300">
               <div className="flex items-center justify-between gap-3">
                 {/* Agent/Chat mode toggle â€“ agent mode commented out for now
               <div className="inline-flex items-center gap-1 rounded-full bg-black/40 border border-white/10 p-1">
@@ -1296,7 +1316,10 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
 
                 {effectiveMode === "chat" && (
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                    <div className="relative min-w-[190px] max-w-[240px] flex-1 sm:flex-none">
+                    <div
+                      className="relative flex-1 sm:flex-none"
+                      style={{ minWidth: CHAT_MODEL_TRIGGER_MIN_WIDTH }}
+                    >
                       <button
                         ref={modelMenuButtonRef}
                         type="button"
@@ -1309,7 +1332,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                         disabled={!!activeThread}
                         aria-haspopup="menu"
                         aria-expanded={isModelMenuOpen}
-                        className={`inline-flex h-9 w-auto items-center justify-between gap-3 rounded-lg border border-white/12 bg-[#0F1117] px-4 text-left text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors ${
+                        className={`${SELECT_CONTROL_CLASSNAME} w-full ${
                           activeThread
                             ? "cursor-not-allowed opacity-70"
                             : "hover:border-white/20 hover:bg-[#131722]"
@@ -1335,15 +1358,19 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                       {isModelMenuOpen && !activeThread && (
                         <div
                           ref={modelMenuRef}
-                          className="absolute left-0 top-[calc(100%+8px)] z-[60] w-36 overflow-hidden rounded-lg border border-white/10 bg-[#0B0D12] shadow-[0_22px_50px_rgba(0,0,0,0.45)]"
+                          className="absolute left-0 top-[calc(100%+8px)] z-[60] min-w-full overflow-hidden rounded-lg border border-white/10 bg-[#0B0D12] shadow-[0_22px_50px_rgba(0,0,0,0.45)]"
                         >
                           <div
-                            className="max-h-[100px] overflow-y-scroll py-0 pr-0.5 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(255,255,255,0.38)]"
-                            style={{
-                              scrollbarWidth: "thin",
-                              scrollbarColor:
-                                "rgba(255,255,255,0.38) transparent",
-                            }}
+                            className={`${shouldModelMenuScroll ? "max-h-[100px] overflow-y-auto pr-0.5 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(255,255,255,0.38)]" : "overflow-y-visible"} py-0`}
+                            style={
+                              shouldModelMenuScroll
+                                ? {
+                                    scrollbarWidth: "thin",
+                                    scrollbarColor:
+                                      "rgba(255,255,255,0.38) transparent",
+                                  }
+                                : undefined
+                            }
                           >
                             {CHAT_MODELS.map((model) => {
                               const isSelected = model.id === effectiveModelId;
@@ -1382,7 +1409,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                           }}
                           aria-haspopup="menu"
                           aria-expanded={isThinkingMenuOpen}
-                          className="inline-flex h-9 w-auto items-center justify-between gap-3 rounded-lg border border-white/12 bg-[#0F1117] px-4 text-left text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-white/20 hover:bg-[#131722]"
+                          className={`${SELECT_CONTROL_CLASSNAME} w-full hover:border-white/20 hover:bg-[#131722]`}
                         >
                           <span className="truncate">{currentThinkingLabel}</span>
                           <svg
@@ -1407,12 +1434,16 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                             className="absolute left-0 top-[calc(100%+8px)] z-[60] min-w-full overflow-hidden rounded-lg border border-white/10 bg-[#0B0D12] shadow-[0_22px_50px_rgba(0,0,0,0.45)]"
                           >
                             <div
-                              className="max-h-[132px] overflow-y-scroll py-0 pr-0.5 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(255,255,255,0.38)]"
-                              style={{
-                                scrollbarWidth: "thin",
-                                scrollbarColor:
-                                  "rgba(255,255,255,0.38) transparent",
-                              }}
+                              className={`${shouldThinkingMenuScroll ? "max-h-[132px] overflow-y-auto pr-0.5 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-[2px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(255,255,255,0.38)]" : "overflow-y-visible"} py-0`}
+                              style={
+                                shouldThinkingMenuScroll
+                                  ? {
+                                      scrollbarWidth: "thin",
+                                      scrollbarColor:
+                                        "rgba(255,255,255,0.38) transparent",
+                                    }
+                                  : undefined
+                              }
                             >
                               {thinkingOptions.map((option) => {
                                 const isSelected =
@@ -1474,176 +1505,14 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                       </span>
                     )}
                     <button
-                      ref={attachmentMenuButtonRef}
                       type="button"
-                      onClick={() => setIsAttachmentMenuOpen((prev) => !prev)}
+                      onClick={openPreferredAttachmentPicker}
                       disabled={isUploadingAttachments}
-                      aria-haspopup="menu"
-                      aria-expanded={isAttachmentMenuOpen}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/12 bg-[#0F1117] text-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-white/20 hover:bg-[#131722] hover:text-white disabled:opacity-50"
+                      className={ICON_CONTROL_CLASSNAME}
                       title="Attach files"
                     >
                       <Link2 className="h-3.5 w-3.5" />
                     </button>
-
-                    {isAttachmentMenuOpen && (
-                      <div
-                        ref={attachmentMenuRef}
-                        className="absolute right-0 top-[calc(100%+8px)] z-[60] min-w-[180px] overflow-hidden rounded-xl border border-white/10 bg-[#0B0D12] shadow-[0_22px_50px_rgba(0,0,0,0.45)]"
-                      >
-                        {isGeminiThread && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                imageInputRef.current?.click();
-                                setIsAttachmentMenuOpen(false);
-                              }}
-                              disabled={
-                                imageAttachmentCount >=
-                                GEMINI_ATTACHMENT_LIMITS.image.maxCount
-                              }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                            >
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              <span className="flex-1">Images</span>
-                              <span className="text-white/45">
-                                {imageAttachmentCount}/
-                                {GEMINI_ATTACHMENT_LIMITS.image.maxCount}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                videoInputRef.current?.click();
-                                setIsAttachmentMenuOpen(false);
-                              }}
-                              disabled={
-                                videoAttachmentCount >=
-                                GEMINI_ATTACHMENT_LIMITS.video.maxCount
-                              }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                            >
-                              <Film className="h-3.5 w-3.5" />
-                              <span className="flex-1">Videos</span>
-                              <span className="text-white/45">
-                                {videoAttachmentCount}/
-                                {GEMINI_ATTACHMENT_LIMITS.video.maxCount}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                audioInputRef.current?.click();
-                                setIsAttachmentMenuOpen(false);
-                              }}
-                              disabled={
-                                audioAttachmentCount >=
-                                GEMINI_ATTACHMENT_LIMITS.audio.maxCount
-                              }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                            >
-                              <Music4 className="h-3.5 w-3.5" />
-                              <span className="flex-1">Audio</span>
-                              <span className="text-white/45">
-                                {audioAttachmentCount}/
-                                {GEMINI_ATTACHMENT_LIMITS.audio.maxCount}
-                              </span>
-                            </button>
-                          </>
-                        )}
-                        {isGemini25FlashThread && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                imageInputRef.current?.click();
-                                setIsAttachmentMenuOpen(false);
-                              }}
-                              disabled={
-                                imageAttachmentCount >=
-                                GEMINI25_FLASH_ATTACHMENT_LIMITS.image.maxCount
-                              }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                            >
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              <span className="flex-1">Images</span>
-                              <span className="text-white/45">
-                                {imageAttachmentCount}/
-                                {
-                                  GEMINI25_FLASH_ATTACHMENT_LIMITS.image
-                                    .maxCount
-                                }
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                videoInputRef.current?.click();
-                                setIsAttachmentMenuOpen(false);
-                              }}
-                              disabled={
-                                videoAttachmentCount >=
-                                GEMINI25_FLASH_ATTACHMENT_LIMITS.video.maxCount
-                              }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                            >
-                              <Film className="h-3.5 w-3.5" />
-                              <span className="flex-1">Videos</span>
-                              <span className="text-white/45">
-                                {videoAttachmentCount}/
-                                {
-                                  GEMINI25_FLASH_ATTACHMENT_LIMITS.video
-                                    .maxCount
-                                }
-                              </span>
-                            </button>
-                          </>
-                        )}
-                        {isClaudeThread && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              imageInputRef.current?.click();
-                              setIsAttachmentMenuOpen(false);
-                            }}
-                            disabled={
-                              imageAttachmentCount >=
-                              CLAUDE_ATTACHMENT_LIMITS.image.maxCount
-                            }
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            <span className="flex-1">Images</span>
-                            <span className="text-white/45">
-                              {imageAttachmentCount}/
-                              {CLAUDE_ATTACHMENT_LIMITS.image.maxCount}
-                            </span>
-                          </button>
-                        )}
-                        {isGPT52Thread && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              imageInputRef.current?.click();
-                              setIsAttachmentMenuOpen(false);
-                            }}
-                            disabled={
-                              imageAttachmentCount >=
-                              GPT52_ATTACHMENT_LIMITS.image.maxCount
-                            }
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[12px] text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:text-white/30"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            <span className="flex-1">Images</span>
-                            <span className="text-white/45">
-                              {imageAttachmentCount}/
-                              {GPT52_ATTACHMENT_LIMITS.image.maxCount}
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1766,7 +1635,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="mb-0.5 shrink-0 w-8 h-8 rounded-lg bg-[#2F6BFF] hover:bg-[#2a5fe3] flex items-center justify-center text-white disabled:opacity-70 disabled:hover:bg-[#2F6BFF] transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                    className="shrink-0 w-8 h-8 rounded-lg bg-[#2F6BFF] hover:bg-[#2a5fe3] flex items-center justify-center text-white disabled:opacity-70 disabled:hover:bg-[#2F6BFF] transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                   >
                     {isAiThinking ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1777,7 +1646,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                 </AnimatePresence>
               </div>
             </div>
-            <p className="text-center text-[11px] text-white/20 mt-2">
+            <p className="text-center text-[11px] text-white/20 mt-1.5">
               WildMind AI can make mistakes.
             </p>
           </div>
