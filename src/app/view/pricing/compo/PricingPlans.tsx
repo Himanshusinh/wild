@@ -51,7 +51,7 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
             {MAIN_PLANS.map((plan) => (
               <div
                 key={plan.id}
-                className="snap-center shrink-0 w-[min(88vw,280px)] sm:w-[260px] flex min-h-[540px]"
+                className="snap-center shrink-0 w-[min(88vw,280px)] sm:w-[260px] flex min-h-[500px]"
               >
                 <MainPlanCard plan={plan} billingPeriod={billingPeriod} onCta={goSubscribe} compact className="h-full w-full" />
               </div>
