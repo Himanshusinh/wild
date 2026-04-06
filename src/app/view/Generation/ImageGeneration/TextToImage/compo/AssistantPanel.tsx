@@ -1258,7 +1258,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
           </div>
 
           {/* INPUT AREA */}
-          <div className="p-3 sm:p-4 flex-shrink-0">
+          <div className="p-3 sm:p-0 sm:px-4 flex-shrink-0">
             <input
               ref={imageInputRef}
               type="file"
