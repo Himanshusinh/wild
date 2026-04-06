@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAppSelector } from "@/store/hooks";
 import {
   ChevronDown,
   ChevronUp,
@@ -9,8 +11,10 @@ import {
   Cpu,
   Sparkles,
   Zap,
+  Lock,
 } from "lucide-react";
 import { getModelCreditInfo } from "@/utils/modelCredits";
+import { isModelAccessibleForPlan } from "@/config/planModelAccess";
 
 interface VideoModelsDropdownProps {
   selectedModel: string;
@@ -33,6 +37,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   onCloseThisDropdown,
   activeFeature = "Video",
 }) => {
+  const router = useRouter();
+  const currentPlanCode = useAppSelector(
+    (state: any) => state.credits?.credits?.planCode || "free",
+  );
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -536,6 +544,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ...model,
       credits: creditInfo.credits,
       displayText: creditInfo.displayText,
+      isLocked: !isModelAccessibleForPlan(currentPlanCode, "video", model.value),
     };
   });
 
@@ -557,16 +566,34 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
 
     if (variantMatch) return;
 
-    if (availableModels.length > 0) {
-      onModelChange(availableModels[0].value);
+    const firstAccessibleModel = modelsWithCredits.find((model) => !model.isLocked);
+    if (firstAccessibleModel) {
+      onModelChange(firstAccessibleModel.value);
     }
   }, [
     generationMode,
     availableModels,
+    modelsWithCredits,
     selectedModel,
     onModelChange,
     activeFeature,
   ]);
+
+  const selectedModelEntry = modelsWithCredits.find(
+    (model) => model.value === selectedModel,
+  );
+
+  const handleVideoModelSelect = (modelValue: string) => {
+    if (!isModelAccessibleForPlan(currentPlanCode, "video", modelValue)) {
+      setIsOpen(false);
+      router.push("/view/pricing");
+      return;
+    }
+    try {
+      onModelChange(modelValue);
+    } catch {}
+    setIsOpen(false);
+  };
 
   return (
     <div ref={dropdownRef} className="relative dropdown-container">
@@ -581,6 +608,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       >
         <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedModelInfo?.label || selectedModel}
+        {selectedModelEntry?.isLocked && (
+          <Lock className="md:w-4 w-3 h-3 md:h-4 text-black/70" />
+        )}
         <ChevronUp
           className={`md:w-4 w-3 h-3 md:h-4  transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
@@ -609,10 +639,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         key={`t2v-left-${model.value}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          try {
-                            onModelChange(model.value);
-                          } catch {}
-                          setIsOpen(false);
+                          handleVideoModelSelect(model.value);
                         }}
                         className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                           selectedModel === model.value
@@ -623,6 +650,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         <div className="flex flex-col mb-0">
                           <span className="flex items-center gap-2">
                             {model.label}
+                            {model.isLocked && (
+                              <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                            )}
                             <img
                               src="/icons/crown.svg"
                               alt="pro"
@@ -630,7 +660,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                             />
                           </span>
                           <span className="md:text-[11px] text-[9px] opacity-80 -mt-0.5 font-normal">
-                            {model.displayText ||
+                            {model.isLocked
+                              ? "Upgrade to access"
+                              : model.displayText ||
                               (model.credits != null
                                 ? `${model.credits} credits`
                                 : "credits unavailable")}
@@ -648,10 +680,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         key={`t2v-right-${model.value}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          try {
-                            onModelChange(model.value);
-                          } catch {}
-                          setIsOpen(false);
+                          handleVideoModelSelect(model.value);
                         }}
                         className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                           selectedModel === model.value
@@ -662,6 +691,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         <div className="flex flex-col -mb-0">
                           <span className="flex items-center gap-2">
                             {model.label}
+                            {model.isLocked && (
+                              <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                            )}
                             <img
                               src="/icons/crown.svg"
                               alt="pro"
@@ -669,7 +701,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                             />
                           </span>
                           <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
-                            {model.displayText ||
+                            {model.isLocked
+                              ? "Upgrade to access"
+                              : model.displayText ||
                               (model.credits != null
                                 ? `${model.credits} credits`
                                 : "credits unavailable")}
@@ -703,10 +737,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       key={`left-${model.value}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        try {
-                          onModelChange(model.value);
-                        } catch {}
-                        setIsOpen(false);
+                        handleVideoModelSelect(model.value);
                       }}
                       className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                         selectedModel === model.value
@@ -717,6 +748,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       <div className="flex flex-col mb-0">
                         <span className="flex items-center gap-2">
                           {model.label}
+                          {model.isLocked && (
+                            <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                          )}
                           <img
                             src="/icons/crown.svg"
                             alt="pro"
@@ -725,7 +759,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         </span>
                         {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
                         <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
-                          {model.displayText ||
+                          {model.isLocked
+                            ? "Upgrade to access"
+                            : model.displayText ||
                             (model.credits != null
                               ? `${model.credits} credits`
                               : "credits unavailable")}
@@ -744,10 +780,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       key={`right-${model.value}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        try {
-                          onModelChange(model.value);
-                        } catch {}
-                        setIsOpen(false);
+                        handleVideoModelSelect(model.value);
                       }}
                       className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                         selectedModel === model.value
@@ -758,6 +791,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       <div className="flex flex-col -mb-0">
                         <span className="flex items-center gap-2">
                           {model.label}
+                          {model.isLocked && (
+                            <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                          )}
                           <img
                             src="/icons/crown.svg"
                             alt="pro"
@@ -766,7 +802,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         </span>
                         {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
                         <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
-                          {model.displayText ||
+                          {model.isLocked
+                            ? "Upgrade to access"
+                            : model.displayText ||
                             (model.credits != null
                               ? `${model.credits} credits`
                               : "credits unavailable")}

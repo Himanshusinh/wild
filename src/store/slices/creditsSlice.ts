@@ -3,6 +3,21 @@ import { getApiClient } from '@/lib/axiosInstance';
 import { getMeCached } from '@/lib/me';
 import { RootState } from '@/store';
 
+function getClientPlanOverride(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const value = window.localStorage.getItem('wm_test_plan_override');
+    return value?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function withTestPlanOverride(planCode?: string | null): string {
+  return getClientPlanOverride() || planCode || 'free';
+}
+
 // Types
 export interface UserCredits {
   creditBalance: number;
@@ -59,7 +74,7 @@ export const fetchUserCredits = createAsyncThunk(
         const creditsResponse = await api.get('/api/credits/me');
         const creditsData = creditsResponse.data?.data || creditsResponse.data;
         const creditBalance = creditsData?.creditBalance ?? 0;
-        const planCode = creditsData?.planCode || 'free';
+        const planCode = withTestPlanOverride(creditsData?.planCode);
         const storageUsed = Number(creditsData?.storageUsedBytes || 0);
         const storageQuota = Number(creditsData?.storageQuotaBytes || 0);
 
@@ -101,7 +116,7 @@ export const fetchUserCredits = createAsyncThunk(
           console.log('[CREDITS_FRONTEND] skipping fallback due to 401 Unauthorized');
           return {
             creditBalance: 0,
-            planCode: 'free',
+            planCode: withTestPlanOverride('free'),
             lastSync: new Date().toISOString(),
           } as UserCredits;
         }
@@ -113,11 +128,11 @@ export const fetchUserCredits = createAsyncThunk(
           const fallbackBalance = (authUser as any)?.creditBalance || (authUser as any)?.credits || 0;
           console.log('[CREDITS_FRONTEND] Using auth user state:', {
             creditBalance: fallbackBalance,
-            planCode: (authUser as any)?.planCode || 'free'
+            planCode: withTestPlanOverride((authUser as any)?.planCode)
           });
           return {
             creditBalance: fallbackBalance,
-            planCode: (authUser as any)?.planCode || 'free',
+            planCode: withTestPlanOverride((authUser as any)?.planCode),
             storageUsed: 0,
             storageQuota: 0,
             lastSync: new Date().toISOString(),
@@ -128,12 +143,12 @@ export const fetchUserCredits = createAsyncThunk(
         const cachedBalance = userData?.creditBalance || userData?.credits || 0;
         console.log('[CREDITS_FRONTEND] Using cached /me endpoint:', {
           creditBalance: cachedBalance,
-          planCode: userData?.planCode || 'free'
+          planCode: withTestPlanOverride(userData?.planCode)
         });
 
         return {
           creditBalance: cachedBalance,
-          planCode: userData?.planCode || 'free',
+          planCode: withTestPlanOverride(userData?.planCode),
           storageUsed: 0,
           storageQuota: 0,
           lastSync: new Date().toISOString(),

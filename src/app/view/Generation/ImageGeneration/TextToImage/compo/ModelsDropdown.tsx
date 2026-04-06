@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Cpu, ChevronUp, Infinity as InfinityIcon } from "lucide-react";
+import { Cpu, ChevronUp, Infinity as InfinityIcon, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { setSelectedModel, setFrameSize } from "@/store/slices/generationSlice";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import { getModelCreditInfo } from "@/utils/modelCredits";
+import { isModelAccessibleForPlan } from "@/config/planModelAccess";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "new-turbo-model":
@@ -72,9 +74,13 @@ const ModelsDropdown = ({
   openDirection = "up",
   imageOnly = false,
 }: ModelsDropdownProps) => {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const selectedModel = useAppSelector(
     (state: any) => state.generation?.selectedModel || "new-turbo-model",
+  );
+  const currentPlanCode = useAppSelector(
+    (state: any) => state.credits?.credits?.planCode || "free",
   );
   const uploadedImages = useAppSelector(
     (state: any) => state.generation?.uploadedImages || [],
@@ -155,6 +161,7 @@ const ModelsDropdown = ({
       displayText: creditInfo.displayText,
       isFree,
       displayName: model.name,
+      isLocked: !isModelAccessibleForPlan(currentPlanCode, "image", model.value),
     };
   });
 
@@ -246,17 +253,22 @@ const ModelsDropdown = ({
   // If a previously saved/legacy model is no longer available (e.g. removed from dropdown),
   // switch to a valid fallback.
   useEffect(() => {
-    const existsInList = modelsWithCredits.some(
+    const accessibleModels = modelsWithCredits.filter((m) => !m.isLocked);
+    const selectedModelIsAccessible = accessibleModels.some(
       (m) => m.value === selectedModel,
     );
-    if (!existsInList) {
-      if (uploadedImages.length > 0) {
-        dispatch(setSelectedModel("gemini-25-flash-image"));
-      } else {
-        dispatch(setSelectedModel("new-turbo-model"));
-      }
+
+    if (selectedModelIsAccessible) return;
+
+    const fallbackModel =
+      accessibleModels.find((m) => m.value === "new-turbo-model")?.value ||
+      accessibleModels.find((m) => m.value === "gemini-25-flash-image")?.value ||
+      accessibleModels[0]?.value;
+
+    if (fallbackModel) {
+      dispatch(setSelectedModel(fallbackModel));
     }
-  }, [selectedModel, modelsWithCredits, uploadedImages.length, dispatch]);
+  }, [selectedModel, modelsWithCredits, dispatch]);
 
   // If user switches to image-to-image (uploaded images) while an unsupported model is selected, auto-switch to nano banana
   useEffect(() => {
@@ -361,6 +373,11 @@ const ModelsDropdown = ({
   }, [activeDropdown, dispatch]);
 
   const handleModelSelect = (modelValue: string) => {
+    if (!isModelAccessibleForPlan(currentPlanCode, "image", modelValue)) {
+      dispatch(toggleDropdown(""));
+      router.push("/view/pricing");
+      return;
+    }
     // Toast guidance for models that require image input
     if (modelValue === "gen4_image_turbo" && uploadedImages.length === 0) {
       dispatch(
@@ -390,6 +407,8 @@ const ModelsDropdown = ({
     dispatch(toggleDropdown(""));
   };
 
+  const selectedModelEntry = filteredModels.find((m) => m.value === selectedModel);
+
   return (
     <div className="relative dropdown-container">
       <button
@@ -401,8 +420,10 @@ const ModelsDropdown = ({
         ) : (
           <Cpu className="w-4 h-4 mr-1" />
         )}
-        {filteredModels.find((m) => m.value === selectedModel)?.name ||
-          "Models"}
+        {selectedModelEntry?.name || "Models"}
+        {selectedModelEntry?.isLocked && (
+          <Lock className="w-3.5 h-3.5 text-black/70" />
+        )}
         <ChevronUp
           className={`w-4 h-4 transition-transform duration-200 ${
             activeDropdown === "models" ? "rotate-180" : ""
@@ -485,6 +506,9 @@ const ModelsDropdown = ({
                           {model.isFree && (
                             <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
                           )}
+                          {model.isLocked && (
+                            <Lock className="w-3.5 h-3.5 text-amber-300" />
+                          )}
                           {model.name}
                           {leftSet.has(model.value) && !model.isFree && (
                             <img
@@ -502,7 +526,9 @@ const ModelsDropdown = ({
                                 : "opacity-80"
                             }`}
                           >
-                            {model.displayText ||
+                            {model.isLocked
+                              ? "Upgrade to access"
+                              : model.displayText ||
                               (model.credits != null
                                 ? `${model.credits} credits`
                                 : "credits unavailable")}
@@ -551,6 +577,9 @@ const ModelsDropdown = ({
                               <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
                             </span>
                           )}
+                          {model.isLocked && (
+                            <Lock className="w-3.5 h-3.5 text-amber-300" />
+                          )}
 
                           {model.name}
 
@@ -570,7 +599,9 @@ const ModelsDropdown = ({
                                 : "opacity-80"
                             }`}
                           >
-                            {model.displayText ||
+                            {model.isLocked
+                              ? "Upgrade to access"
+                              : model.displayText ||
                               (model.credits != null
                                 ? `${model.credits} credits`
                                 : "0 credits ")}
@@ -584,7 +615,9 @@ const ModelsDropdown = ({
                                 : "opacity-80"
                             }`}
                           >
-                            {model.displayText ||
+                            {model.isLocked
+                              ? "Upgrade to access"
+                              : model.displayText ||
                               (model.credits != null
                                 ? `${model.credits} credits`
                                 : "credits unavailable")}
@@ -629,6 +662,9 @@ const ModelsDropdown = ({
                           {model.isFree && (
                             <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
                           )}
+                          {model.isLocked && (
+                            <Lock className="w-3.5 h-3.5 text-amber-300" />
+                          )}
                           {model.name}
                         </span>
                         {!model.isFree && (
@@ -639,7 +675,9 @@ const ModelsDropdown = ({
                                 : "opacity-80"
                             }`}
                           >
-                            {model.displayText ||
+                            {model.isLocked
+                              ? "Upgrade to access"
+                              : model.displayText ||
                               (model.credits != null
                                 ? `${model.credits} credits`
                                 : "credits unavailable")}
