@@ -9180,8 +9180,8 @@ const InputBox = () => {
             <div
               className={`w-full ${
                 [...selectedCharacters, ...uploadedImages].length > 14
-                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-start"
-                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-start"
+                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-end"
+                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-end"
               } py-1`}
             >
               {[
