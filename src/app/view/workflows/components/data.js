@@ -34,7 +34,7 @@ export const WORKFLOWS_DATA = [
     "thumbnail": "/workflow-samples/portrait-before.jpg",
     "sampleBefore": "/workflow-samples/portrait-before.jpg",
     "sampleAfter": "/workflow-samples/portrait-after.jpg",
-    "cost": 90
+    "cost": 100
   },
   {
     "id": "photo-to-line-drawing",
@@ -46,7 +46,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/photo-to-line-before-v2.jpg",
     "sampleAfter": "/workflow-samples/photo-to-line-after-v2.jpg",
     "imageFit": "object-cover",
-    "cost": 90
+    "cost": 100
   },
   {
     "id": "line-drawing-to-photo",
