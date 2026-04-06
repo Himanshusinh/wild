@@ -15,7 +15,7 @@ The credit system provides:
 
 ### 1. Redux Store (`creditsSlice.ts`)
 - **State Management**: Centralized credit balance and transaction history
-- **Async Actions**: Credit fetching, validation, reservation, and confirmation
+- **Async Actions**: Credit fetching, validation, reservation, and confirmation24
 - **Optimistic Updates**: Immediate UI updates with rollback capability
 
 ### 2. Credit Validation (`creditValidation.ts`)
