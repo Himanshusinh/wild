@@ -41,7 +41,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/app/view/pricing/compo/FAQs.tsx",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
