@@ -317,15 +317,11 @@ export const getImageGenerationCreditCost = (
     const baseCost = mapping
       ? getCreditCostForModel(mapping.creditModelName)
       : 0;
-    const resolvedBaseCost = baseCost && baseCost > 0 ? baseCost : 100;
+    const resolvedBaseCost = baseCost && baseCost > 0 ? baseCost : 32;
     return resolvedBaseCost * Math.max(1, Math.min(count, 4));
   }
 
-  // Special case: z-image-turbo (new-turbo-model) is free for launch offer
-  // Special case: z-image-turbo (new-turbo-model) is now 25 credits
-  // if (frontendModel === 'new-turbo-model') {
-  //   return 25;
-  // }
+  // z-image-turbo uses the shared pricing lookup and currently costs 4 credits.
 
   // Special case: WILDMINDIMAGE is free (0 credits)
   if (frontendModel === "wildmindimage") {
@@ -347,11 +343,11 @@ export const getImageGenerationCreditCost = (
     const res = resolution?.toUpperCase() || "1K";
     let cost: number;
     if (isI2I) {
-      // I2I pricing: 110 credits for 1K, 190 credits for 2K
-      cost = res === "2K" ? 190 : 110;
+      // I2I pricing: 36 credits for 1080p, 68 credits for 2K
+      cost = res === "2K" ? 68 : 36;
     } else {
-      // T2I pricing: 80 credits for 1K, 160 credits for 2K
-      cost = res === "2K" ? 160 : 80;
+      // T2I pricing: 24 credits for 1080p, 56 credits for 2K
+      cost = res === "2K" ? 56 : 24;
     }
     console.log(
       `Flux 2 Pro ${isI2I ? "I2I" : "T2I"} cost: ${cost} credits for resolution: ${res}`,
@@ -362,11 +358,11 @@ export const getImageGenerationCreditCost = (
   // Handle resolution-based pricing for google/nano-banana-2
   if (frontendModel === "google/nano-banana-2") {
     const res = resolution?.toUpperCase() || "1K";
-    let cost = 154; // Default to 1K
+    let cost = 54; // Default to 1K
     if (res === "2K") {
-      cost = 222;
+      cost = 81;
     } else if (res === "4K") {
-      cost = 322;
+      cost = 121;
     }
     console.log(
       `Google Nano Banana 2 cost: ${cost} credits for resolution: ${res}`,
@@ -382,7 +378,7 @@ export const getImageGenerationCreditCost = (
       res.includes("AUTO_4K") ||
       res.includes("2160") ||
       res.includes("4096");
-    const cost = is4K ? 620 : 320;
+    const cost = is4K ? 240 : 120;
     console.log(`Nano Banana Pro cost: ${cost} credits for resolution: ${res}`);
     return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
   }

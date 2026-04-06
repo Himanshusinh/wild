@@ -3,8 +3,8 @@ import { creditDistributionData } from "./creditDistribution";
 // Direct mapping between dropdown model values and their credit costs
 export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Image Generation Models
-  "flux-kontext-pro": 100, // FLUX.1 Kontext [pro]
-  "flux-kontext-max": 180, // FLUX.1 Kontext [max]
+  "flux-kontext-pro": 64, // FLUX.1 Kontext [pro]
+  "flux-kontext-max": 32, // FLUX.1 Kontext [max]
   "flux-pro-1.1": 110, // FLUX 1.1 [pro]
   "flux-pro-1.1-ultra": 140, // FLUX 1.1 [pro] Ultra
   "flux-pro": 130, // FLUX.1 [pro]
@@ -12,52 +12,52 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   gen4_image: 180, // Runway Gen 4 Image 720p (updated to 180 credits)
   gen4_image_1080p: 180, // Runway Gen 4 Image 1080p
   gen4_image_turbo: 60, // Runway Gen 4 Image Turbo
-  "minimax-image-01": 17, // Minimax Image-01 (17 credits per creditDistribution)
-  "gemini-25-flash-image": 98, // Google nano banana (T2I)
-  "gemini-25-flash-image-i2i": 98, // Google nano banana (I2I)
+  "minimax-image-01": 3, // MiniMax Image 01
+  "gemini-25-flash-image": 32, // Google nano banana (T2I)
+  "gemini-25-flash-image-i2i": 32, // Google nano banana (I2I)
   "gpt-5-nano": 1, // GPT-5 Nano (Assistant)
-  "google/nano-banana-2-1k": 154,
-  "google/nano-banana-2-2k": 222,
-  "google/nano-banana-2-4k": 322,
-  "google/nano-banana-pro": 320, // Google nano banana pro (default 1K/2K - 320 credits, 4K - 620 credits)
+  "google/nano-banana-2-1k": 54,
+  "google/nano-banana-2-2k": 81,
+  "google/nano-banana-2-4k": 121,
+  "google/nano-banana-pro": 120, // Google nano banana pro (default 1K/2K - 120 credits, 4K - 240 credits)
   "seedream-v4": 80,
-  "seedream-4.5": 100, // Bytedance Seedream-4.5 (2K/4K same credit)
-  "seedream-5-lite": 90, // Seedream 5 Lite (2K/3K)
-  "recraft-ai/recraft-v4": 100,
-  "replicate/recraft-ai/recraft-v4": 100,
-  "recraft-v4": 100,
+  "seedream-4.5": 32, // Bytedance Seedream-4.5
+  "seedream-5-lite": 28, // Seedream 5 Lite
+  "recraft-ai/recraft-v4": 32,
+  "replicate/recraft-ai/recraft-v4": 32,
+  "recraft-v4": 32,
   "ideogram-ai/ideogram-v3": 80,
   "ideogram-ai/ideogram-v3-quality": 200,
   "ideogram-3-turbo": 80, // Ideogram 3 Turbo
-  "qwen-image-edit": 80, // Legacy alias (keep for backward compatibility)
-  "qwen-image-edit-2511": 80, // Replicate Qwen Image Edit 2511 (flat 80 credits)
+  "qwen-image-edit": 24, // Legacy alias (keep for backward compatibility)
+  "qwen-image-edit-2511": 24, // Replicate Qwen Image Edit 2511
   "qwen-image-edit-2512": 60, // Replicate Qwen Image Edit 2512 (flat 60 credits)
   // Qwen Image (non-edit) variants
-  "qwen-image-2511": 80,
-  "qwen/qwen-image-2511": 80,
-  "replicate/qwen/qwen-image-2511": 80,
+  "qwen-image-2511": 24,
+  "qwen/qwen-image-2511": 24,
+  "replicate/qwen/qwen-image-2511": 24,
   // Backend/provider may return provider-prefixed or non-edit 2512 identifiers; keep them aligned to 60 credits.
   "qwen-image-2512": 60,
   "qwen/qwen-image-2512": 60,
   "replicate/qwen/qwen-image-2512": 60,
   "qwen/qwen-image-edit-2512": 60,
   "replicate/qwen/qwen-image-edit-2512": 60,
-  "qwen/qwen-image-2": 90,
-  "qwen/qwen-image-2-pro": 170,
+  "qwen/qwen-image-2": 28,
+  "qwen/qwen-image-2-pro": 60,
   // Imagen 4 family (FAL/Google)
-  "imagen-4-ultra": 140,
-  "imagen-4": 100,
-  "imagen-4-fast": 60, // Fixed: was 44, should be 60 per creditDistribution
-  "flux-2-pro": 80, // Default to 1K (80 credits), will be resolved based on resolution
-  "flux-2-pro-1080p": 80, // FLUX.2 [pro] 1080p
-  "flux-2-pro-2k": 160, // FLUX.2 [pro] 2K
-  "z-image-turbo": 26, // Z Image Turbo
+  "imagen-4-ultra": 48,
+  "imagen-4": 32,
+  "imagen-4-fast": 16,
+  "flux-2-pro": 24, // Default to 1080p T2I, resolved based on resolution/input mode
+  "flux-2-pro-1080p": 24, // FLUX.2 [pro] 1080p
+  "flux-2-pro-2k": 56, // FLUX.2 [pro] 2K
+  "z-image-turbo": 4, // Z Image Turbo
   "leonardoai/lucid-origin": 173,
   "leonardoai/phoenix-1.0": 170,
   // Google Nano Banana (used by erase/replace in Edit Image)
-  google_nano_banana: 98,
+  google_nano_banana: 32,
   // Z-Image Turbo: Free (0 credits) for launch offer
-  "new-turbo-model": 25, // z-image-turbo (now 25 credits)
+  "new-turbo-model": 4, // z-image-turbo
   // WILDMINDIMAGE: Free (0 credits)
   wildmindimage: 0,
   // Product Generation Models
@@ -343,10 +343,10 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "replicate-crystal-upscaler-12k": 6420,
 
   // GPT Image 1.5 quality variants
-  "gpt-image-1.5-auto": 292,
-  "gpt-image-1.5-low": 46,
-  "gpt-image-1.5-medium": 120,
-  "gpt-image-1.5-high": 292,
+  "gpt-image-1.5-auto": 109,
+  "gpt-image-1.5-low": 11,
+  "gpt-image-1.5-medium": 40,
+  "gpt-image-1.5-high": 109,
 };
 
 // Function to get credit cost for a model
@@ -810,28 +810,28 @@ export const getCreditsForModel = (
     const isI2I = Array.isArray(uploadedImages) && uploadedImages.length > 0;
 
     if (isI2I) {
-      // I2I pricing: 110 credits for 1K, 190 credits for 2K
+      // I2I pricing: 36 credits for 1080p, 68 credits for 2K
       if (resolution === "2K") {
-        return 190; // Flux 2 Pro I2I 2K: 190 credits
+        return 68; // Flux 2 Pro I2I 2K
       } else {
-        return 110; // Flux 2 Pro I2I 1K: 110 credits
+        return 36; // Flux 2 Pro I2I 1080p
       }
     } else {
-      // T2I pricing: 80 credits for 1K, 160 credits for 2K
+      // T2I pricing: 24 credits for 1080p, 56 credits for 2K
       if (resolution === "2K") {
-        return 160; // Flux 2 Pro T2I 2K: 160 credits
+        return 56; // Flux 2 Pro T2I 2K
       } else {
-        return 80; // Flux 2 Pro T2I 1K: 80 credits
+        return 24; // Flux 2 Pro T2I 1080p
       }
     }
   }
 
   // Handle FLUX.2 Pro variants
   if (modelValue === "flux-2-pro-1080p") {
-    return 80; // FLUX.2 [pro] 1080p
+    return 24; // FLUX.2 [pro] 1080p
   }
   if (modelValue === "flux-2-pro-2k") {
-    return 160; // FLUX.2 [pro] 2K
+    return 56; // FLUX.2 [pro] 2K
   }
 
   // Handle Google nano banana pro with resolution
@@ -842,7 +842,7 @@ export const getCreditsForModel = (
       res.includes("AUTO_4K") ||
       res.includes("2160") ||
       res.includes("4096");
-    return is4K ? 620 : 320; // 1K/2K => 320, 4K => 620
+    return is4K ? 240 : 120; // 1K/2K => 120, 4K => 240
   }
 
   // Handle Google nano banana 2 with resolution

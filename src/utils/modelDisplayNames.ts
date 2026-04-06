@@ -20,9 +20,9 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   // Background removal (show credits inline)
   "replicate-lucataco-remove-bg": "Lucataco Remove BG - 10 credits",
   "replicate-851-labs-remove-bg": "851 Labs Remove BG - 10 credits",
-  "seedream-v4": "Seedream v4 4k",
-  "seedream-4.5": "Seedream 4.5 4K",
-  "seedream-5-lite": "Seedream 5 Lite 2K/3K",
+  "seedream-v4": "Seedream v4",
+  "seedream-4.5": "Seedream 4.5",
+  "seedream-5-lite": "Seedream 5 Lite",
   "recraft-ai/recraft-v4": "Recraft v4",
   "replicate/recraft-ai/recraft-v4": "Recraft v4",
   "recraft-v4": "Recraft v4",
@@ -33,7 +33,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "imagen-4-ultra": "Imagen 4 Ultra",
   "imagen-4": "Imagen 4",
   "imagen-4-fast": "Imagen 4 Fast",
-  "new-turbo-model": "Z-Turbo Model",
+  "new-turbo-model": "z-image-turbo",
   wildmindimage: "WILDMINDIMAGE",
   "openai/gpt-image-1.5": "GPT Image 1.5",
   // Qwen

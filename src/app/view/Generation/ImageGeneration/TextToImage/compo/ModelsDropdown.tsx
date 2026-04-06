@@ -18,7 +18,7 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
     "High-end photorealistic and artistic image generation with advanced coherence.",
   "google/nano-banana-2":
     "Improved version of Nano Banana with better quality and consistency.",
-  "seedream-4.5": "Generates ultra-high-resolution (4K) detailed images.",
+  "seedream-4.5": "Generates detailed images across 1K, 2K, and 4K sizes.",
   "gemini-25-flash-image":
     "Lightweight creative image model for decent quality at lower cost.",
   "seedream-5-lite":
@@ -47,15 +47,20 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
 };
 
 const MODEL_RESOLUTIONS: Record<string, string[]> = {
-  "flux-2-pro": ["1K (80 credits)", "2K (160 credits)"],
-  "google/nano-banana-pro": ["1K/2K (320 credits)", "4K (620 credits)"],
+  "flux-2-pro": [
+    "T2I 1080p (24 credits)",
+    "T2I 2K (56 credits)",
+    "I2I 1080p (36 credits)",
+    "I2I 2K (68 credits)",
+  ],
+  "google/nano-banana-pro": ["1K/2K (120 credits)", "4K (240 credits)"],
   "google/nano-banana-2": [
-    "1K (154 credits)",
-    "2K (222 credits)",
-    "4K (322 credits)",
+    "1K (54 credits)",
+    "2K (81 credits)",
+    "4K (121 credits)",
   ],
   "qwen-image-edit-2512": ["1K (60 credits)"],
-  "seedream-4.5": ["4K (100 credits)"],
+  "seedream-4.5": ["1K / 2K / 4K (32 credits)"],
 };
 
 type ModelsDropdownProps = {
@@ -86,7 +91,7 @@ const ModelsDropdown = ({
     { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     { name: "Flux 2 Pro", value: "flux-2-pro" },
     // { name: 'Seedream v4 4k', value: 'seedream-v4' },
-    { name: "Seedream 4.5 4K", value: "seedream-4.5" },
+    { name: "Seedream 4.5", value: "seedream-4.5" },
     { name: "Seedream 5 Lite ", value: "seedream-5-lite" },
     { name: "Recraft v4", value: "recraft-ai/recraft-v4" },
     { name: "Qwen Image 2", value: "qwen/qwen-image-2" },
@@ -128,7 +133,7 @@ const ModelsDropdown = ({
 
   // Add credits information to models from distribution data
   const modelsWithCredits = models.map((model) => {
-    // For GPT Image 1.5, show minimum cost (low quality: 46 credits) in model dropdown
+    // For GPT Image 1.5, show minimum cost (low quality: 11 credits) in model dropdown
     // User can see actual credits per quality in the quality dropdown
     const quality = model.value === "openai/gpt-image-1.5" ? "low" : undefined;
     const creditInfo = getModelCreditInfo(
