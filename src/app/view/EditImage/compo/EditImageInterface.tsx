@@ -448,6 +448,16 @@ const EditImageInterface: React.FC = () => {
   const [topazFaceCreativity, setTopazFaceCreativity] = useState<number>(0);
   const [topazFaceStrength, setTopazFaceStrength] = useState<number>(0.8);
 
+  const estimateTopazCredits = useCallback((outputMegapixels: number) => {
+    if (!Number.isFinite(outputMegapixels) || outputMegapixels <= 0) {
+      return null;
+    }
+    if (outputMegapixels <= 24) return 64;
+    if (outputMegapixels <= 48) return 128;
+    if (outputMegapixels <= 96) return 256;
+    return 1087;
+  }, []);
+
   const seedvrEstimate = useMemo(() => {
     if (selectedFeature !== "upscale") return null;
     if (model !== "fal-ai/seedvr/upscale/image") return null;
@@ -462,7 +472,7 @@ const EditImageInterface: React.FC = () => {
     const outW = Math.max(1, Math.round(w * factor));
     const outH = Math.max(1, Math.round(h * factor));
     const mp = (outW * outH) / 1_000_000;
-    const credits = Math.max(1, Math.ceil(mp * 4));
+    const credits = Math.max(1, Math.ceil(mp));
     return { factor, outW, outH, credits };
   }, [
     inputNaturalSize?.width,
@@ -497,8 +507,17 @@ const EditImageInterface: React.FC = () => {
     if (w <= 0 || h <= 0) return null;
     const outW = Math.round(w * (topazUpscaleFactor || 2));
     const outH = Math.round(h * (topazUpscaleFactor || 2));
-    return { outW, outH, credits: 16 }; // Topaz often has a fixed higher cost
-  }, [inputNaturalSize, model, selectedFeature, topazUpscaleFactor]);
+    const megapixels = (outW * outH) / 1_000_000;
+    const credits = estimateTopazCredits(megapixels);
+    if (!credits) return null;
+    return { outW, outH, credits, megapixels };
+  }, [
+    estimateTopazCredits,
+    inputNaturalSize,
+    model,
+    selectedFeature,
+    topazUpscaleFactor,
+  ]);
 
   const realEsrganEstimate = useMemo(() => {
     if (selectedFeature !== "upscale") return null;
@@ -771,7 +790,7 @@ const EditImageInterface: React.FC = () => {
         value: "fal-ai/seedvr/upscale/image",
       },
       { label: "Topaz Upscaler", value: "fal-ai/topaz/upscale/image" },
-      { label: "Real-ESRGAN", value: "nightmareai/real-esrgan" },
+      // { label: "Real-ESRGAN", value: "nightmareai/real-esrgan" },
     ];
   }, [selectedFeature]);
 
@@ -1980,7 +1999,10 @@ const EditImageInterface: React.FC = () => {
   const featurePreviewGif: Record<EditFeature, string> = {
     upscale: "/editimage/upscale_banner.jpg",
     "remove-bg": "/editimage/RemoveBG_banner.jpg",
-    fill: eraseActionMode === "erase" ? "/editimage/erase_banner.jpg" : "/editimage/replace_banner.jpg",
+    fill:
+      eraseActionMode === "erase"
+        ? "/editimage/erase_banner.jpg"
+        : "/editimage/replace_banner.jpg",
     erase: "/editimage/erase_banner.jpg",
     expand: "/editimage/resize_banner.jpg",
     resize: "/editimage/resize_banner.jpg",
@@ -4580,7 +4602,7 @@ const EditImageInterface: React.FC = () => {
             } catch {}
           }
         } else if (model === "fal-ai/seedvr/upscale/image") {
-          // SeedVR factor-only upscaler (credits: 4 per output megapixel, rounded up)
+          // SeedVR factor-only upscaler (credits: 1 per output megapixel, rounded up)
           const getNaturalSize = async () => {
             const w0 = Number(inputNaturalSize?.width || 0);
             const h0 = Number(inputNaturalSize?.height || 0);
@@ -4615,7 +4637,7 @@ const EditImageInterface: React.FC = () => {
           const outH = Math.max(1, Math.round(inH * factor));
           const expectedCredits = Math.max(
             1,
-            Math.ceil(((outW * outH) / 1_000_000) * 4),
+            Math.ceil((outW * outH) / 1_000_000),
           );
 
           if ((creditBalance || 0) < expectedCredits) {
@@ -4676,6 +4698,19 @@ const EditImageInterface: React.FC = () => {
           return;
         } else if (model === "fal-ai/topaz/upscale/image") {
           // Use FAL Topaz Upscaler endpoint
+          const expectedCredits = topazEstimate?.credits;
+          if (expectedCredits && expectedCredits > 0) {
+            if ((creditBalance || 0) < expectedCredits) {
+              throw new Error(
+                `Insufficient credits. Need ${expectedCredits}, have ${creditBalance || 0}`,
+              );
+            }
+            try {
+              deductCreditsOptimisticForGeneration(expectedCredits);
+              optimisticDebit = expectedCredits;
+            } catch {}
+          }
+
           const normalizedLocal = normalizedInput;
           const isData = String(normalizedLocal).startsWith("data:");
           const body: any = {
@@ -6458,7 +6493,7 @@ const EditImageInterface: React.FC = () => {
                             </div>
 
                             <div className="text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                              Uses factor-only upscaling. Estimated cost is 4
+                              Uses factor-only upscaling. Estimated cost is 1
                               credits per output megapixel.
                             </div>
                           </div>
