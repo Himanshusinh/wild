@@ -373,6 +373,7 @@ const InputBox = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [isMobileFilterMenuOpen, setIsMobileFilterMenuOpen] = useState(false);
   const [isInputBoxHovered, setIsInputBoxHovered] = useState(false);
+  const [isMobileDateFiltering, setIsMobileDateFiltering] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<number>(
     new Date().getMonth(),
   );
@@ -389,6 +390,43 @@ const InputBox = () => {
   const calendarFirstWeekday = useMemo(
     () => new Date(calendarYear, calendarMonth, 1).getDay(),
     [calendarYear, calendarMonth],
+  );
+  const mobileDateInputMax = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+  const isFutureMobileCalendarDate = useCallback((date: Date) => {
+    const now = new Date();
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
+    return date.getTime() > endOfToday.getTime();
+  }, []);
+  const runMobileDateFilterRefresh = useCallback(
+    async (action: () => Promise<void>) => {
+      const startedAt = Date.now();
+      setIsMobileDateFiltering(true);
+      try {
+        await action();
+      } finally {
+        const elapsed = Date.now() - startedAt;
+        const remaining = Math.max(0, 450 - elapsed);
+        if (remaining > 0) {
+          await new Promise((resolve) => setTimeout(resolve, remaining));
+        }
+        setIsMobileDateFiltering(false);
+      }
+    },
+    [],
   );
 
   // Handle calendar click outside
@@ -8171,35 +8209,42 @@ const InputBox = () => {
                       ref={dateInputRef}
                       type="date"
                       value={dateInput}
+                      max={mobileDateInputMax}
                       onChange={async (e) => {
                         const value = e.target.value;
                         setDateInput(value);
-                        if (!value) {
+                        await runMobileDateFilterRefresh(async () => {
+                          if (!value) {
+                            await refreshHistoryFromBackend({
+                              dateRange: { start: null, end: null },
+                            });
+                            return;
+                          }
+                          const d = new Date(value + "T00:00:00");
+                          if (isFutureMobileCalendarDate(d)) {
+                            setDateInput("");
+                            return;
+                          }
+                          const start = new Date(
+                            d.getFullYear(),
+                            d.getMonth(),
+                            d.getDate(),
+                            0,
+                            0,
+                            0,
+                          );
+                          const end = new Date(
+                            d.getFullYear(),
+                            d.getMonth(),
+                            d.getDate(),
+                            23,
+                            59,
+                            59,
+                            999,
+                          );
                           await refreshHistoryFromBackend({
-                            dateRange: { start: null, end: null },
+                            dateRange: { start, end },
                           });
-                          return;
-                        }
-                        const d = new Date(value + "T00:00:00");
-                        const start = new Date(
-                          d.getFullYear(),
-                          d.getMonth(),
-                          d.getDate(),
-                          0,
-                          0,
-                          0,
-                        );
-                        const end = new Date(
-                          d.getFullYear(),
-                          d.getMonth(),
-                          d.getDate(),
-                          23,
-                          59,
-                          59,
-                          999,
-                        );
-                        await refreshHistoryFromBackend({
-                          dateRange: { start, end },
                         });
                       }}
                       className="sr-only"
@@ -8354,36 +8399,51 @@ const InputBox = () => {
                                     !!dateRange.start &&
                                     new Date(dateRange.start).toDateString() ===
                                       thisDate.toDateString();
+                                  const isFuture =
+                                    isFutureMobileCalendarDate(thisDate);
                                   return (
                                     <button
                                       key={day}
-                                      className={`h-8 rounded-lg text-center text-xs transition ${isSelected ? "bg-white text-black" : "bg-white/5 text-white hover:bg-white/15"}`}
+                                      disabled={isFuture}
+                                      aria-disabled={isFuture}
+                                      className={`h-6 rounded-lg text-center text-xs transition ${
+                                        isFuture
+                                          ? "cursor-not-allowed bg-white/[0.03] text-white/10 opacity-35 ring-1 ring-white/[0.04]"
+                                          : isSelected
+                                            ? "bg-white text-black"
+                                            : "bg-white/5 text-white hover:bg-white/15"
+                                      }`}
                                       onMouseDown={(e) => e.stopPropagation()}
                                       onClick={async (e) => {
+                                        if (isFuture) return;
                                         e.stopPropagation();
-                                        const start = new Date(
-                                          thisDate.getFullYear(),
-                                          thisDate.getMonth(),
-                                          thisDate.getDate(),
-                                          0,
-                                          0,
-                                          0,
+                                        await runMobileDateFilterRefresh(
+                                          async () => {
+                                            const start = new Date(
+                                              thisDate.getFullYear(),
+                                              thisDate.getMonth(),
+                                              thisDate.getDate(),
+                                              0,
+                                              0,
+                                              0,
+                                            );
+                                            const end = new Date(
+                                              thisDate.getFullYear(),
+                                              thisDate.getMonth(),
+                                              thisDate.getDate(),
+                                              23,
+                                              59,
+                                              59,
+                                              999,
+                                            );
+                                            setDateInput(
+                                              thisDate.toISOString().slice(0, 10),
+                                            );
+                                            await refreshHistoryFromBackend({
+                                              dateRange: { start, end },
+                                            });
+                                          },
                                         );
-                                        const end = new Date(
-                                          thisDate.getFullYear(),
-                                          thisDate.getMonth(),
-                                          thisDate.getDate(),
-                                          23,
-                                          59,
-                                          59,
-                                          999,
-                                        );
-                                        setDateInput(
-                                          thisDate.toISOString().slice(0, 10),
-                                        );
-                                        await refreshHistoryFromBackend({
-                                          dateRange: { start, end },
-                                        });
                                         setShowCalendar(false);
                                         setIsMobileFilterMenuOpen(false);
                                       }}
@@ -8398,10 +8458,17 @@ const InputBox = () => {
                               <button
                                 className="rounded-lg px-2 py-1 text-xs text-white/75 hover:bg-white/10 hover:text-white"
                                 onClick={async () => {
-                                  setDateInput("");
-                                  await refreshHistoryFromBackend({
-                                    dateRange: { start: null, end: null },
-                                  });
+                                  await runMobileDateFilterRefresh(
+                                    async () => {
+                                      setDateInput("");
+                                      await refreshHistoryFromBackend({
+                                        dateRange: {
+                                          start: null,
+                                          end: null,
+                                        },
+                                      });
+                                    },
+                                  );
                                   setShowCalendar(false);
                                   setIsMobileFilterMenuOpen(false);
                                 }}
@@ -8614,6 +8681,17 @@ const InputBox = () => {
               </div>
             </div>
           )}
+
+        {!isInlineEditImagePage && isMobileDateFiltering && (
+          <div className="fixed top-[64px] left-0 right-0 bottom-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none md:hidden">
+            <div className="flex flex-col items-center gap-4 px-4">
+              <GifLoader size={72} alt="Filtering by date" />
+              <div className="text-white text-lg text-center">
+                Filtering generations...
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filtering overlay - show when filtering/searching */}
         {!isInlineEditImagePage && isFiltering && (

@@ -203,9 +203,14 @@ export default function CommunityCreations({
             className="text-[24px] leading-none tracking-[0.02em] text-white sm:text-[20px] md:text-[28px] lg:text-[36px]"
             style={{ fontFamily: "var(--font-bebas-neue), sans-serif" }}
           >
-            {mode === 'video'
-              ? 'See what our community is creating with Wild Mind AI Video'
-              : 'See what our community is creating with Wild Mind AI'}
+            {mode === 'video' ? (
+              'See what our community is creating with Wild Mind AI Video'
+            ) : (
+              <>
+                <span className="inline-block text-[30px] sm:hidden">Crafted by Minds</span>
+                <span className="hidden sm:inline">See what our community is creating with Wild Mind AI</span>
+              </>
+            )}
           </h2>
         </div>
 

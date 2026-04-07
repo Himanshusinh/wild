@@ -34,6 +34,8 @@ export default function HistoryControls({
 }: HistoryControlsProps) {
   // Default limit: 20 for video/music, 60 for image (can be overridden)
   const paginationLimit = limit || (mode === "image" ? 60 : 20);
+  const emphasizeDisabledDatesOnMobile =
+    mode === "image" || mode === "video";
   const dispatch = useAppDispatch();
   const currentFilters = useAppSelector(
     (state: any) => state.history?.filters || {},
@@ -692,11 +694,18 @@ export default function HistoryControls({
                       thisDate.toDateString();
                   const isFuture =
                     thisDate.getTime() > new Date().setHours(23, 59, 59, 999);
+                  const futureDateClass = emphasizeDisabledDatesOnMobile
+                    ? "cursor-not-allowed bg-white/[0.03] text-white/10 opacity-35 ring-1 ring-white/[0.04] md:bg-white/5 md:text-white/20 md:opacity-100 md:ring-0"
+                    : "text-white/20 cursor-not-allowed";
+                  const activeDateClass = isSelected
+                    ? "bg-white/25 ring-1 ring-white/40"
+                    : "bg-white/5";
                   return (
                     <button
                       key={day}
                       disabled={isFuture}
-                      className={`h-8 rounded text-sm text-center ${isFuture ? "text-white/20 cursor-not-allowed" : "text-white hover:bg-white/15"} ${isSelected ? "bg-white/25 ring-1 ring-white/40" : "bg-white/5"}`}
+                      aria-disabled={isFuture}
+                      className={`h-8 rounded text-sm text-center ${isFuture ? futureDateClass : `text-white hover:bg-white/15 ${activeDateClass}`}`}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={async (e) => {
                         if (isFuture) return;

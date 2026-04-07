@@ -46,6 +46,20 @@ const getAudioColorTheme = (entry: any, index: number = 0): string => {
   return themes[Math.abs(hash) % themes.length];
 };
 
+const formatDateInputValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getEndOfToday = (): Date => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+};
+
+const isFutureCalendarDate = (date: Date): boolean => date.getTime() > getEndOfToday().getTime();
+
 const History = () => {
   const dispatch = useAppDispatch();
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
@@ -91,6 +105,7 @@ const History = () => {
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
+  const todayInputMax = useMemo(() => formatDateInputValue(new Date()), []);
 
   useEffect(() => {
     if (!showCalendar) return;
@@ -236,6 +251,17 @@ const History = () => {
     setPage(1);
     if (closeCalendar) setShowCalendar(false);
   }, [dispatch, filters, searchQuery, sortOrder, quickFilter]);
+
+  const runMobileHistoryRefresh = useCallback(async (action: () => Promise<void>) => {
+    setPillLoading(true);
+    setOverlayLoading(true);
+    try {
+      await action();
+    } finally {
+      setPillLoading(false);
+      setOverlayLoading(false);
+    }
+  }, []);
 
   // Backend-only sorting: clear UI and force a fresh backend query when sort changes
   const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
@@ -1239,31 +1265,30 @@ const History = () => {
               <button
                 key={key}
                 onClick={async () => {
+                  if (quickFilter === key) return;
                   setQuickFilter(key);
-                  setPillLoading(true);
-                  setOverlayLoading(true);
-                  let f: any = {};
-                  switch (key) {
-                    case 'images': f = {}; break;
-                    case 'videos': f = {}; break;
-                    case 'music': f = { generationType: 'text-to-music' }; break;
-                    case 'user-uploads': f = { isUserUpload: true }; break;
-                    default: f = {};
-                  }
-                  if (sortOrder) (f as any).sortOrder = sortOrder;
-                  if (searchQuery.trim()) (f as any).search = searchQuery.trim();
-                  if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
-                  setLocalFilters(f);
-                  dispatch(setFilters(f));
-                  dispatch(clearHistory());
-                  // Reset all load guards so the new tab's fetch is never blocked by a previous in-flight request
-                  loadLockRef.current = false;
-                  isFetchingMoreRef.current = false;
-                  autoLoadAttemptsRef.current = 0;
-                  await loadFirstPage(f, key);
-                  setPage(1);
-                  setPillLoading(false);
-                  setOverlayLoading(false);
+                  await runMobileHistoryRefresh(async () => {
+                    let f: any = {};
+                    switch (key) {
+                      case 'images': f = {}; break;
+                      case 'videos': f = {}; break;
+                      case 'music': f = { generationType: 'text-to-music' }; break;
+                      case 'user-uploads': f = { isUserUpload: true }; break;
+                      default: f = {};
+                    }
+                    if (sortOrder) (f as any).sortOrder = sortOrder;
+                    if (searchQuery.trim()) (f as any).search = searchQuery.trim();
+                    if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                    setLocalFilters(f);
+                    dispatch(setFilters(f));
+                    dispatch(clearHistory());
+                    // Reset all load guards so the new tab's fetch is never blocked by a previous in-flight request
+                    loadLockRef.current = false;
+                    isFetchingMoreRef.current = false;
+                    autoLoadAttemptsRef.current = 0;
+                    await loadFirstPage(f, key);
+                    setPage(1);
+                  });
                 }}
                 className={`inline-flex items-center md:gap-1 md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
                   ? 'bg-white border-white/5 text-black shadow-sm'
@@ -1274,6 +1299,12 @@ const History = () => {
               </button>
             ))}
           </div>
+          {pillLoading && (
+            <div className="flex md:hidden items-center gap-2 text-[11px] text-white/70">
+              <Image src="/styles/Logo.gif" alt="Loading" width={18} height={18} className="rounded-full" unoptimized />
+              <span>Updating history...</span>
+            </div>
+          )}
           {/* First row: Search and Date Picker */}
           <div className="flex items-center gap-1 w-auto">
             {/* Search Input */}
@@ -1307,7 +1338,10 @@ const History = () => {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onSortChange('desc')}
+                onClick={() => {
+                  if (sortOrder === 'desc') return;
+                  void runMobileHistoryRefresh(() => onSortChange('desc'));
+                }}
                 className={`relative group px-1 py-1 rounded-lg text-xs ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Recent"
               >
@@ -1317,7 +1351,10 @@ const History = () => {
                 </div>
               </button>
               <button
-                onClick={() => onSortChange('asc')}
+                onClick={() => {
+                  if (sortOrder === 'asc') return;
+                  void runMobileHistoryRefresh(() => onSortChange('asc'));
+                }}
                 className={`relative group px-1 py-1 rounded-lg text-xs ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Oldest"
               >
@@ -1335,16 +1372,20 @@ const History = () => {
                 ref={dateInputRef}
                 type="date"
                 value={dateInput}
+                max={todayInputMax}
                 onChange={async (e) => {
                   const value = e.target.value;
-                  if (!value) {
-                    await onDateChange(null, null);
-                    return;
-                  }
-                  const d = new Date(value + 'T00:00:00');
-                  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                  await onDateChange(start, end);
+                  await runMobileHistoryRefresh(async () => {
+                    if (!value) {
+                      await onDateChange(null, null);
+                      return;
+                    }
+                    const d = new Date(value + 'T00:00:00');
+                    if (isFutureCalendarDate(d)) return;
+                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                    await onDateChange(start, end);
+                  });
                 }}
                 // Keep it in-viewport but invisible for reliable native picker behavior
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
@@ -1370,11 +1411,11 @@ const History = () => {
                   ref={calendarRef}
                   data-calendar-popup="true"
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2 pb-2"
+                  className="absolute right-0 top-full mt-2 z-40 w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
                 >
                   {/* Header */}
-                  <div className="flex items-center justify-between mb-0 text-white">
-                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                  <div className="flex items-center justify-between mb-2 text-white">
+                    <button className="px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
                       const prev = new Date(calendarYear, calendarMonth - 1, 1);
                       setCalendarYear(prev.getFullYear());
                       setCalendarMonth(prev.getMonth());
@@ -1382,47 +1423,60 @@ const History = () => {
                     <div className="text-sm font-semibold">
                       {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
                     </div>
-                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                    <button className="px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
                       const next = new Date(calendarYear, calendarMonth + 1, 1);
                       setCalendarYear(next.getFullYear());
                       setCalendarMonth(next.getMonth());
                     }}>›</button>
                   </div>
                   {/* Weekdays */}
-                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-0">
+                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
                   </div>
                   {/* Days */}
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                      <div key={`pad-${i}`} className="h-6 text-xs" />
+                      <div key={`pad-${i}`} className="h-8" />
                     ))}
                     {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
                       const day = i + 1;
                       const thisDate = new Date(calendarYear, calendarMonth, day);
                       const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                      const isFuture = isFutureCalendarDate(thisDate);
                       return (
                         <button
                           key={day}
-                          className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                          disabled={isFuture}
+                          className={`h-8 rounded text-sm text-center ${isFuture ? 'cursor-not-allowed text-white/20' : 'text-white hover:bg-white/15'} ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={async () => {
+                            if (isFuture) return;
                             const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
                             const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                            await onDateChange(start, end, true);
+                            await runMobileHistoryRefresh(async () => {
+                              await onDateChange(start, end, true);
+                            });
                           }}
                         >{day}</button>
                       );
                     })}
                   </div>
                   {/* Footer actions */}
-                  <div className="flex items-center justify-between mt-1">
-                    <button className="text-white/80 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                      await onDateChange(null, null, true);
+                  <div className="flex items-center justify-between mt-3">
+                    <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={async () => {
+                      await runMobileHistoryRefresh(async () => {
+                        await onDateChange(null, null, true);
+                      });
                     }}>Clear</button>
-                    <button className="text-white/90 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                    <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={async () => {
                       const now = new Date();
                       setCalendarMonth(now.getMonth());
                       setCalendarYear(now.getFullYear());
+                      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+                      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                      await runMobileHistoryRefresh(async () => {
+                        await onDateChange(start, end, true);
+                      });
                     }}>Today</button>
                   </div>
                 </div>
@@ -1432,7 +1486,9 @@ const History = () => {
                   <button
                     className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
                     onClick={async () => {
-                      await onDateChange(null, null);
+                      await runMobileHistoryRefresh(async () => {
+                        await onDateChange(null, null);
+                      });
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
