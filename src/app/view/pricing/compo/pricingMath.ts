@@ -21,6 +21,9 @@ export function effectiveMonthlyPrimaryYearly(monthlyINR: number, primaryDiscoun
  * If plan has yearlyFinalMultiplierFromGross, annual = gross × that (overrides stack).
  */
 export function annualAfterFullStack(plan: MainPlanConfig): number {
+  if (plan.yearlyINR != null) {
+    return plan.yearlyINR;
+  }
   const gross = grossAnnualFromMonthly(plan.monthlyINR);
   const mult = plan.yearlyFinalMultiplierFromGross;
   if (mult != null) {
@@ -98,7 +101,7 @@ export function getPlanPricingDerived(plan: MainPlanConfig) {
     grossAnnual,
     primaryAnnual,
     finalAnnual,
-    displayMonthlyYearly: effectiveMonthlyPrimaryYearly(plan.monthlyINR),
+    displayMonthlyYearly: finalAnnual / 12,
     effectiveMonthlyFullStack: effectiveMonthlyFullStack(plan),
     totalOffGrossPercent: totalOffGrossAnnualPercent(plan),
     secondarySavingsAnnual: secondarySavingsINR(plan),

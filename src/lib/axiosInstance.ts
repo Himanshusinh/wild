@@ -124,6 +124,7 @@ axiosInstance.interceptors.request.use(async (config) => {
     if (
       url.startsWith("/api/credits/") ||
       url.startsWith("/api/subscriptions/") ||
+      url.startsWith("/api/billing/") ||
       url.startsWith("/api/generations") ||
       url.startsWith("/api/engagement") ||
       url === "/api/auth/me"

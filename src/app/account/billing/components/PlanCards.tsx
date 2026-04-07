@@ -1,106 +1,97 @@
 "use client";
 
-interface Plan {
+export interface Plan {
+  family: string;
   code: string;
   name: string;
+  billingInterval: "MONTHLY" | "YEARLY";
   credits: number;
   storageGB: number;
   priceINR: number;
+  gstRatePercent: number;
+  gstAmountINR: number;
+  totalPriceINR: number;
+  cycleLabel: string;
   features: string[];
   popular?: boolean;
 }
 
-const PLANS: Plan[] = [
-  {
-    code: "FREE",
-    name: "Free",
-    credits: 2000,
-    storageGB: 2,
-    priceINR: 0,
-    features: [
-      "2,000 credits (one-time)",
-      "2 GB storage",
-      "Basic AI models",
-      "Community support",
-    ],
-  },
-  {
-    code: "PLAN_A",
-    name: "Hobbyist",
-    credits: 12360,
-    storageGB: 10,
-    priceINR: 499,
-    features: [
-      "12,360 credits/month",
-      "10 GB storage",
-      "All AI models",
-      "Priority support",
-      "Early access to features",
-    ],
-  },
-  {
-    code: "PLAN_B",
-    name: "Creator",
-    credits: 24720,
-    storageGB: 30,
-    priceINR: 999,
-    popular: true,
-    features: [
-      "24,720 credits/month",
-      "30 GB storage",
-      "All AI models",
-      "Priority support",
-      "Early access to features",
-      "Remove watermark",
-    ],
-  },
-  {
-    code: "PLAN_C",
-    name: "Professional",
-    credits: 61800,
-    storageGB: 50,
-    priceINR: 2499,
-    features: [
-      "61,800 credits/month",
-      "50 GB storage",
-      "All AI models",
-      "Dedicated support",
-      "API access",
-      "White-label option",
-    ],
-  },
-  {
-    code: "PLAN_D",
-    name: "Collective",
-    credits: 197760,
-    storageGB: 150,
-    priceINR: 4999,
-    features: [
-      "197,760 credits/month",
-      "150 GB storage",
-      "All AI models",
-      "24/7 dedicated support",
-      "API access",
-      "White-label option",
-      "Team collaboration",
-    ],
-  },
-];
+interface CatalogSku {
+  code: string;
+  credits: number;
+  storageGB: number;
+  priceInPaise: number;
+  gstRatePercent: number;
+  gstAmountInPaise: number;
+  totalWithGstInPaise: number;
+}
+
+export interface CatalogPlanFamily {
+  family: string;
+  name: string;
+  monthly: CatalogSku | null;
+  yearly: CatalogSku | null;
+}
 
 interface PlanCardsProps {
+  plans: CatalogPlanFamily[];
+  selectedBillingInterval: "MONTHLY" | "YEARLY";
   currentPlanCode?: string;
   onSelectPlan: (planCode: string) => void;
 }
 
 export default function PlanCards({
+  plans,
+  selectedBillingInterval,
   currentPlanCode,
   onSelectPlan,
 }: PlanCardsProps) {
+  const currentSku =
+    plans
+      .flatMap((plan) => [plan.monthly, plan.yearly].filter(Boolean))
+      .find((plan) => plan?.code === currentPlanCode) || null;
+
+  const displayPlans = plans.reduce<Plan[]>((acc, plan) => {
+      const sku =
+        selectedBillingInterval === "YEARLY"
+          ? plan.yearly
+          : plan.monthly;
+      if (!sku) return acc;
+
+      const intervalLabel =
+        selectedBillingInterval === "YEARLY" ? "year" : "month";
+
+      acc.push({
+        family: plan.family,
+        code: sku.code,
+        name: plan.name,
+        billingInterval: selectedBillingInterval,
+        credits: sku.credits,
+        storageGB: sku.storageGB,
+        priceINR: sku.priceInPaise / 100,
+        gstRatePercent: sku.gstRatePercent,
+        gstAmountINR: sku.gstAmountInPaise / 100,
+        totalPriceINR: sku.totalWithGstInPaise / 100,
+        cycleLabel: intervalLabel,
+        popular: plan.family === "creator",
+        features: [
+          `${sku.credits.toLocaleString()} credits refreshed monthly`,
+          `${sku.storageGB} GB storage`,
+          selectedBillingInterval === "YEARLY"
+            ? "Billed yearly with 20% discount"
+            : "Billed monthly",
+          "Invoices with GST support",
+        ],
+      });
+      return acc;
+    }, []);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {PLANS.map((plan) => {
+      {displayPlans.map((plan) => {
         const isCurrent = plan.code === currentPlanCode;
-        const canUpgrade = !currentPlanCode || plan.priceINR > (PLANS.find(p => p.code === currentPlanCode)?.priceINR || 0);
+        const currentPlanPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
+        const canUpgrade = !currentPlanCode || plan.priceINR > currentPlanPrice;
 
         return (
           <div
@@ -136,10 +127,15 @@ export default function PlanCards({
                 </span>
                 {plan.priceINR > 0 && (
                   <span className="text-gray-500 dark:text-gray-400">
-                    /month
+                    /{plan.cycleLabel}
                   </span>
                 )}
               </div>
+              {plan.priceINR > 0 && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  +{plan.gstRatePercent}% GST at checkout
+                </p>
+              )}
             </div>
 
             {/* Credits & Storage */}
@@ -150,7 +146,7 @@ export default function PlanCards({
                 </span>
                 <span className="font-semibold">
                   {plan.credits.toLocaleString()}
-                  {plan.priceINR > 0 && "/mo"}
+                  {"/mo"}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -211,6 +207,3 @@ export default function PlanCards({
     </div>
   );
 }
-
-export { PLANS };
-export type { Plan };

@@ -36,10 +36,18 @@ export const fetchCurrentSubscription = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get("/api/subscriptions/current");
+      if (
+        response.data?.success === false &&
+        response.data?.status === "UNKNOWN"
+      ) {
+        return rejectWithValue(
+          response.data?.message || "Subscription status is temporarily unavailable",
+        );
+      }
       return response.data?.data ?? null;
     } catch (error: any) {
       const status = error?.response?.status;
-      if (status === 404 || (status >= 500 && status <= 599)) {
+      if (status === 404) {
         return null; // No subscription
       }
       return rejectWithValue(
@@ -170,7 +178,8 @@ const subscriptionSlice = createSlice({
       })
       .addCase(createSubscription.fulfilled, (state, action) => {
         state.creatingSubscription = false;
-        state.current = action.payload.subscription;
+        const sub = action.payload?.data?.subscription;
+        if (sub) state.current = sub;
       })
       .addCase(createSubscription.rejected, (state, action) => {
         state.creatingSubscription = false;
@@ -178,7 +187,7 @@ const subscriptionSlice = createSlice({
       })
       // Cancel subscription
       .addCase(cancelSubscription.fulfilled, (state, action) => {
-        state.current = action.payload;
+        state.current = action.payload?.data ?? action.payload;
       })
       // Change plan
       .addCase(changeSubscriptionPlan.pending, (state) => {

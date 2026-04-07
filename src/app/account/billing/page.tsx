@@ -1,12 +1,5 @@
 "use client";
 
-// Razorpay TypeScript declarations
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
@@ -22,10 +15,19 @@ import {
   changeSubscriptionPlan,
 } from "@/store/slices/subscriptionSlice";
 import { fetchUserCredits, selectCredits } from "@/store/slices/creditsSlice";
-import PlanCards, { Plan, PLANS } from "./components/PlanCards";
+import PlanCards, { Plan } from "./components/PlanCards";
 import CheckoutModal from "./components/CheckoutModal";
 import ActivePlanCard from "./components/ActivePlanCard";
 import CelebrationModal from "./components/CelebrationModal";
+import {
+  ensureRazorpayScriptLoaded,
+  openRazorpaySubscriptionCheckout,
+} from "@/lib/razorpaySubscriptionCheckout";
+import {
+  fetchSubscriptionCatalog,
+  findCatalogSkuByCode,
+  type SubscriptionCatalog,
+} from "@/lib/subscriptionCatalog";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -41,13 +43,26 @@ export default function BillingPage() {
   const [showCelebration, setShowCelebration] = useState(false); // New State
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
+  const [catalog, setCatalog] = useState<SubscriptionCatalog | null>(null);
+  const [billingInterval, setBillingInterval] = useState<"MONTHLY" | "YEARLY">(
+    "MONTHLY",
+  );
 
   const [isMounted, setIsMounted] = useState(false);
+  /** Shown before Razorpay when UPI plan change needs a new mandate */
+  const [mandateNotice, setMandateNotice] = useState<{
+    onContinue: () => void;
+  } | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
     dispatch(fetchCurrentSubscription());
     dispatch(fetchUserCredits());
+    fetchSubscriptionCatalog()
+      .then(setCatalog)
+      .catch((error) =>
+        console.error("Failed to fetch subscription catalog", error),
+      );
 
     // Get real user email from Firebase Auth
     const user = auth.currentUser;
@@ -57,12 +72,38 @@ export default function BillingPage() {
     }
   }, [dispatch]);
 
-  const handleSelectPlan = (planCode: string) => {
-    const plan = PLANS.find((p) => p.code === planCode);
-    if (plan && plan.priceINR > 0) {
-      setSelectedPlan(plan);
-      setShowCheckout(true);
+  useEffect(() => {
+    const currentCode = subscription?.planCode || credits?.planCode;
+    const currentSku = findCatalogSkuByCode(catalog, currentCode);
+    if (currentSku?.billingInterval) {
+      setBillingInterval(currentSku.billingInterval);
     }
+  }, [catalog, credits?.planCode, subscription?.planCode]);
+
+  const handleSelectPlan = (planCode: string) => {
+    const sku = findCatalogSkuByCode(catalog, planCode);
+    const familyPlan = catalog?.plans.find(
+      (entry) =>
+        entry.monthly?.code === planCode || entry.yearly?.code === planCode,
+    );
+    if (!sku || !familyPlan) return;
+
+    setSelectedPlan({
+      family: familyPlan.family,
+      code: sku.code,
+      name: familyPlan.name,
+      billingInterval: sku.billingInterval,
+      credits: sku.credits,
+      storageGB: sku.storageGB,
+      priceINR: sku.priceInPaise / 100,
+      gstRatePercent: sku.gstRatePercent,
+      gstAmountINR: sku.gstAmountInPaise / 100,
+      totalPriceINR: sku.totalWithGstInPaise / 100,
+      cycleLabel: sku.billingInterval === "YEARLY" ? "year" : "month",
+      features: [],
+      popular: familyPlan.family === "creator",
+    });
+    setShowCheckout(true);
   };
 
   const handleCheckoutConfirm = async (billingDetails: any) => {
@@ -78,19 +119,79 @@ export default function BillingPage() {
         (currentPlanCodeFromCredits && currentPlanCodeFromCredits !== 'FREE');
 
       if (isPaidUser) {
-        // Handle Upgrade/Downgrade
         console.log("🔄 Processing plan change to:", selectedPlan.code);
-        await dispatch(
+        const changeResult = await dispatch(
           changeSubscriptionPlan({
             newPlanCode: selectedPlan.code,
-            immediate: true, // Auto-charge prorated amount
-          })
+            immediate: true,
+          }),
         ).unwrap();
 
-        // Show celebration for upgrade too!
+        const payload = changeResult?.data as
+          | {
+              requiresCheckout?: boolean;
+              razorpaySubscriptionId?: string;
+              keyId?: string;
+              upiNotSupportedForPlan?: boolean;
+              maxUpiRecurringPaise?: number;
+            }
+          | undefined;
+
+        if (
+          payload?.requiresCheckout &&
+          payload.razorpaySubscriptionId &&
+          payload.keyId
+        ) {
+          const openPlanChangeCheckout = async () => {
+            if (payload.upiNotSupportedForPlan) {
+              const cap =
+                (payload.maxUpiRecurringPaise ?? 1_500_000) / 100;
+              alert(
+                `This plan is above the ₹${cap.toLocaleString("en-IN")} monthly limit for UPI AutoPay. In the payment window, choose Card or bank mandate (eMandate).`,
+              );
+            }
+            await ensureRazorpayScriptLoaded();
+            openRazorpaySubscriptionCheckout({
+              keyId: payload.keyId!,
+              subscriptionId: payload.razorpaySubscriptionId!,
+              planName: selectedPlan.name,
+              prefill: {
+                name: billingDetails?.name || userName,
+                email: billingDetails?.email || userEmail,
+                contact: billingDetails?.phone,
+              },
+              onSuccess: () => {
+                setShowCheckout(false);
+                setShowCelebration(true);
+                dispatch(fetchCurrentSubscription());
+                dispatch(fetchUserCredits());
+                window.history.replaceState(
+                  {},
+                  document.title,
+                  window.location.pathname,
+                );
+              },
+              onFailure: (msg) => {
+                alert(msg);
+                setShowCheckout(false);
+              },
+              onDismiss: () => setShowCheckout(false),
+            });
+          };
+
+          setMandateNotice({
+            onContinue: () => {
+              setMandateNotice(null);
+              void openPlanChangeCheckout();
+            },
+          });
+          return;
+        }
+
         setShowCheckout(false);
         setShowCelebration(true);
-        dispatch(fetchCurrentSubscription()); // Refresh data
+        dispatch(fetchCurrentSubscription());
+        dispatch(fetchUserCredits());
         return;
       }
 
@@ -120,70 +221,43 @@ export default function BillingPage() {
         return;
       }
 
-      // Load Razorpay script if not already loaded
-      if (!window.Razorpay) {
-        console.log("📦 Loading Razorpay SDK...");
-        const script = document.createElement("script");
-        script.src = "https://checkout.razorpay.com/v1/checkout.js";
-        script.async = true;
-
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-
-        console.log("✅ Razorpay SDK loaded");
+      const d = result?.data as
+        | {
+            upiNotSupportedForPlan?: boolean;
+            maxUpiRecurringPaise?: number;
+          }
+        | undefined;
+      if (d?.upiNotSupportedForPlan) {
+        const cap = (d.maxUpiRecurringPaise ?? 1_500_000) / 100;
+        alert(
+          `This plan is above the ₹${cap.toLocaleString("en-IN")} monthly limit for UPI AutoPay. In the payment window, choose Card or bank mandate (eMandate).`,
+        );
       }
 
-      // Configure Razorpay options
-      const options = {
-        key: keyId,
-        subscription_id: subscriptionId,
-        name: "WildMind AI",
-        description: `${selectedPlan?.name} Plan`,
-        image: "/icons/icon-512x512.png",
-        handler: function (response: any) {
-          console.log("✅ Payment successful:", response);
-          // Alert removed, replaced with Celebration Modal
-          setShowCheckout(false);
-          setShowCelebration(true);
-
-          // Refresh subscription data
-          dispatch(fetchCurrentSubscription());
-          // Optional: Remove query params cleanly
-          window.history.replaceState({}, document.title, window.location.pathname);
-        },
-        modal: {
-          ondismiss: function () {
-            console.log("Payment modal closed by user");
-            setShowCheckout(false);
-            // Don't clear selected plan immediately so they can try again if they just closed it by mistake
-            // But if they cancel, maybe we should? Let's leave it for better UX.
-          },
-        },
-        theme: {
-          color: "#3b82f6",
-        },
+      await ensureRazorpayScriptLoaded();
+      console.log("🚀 Opening Razorpay checkout modal");
+      openRazorpaySubscriptionCheckout({
+        keyId,
+        subscriptionId,
+        planName: selectedPlan?.name || "Plan",
         prefill: {
           name: billingDetails?.name || userName,
           email: billingDetails?.email || userEmail,
           contact: billingDetails?.phone,
         },
-      };
-
-      // Open Razorpay checkout modal
-      console.log("🚀 Opening Razorpay checkout modal");
-      const rzp = new window.Razorpay(options);
-
-      rzp.on("payment.failed", function (response: any) {
-        console.error("❌ Payment failed:", response.error);
-        alert(`Payment failed: ${response.error.description}`);
-        setShowCheckout(false);
-        // setSelectedPlan(null); // Keep plan selected for retry
+        onSuccess: () => {
+          setShowCheckout(false);
+          setShowCelebration(true);
+          dispatch(fetchCurrentSubscription());
+          dispatch(fetchUserCredits());
+          window.history.replaceState({}, document.title, window.location.pathname);
+        },
+        onFailure: (msg) => {
+          alert(`Payment failed: ${msg}`);
+          setShowCheckout(false);
+        },
+        onDismiss: () => setShowCheckout(false),
       });
-
-      rzp.open();
 
     } catch (error: any) {
       console.error("Checkout error:", error);
@@ -215,10 +289,70 @@ export default function BillingPage() {
     );
   }
 
-  const currentPlan = PLANS.find((p) => p.code === subscription?.planCode);
+  const currentCatalogSku = findCatalogSkuByCode(
+    catalog,
+    subscription?.planCode || credits?.planCode,
+  );
+  const currentCatalogFamily = catalog?.plans.find(
+    (plan) =>
+      plan.monthly?.code === (subscription?.planCode || credits?.planCode) ||
+      plan.yearly?.code === (subscription?.planCode || credits?.planCode),
+  );
+  const currentSubscriptionPlan = (subscription as any)?.plan;
+  const fallbackGstRatePercent =
+    currentSubscriptionPlan?.gstRatePercent ?? 18;
+  const fallbackTotalWithGstInPaise =
+    currentSubscriptionPlan?.priceInPaise != null
+      ? currentSubscriptionPlan.priceInPaise +
+        Math.round(
+          (currentSubscriptionPlan.priceInPaise * fallbackGstRatePercent) / 100,
+        )
+      : undefined;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8">
+      {mandateNotice && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mandate-notice-title"
+        >
+          <div className="max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+            <h3
+              id="mandate-notice-title"
+              className="mb-2 text-lg font-semibold text-gray-900 dark:text-white"
+            >
+              New UPI AutoPay authorization
+            </h3>
+            <p className="mb-6 text-sm text-gray-600 dark:text-gray-300">
+              You pay with UPI. Changing your plan needs a new AutoPay mandate
+              for the new amount. You&apos;ll complete a quick checkout to
+              authorize it.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                onClick={() => {
+                  setMandateNotice(null);
+                  setShowCheckout(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                onClick={() => mandateNotice.onContinue()}
+              >
+                Continue to checkout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Celebration Modal */}
       <CelebrationModal
         isOpen={showCelebration}
@@ -230,7 +364,12 @@ export default function BillingPage() {
             router.replace('/account/billing');
           }
         }}
-        planName={selectedPlan?.name || currentPlan?.name || "Premium"}
+        planName={
+          selectedPlan?.name ||
+          currentCatalogFamily?.name ||
+          (subscription as any)?.plan?.name ||
+          "Premium"
+        }
       />
 
       <div className="container mx-auto max-w-6xl">
@@ -261,7 +400,7 @@ export default function BillingPage() {
         </div>
 
         {/* Current Subscription Card */}
-        {subscription && currentPlan && (
+        {subscription && (currentCatalogSku || (subscription as any)?.plan) && (
           <div className="mb-8">
             <ActivePlanCard
               subscription={{
@@ -276,10 +415,35 @@ export default function BillingPage() {
                 storageQuota: credits?.storageQuota || 0,
               }}
               plan={{
-                name: currentPlan.name,
-                credits: currentPlan.credits,
-                storageGB: currentPlan.storageGB,
-                priceINR: currentPlan.priceINR,
+                name:
+                  currentCatalogFamily?.name ||
+                  (subscription as any)?.plan?.name ||
+                  "Plan",
+                credits:
+                  currentCatalogSku?.credits ||
+                  (subscription as any)?.plan?.credits ||
+                  0,
+                storageGB:
+                  currentCatalogSku?.storageGB ||
+                  (subscription as any)?.plan?.storageGB ||
+                  0,
+                priceINR:
+                  (currentCatalogSku?.priceInPaise ||
+                    currentSubscriptionPlan?.priceInPaise ||
+                    0) / 100,
+                gstRatePercent:
+                  currentCatalogSku?.gstRatePercent ?? fallbackGstRatePercent,
+                totalPriceINR:
+                  currentCatalogSku?.totalWithGstInPaise != null
+                    ? Number(
+                        (currentCatalogSku.totalWithGstInPaise / 100).toFixed(2),
+                      )
+                    : fallbackTotalWithGstInPaise != null
+                    ? Number((fallbackTotalWithGstInPaise / 100).toFixed(2))
+                    : undefined,
+                billingInterval:
+                  currentCatalogSku?.billingInterval ||
+                  currentSubscriptionPlan?.billingInterval,
               }}
               onCancelSubscription={handleCancelSubscription}
             />
@@ -288,8 +452,36 @@ export default function BillingPage() {
 
         {/* Available Plans */}
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-6">Available Plans</h2>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-2xl font-semibold">Available Plans</h2>
+            <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-700 p-1">
+              <button
+                type="button"
+                onClick={() => setBillingInterval("MONTHLY")}
+                className={`rounded-md px-4 py-2 text-sm font-medium ${
+                  billingInterval === "MONTHLY"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 dark:text-gray-300"
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingInterval("YEARLY")}
+                className={`rounded-md px-4 py-2 text-sm font-medium ${
+                  billingInterval === "YEARLY"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 dark:text-gray-300"
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
+          </div>
           <PlanCards
+            plans={catalog?.plans || []}
+            selectedBillingInterval={billingInterval}
             currentPlanCode={subscription?.planCode || credits?.planCode}
             onSelectPlan={handleSelectPlan}
           />
