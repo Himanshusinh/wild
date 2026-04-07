@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 import { ArrowLeft, Download, FileText, Calendar, CreditCard } from 'lucide-react';
+import api from '@/lib/axiosInstance';
 
 interface Invoice {
   id: string;
@@ -12,8 +12,16 @@ interface Invoice {
   taxInPaise: number;
   totalInPaise: number;
   status: string;
+  invoiceKind: string;
+  currency: string;
+  gstType?: string | null;
+  description?: string | null;
   createdAt: string;
-  planName?: string;
+  paymentRecord?: {
+    providerPaymentId?: string;
+    providerOrderId?: string;
+    providerSubId?: string;
+  };
 }
 
 import { useSelector } from 'react-redux';
@@ -36,7 +44,7 @@ export default function InvoicesPage() {
     try {
       if (!user?.uid) return;
       // Note: Backend requires userId for fetching invoices
-      const response = await axios.get('/api/billing/invoices');
+      const response = await api.get('/api/billing/invoices');
       if (response.data.success || response.data.responseStatus === 'success') {
         setInvoices(response.data.data || []);
       } else {
@@ -52,7 +60,7 @@ export default function InvoicesPage() {
   const downloadInvoice = async (invoiceId: string, invoiceNumber: string) => {
     try {
       setDownloading(invoiceId);
-      const response = await axios.get(`/api/billing/invoices/${invoiceId}/pdf`, {
+      const response = await api.get(`/api/billing/invoices/${invoiceId}/pdf`, {
         responseType: 'blob',
       });
       
@@ -72,8 +80,13 @@ export default function InvoicesPage() {
     }
   };
 
-  const formatCurrency = (paisa: number) => {
-    return `₹${(paisa / 100).toFixed(2)}`;
+  const formatCurrency = (minorUnits: number, currency: string) => {
+    return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(minorUnits / 100);
   };
 
   const formatDate = (dateString: string) => {
@@ -98,6 +111,19 @@ export default function InvoicesPage() {
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
+  };
+
+  const getInvoiceKindLabel = (invoice: Invoice) => {
+    if (invoice.paymentRecord?.providerSubId) return 'Subscription';
+    if (invoice.invoiceKind === 'EXPORT') return 'One-time export';
+    return 'One-time';
+  };
+
+  const getTaxLabel = (invoice: Invoice) => {
+    if (invoice.invoiceKind === 'EXPORT') return 'Export / GST';
+    if (invoice.gstType === 'CGST_SGST') return 'CGST + SGST';
+    if (invoice.gstType === 'IGST') return 'IGST';
+    return 'Tax';
   };
 
   return (
@@ -175,12 +201,37 @@ export default function InvoicesPage() {
                           <span>{formatDate(invoice.createdAt)}</span>
                         </div>
                         
-                        {invoice.planName && (
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                            <CreditCard className="w-4 h-4" />
-                            <span>{invoice.planName} Plan</span>
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                          <CreditCard className="w-4 h-4" />
+                          <span>{getInvoiceKindLabel(invoice)}</span>
+                        </div>
+                        {invoice.description && (
+                          <div className="text-gray-600 dark:text-gray-400">
+                            {invoice.description}
                           </div>
                         )}
+                        {invoice.paymentRecord?.providerPaymentId && (
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                            <CreditCard className="w-4 h-4" />
+                            <span>Payment ref: {invoice.paymentRecord.providerPaymentId}</span>
+                          </div>
+                        )}
+                        {invoice.paymentRecord?.providerOrderId && (
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                            <CreditCard className="w-4 h-4" />
+                            <span>Order ref: {invoice.paymentRecord.providerOrderId}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                          <CreditCard className="w-4 h-4" />
+                          <span>
+                            {invoice.invoiceKind === 'EXPORT'
+                              ? 'Export invoice'
+                              : invoice.gstType === 'CGST_SGST'
+                                ? 'Same-state GST'
+                                : 'Interstate GST'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -188,19 +239,19 @@ export default function InvoicesPage() {
                           <div>
                             <p className="text-gray-500 dark:text-gray-400 mb-1">Amount</p>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                              {formatCurrency(invoice.amountInPaise)}
+                              {formatCurrency(invoice.amountInPaise, invoice.currency)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-gray-500 dark:text-gray-400 mb-1">Tax (18% GST)</p>
+                            <p className="text-gray-500 dark:text-gray-400 mb-1">{getTaxLabel(invoice)}</p>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                              {formatCurrency(invoice.taxInPaise)}
+                              {formatCurrency(invoice.taxInPaise, invoice.currency)}
                             </p>
                           </div>
                           <div>
                             <p className="text-gray-500 dark:text-gray-400 mb-1">Total</p>
                             <p className="text-xl font-bold text-gray-900 dark:text-white">
-                              {formatCurrency(invoice.totalInPaise)}
+                              {formatCurrency(invoice.totalInPaise, invoice.currency)}
                             </p>
                           </div>
                         </div>
@@ -238,8 +289,8 @@ export default function InvoicesPage() {
         {invoices.length > 0 && (
           <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> All invoices are automatically generated and sent to your registered email address. 
-              You can download them anytime from this page for your records.
+              <strong>Note:</strong> Paid invoices are generated in your account after payment succeeds.
+              Domestic invoices include GST breakdown, while export invoices are rendered separately with zero-tax wording.
             </p>
           </div>
         )}

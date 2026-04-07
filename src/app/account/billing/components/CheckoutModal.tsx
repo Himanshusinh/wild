@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plan, PLANS } from "./PlanCards";
+import { Plan } from "./PlanCards";
+import api from "@/lib/axiosInstance";
 
 interface CheckoutModalProps {
   plan: Plan;
@@ -72,20 +73,86 @@ export default function CheckoutModal({
   });
 
   const [showGSTFields, setShowGSTFields] = useState(false);
+  const [gstVerified, setGstVerified] = useState(false);
+  const [gstVerifyError, setGstVerifyError] = useState<string | null>(null);
+  const [verifyingGst, setVerifyingGst] = useState(false);
+  const [verifiedLegalName, setVerifiedLegalName] = useState<string | null>(
+    null,
+  );
+
+  const gstinTrimmed = (billingDetails.gstin ?? "").trim().toUpperCase();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (showGSTFields && gstinTrimmed.length > 0 && !gstVerified) {
+      alert(
+        "Verify your GSTIN before continuing — click Verify GSTIN after entering the number.",
+      );
+      return;
+    }
     onConfirm(showGSTFields ? billingDetails : {});
+  };
+
+  const handleVerifyGstin = async () => {
+    const raw = (billingDetails.gstin ?? "").trim();
+    if (!raw) {
+      setGstVerifyError("Enter a GSTIN to verify.");
+      return;
+    }
+    setGstVerifyError(null);
+    setVerifyingGst(true);
+    try {
+      const res = await api.post("/api/billing/validate-gstin", {
+        gstin: raw,
+      });
+      const payload = res.data?.data as
+        | {
+            gstin?: string;
+            legalName?: string;
+            state?: string;
+            status?: string;
+            isGSTVerified?: boolean;
+          }
+        | undefined;
+      if (!payload?.state) {
+        setGstVerifyError("Unexpected response from GST verification.");
+        return;
+      }
+      setGstVerified(true);
+      setVerifiedLegalName(payload.legalName ?? null);
+      setBillingDetails((prev) => ({
+        ...prev,
+        gstin: payload.gstin ?? raw.toUpperCase().replace(/\s+/g, ""),
+        billingState: payload.state,
+      }));
+    } catch (err: any) {
+      const data = err?.response?.data;
+      let msg =
+        (typeof data?.message === "string" && data.message) ||
+        err?.message ||
+        "GST verification failed.";
+      if (Array.isArray(data?.message)) {
+        msg = data.message.join(", ");
+      }
+      setGstVerified(false);
+      setVerifiedLegalName(null);
+      setGstVerifyError(msg);
+    } finally {
+      setVerifyingGst(false);
+    }
   };
 
   const calculateGST = () => {
     const basePrice = plan.priceINR;
-    const gstRate = 0.18; // 18%
-    const gstAmount = basePrice * gstRate;
+    const gstRatePercent = plan.gstRatePercent ?? 18;
+    const gstAmount =
+      plan.gstAmountINR ?? Number((basePrice * (gstRatePercent / 100)).toFixed(2));
     return {
       basePrice,
+      gstRatePercent,
       gstAmount,
-      total: basePrice + gstAmount,
+      total:
+        plan.totalPriceINR ?? Number((basePrice + gstAmount).toFixed(2)),
     };
   };
 
@@ -117,7 +184,7 @@ export default function CheckoutModal({
             <h3 className="font-semibold text-lg mb-2">{plan.name} Plan</h3>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span>Credits per month:</span>
+                <span>Credits refreshed:</span>
                 <span className="font-medium">{plan.credits.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
@@ -132,7 +199,15 @@ export default function CheckoutModal({
             <label className="text-sm font-medium">Add GST Details (Optional)</label>
             <button
               type="button"
-              onClick={() => setShowGSTFields(!showGSTFields)}
+              onClick={() => {
+                const next = !showGSTFields;
+                setShowGSTFields(next);
+                if (!next) {
+                  setGstVerified(false);
+                  setGstVerifyError(null);
+                  setVerifiedLegalName(null);
+                }
+              }}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 showGSTFields ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
               }`}
@@ -153,18 +228,46 @@ export default function CheckoutModal({
                 <label className="block text-sm font-medium mb-2">
                   GSTIN (Optional)
                 </label>
-                <input
-                  type="text"
-                  value={billingDetails.gstin}
-                  onChange={(e) =>
-                    setBillingDetails({ ...billingDetails, gstin: e.target.value })
-                  }
-                  placeholder="22AAAAA0000A1Z5"
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={billingDetails.gstin}
+                      onChange={(e) => {
+                        setGstVerified(false);
+                        setGstVerifyError(null);
+                        setVerifiedLegalName(null);
+                        setBillingDetails({
+                          ...billingDetails,
+                          gstin: e.target.value,
+                        });
+                      }}
+                      placeholder="22AAAAA0000A1Z5"
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleVerifyGstin()}
+                    disabled={verifyingGst}
+                    className="shrink-0 rounded-lg border border-blue-600 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-400 dark:bg-blue-950 dark:text-blue-200"
+                  >
+                    {verifyingGst ? "Verifying…" : "Verify GSTIN"}
+                  </button>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  For business/GST billing
+                  Required for GST invoices: verify once; billing state is set from your GSTIN.
                 </p>
+                {verifiedLegalName && gstVerified && (
+                  <p className="text-xs text-green-700 dark:text-green-400 mt-1">
+                    Legal name: {verifiedLegalName}
+                  </p>
+                )}
+                {gstVerifyError && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {gstVerifyError}
+                  </p>
+                )}
               </div>
 
               {/* Billing State */}
@@ -178,7 +281,8 @@ export default function CheckoutModal({
                     setBillingDetails({ ...billingDetails, billingState: e.target.value })
                   }
                   required={showGSTFields}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                  disabled={gstVerified && gstinTrimmed.length > 0}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <option value="">Select State</option>
                   {INDIAN_STATES.map((state) => (
@@ -211,18 +315,23 @@ export default function CheckoutModal({
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
             <div className="flex justify-between text-sm">
               <span>Base Price:</span>
-              <span>₹{pricing.basePrice}</span>
+              <span>₹{pricing.basePrice.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span>GST (18%):</span>
+              <span>GST ({pricing.gstRatePercent}%):</span>
               <span>₹{pricing.gstAmount.toFixed(2)}</span>
             </div>
             <div className="border-t border-gray-300 dark:border-gray-600 pt-3 flex justify-between font-bold text-lg">
-              <span>Total:</span>
+              <span>Total payable:</span>
               <span>₹{pricing.total.toFixed(2)}</span>
             </div>
             <p className="text-xs text-gray-500">
-              Billed monthly. Cancel anytime.
+              {plan.billingInterval === "YEARLY"
+                ? "Billed yearly. Credits refresh monthly during the active year."
+                : "Billed monthly. Cancel anytime."}
+            </p>
+            <p className="text-xs text-gray-500">
+              Razorpay charges the GST-inclusive total shown above.
             </p>
           </div>
 
@@ -252,7 +361,7 @@ export default function CheckoutModal({
 
           {/* Security Note */}
           <p className="text-xs text-center text-gray-500">
-            🔒 Secured by Razorpay. Your payment information is encrypted.
+            Secured by Razorpay. Your payment information is encrypted.
           </p>
         </form>
       </div>

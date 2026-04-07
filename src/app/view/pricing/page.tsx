@@ -6,20 +6,25 @@ import { setSidebarExpanded } from '@/store/slices/uiSlice';
 import { Menu } from 'lucide-react';
 import FooterNew from '../core/FooterNew';
 import PricingPlans from './compo/PricingPlans';
+import { isUserAuthenticated } from '@/lib/axiosInstance';
 
 const PricingPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-      try {
-        const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-        if (userStr) {
-          const u = JSON.parse(userStr);
-          setIsAuthenticated(!!u?.uid);
-        } else {
-        setIsAuthenticated(false);
-      }
+    try {
+      const userStr =
+        typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const authToken =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('authToken') || localStorage.getItem('idToken')
+          : null;
+      const hasStoredUser = Boolean(userStr);
+      const hasStoredToken = Boolean(authToken);
+      const hasLiveSession = isUserAuthenticated();
+
+      setIsAuthenticated(hasLiveSession || hasStoredToken || hasStoredUser);
     } catch {
       setIsAuthenticated(false);
     }

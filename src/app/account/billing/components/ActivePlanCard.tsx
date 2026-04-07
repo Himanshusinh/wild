@@ -19,6 +19,9 @@ interface ActivePlanCardProps {
     credits: number;
     storageGB: number;
     priceINR: number;
+    gstRatePercent?: number;
+    totalPriceINR?: number;
+    billingInterval?: "MONTHLY" | "YEARLY";
   };
   onCancelSubscription?: () => void;
 }
@@ -58,7 +61,14 @@ export default function ActivePlanCard({
         </div>
         <div className="text-right">
           <div className="text-4xl font-extrabold">₹{plan.priceINR}</div>
-          <div className="text-sm text-blue-100">per month</div>
+          <div className="text-sm text-blue-100">
+            per {plan.billingInterval === "YEARLY" ? "year" : "month"}
+          </div>
+          {plan.priceINR > 0 && (
+            <div className="mt-1 text-xs text-blue-100/90">
+              +{plan.gstRatePercent ?? 18}% GST
+            </div>
+          )}
         </div>
       </div>
 

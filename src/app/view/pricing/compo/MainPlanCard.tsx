@@ -84,11 +84,19 @@ interface MainPlanCardProps {
   plan: MainPlanConfig;
   billingPeriod: BillingPeriod;
   onCta: () => void;
+  gstRatePercent?: number;
   compact?: boolean;
   className?: string;
 }
 
-export function MainPlanCard({ plan, billingPeriod, onCta, compact, className = '' }: MainPlanCardProps) {
+export function MainPlanCard({
+  plan,
+  billingPeriod,
+  onCta,
+  gstRatePercent = 18,
+  compact,
+  className = '',
+}: MainPlanCardProps) {
   const isHi = plan.highlighted;
   const isYearly = billingPeriod === 'yearly';
   const d = getPlanPricingDerived(plan);
@@ -211,6 +219,9 @@ export function MainPlanCard({ plan, billingPeriod, onCta, compact, className = 
           </div>
         </div>
       </div>
+      <p className="mt-2 text-xs text-slate-500">
+        +{gstRatePercent}% GST at checkout
+      </p>
 
       <ul className="mt-3 flex-1 flex flex-col gap-2.5 min-h-0 mb-0 list-none p-0" aria-label={`${plan.name} plan details`}>
         <li className="flex items-start gap-2.5 text-sm text-slate-200 font-medium">

@@ -83,6 +83,7 @@ export interface MainPlanConfig {
   id: MainPlanId;
   name: string;
   monthlyINR: number;
+  yearlyINR?: number | null;
   /** Monthly credits — fixed marketing numbers (not derived). */
   monthlyCredits: number;
   yearlySecondaryDiscount?: number;
@@ -94,12 +95,15 @@ export interface MainPlanConfig {
   cta: string;
 }
 
-export const MAIN_PLANS: MainPlanConfig[] = [
-  {
-    id: 'spark',
-    name: 'Spark',
-    monthlyINR: 699,
-    monthlyCredits: 4000,
+const MAIN_PLAN_UI: Record<
+  MainPlanId,
+  Omit<
+    MainPlanConfig,
+    "id" | "name" | "monthlyINR" | "monthlyCredits"
+  >
+> = {
+  spark: {
+    description: 'Steady creation for hobbyists and side projects.',
     features: ['Faster queues', 'All standard models', 'Library storage'],
     accessibility: {
       queue: 0,
@@ -111,11 +115,8 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     },
     cta: 'Choose Spark',
   },
-  {
-    id: 'creator',
-    name: 'Creator',
-    monthlyINR: 1499,
-    monthlyCredits: 8580,
+  creator: {
+    description: 'Best value for freelancers and daily content.',
     features: ['Priority generation', 'Commercial-friendly usage', 'More storage', 'Better support'],
     accessibility: {
       queue: 3,
@@ -128,11 +129,8 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     highlighted: true,
     cta: 'Choose Creator',
   },
-  {
-    id: 'studio',
-    name: 'Studio',
-    monthlyINR: 2799,
-    monthlyCredits: 16_020,
+  studio: {
+    description: 'Small teams, campaigns, and client volume.',
     features: ['Highest priority', 'Expanded storage', 'Production-ready usage'],
     accessibility: {
       queue: 6,
@@ -144,12 +142,8 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     },
     cta: 'Choose Studio',
   },
-  {
-    id: 'agency',
-    name: 'Agency',
-    monthlyINR: 12_999,
-    monthlyCredits: 71_100,
-    yearlyFinalMultiplierFromGross: AGENCY_YEARLY_MULTIPLIER_FROM_GROSS,
+  agency: {
+    description: 'Agencies and studios at maximum throughput.',
     features: ['Top priority lane', 'Bulk workflows', 'Success options'],
     accessibility: {
       queue: 10,
@@ -159,6 +153,24 @@ export const MAIN_PLANS: MainPlanConfig[] = [
       videoEditor: true,
       imageEditor: true,
     },
+    yearlyFinalMultiplierFromGross: AGENCY_YEARLY_MULTIPLIER_FROM_GROSS,
     cta: 'Choose Agency',
   },
-];
+};
+
+export function buildMainPlanConfig(input: {
+  id: MainPlanId;
+  name: string;
+  monthlyINR: number;
+  yearlyINR?: number | null;
+  monthlyCredits: number;
+}): MainPlanConfig {
+  return {
+    id: input.id,
+    name: input.name,
+    monthlyINR: input.monthlyINR,
+    yearlyINR: input.yearlyINR ?? null,
+    monthlyCredits: input.monthlyCredits,
+    ...MAIN_PLAN_UI[input.id],
+  };
+}
