@@ -87,7 +87,6 @@ export interface MainPlanConfig {
   monthlyCredits: number;
   yearlySecondaryDiscount?: number;
   yearlyFinalMultiplierFromGross?: number;
-  description: string;
   features: string[];
   /** Access details shown after marketing feature bullets. */
   accessibility: PlanAccessibility;
@@ -101,7 +100,6 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     name: 'Spark',
     monthlyINR: 699,
     monthlyCredits: 4000,
-    description: 'Steady creation for hobbyists and side projects.',
     features: ['Faster queues', 'All standard models', 'Library storage'],
     accessibility: {
       queue: 0,
@@ -118,7 +116,6 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     name: 'Creator',
     monthlyINR: 1499,
     monthlyCredits: 8580,
-    description: 'Best value for freelancers and daily content.',
     features: ['Priority generation', 'Commercial-friendly usage', 'More storage', 'Better support'],
     accessibility: {
       queue: 3,
@@ -136,7 +133,6 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     name: 'Studio',
     monthlyINR: 2799,
     monthlyCredits: 16_020,
-    description: 'Small teams, campaigns, and client volume.',
     features: ['Highest priority', 'Expanded storage', 'Production-ready usage'],
     accessibility: {
       queue: 6,
@@ -154,7 +150,6 @@ export const MAIN_PLANS: MainPlanConfig[] = [
     monthlyINR: 12_999,
     monthlyCredits: 71_100,
     yearlyFinalMultiplierFromGross: AGENCY_YEARLY_MULTIPLIER_FROM_GROSS,
-    description: 'Agencies and studios at maximum throughput.',
     features: ['Top priority lane', 'Bulk workflows', 'Success options'],
     accessibility: {
       queue: 10,
