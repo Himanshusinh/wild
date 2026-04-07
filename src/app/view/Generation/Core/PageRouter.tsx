@@ -7,7 +7,6 @@ import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
 import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
 import MusicGenerationPage from '../MusicGeneration/MusicGenerationPage';
-import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';
 import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithModelPoseInputBox';
 import AdGenerationInputBox from '../AdGeneration/compo/InputBox';
 import History from './History';
@@ -36,7 +35,6 @@ const generators: GeneratorComponentMap = {
   'text-to-music': MusicGenerationPage,
 
   // Branding Kit Features
-  'mockup-generation': MockupGenerationInputBox,
   'product-generation': ProductGenerationInputBox,
   'ad-generation': AdGenerationInputBox,
   'live-chat': LiveChatInputBox,
@@ -144,7 +142,6 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
           'text-to-music',
           'product-generation',
           'ad-generation',
-          'mockup-generation',
           'live-chat',
           'edit-image',
           'edit-video',

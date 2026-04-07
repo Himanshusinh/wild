@@ -82,6 +82,7 @@ export function getAccessibilityRowPresentation(
 export interface MainPlanConfig {
   id: MainPlanId;
   name: string;
+  description: string;
   monthlyINR: number;
   yearlyINR?: number | null;
   /** Monthly credits — fixed marketing numbers (not derived). */
