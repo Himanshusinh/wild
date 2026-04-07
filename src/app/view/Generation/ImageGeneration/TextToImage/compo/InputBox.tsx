@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Trash2,
   Edit3,
+  SquarePen,
   PhoneOutgoing,
   PhoneOutgoingIcon,
   ImageIcon,
@@ -8024,7 +8025,7 @@ const InputBox = () => {
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
-            <div className="mb-0 flex min-h-14 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
+            <div className="mb-0 flex min-h-10 md:min-h-12 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
               <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
@@ -8097,7 +8098,7 @@ const InputBox = () => {
                   className={`flex h-6 w-6 shrink-0 items-center justify-center gap-1 px-0 py-0 text-[11px] transition-all whitespace-nowrap rounded-md md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs ${pathname?.startsWith("/text-to-image/edit-image") ? "border border-transparent bg-white font-medium text-black" : "border border-white/20 text-white/100 hover:bg-white/5"}`}
                   aria-label="Edit Image"
                 >
-                  <Edit3
+                  <SquarePen
                     size={14}
                     className={`${pathname?.startsWith("/text-to-image/edit-image") ? "text-black " : "text-white "}`}
                   />
@@ -8114,7 +8115,7 @@ const InputBox = () => {
                       : "https://editor-image.wildmindai.com/";
                     window.open(url, "_blank");
                   }}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center gap-1 rounded-md border border-white/20 px-0 py-0 text-[11px] text-white/100 transition-all whitespace-nowrap hover:bg-white/5 md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs"
+                  className="hidden h-6 w-6 shrink-0 items-center justify-center gap-1 rounded-md border border-white/20 px-0 py-0 text-[11px] text-white/100 transition-all whitespace-nowrap hover:bg-white/5 md:flex md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs"
                   aria-label="Image Editor"
                 >
                   <Edit3 size={14} className="text-white" />
@@ -8708,10 +8709,10 @@ const InputBox = () => {
               {userData && sortedDates.length > 0 && (
                 <div className="mt-18 space-y-4 px-2 md:mt-16 md:px-0">
                   {sortedDates.map((date) => (
-                    <div key={date} className="space-y-2 md:mt-0">
+                    <div key={date} className="space-y-2  md:mt-0">
                       {/* Date Header */}
-                      <div className="flex items-center md:mx-8  md:gap-2 gap-2">
-                        <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="flex items-center pt-1 md:pt-0 px-2 md:mx-8  md:gap-2 gap-2">
+                        <div className="w-5 h-5 md:w-6 md:h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                           <svg
                             width="12"
                             height="12"
@@ -8722,7 +8723,7 @@ const InputBox = () => {
                             <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                           </svg>
                         </div>
-                        <h3 className="text-sm font-medium text-white/70">
+                        <h3 className="text-xs md:text-sm font-medium text-white/70">
                           {formatDate(date)}
                         </h3>
                       </div>

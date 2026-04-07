@@ -58,6 +58,7 @@ import CreatorsSection from './compo/CreatorsSection';
 import CreationCTASection from './compo/CreationCTASection';
 import CreativeStyle from './compo/CreativeStyle';
 import ImageVideoToggle from './compo/ImageVideoToggle';
+import WhatsNew from './compo/WhatsNew';
 
 
 
@@ -235,6 +236,7 @@ const HomePage: React.FC = () => {
 
                     {/* Promotional Banner */}
                     <MasonrySection mode={homepageMode} onModeChange={setHomepageMode} />
+                    <WhatsNew />
                     <CreativeStyle
                         onWarliOpen={() => {
                             setShowWelcomeModal(false);
