@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { setSidebarExpanded } from "@/store/slices/uiSlice";
-import { Menu } from "lucide-react";
+import {
+  ChevronDown,
+  ExternalLink,
+  Menu,
+  Sparkles,
+  SquarePen,
+} from "lucide-react";
 import { getSignInUrl } from "@/routes/routes";
 import InputBox from "./TextToVideo/compo/InputBox";
 import AnimateInputBox from "./TextToVideo/compo/AnimateInputBox";
@@ -22,6 +28,8 @@ export default function VideoGenerationPage() {
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const [activeFeature, setActiveFeature] = useState<VideoFeature>("Video");
+  const [isMobileFeatureMenuOpen, setIsMobileFeatureMenuOpen] = useState(false);
+  const mobileFeatureMenuRef = useRef<HTMLDivElement | null>(null);
   const isInlineEditVideoPage = pathname?.startsWith(
     "/text-to-video/edit-video",
   );
@@ -55,7 +63,84 @@ export default function VideoGenerationPage() {
       setActiveFeature("Edit");
     }
   }, [isInlineEditVideoPage]);
+
+  useEffect(() => {
+    if (!isMobileFeatureMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        mobileFeatureMenuRef.current &&
+        !mobileFeatureMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsMobileFeatureMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileFeatureMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMobileFeatureMenuOpen]);
+
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+
+  const openVideoEditor = () => {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      window.open("http://localhost:3003", "_blank");
+    } else {
+      window.open("https://editor-video.wildmindai.com/", "_blank");
+    }
+  };
+
+  const navigateToFeature = (feature: VideoFeature) => {
+    setIsMobileFeatureMenuOpen(false);
+
+    if (feature === "Video") {
+      setActiveFeature("Video");
+      router.push("/text-to-video", { scroll: false });
+      return;
+    }
+
+    if (feature === "Lipsync") {
+      setActiveFeature("Lipsync");
+      router.push("/text-to-video?feature=lipsync", { scroll: false });
+      return;
+    }
+
+    if (feature === "Animate") {
+      setActiveFeature("Animate");
+      router.push("/text-to-video?feature=animation", { scroll: false });
+      return;
+    }
+
+    if (feature === "Edit") {
+      setActiveFeature("Edit");
+      router.push("/text-to-video/edit-video?feature=upscale", {
+        scroll: false,
+      });
+      return;
+    }
+
+    openVideoEditor();
+  };
+
+  const primaryMobileFeatures: VideoFeature[] = ["Video", "Lipsync", "Animate"];
+  const isEditFeatureActive = pathname?.startsWith("/text-to-video/edit-video");
+
+  const isFeatureSelected = (feature: VideoFeature) => {
+    if (feature === "Edit") return !!isEditFeatureActive;
+    return activeFeature === feature;
+  };
 
   // Get history entries to check if we should show the info button
   const historyEntries = useMemo(() => {
@@ -104,18 +189,18 @@ export default function VideoGenerationPage() {
       <div className="flex">
         <div className="flex-1 min-w-0 px-2 sm:px-6 md:px-8">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className="sticky top-0 z-40 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
-            <div className="mb-0 md:mb-1 pt-2 md:pt-0">
-              <div className="flex items-center justify-between md:mb-2 mb-0 min-h-14">
-                <div className="flex min-w-0 items-center gap-2 md:pt-2">
+          <div className="sticky top-0 z-40 border-b border-white/5 bg-[#0E0E12]/80 backdrop-blur-xl shadow-xl">
+            <div className="mb-0 pt-0 md:mb-1 md:pt-0">
+              <div className="mb-0 flex min-h-10 items-center justify-between px-1.5 py-1.5 md:mb-2 md:min-h-14 md:px-0 md:py-0">
+                <div className="flex min-w-0 items-center gap-1.5 md:gap-2 md:pt-2">
                   <button
                     onClick={() => dispatch(setSidebarExpanded(true))}
-                    className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
-                    aria-label="Toggle Menu"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white md:hidden"
+                    aria-label="Open menu"
                   >
-                    <Menu size={24} />
+                    <Menu size={20} />
                   </button>
-                  <h2 className="truncate whitespace-nowrap text-white md:text-2xl text-base font-bold leading-none tracking-tight">
+                  <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 text-base font-bold leading-tight tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
                     Video Generation
                   </h2>
 
@@ -124,15 +209,16 @@ export default function VideoGenerationPage() {
                     historyEntries.sortedDates.length > 0 && (
                       <button
                         onClick={() => setIsGuideModalOpen(true)}
-                        className="relative group w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+                        className="relative group flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20 md:h-6 md:w-6"
                         aria-label="Show guide"
                       >
                         <svg
-                          width="16"
-                          height="16"
+                          width="13"
+                          height="13"
                           viewBox="0 0 24 24"
                           fill="none"
                           xmlns="http://www.w3.org/2000/svg"
+                          className="md:h-4 md:w-4"
                         >
                           <path
                             d="M10.9199 10.4384C10.9199 9.84191 11.4034 9.3584 11.9999 9.3584C12.5963 9.3584 13.0798 9.84191 13.0798 10.4384C13.0798 10.804 12.8988 11.1275 12.6181 11.3241C12.3474 11.5136 12.0203 11.7667 11.757 12.0846C11.4909 12.406 11.2499 12.8431 11.2499 13.3846C11.2499 13.7988 11.5857 14.1346 11.9999 14.1346C12.4141 14.1346 12.7499 13.7988 12.7499 13.3846C12.7499 13.3096 12.7806 13.2004 12.9123 13.0413C13.047 12.8786 13.2441 12.7169 13.4784 12.5528C14.1428 12.0876 14.5798 11.3141 14.5798 10.4384C14.5798 9.01348 13.4247 7.8584 11.9999 7.8584C10.575 7.8584 9.41992 9.01348 9.41992 10.4384C9.41992 10.8526 9.75571 11.1884 10.1699 11.1884C10.5841 11.1884 10.9199 10.8526 10.9199 10.4384Z"
@@ -157,10 +243,7 @@ export default function VideoGenerationPage() {
 
                   <div className="hidden md:flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        setActiveFeature("Video");
-                        router.push("/text-to-video", { scroll: false });
-                      }}
+                      onClick={() => navigateToFeature("Video")}
                       className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === "Video" ? "bg-white text-black font-medium border border-transparent" : "bg-white/0 text-white/100 border border-white/20 hover:bg-white/5"}`}
                       aria-label="Video"
                     >
@@ -183,12 +266,7 @@ export default function VideoGenerationPage() {
                     </button>
 
                     <button
-                      onClick={() => {
-                        setActiveFeature("Lipsync");
-                        router.push("/text-to-video?feature=lipsync", {
-                          scroll: false,
-                        });
-                      }}
+                      onClick={() => navigateToFeature("Lipsync")}
                       className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/20 transition-all ${activeFeature === "Lipsync" ? "bg-white text-black font-medium border border-transparent" : "bg-white/0 text-white/100 border border-white/20 hover:bg-white/5"}`}
                       aria-label="Lipsync"
                     >
@@ -211,12 +289,7 @@ export default function VideoGenerationPage() {
                     </button>
 
                     <button
-                      onClick={() => {
-                        setActiveFeature("Animate");
-                        router.push("/text-to-video?feature=animation", {
-                          scroll: false,
-                        });
-                      }}
+                      onClick={() => navigateToFeature("Animate")}
                       className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${activeFeature === "Animate" ? "bg-white text-black font-medium border border-transparent" : "bg-white/0 text-white/100 border border-white/20 hover:bg-white/5"}`}
                       aria-label="Animate"
                     >
@@ -246,9 +319,7 @@ export default function VideoGenerationPage() {
                     </button>
 
                     <button
-                      onClick={() =>
-                        router.push("/text-to-video/edit-video?feature=upscale")
-                      }
+                      onClick={() => navigateToFeature("Edit")}
                       className={`flex items-center gap-1.5 px-3 py-1 md:py-1.5 rounded-lg text-xs border border-white/10 transition-all ${pathname?.startsWith("/text-to-video/edit-video") ? "bg-white text-black font-medium border border-transparent" : "bg-white/0 text-white/100 border border-white/20 hover:bg-white/5"}`}
                       aria-label="Edit"
                     >
@@ -278,20 +349,7 @@ export default function VideoGenerationPage() {
                     </button>
 
                     <button
-                      onClick={() => {
-                        const hostname = window.location.hostname;
-                        if (
-                          hostname === "localhost" ||
-                          hostname === "127.0.0.1"
-                        ) {
-                          window.open("http://localhost:3003", "_blank");
-                        } else {
-                          window.open(
-                            "https://editor-video.wildmindai.com/",
-                            "_blank",
-                          );
-                        }
-                      }}
+                      onClick={() => navigateToFeature("Video editor")}
                       className="flex items-center gap-1.5 px-2 py-1 md:py-1.5 rounded-lg text-xs hover:bg-white/5 border border-white/10 transition-all bg-white/0 text-white/100"
                       aria-label="Video editor"
                     >
@@ -331,89 +389,80 @@ export default function VideoGenerationPage() {
                 )}
               </div>
 
-              <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-2">
+              <p className="hidden md:flex px-1.5 pb-2 text-[13px] leading-5 text-white/75 md:px-0 md:text-sm">
                 Transform your ideas into stunning videos using advanced AI
                 models
               </p>
 
-              {/* Mobile-only feature buttons: placed below the descriptive text */}
-              <div className="flex md:hidden items-stretch gap-2 overflow-x-auto scrollbar-none pb-2 mb-4 relative z-50">
-                {(
-                  [
-                    "Video",
-                    "Lipsync",
-                    "Animate",
-                    "Edit",
-                    "Video editor",
-                  ] as VideoFeature[]
-                ).map((feature) => (
-                  <button
-                    key={feature + "-mobile"}
-                    type="button"
-                    onClick={() => {
-                      console.log(
-                        "[VideoGeneration] tab clicked (mobile):",
-                        feature,
+              {authUser && activeFeature !== "Edit" && (
+                <div className="px-1.5 pb-0 md:hidden">
+                  <HistoryControls mode="video" className="mb-0 pt-0" />
+                </div>
+              )}
+
+              <div className="px-1.5 pb-3 md:hidden">
+                <div className="flex items-center gap-2">
+                  <div className="grid min-w-0 flex-1 grid-cols-3 gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] p-0 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                    {primaryMobileFeatures.map((feature) => {
+                      const isSelected = isFeatureSelected(feature);
+
+                      return (
+                        <button
+                          key={feature}
+                          type="button"
+                          onClick={() => navigateToFeature(feature)}
+                          className={`flex min-w-0 items-center justify-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all ${isSelected ? "bg-white text-black shadow-sm" : "text-white/78 hover:bg-white/[0.08]"}`}
+                        >
+                          <span className="truncate">{feature}</span>
+                        </button>
                       );
-                      if (feature === "Edit") {
-                        router.push(
-                          "/text-to-video/edit-video?feature=upscale",
-                        );
-                        return;
+                    })}
+                  </div>
+
+                  <div ref={mobileFeatureMenuRef} className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIsMobileFeatureMenuOpen((open) => !open)
                       }
-                      if (feature === "Video editor") {
-                        const hostname = window.location.hostname;
-                        if (
-                          hostname === "localhost" ||
-                          hostname === "127.0.0.1"
-                        ) {
-                          window.open("http://localhost:3003", "_blank");
-                        } else {
-                          window.open(
-                            "https://editor-video.wildmindai.com/",
-                            "_blank",
-                          );
-                        }
-                        return;
-                      }
-                      setActiveFeature(feature);
-                      const params = new URLSearchParams(
-                        window.location.search,
-                      );
-                      if (feature === "Video") {
-                        params.delete("feature");
-                      } else if (feature === "Lipsync") {
-                        params.set("feature", "lipsync");
-                      } else if (feature === "Animate") {
-                        params.set("feature", "animation");
-                      }
-                      const queryString = params.toString();
-                      router.push(
-                        `/text-to-video${queryString ? "?" + queryString : ""}`,
-                        { scroll: false },
-                      );
-                    }}
-                    className={`
-                                            min-w-[90px] px-5 py-2.5
-                                            text-xs font-medium
-                                            rounded-lg border
-                                            transition-all duration-200
-                                            flex-shrink-0
-                                            cursor-pointer pointer-events-auto
-                                            relative z-50
-                                            ${
-                                              activeFeature === feature
-                                                ? "bg-white text-black border-white/10 shadow-lg"
-                                                : "bg-white/5 text-white/90 border-white/10 hover:bg-white/10 hover:border-white/20"
-                                            }
-                                        `}
-                  >
-                    {feature}
-                  </button>
-                ))}
-              </div>
-              <div className="flex md:hidden items-center pt-0">
-                {/* HistoryControls removed to avoid duplication with HistorySection */}
+                      className={`flex h-[31px] items-center gap-2 rounded-lg border px-3 text-[12px] font-medium transition-all ${isEditFeatureActive ? "border-transparent bg-white text-black shadow-sm" : "border-white/10 bg-white/[0.04] text-white/85 hover:bg-white/[0.08]"}`}
+                      aria-label="Open video tools"
+                      aria-expanded={isMobileFeatureMenuOpen}
+                    >
+                      {isEditFeatureActive ? (
+                        <SquarePen size={14} />
+                      ) : (
+                        <Sparkles size={14} />
+                      )}
+                      <span>{isEditFeatureActive ? "Edit" : "Tools"}</span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform ${isMobileFeatureMenuOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+
+                    {isMobileFeatureMenuOpen && (
+                      <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-44 overflow-hidden rounded-2xl border border-white/10 bg-[#16161D]/95 p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+                        <button
+                          type="button"
+                          onClick={() => navigateToFeature("Edit")}
+                          className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] transition-colors ${isEditFeatureActive ? "bg-white text-black" : "text-white/85 hover:bg-white/10"}`}
+                        >
+                          <SquarePen size={15} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigateToFeature("Video editor")}
+                          className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] text-white/85 transition-colors hover:bg-white/10"
+                        >
+                          <ExternalLink size={15} />
+                          <span>Video editor</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

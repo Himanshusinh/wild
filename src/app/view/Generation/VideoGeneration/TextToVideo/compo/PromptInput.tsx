@@ -1,6 +1,5 @@
-
 import React from "react";
-import { Sparkles } from 'lucide-react';
+import { Sparkles } from "lucide-react";
 
 interface PromptInputProps {
   prompt: string;
@@ -23,8 +22,10 @@ const PromptInput: React.FC<PromptInputProps> = ({
   onClear,
   placeholder,
   actions,
-  inputRef
+  inputRef,
 }) => {
+  const hasPrompt = prompt.trim().length > 0;
+
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
     element.style.height = "auto";
     element.style.height = `${Math.min(element.scrollHeight, 96)}px`;
@@ -52,14 +53,14 @@ const PromptInput: React.FC<PromptInputProps> = ({
           autoComplete="off"
           autoCorrect="on"
           autoCapitalize="on"
-          className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[11px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? 'text-white' : 'text-white/70'} ${isEnhancing ? 'animate-text-shine' : ''}`}
+          className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
           rows={1}
           style={{
-            minHeight: '90px',
-            maxHeight: '90px',
-            lineHeight: '1.2',
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
+            minHeight: "80px",
+            maxHeight: "90px",
+            lineHeight: "1.2",
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
           }}
           onPaste={(e) => {
             if (e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -68,8 +69,12 @@ const PromptInput: React.FC<PromptInputProps> = ({
               // We don't prevent default here for text, but if it's purely files maybe we should?
               // Original code didn't strictly prevent default for text unless it handled images.
               // Logic:
-              const imageFiles = files.filter(f => f.type.startsWith('image/'));
-              const videoFiles = files.filter(f => f.type.startsWith('video/'));
+              const imageFiles = files.filter((f) =>
+                f.type.startsWith("image/"),
+              );
+              const videoFiles = files.filter((f) =>
+                f.type.startsWith("video/"),
+              );
               if (imageFiles.length > 0 || videoFiles.length > 0) {
                 e.preventDefault();
               }
@@ -78,10 +83,14 @@ const PromptInput: React.FC<PromptInputProps> = ({
         />
         {/* Fixed position buttons container */}
         <div className="flex items-center md:gap-0 gap-0 flex-shrink-0 md:p-0 p-0">
-          {prompt.trim() && (
-            <div className="relative">
+          <div className="flex w-[44px] items-center justify-end gap-1">
+            <div
+              className={`relative transition-opacity ${hasPrompt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              aria-hidden={!hasPrompt}
+            >
               <button
                 onClick={onClear}
+                tabIndex={hasPrompt ? 0 : -1}
                 className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
                 aria-label="Clear prompt"
               >
@@ -100,16 +109,20 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Clear Prompt</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                Clear Prompt
+              </div>
             </div>
-          )}
-          {/* Enhance Prompt Button */}
-          {prompt.trim() && (
-            <div className="relative ml-1">
+
+            <div
+              className={`relative transition-opacity ${hasPrompt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              aria-hidden={!hasPrompt}
+            >
               <button
                 onClick={onEnhance}
-                disabled={isEnhancing}
-                className={`p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer ${isEnhancing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isEnhancing || !hasPrompt}
+                tabIndex={hasPrompt ? 0 : -1}
+                className={`p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer ${isEnhancing ? "opacity-50 cursor-not-allowed" : ""}`}
                 aria-label="Enhance prompt"
               >
                 {isEnhancing ? (
@@ -118,13 +131,13 @@ const PromptInput: React.FC<PromptInputProps> = ({
                   <Sparkles size={14} className="text-white/90" />
                 )}
               </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">Enhance Prompt</div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                Enhance Prompt
+              </div>
             </div>
-          )}
-          
-          <div className="flex items-center gap-1 h-[20px]">
-             {actions}
           </div>
+
+          <div className="flex items-center gap-1 h-[20px]">{actions}</div>
         </div>
       </div>
     </div>
