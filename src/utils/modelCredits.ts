@@ -1,5 +1,106 @@
 import { creditDistributionData } from "./creditDistribution";
 
+const SEEDANCE_2_USD_PER_1K_TOKENS = 0.014;
+const SEEDANCE_2_CREDITS_PER_USD = 4000 / 5.003;
+
+type Seedance2AspectRatio =
+  | "auto"
+  | "21:9"
+  | "16:9"
+  | "4:3"
+  | "1:1"
+  | "3:4"
+  | "9:16";
+
+const normalizeSeedance2AspectRatio = (
+  aspectRatio?: string,
+): Seedance2AspectRatio => {
+  const value = String(aspectRatio || "auto").toLowerCase();
+  if (
+    value === "21:9" ||
+    value === "16:9" ||
+    value === "4:3" ||
+    value === "1:1" ||
+    value === "3:4" ||
+    value === "9:16"
+  ) {
+    return value;
+  }
+  return "auto";
+};
+
+const parseSeedance2DurationSeconds = (
+  duration?: string | number,
+  fallbackSeconds = 8,
+): number => {
+  if (duration == null || duration === "") return fallbackSeconds;
+  if (typeof duration === "number" && Number.isFinite(duration)) {
+    return Math.min(15, Math.max(4, duration));
+  }
+  const text = String(duration).trim().toLowerCase();
+  if (text === "auto") return fallbackSeconds;
+  const parsed = parseFloat(text.replace(/s$/i, ""));
+  if (!Number.isFinite(parsed)) return fallbackSeconds;
+  return Math.min(15, Math.max(4, parsed));
+};
+
+export const getSeedance2EstimatedDimensions = (
+  resolution?: string,
+  aspectRatio?: string,
+): {
+  width: number;
+  height: number;
+  resolution: "480p" | "720p";
+  aspectRatio: Seedance2AspectRatio;
+} => {
+  const normalizedResolution =
+    String(resolution || "720p").toLowerCase() === "480p" ? "480p" : "720p";
+  const normalizedAspectRatio = normalizeSeedance2AspectRatio(aspectRatio);
+
+  const dims720: Record<Seedance2AspectRatio, { width: number; height: number }> =
+    {
+      auto: { width: 1280, height: 720 },
+      "21:9": { width: 1680, height: 720 },
+      "16:9": { width: 1280, height: 720 },
+      "4:3": { width: 960, height: 720 },
+      "1:1": { width: 720, height: 720 },
+      "3:4": { width: 720, height: 960 },
+      "9:16": { width: 720, height: 1280 },
+    };
+
+  const dims480: Record<Seedance2AspectRatio, { width: number; height: number }> =
+    {
+      auto: { width: 854, height: 480 },
+      "21:9": { width: 1120, height: 480 },
+      "16:9": { width: 854, height: 480 },
+      "4:3": { width: 640, height: 480 },
+      "1:1": { width: 480, height: 480 },
+      "3:4": { width: 480, height: 640 },
+      "9:16": { width: 480, height: 854 },
+    };
+
+  const source = normalizedResolution === "480p" ? dims480 : dims720;
+  const dims = source[normalizedAspectRatio];
+
+  return {
+    ...dims,
+    resolution: normalizedResolution,
+    aspectRatio: normalizedAspectRatio,
+  };
+};
+
+export const computeSeedance2Credits = (
+  resolution?: string,
+  duration?: string | number,
+  aspectRatio?: string,
+): number => {
+  const dims = getSeedance2EstimatedDimensions(resolution, aspectRatio);
+  const seconds = parseSeedance2DurationSeconds(duration, 8);
+  const tokens = (dims.width * dims.height * seconds * 24) / 1024;
+  const usdCost = (tokens / 1000) * SEEDANCE_2_USD_PER_1K_TOKENS;
+  return Math.max(1, Math.ceil(usdCost * SEEDANCE_2_CREDITS_PER_USD));
+};
+
 // Direct mapping between dropdown model values and their credit costs
 export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   // Image Generation Models
@@ -357,7 +458,12 @@ export const getCreditsForModel = (
   generateAudio?: boolean,
   uploadedImages?: any[],
   quality?: string,
+  aspectRatio?: string,
 ): number | null => {
+  if (modelValue === "seedance-2.0-t2v") {
+    return computeSeedance2Credits(resolution, duration, aspectRatio);
+  }
+
   // Handle special cases for video models with duration and resolution
   if (modelValue === "MiniMax-Hailuo-02" && duration && resolution) {
     const durationNum = parseInt(duration.replace("s", ""));
@@ -906,6 +1012,7 @@ export const getModelCreditInfo = (
   resolution?: string,
   generateAudio?: boolean,
   quality?: string,
+  aspectRatio?: string,
 ) => {
   const credits = getCreditsForModel(
     modelValue,
@@ -914,6 +1021,7 @@ export const getModelCreditInfo = (
     generateAudio,
     undefined,
     quality,
+    aspectRatio,
   );
 
   // Special handling for Maya TTS and ElevenLabs SFX - show per-second pricing
@@ -956,6 +1064,7 @@ export const formatModelWithCredits = (
   resolution?: string,
   generateAudio?: boolean,
   quality?: string,
+  aspectRatio?: string,
 ): string => {
   const creditInfo = getModelCreditInfo(
     modelValue,
@@ -963,6 +1072,7 @@ export const formatModelWithCredits = (
     resolution,
     generateAudio,
     quality,
+    aspectRatio,
   );
 
   if (creditInfo.hasCredits) {

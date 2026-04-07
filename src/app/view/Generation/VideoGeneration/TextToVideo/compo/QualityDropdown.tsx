@@ -38,6 +38,12 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
         { value: "720p", label: "720p", description: "HD Quality (1280x720)" }
       ];
     }
+    if (selectedModel === "seedance-2.0-t2v") {
+      return [
+        { value: "480p", label: "480p", description: "SD Quality (854x480)" },
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" }
+      ];
+    }
     // Veo 3.1 models support 720p, 1080p
     if (selectedModel?.includes("veo3.1")) {
       return [

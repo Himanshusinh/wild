@@ -1,7 +1,11 @@
 // @ts-ignore
 import { creditDistributionData, ModelCreditInfo } from "./creditDistribution";
 import { buildCreditModelName, getModelMapping } from "./modelMapping";
-import { getCreditsForModel, MODEL_CREDITS_MAPPING } from "./modelCredits";
+import {
+  computeSeedance2Credits,
+  getCreditsForModel,
+  MODEL_CREDITS_MAPPING,
+} from "./modelCredits";
 
 /**
  * Get credit cost for a specific model
@@ -31,8 +35,9 @@ export const getCreditCostForModel = (modelName: string): number => {
 export const getVideoCreditCost = (
   frontendModel: string,
   resolution?: string,
-  duration?: number,
+  duration?: number | string,
   generateAudio?: boolean,
+  aspectRatio?: string,
 ): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== "video") {
@@ -45,7 +50,10 @@ export const getVideoCreditCost = (
   // Kling Lip Sync uses per-second pricing (2 credits per second)
   if (frontendModel === "kling-lip-sync") {
     // Kling Lip Sync: $0.014 per second = 2 credits per second (rounded up)
-    const durationSeconds = duration || 5;
+    const durationSeconds =
+      typeof duration === "number"
+        ? duration
+        : parseFloat(String(duration || 5)) || 5;
     const costPerSecond = 2;
     const totalCost = Math.ceil(durationSeconds * costPerSecond);
     const finalCost = Math.max(2, totalCost); // Minimum 2 credits
@@ -56,7 +64,10 @@ export const getVideoCreditCost = (
   }
   // Kling o1 (FAL) fixed per-duration pricing
   if (frontendModel === "kling-o1") {
-    const dur = duration || 5;
+    const dur =
+      typeof duration === "number"
+        ? duration
+        : parseFloat(String(duration || 5)) || 5;
     // Updated pricing: 5s -> 870, 10s (or >=10) -> 1710
     return dur >= 10 ? 1710 : 870;
   }
@@ -98,6 +109,9 @@ export const getVideoCreditCost = (
     );
     return estimatedCost;
   }
+  if (frontendModel === "seedance-2.0-t2v") {
+    return computeSeedance2Credits(resolution, duration, aspectRatio);
+  }
   if (
     frontendModel.includes("seedance") ||
     frontendModel.includes("wan-2.5") ||
@@ -112,7 +126,8 @@ export const getVideoCreditCost = (
     frontendModel === "gen3a_turbo"
   ) {
     // Use default values if not provided for WAN models to avoid "Unknown model" error
-    const defaultDuration = duration || 5;
+    const defaultDuration =
+      duration == null || duration === "" ? 5 : duration;
     const defaultResolution = resolution || "720p";
     // For models where pricing depends on audio, pass generateAudio through
     const audioParam =
@@ -173,7 +188,7 @@ export const getVideoCreditCost = (
 export const getMiniMaxVideoCreditCost = (
   model: string,
   resolution?: string,
-  duration?: number,
+  duration?: number | string,
 ): number => {
   return getVideoCreditCost(model, resolution, duration);
 };
@@ -183,7 +198,7 @@ export const getMiniMaxVideoCreditCost = (
  */
 export const getRunwayVideoCreditCost = (
   model: string,
-  duration?: number,
+  duration?: number | string,
 ): number => {
   return getVideoCreditCost(model, undefined, duration);
 };
@@ -464,9 +479,16 @@ export const getVideoGenerationCreditCost = (
   provider: "minimax" | "runway" | "fal" | "replicate",
   frontendModel: string,
   resolution?: string,
-  duration?: number,
+  duration?: number | string,
+  aspectRatio?: string,
 ): number => {
-  return getVideoCreditCost(frontendModel, resolution, duration);
+  return getVideoCreditCost(
+    frontendModel,
+    resolution,
+    duration,
+    undefined,
+    aspectRatio,
+  );
 };
 
 /**

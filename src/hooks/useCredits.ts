@@ -70,9 +70,16 @@ export const useCredits = () => {
     provider: 'minimax' | 'runway' | 'fal' | 'replicate',
     model: string,
     resolution?: string,
-    duration?: number
+    duration?: number | string,
+    frameSize?: string,
   ) => {
-    const requiredCredits = getVideoGenerationCreditCost(provider, model, resolution, duration);
+    const requiredCredits = getVideoGenerationCreditCost(
+      provider,
+      model,
+      resolution,
+      duration,
+      frameSize,
+    );
 
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
@@ -247,7 +254,7 @@ export const useGenerationCredits = (
   options?: {
     count?: number;
     resolution?: string;
-    duration?: number;
+    duration?: number | string;
     frameSize?: string;
     style?: string;
     quality?: string;
@@ -275,7 +282,13 @@ export const useGenerationCredits = (
       switch (generationType) {
         case 'video':
           if (!provider) throw new Error('Provider required for video generation');
-          const videoResult = await validateVideoCredits(provider, model, options?.resolution, options?.duration);
+          const videoResult = await validateVideoCredits(
+            provider,
+            model,
+            options?.resolution,
+            options?.duration,
+            options?.frameSize,
+          );
           requiredCredits = videoResult.requiredCredits;
           validation = videoResult.validation;
           break;
@@ -296,7 +309,10 @@ export const useGenerationCredits = (
           break;
 
         case 'music':
-          const musicResult = await validateMusicCredits(model, options?.duration);
+          const musicResult = await validateMusicCredits(
+            model,
+            typeof options?.duration === 'number' ? options.duration : undefined,
+          );
           requiredCredits = musicResult.requiredCredits;
           validation = musicResult.validation;
           break;

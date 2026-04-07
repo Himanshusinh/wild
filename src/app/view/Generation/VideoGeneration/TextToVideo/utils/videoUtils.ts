@@ -215,7 +215,10 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
   };
 
   // Models that support both text-to-video and image-to-video
-  if (model.includes("veo3.1") && !model.includes("i2v")) {
+  if (model === "seedance-2.0-t2v") {
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model.includes("veo3.1") && !model.includes("i2v")) {
     // Veo 3.1 supports both T2V and I2V (when not explicitly i2v variant)
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
@@ -259,7 +262,11 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     // Gen-4 Turbo and Gen-3a Turbo are I2V-only (require image)
     capabilities.supportsImageToVideo = true;
     capabilities.requiresImage = true;
-  } else if (model.includes('seedance') && !model.includes('i2v')) {
+  } else if (
+    model.includes('seedance') &&
+    model !== 'seedance-2.0-t2v' &&
+    !model.includes('i2v')
+  ) {
     // Seedance supports both T2V and I2V
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;

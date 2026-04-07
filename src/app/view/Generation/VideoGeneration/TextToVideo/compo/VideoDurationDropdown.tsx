@@ -4,8 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface VideoDurationDropdownProps {
-  selectedDuration: number;
-  onDurationChange: (duration: number) => void;
+  selectedDuration: number | "auto";
+  onDurationChange: (duration: number | "auto") => void;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
   selectedModel?: string;
@@ -148,6 +148,27 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 6, label: "6 seconds", description: "Short video" },
         { value: 8, label: "8 seconds", description: "Standard length" },
         { value: 10, label: "10 seconds", description: "Long video" },
+      ];
+    }
+    if (selectedModel === "seedance-2.0-t2v") {
+      return [
+        {
+          value: "auto" as const,
+          label: "Auto",
+          description: "Model decides",
+        },
+        { value: 4, label: "4 seconds", description: "Short video" },
+        { value: 5, label: "5 seconds", description: "Standard" },
+        { value: 6, label: "6 seconds", description: "Medium" },
+        { value: 7, label: "7 seconds", description: "Medium long" },
+        { value: 8, label: "8 seconds", description: "Long" },
+        { value: 9, label: "9 seconds", description: "Extended" },
+        { value: 10, label: "10 seconds", description: "Extended" },
+        { value: 11, label: "11 seconds", description: "Extended" },
+        { value: 12, label: "12 seconds", description: "Extended" },
+        { value: 13, label: "13 seconds", description: "Extended" },
+        { value: 14, label: "14 seconds", description: "Extended" },
+        { value: 15, label: "15 seconds", description: "Maximum length" },
       ];
     }
     if (selectedModel?.includes("seedance-1.5")) {
@@ -308,6 +329,15 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
 
   useEffect(() => {
     if (
+      availableDurations.length > 0 &&
+      !availableDurations.find((option) => option.value === selectedDuration)
+    ) {
+      onDurationChange(availableDurations[0].value);
+    }
+  }, [availableDurations, selectedDuration, onDurationChange]);
+
+  useEffect(() => {
+    if (
       selectedModel === "kling-v3-pro" &&
       (selectedDuration === 3 || selectedDuration === 4)
     ) {
@@ -333,7 +363,10 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5`}
       >
         <Clock className="md:w-4 w-3 h-3 md:h-4  mr-1" />
-        {selectedDurationInfo?.label || `${selectedDuration}s`}
+        {selectedDurationInfo?.label ||
+          (selectedDuration === "auto"
+            ? "Auto"
+            : `${selectedDuration}s`)}
         <ChevronUp
           className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />

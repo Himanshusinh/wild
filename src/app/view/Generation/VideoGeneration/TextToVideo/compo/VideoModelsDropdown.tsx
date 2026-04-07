@@ -290,6 +290,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       },
 
       {
+        value: "seedance-2.0-t2v",
+        label: "Seedance 2.0",
+        description:
+          "Text→Video & Image→Video, auto/4-15s, 480p/720p, auto/21:9/16:9/4:3/1:1/3:4/9:16, Audio On/Off",
+        provider: "fal",
+      },
+      {
         value: "seedance-1.5-pro-t2v",
         label: "Seedance 1.5 Pro",
         description:
@@ -395,6 +402,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     if (d == null) return defaultDuration;
     if (typeof d === "number") return `${d}s`;
     const s = String(d);
+    if (s.toLowerCase() === "auto") return "auto";
     return /s$/.test(s) ? s : `${s}s`;
   };
 
@@ -488,6 +496,12 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       if (rLower.includes("4k") || rLower.includes("2160")) r = "4k";
       else if (rLower.includes("2k") || rLower.includes("1440")) r = "2k";
       else r = "1080p";
+    } else if (model.value === "seedance-2.0-t2v") {
+      d = normalizeDuration(selectedDuration, "auto");
+      const rRaw = normalizeResolution(selectedResolution, "720p");
+      const rLower = rRaw.toLowerCase();
+      if (rLower.includes("480")) r = "480p";
+      else r = "720p";
     } else if (model.value.includes("seedance-1.5")) {
       d = normalizeDuration(selectedDuration, "5s");
       r = undefined; // Seedance 1.5 pricing does not use resolution
@@ -529,6 +543,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ) {
         // MiniMax Hailuo 2.3: default to 6s and 768P
         creditInfo = getModelCreditInfo(model.value, "6s", "768P");
+      } else if (model.value === "seedance-2.0-t2v") {
+        creditInfo = getModelCreditInfo(model.value, "auto", "720p");
       } else if (
         model.value === "gen4_turbo" ||
         model.value === "gen3a_turbo"

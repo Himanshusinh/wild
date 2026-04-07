@@ -771,6 +771,17 @@ export const MODEL_MAPPING: ModelMapping[] = [
 
   // Seedance Models (Replicate)
   {
+    frontendValue: "seedance-2.0-t2v",
+    creditModelName: "Bytedance Seedance 2.0 T2V/I2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["480p", "720p"],
+      duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["auto", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    },
+  },
+  {
     frontendValue: "seedance-1.5-pro-t2v",
     creditModelName: "Seedance 1.5 T2V/I2V",
     generationType: "video",

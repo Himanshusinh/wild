@@ -185,7 +185,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                 />
               </button>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                First Frame
+                {selectedModel === "seedance-2.0-t2v" ? "Image" : "First Frame"}
               </div>
             </div>
           )}

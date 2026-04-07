@@ -122,6 +122,13 @@ interface InputBoxProps {
   showHistory?: boolean; // Control whether to show the history section
 }
 
+type VideoDurationValue = number | "auto";
+
+const SEEDANCE_2_MODEL = "seedance-2.0-t2v";
+
+const formatDurationForCreditLookup = (value: VideoDurationValue): string =>
+  value === "auto" ? "auto" : `${value}s`;
+
 const InputBox = (props: InputBoxProps = {}) => {
   const {
     placeholder = " video prompt...",
@@ -170,7 +177,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     "text-to-video",
   );
   const [hasUserSetFrameSize, setHasUserSetFrameSize] = useState(false);
-  const [duration, setDuration] = usePersistedGenerationState(
+  const [duration, setDuration] = usePersistedGenerationState<VideoDurationValue>(
     "duration",
     6,
     "text-to-video",
@@ -587,6 +594,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                   ? pixverseQuality
                   : undefined;
 
+  const seedance2AspectRatio =
+    selectedModel === SEEDANCE_2_MODEL ? frameSize || "auto" : undefined;
+
   const hasVeo31LiteFirstFrame = Boolean(uploadedImages[0] || references[0]);
   const hasVeo31LiteLastFrame = Boolean(
     uploadedImages[1] || lastFrameImage || references[1],
@@ -616,6 +626,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         : selectedModel === "wan-2.2-animate-replace"
           ? uploadedVideoDurationSec || 0
           : duration,
+    frameSize: selectedModel === SEEDANCE_2_MODEL ? seedance2AspectRatio : undefined,
   });
 
   const loadVideoDurationSeconds = useCallback(
@@ -729,7 +740,15 @@ const InputBox = (props: InputBoxProps = {}) => {
       return Math.max(
         0,
         Number(
-          getVideoCreditCost(normalizedModelForCredits, res, dur, audioParam),
+          getVideoCreditCost(
+            normalizedModelForCredits,
+            res,
+            dur,
+            audioParam,
+            normalizedModelForCredits === SEEDANCE_2_MODEL
+              ? seedance2AspectRatio
+              : undefined,
+          ),
         ) || 0,
       );
     } catch {
@@ -742,6 +761,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     selectedMiniMaxDuration,
     generationMode,
     generateAudio,
+    frameSize,
     uploadedImages,
     references,
     lastFrameImage,
@@ -1209,6 +1229,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           !newModel.includes("v2.1") &&
           !newModel.includes("master")) ||
         newModel === "kling-o1" ||
+        newModel === SEEDANCE_2_MODEL ||
         newModel.includes("seedance") ||
         newModel.includes("pixverse") ||
         newModel.includes("sora2") ||
@@ -1267,6 +1288,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Kling o1: duration default 5s, image-to-video only
           setDuration(5);
           setFrameSize("16:9");
+        } else if (newModel === SEEDANCE_2_MODEL) {
+          setDuration("auto");
+          setSeedanceResolution("720p");
+          setFrameSize("auto");
+          setGenerateAudio(true);
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes("seedance")) {
           // Seedance models
           if (newModel.includes("seedance-1.5")) {
@@ -1438,6 +1467,14 @@ const InputBox = (props: InputBoxProps = {}) => {
           // Gen-4 Turbo and Gen-3a Turbo: default duration 5s (only supports 5s and 10s)
           setDuration(5);
           setFrameSize("16:9");
+        } else if (newModel === SEEDANCE_2_MODEL) {
+          setDuration("auto");
+          setSeedanceResolution("720p");
+          setFrameSize("auto");
+          setGenerateAudio(true);
+          if (selectedModel.includes("wan-2.5")) {
+            setUploadedAudio("");
+          }
         } else if (newModel.includes("seedance")) {
           // Seedance models
           if (newModel.includes("seedance-1.5")) {
@@ -3283,7 +3320,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         params: {
           generationType: "text-to-video",
           aspectRatio: frameSize,
-          duration: duration,
+          duration: typeof duration === "number" ? duration : 8,
           resolution: selectedQuality,
           quality: selectedQuality,
         },
@@ -3529,6 +3566,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         selectedModel === "S2V-01"
           ? "minimax"
           : selectedModel.includes("veo3") ||
+              selectedModel === SEEDANCE_2_MODEL ||
               selectedModel.includes("sora2") ||
               selectedModel.includes("ltx2") ||
               selectedModel === "kling-o1" ||
@@ -3539,7 +3577,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                 (selectedModel.startsWith("kling-") &&
                   selectedModel !== "kling-2.6-pro" &&
                   !selectedModel.startsWith("kling-v3")) ||
-                selectedModel.includes("seedance") ||
+                (selectedModel.includes("seedance") &&
+                  selectedModel !== SEEDANCE_2_MODEL) ||
                 selectedModel.includes("pixverse") ||
                 selectedModel.includes("ltx-2.3-fast") ||
                 selectedModel.includes("ltx-2.3-pro") ||
@@ -3630,6 +3669,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             "📝 Model supports both, no image -> using text-to-video",
           );
         }
+      } else if (caps.supportsTextToVideo && !caps.supportsImageToVideo) {
+        actualGenerationMode = "text_to_video";
+        console.log("📝 Model only supports T2V -> using text-to-video mode");
       } else if (caps.supportsImageToVideo && !caps.supportsTextToVideo) {
         // Model only supports I2V (like Runway models: gen4_turbo, gen3a_turbo)
         actualGenerationMode = "image_to_video";
@@ -3764,8 +3806,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel.startsWith("kling-v3") && !hasImage) {
           // Kling 3 text-to-video (FAL)
           const apiPrompt = getApiPrompt(prompt);
+          const klingDuration =
+            typeof duration === "number"
+              ? duration
+              : parseInt(String(duration), 10) || 5;
           const modelDuration = String(
-            Math.min(15, Math.max(3, duration || 5)),
+            Math.min(15, Math.max(3, klingDuration)),
           );
           const isPro = selectedModel === "kling-v3-pro";
           requestBody = {
@@ -3853,6 +3899,20 @@ const InputBox = (props: InputBoxProps = {}) => {
           };
           generationType = "text-to-video";
           apiEndpoint = "/api/replicate/kling-t2v/submit";
+        } else if (selectedModel === SEEDANCE_2_MODEL) {
+          const apiPrompt = getApiPrompt(prompt);
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            resolution: seedanceResolution === "480p" ? "480p" : "720p",
+            duration: duration === "auto" ? "auto" : String(duration),
+            aspect_ratio: frameSize || "auto",
+            generate_audio: generateAudio,
+            generationType: "text-to-video",
+            isPublic,
+          };
+          generationType = "text-to-video";
+          apiEndpoint = "/api/fal/seedance-2.0/text-to-video/submit";
         } else if (
           selectedModel.includes("seedance") &&
           !selectedModel.includes("i2v")
@@ -3948,10 +4008,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           const apiPrompt = getApiPrompt(prompt);
 
           // Ensure duration is a number and one of [4, 8, 12]
-          let soraDuration = duration;
-          if (typeof duration !== "number") {
-            soraDuration = parseInt(String(duration), 10) || 8;
-          }
+          let soraDuration: number =
+            typeof duration === "number"
+              ? duration
+              : parseInt(String(duration), 10) || 8;
           // Clamp to valid values: 4, 8, or 12
           if (![4, 8, 12].includes(soraDuration)) {
             // Round to nearest valid value
@@ -4474,8 +4534,12 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           const apiPrompt = getApiPrompt(prompt);
+          const klingDuration =
+            typeof duration === "number"
+              ? duration
+              : parseInt(String(duration), 10) || 5;
           const modelDuration = String(
-            Math.min(15, Math.max(3, duration || 5)),
+            Math.min(15, Math.max(3, klingDuration)),
           );
           const isPro = selectedModel === "kling-v3-pro";
           requestBody = {
@@ -4587,6 +4651,25 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
           generationType = "image-to-video";
           apiEndpoint = "/api/replicate/kling-i2v/submit";
+        } else if (selectedModel === SEEDANCE_2_MODEL) {
+          if (uploadedImages.length === 0) {
+            setError("Seedance 2.0 image-to-video requires an input image");
+            return;
+          }
+          const apiPrompt = getApiPrompt(prompt);
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            image_url: uploadedImages[0],
+            resolution: seedanceResolution === "480p" ? "480p" : "720p",
+            duration: duration === "auto" ? "auto" : String(duration),
+            aspect_ratio: frameSize || "auto",
+            generate_audio: generateAudio,
+            generationType: "image-to-video",
+            isPublic,
+          };
+          generationType = "image-to-video";
+          apiEndpoint = "/api/fal/seedance-2.0/image-to-video/submit";
         } else if (selectedModel.includes("seedance")) {
           // Seedance I2V - Image-to-video mode
           if (uploadedImages.length === 0) {
@@ -4689,10 +4772,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           const apiPrompt = getApiPrompt(prompt);
 
           // Ensure duration is a number and one of [4, 8, 12]
-          let soraDuration = duration;
-          if (typeof duration !== "number") {
-            soraDuration = parseInt(String(duration), 10) || 8;
-          }
+          let soraDuration: number =
+            typeof duration === "number"
+              ? duration
+              : parseInt(String(duration), 10) || 8;
           // Clamp to valid values: 4, 8, or 12
           if (![4, 8, 12].includes(soraDuration)) {
             // Round to nearest valid value
@@ -6670,7 +6753,124 @@ const InputBox = (props: InputBoxProps = {}) => {
           );
           throw new Error("Kling video generation did not complete in time");
         }
-      } else if (selectedModel.includes("seedance")) {
+      } else if (selectedModel === SEEDANCE_2_MODEL) {
+        console.log(
+          "🎬 Seedance 2.0 video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
+
+        let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
+        for (let attempts = 0; attempts < 360; attempts++) {
+          try {
+            const statusRes = await api.get("/api/fal/queue/status", {
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000,
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
+
+            const statusValue = String(status?.status || "").toLowerCase();
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              const resultRes = await api.get("/api/fal/queue/result", {
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000,
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              if (generationId) {
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+                console.log(
+                  "[queue] Seedance 2.0 marked as completed in queue",
+                );
+              }
+              break;
+            }
+            if (statusValue === "failed" || statusValue === "error") {
+              throw new Error("Seedance 2.0 video generation failed");
+            }
+          } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
+
+            if (isNetworkError) {
+              console.warn(
+                `[queue] Seedance 2.0 - Network error (${attempts + 1}/360, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
+            } else {
+              console.error(
+                `[queue] Seedance 2.0 - Error (${attempts + 1}/360):`,
+                errorMsg,
+              );
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `Seedance 2.0: Too many network errors. ${errorMsg}`,
+              );
+            }
+            if (attempts === 359) {
+              throw new Error(
+                `Seedance 2.0: Timeout after 360 attempts. ${errorMsg}`,
+              );
+            }
+          }
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
+          videoUrl = videoResult.videos[0].url;
+          console.log("✅ Seedance 2.0 video completed with URL:", videoUrl);
+        } else if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+          console.log(
+            "✅ Seedance 2.0 video completed with URL (video.url):",
+            videoUrl,
+          );
+        } else {
+          console.error(
+            "❌ Seedance 2.0 video generation did not complete properly",
+          );
+          console.error(
+            "❌ Video result structure:",
+            JSON.stringify(videoResult, null, 2),
+          );
+          throw new Error(
+            "Seedance 2.0 video generation did not complete in time",
+          );
+        }
+      } else if (
+        selectedModel.includes("seedance") &&
+        selectedModel !== SEEDANCE_2_MODEL
+      ) {
         // Seedance flow - queue-based polling via replicate queue endpoints (same as WAN/Kling)
         console.log(
           "🎬 Seedance video generation started, request ID:",
@@ -7633,13 +7833,15 @@ const InputBox = (props: InputBoxProps = {}) => {
             {/* Uploaded Images */}
             {(() => {
               const displayImages =
-                selectedModel.includes("veo3.1") ||
+                selectedModel === SEEDANCE_2_MODEL
+                  ? uploadedImages.slice(0, 1)
+                  : selectedModel.includes("veo3.1") ||
                 selectedModel === "kling-o1" ||
                 (selectedModel.includes("seedance") &&
                   !selectedModel.includes("pro-fast") &&
                   !selectedModel.includes("i2v"))
-                  ? uploadedImages.slice(0, 2)
-                  : uploadedImages;
+                    ? uploadedImages.slice(0, 2)
+                    : uploadedImages;
               const extraLastFrame =
                 !!lastFrameImage &&
                 (selectedModel.includes("veo3.1") ||
@@ -7691,7 +7893,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                             }
                           />
                           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                            {index === 0 ? "First Frame" : `Image ${index + 1}`}
+                            {index === 0
+                              ? selectedModel === SEEDANCE_2_MODEL
+                                ? "Input Image"
+                                : "First Frame"
+                              : `Image ${index + 1}`}
                           </div>
                         </div>
                         <button
@@ -7873,7 +8079,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedDuration={
                     selectedModel.includes("MiniMax")
                       ? `${selectedMiniMaxDuration}s`
-                      : `${duration}s`
+                      : formatDurationForCreditLookup(duration)
                   }
                   selectedResolution={(() => {
                     const resolutionForCredits =
@@ -7903,6 +8109,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 {/* Audio toggle button for models that support it (mobile only) */}
                 {(selectedModel === "kling-2.6-pro" ||
                   selectedModel.startsWith("kling-v3") ||
+                  selectedModel === SEEDANCE_2_MODEL ||
                   selectedModel.includes("seedance-1.5") ||
                   (selectedModel.includes("sora2") &&
                     !selectedModel.includes("v2v")) ||
@@ -8060,7 +8267,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 selectedDuration={
                   selectedModel.includes("MiniMax")
                     ? `${selectedMiniMaxDuration}s`
-                    : `${duration}s`
+                    : formatDurationForCreditLookup(duration)
                 }
                 selectedResolution={(() => {
                   const resolutionForCredits =
@@ -8951,8 +9158,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (selectedModel.includes("seedance")) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
-                      {/* Aspect Ratio - Only shown for T2V (ignored for I2V) */}
-                      {generationMode === "text_to_video" && (
+                      {/* Aspect Ratio - Seedance 2.0 supports this for both T2V and I2V */}
+                      {(generationMode === "text_to_video" ||
+                        selectedModel === SEEDANCE_2_MODEL) && (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={setFrameSize}
@@ -9022,8 +9230,9 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
-                      {/* Audio toggle - Seedance 1.5 only */}
-                      {selectedModel.includes("seedance-1.5") && (
+                      {/* Audio toggle - Seedance 1.5 and 2.0 */}
+                      {(selectedModel.includes("seedance-1.5") ||
+                        selectedModel === SEEDANCE_2_MODEL) && (
                         <button
                           onClick={() => setGenerateAudio((v) => !v)}
                           className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
@@ -9110,6 +9319,28 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
+                      {(selectedModel.includes("seedance-1.5") ||
+                        selectedModel === SEEDANCE_2_MODEL) && (
+                        <button
+                          onClick={() => setGenerateAudio((v) => !v)}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio
+                              ? "bg-transparent text-white "
+                              : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                          }`}
+                        >
+                          <div className="relative">
+                            {generateAudio ? (
+                              <Volume2 className="w-5 h-5" />
+                            ) : (
+                              <VolumeX className="w-5 h-5" />
+                            )}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? "Audio: On" : "Audio: Off"}
+                            </div>
+                          </div>
+                        </button>
+                      )}
                     </div>
                   );
                 }
@@ -9200,7 +9431,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                       {/* Duration - For MiniMax models */}
                       <VideoDurationDropdown
                         selectedDuration={selectedMiniMaxDuration}
-                        onDurationChange={setSelectedMiniMaxDuration}
+                        onDurationChange={(value) => {
+                          if (typeof value === "number") {
+                            setSelectedMiniMaxDuration(value);
+                          }
+                        }}
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {
@@ -9663,7 +9898,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (selectedModel.includes("seedance")) {
                   return (
                     <div className="flex flex-row gap-3 flex-wrap">
-                      {generationMode === "text_to_video" && (
+                      {(generationMode === "text_to_video" ||
+                        selectedModel === SEEDANCE_2_MODEL) && (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
                           onFrameSizeChange={setFrameSize}
@@ -9712,6 +9948,28 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
+                      {(selectedModel.includes("seedance-1.5") ||
+                        selectedModel === SEEDANCE_2_MODEL) && (
+                        <button
+                          onClick={() => setGenerateAudio((v) => !v)}
+                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
+                            generateAudio
+                              ? "bg-transparent text-white "
+                              : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+                          }`}
+                        >
+                          <div className="relative">
+                            {generateAudio ? (
+                              <Volume2 className="w-5 h-5" />
+                            ) : (
+                              <VolumeX className="w-5 h-5" />
+                            )}
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              {generateAudio ? "Audio: On" : "Audio: Off"}
+                            </div>
+                          </div>
+                        </button>
+                      )}
                     </div>
                   );
                 }
@@ -9841,7 +10099,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                       />
                       <VideoDurationDropdown
                         selectedDuration={selectedMiniMaxDuration}
-                        onDurationChange={setSelectedMiniMaxDuration}
+                        onDurationChange={(value) => {
+                          if (typeof value === "number") {
+                            setSelectedMiniMaxDuration(value);
+                          }
+                        }}
                         selectedModel={selectedModel}
                         generationMode={generationMode}
                         onCloseOtherDropdowns={() => {

@@ -6,7 +6,7 @@ interface UseUrlParamsSyncProps {
   setPrompt: (value: string) => void;
   setSelectedModel: (value: string) => void;
   setFrameSize: (value: string) => void;
-  setDuration: (value: number) => void;
+  setDuration: (value: number | "auto") => void;
   setSelectedQuality: (value: any) => void;
   setSelectedResolution: (value: any) => void;
   setGenerationMode: (value: "text_to_video" | "image_to_video" | "video_to_video") => void;
@@ -60,10 +60,15 @@ export const useUrlParamsSync = ({
       hasUpdates = true;
     }
     if (durationParam) {
-      const d = Number(durationParam);
-      if (Number.isFinite(d) && d > 0) {
-        setDuration(d);
+      if (durationParam.toLowerCase() === "auto") {
+        setDuration("auto");
         hasUpdates = true;
+      } else {
+        const d = Number(durationParam);
+        if (Number.isFinite(d) && d > 0) {
+          setDuration(d);
+          hasUpdates = true;
+        }
       }
     }
     if (qualityParam) {
