@@ -7,6 +7,7 @@ import { BillingPeriodToggle, type BillingPeriod } from './BillingPeriodToggle';
 import { StarterCapsule } from './StarterCapsule';
 import { MainPlanCard } from './MainPlanCard';
 import { fetchSubscriptionCatalog, type SubscriptionCatalog } from '@/lib/subscriptionCatalog';
+import { isUserAuthenticated } from '@/lib/axiosInstance';
 
 const scrollStyles =
   'overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15';
@@ -21,7 +22,7 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
   const [catalog, setCatalog] = useState<SubscriptionCatalog | null>(null);
 
   const goSubscribe = () => {
-    if (isAuthenticated) {
+    if (isAuthenticated || isUserAuthenticated()) {
       router.push('/account/billing');
     } else {
       router.push('/view/signup');
@@ -137,7 +138,7 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
       <div className="mt-8 flex justify-center">
         <button
           type="button"
-          onClick={() => router.push('/account/billing')}
+          onClick={goSubscribe}
           className="text-sm font-medium text-[#60a5fa] hover:text-[#93c5fd] transition-colors underline-offset-4 hover:underline"
         >
           Open billing &amp; plans
