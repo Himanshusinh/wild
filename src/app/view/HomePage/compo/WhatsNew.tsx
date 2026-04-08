@@ -16,8 +16,9 @@ type NewItem = {
   eyebrow: string;
   title: string;
   desc: string;
+  features?: string[];
   href: string;
-  accent: string;
+  color: string; // primary accent hex
   Icon: typeof Sparkles;
 };
 
@@ -28,16 +29,37 @@ const NEW_ITEMS: NewItem[] = [
     title: "Prompt Enhance",
     desc: "Refine rough ideas into clearer image prompts with faster creative guidance.",
     href: "/text-to-image",
-    accent: "from-[#3B82F6]/25 via-[#60A5FA]/12 to-transparent",
+    color: "#3B82F6",
     Icon: Sparkles,
   },
   {
     id: "new-model",
     eyebrow: "New Model",
-    title: "GPT Image 1.5",
-    desc: "Sharper instruction-following for polished image generations and edits.",
-    href: "/text-to-image?model=openai/gpt-image-1.5",
-    accent: "from-[#8B5CF6]/25 via-[#C084FC]/10 to-transparent",
+    title: "Seedance 2.0",
+    desc: "New FAL video model for both text-to-video and image-to-video generation inside WildMind.",
+    features: ["Auto / 4-15s", "480p / 720p", "T2V + I2V", "Audio On/Off"],
+    href: "/text-to-video?model=seedance-2.0-t2v",
+    color: "#8B5CF6",
+    Icon: Bot,
+  },
+  {
+    id: "new-model-veo-lite",
+    eyebrow: "New Model",
+    title: "Veo 3.1 Lite",
+    desc: "Lower-cost Veo model for faster cinematic text-to-video and image-to-video generation.",
+    features: ["4 / 6 / 8s", "720p / 1080p", "T2V + I2V", "16:9 / 9:16"],
+    href: "/text-to-video?model=veo3.1-lite-t2v-8s",
+    color: "#F97316",
+    Icon: Wand2,
+  },
+  {
+    id: "new-model-kling-pro",
+    eyebrow: "New Model",
+    title: "Kling 3.0 Pro",
+    desc: "High-control Kling model for polished motion, better prompt follow-through, and audio-ready video generation.",
+    features: ["5-15s", "16:9 / 9:16 / 1:1", "T2V + I2V", "Audio On/Off"],
+    href: "/text-to-video?model=kling-v3-pro",
+    color: "#22C55E",
     Icon: Bot,
   },
   {
@@ -46,17 +68,8 @@ const NEW_ITEMS: NewItem[] = [
     title: "Edit Image",
     desc: "Jump into quick edits, cleanup, and visual changes without leaving the studio flow.",
     href: "/text-to-image/edit-image",
-    accent: "from-[#10B981]/25 via-[#34D399]/10 to-transparent",
+    color: "#10B981",
     Icon: ImagePlus,
-  },
-  {
-    id: "new-video",
-    eyebrow: "New Video",
-    title: "Veo 3.1",
-    desc: "Create more cinematic motion with an upgraded text-to-video generation experience.",
-    href: "/text-to-video?model=veo3.1-t2v-8s",
-    accent: "from-[#F97316]/25 via-[#FB923C]/10 to-transparent",
-    Icon: Wand2,
   },
   {
     id: "new-workflow",
@@ -64,7 +77,7 @@ const NEW_ITEMS: NewItem[] = [
     title: "Remove Background",
     desc: "Cleanly isolate products, portraits, and assets in one tap for faster content production.",
     href: "/view/workflows/general/remove-background",
-    accent: "from-[#EC4899]/25 via-[#F472B6]/10 to-transparent",
+    color: "#EC4899",
     Icon: Layers3,
   },
 ];
@@ -136,40 +149,112 @@ export default function WhatsNew() {
       <div className="relative">
         <div
           ref={railRef}
-          className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-6 lg:px-16"
+          className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5 sm:px-6 lg:px-16"
         >
           {NEW_ITEMS.map((item) => (
             <Link
               key={item.id}
               href={item.href}
-              className="group relative min-h-[220px] w-[280px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-[#14141A] p-4 transition-all duration-300 hover:border-white/20 hover:bg-[#181821] sm:min-h-[240px] sm:w-[320px] sm:p-5"
+              style={
+                {
+                  "--accent": item.color,
+                } as React.CSSProperties
+              }
+              className="group relative flex min-h-[280px] w-[290px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-white/[0.08] bg-gradient-to-b from-[#17171F] to-[#101016] p-5 transition-all duration-500 hover:-translate-y-1 hover:border-[color:var(--accent)]/40 hover:shadow-[0_20px_60px_-20px_var(--accent)] sm:min-h-[300px] sm:w-[330px] sm:p-6"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.accent} opacity-100`} />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_34%)] opacity-60" />
+              {/* Top-right accent glow */}
+              <div
+                className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full opacity-40 blur-3xl transition-opacity duration-500 group-hover:opacity-70"
+                style={{ background: `radial-gradient(circle, ${item.color} 0%, transparent 70%)` }}
+              />
 
-              <div className="relative flex h-full flex-col">
-                <div className="mb-10 flex items-start justify-between">
-                  <span className="rounded-full border border-white/12 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/75 backdrop-blur-md">
-                    {item.eyebrow}
-                  </span>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 text-white/85 backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
-                    <item.Icon size={19} strokeWidth={1.9} />
-                  </div>
+              {/* Subtle grid texture */}
+              <div
+                className="pointer-events-none absolute inset-0 opacity-[0.04]"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+                  backgroundSize: "28px 28px",
+                }}
+              />
+
+              {/* Top accent line */}
+              <div
+                className="pointer-events-none absolute left-0 right-0 top-0 h-[2px] opacity-60 transition-opacity duration-500 group-hover:opacity-100"
+                style={{
+                  background: `linear-gradient(90deg, transparent 0%, ${item.color} 50%, transparent 100%)`,
+                }}
+              />
+
+              {/* Header row */}
+              <div className="relative flex items-start justify-between">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{
+                      background: item.color,
+                      boxShadow: `0 0 8px ${item.color}`,
+                    }}
+                  />
+                  {item.eyebrow}
+                </span>
+
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white backdrop-blur-md transition-all duration-500 group-hover:scale-110 group-hover:border-[color:var(--accent)]/50"
+                  style={{
+                    boxShadow: `inset 0 0 20px -5px ${item.color}30`,
+                  }}
+                >
+                  <item.Icon size={18} strokeWidth={1.8} style={{ color: item.color }} />
+                </div>
+              </div>
+
+              {/* Title block pushed to bottom */}
+              <div className="relative mt-auto pt-8">
+                <h3
+                  className="max-w-[230px] text-[26px] uppercase leading-[0.95] tracking-[0.02em] text-white sm:text-[30px]"
+                  style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+                >
+                  {item.title}
+                </h3>
+
+                {/* Accent underline */}
+                <div className="mt-2.5 flex items-center gap-2">
+                  <div
+                    className="h-[2px] w-8 rounded-full transition-all duration-500 group-hover:w-14"
+                    style={{ background: item.color }}
+                  />
+                  <div className="h-[2px] flex-1 rounded-full bg-white/5" />
                 </div>
 
-                <div className="mt-auto">
-                  <h3
-                    className="max-w-[210px] text-[28px] uppercase leading-none tracking-[0.04em] text-white sm:text-[32px]"
-                    style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+                <p className="mt-3 max-w-[270px] text-[12px] leading-[1.6] text-white/55">
+                  {item.desc}
+                </p>
+
+                {item.features && item.features.length > 0 && (
+                  <div className="mt-3.5 flex max-w-[280px] flex-wrap gap-1.5">
+                    {item.features.map((feature) => (
+                      <span
+                        key={feature}
+                        className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[3px] text-[9.5px] font-semibold uppercase tracking-[0.06em] text-white/70"
+                      >
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* CTA row */}
+                <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-4">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/60 transition-colors duration-300 group-hover:text-white">
+                    Open
+                  </span>
+                  <div
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-all duration-300 group-hover:border-[color:var(--accent)]/60 group-hover:bg-[color:var(--accent)]/15 group-hover:text-white"
                   >
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 max-w-[250px] text-[12px] leading-[1.55] text-white/55 sm:max-w-[270px] sm:text-[12.5px]">
-                    {item.desc}
-                  </p>
-                  <div className="mt-4 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/72 transition-colors group-hover:text-white">
-                    <span>Open</span>
-                    <ArrowUpRight size={13} />
+                    <ArrowUpRight size={13} strokeWidth={2} className="transition-transform duration-300 group-hover:-translate-y-px group-hover:translate-x-px" />
                   </div>
                 </div>
               </div>
