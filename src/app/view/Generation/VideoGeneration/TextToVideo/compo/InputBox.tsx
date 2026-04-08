@@ -1670,6 +1670,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
+  const staleFalPlaceholderChecksRef = useRef<Set<string>>(new Set());
 
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
@@ -2325,6 +2326,25 @@ const InputBox = (props: InputBoxProps = {}) => {
         createdAt: iso,
       } as HistoryEntry;
 
+      setExtraVideoEntries((prev) =>
+        prev.filter((entry: any) => {
+          const entryId = String(entry?.id || "");
+          const entryFirebaseId = String((entry as any)?.firebaseHistoryId || "");
+          const normalizedId = String(normalizedEntry.id || historyId);
+          const normalizedFirebaseId = String(
+            (normalizedEntry as any)?.firebaseHistoryId || "",
+          );
+
+          return ![
+            String(historyId || ""),
+            normalizedId,
+            normalizedFirebaseId,
+          ]
+            .filter(Boolean)
+            .includes(entryId || entryFirebaseId);
+        }),
+      );
+
       // Check if entry already exists in current Redux state
       const exists = existingEntries.some(
         (e: HistoryEntry) => e.id === historyId,
@@ -2602,6 +2622,94 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     return sortedList as any[];
   }, [historyEntries, extraVideoEntries, sortOrder]);
+
+  useEffect(() => {
+    const activeIds = new Set<string>();
+    activeGenerations.forEach((gen: any) => {
+      if (gen?.id) activeIds.add(String(gen.id));
+      if (gen?.historyId) activeIds.add(String(gen.historyId));
+    });
+
+    const candidates = historyEntriesForDisplay
+      .filter((entry: any) => {
+        const entryId = String(entry?.id || "");
+        const providerTaskId = String((entry as any)?.providerTaskId || "");
+        const status = String(entry?.status || "").toLowerCase();
+        const provider = String((entry as any)?.provider || "").toLowerCase();
+
+        if (!entryId || !providerTaskId) return false;
+        if (activeIds.has(entryId)) return false;
+        if (provider !== "fal") return false;
+        if (status !== "generating" && status !== "pending") return false;
+        if (!isVideoType(entry)) return false;
+        if (staleFalPlaceholderChecksRef.current.has(entryId)) return false;
+
+        return true;
+      })
+      .slice(0, 4);
+
+    if (candidates.length === 0) return;
+
+    let cancelled = false;
+
+    candidates.forEach((entry: any) => {
+      const entryId = String(entry.id);
+      staleFalPlaceholderChecksRef.current.add(entryId);
+
+      void (async () => {
+        try {
+          const res = await axiosInstance.get("/api/fal/queue/status", {
+            params: {
+              model: entry.model,
+              requestId: (entry as any).providerTaskId,
+            },
+            timeout: 15000,
+          });
+          if (cancelled) return;
+
+          const status = res.data?.data || res.data;
+          const statusValue = String(status?.status || "").toLowerCase();
+          if (
+            statusValue === "completed" ||
+            statusValue === "success" ||
+            statusValue === "succeeded" ||
+            statusValue === "failed" ||
+            statusValue === "error" ||
+            statusValue === "cancelled" ||
+            statusValue === "canceled"
+          ) {
+            await refreshSingleGeneration(entryId);
+            return;
+          }
+
+          setTimeout(() => {
+            staleFalPlaceholderChecksRef.current.delete(entryId);
+          }, 15000);
+        } catch (err: any) {
+          if (cancelled) return;
+
+          const terminalMessage = getTerminalFalErrorMessage(err);
+          const statusCode = Number(
+            err?.response?.status || err?.status || 0,
+          );
+
+          if (
+            terminalMessage ||
+            (statusCode >= 400 && statusCode !== 408 && statusCode !== 429)
+          ) {
+            await refreshSingleGeneration(entryId);
+            return;
+          }
+
+          staleFalPlaceholderChecksRef.current.delete(entryId);
+        }
+      })();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyEntriesForDisplay, activeGenerations]);
 
   // Auto-load more history pages until we find non-text video types (bounded attempts)
   // IMPORTANT: Only run after initial load is complete to prevent duplicate requests
@@ -7728,6 +7836,21 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       // Stop and remove the queue item on failure.
       stopActiveGeneration(generationId, errorMessage);
+
+      const failedHistoryId =
+        result?.historyId ||
+        error?.response?.data?.data?.historyId ||
+        error?.response?.data?.historyId;
+      if (failedHistoryId) {
+        try {
+          await refreshSingleGeneration(String(failedHistoryId));
+        } catch (refreshError) {
+          console.error(
+            "[VideoPage] Failed to refresh failed generation after error:",
+            refreshError,
+          );
+        }
+      }
 
       // Handle credit transaction failure (skip for WAN 2.2 Animate Replace)
       if (transactionId) {
