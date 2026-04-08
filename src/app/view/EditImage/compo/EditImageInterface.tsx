@@ -8904,7 +8904,7 @@ const EditImageInterface: React.FC = () => {
 
               {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
               {selectedFeature === "live-chat" && liveHistory.length > 0 && (
-                <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
+                <div className="px-0 md:px-0 md:pr-4 md:mt-0 w-full md:w-auto h-[58vh] md:h-[72vh] min-h-0 flex flex-col gap-2">
                   {/* <div className="hidden md:block">
                     <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
                       Secondary Preview
@@ -8928,8 +8928,8 @@ const EditImageInterface: React.FC = () => {
                     <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
                       Preview
                     </h3>
-                    <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
-                      <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
+                    <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 flex-1 min-h-0 very-thin-scrollbar overflow-y-auto overflow-x-hidden overscroll-y-contain">
+                      <div className="flex flex-col items-start md:gap-3 gap-1 pr-1 min-w-0">
                         {/* Generated images (latest first) */}
                         {(liveHistory || [])
                           .filter((item) => item.url !== outputs["live-chat"])
