@@ -8969,7 +8969,12 @@ const InputBox = () => {
                                                 );
                                               }}
                                             />
-                                            {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                            {/* Shimmer loading effect - only show if image 
+                                            
+                                            
+                                            
+                                            
+                                            't loaded yet */}
                                             {!isImageLoaded && (
                                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                                             )}

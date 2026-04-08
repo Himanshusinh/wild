@@ -223,6 +223,7 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel.startsWith("ltx-2.3-fast") ||
           selectedModel.startsWith("ltx-2.3-pro") ||
           (selectedModel.includes("seedance") &&
+            selectedModel !== "seedance-2.0-t2v" &&
             !selectedModel.includes("pro-fast") &&
             !selectedModel.includes("i2v"))) &&
           hasImageToVideoSupport && (
@@ -245,6 +246,7 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel.startsWith("ltx-2.3-fast") ||
           selectedModel.startsWith("ltx-2.3-pro") ||
           (selectedModel.includes("seedance") &&
+            selectedModel !== "seedance-2.0-t2v" &&
             !selectedModel.includes("pro-fast") &&
             !selectedModel.includes("i2v"))) &&
           hasImageToVideoSupport && (

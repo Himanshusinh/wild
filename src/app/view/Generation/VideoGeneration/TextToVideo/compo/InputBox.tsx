@@ -1293,6 +1293,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           setSeedanceResolution("720p");
           setFrameSize("auto");
           setGenerateAudio(true);
+          setLastFrameImage("");
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
@@ -1472,6 +1473,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           setSeedanceResolution("720p");
           setFrameSize("auto");
           setGenerateAudio(true);
+          setLastFrameImage("");
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
@@ -7855,6 +7857,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.startsWith("ltx-2.3-fast") ||
                   selectedModel.startsWith("ltx-2.3-pro") ||
                   (selectedModel.includes("seedance") &&
+                    selectedModel !== SEEDANCE_2_MODEL &&
                     !selectedModel.includes("pro-fast") &&
                     !selectedModel.includes("i2v")) ||
                   (selectedModel === "MiniMax-Hailuo-02" &&
