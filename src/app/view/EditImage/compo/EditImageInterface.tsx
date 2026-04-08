@@ -8892,7 +8892,7 @@ const EditImageInterface: React.FC = () => {
                 {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
                 {/* Fill mask overlay moved to input area */}
                 {processing[selectedFeature] && (
-                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-transparent backdrop-blur-sm">
                     <img
                       src="/styles/Logo.gif"
                       alt="Generating..."
