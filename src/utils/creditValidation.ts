@@ -3,6 +3,8 @@ import { creditDistributionData, ModelCreditInfo } from "./creditDistribution";
 import { buildCreditModelName, getModelMapping } from "./modelMapping";
 import {
   computeSeedance2Credits,
+  computeSeedance2FastI2vCredits,
+  computeSeedance2FastT2vCredits,
   getCreditsForModel,
   MODEL_CREDITS_MAPPING,
 } from "./modelCredits";
@@ -113,6 +115,13 @@ export const getVideoCreditCost = (
     return computeSeedance2Credits(resolution, duration, aspectRatio);
   }
   if (
+    frontendModel === "seedance-2.0-fast" ||
+    frontendModel === "seedance-2.0-fast-t2v" ||
+    frontendModel === "seedance-2.0-fast-i2v"
+  ) {
+    return computeSeedance2FastI2vCredits(resolution, duration, aspectRatio);
+  }
+  if (
     frontendModel.includes("seedance") ||
     frontendModel.includes("wan-2.5") ||
     frontendModel.startsWith("kling-") ||
@@ -126,8 +135,7 @@ export const getVideoCreditCost = (
     frontendModel === "gen3a_turbo"
   ) {
     // Use default values if not provided for WAN models to avoid "Unknown model" error
-    const defaultDuration =
-      duration == null || duration === "" ? 5 : duration;
+    const defaultDuration = duration == null || duration === "" ? 5 : duration;
     const defaultResolution = resolution || "720p";
     // For models where pricing depends on audio, pass generateAudio through
     const audioParam =

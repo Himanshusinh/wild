@@ -277,7 +277,11 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
         },
         { value: "1:1", label: "1:1", description: "Square", icon: "square" },
       ];
-    } else if (selectedModel === "seedance-2.0-t2v") {
+    } else if (
+      selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-fast" ||
+      selectedModel === "seedance-2.0-fast-i2v"
+    ) {
       return [
         {
           value: "auto",

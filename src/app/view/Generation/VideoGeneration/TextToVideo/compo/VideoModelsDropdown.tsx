@@ -22,6 +22,7 @@ interface VideoModelsDropdownProps {
   generationMode: "text_to_video" | "image_to_video" | "video_to_video";
   selectedDuration?: string;
   selectedResolution?: string;
+  selectedAspectRatio?: string;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
   activeFeature?: "Video" | "Lipsync" | "Animate" | "Edit" | "Video editor";
@@ -33,6 +34,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   generationMode,
   selectedDuration = "5s",
   selectedResolution = "512P",
+  selectedAspectRatio,
   onCloseOtherDropdowns,
   onCloseThisDropdown,
   activeFeature = "Video",
@@ -297,6 +299,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         provider: "fal",
       },
       {
+        value: "seedance-2.0-fast",
+        label: "Seedance 2.0 Fast",
+        description:
+          "Text→Video & Image→Video, auto/4-15s, 480p/720p, auto/21:9/16:9/4:3/1:1/3:4/9:16, Audio On/Off",
+        provider: "fal",
+      },
+      {
         value: "seedance-1.5-pro-t2v",
         label: "Seedance 1.5 Pro",
         description:
@@ -496,7 +505,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       if (rLower.includes("4k") || rLower.includes("2160")) r = "4k";
       else if (rLower.includes("2k") || rLower.includes("1440")) r = "2k";
       else r = "1080p";
-    } else if (model.value === "seedance-2.0-t2v") {
+    } else if (
+      model.value === "seedance-2.0-t2v" ||
+      model.value === "seedance-2.0-fast"
+    ) {
       d = normalizeDuration(selectedDuration, "auto");
       const rRaw = normalizeResolution(selectedResolution, "720p");
       const rLower = rRaw.toLowerCase();
@@ -527,7 +539,19 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       r = normalizeResolution(selectedResolution, "720p");
     }
 
-    let creditInfo = getModelCreditInfo(model.value, d, r);
+    const aspectRatioForCredits =
+      model.value === "seedance-2.0-t2v" || model.value === "seedance-2.0-fast"
+        ? selectedAspectRatio || "auto"
+        : undefined;
+
+    let creditInfo = getModelCreditInfo(
+      model.value,
+      d,
+      r,
+      undefined,
+      undefined,
+      aspectRatioForCredits,
+    );
     // As a final safety net, retry with strict defaults if no credits resolved
     if (!creditInfo.hasCredits) {
       if (model.value.includes("wan-2.5")) {
@@ -543,8 +567,18 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ) {
         // MiniMax Hailuo 2.3: default to 6s and 768P
         creditInfo = getModelCreditInfo(model.value, "6s", "768P");
-      } else if (model.value === "seedance-2.0-t2v") {
-        creditInfo = getModelCreditInfo(model.value, "auto", "720p");
+      } else if (
+        model.value === "seedance-2.0-t2v" ||
+        model.value === "seedance-2.0-fast"
+      ) {
+        creditInfo = getModelCreditInfo(
+          model.value,
+          "auto",
+          "720p",
+          undefined,
+          undefined,
+          aspectRatioForCredits,
+        );
       } else if (
         model.value === "gen4_turbo" ||
         model.value === "gen3a_turbo"
@@ -560,7 +594,11 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ...model,
       credits: creditInfo.credits,
       displayText: creditInfo.displayText,
-      isLocked: !isModelAccessibleForPlan(currentPlanCode, "video", model.value),
+      isLocked: !isModelAccessibleForPlan(
+        currentPlanCode,
+        "video",
+        model.value,
+      ),
     };
   });
 
@@ -582,7 +620,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
 
     if (variantMatch) return;
 
-    const firstAccessibleModel = modelsWithCredits.find((model) => !model.isLocked);
+    const firstAccessibleModel = modelsWithCredits.find(
+      (model) => !model.isLocked,
+    );
     if (firstAccessibleModel) {
       onModelChange(firstAccessibleModel.value);
     }
@@ -679,9 +719,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                             {model.isLocked
                               ? "Upgrade to access"
                               : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
+                                (model.credits != null
+                                  ? `${model.credits} credits`
+                                  : "credits unavailable")}
                           </span>
                         </div>
                         {selectedModel === model.value && (
@@ -720,9 +760,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                             {model.isLocked
                               ? "Upgrade to access"
                               : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
+                                (model.credits != null
+                                  ? `${model.credits} credits`
+                                  : "credits unavailable")}
                           </span>
                         </div>
                         {selectedModel === model.value && (
@@ -778,9 +818,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.isLocked
                             ? "Upgrade to access"
                             : model.displayText ||
-                            (model.credits != null
-                              ? `${model.credits} credits`
-                              : "credits unavailable")}
+                              (model.credits != null
+                                ? `${model.credits} credits`
+                                : "credits unavailable")}
                         </span>
                       </div>
                       {selectedModel === model.value && (
@@ -821,9 +861,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           {model.isLocked
                             ? "Upgrade to access"
                             : model.displayText ||
-                            (model.credits != null
-                              ? `${model.credits} credits`
-                              : "credits unavailable")}
+                              (model.credits != null
+                                ? `${model.credits} credits`
+                                : "credits unavailable")}
                         </span>
                       </div>
                       {selectedModel === model.value && (

@@ -1,6 +1,7 @@
 import { creditDistributionData } from "./creditDistribution";
 
 const SEEDANCE_2_USD_PER_1K_TOKENS = 0.014;
+const SEEDANCE_2_FAST_USD_PER_1K_TOKENS = 0.0112;
 const SEEDANCE_2_CREDITS_PER_USD = 4000 / 5.003;
 
 type Seedance2AspectRatio =
@@ -57,27 +58,31 @@ export const getSeedance2EstimatedDimensions = (
     String(resolution || "720p").toLowerCase() === "480p" ? "480p" : "720p";
   const normalizedAspectRatio = normalizeSeedance2AspectRatio(aspectRatio);
 
-  const dims720: Record<Seedance2AspectRatio, { width: number; height: number }> =
-    {
-      auto: { width: 1280, height: 720 },
-      "21:9": { width: 1680, height: 720 },
-      "16:9": { width: 1280, height: 720 },
-      "4:3": { width: 960, height: 720 },
-      "1:1": { width: 720, height: 720 },
-      "3:4": { width: 720, height: 960 },
-      "9:16": { width: 720, height: 1280 },
-    };
+  const dims720: Record<
+    Seedance2AspectRatio,
+    { width: number; height: number }
+  > = {
+    auto: { width: 1280, height: 720 },
+    "21:9": { width: 1680, height: 720 },
+    "16:9": { width: 1280, height: 720 },
+    "4:3": { width: 960, height: 720 },
+    "1:1": { width: 720, height: 720 },
+    "3:4": { width: 720, height: 960 },
+    "9:16": { width: 720, height: 1280 },
+  };
 
-  const dims480: Record<Seedance2AspectRatio, { width: number; height: number }> =
-    {
-      auto: { width: 854, height: 480 },
-      "21:9": { width: 1120, height: 480 },
-      "16:9": { width: 854, height: 480 },
-      "4:3": { width: 640, height: 480 },
-      "1:1": { width: 480, height: 480 },
-      "3:4": { width: 480, height: 640 },
-      "9:16": { width: 480, height: 854 },
-    };
+  const dims480: Record<
+    Seedance2AspectRatio,
+    { width: number; height: number }
+  > = {
+    auto: { width: 854, height: 480 },
+    "21:9": { width: 1120, height: 480 },
+    "16:9": { width: 854, height: 480 },
+    "4:3": { width: 640, height: 480 },
+    "1:1": { width: 480, height: 480 },
+    "3:4": { width: 480, height: 640 },
+    "9:16": { width: 480, height: 854 },
+  };
 
   const source = normalizedResolution === "480p" ? dims480 : dims720;
   const dims = source[normalizedAspectRatio];
@@ -93,13 +98,38 @@ export const computeSeedance2Credits = (
   resolution?: string,
   duration?: string | number,
   aspectRatio?: string,
+  usdPer1kTokens: number = SEEDANCE_2_USD_PER_1K_TOKENS,
 ): number => {
   const dims = getSeedance2EstimatedDimensions(resolution, aspectRatio);
   const seconds = parseSeedance2DurationSeconds(duration, 8);
   const tokens = (dims.width * dims.height * seconds * 24) / 1024;
-  const usdCost = (tokens / 1000) * SEEDANCE_2_USD_PER_1K_TOKENS;
+  const usdCost = (tokens / 1000) * usdPer1kTokens;
   return Math.max(1, Math.ceil(usdCost * SEEDANCE_2_CREDITS_PER_USD));
 };
+
+export const computeSeedance2FastI2vCredits = (
+  resolution?: string,
+  duration?: string | number,
+  aspectRatio?: string,
+): number =>
+  computeSeedance2Credits(
+    resolution,
+    duration,
+    aspectRatio,
+    SEEDANCE_2_FAST_USD_PER_1K_TOKENS,
+  );
+
+export const computeSeedance2FastT2vCredits = (
+  resolution?: string,
+  duration?: string | number,
+  aspectRatio?: string,
+): number =>
+  computeSeedance2Credits(
+    resolution,
+    duration,
+    aspectRatio,
+    SEEDANCE_2_FAST_USD_PER_1K_TOKENS,
+  );
 
 // Direct mapping between dropdown model values and their credit costs
 export const MODEL_CREDITS_MAPPING: Record<string, number> = {
@@ -462,6 +492,13 @@ export const getCreditsForModel = (
 ): number | null => {
   if (modelValue === "seedance-2.0-t2v") {
     return computeSeedance2Credits(resolution, duration, aspectRatio);
+  }
+  if (
+    modelValue === "seedance-2.0-fast" ||
+    modelValue === "seedance-2.0-fast-t2v" ||
+    modelValue === "seedance-2.0-fast-i2v"
+  ) {
+    return computeSeedance2FastI2vCredits(resolution, duration, aspectRatio);
   }
 
   // Handle special cases for video models with duration and resolution

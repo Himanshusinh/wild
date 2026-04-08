@@ -25,7 +25,7 @@ type FalErrorEnvelope = {
 };
 
 const FRIENDLY_RETRY_MESSAGE =
-  "We could not complete this image right now. Please try again in a moment.";
+  "We could not complete this request right now. Please try again in a moment.";
 
 const toFriendlyFalMessage = (message?: string): string => {
   const raw = String(message || "").trim();

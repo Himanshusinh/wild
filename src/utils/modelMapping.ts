@@ -782,6 +782,39 @@ export const MODEL_MAPPING: ModelMapping[] = [
     },
   },
   {
+    frontendValue: "seedance-2.0-fast",
+    creditModelName: "Bytedance Seedance 2.0 Fast",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["480p", "720p"],
+      duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["auto", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    },
+  },
+  {
+    frontendValue: "seedance-2.0-fast-t2v",
+    creditModelName: "Bytedance Seedance 2.0 Fast T2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["480p", "720p"],
+      duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["auto", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    },
+  },
+  {
+    frontendValue: "seedance-2.0-fast-i2v",
+    creditModelName: "Bytedance Seedance 2.0 Fast I2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["480p", "720p"],
+      duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["auto", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"],
+    },
+  },
+  {
     frontendValue: "seedance-1.5-pro-t2v",
     creditModelName: "Seedance 1.5 T2V/I2V",
     generationType: "video",
@@ -1356,7 +1389,15 @@ export const buildCreditModelName = (
     }
   }
   // Handle Seedance models
-  else if (
+  else if (mapping.frontendValue === "seedance-2.0-t2v") {
+    modelName = "Bytedance Seedance 2.0 T2V/I2V";
+  } else if (mapping.frontendValue === "seedance-2.0-fast") {
+    modelName = "Bytedance Seedance 2.0 Fast";
+  } else if (mapping.frontendValue === "seedance-2.0-fast-t2v") {
+    modelName = "Bytedance Seedance 2.0 Fast T2V";
+  } else if (mapping.frontendValue === "seedance-2.0-fast-i2v") {
+    modelName = "Bytedance Seedance 2.0 Fast I2V";
+  } else if (
     mapping.frontendValue.includes("seedance-1.5") &&
     options?.duration
   ) {

@@ -150,7 +150,11 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 10, label: "10 seconds", description: "Long video" },
       ];
     }
-    if (selectedModel === "seedance-2.0-t2v") {
+    if (
+      selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-fast" ||
+      selectedModel === "seedance-2.0-fast-i2v"
+    ) {
       return [
         {
           value: "auto" as const,
@@ -364,9 +368,7 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       >
         <Clock className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedDurationInfo?.label ||
-          (selectedDuration === "auto"
-            ? "Auto"
-            : `${selectedDuration}s`)}
+          (selectedDuration === "auto" ? "Auto" : `${selectedDuration}s`)}
         <ChevronUp
           className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
