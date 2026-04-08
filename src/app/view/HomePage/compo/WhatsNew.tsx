@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   Bot,
-  ImagePlus,
-  Layers3,
   Sparkles,
   Wand2,
 } from "lucide-react";
@@ -23,15 +21,6 @@ type NewItem = {
 };
 
 const NEW_ITEMS: NewItem[] = [
-  {
-    id: "new-feature",
-    eyebrow: "New Feature",
-    title: "Prompt Enhance",
-    desc: "Refine rough ideas into clearer image prompts with faster creative guidance.",
-    href: "/text-to-image",
-    color: "#3B82F6",
-    Icon: Sparkles,
-  },
   {
     id: "new-model",
     eyebrow: "New Model",
@@ -61,24 +50,6 @@ const NEW_ITEMS: NewItem[] = [
     href: "/text-to-video?model=kling-v3-pro",
     color: "#22C55E",
     Icon: Bot,
-  },
-  {
-    id: "new-app",
-    eyebrow: "New App",
-    title: "Edit Image",
-    desc: "Jump into quick edits, cleanup, and visual changes without leaving the studio flow.",
-    href: "/text-to-image/edit-image",
-    color: "#10B981",
-    Icon: ImagePlus,
-  },
-  {
-    id: "new-workflow",
-    eyebrow: "New Workflow",
-    title: "Remove Background",
-    desc: "Cleanly isolate products, portraits, and assets in one tap for faster content production.",
-    href: "/view/workflows/general/remove-background",
-    color: "#EC4899",
-    Icon: Layers3,
   },
 ];
 
