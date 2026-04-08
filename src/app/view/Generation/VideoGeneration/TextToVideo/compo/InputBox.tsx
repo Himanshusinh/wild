@@ -3497,6 +3497,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     let apiEndpoint = "";
     let requestBody: any = {};
     let generationType: any = "text-to-video";
+    let failedHistoryIdForRefresh: string | undefined;
 
     // Continue with validation and API call logic...
     const caps = currentModelCapabilities;
@@ -5468,6 +5469,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       try {
         const { data } = await api.post(apiEndpoint, requestBody);
         result = data?.data || data;
+        failedHistoryIdForRefresh =
+          result?.historyId || failedHistoryIdForRefresh;
       } catch (e: any) {
         // Check if this is a network error (no response from server)
         const isNetworkError =
@@ -5520,6 +5523,8 @@ const InputBox = (props: InputBoxProps = {}) => {
             historyId: body?.data?.historyId || body?.historyId,
             status: "submitted",
           };
+          failedHistoryIdForRefresh =
+            result?.historyId || failedHistoryIdForRefresh;
         } else {
           // Provide more detailed error information
           const errorDetails = {
@@ -5557,6 +5562,8 @@ const InputBox = (props: InputBoxProps = {}) => {
         }
       }
       console.log("📥 API response:", result);
+
+      failedHistoryIdForRefresh = result?.historyId || failedHistoryIdForRefresh;
 
       // Debug MiniMax response structure
       if (
@@ -7838,7 +7845,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       stopActiveGeneration(generationId, errorMessage);
 
       const failedHistoryId =
-        result?.historyId ||
+        failedHistoryIdForRefresh ||
         error?.response?.data?.data?.historyId ||
         error?.response?.data?.historyId;
       if (failedHistoryId) {
