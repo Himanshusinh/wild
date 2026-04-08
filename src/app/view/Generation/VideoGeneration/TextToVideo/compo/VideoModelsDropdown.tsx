@@ -260,18 +260,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         description: "Text→Video & Image→Video, 5s/10s, 16:9/9:16/1:1",
         provider: "replicate",
       },
-      {
-        value: "kling-v2.1-t2v",
-        label: "Kling 2.1",
-        description: "Text→Video & Image→Video, 5s/10s, 720p/1080p",
-        provider: "replicate",
-      },
-      {
-        value: "kling-v2.1-master-t2v",
-        label: "Kling 2.1 Master",
-        description: "Text→Video & Image→Video, 5s/10s, 1080p",
-        provider: "replicate",
-      },
+      // { value: "kling-v2.1-t2v", label: "Kling 2.1", description: "Text→Video & Image→Video, 5s/10s, 720p/1080p", provider: "replicate" },
+      // { value: "kling-v2.1-master-t2v", label: "Kling 2.1 Master", description: "Text→Video & Image→Video, 5s/10s, 1080p", provider: "replicate" },
       {
         value: "MiniMax-Hailuo-2.3",
         label: "Hailuo-2.3",
@@ -284,12 +274,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         description: "Image→Video only (faster), 6s/10s, 768P/1080P",
         provider: "minimax",
       },
-      {
-        value: "MiniMax-Hailuo-02",
-        label: "Hailuo-02",
-        description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P",
-        provider: "minimax",
-      },
+      // { value: "MiniMax-Hailuo-02", label: "Hailuo-02", description: "Text→Video / Image→Video, 6s/10s, 512P/768P/1080P", provider: "minimax" },
 
       {
         value: "seedance-2.0-t2v",
@@ -333,20 +318,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           "Text→Video & Image→Video (faster), 2-12s, 480p/720p/1080p, 16:9/4:3/1:1/3:4/9:16/21:9/9:21",
         provider: "replicate",
       },
-      {
-        value: "ltx2-pro-t2v",
-        label: "LTX V2 Pro",
-        description:
-          "Text→Video & Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only",
-        provider: "fal",
-      },
-      {
-        value: "ltx2-fast-t2v",
-        label: "LTX V2 Fast",
-        description:
-          "Text→Video & Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only",
-        provider: "fal",
-      },
+      // { value: "ltx2-pro-t2v", label: "LTX V2 Pro", description: "Text→Video & Image→Video, 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
+      // { value: "ltx2-fast-t2v", label: "LTX V2 Fast", description: "Text→Video & Image→Video (fast), 6s/8s/10s, 1080p/1440p/2160p, 16:9 only", provider: "fal" },
       {
         value: "ltx-2.3-pro-t2v",
         label: "LTX 2.3 Pro",
@@ -374,18 +347,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           "Text→Video & Image→Video (faster), 5s/10s, 720p/1080p only",
         provider: "replicate",
       },
-      {
-        value: "gen4_turbo",
-        label: "Gen-4 Turbo",
-        description: "High-quality, fast generation",
-        provider: "runway",
-      },
-      {
-        value: "gen4_aleph",
-        label: "Gen-4 Aleph",
-        description: "Style transfer and enhancement",
-        provider: "runway",
-      },
+      // { value: "gen4_turbo", label: "Gen-4 Turbo", description: "High-quality, fast generation", provider: "runway" },
+      // { value: "gen4_aleph", label: "Gen-4 Aleph", description: "Style transfer and enhancement", provider: "runway" },
 
       // { value: "T2V-01-Director", label: "Hailuo-T2V-Director", description: "Text→Video only, 6s, 720P, Camera movements", provider: "minimax" },
       // { value: "I2V-01-Director", label: "Hailuo-I2V-Director", description: "Image→Video only, 6s, 720P, First frame required", provider: "minimax" },
