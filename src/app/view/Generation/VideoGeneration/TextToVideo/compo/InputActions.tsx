@@ -45,6 +45,17 @@ const InputActions: React.FC<InputActionsProps> = ({
   const hasImageToVideoSupport =
     currentModelCapabilities?.supportsImageToVideo ||
     currentModelCapabilities?.requiresFirstFrame;
+  const isSeedance2ReferenceModel =
+    selectedModel === "seedance-2.0-r2v" ||
+    selectedModel === "seedance-2.0-fast-r2v";
+  const referenceLimit =
+    generationMode === "image_to_video" && selectedModel === "S2V-01"
+      ? 1
+      : generationMode === "video_to_video"
+        ? 4
+        : isSeedance2ReferenceModel
+          ? 9
+          : 4;
   const supportsLastFrameUpload =
     ((selectedModel === "MiniMax-Hailuo-02" &&
       (selectedResolution === "768P" || selectedResolution === "1080P")) ||
@@ -77,14 +88,15 @@ const InputActions: React.FC<InputActionsProps> = ({
         )}
 
         {/* References Upload */}
-        {currentModelCapabilities.requiresReferenceImage && (
+        {(currentModelCapabilities.requiresReferenceImage ||
+          isSeedance2ReferenceModel) && (
           <div className="relative">
             <button
               className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${
                 (generationMode === "image_to_video" &&
                   selectedModel === "S2V-01" &&
                   references.length >= 1) ||
-                (generationMode === "video_to_video" && references.length >= 4)
+                references.length >= referenceLimit
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:bg-white/10"
               }`}
@@ -96,7 +108,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                 (generationMode === "image_to_video" &&
                   selectedModel === "S2V-01" &&
                   references.length >= 1) ||
-                (generationMode === "video_to_video" && references.length >= 4)
+                references.length >= referenceLimit
               }
             >
               <FilePlus2
@@ -105,8 +117,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   (generationMode === "image_to_video" &&
                     selectedModel === "S2V-01" &&
                     references.length >= 1) ||
-                  (generationMode === "video_to_video" &&
-                    references.length >= 4)
+                  references.length >= referenceLimit
                     ? "text-gray-400"
                     : "text-green-400"
                 }`}
@@ -115,7 +126,9 @@ const InputActions: React.FC<InputActionsProps> = ({
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
               {generationMode === "image_to_video" && selectedModel === "S2V-01"
                 ? "Upload character reference (1 max)"
-                : "Upload references"}
+                : isSeedance2ReferenceModel
+                  ? `Upload references (${referenceLimit} max)`
+                  : "Upload references"}
             </div>
 
             {/* References Count Badge */}
@@ -125,8 +138,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   (generationMode === "image_to_video" &&
                     selectedModel === "S2V-01" &&
                     references.length >= 1) ||
-                  (generationMode === "video_to_video" &&
-                    references.length >= 4)
+                  references.length >= referenceLimit
                     ? "bg-red-500"
                     : "bg-green-500"
                 }`}
@@ -144,7 +156,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   {generationMode === "image_to_video" &&
                   selectedModel === "S2V-01"
                     ? `Character Reference (${references.length}/1)`
-                    : `References (${references.length}/4)`}
+                    : `References (${references.length}/${referenceLimit})`}
                 </div>
                 <div className="space-y-2">
                   {references.map((ref, index) => (
@@ -295,7 +307,8 @@ const InputActions: React.FC<InputActionsProps> = ({
         {/* Video Upload */}
         {(currentModelCapabilities.supportsVideoToVideo ||
           selectedModel === "wan-2.2-animate-replace" ||
-          selectedModel.startsWith("ltx-2.3-pro")) && (
+          selectedModel.startsWith("ltx-2.3-pro") ||
+          isSeedance2ReferenceModel) && (
           <div className="relative">
             <button
               className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"

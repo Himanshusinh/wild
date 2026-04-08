@@ -72,6 +72,7 @@ export const useCredits = () => {
     resolution?: string,
     duration?: number | string,
     frameSize?: string,
+    inputVideoDurationSec?: number,
   ) => {
     const requiredCredits = getVideoGenerationCreditCost(
       provider,
@@ -79,6 +80,7 @@ export const useCredits = () => {
       resolution,
       duration,
       frameSize,
+      inputVideoDurationSec,
     );
 
     if (requiredCredits === 0) {
@@ -259,6 +261,7 @@ export const useGenerationCredits = (
     style?: string;
     quality?: string;
     uploadedImages?: any[];
+    inputVideoDurationSec?: number;
   }
 ) => {
   const {
@@ -288,6 +291,7 @@ export const useGenerationCredits = (
             options?.resolution,
             options?.duration,
             options?.frameSize,
+            options?.inputVideoDurationSec,
           );
           requiredCredits = videoResult.requiredCredits;
           validation = videoResult.validation;

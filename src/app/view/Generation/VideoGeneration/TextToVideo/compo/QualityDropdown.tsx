@@ -44,8 +44,10 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
     }
     if (
       selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-r2v" ||
       selectedModel === "seedance-2.0-fast" ||
-      selectedModel === "seedance-2.0-fast-i2v"
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      selectedModel === "seedance-2.0-fast-r2v"
     ) {
       return [
         { value: "480p", label: "480p", description: "SD Quality (854x480)" },

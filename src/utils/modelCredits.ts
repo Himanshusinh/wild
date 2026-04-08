@@ -3,6 +3,9 @@ import { creditDistributionData } from "./creditDistribution";
 const SEEDANCE_2_USD_PER_1K_TOKENS = 0.014;
 const SEEDANCE_2_FAST_USD_PER_1K_TOKENS = 0.0112;
 const SEEDANCE_2_CREDITS_PER_USD = 4000 / 5.003;
+const SEEDANCE_2_REFERENCE_USD_PER_SECOND_720P = 0.3024;
+const SEEDANCE_2_FAST_REFERENCE_USD_PER_SECOND_720P = 0.2419;
+const SEEDANCE_2_FAST_REFERENCE_VIDEO_INPUT_MULTIPLIER = 0.6;
 
 type Seedance2AspectRatio =
   | "auto"
@@ -128,6 +131,68 @@ export const computeSeedance2FastT2vCredits = (
     resolution,
     duration,
     aspectRatio,
+    SEEDANCE_2_FAST_USD_PER_1K_TOKENS,
+  );
+
+const computeSeedance2ReferenceCreditsWithRate = (
+  resolution?: string,
+  duration?: string | number,
+  aspectRatio?: string,
+  inputVideoDurationSec: number = 0,
+  baseRateUsdPerSecond720p: number = SEEDANCE_2_REFERENCE_USD_PER_SECOND_720P,
+  usdPer1kTokens: number = SEEDANCE_2_USD_PER_1K_TOKENS,
+): number => {
+  const dims = getSeedance2EstimatedDimensions(resolution, aspectRatio);
+  const outputDurationSec = parseSeedance2DurationSeconds(duration, 8);
+  const safeInputVideoDurationSec = Math.max(
+    0,
+    Number(inputVideoDurationSec) || 0,
+  );
+  const tokens =
+    (dims.width *
+      dims.height *
+      (safeInputVideoDurationSec + outputDurationSec) *
+      24) /
+    1024;
+  const tokenUsdCost = (tokens / 1000) * usdPer1kTokens;
+  const outputPixelRatio = (dims.width * dims.height) / (1280 * 720);
+  const baseVideoUsdCost = outputDurationSec * baseRateUsdPerSecond720p * outputPixelRatio;
+  const subtotalUsd = baseVideoUsdCost + tokenUsdCost;
+  const totalUsd =
+    safeInputVideoDurationSec > 0
+      ? subtotalUsd * SEEDANCE_2_FAST_REFERENCE_VIDEO_INPUT_MULTIPLIER
+      : subtotalUsd;
+
+  return Math.max(1, Math.ceil(totalUsd * SEEDANCE_2_CREDITS_PER_USD));
+};
+
+export const computeSeedance2ReferenceCredits = (
+  resolution?: string,
+  duration?: string | number,
+  aspectRatio?: string,
+  inputVideoDurationSec: number = 0,
+): number =>
+  computeSeedance2ReferenceCreditsWithRate(
+    resolution,
+    duration,
+    aspectRatio,
+    inputVideoDurationSec,
+    SEEDANCE_2_REFERENCE_USD_PER_SECOND_720P,
+    SEEDANCE_2_USD_PER_1K_TOKENS,
+  );
+
+export const computeSeedance2FastReferenceCredits = (
+  resolution?: string,
+  duration?: string | number,
+  aspectRatio?: string,
+  inputVideoDurationSec: number = 0,
+): number =>
+  computeSeedance2ReferenceCreditsWithRate(
+    resolution,
+    duration,
+    aspectRatio,
+    inputVideoDurationSec,
+    SEEDANCE_2_FAST_REFERENCE_USD_PER_SECOND_720P,
     SEEDANCE_2_FAST_USD_PER_1K_TOKENS,
   );
 
@@ -489,6 +554,7 @@ export const getCreditsForModel = (
   uploadedImages?: any[],
   quality?: string,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ): number | null => {
   if (modelValue === "seedance-2.0-t2v") {
     return computeSeedance2Credits(resolution, duration, aspectRatio);
@@ -499,6 +565,22 @@ export const getCreditsForModel = (
     modelValue === "seedance-2.0-fast-i2v"
   ) {
     return computeSeedance2FastI2vCredits(resolution, duration, aspectRatio);
+  }
+  if (modelValue === "seedance-2.0-fast-r2v") {
+    return computeSeedance2FastReferenceCredits(
+      resolution,
+      duration,
+      aspectRatio,
+      inputVideoDurationSec,
+    );
+  }
+  if (modelValue === "seedance-2.0-r2v") {
+    return computeSeedance2ReferenceCredits(
+      resolution,
+      duration,
+      aspectRatio,
+      inputVideoDurationSec,
+    );
   }
 
   // Handle special cases for video models with duration and resolution
@@ -1050,6 +1132,7 @@ export const getModelCreditInfo = (
   generateAudio?: boolean,
   quality?: string,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ) => {
   const credits = getCreditsForModel(
     modelValue,
@@ -1059,6 +1142,7 @@ export const getModelCreditInfo = (
     undefined,
     quality,
     aspectRatio,
+    inputVideoDurationSec,
   );
 
   // Special handling for Maya TTS and ElevenLabs SFX - show per-second pricing
@@ -1102,6 +1186,7 @@ export const formatModelWithCredits = (
   generateAudio?: boolean,
   quality?: string,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ): string => {
   const creditInfo = getModelCreditInfo(
     modelValue,
@@ -1110,6 +1195,7 @@ export const formatModelWithCredits = (
     generateAudio,
     quality,
     aspectRatio,
+    inputVideoDurationSec,
   );
 
   if (creditInfo.hasCredits) {

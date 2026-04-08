@@ -125,9 +125,18 @@ interface InputBoxProps {
 type VideoDurationValue = number | "auto";
 
 const SEEDANCE_2_MODEL = "seedance-2.0-t2v";
+const SEEDANCE_2_REFERENCE_MODEL = "seedance-2.0-r2v";
 const SEEDANCE_2_FAST_MODEL = "seedance-2.0-fast";
 const SEEDANCE_2_FAST_T2V_MODEL = "seedance-2.0-fast-t2v";
 const SEEDANCE_2_FAST_I2V_MODEL = "seedance-2.0-fast-i2v";
+const SEEDANCE_2_FAST_REFERENCE_MODEL = "seedance-2.0-fast-r2v";
+
+const isSeedance2ReferenceModel = (model: string) =>
+  model === SEEDANCE_2_REFERENCE_MODEL ||
+  model === SEEDANCE_2_FAST_REFERENCE_MODEL;
+
+const isSeedance2FastReferenceModel = (model: string) =>
+  model === SEEDANCE_2_FAST_REFERENCE_MODEL;
 
 const isSeedance2FastModel = (model: string) =>
   model === SEEDANCE_2_FAST_MODEL ||
@@ -135,12 +144,17 @@ const isSeedance2FastModel = (model: string) =>
   model === SEEDANCE_2_FAST_I2V_MODEL;
 
 const isSeedance2FamilyModel = (model: string) =>
-  model === SEEDANCE_2_MODEL || isSeedance2FastModel(model);
+  model === SEEDANCE_2_MODEL ||
+  model === SEEDANCE_2_REFERENCE_MODEL ||
+  isSeedance2FastModel(model) ||
+  isSeedance2FastReferenceModel(model);
 
 const isSeedance2TextModel = (model: string) =>
   model === SEEDANCE_2_MODEL ||
+  model === SEEDANCE_2_REFERENCE_MODEL ||
   model === SEEDANCE_2_FAST_MODEL ||
-  model === SEEDANCE_2_FAST_T2V_MODEL;
+  model === SEEDANCE_2_FAST_T2V_MODEL ||
+  isSeedance2FastReferenceModel(model);
 
 const formatDurationForCreditLookup = (value: VideoDurationValue): string =>
   value === "auto" ? "auto" : `${value}s`;
@@ -674,6 +688,9 @@ const InputBox = (props: InputBoxProps = {}) => {
     frameSize: isSeedance2FamilyModel(selectedModel)
       ? seedance2AspectRatio
       : undefined,
+    inputVideoDurationSec: isSeedance2ReferenceModel(selectedModel)
+      ? uploadedVideoDurationSec || 0
+      : undefined,
   });
 
   const loadVideoDurationSeconds = useCallback(
@@ -795,6 +812,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             isSeedance2FamilyModel(normalizedModelForCredits)
               ? seedance2AspectRatio
               : undefined,
+            isSeedance2ReferenceModel(normalizedModelForCredits)
+              ? uploadedVideoDurationSec || 0
+              : undefined,
           ),
         ) || 0,
       );
@@ -810,6 +830,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     generateAudio,
     frameSize,
     uploadedImages,
+    uploadedVideoDurationSec,
     references,
     lastFrameImage,
   ]);
@@ -3685,6 +3706,27 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
+    if (isSeedance2ReferenceModel(selectedModel)) {
+      const hasReferenceImage = references.length > 0;
+      const hasReferenceVideo = Boolean(uploadedVideo);
+
+      if (!hasReferenceImage && !hasReferenceVideo) {
+        toast.error(
+          `${isSeedance2FastReferenceModel(selectedModel) ? "Seedance 2.0 Fast Reference" : "Seedance 2.0 Reference"} requires at least one reference image or video.`,
+        );
+        setIsGenerating(false);
+        return;
+      }
+
+      if (uploadedAudio && !hasReferenceImage && !hasReferenceVideo) {
+        toast.error(
+          "Audio references need at least one image or video reference.",
+        );
+        setIsGenerating(false);
+        return;
+      }
+    }
+
     if (caps.requiresReferenceImage && references.length === 0) {
       toast.error(
         "A reference image is required to use this model. Please upload a character reference image.",
@@ -4066,6 +4108,31 @@ const InputBox = (props: InputBoxProps = {}) => {
           };
           generationType = "text-to-video";
           apiEndpoint = "/api/replicate/kling-t2v/submit";
+        } else if (isSeedance2ReferenceModel(selectedModel)) {
+          const apiPrompt = getApiPrompt(prompt);
+          if (references.length === 0 && !uploadedVideo) {
+            throw new Error(
+              `${isSeedance2FastReferenceModel(selectedModel) ? "Seedance 2.0 Fast Reference" : "Seedance 2.0 Reference"} requires at least one reference image or video.`,
+            );
+          }
+
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            image_urls: references,
+            resolution: seedanceResolution === "480p" ? "480p" : "720p",
+            duration: duration === "auto" ? "auto" : String(duration),
+            aspect_ratio: frameSize || "auto",
+            generate_audio: generateAudio,
+            generationType: "text-to-video",
+            isPublic,
+            ...(uploadedVideo ? { video_urls: [uploadedVideo] } : {}),
+            ...(uploadedAudio ? { audio_urls: [uploadedAudio] } : {}),
+          };
+          generationType = "text-to-video";
+          apiEndpoint = isSeedance2FastReferenceModel(selectedModel)
+            ? "/api/fal/seedance-2.0/fast/reference-to-video/submit"
+            : "/api/fal/seedance-2.0/reference-to-video/submit";
         } else if (isSeedance2TextModel(selectedModel)) {
           const apiPrompt = getApiPrompt(prompt);
           const seedanceInputImageUrl = uploadedImages[0] || lastFrameImage;
@@ -7950,7 +8017,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       <div className="fixed left-1/2 z-[50] h-auto w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 md:bottom-6 md:w-[90%] md:max-w-[900px]">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-1.5 space-y-2 md:space-y-4 transition-all duration-300 ${
+          className={`relative w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-1.5 space-y-2 md:space-y-4 transition-all duration-300 ${
             isInputBoxHovered
               ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -8461,57 +8528,60 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
 
             {/* Desktop: Original layout - changed to flex-row for size parity */}
-            <div className="hidden md:flex flex-row gap-2 flex-wrap items-center">
+            <div className="hidden md:flex flex-1 min-w-0 flex-row gap-3 items-center pb-0 ">
               {/* Model selector */}
-              <VideoModelsDropdown
-                selectedModel={selectedModel}
-                onModelChange={handleModelChange}
-                generationMode={generationMode}
-                selectedDuration={
-                  selectedModel.includes("MiniMax")
-                    ? `${selectedMiniMaxDuration}s`
-                    : formatDurationForCreditLookup(duration)
-                }
-                selectedResolution={(() => {
-                  const resolutionForCredits =
-                    selectedModel.includes("veo3") ||
-                    selectedModel.includes("sora2")
-                      ? selectedQuality
-                      : creditsResolution;
-                  return resolutionForCredits
-                    ? String(resolutionForCredits).toLowerCase()
-                    : undefined;
-                })()}
-                activeFeature={activeFeature}
-                onCloseOtherDropdowns={() => {
-                  // Close other dropdowns
-                  setCloseFrameSizeDropdown(true);
-                  setCloseDurationDropdown(true);
-                  setCloseCameraMotionDropdown(true);
-                  setTimeout(() => {
-                    setCloseFrameSizeDropdown(false);
-                    setCloseDurationDropdown(false);
-                    setCloseCameraMotionDropdown(false);
-                  }, 100);
-                }}
-                onCloseThisDropdown={closeModelsDropdown ? () => {} : undefined}
-              />
+              <div className="flex-shrink-0">
+                <VideoModelsDropdown
+                  selectedModel={selectedModel}
+                  onModelChange={handleModelChange}
+                  generationMode={generationMode}
+                  selectedDuration={
+                    selectedModel.includes("MiniMax")
+                      ? `${selectedMiniMaxDuration}s`
+                      : formatDurationForCreditLookup(duration)
+                  }
+                  selectedResolution={(() => {
+                    const resolutionForCredits =
+                      selectedModel.includes("veo3") ||
+                      selectedModel.includes("sora2")
+                        ? selectedQuality
+                        : creditsResolution;
+                    return resolutionForCredits
+                      ? String(resolutionForCredits).toLowerCase()
+                      : undefined;
+                  })()}
+                  activeFeature={activeFeature}
+                  onCloseOtherDropdowns={() => {
+                    // Close other dropdowns
+                    setCloseFrameSizeDropdown(true);
+                    setCloseDurationDropdown(true);
+                    setCloseCameraMotionDropdown(true);
+                    setTimeout(() => {
+                      setCloseFrameSizeDropdown(false);
+                      setCloseDurationDropdown(false);
+                      setCloseCameraMotionDropdown(false);
+                    }, 100);
+                  }}
+                  onCloseThisDropdown={closeModelsDropdown ? () => {} : undefined}
+                />
+              </div>
 
               {/* Dynamic Controls Based on Model Capabilities */}
-              {(() => {
-                // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
-                // MUST BE FIRST CHECK to prevent other controls from showing
-                const isWanAnimateReplace =
-                  selectedModel === "wan-2.2-animate-replace" ||
-                  (activeFeature === "Animate" &&
-                    selectedModel &&
-                    (selectedModel.includes("wan-2.2") ||
-                      selectedModel.includes("animate-replace")));
+              <div className="flex-1 min-w-0 overflow-x-auto overflow-y-visible no-scrollbar pr-[180px] py-1">
+                {(() => {
+                  // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
+                  // MUST BE FIRST CHECK to prevent other controls from showing
+                  const isWanAnimateReplace =
+                    selectedModel === "wan-2.2-animate-replace" ||
+                    (activeFeature === "Animate" &&
+                      selectedModel &&
+                      (selectedModel.includes("wan-2.2") ||
+                        selectedModel.includes("animate-replace")));
 
                 if (isWanAnimateReplace) {
                   return (
                     <div className="flex flex-col gap-3">
-                      <div className="flex flex-row gap-3 flex-wrap">
+                      <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                         {/* Resolution Dropdown - 480 or 720 ONLY */}
                         <div className="relative">
                           <select
@@ -8769,7 +8839,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
                 if (selectedModel.includes("ltx2")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
                       {generationMode === "image_to_video" ? (
                         <VideoFrameSizeDropdown
@@ -8862,7 +8932,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.includes("ltx-2.3-pro")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -8961,7 +9031,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           />
                           <label
                             htmlFor="audio-upload-ltx-pro"
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 b text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
                           >
                             <Music className="w-4 h-4" />
                             {uploadedAudio ? "Audio: Uploaded" : "Upload Audio"}
@@ -8979,7 +9049,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           />
                           <label
                             htmlFor="video-upload-ltx-pro"
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20  text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
                           >
                             <FilePlay className="w-4 h-4" />
                             {uploadedVideo ? "Video: Uploaded" : "Upload Video"}
@@ -8993,7 +9063,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Veo 3.1 Models: Full customization (check before Veo3)
                 if (selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Veo 3.1 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9080,7 +9150,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.startsWith("kling-v3")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9143,7 +9213,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("veo3.1")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Veo3 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9219,7 +9289,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Kling Models: Full customization
                 if (selectedModel.startsWith("kling-")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Kling models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9290,7 +9360,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for WAN models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9334,7 +9404,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         />
                         <label
                           htmlFor="audio-upload-wan"
-                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
                         >
                           <Music className="w-4 h-4" />
                           {uploadedAudio ? "Audio: Uploaded" : "Upload Audio"}
@@ -9360,7 +9430,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Seedance Models: Full customization
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Seedance 2.0 supports this for both T2V and I2V */}
                       {(generationMode === "text_to_video" ||
                         isSeedance2FamilyModel(selectedModel)) && (
@@ -9456,6 +9526,37 @@ const InputBox = (props: InputBoxProps = {}) => {
                           </div>
                         </button>
                       )}
+                      {isSeedance2ReferenceModel(selectedModel) && (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-seedance-reference"
+                          />
+                          <label
+                            htmlFor="audio-upload-seedance-reference"
+                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20  text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
+                          >
+                            <Music className="w-4 h-4" />
+                            {uploadedAudio ? "Audio: Uploaded" : "Upload Audio"}
+                          </label>
+                          {uploadedAudio && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedAudio("");
+                                toast.success("Audio file removed");
+                              }}
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                              title="Remove audio"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -9463,7 +9564,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // PixVerse Models: Full customization
                 if (selectedModel.includes("pixverse")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9556,7 +9657,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2-animate")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Runway models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9611,7 +9712,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel === "S2V-01"
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-wrap">
+                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
                       {/* Resolution - For MiniMax models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={selectedResolution}
@@ -9653,12 +9754,44 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
+                      {isSeedance2ReferenceModel(selectedModel) && (
+                        <div className="relative flex-shrink-0">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-seedance-reference-mobile"
+                          />
+                          <label
+                            htmlFor="audio-upload-seedance-reference-mobile"
+                            className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                          >
+                            <Music className="w-3.5 h-3.5" />
+                            {uploadedAudio ? "Audio OK" : "Audio"}
+                          </label>
+                          {uploadedAudio && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedAudio("");
+                                toast.success("Audio file removed");
+                              }}
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                              title="Remove audio"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 }
 
-                return null;
-              })()}
+                  return null;
+                })()}
+              </div>
             </div>
 
             {/* Mobile: Second row - All other dropdowns */}
@@ -10161,6 +10294,37 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
+                      {isSeedance2ReferenceModel(selectedModel) && (
+                        <div className="relative flex-shrink-0">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-seedance-reference-mobile"
+                          />
+                          <label
+                            htmlFor="audio-upload-seedance-reference-mobile"
+                            className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                          >
+                            <Music className="w-3.5 h-3.5" />
+                            {uploadedAudio ? "Audio OK" : "Audio"}
+                          </label>
+                          {uploadedAudio && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedAudio("");
+                                toast.success("Audio file removed");
+                              }}
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                              title="Remove audio"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -10259,6 +10423,37 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
+                      {isSeedance2ReferenceModel(selectedModel) && (
+                        <div className="relative flex-shrink-0">
+                          <input
+                            type="file"
+                            accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            id="audio-upload-seedance-reference-mobile"
+                          />
+                          <label
+                            htmlFor="audio-upload-seedance-reference-mobile"
+                            className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                          >
+                            <Music className="w-3.5 h-3.5" />
+                            {uploadedAudio ? "Audio OK" : "Audio"}
+                          </label>
+                          {uploadedAudio && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedAudio("");
+                                toast.success("Audio file removed");
+                              }}
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                              title="Remove audio"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -10463,7 +10658,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
               >
                 {isEnhancing
                   ? "Enhancing..."
@@ -10505,10 +10700,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                 : selectedModel === "S2V-01"
                   ? 0
                   : 1 // S2V-01 doesn't use uploadedImages
-              : generationMode === "image_to_video" &&
-                  selectedModel === "S2V-01"
-                ? 1
-                : 4 // S2V-01 needs 1 reference, video-to-video needs up to 4
+                : generationMode === "image_to_video" &&
+                    selectedModel === "S2V-01"
+                  ? 1
+                : isSeedance2ReferenceModel(selectedModel)
+                  ? 9
+                  : 4 // S2V-01 needs 1 reference, video-to-video needs up to 4
           }
         />
       )}

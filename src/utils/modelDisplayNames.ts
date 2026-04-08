@@ -101,17 +101,26 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "wan-2.5-i2v-fast": "WAN 2.5 I2V Fast",
   "MiniMax-Hailuo-02-i2v": "MiniMax-Hailuo-02",
   "seedance-2.0-t2v": "Seedance 2.0",
+  "seedance-2.0-r2v": "Seedance 2.0 Reference",
   "seedance-2.0-fast": "Seedance 2.0 Fast",
   "seedance-2.0-fast-t2v": "Seedance 2.0 Fast",
   "seedance-2.0-fast-i2v": "Seedance 2.0 Fast",
+  "seedance-2.0-fast-r2v": "Seedance 2.0 Fast Reference",
   "bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
   "bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
+  "bytedance/seedance-2.0/reference-to-video": "Seedance 2.0 Reference",
   "bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
   "bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
+  "bytedance/seedance-2.0/fast/reference-to-video":
+    "Seedance 2.0 Fast Reference",
   "fal-ai/bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
   "fal-ai/bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
+  "fal-ai/bytedance/seedance-2.0/reference-to-video":
+    "Seedance 2.0 Reference",
   "fal-ai/bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
   "fal-ai/bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
+  "fal-ai/bytedance/seedance-2.0/fast/reference-to-video":
+    "Seedance 2.0 Fast Reference",
 
   // Music Generation Models
   "musicgen-remixer": "MusicGen Remixer",
@@ -159,10 +168,16 @@ export function getModelDisplayName(
   const lower = normalized.toLowerCase();
 
   if (lower.includes("seedance-2.0/fast")) {
+    if (lower.includes("reference-to-video")) {
+      return "Seedance 2.0 Fast Reference";
+    }
     return "Seedance 2.0 Fast";
   }
 
   if (lower.includes("seedance-2.0")) {
+    if (lower.includes("reference-to-video")) {
+      return "Seedance 2.0 Reference";
+    }
     return "Seedance 2.0";
   }
 

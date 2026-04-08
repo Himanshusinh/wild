@@ -269,9 +269,13 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
   if (model === "seedance-2.0-t2v") {
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
+  } else if (model === "seedance-2.0-r2v") {
+    capabilities.supportsTextToVideo = true;
   } else if (model === "seedance-2.0-fast") {
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
+  } else if (model === "seedance-2.0-fast-r2v") {
+    capabilities.supportsTextToVideo = true;
   } else if (model === "seedance-2.0-fast-t2v") {
     capabilities.supportsTextToVideo = true;
   } else if (model === "seedance-2.0-fast-i2v") {

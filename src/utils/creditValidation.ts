@@ -4,6 +4,8 @@ import { buildCreditModelName, getModelMapping } from "./modelMapping";
 import {
   computeSeedance2Credits,
   computeSeedance2FastI2vCredits,
+  computeSeedance2FastReferenceCredits,
+  computeSeedance2ReferenceCredits,
   computeSeedance2FastT2vCredits,
   getCreditsForModel,
   MODEL_CREDITS_MAPPING,
@@ -40,6 +42,7 @@ export const getVideoCreditCost = (
   duration?: number | string,
   generateAudio?: boolean,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== "video") {
@@ -121,6 +124,22 @@ export const getVideoCreditCost = (
   ) {
     return computeSeedance2FastI2vCredits(resolution, duration, aspectRatio);
   }
+  if (frontendModel === "seedance-2.0-fast-r2v") {
+    return computeSeedance2FastReferenceCredits(
+      resolution,
+      duration,
+      aspectRatio,
+      inputVideoDurationSec,
+    );
+  }
+  if (frontendModel === "seedance-2.0-r2v") {
+    return computeSeedance2ReferenceCredits(
+      resolution,
+      duration,
+      aspectRatio,
+      inputVideoDurationSec,
+    );
+  }
   if (
     frontendModel.includes("seedance") ||
     frontendModel.includes("wan-2.5") ||
@@ -149,6 +168,10 @@ export const getVideoCreditCost = (
       `${defaultDuration}s`,
       defaultResolution,
       audioParam,
+      undefined,
+      undefined,
+      undefined,
+      inputVideoDurationSec,
     );
     if (cost !== null && cost > 0) {
       console.log(
@@ -489,6 +512,7 @@ export const getVideoGenerationCreditCost = (
   resolution?: string,
   duration?: number | string,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ): number => {
   return getVideoCreditCost(
     frontendModel,
@@ -496,6 +520,7 @@ export const getVideoGenerationCreditCost = (
     duration,
     undefined,
     aspectRatio,
+    inputVideoDurationSec,
   );
 };
 

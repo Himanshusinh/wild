@@ -26,8 +26,10 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
       return ["480p", "720p"]; // WAN 2.2 Animate Replace only supports 480p and 720p
     } else if (
       selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-r2v" ||
       selectedModel === "seedance-2.0-fast" ||
-      selectedModel === "seedance-2.0-fast-i2v"
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      selectedModel === "seedance-2.0-fast-r2v"
     ) {
       return ["480p", "720p"];
     } else if (selectedModel?.includes("seedance")) {

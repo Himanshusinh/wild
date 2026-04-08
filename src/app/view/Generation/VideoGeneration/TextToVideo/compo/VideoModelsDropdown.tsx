@@ -284,10 +284,24 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         provider: "fal",
       },
       {
+        value: "seedance-2.0-r2v",
+        label: "Seedance 2.0 Reference",
+        description:
+          "Reference-to-video with image/video/audio guides, auto/4-15s, 480p/720p, auto/21:9/16:9/4:3/1:1/3:4/9:16, Audio On/Off",
+        provider: "fal",
+      },
+      {
         value: "seedance-2.0-fast",
         label: "Seedance 2.0 Fast",
         description:
           "Text→Video & Image→Video, auto/4-15s, 480p/720p, auto/21:9/16:9/4:3/1:1/3:4/9:16, Audio On/Off",
+        provider: "fal",
+      },
+      {
+        value: "seedance-2.0-fast-r2v",
+        label: "Seedance 2.0 Fast Reference",
+        description:
+          "Reference-to-video with image/video/audio guides, auto/4-15s, 480p/720p, auto/21:9/16:9/4:3/1:1/3:4/9:16, Audio On/Off",
         provider: "fal",
       },
       {
@@ -361,8 +375,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   const selectedModelInfo =
     availableModels.find((model) => model.value === selectedModel) ||
     availableModels.find((model) => {
-      const baseAvailable = model.value.replace(/-t2v$|-i2v$/, "");
-      const baseSelected = selectedModel.replace(/-t2v$|-i2v$/, "");
+      const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
+      const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
       return baseAvailable === baseSelected;
     }) ||
     availableModels[0];
@@ -470,7 +484,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       else r = "1080p";
     } else if (
       model.value === "seedance-2.0-t2v" ||
-      model.value === "seedance-2.0-fast"
+      model.value === "seedance-2.0-r2v" ||
+      model.value === "seedance-2.0-fast" ||
+      model.value === "seedance-2.0-fast-r2v"
     ) {
       d = normalizeDuration(selectedDuration, "auto");
       const rRaw = normalizeResolution(selectedResolution, "720p");
@@ -503,7 +519,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     }
 
     const aspectRatioForCredits =
-      model.value === "seedance-2.0-t2v" || model.value === "seedance-2.0-fast"
+      model.value === "seedance-2.0-t2v" ||
+      model.value === "seedance-2.0-r2v" ||
+      model.value === "seedance-2.0-fast" ||
+      model.value === "seedance-2.0-fast-r2v"
         ? selectedAspectRatio || "auto"
         : undefined;
 
@@ -532,7 +551,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         creditInfo = getModelCreditInfo(model.value, "6s", "768P");
       } else if (
         model.value === "seedance-2.0-t2v" ||
-        model.value === "seedance-2.0-fast"
+        model.value === "seedance-2.0-r2v" ||
+        model.value === "seedance-2.0-fast" ||
+        model.value === "seedance-2.0-fast-r2v"
       ) {
         creditInfo = getModelCreditInfo(
           model.value,
@@ -576,8 +597,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     // Check if selectedModel is a variant (e.g. i2v vs t2v) of an available model
     // Common pattern: model-name-t2v vs model-name-i2v
     const variantMatch = availableModels.find((model) => {
-      const baseAvailable = model.value.replace(/-t2v$|-i2v$/, "");
-      const baseSelected = selectedModel.replace(/-t2v$|-i2v$/, "");
+      const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
+      const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
       return baseAvailable === baseSelected;
     });
 

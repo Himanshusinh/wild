@@ -279,8 +279,10 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
       ];
     } else if (
       selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-r2v" ||
       selectedModel === "seedance-2.0-fast" ||
-      selectedModel === "seedance-2.0-fast-i2v"
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      selectedModel === "seedance-2.0-fast-r2v"
     ) {
       return [
         {
