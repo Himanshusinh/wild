@@ -751,8 +751,10 @@ const InputBox = () => {
     } catch {}
   }, [dispatch, searchParams, pathname, router]);
 
-  // Track if initial load has been attempted (to prevent guide flash on refresh)
+  // Track the first history request lifecycle so empty accounts can show the guide
+  // after a real load completes, without flashing the guide before the request starts.
   const hasAttemptedInitialLoadRef = useRef(false);
+  const hasStartedInitialLoadRef = useRef(false);
 
   // Unified initial load (single guarded request) via custom hook
   const fallbackGenerationTypes = useMemo(
@@ -2486,9 +2488,15 @@ const InputBox = () => {
     return filtered;
   }, [historyEntries, searchQuery, dateRange]);
 
-  // Mark that we've attempted initial load once loading starts or completes
+  // Mark that the initial load has started/completed even if the backend returns zero entries.
   useEffect(() => {
-    if (loading || historyEntries.length > 0) {
+    if (loading) {
+      hasStartedInitialLoadRef.current = true;
+      hasAttemptedInitialLoadRef.current = true;
+      return;
+    }
+
+    if (historyEntries.length > 0 || hasStartedInitialLoadRef.current) {
       hasAttemptedInitialLoadRef.current = true;
     }
   }, [loading, historyEntries.length]);
@@ -7794,9 +7802,15 @@ const InputBox = () => {
   };
   handleGenerateRef.current = handleGenerate;
 
-  // Mark that we've attempted initial load once loading starts or completes
+  // Mark that the initial load has started/completed even if the backend returns zero entries.
   useEffect(() => {
-    if (loading || historyEntries.length > 0) {
+    if (loading) {
+      hasStartedInitialLoadRef.current = true;
+      hasAttemptedInitialLoadRef.current = true;
+      return;
+    }
+
+    if (historyEntries.length > 0 || hasStartedInitialLoadRef.current) {
       hasAttemptedInitialLoadRef.current = true;
     }
   }, [loading, historyEntries.length]);
@@ -8771,12 +8785,7 @@ const InputBox = () => {
                 ) : (
                   !loading &&
                   !isFiltering && (
-                    <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
-                      <GifLoader size={120} alt="Loading" />
-                      <div className="text-white text-lg text-center mt-4">
-                        Loading generations...
-                      </div>
-                    </div>
+                    <ImageGenerationGuide />
                   )
                 ))}
 
