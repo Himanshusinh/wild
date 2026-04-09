@@ -4884,7 +4884,8 @@ const InputBox = () => {
             "21:9",
           ]);
           const normalizedAspect =
-            selectedModel === "google/nano-banana-pro"
+            (selectedModel === "google/nano-banana-pro" ||
+              selectedModel === "gemini-25-flash-image")
               ? nanoBananaAllowedAspect.has(frameSize)
                 ? frameSize
                 : "1:1"
