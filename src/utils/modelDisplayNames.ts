@@ -121,17 +121,6 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "fal-ai/bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
   "fal-ai/bytedance/seedance-2.0/fast/reference-to-video":
     "Seedance 2.0 Fast Reference",
-  "seedance-2.0-t2v": "Seedance 2.0",
-  "seedance-2.0-fast-t2v": "Seedance 2.0 Fast",
-  "bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
-  "bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
-  "bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
-  "bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
-  "fal-ai/bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
-  "fal-ai/bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
-  "fal-ai/bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
-  "fal-ai/bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
-
   // Music Generation Models
   "musicgen-remixer": "MusicGen Remixer",
   "musicgen-melody": "MusicGen Melody",
