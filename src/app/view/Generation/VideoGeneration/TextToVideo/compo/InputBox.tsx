@@ -156,6 +156,13 @@ const isSeedance2TextModel = (model: string) =>
   model === SEEDANCE_2_FAST_T2V_MODEL ||
   isSeedance2FastReferenceModel(model);
 
+const getMaxVideoSize = (model: string) => {
+  if (isSeedance2FamilyModel(model)) {
+    return 50 * 1024 * 1024; // FAL enforces 50MB for Seedance
+  }
+  return 500 * 1024 * 1024; // Others up to 500MB as requested
+};
+
 const formatDurationForCreditLookup = (value: VideoDurationValue): string =>
   value === "auto" ? "auto" : `${value}s`;
 
@@ -620,6 +627,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const { processFiles } = useFileHandler({
     setUploadedImages,
     setUploadedVideo,
+    setLocalVideoFilesByUrl,
   });
 
   // Credits management - after all state declarations
@@ -3229,7 +3237,6 @@ const InputBox = (props: InputBoxProps = {}) => {
     if (!files) return;
 
     const file = files[0];
-    // Validate file type and size (≤14MB client-side; service hard limit is 16MB)
     const allowedMimes = new Set([
       "video/mp4",
       "video/webm",
@@ -3239,27 +3246,30 @@ const InputBox = (props: InputBoxProps = {}) => {
       "video/h264",
     ]);
 
-    const maxBytes = 14 * 1024 * 1024;
+    const maxBytes = getMaxVideoSize(selectedModel);
     if (!allowedMimes.has(file.type)) {
       toast.error("Unsupported video type. Use MP4, WebM, MOV, OGG, or H.264");
       event.target.value = "";
       return;
     }
     if (file.size > maxBytes) {
-      toast.error("Video too large. Please upload a video ≤ 14MB");
+      const mbLimit = Math.floor(maxBytes / (1024 * 1024));
+      toast.error(
+        `Video too large for this model (Max ${mbLimit}MB). This limit is enforced by the AI provider.`
+      );
       event.target.value = "";
       return;
     }
 
     if (file.type.startsWith("video/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (result) {
-          setUploadedVideo(result);
-        }
-      };
-      reader.readAsDataURL(file);
+      // Use Blob URL instead of Data URL for better performance and memory management
+      const url = URL.createObjectURL(file);
+      setUploadedVideo(url);
+      
+      // Track the File object so it can be uploaded to Zata later
+      setLocalVideoFilesByUrl(prev => ({ ...prev, [url]: file }));
+      
+      toast.success("Video added");
     }
 
     // Reset input
@@ -3283,14 +3293,14 @@ const InputBox = (props: InputBoxProps = {}) => {
       "audio/x-mpeg-3",
     ]);
 
-    const maxBytes = 15 * 1024 * 1024; // 15MB max
+    const maxBytes = 30 * 1024 * 1024; // 30MB max
     if (!allowedMimes.has(file.type) && !file.name.match(/\.(wav|mp3)$/i)) {
       toast.error("Unsupported audio type. Use WAV or MP3 format");
       event.target.value = "";
       return;
     }
     if (file.size > maxBytes) {
-      toast.error("Audio file too large. Please upload an audio file ≤ 15MB");
+      toast.error("Audio file too large. Please upload an audio file ≤ 30MB");
       event.target.value = "";
       return;
     }
@@ -3327,7 +3337,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       "image/webp",
     ]);
 
-    const maxBytes = 10 * 1024 * 1024; // 10MB max
+    const maxBytes = 20 * 1024 * 1024; // 20MB max
     if (
       !allowedMimes.has(file.type) &&
       !file.name.match(/\.(jpg|jpeg|png|webp)$/i)
@@ -3337,7 +3347,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
     if (file.size > maxBytes) {
-      toast.error("Image file too large. Please upload an image ≤ 10MB");
+      toast.error("Image file too large. Please upload an image ≤ 20MB");
       event.target.value = "";
       return;
     }
@@ -4178,6 +4188,26 @@ const InputBox = (props: InputBoxProps = {}) => {
             );
           }
 
+          // Handle local video upload if needed
+          let videoForRequest = uploadedVideo;
+          if (videoForRequest?.startsWith("blob:")) {
+            const cached = uploadedUrlByLocalUrl[videoForRequest];
+            if (cached) {
+              videoForRequest = cached;
+            } else {
+              const file = localVideoFilesByUrl[videoForRequest];
+              if (!file) {
+                throw new Error("Selected local video is not available. Please re-select the video.");
+              }
+              const uploaded = await uploadLocalVideoFile(file);
+              if (!uploaded?.url) throw new Error("Video upload failed");
+              const remoteUrl = uploaded.url;
+              setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
+              setUploadedVideo(remoteUrl);
+              videoForRequest = remoteUrl;
+            }
+          }
+
           requestBody = {
             prompt: apiPrompt,
             originalPrompt: prompt,
@@ -4188,7 +4218,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             generate_audio: generateAudio,
             generationType: "text-to-video",
             isPublic,
-            ...(uploadedVideo ? { video_urls: [uploadedVideo] } : {}),
+            ...(videoForRequest ? { video_urls: [videoForRequest] } : {}),
             ...(uploadedAudio ? { audio_urls: [uploadedAudio] } : {}),
           };
           generationType = "text-to-video";
@@ -4435,6 +4465,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             : "/api/replicate/ltx-2-3-fast-t2v/submit";
         } else {
           // Runway models don't support text-to-video (they require an image)
+          toast.error(
+            "Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.",
+          );
           setError(
             "Runway models don't support text-to-video generation. Please use Image→Video mode or select a MiniMax/Veo3/Veo 3.1/WAN/Kling/Seedance/PixVerse/Sora 2 model.",
           );
@@ -4455,6 +4488,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           !selectedModel.includes("kling-");
 
         if (needsImage && uploadedImages.length === 0) {
+          toast.error("Please upload at least one image");
           setError("Please upload at least one image");
           return;
         }
@@ -4464,6 +4498,9 @@ const InputBox = (props: InputBoxProps = {}) => {
         if (uploadedImages.length === 0 && references.length === 0) {
           // If model supports both, we could fall back to T2V, but for I2V-only models we must error
           if (!caps.supportsTextToVideo) {
+            toast.error(
+              "An input image is required for image-to-video generation with this model",
+            );
             setError(
               "An input image is required for image-to-video generation with this model",
             );
@@ -4472,6 +4509,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             // Model supports both but no image - should not happen due to mode detection, but handle gracefully
             console.warn(
               "⚠️ Image-to-video mode selected but no image provided, this should not happen",
+            );
+            toast.error(
+              "Please upload an image for image-to-video generation, or switch to text-to-video mode",
             );
             setError(
               "Please upload an image for image-to-video generation, or switch to text-to-video mode",
@@ -4492,12 +4532,16 @@ const InputBox = (props: InputBoxProps = {}) => {
             selectedModel === "I2V-01-Director" &&
             uploadedImages.length === 0
           ) {
+            toast.error("I2V-01-Director requires a first frame image");
             setError("I2V-01-Director requires a first frame image");
             return;
           }
 
           // S2V-01: Requires subject reference image (character image)
           if (selectedModel === "S2V-01" && references.length === 0) {
+            toast.error(
+              "S2V-01 requires a subject reference image (character image)",
+            );
             setError(
               "S2V-01 requires a subject reference image (character image)",
             );
@@ -4510,6 +4554,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             selectedResolution === "512P" &&
             uploadedImages.length === 0
           ) {
+            toast.error(
+              "MiniMax-Hailuo-02 requires a first frame image for 512P resolution",
+            );
             setError(
               "MiniMax-Hailuo-02 requires a first frame image for 512P resolution",
             );
@@ -4521,6 +4568,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             selectedModel === "MiniMax-Hailuo-2.3-Fast" &&
             uploadedImages.length === 0
           ) {
+            toast.error("MiniMax-Hailuo-2.3-Fast requires a first frame image");
             setError("MiniMax-Hailuo-2.3-Fast requires a first frame image");
             return;
           }
@@ -5362,6 +5410,9 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else if (selectedModel === "kling-lip-sync") {
           // Kling Lipsync - requires video_url or video_id, and text or audio_file
           if (!uploadedVideo && !sourceHistoryEntryId) {
+            toast.error(
+              "Kling Lip Sync requires a video input. Please upload a video or select a source video.",
+            );
             setError(
               "Kling Lip Sync requires a video input. Please upload a video or select a source video.",
             );
@@ -5369,6 +5420,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
           if (!prompt.trim() && !uploadedAudio) {
+            toast.error(
+              "Kling Lip Sync requires either text or audio file input.",
+            );
             setError(
               "Kling Lip Sync requires either text or audio file input.",
             );
@@ -5376,9 +5430,29 @@ const InputBox = (props: InputBoxProps = {}) => {
             return;
           }
 
+          // Handle local video upload if needed
+          let videoForRequest = uploadedVideo;
+          if (videoForRequest?.startsWith("blob:")) {
+            const cached = uploadedUrlByLocalUrl[videoForRequest];
+            if (cached) {
+              videoForRequest = cached;
+            } else {
+              const file = localVideoFilesByUrl[videoForRequest];
+              if (file) {
+                const uploaded = await uploadLocalVideoFile(file);
+                if (uploaded?.url) {
+                  const remoteUrl = uploaded.url;
+                  setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
+                  setUploadedVideo(remoteUrl);
+                  videoForRequest = remoteUrl;
+                }
+              }
+            }
+          }
+
           requestBody = {
             model: "kwaivgi/kling-lip-sync",
-            video_url: uploadedVideo || undefined, // Use video_url if uploaded
+            video_url: videoForRequest || undefined, // Use video_url if uploaded
             video_id: sourceHistoryEntryId || undefined, // Use video_id if from history
             text: prompt.trim() || undefined, // Text for lip sync
             audio_file: uploadedAudio || undefined, // Audio file if uploaded
@@ -5500,6 +5574,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         } else {
           // Runway video to video
           if (!uploadedVideo) {
+            toast.error("Please upload a video");
             setError("Please upload a video");
             return;
           }
@@ -10683,7 +10758,6 @@ const InputBox = (props: InputBoxProps = {}) => {
 
               {/* Desktop: Generate button section */}
               <div className="hidden md:flex min-w-[100px] flex-shrink-0 flex-col items-end gap-0 justify-self-end">
-              {error && <div className="text-red-500 text-xs">{error}</div>}
 
               <div className="text-white/60 text-[11px] pr-1">
                 Total credits:{" "}
