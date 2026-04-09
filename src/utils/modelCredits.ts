@@ -297,14 +297,14 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "MiniMax-Hailuo-02-1080P-6s": 1000,
 
   // Minimax-Hailuo-2.3 Fast variants
-  "MiniMax-Hailuo-2.3-Fast-768P-6s": 460,
-  "MiniMax-Hailuo-2.3-Fast-768P-10s": 720,
-  "MiniMax-Hailuo-2.3-Fast-1080P-6s": 740,
+  "MiniMax-Hailuo-2.3-Fast-768P-6s": 264,
+  "MiniMax-Hailuo-2.3-Fast-768P-10s": 256,
+  "MiniMax-Hailuo-2.3-Fast-1080P-6s": 152,
 
   // Minimax-Hailuo-2.3 Standard variants
-  "MiniMax-Hailuo-2.3-768P-6s": 640,
-  "MiniMax-Hailuo-2.3-768P-10s": 1200,
-  "MiniMax-Hailuo-2.3-1080P-6s": 1060,
+  "MiniMax-Hailuo-2.3-768P-6s": 224,
+  "MiniMax-Hailuo-2.3-768P-10s": 448,
+  "MiniMax-Hailuo-2.3-1080P-6s": 392,
 
   // Gen-4 Turbo variants
   "gen4_turbo-5s": 520,
