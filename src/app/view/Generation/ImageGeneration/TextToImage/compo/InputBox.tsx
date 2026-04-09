@@ -6706,6 +6706,10 @@ const InputBox = () => {
             selectedCharacters,
           );
           const combinedImages = getCombinedUploadedImages();
+          const preparedImages = await ensureProviderReadyImageUrls(
+            combinedImages,
+            getInputImageLimitForModel(selectedModel),
+          );
 
           const result = await dispatch(
             falGenerate({
@@ -6718,12 +6722,10 @@ const InputBox = () => {
               enable_web_search: nanoBananaGoogleSearch,
               thinking_level: nanoBananaThinkingLevel,
               limit_generations: nanoBananaLimitGenerations,
-              uploadedImages: combinedImages.map((u: string) =>
-                toAbsoluteFromProxy(u),
-              ),
+              uploadedImages: preparedImages,
               output_format: "jpeg",
               generationType:
-                combinedImages.length > 0 ? "image-to-image" : "text-to-image",
+                preparedImages.length > 0 ? "image-to-image" : "text-to-image",
               isPublic,
               generationId,
             }),

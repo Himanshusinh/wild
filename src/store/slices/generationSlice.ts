@@ -57,7 +57,6 @@ interface GenerationState {
 
 const getMaxOutputImageCountForModel = (model?: string): number => {
   const normalizedModel = String(model || '').trim().toLowerCase();
-  if (normalizedModel === 'google/nano-banana-2') return 1;
   if (
     normalizedModel === 'seedream-4.5' ||
     normalizedModel === 'bytedance/seedream-4.5' ||
