@@ -51,6 +51,8 @@ interface GenerationState {
   nanoBananaResolution: string;
   nanoBananaGoogleSearch: boolean;
   nanoBananaImageSearch: boolean;
+  nanoBananaThinkingLevel: "minimal" | "high";
+  nanoBananaLimitGenerations: boolean;
 }
 
 const getMaxOutputImageCountForModel = (model?: string): number => {
@@ -95,9 +97,11 @@ const initialState: GenerationState = {
   activeGenerations: [],
   maxConcurrentGenerations: 4,
   // Google Nano Banana 2 defaults
-  nanoBananaResolution: '1K',
+  nanoBananaResolution: "1K",
   nanoBananaGoogleSearch: false,
   nanoBananaImageSearch: false,
+  nanoBananaThinkingLevel: "minimal",
+  nanoBananaLimitGenerations: true,
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -148,7 +152,8 @@ export const generateImages = createAsyncThunk(
         model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
         model === 'imagen-4' ||
-        model === 'imagen-4-fast';
+        model === 'imagen-4-fast' ||
+        model === 'google/nano-banana-2';
 
       let endpoint: string;
       if (provider === 'wildmind') {
@@ -207,11 +212,17 @@ export const generateImages = createAsyncThunk(
         ...(size ? { size } : {}), // Add size parameter for Seedream models
         ...(aspect_ratio ? { aspect_ratio } : {}), // Add aspect_ratio parameter if provided
         ...(image_input ? { image_input } : {}), // Add specific image array if provided by model specific logics
-        ...(model === 'google/nano-banana-2' ? {
-          resolution: (getState() as any).generation.nanoBananaResolution,
-          google_search: (getState() as any).generation.nanoBananaGoogleSearch,
-          image_search: (getState() as any).generation.nanoBananaImageSearch
-        } : {})
+        ...(model === "google/nano-banana-2"
+          ? {
+              resolution: (getState() as any).generation.nanoBananaResolution,
+              enable_web_search: (getState() as any).generation
+                .nanoBananaGoogleSearch,
+              thinking_level: (getState() as any).generation
+                .nanoBananaThinkingLevel,
+              limit_generations: (getState() as any).generation
+                .nanoBananaLimitGenerations,
+            }
+          : {}),
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
       if (isFalModel) {
@@ -272,7 +283,8 @@ export const generateLiveChatImage = createAsyncThunk(
         model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
         model === 'imagen-4' ||
-        model === 'imagen-4-fast';
+        model === 'imagen-4-fast' ||
+        model === 'google/nano-banana-2';
 
       let endpoint: string;
       if (provider === 'replicate') {
@@ -565,6 +577,15 @@ const generationSlice = createSlice({
     },
     setNanoBananaImageSearch: (state, action: PayloadAction<boolean>) => {
       state.nanoBananaImageSearch = action.payload;
+    },
+    setNanoBananaThinkingLevel: (
+      state,
+      action: PayloadAction<"minimal" | "high">,
+    ) => {
+      state.nanoBananaThinkingLevel = action.payload;
+    },
+    setNanoBananaLimitGenerations: (state, action: PayloadAction<boolean>) => {
+      state.nanoBananaLimitGenerations = action.payload;
     },
     clearGenerationState: (state) => {
       state.prompt = '';
@@ -1167,6 +1188,8 @@ export const {
   setNanoBananaResolution,
   setNanoBananaGoogleSearch,
   setNanoBananaImageSearch,
+  setNanoBananaThinkingLevel,
+  setNanoBananaLimitGenerations,
 } = generationSlice.actions;
 
 export default generationSlice.reducer;

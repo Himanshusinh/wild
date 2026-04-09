@@ -51,6 +51,8 @@ import {
   setNanoBananaResolution,
   setNanoBananaGoogleSearch,
   setNanoBananaImageSearch,
+  setNanoBananaThinkingLevel,
+  setNanoBananaLimitGenerations,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import {
@@ -115,6 +117,7 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 import QualityDropdown from "./QualityDropdown";
+import ThinkingLevelDropdown from "./ThinkingLevelDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from "next/dynamic";
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), {
@@ -1815,6 +1818,12 @@ const InputBox = () => {
   );
   const nanoBananaImageSearch = useAppSelector(
     (state: any) => state.generation?.nanoBananaImageSearch || false,
+  );
+  const nanoBananaThinkingLevel = useAppSelector(
+    (state: any) => state.generation?.nanoBananaThinkingLevel || "minimal",
+  );
+  const nanoBananaLimitGenerations = useAppSelector(
+    (state: any) => state.generation?.nanoBananaLimitGenerations ?? true,
   );
   const outputFormat = useAppSelector(
     (state: any) => state.generation?.outputFormat || "jpeg",
@@ -6611,176 +6620,101 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === "google/nano-banana-2") {
-        // Google Nano Banana 2 via Replicate
+        // Google Nano Banana 2 via FAL generate endpoint
         try {
+          // Map our frameSize to allowed aspect ratios for Nano Banana 2
+          const allowedAspect = new Set([
+            "match_input_image",
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9",
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : "1:1";
+
           const promptAdjusted = adjustPromptImageNumbers(
             finalPrompt,
             getCombinedUploadedImages(),
             selectedCharacters,
           );
           const combinedImages = getCombinedUploadedImages();
-          const payload: any = {
-            prompt: `${promptAdjusted} [Style: ${style}]`,
-            model: "google/nano-banana-2",
-            aspect_ratio: frameSize,
-            num_images: 1,
-            resolution: nanoBananaResolution,
-            google_search: nanoBananaGoogleSearch,
-            image_search: nanoBananaImageSearch,
-            isPublic,
-          };
 
-          if (combinedImages && combinedImages.length > 0) {
-            payload.image_input = combinedImages.map((u: string) =>
-              toAbsoluteFromProxy(u),
-            );
-          }
-
-          const result = await dispatch(replicateGenerate(payload)).unwrap();
-
-          if (
-            (!result.images || result.images.length === 0) &&
-            (result.status === "submitted" ||
-              result.requestId ||
-              (result as any)?.requestId)
-          ) {
-            const reqId = result.requestId || (result as any)?.requestId;
-            qlog("Nano Banana 2 queued submission detected", {
-              model: result.model,
-              reqId,
+          const result = await dispatch(
+            falGenerate({
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              userPrompt: prompt,
+              model: "google/nano-banana-2",
+              num_images: imageCount,
+              aspect_ratio: aspect as any,
+              resolution: nanoBananaResolution,
+              enable_web_search: nanoBananaGoogleSearch,
+              thinking_level: nanoBananaThinkingLevel,
+              limit_generations: nanoBananaLimitGenerations,
+              uploadedImages: combinedImages.map((u: string) =>
+                toAbsoluteFromProxy(u),
+              ),
+              output_format: "jpeg",
+              generationType:
+                combinedImages.length > 0 ? "image-to-image" : "text-to-image",
+              isPublic,
               generationId,
-            });
+            }),
+          ).unwrap();
 
-            try {
-              const startedAt = Date.now();
-              if (generationId) {
-                dispatch(
-                  updateActiveGeneration({
-                    id: generationId,
-                    updates: {
-                      status: "generating",
-                      startedAt,
-                      historyId: (result as any)?.historyId || generationId,
-                      params: {
-                        ...(activeGenerations.find((g) => g.id === generationId)
-                          ?.params || {}),
-                        requestId: reqId,
-                      },
-                    },
-                  }),
-                );
-                void pollForMatchingHistory({
-                  generationId,
-                  tempEntryId,
-                  model: result.model,
-                  prompt: finalPrompt,
-                  requestId: reqId,
-                  startedAt,
-                });
-              }
-            } catch {}
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...tempEntry,
+              id: tempEntryId,
+              images: result.images || [],
+              status: "completed",
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: result.images?.length || imageCount,
+            } as any;
+            upsertLocalGeneratingEntry(completedEntry);
 
-            // Poll Replicate queue
-            try {
-              const api = getApiClient();
-              let finalResult: any;
-              let consecutiveErrors = 0;
-              for (let attempts = 0; attempts < 360; attempts++) {
-                try {
-                  const statusRes = await api.get(
-                    "/api/replicate/queue/status",
-                    { params: { requestId: reqId }, timeout: 15000 },
-                  );
-                  const status = statusRes.data?.data || statusRes.data;
-                  consecutiveErrors = 0;
-                  const s = String(status?.status || "").toLowerCase();
-                  if (
-                    s === "completed" ||
-                    s === "success" ||
-                    s === "succeeded"
-                  ) {
-                    const resultRes = await api.get(
-                      "/api/replicate/queue/result",
-                      { params: { requestId: reqId }, timeout: 15000 },
-                    );
-                    finalResult = resultRes.data?.data || resultRes.data;
-                    if (generationId) {
-                      dispatch(
-                        updateActiveGeneration({
-                          id: generationId,
-                          updates: {
-                            status: "completed",
-                            images: finalResult.images || [],
-                            historyId:
-                              finalResult.historyId ||
-                              (result as any)?.historyId,
-                          },
-                        }),
-                      );
-                    }
-                    const resultHistoryId =
-                      (finalResult as any)?.historyId ||
-                      (result as any)?.historyId ||
-                      firebaseHistoryId ||
-                      generationId;
-                    if (resultHistoryId)
-                      await refreshSingleGeneration(resultHistoryId);
-                    if (transactionId)
-                      await handleGenerationSuccess(transactionId);
-                    break;
-                  }
-                  if (s === "failed" || s === "error")
-                    throw new Error("Nano Banana 2 generation failed (queue)");
-                } catch (statusError: any) {
-                  consecutiveErrors++;
-                  if (consecutiveErrors >= 5) throw statusError;
-                }
-                await new Promise((res) => setTimeout(res, 1000));
-              }
-              return;
-            } catch (queueErr) {
-              if (generationId)
-                dispatch(
-                  updateActiveGeneration({
-                    id: generationId,
-                    updates: {
-                      status: "failed",
-                      error:
-                        (queueErr as any)?.message ||
-                        "Nano Banana 2 generation failed",
-                    },
-                  }),
-                );
-              await handleReplicateError(queueErr, {
-                generationId,
-                tempEntryId,
-                tempEntry,
-                transactionId,
-                modelName: "Nano Banana 2",
-              });
-              return;
+            // CRITICAL: Update active generation with backend historyId for queue sync
+            if (generationId) {
+              dispatch(
+                updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: "completed",
+                    images: result.images || [],
+                    historyId: (result as any)?.historyId || firebaseHistoryId,
+                  },
+                }),
+              );
             }
+          } catch {}
+
+          clearInputs();
+
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
+          const resultHistoryId =
+            (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
           }
 
-          // Immediate result
-          if (generationId) {
-            dispatch(
-              updateActiveGeneration({
-                id: generationId,
-                updates: {
-                  status: "completed",
-                  images: result.images || [],
-                  historyId: (result as any)?.historyId,
-                },
-              }),
-            );
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
           }
-          clearInputs();
-          const resId = (result as any)?.historyId || generationId;
-          if (resId) await refreshSingleGeneration(resId);
-          if (transactionId) await handleGenerationSuccess(transactionId);
         } catch (error) {
-          await handleReplicateError(error, {
+          await handleFalError(error, {
             generationId,
             tempEntryId,
             tempEntry,
@@ -10172,18 +10106,36 @@ const InputBox = () => {
                       dropdownId="nanoBananaResolutionMb"
                       optionCredits={nanoBanana2ResolutionCredits as any}
                     />
-                    {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                    <ThinkingLevelDropdown
+                      thinkingLevel={nanoBananaThinkingLevel}
+                      onThinkingLevelChange={(val) =>
+                        dispatch(setNanoBananaThinkingLevel(val))
+                      }
+                      dropdownId="nanoBananaThinkingLevelMb"
+                    />
                     {/* <button
-                      onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
-                      className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                      onClick={() =>
+                        dispatch(
+                          setNanoBananaLimitGenerations(
+                            !nanoBananaLimitGenerations,
+                          ),
+                        )
+                      }
+                      title="Limit Generations"
+                      className={`h-[23px] md:h-[32px] md:px-3 px-2 rounded-lg text-[11px] font-medium transition-all ${nanoBananaLimitGenerations ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                     >
-                      Google Search
+                      Limit
                     </button>
                     <button
-                      onClick={() => dispatch(setNanoBananaImageSearch(!nanoBananaImageSearch))}
-                      className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                      onClick={() =>
+                        dispatch(
+                          setNanoBananaGoogleSearch(!nanoBananaGoogleSearch),
+                        )
+                      }
+                      title="Google Search"
+                      className={`h-[23px] md:h-[32px] md:px-3 px-2 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                     >
-                      Image Search
+                      Search
                     </button> */}
                   </div>
                 )}
@@ -10347,18 +10299,34 @@ const InputBox = () => {
                         dropdownId="nanoBananaResolution"
                         optionCredits={nanoBanana2ResolutionCredits as any}
                       />
-                      {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                      <ThinkingLevelDropdown
+                        thinkingLevel={nanoBananaThinkingLevel}
+                        onThinkingLevelChange={(val) =>
+                          dispatch(setNanoBananaThinkingLevel(val))
+                        }
+                        dropdownId="nanoBananaThinkingLevelDesk"
+                      />
                       {/* <button
-                        onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
-                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                        onClick={() =>
+                          dispatch(
+                            setNanoBananaLimitGenerations(
+                              !nanoBananaLimitGenerations,
+                            ),
+                          )
+                        }
+                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaLimitGenerations ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                       >
-                        Google Search
+                        Limit Generations
                       </button>
                       <button
-                        onClick={() => dispatch(setNanoBananaImageSearch(!nanoBananaImageSearch))}
-                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                        onClick={() =>
+                          dispatch(
+                            setNanoBananaGoogleSearch(!nanoBananaGoogleSearch),
+                          )
+                        }
+                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                       >
-                        Image Search
+                        Google Search
                       </button> */}
                     </div>
                   )}
