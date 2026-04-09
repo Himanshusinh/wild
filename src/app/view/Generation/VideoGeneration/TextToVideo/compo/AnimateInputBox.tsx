@@ -74,6 +74,11 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
   };
 
   const toFrontendProxyMediaUrl = (urlOrPath: string | undefined) => {
+    if (!urlOrPath) return "";
+    // If it's already a full HTTP/HTTPS URL, return it as-is
+    if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+      return urlOrPath;
+    }
     const path = toProxyPath(urlOrPath);
     return path ? `/api/proxy/media/${encodeURIComponent(path)}` : "";
   };
