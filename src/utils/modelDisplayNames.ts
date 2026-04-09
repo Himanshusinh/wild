@@ -100,6 +100,16 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "wan-2.5-i2v": "WAN 2.5 I2V",
   "wan-2.5-i2v-fast": "WAN 2.5 I2V Fast",
   "MiniMax-Hailuo-02-i2v": "MiniMax-Hailuo-02",
+  "seedance-2.0-t2v": "Seedance 2.0",
+  "seedance-2.0-fast-t2v": "Seedance 2.0 Fast",
+  "bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
+  "bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
+  "bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
+  "bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
+  "fal-ai/bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
+  "fal-ai/bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
+  "fal-ai/bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
+  "fal-ai/bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
 
   // Music Generation Models
   "musicgen-remixer": "MusicGen Remixer",
@@ -133,6 +143,7 @@ export function getModelDisplayName(
     .replace(/^\s*(replicate)\s*/i, "")
     .replace(/^\s*(runway)\s*/i, "")
     .replace(/^\s*(minimax)\s*/i, "")
+    .replace(/^\s*(bytedance)\s*/i, "")
     .replace(/^\s*(kwai|kwaivgi|kuaishou|kuaigv)\s*/i, "")
     .replace(/\bkling\s*video\b/gi, "kling")
     .replace(/\bvideo\b/gi, "")
@@ -229,6 +240,12 @@ export function getModelDisplayName(
     if (lower.includes("2.5")) return `Kling 2.5${isMaster ? " Master" : ""}`;
     if (lower.includes("2.1")) return `Kling 2.1${isMaster ? " Master" : ""}`;
     return `Kling${isMaster ? " Master" : ""}`;
+  }
+
+  // Seedance models
+  if (lower.includes("seedance")) {
+    if (lower.includes("fast")) return "Seedance 2.0 Fast";
+    return "Seedance 2.0";
   }
 
   // Check if we have a direct mapping
