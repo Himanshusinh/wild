@@ -45,6 +45,9 @@ export const PLAN_ID_ALIASES: Record<string, CanonicalPlanId> = {
   PLAN_D: "agency",
 };
 
+// Temporary bypass for local testing while plan-based model restrictions are disabled.
+const DISABLE_PLAN_MODEL_ACCESS = true;
+
 export function normalizePlanId(planId?: string | null): CanonicalPlanId {
   if (!planId) return "free";
   return PLAN_ID_ALIASES[planId] || PLAN_ID_ALIASES[planId.toUpperCase()] || "free";
@@ -156,6 +159,7 @@ export function isModelAccessibleForPlan(
   modelId: string,
 ): boolean {
   if (!modelId) return false;
+  if (DISABLE_PLAN_MODEL_ACCESS) return true;
   const config = getPlanModelAccess(planId);
   if (config.mode !== "allowlist") return true;
   return !!getModelAccessEntry(planId, type, modelId);
