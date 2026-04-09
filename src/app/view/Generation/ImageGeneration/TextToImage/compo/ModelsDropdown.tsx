@@ -8,6 +8,7 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { setSelectedModel, setFrameSize } from "@/store/slices/generationSlice";
 import { toggleDropdown, addNotification } from "@/store/slices/uiSlice";
 import { getModelCreditInfo } from "@/utils/modelCredits";
+import { normalizeImageModelValue } from "@/utils/normalizeImageModelValue";
 import { isModelAccessibleForPlan } from "@/config/planModelAccess";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
@@ -77,9 +78,11 @@ const ModelsDropdown = ({
 }: ModelsDropdownProps) => {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const selectedModel = useAppSelector(
+  const selectedModelRaw = useAppSelector(
     (state: any) => state.generation?.selectedModel || "new-turbo-model",
   );
+  const selectedModel =
+    normalizeImageModelValue(selectedModelRaw) || "new-turbo-model";
   const currentPlanCode = useAppSelector(
     (state: any) => state.credits?.credits?.planCode || "free",
   );
@@ -229,6 +232,11 @@ const ModelsDropdown = ({
   }, [activeDropdown]);
 
   useEffect(() => {
+    if (!selectedModelRaw || selectedModelRaw === selectedModel) return;
+    dispatch(setSelectedModel(selectedModel));
+  }, [dispatch, selectedModel, selectedModelRaw]);
+
+  useEffect(() => {
     const updateDropdownPosition = () => {
       if (activeDropdown === "models" && isActiveInstance && buttonRef.current) {
         const buttonRect = buttonRef.current.getBoundingClientRect();
@@ -278,12 +286,12 @@ const ModelsDropdown = ({
         dispatch(toggleDropdown(""));
       };
 
-      document.addEventListener("mousedown", handleClickOutside, true);
+      document.addEventListener("click", handleClickOutside);
 
       return () => {
         window.removeEventListener("scroll", updateDropdownPosition, true);
         window.removeEventListener("resize", updateDropdownPosition);
-        document.removeEventListener("mousedown", handleClickOutside, true);
+        document.removeEventListener("click", handleClickOutside);
       };
     }
   }, [activeDropdown, dispatch, isActiveInstance]);
@@ -471,9 +479,12 @@ const ModelsDropdown = ({
   }, [activeDropdown, dispatch]);
 
   const handleModelSelect = (modelValue: string) => {
+    const normalizedModelValue = normalizeImageModelValue(modelValue);
     selectingRef.current = true;
 
-    if (!isModelAccessibleForPlan(currentPlanCode, "image", modelValue)) {
+    if (
+      !isModelAccessibleForPlan(currentPlanCode, "image", normalizedModelValue)
+    ) {
       setIsActiveInstance(false);
       dispatch(toggleDropdown(""));
       router.push("/view/pricing");
@@ -483,7 +494,10 @@ const ModelsDropdown = ({
       return;
     }
     // Toast guidance for models that require image input
-    if (modelValue === "gen4_image_turbo" && uploadedImages.length === 0) {
+    if (
+      normalizedModelValue === "gen4_image_turbo" &&
+      uploadedImages.length === 0
+    ) {
       dispatch(
         addNotification({
           type: "warning",
@@ -492,7 +506,10 @@ const ModelsDropdown = ({
         }),
       );
     }
-    if (modelValue === "minimax-image-01" && uploadedImages.length > 1) {
+    if (
+      normalizedModelValue === "minimax-image-01" &&
+      uploadedImages.length > 1
+    ) {
       dispatch(
         addNotification({
           type: "info",
@@ -501,18 +518,27 @@ const ModelsDropdown = ({
         }),
       );
     }
-    if (modelValue === "prunaai/p-image") {
+    if (normalizedModelValue === "prunaai/p-image") {
       dispatch(setFrameSize("16:9")); // schema default aspect ratio
     }
-    if (modelValue === "recraft-ai/recraft-v4") {
+    if (normalizedModelValue === "recraft-ai/recraft-v4") {
       dispatch(setFrameSize("1:1"));
     }
-    dispatch(setSelectedModel(modelValue));
+    dispatch(setSelectedModel(normalizedModelValue));
     setIsActiveInstance(false);
     dispatch(toggleDropdown(""));
     setTimeout(() => {
       selectingRef.current = false;
     }, 100);
+  };
+
+  const handleOptionClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    modelValue: string,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleModelSelect(modelValue);
   };
 
   const selectedModelEntry = filteredModels.find((m) => m.value === selectedModel);
@@ -564,6 +590,7 @@ const ModelsDropdown = ({
                 {allModels.map((model) => (
                   <button
                     key={`mobile-${model.value}`}
+                    type="button"
                     onMouseEnter={(e) => {
                       setHoveredModel(model.value);
                       setHoverPos({ x: e.clientX, y: e.clientY });
@@ -572,10 +599,7 @@ const ModelsDropdown = ({
                       setHoverPos({ x: e.clientX, y: e.clientY })
                     }
                     onMouseLeave={() => setHoveredModel(null)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleModelSelect(model.value);
-                    }}
+                    onClick={(e) => handleOptionClick(e, model.value)}
                     className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                       selectedModel === model.value
                         ? model.isFree
@@ -631,6 +655,7 @@ const ModelsDropdown = ({
                 {leftModels.map((model) => (
                   <button
                     key={`left-${model.value}`}
+                    type="button"
                     onMouseEnter={(e) => {
                       setHoveredModel(model.value);
                       setHoverPos({ x: e.clientX, y: e.clientY });
@@ -639,10 +664,7 @@ const ModelsDropdown = ({
                       setHoverPos({ x: e.clientX, y: e.clientY })
                     }
                     onMouseLeave={() => setHoveredModel(null)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleModelSelect(model.value);
-                    }}
+                    onClick={(e) => handleOptionClick(e, model.value)}
                     className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                       selectedModel === model.value
                         ? model.isFree
@@ -715,6 +737,7 @@ const ModelsDropdown = ({
                 {rightModels.map((model) => (
                   <button
                     key={`right-${model.value}`}
+                    type="button"
                     onMouseEnter={(e) => {
                       setHoveredModel(model.value);
                       setHoverPos({ x: e.clientX, y: e.clientY });
@@ -723,10 +746,7 @@ const ModelsDropdown = ({
                       setHoverPos({ x: e.clientX, y: e.clientY })
                     }
                     onMouseLeave={() => setHoveredModel(null)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleModelSelect(model.value);
-                    }}
+                    onClick={(e) => handleOptionClick(e, model.value)}
                     className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
                       selectedModel === model.value
                         ? model.isFree
@@ -780,6 +800,7 @@ const ModelsDropdown = ({
     <div className="relative dropdown-container">
       <button
         ref={buttonRef}
+        type="button"
         onClick={handleDropdownClick}
         className="z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1 flex-nowrap whitespace-nowrap"
       >

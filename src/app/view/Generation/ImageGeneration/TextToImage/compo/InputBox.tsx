@@ -146,6 +146,7 @@ import {
   getImageGenerationCreditCost,
   formatCredits,
 } from "@/utils/creditValidation";
+import { normalizeImageModelValue } from "@/utils/normalizeImageModelValue";
 import Image from "next/image";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toResourceProxy, toZataPath, toDirectUrl } from "@/lib/thumb";
@@ -205,6 +206,9 @@ const getInputImageLimitForModel = (model?: string): number => {
   }
   return 10;
 };
+
+const normalizeIncomingImageModel = (model?: string | null): string =>
+  normalizeImageModelValue(model);
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -681,7 +685,7 @@ const InputBox = () => {
 
       const modelToApply = mdl || studioDraft?.model;
       if (modelToApply) {
-        dispatch(setSelectedModel(mapIncomingModel(modelToApply)));
+        dispatch(setSelectedModel(normalizeIncomingImageModel(modelToApply)));
       }
 
       const frameToApply = frm || studioDraft?.frameSize;
@@ -7871,7 +7875,7 @@ const InputBox = () => {
     }
     if (data.model) {
       console.log("[AutoResume] Restoring model:", data.model);
-      dispatch(setSelectedModel(data.model));
+      dispatch(setSelectedModel(normalizeIncomingImageModel(data.model)));
     }
     if (data.imageCount) dispatch(setImageCount(data.imageCount));
     if (data.frameSize) dispatch(setFrameSize(data.frameSize));
@@ -7948,9 +7952,11 @@ const InputBox = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
       if (
         activeDropdown &&
-        !(event.target as HTMLElement).closest(".dropdown-container")
+        !target.closest(".dropdown-container") &&
+        !target.closest("[data-dropdown]")
       ) {
         dispatch(toggleDropdown(""));
       }
