@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import {
@@ -44,23 +45,67 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     (state: any) => state.credits?.credits?.planCode || "free",
   );
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  } | null>(null);
+  const dropdownId = "video-models-dropdown";
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+      const target = event.target as HTMLElement;
+      if (buttonRef.current?.contains(target)) return;
+      if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
+      setIsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [dropdownId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const updateDropdownPosition = () => {
+      if (!buttonRef.current) return;
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = window.innerWidth >= 768 ? 448 : 160;
+      let left = buttonRect.left;
+      let top = buttonRect.top;
+      let openUp = true;
+
+      if (left + dropdownWidth > window.innerWidth - 8) {
+        left = window.innerWidth - dropdownWidth - 8;
+      }
+      if (left < 8) {
+        left = 8;
+      }
+      if (top < 8) {
+        top = buttonRect.bottom + 8;
+        openUp = false;
+      }
+
+      setDropdownPosition({ top, left, openUp });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [isOpen]);
 
   // Auto-close dropdown after 20 seconds
   useEffect(() => {
@@ -635,146 +680,36 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     setIsOpen(false);
   };
 
-  return (
-    <div ref={dropdownRef} className="relative dropdown-container">
-      <button
-        onClick={() => {
-          try {
-            if (onCloseOtherDropdowns) onCloseOtherDropdowns();
-          } catch {}
-          setIsOpen(!isOpen);
+  const dropdownContent =
+    isOpen && dropdownPosition ? (
+      <div
+        data-dropdown={dropdownId}
+        className="fixed md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999] md:max-h-100 max-h-100 overflow-y-auto dropdown-scrollbar-thin"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          transform: dropdownPosition.openUp
+            ? "translateY(calc(-100% - 8px))"
+            : "none",
         }}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black hover:bg-white/95`}
       >
-        <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
-        {selectedModelInfo?.label || selectedModel}
-        {selectedModelEntry?.isLocked && (
-          <Lock className="md:w-4 w-3 h-3 md:h-4 text-black/70" />
-        )}
-        <ChevronUp
-          className={`md:w-4 w-3 h-3 md:h-4  transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-80 md:max-h-100 max-h-100 overflow-y-auto dropdown-scrollbar-thin">
-          {(() => {
-            // Show all models regardless of mode - models that support both T2V and I2V should be visible in both modes
-            // This ensures consistent model visibility (always 22 models)
-            const filteredModels = modelsWithCredits;
+        {(() => {
+          const filteredModels = modelsWithCredits;
 
-            // For text-to-video: two columns like image-to-video
-            if (generationMode === "text_to_video") {
-              const left = filteredModels.slice(
-                0,
-                Math.ceil(filteredModels.length / 2),
-              );
-              const right = filteredModels.slice(
-                Math.ceil(filteredModels.length / 2),
-              );
-              return (
-                <div className="md:grid md:grid-cols-2 grid-cols-1 gap-0">
-                  <div className="divide-y divide-white/10">
-                    {left.map((model) => (
-                      <button
-                        key={`t2v-left-${model.value}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleVideoModelSelect(model.value);
-                        }}
-                        className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                          selectedModel === model.value
-                            ? "bg-white text-black"
-                            : "text-white/90 hover:bg-white/10"
-                        }`}
-                      >
-                        <div className="flex flex-col mb-0">
-                          <span className="flex items-center gap-2">
-                            {model.label}
-                            {model.isLocked && (
-                              <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
-                            )}
-                            <img
-                              src="/icons/crown.svg"
-                              alt="pro"
-                              className="md:w-4 w-3 h-3 md:h-4"
-                            />
-                          </span>
-                          <span className="md:text-[11px] text-[9px] opacity-80 -mt-0.5 font-normal">
-                            {model.isLocked
-                              ? "Upgrade to access"
-                              : model.displayText ||
-                                (model.credits != null
-                                  ? `${model.credits} credits`
-                                  : "credits unavailable")}
-                          </span>
-                        </div>
-                        {selectedModel === model.value && (
-                          <div className="w-2 h-2 bg-black rounded-full"></div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="md:border-l border-white/10 divide-y divide-white/10">
-                    {right.map((model) => (
-                      <button
-                        key={`t2v-right-${model.value}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleVideoModelSelect(model.value);
-                        }}
-                        className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                          selectedModel === model.value
-                            ? "bg-white text-black"
-                            : "text-white/90 hover:bg-white/10"
-                        }`}
-                      >
-                        <div className="flex flex-col -mb-0">
-                          <span className="flex items-center gap-2">
-                            {model.label}
-                            {model.isLocked && (
-                              <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
-                            )}
-                            <img
-                              src="/icons/crown.svg"
-                              alt="pro"
-                              className="md:w-4 w-3 h-3 md:h-4"
-                            />
-                          </span>
-                          <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
-                            {model.isLocked
-                              ? "Upgrade to access"
-                              : model.displayText ||
-                                (model.credits != null
-                                  ? `${model.credits} credits`
-                                  : "credits unavailable")}
-                          </span>
-                        </div>
-                        {selectedModel === model.value && (
-                          <div className="w-2 h-2 bg-black rounded-full"></div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-
-            // For image-to-video: two columns
-            const leftModels = filteredModels.slice(
+          if (generationMode === "text_to_video") {
+            const left = filteredModels.slice(
               0,
               Math.ceil(filteredModels.length / 2),
             );
-            const rightModels = filteredModels.slice(
+            const right = filteredModels.slice(
               Math.ceil(filteredModels.length / 2),
             );
-
             return (
               <div className="md:grid md:grid-cols-2 grid-cols-1 gap-0">
-                {/* Left column */}
                 <div className="divide-y divide-white/10">
-                  {leftModels.map((model) => (
+                  {left.map((model) => (
                     <button
-                      key={`left-${model.value}`}
+                      key={`t2v-left-${model.value}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleVideoModelSelect(model.value);
@@ -797,8 +732,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                             className="md:w-4 w-3 h-3 md:h-4"
                           />
                         </span>
-                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
-                        <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
+                        <span className="md:text-[11px] text-[9px] opacity-80 -mt-0.5 font-normal">
                           {model.isLocked
                             ? "Upgrade to access"
                             : model.displayText ||
@@ -813,11 +747,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                     </button>
                   ))}
                 </div>
-                {/* Right column */}
                 <div className="md:border-l border-white/10 divide-y divide-white/10">
-                  {rightModels.map((model) => (
+                  {right.map((model) => (
                     <button
-                      key={`right-${model.value}`}
+                      key={`t2v-right-${model.value}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleVideoModelSelect(model.value);
@@ -840,7 +773,6 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                             className="md:w-4 w-3 h-3 md:h-4"
                           />
                         </span>
-                        {/* <span className="text-[11px] opacity-80 -mt-0.5 font-normal">{model.description}</span> */}
                         <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
                           {model.isLocked
                             ? "Upgrade to access"
@@ -858,10 +790,133 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                 </div>
               </div>
             );
-          })()}
-        </div>
-      )}
+          }
+
+          const leftModels = filteredModels.slice(
+            0,
+            Math.ceil(filteredModels.length / 2),
+          );
+          const rightModels = filteredModels.slice(
+            Math.ceil(filteredModels.length / 2),
+          );
+
+          return (
+            <div className="md:grid md:grid-cols-2 grid-cols-1 gap-0">
+              <div className="divide-y divide-white/10">
+                {leftModels.map((model) => (
+                  <button
+                    key={`left-${model.value}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleVideoModelSelect(model.value);
+                    }}
+                    className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                      selectedModel === model.value
+                        ? "bg-white text-black"
+                        : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex flex-col mb-0">
+                      <span className="flex items-center gap-2">
+                        {model.label}
+                        {model.isLocked && (
+                          <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                        )}
+                        <img
+                          src="/icons/crown.svg"
+                          alt="pro"
+                          className="md:w-4 w-3 h-3 md:h-4"
+                        />
+                      </span>
+                      <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
+                        {model.isLocked
+                          ? "Upgrade to access"
+                          : model.displayText ||
+                            (model.credits != null
+                              ? `${model.credits} credits`
+                              : "credits unavailable")}
+                      </span>
+                    </div>
+                    {selectedModel === model.value && (
+                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="md:border-l border-white/10 divide-y divide-white/10">
+                {rightModels.map((model) => (
+                  <button
+                    key={`right-${model.value}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleVideoModelSelect(model.value);
+                    }}
+                    className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                      selectedModel === model.value
+                        ? "bg-white text-black"
+                        : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex flex-col -mb-0">
+                      <span className="flex items-center gap-2">
+                        {model.label}
+                        {model.isLocked && (
+                          <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                        )}
+                        <img
+                          src="/icons/crown.svg"
+                          alt="pro"
+                          className="md:w-4 w-3 h-3 md:h-4"
+                        />
+                      </span>
+                      <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
+                        {model.isLocked
+                          ? "Upgrade to access"
+                          : model.displayText ||
+                            (model.credits != null
+                              ? `${model.credits} credits`
+                              : "credits unavailable")}
+                      </span>
+                    </div>
+                    {selectedModel === model.value && (
+                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    ) : null;
+
+  return (
+    <>
+    <div className="relative dropdown-container">
+      <button
+        ref={buttonRef}
+        onClick={() => {
+          try {
+            if (onCloseOtherDropdowns) onCloseOtherDropdowns();
+          } catch {}
+          setIsOpen(!isOpen);
+        }}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black hover:bg-white/95`}
+      >
+        <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
+        {selectedModelInfo?.label || selectedModel}
+        {selectedModelEntry?.isLocked && (
+          <Lock className="md:w-4 w-3 h-3 md:h-4 text-black/70" />
+        )}
+        <ChevronUp
+          className={`md:w-4 w-3 h-3 md:h-4  transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
     </div>
+    {typeof window !== "undefined" &&
+      dropdownContent &&
+      createPortal(dropdownContent, document.body)}
+    </>
   );
 };
 

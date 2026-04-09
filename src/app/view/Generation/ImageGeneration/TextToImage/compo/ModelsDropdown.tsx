@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Cpu, ChevronUp, Infinity as InfinityIcon, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -89,8 +90,19 @@ const ModelsDropdown = ({
     (state: any) => state.ui?.activeDropdown,
   );
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [hoveredModel, setHoveredModel] = useState<string | null>(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+    width: number;
+  } | null>(null);
+  const [isActiveInstance, setIsActiveInstance] = useState(false);
+  const buttonJustClickedRef = useRef(false);
+  const shouldCloseRef = useRef(false);
+  const selectingRef = useRef(false);
   const hasInputImage = uploadedImages.length > 0;
 
   let models = [
@@ -208,6 +220,73 @@ const ModelsDropdown = ({
       </div>
     );
   };
+
+  useEffect(() => {
+    if (activeDropdown !== "models") {
+      setIsActiveInstance(false);
+      setDropdownPosition(null);
+    }
+  }, [activeDropdown]);
+
+  useEffect(() => {
+    const updateDropdownPosition = () => {
+      if (activeDropdown === "models" && isActiveInstance && buttonRef.current) {
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const desktopWidth = 448;
+        const mobileWidth = Math.max(buttonRect.width, 160);
+        const dropdownWidth =
+          window.innerWidth >= 768 ? desktopWidth : mobileWidth;
+        let left = buttonRect.left;
+        let top = buttonRect.top;
+        let openUp = true;
+
+        if (left + dropdownWidth > window.innerWidth - 8) {
+          left = window.innerWidth - dropdownWidth - 8;
+        }
+        if (left < 8) left = 8;
+        if (top < 8) {
+          top = buttonRect.bottom + 8;
+          openUp = false;
+        }
+
+        setDropdownPosition({ top, left, openUp, width: dropdownWidth });
+      } else {
+        setDropdownPosition(null);
+      }
+    };
+
+    updateDropdownPosition();
+
+    if (activeDropdown === "models") {
+      window.addEventListener("scroll", updateDropdownPosition, true);
+      window.addEventListener("resize", updateDropdownPosition);
+
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          buttonJustClickedRef.current ||
+          shouldCloseRef.current ||
+          selectingRef.current
+        ) {
+          return;
+        }
+
+        const target = event.target as HTMLElement;
+        if (buttonRef.current?.contains(target)) return;
+        if (target.closest('[data-dropdown="models"]')) return;
+
+        setIsActiveInstance(false);
+        dispatch(toggleDropdown(""));
+      };
+
+      document.addEventListener("mousedown", handleClickOutside, true);
+
+      return () => {
+        window.removeEventListener("scroll", updateDropdownPosition, true);
+        window.removeEventListener("resize", updateDropdownPosition);
+        document.removeEventListener("mousedown", handleClickOutside, true);
+      };
+    }
+  }, [activeDropdown, dispatch, isActiveInstance]);
 
   // If imageOnly or user uploaded images, restrict to models which support image inputs
   let filteredModels = modelsWithCredits;
@@ -340,8 +419,27 @@ const ModelsDropdown = ({
     dispatch,
   ]);
 
-  const handleDropdownClick = () => {
-    dispatch(toggleDropdown("models"));
+  const handleDropdownClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    buttonJustClickedRef.current = true;
+    const isCurrentlyOpen = activeDropdown === "models" && isActiveInstance;
+
+    if (isCurrentlyOpen) {
+      setIsActiveInstance(false);
+      dispatch(toggleDropdown(""));
+      shouldCloseRef.current = true;
+    } else {
+      setIsActiveInstance(true);
+      dispatch(toggleDropdown("models"));
+      shouldCloseRef.current = false;
+    }
+
+    setTimeout(() => {
+      buttonJustClickedRef.current = false;
+      shouldCloseRef.current = false;
+    }, 300);
   };
 
   // Auto-close dropdown after 5 seconds
@@ -373,9 +471,15 @@ const ModelsDropdown = ({
   }, [activeDropdown, dispatch]);
 
   const handleModelSelect = (modelValue: string) => {
+    selectingRef.current = true;
+
     if (!isModelAccessibleForPlan(currentPlanCode, "image", modelValue)) {
+      setIsActiveInstance(false);
       dispatch(toggleDropdown(""));
       router.push("/view/pricing");
+      setTimeout(() => {
+        selectingRef.current = false;
+      }, 100);
       return;
     }
     // Toast guidance for models that require image input
@@ -404,14 +508,278 @@ const ModelsDropdown = ({
       dispatch(setFrameSize("1:1"));
     }
     dispatch(setSelectedModel(modelValue));
+    setIsActiveInstance(false);
     dispatch(toggleDropdown(""));
+    setTimeout(() => {
+      selectingRef.current = false;
+    }, 100);
   };
 
   const selectedModelEntry = filteredModels.find((m) => m.value === selectedModel);
 
+  const dropdownContent =
+    activeDropdown === "models" && isActiveInstance && dropdownPosition ? (
+      <div
+        data-dropdown="models"
+        style={{
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          width: `${dropdownPosition.width}px`,
+          transform: dropdownPosition.openUp
+            ? "translateY(calc(-100% - 8px))"
+            : "none",
+        }}
+        className="fixed bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/20 z-[9999] max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar"
+      >
+        {(() => {
+          const leftValues = [
+            "new-turbo-model",
+            "prunaai/p-image",
+            "google/nano-banana-pro",
+            "google/nano-banana-2",
+            "gemini-25-flash-image",
+            "qwen-image-edit-2512",
+            "z-image-turbo",
+            "flux-kontext-max",
+            "flux-kontext-pro",
+            "flux-pro-1.1-ultra",
+            "imagen-4",
+            "imagen-4-fast",
+            "imagen-4-ultra",
+          ];
+          const leftSet = new Set(leftValues);
+          const leftModels = filteredModels
+            .filter((m) => leftSet.has(m.value))
+            .sort(
+              (a, b) => leftValues.indexOf(a.value) - leftValues.indexOf(b.value),
+            );
+          const rightModels = filteredModels.filter((m) => !leftSet.has(m.value));
+          const allModels = [...leftModels, ...rightModels];
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              <div className="md:hidden divide-y divide-white/10">
+                {allModels.map((model) => (
+                  <button
+                    key={`mobile-${model.value}`}
+                    onMouseEnter={(e) => {
+                      setHoveredModel(model.value);
+                      setHoverPos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) =>
+                      setHoverPos({ x: e.clientX, y: e.clientY })
+                    }
+                    onMouseLeave={() => setHoveredModel(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleModelSelect(model.value);
+                    }}
+                    className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                      selectedModel === model.value
+                        ? model.isFree
+                          ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
+                          : "bg-white text-black"
+                        : model.isFree
+                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
+                          : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex flex-col mb-0">
+                      <span className="flex items-center gap-2">
+                        {model.isFree && (
+                          <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
+                        )}
+                        {model.isLocked && (
+                          <Lock className="w-3.5 h-3.5 text-amber-300" />
+                        )}
+                        {model.name}
+                        {leftSet.has(model.value) && !model.isFree && (
+                          <img
+                            src="/icons/crown.svg"
+                            alt="pro"
+                            className="w-4 h-4"
+                          />
+                        )}
+                      </span>
+                      {!model.isFree && (
+                        <span
+                          className={`md:text-[11px] text-[9px] -mt-0.5 font-normal ${
+                            selectedModel === model.value
+                              ? "text-black/70"
+                              : "opacity-80"
+                          }`}
+                        >
+                          {model.isLocked
+                            ? "Upgrade to access"
+                            : model.displayText ||
+                              (model.credits != null
+                                ? `${model.credits} credits`
+                                : "credits unavailable")}
+                        </span>
+                      )}
+                    </div>
+                    {selectedModel === model.value && (
+                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden md:block divide-y divide-white/10">
+                {leftModels.map((model) => (
+                  <button
+                    key={`left-${model.value}`}
+                    onMouseEnter={(e) => {
+                      setHoveredModel(model.value);
+                      setHoverPos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) =>
+                      setHoverPos({ x: e.clientX, y: e.clientY })
+                    }
+                    onMouseLeave={() => setHoveredModel(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleModelSelect(model.value);
+                    }}
+                    className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                      selectedModel === model.value
+                        ? model.isFree
+                          ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white "
+                          : "bg-white text-black"
+                        : model.isFree
+                          ? "text-white/90 hover:bg-[#60a5fa]/10  "
+                          : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex flex-col mb-0">
+                      <span className="flex items-center gap-2">
+                        {model.isFree && (
+                          <span className="text-xs text-white/50">
+                            <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
+                          </span>
+                        )}
+                        {model.isLocked && (
+                          <Lock className="w-3.5 h-3.5 text-amber-300" />
+                        )}
+                        {model.name}
+                        {!model.isFree && (
+                          <img
+                            src="/icons/crown.svg"
+                            alt="pro"
+                            className="w-4 h-4"
+                          />
+                        )}
+                      </span>
+                      {model.isFree && (
+                        <span
+                          className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
+                            selectedModel === model.value
+                              ? "text-white/70"
+                              : "opacity-80"
+                          }`}
+                        >
+                          {model.isLocked
+                            ? "Upgrade to access"
+                            : model.displayText ||
+                              (model.credits != null
+                                ? `${model.credits} credits`
+                                : "0 credits ")}
+                        </span>
+                      )}
+                      {!model.isFree && (
+                        <span
+                          className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
+                            selectedModel === model.value
+                              ? "text-black/70"
+                              : "opacity-80"
+                          }`}
+                        >
+                          {model.isLocked
+                            ? "Upgrade to access"
+                            : model.displayText ||
+                              (model.credits != null
+                                ? `${model.credits} credits`
+                                : "credits unavailable")}
+                        </span>
+                      )}
+                    </div>
+                    {selectedModel === model.value && (
+                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="hidden md:block border-l border-white/10 divide-y divide-white/10">
+                {rightModels.map((model) => (
+                  <button
+                    key={`right-${model.value}`}
+                    onMouseEnter={(e) => {
+                      setHoveredModel(model.value);
+                      setHoverPos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) =>
+                      setHoverPos({ x: e.clientX, y: e.clientY })
+                    }
+                    onMouseLeave={() => setHoveredModel(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleModelSelect(model.value);
+                    }}
+                    className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                      selectedModel === model.value
+                        ? model.isFree
+                          ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
+                          : "bg-white text-black"
+                        : model.isFree
+                          ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
+                          : "text-white/90 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex flex-col -mb-0">
+                      <span className="flex items-center gap-2">
+                        {model.isFree && (
+                          <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
+                        )}
+                        {model.isLocked && (
+                          <Lock className="w-3.5 h-3.5 text-amber-300" />
+                        )}
+                        {model.name}
+                      </span>
+                      {!model.isFree && (
+                        <span
+                          className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
+                            selectedModel === model.value
+                              ? "text-black/70"
+                              : "opacity-80"
+                          }`}
+                        >
+                          {model.isLocked
+                            ? "Upgrade to access"
+                            : model.displayText ||
+                              (model.credits != null
+                                ? `${model.credits} credits`
+                                : "credits unavailable")}
+                        </span>
+                      )}
+                    </div>
+                    {selectedModel === model.value && (
+                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    ) : null;
+
   return (
     <div className="relative dropdown-container">
       <button
+        ref={buttonRef}
         onClick={handleDropdownClick}
         className="z-50 h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white text-black hover:bg-white/95 transition flex items-center gap-1 flex-nowrap whitespace-nowrap"
       >
@@ -431,271 +799,10 @@ const ModelsDropdown = ({
         />
       </button>
 
-      {activeDropdown === "models" && (
-        <div
-          style={{
-            backdropFilter: "blur(40px)",
-            WebkitBackdropFilter: "blur(40px)",
-          }}
-          className={`absolute ${openDirection === "down" ? "top-full mt-2" : "bottom-full mb-2"} left-0 w-full md:w-[28rem] bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/20 z-80 max-h-100 md:max-h-100 overflow-y-auto dropdown-scrollbar`}
-        >
-          {(() => {
-            // Priority models moved to LEFT column and marked with crown
-            // z-image-turbo is first and highlighted as special
-            const leftValues = [
-              "new-turbo-model",
-              "prunaai/p-image", // z-image-turbo - should be first
-              "google/nano-banana-pro",
-              "google/nano-banana-2",
-              "gemini-25-flash-image", // Google Nano Banana
-              "qwen-image-edit-2512",
-              "z-image-turbo",
-              "flux-kontext-max",
-              "flux-kontext-pro",
-              "flux-pro-1.1-ultra",
-              "imagen-4",
-              "imagen-4-fast",
-              "imagen-4-ultra",
-            ];
-            const leftSet = new Set(leftValues);
-            const leftModels = filteredModels
-              .filter((m) => leftSet.has(m.value))
-              .sort(
-                (a, b) =>
-                  leftValues.indexOf(a.value) - leftValues.indexOf(b.value),
-              );
-            const rightModels = filteredModels.filter(
-              (m) => !leftSet.has(m.value),
-            );
-
-            // On mobile: single column with all models combined
-            // On desktop: two columns
-            const allModels = [...leftModels, ...rightModels];
-
-            return (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-                {/* Mobile: Single column with all models */}
-                <div className="md:hidden divide-y divide-white/10">
-                  {allModels.map((model) => (
-                    <button
-                      key={`mobile-${model.value}`}
-                      onMouseEnter={(e) => {
-                        setHoveredModel(model.value);
-                        setHoverPos({ x: e.clientX, y: e.clientY });
-                      }}
-                      onMouseMove={(e) =>
-                        setHoverPos({ x: e.clientX, y: e.clientY })
-                      }
-                      onMouseLeave={() => setHoveredModel(null)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleModelSelect(model.value);
-                      }}
-                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
-                          ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
-                            : "bg-white text-black"
-                          : model.isFree
-                            ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
-                            : "text-white/90 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.isFree && (
-                            <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
-                          )}
-                          {model.isLocked && (
-                            <Lock className="w-3.5 h-3.5 text-amber-300" />
-                          )}
-                          {model.name}
-                          {leftSet.has(model.value) && !model.isFree && (
-                            <img
-                              src="/icons/crown.svg"
-                              alt="pro"
-                              className="w-4 h-4"
-                            />
-                          )}
-                        </span>
-                        {!model.isFree && (
-                          <span
-                            className={`md:text-[11px] text-[9px] -mt-0.5 font-normal ${
-                              selectedModel === model.value
-                                ? "text-black/70"
-                                : "opacity-80"
-                            }`}
-                          >
-                            {model.isLocked
-                              ? "Upgrade to access"
-                              : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
-                          </span>
-                        )}
-                      </div>
-                      {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Desktop: Two columns */}
-                {/* Left column (priority models with crown) */}
-                <div className="hidden md:block divide-y divide-white/10">
-                  {leftModels.map((model) => (
-                    <button
-                      key={`left-${model.value}`}
-                      onMouseEnter={(e) => {
-                        setHoveredModel(model.value);
-                        setHoverPos({ x: e.clientX, y: e.clientY });
-                      }}
-                      onMouseMove={(e) =>
-                        setHoverPos({ x: e.clientX, y: e.clientY })
-                      }
-                      onMouseLeave={() => setHoveredModel(null)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleModelSelect(model.value);
-                      }}
-                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
-                          ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white "
-                            : "bg-white text-black"
-                          : model.isFree
-                            ? "text-white/90 hover:bg-[#60a5fa]/10  "
-                            : "text-white/90 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.isFree && (
-                            <span className="text-xs text-white/50">
-                              <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
-                            </span>
-                          )}
-                          {model.isLocked && (
-                            <Lock className="w-3.5 h-3.5 text-amber-300" />
-                          )}
-
-                          {model.name}
-
-                          {!model.isFree && (
-                            <img
-                              src="/icons/crown.svg"
-                              alt="pro"
-                              className="w-4 h-4"
-                            />
-                          )}
-                        </span>
-                        {model.isFree && (
-                          <span
-                            className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
-                              selectedModel === model.value
-                                ? "text-white/70"
-                                : "opacity-80"
-                            }`}
-                          >
-                            {model.isLocked
-                              ? "Upgrade to access"
-                              : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "0 credits ")}
-                          </span>
-                        )}
-                        {!model.isFree && (
-                          <span
-                            className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
-                              selectedModel === model.value
-                                ? "text-black/70"
-                                : "opacity-80"
-                            }`}
-                          >
-                            {model.isLocked
-                              ? "Upgrade to access"
-                              : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
-                          </span>
-                        )}
-                      </div>
-                      {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                {/* Right column (all remaining models) */}
-                <div className="hidden md:block border-l border-white/10 divide-y divide-white/10">
-                  {rightModels.map((model) => (
-                    <button
-                      key={`right-${model.value}`}
-                      onMouseEnter={(e) => {
-                        setHoveredModel(model.value);
-                        setHoverPos({ x: e.clientX, y: e.clientY });
-                      }}
-                      onMouseMove={(e) =>
-                        setHoverPos({ x: e.clientX, y: e.clientY })
-                      }
-                      onMouseLeave={() => setHoveredModel(null)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleModelSelect(model.value);
-                      }}
-                      className={`w-full px-4 py-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
-                          ? model.isFree
-                            ? "bg-gradient-to-r from-[#60a5fa]/30 to-[#3b82f6]/30 text-white border border-[#60a5fa]/50"
-                            : "bg-white text-black"
-                          : model.isFree
-                            ? "text-white/90 hover:bg-[#60a5fa]/10 border-l-2 border-transparent hover:border-[#60a5fa]/50"
-                            : "text-white/90 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex flex-col -mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.isFree && (
-                            <InfinityIcon className="w-4 h-4 text-[#60a5fa]" />
-                          )}
-                          {model.isLocked && (
-                            <Lock className="w-3.5 h-3.5 text-amber-300" />
-                          )}
-                          {model.name}
-                        </span>
-                        {!model.isFree && (
-                          <span
-                            className={`md:text-[11px] text-xs -mt-0.5 font-normal ${
-                              selectedModel === model.value
-                                ? "text-black/70"
-                                : "opacity-80"
-                            }`}
-                          >
-                            {model.isLocked
-                              ? "Upgrade to access"
-                              : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
-                          </span>
-                        )}
-                      </div>
-                      {selectedModel === model.value && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
       {renderTooltip()}
+      {typeof window !== "undefined" &&
+        dropdownContent &&
+        createPortal(dropdownContent, document.body)}
     </div>
   );
 };

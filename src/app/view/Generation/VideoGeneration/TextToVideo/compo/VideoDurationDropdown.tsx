@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface VideoDurationDropdownProps {
@@ -25,23 +26,67 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
   hasLastFrame,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  } | null>(null);
+  const dropdownId = "video-duration-dropdown";
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+      const target = event.target as HTMLElement;
+      if (buttonRef.current?.contains(target)) return;
+      if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
+      setIsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [dropdownId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const updateDropdownPosition = () => {
+      if (!buttonRef.current) return;
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = window.innerWidth >= 768 ? 192 : 112;
+      let left = buttonRect.left;
+      let top = buttonRect.top;
+      let openUp = true;
+
+      if (left + dropdownWidth > window.innerWidth - 8) {
+        left = window.innerWidth - dropdownWidth - 8;
+      }
+      if (left < 8) {
+        left = 8;
+      }
+      if (top < 8) {
+        top = buttonRect.bottom + 8;
+        openUp = false;
+      }
+
+      setDropdownPosition({ top, left, openUp });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [isOpen]);
 
   // Auto-close dropdown after 20 seconds
   useEffect(() => {
@@ -355,9 +400,46 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
     (duration) => duration.value === selectedDuration,
   );
 
+  const dropdownContent =
+    isOpen && dropdownPosition ? (
+      <div
+        data-dropdown={dropdownId}
+        className="fixed md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999]"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          transform: dropdownPosition.openUp
+            ? "translateY(calc(-100% - 8px))"
+            : "none",
+        }}
+      >
+        {availableDurations.map((duration) => (
+          <button
+            key={duration.value}
+            onClick={() => {
+              onDurationChange(duration.value);
+              setIsOpen(false);
+            }}
+            className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+              selectedDuration === duration.value
+                ? "bg-white text-black"
+                : "text-white/90 hover:bg-white/10"
+            }`}
+          >
+            <span className="md:text-sm text-xs">{duration.label}</span>
+            {selectedDuration === duration.value && (
+              <div className="w-2 h-2 bg-black rounded-full"></div>
+            )}
+          </button>
+        ))}
+      </div>
+    ) : null;
+
   return (
+    <>
     <div className="relative dropdown-container">
       <button
+        ref={buttonRef}
         onClick={() => {
           try {
             if (onCloseOtherDropdowns) {
@@ -375,30 +457,11 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
           className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-          {availableDurations.map((duration) => (
-            <button
-              key={duration.value}
-              onClick={() => {
-                onDurationChange(duration.value);
-                setIsOpen(false);
-              }}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                selectedDuration === duration.value
-                  ? "bg-white text-black"
-                  : "text-white/90 hover:bg-white/10"
-              }`}
-            >
-              <span className="md:text-sm text-xs">{duration.label}</span>
-              {selectedDuration === duration.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
+    {typeof window !== "undefined" &&
+      dropdownContent &&
+      createPortal(dropdownContent, document.body)}
+    </>
   );
 };
 

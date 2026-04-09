@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronUp, Camera } from "lucide-react";
 
 interface CameraMotionDropdownProps {
@@ -17,7 +18,13 @@ const CameraMotionDropdown: React.FC<CameraMotionDropdownProps> = ({
     onCloseThisDropdown,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [dropdownPosition, setDropdownPosition] = useState<{
+        top: number;
+        left: number;
+        openUp: boolean;
+    } | null>(null);
+    const dropdownId = "video-camera-motion-dropdown";
 
     const motions = [
         { value: 'none', label: 'None' },
@@ -32,14 +39,55 @@ const CameraMotionDropdown: React.FC<CameraMotionDropdownProps> = ({
     ];
 
     useEffect(() => {
+        if (!isOpen) return;
+
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
+            const target = event.target as HTMLElement;
+            if (buttonRef.current?.contains(target)) return;
+            if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
+            setIsOpen(false);
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [dropdownId, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen || !buttonRef.current) {
+            setDropdownPosition(null);
+            return;
+        }
+
+        const updateDropdownPosition = () => {
+            if (!buttonRef.current) return;
+            const buttonRect = buttonRef.current.getBoundingClientRect();
+            const dropdownWidth = 160;
+            let left = buttonRect.left;
+            let top = buttonRect.top;
+            let openUp = true;
+
+            if (left + dropdownWidth > window.innerWidth - 8) {
+                left = window.innerWidth - dropdownWidth - 8;
+            }
+            if (left < 8) {
+                left = 8;
+            }
+            if (top < 8) {
+                top = buttonRect.bottom + 8;
+                openUp = false;
+            }
+
+            setDropdownPosition({ top, left, openUp });
+        };
+
+        updateDropdownPosition();
+        window.addEventListener("scroll", updateDropdownPosition, true);
+        window.addEventListener("resize", updateDropdownPosition);
+
+        return () => {
+            window.removeEventListener("scroll", updateDropdownPosition, true);
+            window.removeEventListener("resize", updateDropdownPosition);
+        };
+    }, [isOpen]);
 
     useEffect(() => {
         if (onCloseThisDropdown && isOpen) {
@@ -49,9 +97,40 @@ const CameraMotionDropdown: React.FC<CameraMotionDropdownProps> = ({
 
     const selectedLabel = motions.find(m => m.value === selectedMotion)?.label || 'None';
 
+    const dropdownContent = isOpen && dropdownPosition ? (
+        <div
+            data-dropdown={dropdownId}
+            className="fixed w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999]"
+            style={{
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                transform: dropdownPosition.openUp
+                    ? "translateY(calc(-100% - 8px))"
+                    : "none",
+            }}
+        >
+            {motions.map((m) => (
+                <button
+                    key={m.value}
+                    onClick={() => {
+                        onMotionChange(m.value);
+                        setIsOpen(false);
+                    }}
+                    className={`w-full px-4 p-2 text-left transition text-[13px] flex items-center justify-between ${selectedMotion === m.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
+                        }`}
+                >
+                    {m.label}
+                    {selectedMotion === m.value && <div className="w-2 h-2 bg-black rounded-full" />}
+                </button>
+            ))}
+        </div>
+    ) : null;
+
     return (
-        <div className="relative dropdown-container" ref={dropdownRef}>
+        <>
+        <div className="relative dropdown-container">
             <button
+                ref={buttonRef}
                 onClick={() => {
                     if (onCloseOtherDropdowns) onCloseOtherDropdowns();
                     setIsOpen(!isOpen);
@@ -62,25 +141,11 @@ const CameraMotionDropdown: React.FC<CameraMotionDropdownProps> = ({
                 Motion: {selectedLabel}
                 <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
-            {isOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-40 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-                    {motions.map((m) => (
-                        <button
-                            key={m.value}
-                            onClick={() => {
-                                onMotionChange(m.value);
-                                setIsOpen(false);
-                            }}
-                            className={`w-full px-4 p-2 text-left transition text-[13px] flex items-center justify-between ${selectedMotion === m.value ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                                }`}
-                        >
-                            {m.label}
-                            {selectedMotion === m.value && <div className="w-2 h-2 bg-black rounded-full" />}
-                        </button>
-                    ))}
-                </div>
-            )}
         </div>
+        {typeof window !== "undefined" &&
+            dropdownContent &&
+            createPortal(dropdownContent, document.body)}
+        </>
     );
 };
 
