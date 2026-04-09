@@ -97,6 +97,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   }, [tab, isOpen]); // Removed onTabChange from dependencies to prevent re-runs
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
+  const [isSavingLocalUploads, setIsSavingLocalUploads] = React.useState(false);
   const [cameraActive, setCameraActive] = React.useState(false);
   const [cameraError, setCameraError] = React.useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -532,20 +533,42 @@ const UploadModal: React.FC<UploadModalProps> = ({
     }
 
     // tab === 'computer' – user uploaded from their device.
-    // Just pass blob URLs/base64 to onAdd - don't upload to Zata yet
-    // Upload will happen when user generates something with the image
+    // Persist local/blob/data URLs first so downstream generation requests stay small.
     const chosen = localUploads.slice(0, remainingSlots);
     if (!chosen.length) {
       onClose();
       return;
     }
 
-    // Pass blob URLs/base64 to onAdd so images show instantly
-    // No upload to Zata here - will be uploaded when user generates
-    onAdd(chosen);
+    setIsSavingLocalUploads(true);
+    try {
+      const persistedUploads: string[] = [];
+      for (const uploadUrl of chosen) {
+        const normalized = String(uploadUrl || '').trim();
+        if (!normalized) continue;
+        if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+          persistedUploads.push(normalized);
+          continue;
+        }
 
-    setLocalUploads([]);
-    onClose();
+        const resp = await saveUpload({ url: normalized, type: 'image' });
+        if (resp.responseStatus !== 'success' || !resp.data?.url) {
+          throw new Error(resp.message || 'Failed to upload selected image');
+        }
+        persistedUploads.push(resp.data.url);
+      }
+
+      if (persistedUploads.length) {
+        onAdd(persistedUploads);
+      }
+      setLocalUploads([]);
+      onClose();
+    } catch (error: any) {
+      console.error('[UploadModal] Failed to persist local uploads:', error);
+      toast.error(error?.message || 'Failed to upload selected images. Please try again.');
+    } finally {
+      setIsSavingLocalUploads(false);
+    }
   };
 
   return (
@@ -766,7 +789,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
                     )}
                     <div className="flex justify-end mt-0 gap-2">
                       <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                      <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                      <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed" onClick={handleAdd} disabled={isSavingLocalUploads}>Add</button>
                     </div>
                   </>
                 )}
@@ -896,7 +919,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
                 </div>
                 <div className="flex justify-end mt-3 gap-2">
                   <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white/10 text-white hover:bg-white/20" onClick={onClose}>Cancel</button>
-                  <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200" onClick={handleAdd}>Add</button>
+                  <button className="md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-[11px] bg-white text-black hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed" onClick={handleAdd} disabled={isSavingLocalUploads}>{isSavingLocalUploads ? 'Uploading...' : 'Add'}</button>
                 </div>
               </div>
             )}

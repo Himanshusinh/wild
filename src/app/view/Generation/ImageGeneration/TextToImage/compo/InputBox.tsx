@@ -146,6 +146,7 @@ import {
   getImageGenerationCreditCost,
   formatCredits,
 } from "@/utils/creditValidation";
+import { saveUpload } from "@/lib/libraryApi";
 import { normalizeImageModelValue } from "@/utils/normalizeImageModelValue";
 import Image from "next/image";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -1339,6 +1340,45 @@ const InputBox = () => {
       return url;
     }
   };
+
+  const ensureProviderReadyImageUrl = useCallback(
+    async (url: string): Promise<string> => {
+      const normalized = toAbsoluteFromProxy(String(url || "").trim());
+      if (!normalized) return normalized;
+      if (
+        normalized.startsWith("http://") ||
+        normalized.startsWith("https://")
+      ) {
+        return normalized;
+      }
+      if (
+        normalized.startsWith("data:") ||
+        normalized.startsWith("blob:")
+      ) {
+        const resp = await saveUpload({ url: normalized, type: "image" });
+        if (resp.responseStatus === "success" && resp.data?.url) {
+          return resp.data.url;
+        }
+        throw new Error(resp.message || "Failed to prepare input image");
+      }
+      return normalized;
+    },
+    [],
+  );
+
+  const ensureProviderReadyImageUrls = useCallback(
+    async (urls: string[], limit = 14): Promise<string[]> => {
+      const prepared: string[] = [];
+      for (const rawUrl of (urls || []).slice(0, limit)) {
+        const resolvedUrl = await ensureProviderReadyImageUrl(rawUrl);
+        if (resolvedUrl) {
+          prepared.push(resolvedUrl);
+        }
+      }
+      return prepared;
+    },
+    [ensureProviderReadyImageUrl],
+  );
 
   // Fetch only first page on mount; further pages load on scroll
   // Replace legacy refresh helpers with hook-driven variants (wrapped with cooldown guard)
@@ -4827,6 +4867,28 @@ const InputBox = () => {
             0,
             getInputImageLimitForModel(selectedModel),
           );
+          const preparedImages = await ensureProviderReadyImageUrls(
+            combinedImages,
+            getInputImageLimitForModel(selectedModel),
+          );
+          const nanoBananaAllowedAspect = new Set([
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9",
+          ]);
+          const normalizedAspect =
+            selectedModel === "google/nano-banana-pro"
+              ? nanoBananaAllowedAspect.has(frameSize)
+                ? frameSize
+                : "1:1"
+              : frameSize;
           const result = await dispatch(
             falGenerate({
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -4834,10 +4896,8 @@ const InputBox = () => {
               model: selectedModel,
               // New schema: num_images + aspect_ratio
               num_images: imageCount,
-              aspect_ratio: frameSize as any,
-              uploadedImages: combinedImages.map((u: string) =>
-                toAbsoluteFromProxy(u),
-              ),
+              aspect_ratio: normalizedAspect as any,
+              uploadedImages: preparedImages,
               output_format: "jpeg",
               resolution: nanoBananaProResolution,
               generationType: "text-to-image",
@@ -5250,16 +5310,17 @@ const InputBox = () => {
           }
           // Filter out SVG files - Seedream doesn't support SVG as input
           if (uploadedImages && uploadedImages.length > 0) {
-            const validImages = uploadedImages
-              .slice(0, 10)
-              .map((u: string) => toAbsoluteFromProxy(u))
-              .filter((url: string) => {
-                // Exclude SVG files (vectorized images)
-                const lowerUrl = url.toLowerCase();
-                return (
-                  !lowerUrl.includes(".svg") && !lowerUrl.includes("vectorized")
-                );
-              });
+            const resolvedImages = await ensureProviderReadyImageUrls(
+              uploadedImages,
+              10,
+            );
+            const validImages = resolvedImages.filter((url: string) => {
+              // Exclude SVG files (vectorized images)
+              const lowerUrl = url.toLowerCase();
+              return (
+                !lowerUrl.includes(".svg") && !lowerUrl.includes("vectorized")
+              );
+            });
             if (validImages.length > 0) {
               payload.image_input = validImages;
             }
@@ -7563,8 +7624,9 @@ const InputBox = () => {
             selectedModel === "seedream-5-lite"
           ) {
             if (combinedImages && combinedImages.length > 0) {
-              const seedreamImageInput = combinedImages.map((u: string) =>
-                toAbsoluteFromProxy(u),
+              const seedreamImageInput = await ensureProviderReadyImageUrls(
+                combinedImages,
+                14,
               );
               generationPayload.image_input = seedreamImageInput;
             }

@@ -189,6 +189,16 @@ export const generateImages = createAsyncThunk(
       };
 
       // Build payload
+      const shouldOmitUploadedImages =
+        Array.isArray(image_input) &&
+        image_input.length > 0 &&
+        typeof model === 'string' &&
+        (
+          model === 'seedream-v4' ||
+          model === 'seedream-5-lite' ||
+          model === 'bytedance/seedream-4' ||
+          model === 'bytedance/seedream-5-lite'
+        );
       const body: any = {
         prompt,
         model,
@@ -198,7 +208,7 @@ export const generateImages = createAsyncThunk(
         frameSize,
         style,
         generationType,
-        uploadedImages,
+        ...(shouldOmitUploadedImages ? {} : { uploadedImages }),
         clientRequestId,
         ...(width && height ? { width, height } : {}),
         ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {}),
