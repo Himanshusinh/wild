@@ -3502,6 +3502,7 @@ const InputBox = () => {
     requireScrollAfterLoad: true,
     postLoadCooldownMs: 500, // Reduced cooldown for smoother loading
     blockLoadRef: postGenerationBlockRef, // hard block during generation completion window
+    allowAutoloadWhenNotScrollable: true,
   });
 
   // IntersectionObserver removed; relying solely on bottom scroll pagination above.

@@ -15,6 +15,8 @@ interface UseBottomScrollPaginationArgs {
   postLoadCooldownMs?: number;
   /** External boolean ref to hard block load triggers (e.g. generation in progress) */
   blockLoadRef?: React.RefObject<boolean>;
+  /** Allow loading next page when container still isn't scrollable */
+  allowAutoloadWhenNotScrollable?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function useBottomScrollPagination({
   requireScrollAfterLoad = false,
   postLoadCooldownMs = 0,
   blockLoadRef,
+  allowAutoloadWhenNotScrollable = false,
 }: UseBottomScrollPaginationArgs) {
   const busyRef = useRef(false);
   const lastTriggerRef = useRef(0);
@@ -116,6 +119,20 @@ export function useBottomScrollPagination({
     window.addEventListener('wheel', handleWindowScroll as any, { passive: true } as any);
     window.addEventListener('touchmove', handleWindowScroll as any, { passive: true } as any);
 
+    // Fallback: if the container is not scrollable yet but backend has more pages,
+    // fetch one more page so users aren't blocked by "no scroll => no pagination".
+    if (allowAutoloadWhenNotScrollable && containerEl) {
+      const maybeAutoload = () => {
+        try {
+          if (!hasMore || loading || busyRef.current) return;
+          const notScrollable = containerEl.scrollHeight <= containerEl.clientHeight + 8;
+          if (!notScrollable) return;
+          performLoadMore('container');
+        } catch { /* silent */ }
+      };
+      setTimeout(maybeAutoload, 0);
+    }
+
     return () => {
       if (containerEl) {
         try { containerEl.removeEventListener('scroll', handleContainerScroll as any); } catch {}
@@ -124,7 +141,17 @@ export function useBottomScrollPagination({
       window.removeEventListener('wheel', handleWindowScroll as any);
       window.removeEventListener('touchmove', handleWindowScroll as any);
     };
-  }, [containerRef, hasMore, loading, loadMore, bottomOffset, throttleMs, requireUserScroll, enabled]);
+  }, [
+    containerRef,
+    hasMore,
+    loading,
+    loadMore,
+    bottomOffset,
+    throttleMs,
+    requireUserScroll,
+    enabled,
+    allowAutoloadWhenNotScrollable,
+  ]);
 
   return { userScrolledRef, awaitingUserScrollRef };
 }
