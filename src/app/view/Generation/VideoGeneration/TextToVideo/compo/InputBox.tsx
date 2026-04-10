@@ -3808,6 +3808,82 @@ const InputBox = (props: InputBoxProps = {}) => {
       return;
     }
 
+    // Ensure local data/blob image inputs are uploaded before submit.
+    // This prevents staging 413 errors where submit fires before upload completes.
+    const hasLocalImageInputs =
+      uploadedImages.some((u) => isLocalImageUrl(u)) ||
+      references.some((u) => isLocalImageUrl(u)) ||
+      isLocalImageUrl(lastFrameImage) ||
+      isLocalImageUrl(uploadedCharacterImage);
+
+    if (hasLocalImageInputs) {
+      if (isNormalizingLocalImagesRef.current) {
+        setError("Preparing uploaded image. Please wait a moment and try again.");
+        return;
+      }
+
+      try {
+        isNormalizingLocalImagesRef.current = true;
+        const cache = new Map<string, string>();
+        const resolveUrl = async (url: string): Promise<string> => {
+          const raw = String(url || "").trim();
+          if (!isLocalImageUrl(raw)) return raw;
+          if (cache.has(raw)) return cache.get(raw)!;
+          const resp = await saveUpload({ url: raw, type: "image" });
+          if (resp.responseStatus === "success" && resp.data?.url) {
+            cache.set(raw, resp.data.url);
+            return resp.data.url;
+          }
+          throw new Error(resp.message || "Failed to upload local image");
+        };
+
+        const nextUploadedImages = await Promise.all(
+          uploadedImages.map(resolveUrl),
+        );
+        const nextReferences = await Promise.all(references.map(resolveUrl));
+        const nextLastFrameImage = await resolveUrl(lastFrameImage || "");
+        const nextCharacterImage = await resolveUrl(uploadedCharacterImage || "");
+
+        if (
+          JSON.stringify(nextUploadedImages) !== JSON.stringify(uploadedImages)
+        ) {
+          setUploadedImages(nextUploadedImages);
+        }
+        if (JSON.stringify(nextReferences) !== JSON.stringify(references)) {
+          setReferences(nextReferences);
+        }
+        if ((nextLastFrameImage || "") !== (lastFrameImage || "")) {
+          setLastFrameImage(nextLastFrameImage);
+        }
+        if ((nextCharacterImage || "") !== (uploadedCharacterImage || "")) {
+          setUploadedCharacterImage(nextCharacterImage);
+        }
+
+        const stillHasLocalInputs =
+          nextUploadedImages.some((u) => isLocalImageUrl(u)) ||
+          nextReferences.some((u) => isLocalImageUrl(u)) ||
+          isLocalImageUrl(nextLastFrameImage) ||
+          isLocalImageUrl(nextCharacterImage);
+
+        if (stillHasLocalInputs) {
+          setError("Failed to prepare uploaded image. Please re-upload and try again.");
+          return;
+        }
+
+        // State updates are async; retry once with normalized URLs.
+        setTimeout(() => {
+          void handleGenerate();
+        }, 0);
+        return;
+      } catch (error: any) {
+        console.error("[Video] Failed to normalize local images before submit:", error);
+        setError(error?.message || "Failed to prepare uploaded image");
+        return;
+      } finally {
+        isNormalizingLocalImagesRef.current = false;
+      }
+    }
+
     if (!prompt.trim()) {
       setError("Please enter a prompt");
       return;
