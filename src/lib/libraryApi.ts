@@ -91,9 +91,9 @@ async function uploadLocalMediaFile(params: {
       form.append('projectId', params.projectId);
     }
 
-    const response = await api.post('/api/canvas/media-library/upload-file', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Let the browser/axios set multipart boundary automatically.
+    // Manually forcing Content-Type can produce an unreadable body in some production setups.
+    const response = await api.post('/api/canvas/media-library/upload-file', form);
     return response.data;
   } catch (error: any) {
     console.error('[libraryApi] Error uploading local media file:', error);
@@ -113,16 +113,40 @@ async function uploadLocalMediaSource(params: {
   projectId?: string;
 }): Promise<SaveUploadResponse> {
   try {
-    const response = await fetch(params.url);
-    if (!response.ok) {
-      throw new Error(`Failed to read local media (${response.status})`);
+    let file: File;
+    const normalizedUrl = String(params.url || '').trim();
+    if (!normalizedUrl) {
+      throw new Error('Missing local media source');
     }
 
-    const blob = await response.blob();
-    const ext = inferUploadFileExtension(blob.type, params.type);
-    const file = new File([blob], `upload-${Date.now()}.${ext}`, {
-      type: blob.type || (params.type === 'video' ? 'video/mp4' : 'image/png'),
-    });
+    if (normalizedUrl.startsWith('data:')) {
+      const commaIdx = normalizedUrl.indexOf(',');
+      if (commaIdx <= 0) {
+        throw new Error('Invalid data URL');
+      }
+      const meta = normalizedUrl.slice(0, commaIdx);
+      const base64 = normalizedUrl.slice(commaIdx + 1);
+      const mimeMatch = meta.match(/^data:([^;]+);base64$/i);
+      const mimeType = mimeMatch?.[1] || (params.type === 'video' ? 'video/mp4' : 'image/png');
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: mimeType });
+      const ext = inferUploadFileExtension(blob.type, params.type);
+      file = new File([blob], `upload-${Date.now()}.${ext}`, { type: blob.type || mimeType });
+    } else {
+      const response = await fetch(normalizedUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to read local media (${response.status})`);
+      }
+      const blob = await response.blob();
+      const ext = inferUploadFileExtension(blob.type, params.type);
+      file = new File([blob], `upload-${Date.now()}.${ext}`, {
+        type: blob.type || (params.type === 'video' ? 'video/mp4' : 'image/png'),
+      });
+    }
 
     return uploadLocalMediaFile({
       file,
