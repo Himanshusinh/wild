@@ -366,7 +366,7 @@ export default function PhotoToLineDrawing() {
 
       {isUploadModalOpen && (
         <UploadModal
-          persistLocalDeviceUploads={false}
+          persistLocalDeviceUploads={true}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
