@@ -10902,6 +10902,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
+          persistLocalDeviceUploads={false}
           remainingSlots={
             uploadModalType === "image"
               ? // For WAN 2.2 Animate Replace character image, only 1 slot

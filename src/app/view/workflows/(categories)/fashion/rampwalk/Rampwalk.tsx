@@ -255,6 +255,7 @@ export default function Rampwalk() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -268,3 +269,4 @@ export default function Rampwalk() {
     </>
   );
 }
+

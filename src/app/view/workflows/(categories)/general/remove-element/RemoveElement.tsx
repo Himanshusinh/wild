@@ -290,6 +290,7 @@ export default function RemoveElement() {
 
             {isUploadModalOpen && (
                 <UploadModal
+                    persistLocalDeviceUploads={false}
                     isOpen={isUploadModalOpen}
                     onClose={() => setIsUploadModalOpen(false)}
                     onAdd={(urls: string[]) => {
@@ -303,3 +304,4 @@ export default function RemoveElement() {
         </>
     );
 }
+

@@ -21,6 +21,7 @@ type UploadModalProps = {
   hasMore?: boolean;
   loading?: boolean;
   accept?: string;
+  persistLocalDeviceUploads?: boolean;
 };
 
 const UploadModal: React.FC<UploadModalProps> = ({
@@ -36,6 +37,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   hasMore: propHasMore,
   loading: propLoading,
   accept = 'image/*',
+  persistLocalDeviceUploads = true,
 }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
 
@@ -536,6 +538,13 @@ const UploadModal: React.FC<UploadModalProps> = ({
     // Persist local/blob/data URLs first so downstream generation requests stay small.
     const chosen = localUploads.slice(0, remainingSlots);
     if (!chosen.length) {
+      onClose();
+      return;
+    }
+
+    if (!persistLocalDeviceUploads) {
+      onAdd(chosen);
+      setLocalUploads([]);
       onClose();
       return;
     }

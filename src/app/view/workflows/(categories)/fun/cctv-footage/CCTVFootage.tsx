@@ -261,6 +261,7 @@ export default function CCTVFootage() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -274,3 +275,4 @@ export default function CCTVFootage() {
     </>
   );
 }
+

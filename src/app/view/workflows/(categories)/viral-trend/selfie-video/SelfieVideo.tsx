@@ -1855,6 +1855,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-[110]">
           <UploadModal
+            persistLocalDeviceUploads={false}
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={handleUpload}
