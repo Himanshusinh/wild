@@ -91,7 +91,7 @@ async function uploadLocalMediaFile(params: {
       form.append('projectId', params.projectId);
     }
 
-    const response = await api.post('/api/uploads/upload-file', form, {
+    const response = await api.post('/api/canvas/media-library/upload-file', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
