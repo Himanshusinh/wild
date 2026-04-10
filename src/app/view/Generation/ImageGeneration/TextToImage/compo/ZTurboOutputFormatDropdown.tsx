@@ -11,13 +11,15 @@ type ZTurboOutputFormatDropdownProps = {
   outputFormat: 'png' | 'jpg' | 'webp';
   onOutputFormatChange: (format: 'png' | 'jpg' | 'webp') => void;
   dropdownId: string;
+  options?: Array<'png' | 'jpg' | 'webp'>;
 };
 
 const ZTurboOutputFormatDropdown = ({ 
   openDirection = 'up',
   outputFormat,
   onOutputFormatChange,
-  dropdownId
+  dropdownId,
+  options = ['png', 'jpg', 'webp'],
 }: ZTurboOutputFormatDropdownProps) => {
   const dispatch = useAppDispatch();
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
@@ -26,8 +28,6 @@ const ZTurboOutputFormatDropdown = ({
   const [isActiveInstance, setIsActiveInstance] = useState(false);
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
-
-  const options: ('png' | 'jpg' | 'webp')[] = ['png', 'jpg', 'webp'];
 
   // Reset active instance when dropdown closes
   useEffect(() => {

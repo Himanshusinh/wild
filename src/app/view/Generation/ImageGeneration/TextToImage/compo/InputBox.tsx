@@ -1869,6 +1869,36 @@ const InputBox = () => {
   const outputFormat = useAppSelector(
     (state: any) => state.generation?.outputFormat || "jpeg",
   );
+  const nanoSupportedOutputFormats = useMemo<Array<"jpg" | "png" | "webp">>(() => {
+    if (selectedModel === "google/nano-banana-2") {
+      return ["jpg", "png"];
+    }
+    if (
+      selectedModel === "google/nano-banana-pro" ||
+      selectedModel === "gemini-25-flash-image"
+    ) {
+      return ["jpg", "png", "webp"];
+    }
+    return ["jpg", "png", "webp"];
+  }, [selectedModel]);
+
+  // Keep output format aligned with model schema and normalize legacy "jpeg" to "jpg".
+  useEffect(() => {
+    const isNanoModel =
+      selectedModel === "google/nano-banana-2" ||
+      selectedModel === "google/nano-banana-pro" ||
+      selectedModel === "gemini-25-flash-image";
+    if (!isNanoModel) return;
+
+    const normalized = outputFormat === "jpeg" ? "jpg" : outputFormat;
+    if (!nanoSupportedOutputFormats.includes(normalized as any)) {
+      dispatch(setOutputFormat(nanoSupportedOutputFormats[0]));
+      return;
+    }
+    if (normalized !== outputFormat) {
+      dispatch(setOutputFormat(normalized));
+    }
+  }, [dispatch, selectedModel, outputFormat, nanoSupportedOutputFormats]);
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector(
     (state: any) => state.ui?.activeDropdown,
@@ -1943,9 +1973,15 @@ const InputBox = () => {
     const filtered = allEntries.filter((entry: any) => {
       const normalizedType = normalize(entry.generationType);
       const normalizedModel = normalize(entry.model);
+      const isUploadFileEntry = normalizedModel === "upload-file";
       const isSeedream = normalizedModel.includes("seedream");
       const isTextToImage = normalizedType === "text-to-image";
       const isImageToImage = normalizedType === "image-to-image";
+
+      // Hide raw upload records from Image Generation history grid.
+      if (isUploadFileEntry) {
+        return false;
+      }
 
       // Explicitly exclude video types - video entries should NOT appear in image generation
       const isVideoType =
@@ -6611,6 +6647,7 @@ const InputBox = () => {
               model: "google/nano-banana-pro",
               num_images: imageCount,
               aspect_ratio: aspect as any,
+              resolution: nanoBananaProResolution,
               uploadedImages: combinedImages.map((u: string) =>
                 toAbsoluteFromProxy(u),
               ),
@@ -6715,6 +6752,7 @@ const InputBox = () => {
               model: "google/nano-banana-2",
               num_images: imageCount,
               aspect_ratio: aspect as any,
+              resolution: nanoBananaResolution,
               enable_web_search: nanoBananaGoogleSearch,
               thinking_level: nanoBananaThinkingLevel,
               limit_generations: nanoBananaLimitGenerations,
@@ -9381,7 +9419,7 @@ const InputBox = () => {
       {!isInlineEditImagePage && (
         <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
-            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${
+            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${
               isInputBoxHovered
                 ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
                 : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -10143,23 +10181,55 @@ const InputBox = () => {
                 {(selectedModel === "google/nano-banana-pro" ||
                   selectedModel === "gemini-25-flash-image") && (
                   <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={nanoBananaProResolution}
+                      onResolutionChange={(val) =>
+                        setNanoBananaProResolution(val as "1K" | "2K" | "4K")
+                      }
+                      options={["1K", "2K", "4K"]}
+                      dropdownId="nanoBananaProResolutionMb"
+                      optionCredits={nanoBananaProResolutionCredits}
+                    />
                     <ZTurboOutputFormatDropdown
-                      outputFormat={outputFormat}
+                      outputFormat={
+                        (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                          | "png"
+                          | "jpg"
+                          | "webp"
+                      }
                       onOutputFormatChange={(val) =>
                         dispatch(setOutputFormat(val))
                       }
                       dropdownId="nanoBananaOutputFormatMb"
+                      options={nanoSupportedOutputFormats}
                     />
                   </div>
                 )}
                 {selectedModel === "google/nano-banana-2" && (
                   <div className="flex items-center gap-2 relative">
+                    <ResolutionDropdown
+                      resolution={nanoBananaResolution}
+                      onResolutionChange={(val) =>
+                        dispatch(
+                          setNanoBananaResolution(val as "1K" | "2K" | "4K"),
+                        )
+                      }
+                      options={["1K", "2K", "4K"]}
+                      dropdownId="nanoBanana2ResolutionMb"
+                      optionCredits={nanoBanana2ResolutionCredits}
+                    />
                     <ZTurboOutputFormatDropdown
-                      outputFormat={outputFormat}
+                      outputFormat={
+                        (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                          | "png"
+                          | "jpg"
+                          | "webp"
+                      }
                       onOutputFormatChange={(val) =>
                         dispatch(setOutputFormat(val))
                       }
                       dropdownId="nanoBanana2OutputFormatMb"
+                      options={nanoSupportedOutputFormats}
                     />
                     <ThinkingLevelDropdown
                       thinkingLevel={nanoBananaThinkingLevel}
@@ -10318,8 +10388,9 @@ const InputBox = () => {
               </div>
 
               {/* Desktop: All dropdowns in one row */}
-              <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
-                <div className="flex items-center gap-3 -mb-2">
+              <div className="hidden md:flex flex-1 min-w-0 items-center">
+                <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-[290px]">
+                  <div className="flex min-w-max items-center gap-2">
                   <ModelsDropdown />
                   <ImageCountDropdown />
                   <FrameSizeDropdown />
@@ -10330,23 +10401,57 @@ const InputBox = () => {
                   {(selectedModel === "google/nano-banana-pro" ||
                     selectedModel === "gemini-25-flash-image") && (
                     <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={nanoBananaProResolution}
+                        onResolutionChange={(val) =>
+                          setNanoBananaProResolution(
+                            val as "1K" | "2K" | "4K",
+                          )
+                        }
+                        options={["1K", "2K", "4K"]}
+                        dropdownId="nanoBananaProResolutionDesk"
+                        optionCredits={nanoBananaProResolutionCredits}
+                      />
                       <ZTurboOutputFormatDropdown
-                        outputFormat={outputFormat}
+                        outputFormat={
+                          (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                            | "png"
+                            | "jpg"
+                            | "webp"
+                        }
                         onOutputFormatChange={(val) =>
                           dispatch(setOutputFormat(val))
                         }
                         dropdownId="nanoBananaOutputFormatDesk"
+                        options={nanoSupportedOutputFormats}
                       />
                     </div>
                   )}
                   {selectedModel === "google/nano-banana-2" && (
                     <div className="flex items-center gap-2 relative">
+                      <ResolutionDropdown
+                        resolution={nanoBananaResolution}
+                        onResolutionChange={(val) =>
+                          dispatch(
+                            setNanoBananaResolution(val as "1K" | "2K" | "4K"),
+                          )
+                        }
+                        options={["1K", "2K", "4K"]}
+                        dropdownId="nanoBanana2ResolutionDesk"
+                        optionCredits={nanoBanana2ResolutionCredits}
+                      />
                       <ZTurboOutputFormatDropdown
-                        outputFormat={outputFormat}
+                        outputFormat={
+                          (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                            | "png"
+                            | "jpg"
+                            | "webp"
+                        }
                         onOutputFormatChange={(val) =>
                           dispatch(setOutputFormat(val))
                         }
                         dropdownId="nanoBanana2OutputFormatDesk"
+                        options={nanoSupportedOutputFormats}
                       />
                       <ThinkingLevelDropdown
                         thinkingLevel={nanoBananaThinkingLevel}
@@ -10503,6 +10608,7 @@ const InputBox = () => {
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}
+                  </div>
                 </div>
               </div>
             </div>

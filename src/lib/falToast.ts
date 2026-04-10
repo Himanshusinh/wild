@@ -53,8 +53,13 @@ const FAL_ERROR_MESSAGES: Record<string, (detail: FalErrorDetail) => string> = {
     "Generation timed out. Try simplifying your prompt or retrying.",
   downstream_service_error: () => "Try again later",
   downstream_service_unavailable: () => "Try again later",
-  content_policy_violation: () =>
-    "Your prompt was blocked by content safety filters. Please adjust your prompt to follow our content policy.",
+  content_policy_violation: (detail) => {
+    const providerMessage = String(detail?.msg || "").trim();
+    if (providerMessage) {
+      return providerMessage;
+    }
+    return "Your prompt was blocked by content safety filters. Please adjust your prompt to follow our content policy.";
+  },
   image_too_small: (detail) => {
     const ctx = detail.ctx as
       | { min_height?: number; min_width?: number }
