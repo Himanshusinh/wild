@@ -17,6 +17,18 @@ import {
 import { getModelCreditInfo } from "@/utils/modelCredits";
 import { isModelAccessibleForPlan } from "@/config/planModelAccess";
 
+const SEEDANCE_2_FAMILY_VALUES = new Set([
+  "seedance-2.0-t2v",
+  "seedance-2.0-r2v",
+  "seedance-2.0-fast",
+  "seedance-2.0-fast-t2v",
+  "seedance-2.0-fast-i2v",
+  "seedance-2.0-fast-r2v",
+]);
+
+const isSeedance2FamilyModel = (value: string) =>
+  SEEDANCE_2_FAMILY_VALUES.has(value);
+
 interface VideoModelsDropdownProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
@@ -415,11 +427,23 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     ];
   };
 
-  const availableModels = getAvailableModels();
+  const availableModels = getAvailableModels().filter((model) => {
+    if (model.value === "seedance-2.0-r2v") return false;
+    if (model.value === "seedance-2.0-fast") return false;
+    if (model.value === "seedance-2.0-fast-r2v") return false;
+    return true;
+  });
   // Prefer exact match; otherwise map t2v/i2v variants to the same base model for display
   const selectedModelInfo =
-    availableModels.find((model) => model.value === selectedModel) ||
+    availableModels.find((model) =>
+      isSeedance2FamilyModel(selectedModel)
+        ? model.value === "seedance-2.0-t2v"
+        : model.value === selectedModel,
+    ) ||
     availableModels.find((model) => {
+      if (isSeedance2FamilyModel(selectedModel)) {
+        return model.value === "seedance-2.0-t2v";
+      }
       const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
       return baseAvailable === baseSelected;
@@ -564,12 +588,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     }
 
     const aspectRatioForCredits =
-      model.value === "seedance-2.0-t2v" ||
-      model.value === "seedance-2.0-r2v" ||
-      model.value === "seedance-2.0-fast" ||
-      model.value === "seedance-2.0-fast-r2v"
-        ? selectedAspectRatio || "auto"
-        : undefined;
+      model.value === "seedance-2.0-t2v" ? selectedAspectRatio || "auto" : undefined;
 
     let creditInfo = getModelCreditInfo(
       model.value,
@@ -594,12 +613,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       ) {
         // MiniMax Hailuo 2.3: default to 6s and 768P
         creditInfo = getModelCreditInfo(model.value, "6s", "768P");
-      } else if (
-        model.value === "seedance-2.0-t2v" ||
-        model.value === "seedance-2.0-r2v" ||
-        model.value === "seedance-2.0-fast" ||
-        model.value === "seedance-2.0-fast-r2v"
-      ) {
+      } else if (model.value === "seedance-2.0-t2v") {
         creditInfo = getModelCreditInfo(
           model.value,
           "auto",
@@ -634,14 +648,19 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   // Auto-select first available model if current selection is invalid
   useEffect(() => {
     // Check if selectedModel matches any available model directly
-    const exactMatch = availableModels.find(
-      (model) => model.value === selectedModel,
+    const exactMatch = availableModels.find((model) =>
+      isSeedance2FamilyModel(selectedModel)
+        ? model.value === "seedance-2.0-t2v"
+        : model.value === selectedModel,
     );
     if (exactMatch) return;
 
     // Check if selectedModel is a variant (e.g. i2v vs t2v) of an available model
     // Common pattern: model-name-t2v vs model-name-i2v
     const variantMatch = availableModels.find((model) => {
+      if (isSeedance2FamilyModel(selectedModel)) {
+        return model.value === "seedance-2.0-t2v";
+      }
       const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
       return baseAvailable === baseSelected;
@@ -664,9 +683,16 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     activeFeature,
   ]);
 
-  const selectedModelEntry = modelsWithCredits.find(
-    (model) => model.value === selectedModel,
+  const selectedModelEntry = modelsWithCredits.find((model) =>
+    isSeedance2FamilyModel(selectedModel)
+      ? model.value === "seedance-2.0-t2v"
+      : model.value === selectedModel,
   );
+
+  const isOptionSelected = (modelValue: string) =>
+    modelValue === "seedance-2.0-t2v"
+      ? isSeedance2FamilyModel(selectedModel)
+      : selectedModel === modelValue;
 
   const handleVideoModelSelect = (modelValue: string) => {
     if (!isModelAccessibleForPlan(currentPlanCode, "video", modelValue)) {
@@ -715,7 +741,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         handleVideoModelSelect(model.value);
                       }}
                       className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
+                        isOptionSelected(model.value)
                           ? "bg-white text-black"
                           : "text-white/90 hover:bg-white/10"
                       }`}
@@ -741,7 +767,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                                 : "credits unavailable")}
                         </span>
                       </div>
-                      {selectedModel === model.value && (
+                      {isOptionSelected(model.value) && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
                       )}
                     </button>
@@ -756,7 +782,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         handleVideoModelSelect(model.value);
                       }}
                       className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        selectedModel === model.value
+                        isOptionSelected(model.value)
                           ? "bg-white text-black"
                           : "text-white/90 hover:bg-white/10"
                       }`}
@@ -782,7 +808,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                                 : "credits unavailable")}
                         </span>
                       </div>
-                      {selectedModel === model.value && (
+                      {isOptionSelected(model.value) && (
                         <div className="w-2 h-2 bg-black rounded-full"></div>
                       )}
                     </button>
@@ -811,7 +837,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       handleVideoModelSelect(model.value);
                     }}
                     className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                      selectedModel === model.value
+                      isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
                     }`}
@@ -837,7 +863,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                               : "credits unavailable")}
                       </span>
                     </div>
-                    {selectedModel === model.value && (
+                    {isOptionSelected(model.value) && (
                       <div className="w-2 h-2 bg-black rounded-full"></div>
                     )}
                   </button>
@@ -852,7 +878,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       handleVideoModelSelect(model.value);
                     }}
                     className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                      selectedModel === model.value
+                      isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
                     }`}
@@ -878,7 +904,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                               : "credits unavailable")}
                       </span>
                     </div>
-                    {selectedModel === model.value && (
+                    {isOptionSelected(model.value) && (
                       <div className="w-2 h-2 bg-black rounded-full"></div>
                     )}
                   </button>

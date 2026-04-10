@@ -87,6 +87,7 @@ declare global {
 
 // Import the video-specific components
 import VideoModelsDropdown from "./VideoModelsDropdown";
+import SeedanceFamilyVariantDropdown from "./SeedanceFamilyVariantDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import CameraMotionDropdown from "./CameraMotionDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
@@ -149,6 +150,9 @@ const isSeedance2FamilyModel = (model: string) =>
   isSeedance2FastModel(model) ||
   isSeedance2FastReferenceModel(model);
 
+const shouldShowSeedance2FamilySelector = (model: string) =>
+  model.includes("seedance-2.0");
+
 const isSeedance2TextModel = (model: string) =>
   model === SEEDANCE_2_MODEL ||
   model === SEEDANCE_2_REFERENCE_MODEL ||
@@ -165,6 +169,13 @@ const getMaxVideoSize = (model: string) => {
 
 const formatDurationForCreditLookup = (value: VideoDurationValue): string =>
   value === "auto" ? "auto" : `${value}s`;
+
+const SEEDANCE_2_VARIANT_OPTIONS = [
+  { value: SEEDANCE_2_MODEL, label: "Image/Text to Video" },
+  { value: SEEDANCE_2_FAST_MODEL, label: "Image/Text to Video Fast" },
+  { value: SEEDANCE_2_REFERENCE_MODEL, label: "Reference to Video" },
+  { value: SEEDANCE_2_FAST_REFERENCE_MODEL, label: "Reference to Video Fast" },
+];
 
 const InputBox = (props: InputBoxProps = {}) => {
   const {
@@ -8120,6 +8131,28 @@ const InputBox = (props: InputBoxProps = {}) => {
 
   // Note: applySearch and live search logic are now handled by HistoryControls component
 
+  const modelDropdownResolution = (() => {
+    const resolutionForCredits =
+      selectedModel.includes("veo3") || selectedModel.includes("sora2")
+        ? selectedQuality
+        : creditsResolution;
+    return resolutionForCredits
+      ? String(resolutionForCredits).toLowerCase()
+      : undefined;
+  })();
+
+  const selectedSeedance2Variant = isSeedance2FastReferenceModel(selectedModel)
+    ? SEEDANCE_2_FAST_REFERENCE_MODEL
+    : isSeedance2ReferenceModel(selectedModel)
+      ? SEEDANCE_2_REFERENCE_MODEL
+      : isSeedance2FastModel(selectedModel)
+        ? SEEDANCE_2_FAST_MODEL
+        : SEEDANCE_2_MODEL;
+
+  const handleSeedance2VariantChange = (variant: string) => {
+    handleModelChange(variant);
+  };
+
   return (
     <React.Fragment>
       {/* Active Generations Queue Panel */}
@@ -8510,10 +8543,9 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-0">
-            {/* Mobile: First row - Model dropdown and Generate button */}
-            <div className="flex md:hidden justify-between items-center gap-2 w-full px-1 mt-1">
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <div>
+            {/* Mobile: first row - model family selectors */}
+            <div className="flex md:hidden w-full flex-wrap items-center gap-2 px-1 mt-1">
+              <div className="min-w-0 flex-1">
                   <VideoModelsDropdown
                     selectedModel={selectedModel}
                     onModelChange={handleModelChange}
@@ -8523,16 +8555,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         ? `${selectedMiniMaxDuration}s`
                         : formatDurationForCreditLookup(duration)
                     }
-                    selectedResolution={(() => {
-                      const resolutionForCredits =
-                        selectedModel.includes("veo3") ||
-                        selectedModel.includes("sora2")
-                          ? selectedQuality
-                          : creditsResolution;
-                      return resolutionForCredits
-                        ? String(resolutionForCredits).toLowerCase()
-                        : undefined;
-                    })()}
+                    selectedResolution={modelDropdownResolution}
                     activeFeature={activeFeature}
                     onCloseOtherDropdowns={() => {
                       setCloseFrameSizeDropdown(true);
@@ -8548,7 +8571,33 @@ const InputBox = (props: InputBoxProps = {}) => {
                       closeModelsDropdown ? () => {} : undefined
                     }
                   />
+              </div>
+              {shouldShowSeedance2FamilySelector(selectedModel) ? (
+                <div className="flex-shrink-0">
+                  <SeedanceFamilyVariantDropdown
+                    options={SEEDANCE_2_VARIANT_OPTIONS}
+                    selectedValue={selectedSeedance2Variant}
+                    onChange={handleSeedance2VariantChange}
+                    onCloseOtherDropdowns={() => {
+                      setCloseModelsDropdown(true);
+                      setCloseFrameSizeDropdown(true);
+                      setCloseDurationDropdown(true);
+                      setCloseCameraMotionDropdown(true);
+                      setTimeout(() => {
+                        setCloseModelsDropdown(false);
+                        setCloseFrameSizeDropdown(false);
+                        setCloseDurationDropdown(false);
+                        setCloseCameraMotionDropdown(false);
+                      }, 100);
+                    }}
+                  />
                 </div>
+              ) : null}
+            </div>
+
+            {/* Mobile: second row - parameters and generate */}
+            <div className="flex md:hidden justify-between items-center gap-2 w-full px-1">
+              <div className="flex-1 min-w-0 flex items-center gap-2">
                 {/* Audio toggle button for models that support it (mobile only) */}
                 {(selectedModel === "kling-2.6-pro" ||
                   selectedModel.startsWith("kling-v3") ||
@@ -8621,7 +8670,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                       )}
                     </div>
                   )}
-              </div>
+                </div>
               <div className="flex flex-col items-end gap-1.5 -mt-3">
                 <div className="text-white/80 text-[11px] leading-none">
                   Total credits:{" "}
@@ -8665,47 +8714,62 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
 
             {/* Desktop toolbar */}
-            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_auto] w-full flex-1 min-w-0 items-end gap-3 pb-0 pt-3">
-              <div className="flex w-full min-w-0 flex-row gap-2 items-center overflow-hidden">
-                {/* Model selector */}
-                <div className="flex-shrink-0">
-                <VideoModelsDropdown
-                  selectedModel={selectedModel}
-                  onModelChange={handleModelChange}
-                  generationMode={generationMode}
-                  selectedDuration={
-                    selectedModel.includes("MiniMax")
-                      ? `${selectedMiniMaxDuration}s`
-                      : formatDurationForCreditLookup(duration)
-                  }
-                  selectedResolution={(() => {
-                    const resolutionForCredits =
-                      selectedModel.includes("veo3") ||
-                      selectedModel.includes("sora2")
-                        ? selectedQuality
-                        : creditsResolution;
-                    return resolutionForCredits
-                      ? String(resolutionForCredits).toLowerCase()
-                      : undefined;
-                  })()}
-                  activeFeature={activeFeature}
-                  onCloseOtherDropdowns={() => {
-                    // Close other dropdowns
-                    setCloseFrameSizeDropdown(true);
-                    setCloseDurationDropdown(true);
-                    setCloseCameraMotionDropdown(true);
-                    setTimeout(() => {
-                      setCloseFrameSizeDropdown(false);
-                      setCloseDurationDropdown(false);
-                      setCloseCameraMotionDropdown(false);
-                    }, 100);
-                  }}
-                  onCloseThisDropdown={closeModelsDropdown ? () => {} : undefined}
-                  />
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_auto] w-full flex-1 min-w-0 items-start gap-3 pb-0 pt-3">
+              <div className="grid w-full min-w-0 grid-rows-[auto_auto] gap-2">
+                <div className="flex w-full flex-wrap items-center gap-2 overflow-visible">
+                  <div className="flex-shrink-0">
+                    <VideoModelsDropdown
+                      selectedModel={selectedModel}
+                      onModelChange={handleModelChange}
+                      generationMode={generationMode}
+                      selectedDuration={
+                        selectedModel.includes("MiniMax")
+                          ? `${selectedMiniMaxDuration}s`
+                          : formatDurationForCreditLookup(duration)
+                      }
+                      selectedResolution={modelDropdownResolution}
+                      activeFeature={activeFeature}
+                      onCloseOtherDropdowns={() => {
+                        setCloseFrameSizeDropdown(true);
+                        setCloseDurationDropdown(true);
+                        setCloseCameraMotionDropdown(true);
+                        setTimeout(() => {
+                          setCloseFrameSizeDropdown(false);
+                          setCloseDurationDropdown(false);
+                          setCloseCameraMotionDropdown(false);
+                        }, 100);
+                      }}
+                      onCloseThisDropdown={
+                        closeModelsDropdown ? () => {} : undefined
+                      }
+                    />
+                  </div>
+                  {shouldShowSeedance2FamilySelector(selectedModel) ? (
+                    <div className="flex-shrink-0">
+                      <SeedanceFamilyVariantDropdown
+                        options={SEEDANCE_2_VARIANT_OPTIONS}
+                        selectedValue={selectedSeedance2Variant}
+                        onChange={handleSeedance2VariantChange}
+                        onCloseOtherDropdowns={() => {
+                          setCloseModelsDropdown(true);
+                          setCloseFrameSizeDropdown(true);
+                          setCloseDurationDropdown(true);
+                          setCloseCameraMotionDropdown(true);
+                          setTimeout(() => {
+                            setCloseModelsDropdown(false);
+                            setCloseFrameSizeDropdown(false);
+                            setCloseDurationDropdown(false);
+                            setCloseCameraMotionDropdown(false);
+                          }, 100);
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
-                {/* Dynamic Controls Based on Model Capabilities */}
-                <div
+                <div className="flex w-full min-w-0 flex-row gap-2 items-center overflow-hidden">
+                  {/* Dynamic Controls Based on Model Capabilities */}
+                  <div
                   ref={desktopToolbarControlsRef}
                   onWheel={handleDesktopToolbarWheel}
                   onPointerDown={handleDesktopToolbarPointerDown}
@@ -9577,7 +9641,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Seedance Models: Full customization
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0.5">
                       {/* Aspect Ratio - Seedance 2.0 supports this for both T2V and I2V */}
                       {(generationMode === "text_to_video" ||
                         isSeedance2FamilyModel(selectedModel)) && (
@@ -10754,6 +10818,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                     return null;
                   })()}
                 </div>
+              </div>
               </div>
 
               {/* Desktop: Generate button section */}
