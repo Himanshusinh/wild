@@ -49,6 +49,7 @@ import {
   buildVideoToVideoBody,
 } from "@/lib/videoGenerationBuilders";
 import { uploadGeneratedVideo, uploadLocalVideoFile } from "@/lib/videoUpload";
+import { saveUpload } from "@/lib/libraryApi";
 import { VideoGenerationState, GenMode } from "@/types/videoGeneration";
 import {
   FilePlay,
@@ -513,6 +514,12 @@ const InputBox = (props: InputBoxProps = {}) => {
   >("generationMode", "text_to_video", "text-to-video");
   const [error, setError] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const isNormalizingLocalImagesRef = useRef(false);
+
+  const isLocalImageUrl = useCallback((value?: string | null): boolean => {
+    const url = String(value || "").trim();
+    return Boolean(url) && (url.startsWith("data:image/") || url.startsWith("blob:"));
+  }, []);
 
   // Auto-detect aspect ratio for uploaded images (only until user manually changes it)
   useEffect(() => {
@@ -630,6 +637,77 @@ const InputBox = (props: InputBoxProps = {}) => {
       });
     }
   }, [lastFrameImage, setLastFrameImage, setUploadedImages, uploadedImages]);
+
+  // Staging proxies can reject large inline base64 payloads (413).
+  // Normalize any local image URLs to uploaded remote URLs before submit.
+  useEffect(() => {
+    const hasLocalImages =
+      uploadedImages.some((u) => isLocalImageUrl(u)) ||
+      references.some((u) => isLocalImageUrl(u)) ||
+      isLocalImageUrl(lastFrameImage) ||
+      isLocalImageUrl(uploadedCharacterImage);
+
+    if (!hasLocalImages || isNormalizingLocalImagesRef.current) return;
+
+    let isCancelled = false;
+    isNormalizingLocalImagesRef.current = true;
+
+    const normalize = async () => {
+      try {
+        const cache = new Map<string, string>();
+        const resolveUrl = async (url: string): Promise<string> => {
+          const raw = String(url || "").trim();
+          if (!isLocalImageUrl(raw)) return raw;
+          if (cache.has(raw)) return cache.get(raw)!;
+          const resp = await saveUpload({ url: raw, type: "image" });
+          if (resp.responseStatus === "success" && resp.data?.url) {
+            cache.set(raw, resp.data.url);
+            return resp.data.url;
+          }
+          throw new Error(resp.message || "Failed to upload local image");
+        };
+
+        const nextUploadedImages = await Promise.all(uploadedImages.map(resolveUrl));
+        const nextReferences = await Promise.all(references.map(resolveUrl));
+        const nextLastFrameImage = await resolveUrl(lastFrameImage || "");
+        const nextCharacterImage = await resolveUrl(uploadedCharacterImage || "");
+
+        if (isCancelled) return;
+
+        if (JSON.stringify(nextUploadedImages) !== JSON.stringify(uploadedImages)) {
+          setUploadedImages(nextUploadedImages);
+        }
+        if (JSON.stringify(nextReferences) !== JSON.stringify(references)) {
+          setReferences(nextReferences);
+        }
+        if ((nextLastFrameImage || "") !== (lastFrameImage || "")) {
+          setLastFrameImage(nextLastFrameImage);
+        }
+        if ((nextCharacterImage || "") !== (uploadedCharacterImage || "")) {
+          setUploadedCharacterImage(nextCharacterImage);
+        }
+      } catch (error) {
+        console.error("[Video] Failed to normalize local image URLs:", error);
+      } finally {
+        isNormalizingLocalImagesRef.current = false;
+      }
+    };
+
+    void normalize();
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    uploadedImages,
+    references,
+    lastFrameImage,
+    uploadedCharacterImage,
+    isLocalImageUrl,
+    setUploadedImages,
+    setReferences,
+    setLastFrameImage,
+    setUploadedCharacterImage,
+  ]);
 
   const [selectedQuality, setSelectedQuality] = usePersistedGenerationState(
     "selectedQuality",
@@ -8839,8 +8917,31 @@ const InputBox = (props: InputBoxProps = {}) => {
                 url.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) ||
                 url.startsWith("data:image/")
               ) {
-                setUploadedImages((prev) => [...prev, url].slice(0, 4));
-                toast.success("Image added from URL");
+                const normalizedUrl = String(url || "").trim();
+                if (isLocalImageUrl(normalizedUrl)) {
+                  try {
+                    const resp = await saveUpload({
+                      url: normalizedUrl,
+                      type: "image",
+                    });
+                    if (resp.responseStatus === "success" && resp.data?.url) {
+                      setUploadedImages((prev) =>
+                        [...prev, resp.data!.url].slice(0, 4),
+                      );
+                      toast.success("Image uploaded and added");
+                    } else {
+                      throw new Error(resp.message || "Failed to upload image");
+                    }
+                  } catch (error: any) {
+                    toast.error(
+                      error?.message ||
+                        "Failed to upload image URL. Please try again.",
+                    );
+                  }
+                } else {
+                  setUploadedImages((prev) => [...prev, normalizedUrl].slice(0, 4));
+                  toast.success("Image added from URL");
+                }
               }
             }
           }}
