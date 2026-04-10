@@ -107,6 +107,9 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const dropRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   const imageExtensionRegex = /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/i;
+  const makeMediaKey = React.useCallback((item: any) => {
+    return `${item?.historyId || ''}|${item?.storagePath || ''}|${item?.url || ''}|${item?.id || ''}`;
+  }, []);
 
   const isSupportedImageFile = React.useCallback((file: File) => {
     if (file.type && file.type.startsWith('image/')) return true;
@@ -354,10 +357,29 @@ const UploadModal: React.FC<UploadModalProps> = ({
           hasMore: result.hasMore,
           nextCursor: result.nextCursor
         });
-        // Set initial items (don't merge, replace)
-        setLibraryItems(result.items);
-        setLibraryNextCursor(result.nextCursor);
-        setLibraryHasMore(result.hasMore);
+        // Auto-prefetch additional pages when first page is too small to scroll.
+        // Some backends return tiny page slices (e.g., 4 images), which blocks onScroll pagination.
+        let merged = Array.isArray(result.items) ? [...result.items] : [];
+        let nextCursor = result.nextCursor;
+        let hasMorePages = Boolean(result.hasMore);
+        let prefetchCount = 0;
+        while (hasMorePages && merged.length < 20 && prefetchCount < 5) {
+          const nextPage = await getLibraryPage(50, nextCursor, 'image');
+          const existing = new Set(merged.map(makeMediaKey));
+          const uniqueNext = (nextPage.items || []).filter((item: any) => !existing.has(makeMediaKey(item)));
+          if (uniqueNext.length === 0 && !nextPage.nextCursor) {
+            hasMorePages = false;
+            break;
+          }
+          merged = [...merged, ...uniqueNext];
+          nextCursor = nextPage.nextCursor;
+          hasMorePages = Boolean(nextPage.hasMore);
+          prefetchCount += 1;
+        }
+
+        setLibraryItems(merged);
+        setLibraryNextCursor(nextCursor);
+        setLibraryHasMore(hasMorePages);
         hasLoadedLibraryRef.current = true;
       } catch (error) {
         console.error('[UploadModal] Error loading library:', error);
@@ -402,15 +424,33 @@ const UploadModal: React.FC<UploadModalProps> = ({
             convertedUrl: result.items[0].storagePath ? toDirectUrl(result.items[0].storagePath) : result.items[0].url
           } : null
         });
-        // Set initial items (don't merge, replace)
-        setUploadItems(result.items);
-        setUploadNextCursor(result.nextCursor);
+        // Auto-prefetch when the initial response is too small to create scroll.
+        let merged = Array.isArray(result.items) ? [...result.items] : [];
+        let nextCursor = result.nextCursor;
+        let hasMorePages = Boolean(result.hasMore);
+        let prefetchCount = 0;
+        while (hasMorePages && merged.length < 20 && prefetchCount < 5) {
+          const nextPage = await getUploadsPage(50, nextCursor, 'image');
+          const existing = new Set(merged.map(makeMediaKey));
+          const uniqueNext = (nextPage.items || []).filter((item: any) => !existing.has(makeMediaKey(item)));
+          if (uniqueNext.length === 0 && !nextPage.nextCursor) {
+            hasMorePages = false;
+            break;
+          }
+          merged = [...merged, ...uniqueNext];
+          nextCursor = nextPage.nextCursor;
+          hasMorePages = Boolean(nextPage.hasMore);
+          prefetchCount += 1;
+        }
+
+        setUploadItems(merged);
+        setUploadNextCursor(nextCursor);
         // If backend returns 0 items, treat as exhausted regardless of hasMore
-        if (!result.items || result.items.length === 0) {
+        if (!merged || merged.length === 0) {
           setUploadHasMore(false);
           uploadExhaustedRef.current = true;
         } else {
-          setUploadHasMore(Boolean(result.hasMore));
+          setUploadHasMore(Boolean(hasMorePages));
           uploadExhaustedRef.current = false;
         }
         console.log('[UploadModal] Set upload state:', {
