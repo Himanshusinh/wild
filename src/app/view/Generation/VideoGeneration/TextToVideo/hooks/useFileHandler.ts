@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { saveUpload } from '@/lib/libraryApi';
 
 interface UseFileHandlerProps {
   setUploadedImages: (update: (prev: string[]) => string[]) => void;
@@ -22,7 +23,18 @@ export const useFileHandler = ({ setUploadedImages, setUploadedVideo, setLocalVi
           reader.onload = () => resolve(reader.result as string);
           reader.readAsDataURL(file);
         });
-        newUrls.push(dataUrl);
+        try {
+          // Persist local images immediately so generation payloads never send huge data URLs.
+          const resp = await saveUpload({ url: dataUrl, type: 'image' });
+          if (resp.responseStatus === 'success' && resp.data?.url) {
+            newUrls.push(resp.data.url);
+          } else {
+            throw new Error(resp.message || 'Image upload failed');
+          }
+        } catch (error: any) {
+          console.error('[Video][useFileHandler] Failed to persist uploaded image:', error);
+          toast.error(`Failed to upload "${file.name}". Please try a smaller image.`);
+        }
       }
 
       if (newUrls.length > 0) {
