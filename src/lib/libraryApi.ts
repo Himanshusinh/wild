@@ -83,7 +83,6 @@ async function uploadLocalMediaFile(params: {
   projectId?: string;
 }): Promise<SaveUploadResponse> {
   try {
-    const api = getApiClient();
     const form = new FormData();
     form.append('file', params.file, params.file.name || `upload.${inferUploadFileExtension(params.file.type, params.type)}`);
     form.append('type', params.type);
@@ -91,10 +90,36 @@ async function uploadLocalMediaFile(params: {
       form.append('projectId', params.projectId);
     }
 
-    // Let the browser/axios set multipart boundary automatically.
-    // Manually forcing Content-Type can produce an unreadable body in some production setups.
-    const response = await api.post('/api/canvas/media-library/upload-file', form);
-    return response.data;
+    // Use same-origin Next.js proxy route for uploads so production edge/network
+    // handling stays consistent and doesn't depend on browser->backend multipart quirks.
+    const response = await fetch('/api/canvas/media-library/upload-file', {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+      },
+    });
+
+    const text = await response.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {
+        responseStatus: 'error',
+        message: text || 'Invalid upload response',
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        responseStatus: 'error',
+        message: data?.message || `Upload failed (${response.status})`,
+      };
+    }
+
+    return data as SaveUploadResponse;
   } catch (error: any) {
     console.error('[libraryApi] Error uploading local media file:', error);
     return {
