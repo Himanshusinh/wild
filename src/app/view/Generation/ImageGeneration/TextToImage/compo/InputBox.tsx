@@ -48,6 +48,7 @@ import {
   setImageCount,
   setFrameSize,
   setStyle,
+  setOutputFormat,
   setNanoBananaResolution,
   setNanoBananaGoogleSearch,
   setNanoBananaImageSearch,
@@ -6596,9 +6597,6 @@ const InputBox = () => {
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : "1:1";
 
-          // Use the selected resolution from state
-          const resolution = nanoBananaProResolution;
-
           const promptAdjusted = adjustPromptImageNumbers(
             finalPrompt,
             getCombinedUploadedImages(),
@@ -6613,11 +6611,10 @@ const InputBox = () => {
               model: "google/nano-banana-pro",
               num_images: imageCount,
               aspect_ratio: aspect as any,
-              resolution: resolution,
               uploadedImages: combinedImages.map((u: string) =>
                 toAbsoluteFromProxy(u),
               ),
-              output_format: "jpeg",
+              output_format: outputFormat,
               generationType: "text-to-image",
               isPublic,
             }),
@@ -6718,12 +6715,11 @@ const InputBox = () => {
               model: "google/nano-banana-2",
               num_images: imageCount,
               aspect_ratio: aspect as any,
-              resolution: nanoBananaResolution,
               enable_web_search: nanoBananaGoogleSearch,
               thinking_level: nanoBananaThinkingLevel,
               limit_generations: nanoBananaLimitGenerations,
               uploadedImages: preparedImages,
-              output_format: "jpeg",
+              output_format: outputFormat,
               generationType:
                 preparedImages.length > 0 ? "image-to-image" : "text-to-image",
               isPublic,
@@ -10147,29 +10143,23 @@ const InputBox = () => {
                 {(selectedModel === "google/nano-banana-pro" ||
                   selectedModel === "gemini-25-flash-image") && (
                   <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={nanoBananaProResolution}
-                      onResolutionChange={(val) =>
-                        setNanoBananaProResolution(val as "1K" | "2K" | "4K")
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={outputFormat}
+                      onOutputFormatChange={(val) =>
+                        dispatch(setOutputFormat(val))
                       }
-                      options={["1K", "2K", "4K"]}
-                      dropdownId="nanoBananaProResolution"
-                      optionCredits={nanoBananaProResolutionCredits as any}
+                      dropdownId="nanoBananaOutputFormatMb"
                     />
                   </div>
                 )}
                 {selectedModel === "google/nano-banana-2" && (
                   <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={nanoBananaResolution}
-                      onResolutionChange={(val) =>
-                        dispatch(
-                          setNanoBananaResolution(val as "1K" | "2K" | "4K"),
-                        )
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={outputFormat}
+                      onOutputFormatChange={(val) =>
+                        dispatch(setOutputFormat(val))
                       }
-                      options={["1K", "2K", "4K"]}
-                      dropdownId="nanoBananaResolutionMb"
-                      optionCredits={nanoBanana2ResolutionCredits as any}
+                      dropdownId="nanoBanana2OutputFormatMb"
                     />
                     <ThinkingLevelDropdown
                       thinkingLevel={nanoBananaThinkingLevel}
@@ -10340,29 +10330,23 @@ const InputBox = () => {
                   {(selectedModel === "google/nano-banana-pro" ||
                     selectedModel === "gemini-25-flash-image") && (
                     <div className="flex items-center gap-2 relative">
-                      <ResolutionDropdown
-                        resolution={nanoBananaProResolution}
-                        onResolutionChange={(val) =>
-                          setNanoBananaProResolution(val as "1K" | "2K" | "4K")
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={outputFormat}
+                        onOutputFormatChange={(val) =>
+                          dispatch(setOutputFormat(val))
                         }
-                        options={["1K", "2K", "4K"]}
-                        dropdownId="nanoBananaProResolution"
-                        optionCredits={nanoBananaProResolutionCredits as any}
+                        dropdownId="nanoBananaOutputFormatDesk"
                       />
                     </div>
                   )}
                   {selectedModel === "google/nano-banana-2" && (
                     <div className="flex items-center gap-2 relative">
-                      <ResolutionDropdown
-                        resolution={nanoBananaResolution}
-                        onResolutionChange={(val) =>
-                          dispatch(
-                            setNanoBananaResolution(val as "1K" | "2K" | "4K"),
-                          )
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={outputFormat}
+                        onOutputFormatChange={(val) =>
+                          dispatch(setOutputFormat(val))
                         }
-                        options={["1K", "2K", "4K"]}
-                        dropdownId="nanoBananaResolution"
-                        optionCredits={nanoBanana2ResolutionCredits as any}
+                        dropdownId="nanoBanana2OutputFormatDesk"
                       />
                       <ThinkingLevelDropdown
                         thinkingLevel={nanoBananaThinkingLevel}

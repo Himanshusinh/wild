@@ -77,14 +77,85 @@ const inferUploadFileExtension = (
   return fallbackType === 'video' ? 'mp4' : 'png';
 };
 
+async function loadImageElementFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to decode image for upload'));
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function compressImageFileForUpload(
+  file: File,
+  maxBytes: number = 900 * 1024, // stay below common 1MB nginx limits with headroom
+): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  if (file.size <= maxBytes) return file;
+
+  try {
+    const img = await loadImageElementFromFile(file);
+    const maxDimension = 1600;
+    const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+    const height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const mime = 'image/jpeg';
+    const extension = 'jpg';
+    let quality = 0.86;
+    let blob: Blob | null = null;
+
+    for (let i = 0; i < 8; i += 1) {
+      blob = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+      if (!blob) break;
+      if (blob.size <= maxBytes || quality <= 0.42) break;
+      quality -= 0.08;
+    }
+
+    if (!blob) return file;
+
+    const compressed = new File([blob], `upload-${Date.now()}.${extension}`, {
+      type: mime,
+    });
+
+    return compressed.size < file.size ? compressed : file;
+  } catch {
+    return file;
+  }
+}
+
 async function uploadLocalMediaFile(params: {
   file: File;
   type: 'image' | 'video';
   projectId?: string;
 }): Promise<SaveUploadResponse> {
   try {
+    const uploadFile =
+      params.type === 'image'
+        ? await compressImageFileForUpload(params.file)
+        : params.file;
+
     const form = new FormData();
-    form.append('file', params.file, params.file.name || `upload.${inferUploadFileExtension(params.file.type, params.type)}`);
+    form.append(
+      'file',
+      uploadFile,
+      uploadFile.name ||
+        `upload.${inferUploadFileExtension(uploadFile.type, params.type)}`,
+    );
     form.append('type', params.type);
     if (params.projectId) {
       form.append('projectId', params.projectId);
