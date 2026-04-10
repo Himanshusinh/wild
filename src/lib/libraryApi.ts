@@ -60,6 +60,84 @@ export interface SaveUploadResponse {
   };
 }
 
+const isLocalMediaSource = (value: string): boolean =>
+  /^data:/i.test(value) || value.startsWith('blob:');
+
+const inferUploadFileExtension = (
+  mimeType: string | undefined,
+  fallbackType: 'image' | 'video',
+): string => {
+  const mime = String(mimeType || '').toLowerCase();
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('webp')) return 'webp';
+  if (mime.includes('gif')) return 'gif';
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+  if (mime.includes('mp4')) return 'mp4';
+  if (mime.includes('quicktime')) return 'mov';
+  return fallbackType === 'video' ? 'mp4' : 'png';
+};
+
+async function uploadLocalMediaFile(params: {
+  file: File;
+  type: 'image' | 'video';
+  projectId?: string;
+}): Promise<SaveUploadResponse> {
+  try {
+    const api = getApiClient();
+    const form = new FormData();
+    form.append('file', params.file, params.file.name || `upload.${inferUploadFileExtension(params.file.type, params.type)}`);
+    form.append('type', params.type);
+    if (params.projectId) {
+      form.append('projectId', params.projectId);
+    }
+
+    const response = await api.post('/api/uploads/upload-file', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('[libraryApi] Error uploading local media file:', error);
+    return {
+      responseStatus: 'error',
+      message:
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to upload local media file',
+    };
+  }
+}
+
+async function uploadLocalMediaSource(params: {
+  url: string;
+  type: 'image' | 'video';
+  projectId?: string;
+}): Promise<SaveUploadResponse> {
+  try {
+    const response = await fetch(params.url);
+    if (!response.ok) {
+      throw new Error(`Failed to read local media (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const ext = inferUploadFileExtension(blob.type, params.type);
+    const file = new File([blob], `upload-${Date.now()}.${ext}`, {
+      type: blob.type || (params.type === 'video' ? 'video/mp4' : 'image/png'),
+    });
+
+    return uploadLocalMediaFile({
+      file,
+      type: params.type,
+      projectId: params.projectId,
+    });
+  } catch (error: any) {
+    console.error('[libraryApi] Error converting local media source:', error);
+    return {
+      responseStatus: 'error',
+      message: error?.message || 'Failed to prepare local media for upload',
+    };
+  }
+}
+
 /**
  * Fetch library items (generated media) from backend
  */
@@ -187,6 +265,10 @@ export async function saveUpload(params: {
   projectId?: string;
 }): Promise<SaveUploadResponse> {
   try {
+    if (isLocalMediaSource(params.url)) {
+      return uploadLocalMediaSource(params);
+    }
+
     const api = getApiClient();
     const response = await api.post('/api/canvas/media-library/upload', {
       url: params.url,
