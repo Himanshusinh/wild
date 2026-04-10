@@ -101,6 +101,73 @@ const hasCustomGenerationToastHandler = (requestUrl: string): boolean =>
     requestUrl.includes("/submit") ||
     requestUrl.includes("/create"));
 
+const shouldNormalizeInlineWorkflowImages = (requestUrl: string): boolean =>
+  requestUrl.startsWith("/api/workflows/");
+
+const isInlineImageDataUrl = (value: unknown): value is string =>
+  typeof value === "string" && value.startsWith("data:image/");
+
+const uploadMediaLibraryImage = async (
+  dataUrl: string,
+  authHeader?: string,
+): Promise<string> => {
+  const response = await axios.post(
+    `${resolvedBaseUrl}/api/canvas/media-library/upload`,
+    {
+      url: dataUrl,
+      type: "image",
+    },
+    {
+      withCredentials: true,
+      timeout: 1200000,
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+    },
+  );
+
+  const uploadedUrl = response?.data?.data?.url;
+  if (!uploadedUrl || typeof uploadedUrl !== "string") {
+    throw new Error("Failed to persist uploaded image");
+  }
+  return uploadedUrl;
+};
+
+const normalizeInlineWorkflowImages = async (
+  value: any,
+  authHeader?: string,
+): Promise<any> => {
+  if (isInlineImageDataUrl(value)) {
+    return uploadMediaLibraryImage(value, authHeader);
+  }
+
+  if (Array.isArray(value)) {
+    return Promise.all(
+      value.map((item) => normalizeInlineWorkflowImages(item, authHeader)),
+    );
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    typeof File === "undefined" ? true : !(value instanceof File) &&
+    typeof Blob === "undefined" ? true : !(value instanceof Blob) &&
+    typeof FormData === "undefined" ? true : !(value instanceof FormData)
+  ) {
+    const entries = await Promise.all(
+      Object.entries(value).map(async ([key, nestedValue]) => [
+        key,
+        await normalizeInlineWorkflowImages(nestedValue, authHeader),
+      ]),
+    );
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+};
+
 const isBackgroundPollingRequest = (requestUrl: string): boolean =>
   requestUrl.startsWith("/api/fal/queue/status") ||
   requestUrl.startsWith("/api/fal/queue/result") ||
@@ -309,6 +376,21 @@ axiosInstance.interceptors.request.use(async (config) => {
         headers["Authorization"] = `Bearer ${token}`;
         config.headers = headers;
       }
+
+      if (
+        shouldNormalizeInlineWorkflowImages(url) &&
+        config.data &&
+        typeof config.data === "object"
+      ) {
+        const authHeader =
+          (config.headers as any)?.Authorization ||
+          (config.headers as any)?.authorization;
+        config.data = await normalizeInlineWorkflowImages(
+          config.data,
+          authHeader,
+        );
+      }
+
       // Be explicit about no-cache for generations endpoints to avoid stale browser cache
       try {
         if (url.startsWith("/api/generations")) {

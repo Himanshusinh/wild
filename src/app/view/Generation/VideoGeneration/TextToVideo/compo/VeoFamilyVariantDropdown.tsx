@@ -4,22 +4,25 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronUp, Layers } from "lucide-react";
 
-interface SeedanceVariantOption {
+interface VeoVariantOption {
   value: string;
   label: string;
   info?: string;
 }
 
-interface SeedanceFamilyVariantDropdownProps {
-  options: SeedanceVariantOption[];
+interface VeoFamilyVariantDropdownProps {
+  options: VeoVariantOption[];
   selectedValue: string;
   onChange: (value: string) => void;
   onCloseOtherDropdowns?: () => void;
 }
 
-const SeedanceFamilyVariantDropdown: React.FC<
-  SeedanceFamilyVariantDropdownProps
-> = ({ options, selectedValue, onChange, onCloseOtherDropdowns }) => {
+const VeoFamilyVariantDropdown: React.FC<VeoFamilyVariantDropdownProps> = ({
+  options,
+  selectedValue,
+  onChange,
+  onCloseOtherDropdowns,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
@@ -27,7 +30,7 @@ const SeedanceFamilyVariantDropdown: React.FC<
     openUp: boolean;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownId = "seedance-family-variant-dropdown";
+  const dropdownId = "veo-family-variant-dropdown";
 
   const selectedOption =
     options.find((option) => option.value === selectedValue) || options[0];
@@ -56,7 +59,8 @@ const SeedanceFamilyVariantDropdown: React.FC<
       if (!buttonRef.current) return;
 
       const buttonRect = buttonRef.current.getBoundingClientRect();
-      const dropdownWidth = window.innerWidth >= 768 ? 260 : Math.min(260, window.innerWidth - 16);
+      const dropdownWidth =
+        window.innerWidth >= 768 ? 260 : Math.min(260, window.innerWidth - 16);
       let left = buttonRect.left;
       let top = buttonRect.top;
       let openUp = true;
@@ -169,4 +173,4 @@ const SeedanceFamilyVariantDropdown: React.FC<
   );
 };
 
-export default SeedanceFamilyVariantDropdown;
+export default VeoFamilyVariantDropdown;

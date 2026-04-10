@@ -4,22 +4,25 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronUp, Layers } from "lucide-react";
 
-interface SeedanceVariantOption {
+interface LtxVariantOption {
   value: string;
   label: string;
   info?: string;
 }
 
-interface SeedanceFamilyVariantDropdownProps {
-  options: SeedanceVariantOption[];
+interface LtxFamilyVariantDropdownProps {
+  options: LtxVariantOption[];
   selectedValue: string;
   onChange: (value: string) => void;
   onCloseOtherDropdowns?: () => void;
 }
 
-const SeedanceFamilyVariantDropdown: React.FC<
-  SeedanceFamilyVariantDropdownProps
-> = ({ options, selectedValue, onChange, onCloseOtherDropdowns }) => {
+const LtxFamilyVariantDropdown: React.FC<LtxFamilyVariantDropdownProps> = ({
+  options,
+  selectedValue,
+  onChange,
+  onCloseOtherDropdowns,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
@@ -27,21 +30,19 @@ const SeedanceFamilyVariantDropdown: React.FC<
     openUp: boolean;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownId = "seedance-family-variant-dropdown";
+  const dropdownId = "ltx-family-variant-dropdown";
 
   const selectedOption =
     options.find((option) => option.value === selectedValue) || options[0];
 
   useEffect(() => {
     if (!isOpen) return;
-
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (buttonRef.current?.contains(target)) return;
       if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
       setIsOpen(false);
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownId, isOpen]);
@@ -51,34 +52,27 @@ const SeedanceFamilyVariantDropdown: React.FC<
       setDropdownPosition(null);
       return;
     }
-
     const updateDropdownPosition = () => {
       if (!buttonRef.current) return;
-
       const buttonRect = buttonRef.current.getBoundingClientRect();
-      const dropdownWidth = window.innerWidth >= 768 ? 260 : Math.min(260, window.innerWidth - 16);
+      const dropdownWidth =
+        window.innerWidth >= 768 ? 260 : Math.min(260, window.innerWidth - 16);
       let left = buttonRect.left;
       let top = buttonRect.top;
       let openUp = true;
-
       if (left + dropdownWidth > window.innerWidth - 8) {
         left = window.innerWidth - dropdownWidth - 8;
       }
-      if (left < 8) {
-        left = 8;
-      }
+      if (left < 8) left = 8;
       if (top < 8) {
         top = buttonRect.bottom + 8;
         openUp = false;
       }
-
       setDropdownPosition({ top, left, openUp });
     };
-
     updateDropdownPosition();
     window.addEventListener("scroll", updateDropdownPosition, true);
     window.addEventListener("resize", updateDropdownPosition);
-
     return () => {
       window.removeEventListener("scroll", updateDropdownPosition, true);
       window.removeEventListener("resize", updateDropdownPosition);
@@ -89,7 +83,7 @@ const SeedanceFamilyVariantDropdown: React.FC<
     isOpen && dropdownPosition ? (
       <div
         data-dropdown={dropdownId}
-        className="fixed w-auto max-w-[calc(100vw-16px)] rounded-lg border border-white/15 bg-black/90 shadow-2xl backdrop-blur-3xl z-[9999]"
+        className="fixed w-auto min-w-auto max-w-[calc(100vw-16px)] rounded-lg border border-white/15 bg-black/90 shadow-2xl backdrop-blur-3xl z-[9999]"
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`,
@@ -169,4 +163,4 @@ const SeedanceFamilyVariantDropdown: React.FC<
   );
 };
 
-export default SeedanceFamilyVariantDropdown;
+export default LtxFamilyVariantDropdown;

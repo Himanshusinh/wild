@@ -88,6 +88,12 @@ declare global {
 // Import the video-specific components
 import VideoModelsDropdown from "./VideoModelsDropdown";
 import SeedanceFamilyVariantDropdown from "./SeedanceFamilyVariantDropdown";
+import VeoFamilyVariantDropdown from "./VeoFamilyVariantDropdown";
+import KlingFamilyVariantDropdown from "./KlingFamilyVariantDropdown";
+import HailuoFamilyVariantDropdown from "./HailuoFamilyVariantDropdown";
+import SoraFamilyVariantDropdown from "./SoraFamilyVariantDropdown";
+import LtxFamilyVariantDropdown from "./LtxFamilyVariantDropdown";
+import WanFamilyVariantDropdown from "./WanFamilyVariantDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import CameraMotionDropdown from "./CameraMotionDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
@@ -125,6 +131,22 @@ interface InputBoxProps {
 
 type VideoDurationValue = number | "auto";
 
+const VEO_31_STANDARD_MODEL = "veo3.1-t2v-8s";
+const VEO_31_LITE_MODEL = "veo3.1-lite-t2v-8s";
+const VEO_31_FAST_MODEL = "veo3.1-fast-t2v-8s";
+const KLING_O1_MODEL = "kling-o1";
+const KLING_3_STANDARD_MODEL = "kling-v3-standard";
+const KLING_3_PRO_MODEL = "kling-v3-pro";
+const KLING_26_PRO_MODEL = "kling-2.6-pro";
+const KLING_25_TURBO_PRO_MODEL = "kling-v2.5-turbo-pro-t2v";
+const HAILUO_23_MODEL = "MiniMax-Hailuo-2.3";
+const HAILUO_23_FAST_MODEL = "MiniMax-Hailuo-2.3-Fast";
+const SORA_2_MODEL = "sora2-t2v";
+const SORA_2_PRO_MODEL = "sora2-pro-t2v";
+const LTX_23_PRO_MODEL = "ltx-2.3-pro-t2v";
+const LTX_23_FAST_MODEL = "ltx-2.3-fast-t2v";
+const WAN_25_MODEL = "wan-2.5-t2v";
+const WAN_25_FAST_MODEL = "wan-2.5-t2v-fast";
 const SEEDANCE_2_MODEL = "seedance-2.0-t2v";
 const SEEDANCE_2_REFERENCE_MODEL = "seedance-2.0-r2v";
 const SEEDANCE_2_FAST_MODEL = "seedance-2.0-fast";
@@ -150,8 +172,31 @@ const isSeedance2FamilyModel = (model: string) =>
   isSeedance2FastModel(model) ||
   isSeedance2FastReferenceModel(model);
 
-const shouldShowSeedance2FamilySelector = (model: string) =>
-  model.includes("seedance-2.0");
+const isSeedanceFamilyModel = (model: string) => model.includes("seedance");
+const isVeo31FamilyModel = (model: string) => model.includes("veo3.1");
+const isKlingFamilyModel = (model: string) =>
+  model === KLING_O1_MODEL ||
+  model === KLING_3_STANDARD_MODEL ||
+  model === KLING_3_PRO_MODEL ||
+  model === KLING_26_PRO_MODEL ||
+  model === KLING_25_TURBO_PRO_MODEL;
+const isHailuoFamilyModel = (model: string) =>
+  model === HAILUO_23_MODEL || model === HAILUO_23_FAST_MODEL;
+const isSoraFamilyModel = (model: string) =>
+  model === SORA_2_MODEL || model === SORA_2_PRO_MODEL;
+const isLtxFamilyModel = (model: string) =>
+  model === LTX_23_PRO_MODEL || model === LTX_23_FAST_MODEL;
+const isWanFamilyModel = (model: string) =>
+  model === WAN_25_MODEL || model === WAN_25_FAST_MODEL;
+
+const shouldShowSecondaryFamilySelector = (model: string) =>
+  isSeedanceFamilyModel(model) ||
+  isVeo31FamilyModel(model) ||
+  isKlingFamilyModel(model) ||
+  isHailuoFamilyModel(model) ||
+  isSoraFamilyModel(model) ||
+  isLtxFamilyModel(model) ||
+  isWanFamilyModel(model);
 
 const isSeedance2TextModel = (model: string) =>
   model === SEEDANCE_2_MODEL ||
@@ -170,11 +215,129 @@ const getMaxVideoSize = (model: string) => {
 const formatDurationForCreditLookup = (value: VideoDurationValue): string =>
   value === "auto" ? "auto" : `${value}s`;
 
-const SEEDANCE_2_VARIANT_OPTIONS = [
-  { value: SEEDANCE_2_MODEL, label: "Image/Text to Video" },
-  { value: SEEDANCE_2_FAST_MODEL, label: "Image/Text to Video Fast" },
-  { value: SEEDANCE_2_REFERENCE_MODEL, label: "Reference to Video" },
-  { value: SEEDANCE_2_FAST_REFERENCE_MODEL, label: "Reference to Video Fast" },
+const SEEDANCE_VARIANT_OPTIONS = [
+  {
+    value: "seedance-1.0-lite-t2v",
+    label: "1.0 Lite",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: "seedance-1.0-pro-t2v",
+    label: "1.0 Pro",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: "seedance-1.0-pro-fast-t2v",
+    label: "1.0 Pro Fast",
+    info: "Image, Text to video",
+  },
+  {
+    value: "seedance-1.5-pro-t2v",
+    label: "1.5 Pro",
+    info: "Image, Text to video",
+  },
+  {
+    value: SEEDANCE_2_MODEL,
+    label: "2.0 Standard",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: SEEDANCE_2_FAST_MODEL,
+    label: "2.0 Fast",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: SEEDANCE_2_REFERENCE_MODEL,
+    label: "2.0 Reference",
+    info: "Ref Img/Video/Audio to video",
+  },
+  {
+    value: SEEDANCE_2_FAST_REFERENCE_MODEL,
+    label: "2.0 Reference Fast",
+    info: "Ref Img/Video/Audio to video",
+  },
+];
+
+const VEO_31_VARIANT_OPTIONS = [
+  {
+    value: VEO_31_STANDARD_MODEL,
+    label: "3.1 Standard",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: VEO_31_LITE_MODEL,
+    label: "3.1 Lite",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: VEO_31_FAST_MODEL,
+    label: "3.1 Fast",
+    info: "Image, Text, FFLF to video",
+  },
+];
+
+const KLING_VARIANT_OPTIONS = [
+  {
+    value: KLING_O1_MODEL,
+    label: "o1",
+    info: "Image, FFLF to video",
+  },
+  {
+    value: KLING_3_STANDARD_MODEL,
+    label: "3.0 Standard",
+    info: "Image, Text to video",
+  },
+  {
+    value: KLING_3_PRO_MODEL,
+    label: "3.0 Pro",
+    info: "Image, Text to video",
+  },
+  {
+    value: KLING_26_PRO_MODEL,
+    label: "2.6 Pro",
+    info: "Image, Text to video",
+  },
+  {
+    value: KLING_25_TURBO_PRO_MODEL,
+    label: "2.5 Turbo Pro",
+    info: "Image, Text to video",
+  },
+];
+
+const HAILUO_VARIANT_OPTIONS = [
+  {
+    value: HAILUO_23_MODEL,
+    label: "2.3",
+    info: "Image, Text to video",
+  },
+  {
+    value: HAILUO_23_FAST_MODEL,
+    label: "2.3 Fast",
+    info: "Image to video",
+  },
+];
+
+const SORA_VARIANT_OPTIONS = [
+  { value: SORA_2_MODEL, label: "2", info: "Image, Text to video" },
+  { value: SORA_2_PRO_MODEL, label: "2 Pro", info: "Image, Text to video" },
+];
+
+const LTX_VARIANT_OPTIONS = [
+  {
+    value: LTX_23_PRO_MODEL,
+    label: "2.3 Pro",
+    info: "Image, Text, FFLF to video",
+  },
+  {
+    value: LTX_23_FAST_MODEL,
+    label: "2.3 Fast",
+    info: "Image, Text, FFLF to video",
+  },
+];
+
+const WAN_VARIANT_OPTIONS = [
+  { value: WAN_25_MODEL, label: "2.5", info: "Image, Text to video" },
+  { value: WAN_25_FAST_MODEL, label: "2.5 Fast", info: "Image, Text to video" },
 ];
 
 const InputBox = (props: InputBoxProps = {}) => {
@@ -1738,6 +1901,14 @@ const InputBox = (props: InputBoxProps = {}) => {
       const container = desktopToolbarControlsRef.current;
       if (!container) return;
       if (container.scrollWidth <= container.clientWidth + 1) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest(
+          "button, input, select, textarea, label, a, [role='button'], [data-dropdown]",
+        )
+      ) {
+        return;
+      }
 
       isDraggingDesktopToolbarRef.current = true;
       desktopToolbarDragStartXRef.current = event.clientX;
@@ -8120,7 +8291,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   const newLocal =
-    "pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50";
+    "pointer-events-none absolute bottom-full left-1/2 z-[60] mb-2 -translate-x-1/2 rounded-md bg-black/90 px-2 py-1 text-[10px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100";
   const isLtx23Model =
     selectedModel.includes("ltx-2.3-fast") ||
     selectedModel.includes("ltx-2.3-pro");
@@ -8141,16 +8312,439 @@ const InputBox = (props: InputBoxProps = {}) => {
       : undefined;
   })();
 
-  const selectedSeedance2Variant = isSeedance2FastReferenceModel(selectedModel)
-    ? SEEDANCE_2_FAST_REFERENCE_MODEL
-    : isSeedance2ReferenceModel(selectedModel)
-      ? SEEDANCE_2_REFERENCE_MODEL
-      : isSeedance2FastModel(selectedModel)
-        ? SEEDANCE_2_FAST_MODEL
-        : SEEDANCE_2_MODEL;
+  const familyVariantOptions = isSeedanceFamilyModel(selectedModel)
+    ? SEEDANCE_VARIANT_OPTIONS
+    : isVeo31FamilyModel(selectedModel)
+      ? VEO_31_VARIANT_OPTIONS
+      : isKlingFamilyModel(selectedModel)
+        ? KLING_VARIANT_OPTIONS
+        : isHailuoFamilyModel(selectedModel)
+          ? HAILUO_VARIANT_OPTIONS
+          : isSoraFamilyModel(selectedModel)
+            ? SORA_VARIANT_OPTIONS
+            : isLtxFamilyModel(selectedModel)
+              ? LTX_VARIANT_OPTIONS
+              : isWanFamilyModel(selectedModel)
+                ? WAN_VARIANT_OPTIONS
+      : [];
 
-  const handleSeedance2VariantChange = (variant: string) => {
+  const selectedFamilyVariant = familyVariantOptions.some(
+    (option) => option.value === selectedModel,
+  )
+    ? selectedModel
+    : familyVariantOptions[0]?.value || "";
+
+  const handleFamilyVariantChange = (variant: string) => {
     handleModelChange(variant);
+  };
+
+  const renderFamilyVariantDropdown = () => {
+    if (!shouldShowSecondaryFamilySelector(selectedModel)) return null;
+
+    const sharedProps = {
+      options: familyVariantOptions,
+      selectedValue: selectedFamilyVariant,
+      onChange: handleFamilyVariantChange,
+      onCloseOtherDropdowns: () => {
+        setCloseModelsDropdown(true);
+        setCloseFrameSizeDropdown(true);
+        setCloseDurationDropdown(true);
+        setCloseCameraMotionDropdown(true);
+        setTimeout(() => {
+          setCloseModelsDropdown(false);
+          setCloseFrameSizeDropdown(false);
+          setCloseDurationDropdown(false);
+          setCloseCameraMotionDropdown(false);
+        }, 100);
+      },
+    };
+
+    if (isVeo31FamilyModel(selectedModel)) {
+      return <VeoFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isKlingFamilyModel(selectedModel)) {
+      return <KlingFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isHailuoFamilyModel(selectedModel)) {
+      return <HailuoFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isSoraFamilyModel(selectedModel)) {
+      return <SoraFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isLtxFamilyModel(selectedModel)) {
+      return <LtxFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isWanFamilyModel(selectedModel)) {
+      return <WanFamilyVariantDropdown {...sharedProps} />;
+    }
+
+      return <SeedanceFamilyVariantDropdown {...sharedProps} />;
+    };
+
+  const renderMobileAudioControls = () => (
+    <>
+      {(selectedModel === "kling-2.6-pro" ||
+        selectedModel.startsWith("kling-v3") ||
+        isSeedance2FamilyModel(selectedModel) ||
+        selectedModel.includes("seedance-1.5") ||
+        (selectedModel.includes("sora2") &&
+          !selectedModel.includes("v2v")) ||
+        selectedModel.includes("ltx2") ||
+        selectedModel.includes("ltx-2.3-fast") ||
+        selectedModel.includes("ltx-2.3-pro") ||
+        (selectedModel.includes("veo3.1") &&
+          !selectedModel.includes("veo3.1-lite") &&
+          !(
+            activeFeature === "Lipsync" &&
+            selectedModel.includes("veo3.1")
+          )) ||
+        (selectedModel.includes("veo3") &&
+          !selectedModel.includes("veo3.1"))) && (
+        <button
+          onClick={() => setGenerateAudio((v) => !v)}
+          className={`group md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative flex-shrink-0 ${
+            generateAudio
+              ? "bg-transparent text-white "
+              : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+          }`}
+        >
+          <div className="relative">
+            {generateAudio ? (
+              <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
+            ) : (
+              <VolumeX className="w-4 h-4 md:w-5 md:h-5" />
+            )}
+            <div className={newLocal}>
+              {generateAudio ? "Audio: On" : "Audio: Off"}
+            </div>
+          </div>
+        </button>
+      )}
+      {selectedModel.includes("wan-2.5") &&
+        selectedModel !== "wan-2.2-animate-replace" &&
+        !selectedModel.includes("wan-2.2") && (
+          <div className="relative flex-shrink-0">
+            <input
+              type="file"
+              accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
+              onChange={handleAudioUpload}
+              className="hidden"
+              id="audio-upload-wan-mobile"
+            />
+            <label
+              htmlFor="audio-upload-wan-mobile"
+              className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
+            >
+              <Music className="md:w-3.5 w-3 h-3 md:h-3.5" />
+              {uploadedAudio ? "Uploaded" : "Audio"}
+            </label>
+            {uploadedAudio && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setUploadedAudio("");
+                  toast.success("Audio file removed");
+                }}
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
+                title="Remove audio"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
+        )}
+    </>
+  );
+
+  const renderMobileParameterControls = () => {
+    const closeModelAndDuration = () => {
+      setCloseModelsDropdown(true);
+      setTimeout(() => setCloseModelsDropdown(false), 0);
+      setCloseDurationDropdown(true);
+      setTimeout(() => setCloseDurationDropdown(false), 0);
+    };
+
+    const closeModelAndFrame = () => {
+      setCloseModelsDropdown(true);
+      setTimeout(() => setCloseModelsDropdown(false), 0);
+      setCloseFrameSizeDropdown(true);
+      setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+    };
+
+    const closeModelFrameAndDuration = () => {
+      setCloseModelsDropdown(true);
+      setCloseFrameSizeDropdown(true);
+      setCloseDurationDropdown(true);
+      setTimeout(() => {
+        setCloseModelsDropdown(false);
+        setCloseFrameSizeDropdown(false);
+        setCloseDurationDropdown(false);
+      }, 100);
+    };
+
+    if (
+      selectedModel === "T2V-01-Director" ||
+      selectedModel === "I2V-01-Director" ||
+      selectedModel === "S2V-01"
+    ) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <div className="h-[28px] px-2 rounded-lg text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+            <TvMinimalPlay className="w-3 h-3" />
+            720P
+          </div>
+          <div className="h-[28px] px-2 rounded-lg text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            6s
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedModel.includes("sora2") && !selectedModel.includes("v2v")) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={frameSize}
+            onFrameSizeChange={setFrameSize}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <ResolutionDropdown
+            selectedModel={selectedModel}
+            selectedResolution={selectedQuality}
+            onResolutionChange={setSelectedQuality}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (selectedModel.includes("ltx2")) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          {generationMode === "image_to_video" ? (
+            <VideoFrameSizeDropdown
+              selectedFrameSize={frameSize}
+              onFrameSizeChange={setFrameSize}
+              selectedModel={selectedModel}
+              generationMode={generationMode}
+              onCloseOtherDropdowns={closeModelAndDuration}
+              onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+            />
+          ) : (
+            <div className="h-[28px] px-2 rounded-lg text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/70 flex items-center gap-1">
+              16:9
+            </div>
+          )}
+          <ResolutionDropdown
+            selectedModel={selectedModel}
+            selectedResolution={selectedResolution.toLowerCase?.() || "1080p"}
+            onResolutionChange={setSelectedResolution as any}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (
+      selectedModel.includes("ltx-2.3-fast") ||
+      selectedModel.includes("ltx-2.3-pro")
+    ) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={frameSize}
+            onFrameSizeChange={handleFrameSizeChange}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelFrameAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <ResolutionDropdown
+            selectedModel={selectedModel}
+            selectedResolution={selectedResolution.toLowerCase?.() || "1080p"}
+            onResolutionChange={setSelectedResolution as any}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelFrameAndDuration}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+          <CameraMotionDropdown
+            selectedMotion={selectedCameraMovements[0] || "none"}
+            onMotionChange={(motion) => setSelectedCameraMovements([motion])}
+            onCloseOtherDropdowns={closeModelFrameAndDuration}
+            onCloseThisDropdown={closeCameraMotionDropdown}
+          />
+        </div>
+      );
+    }
+
+    if (selectedModel.includes("veo3.1")) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={frameSize}
+            onFrameSizeChange={setFrameSize}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <ResolutionDropdown
+            selectedModel={selectedModel}
+            selectedResolution={selectedQuality}
+            onResolutionChange={setSelectedQuality}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (selectedModel.includes("veo3") && !selectedModel.includes("veo3.1")) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={frameSize}
+            onFrameSizeChange={setFrameSize}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <ResolutionDropdown
+            selectedModel={selectedModel}
+            selectedResolution={selectedQuality}
+            onResolutionChange={setSelectedQuality}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (selectedModel.startsWith("kling-")) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={frameSize}
+            onFrameSizeChange={setFrameSize}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (
+      selectedModel.includes("wan-2.5") &&
+      selectedModel !== "wan-2.2-animate-replace" &&
+      !selectedModel.includes("wan-2.2")
+    ) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={frameSize}
+            onFrameSizeChange={setFrameSize}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (selectedModel.includes("seedance")) {
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+          {(generationMode === "text_to_video" ||
+            isSeedance2FamilyModel(selectedModel)) && (
+            <VideoFrameSizeDropdown
+              selectedFrameSize={frameSize}
+              onFrameSizeChange={handleFrameSizeChange}
+              selectedModel={selectedModel}
+              generationMode={generationMode}
+              onCloseOtherDropdowns={closeModelAndDuration}
+              onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+            />
+          )}
+          <QualityDropdown
+            selectedModel={selectedModel}
+            selectedQuality={seedanceResolution}
+            onQualityChange={setSeedanceResolution}
+            onCloseOtherDropdowns={closeModelFrameAndDuration}
+            onCloseThisDropdown={undefined}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -8184,10 +8778,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed left-1/2 z-[50] h-auto w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 md:bottom-6 md:w-[90%] md:max-w-[900px]">
+      <div className="fixed left-1/2 z-[50] h-auto max-h-[calc(100vh-16px)] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-1.5 space-y-2 md:space-y-4 transition-all duration-300 ${
+          className={`relative w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-1.5 space-y-2 md:space-y-4 transition-all duration-300 overflow-y-visible ${
             isInputBoxHovered
               ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -8543,136 +9137,10 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-0">
-            {/* Mobile: first row - model family selectors */}
-            <div className="flex md:hidden w-full flex-wrap items-center gap-2 px-1 mt-1">
-              <div className="min-w-0 flex-1">
-                  <VideoModelsDropdown
-                    selectedModel={selectedModel}
-                    onModelChange={handleModelChange}
-                    generationMode={generationMode}
-                    selectedDuration={
-                      selectedModel.includes("MiniMax")
-                        ? `${selectedMiniMaxDuration}s`
-                        : formatDurationForCreditLookup(duration)
-                    }
-                    selectedResolution={modelDropdownResolution}
-                    activeFeature={activeFeature}
-                    onCloseOtherDropdowns={() => {
-                      setCloseFrameSizeDropdown(true);
-                      setCloseDurationDropdown(true);
-                      setCloseCameraMotionDropdown(true);
-                      setTimeout(() => {
-                        setCloseFrameSizeDropdown(false);
-                        setCloseDurationDropdown(false);
-                        setCloseCameraMotionDropdown(false);
-                      }, 100);
-                    }}
-                    onCloseThisDropdown={
-                      closeModelsDropdown ? () => {} : undefined
-                    }
-                  />
-              </div>
-              {shouldShowSeedance2FamilySelector(selectedModel) ? (
-                <div className="flex-shrink-0">
-                  <SeedanceFamilyVariantDropdown
-                    options={SEEDANCE_2_VARIANT_OPTIONS}
-                    selectedValue={selectedSeedance2Variant}
-                    onChange={handleSeedance2VariantChange}
-                    onCloseOtherDropdowns={() => {
-                      setCloseModelsDropdown(true);
-                      setCloseFrameSizeDropdown(true);
-                      setCloseDurationDropdown(true);
-                      setCloseCameraMotionDropdown(true);
-                      setTimeout(() => {
-                        setCloseModelsDropdown(false);
-                        setCloseFrameSizeDropdown(false);
-                        setCloseDurationDropdown(false);
-                        setCloseCameraMotionDropdown(false);
-                      }, 100);
-                    }}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            {/* Mobile: second row - parameters and generate */}
-            <div className="flex md:hidden justify-between items-center gap-2 w-full px-1">
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                {/* Audio toggle button for models that support it (mobile only) */}
-                {(selectedModel === "kling-2.6-pro" ||
-                  selectedModel.startsWith("kling-v3") ||
-                  isSeedance2FamilyModel(selectedModel) ||
-                  selectedModel.includes("seedance-1.5") ||
-                  (selectedModel.includes("sora2") &&
-                    !selectedModel.includes("v2v")) ||
-                  selectedModel.includes("ltx2") ||
-                  selectedModel.includes("ltx-2.3-fast") ||
-                  selectedModel.includes("ltx-2.3-pro") ||
-                  (selectedModel.includes("veo3.1") &&
-                    !selectedModel.includes("veo3.1-lite") &&
-                    !(
-                      activeFeature === "Lipsync" &&
-                      selectedModel.includes("veo3.1")
-                    )) ||
-                  (selectedModel.includes("veo3") &&
-                    !selectedModel.includes("veo3.1"))) && (
-                  <button
-                    onClick={() => setGenerateAudio((v) => !v)}
-                    className={`group md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative flex-shrink-0 ${
-                      generateAudio
-                        ? "bg-transparent text-white "
-                        : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                    }`}
-                  >
-                    <div className="relative">
-                      {generateAudio ? (
-                        <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
-                      ) : (
-                        <VolumeX className="w-4 h-4 md:w-5 md:h-5" />
-                      )}
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
-                        {generateAudio ? "Audio: On" : "Audio: Off"}
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {/* Audio upload button for WAN 2.5 models (mobile only) */}
-                {selectedModel.includes("wan-2.5") &&
-                  selectedModel !== "wan-2.2-animate-replace" &&
-                  !selectedModel.includes("wan-2.2") && (
-                    <div className="relative flex-shrink-0">
-                      <input
-                        type="file"
-                        accept="audio/wav,audio/mp3,audio/mpeg,.wav,.mp3"
-                        onChange={handleAudioUpload}
-                        className="hidden"
-                        id="audio-upload-wan-mobile"
-                      />
-                      <label
-                        htmlFor="audio-upload-wan-mobile"
-                        className="md:h-[32px] h-[28px] md:px-3 px-2 rounded-lg md:text-[12px] text-[10px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
-                      >
-                        <Music className="md:w-3.5 w-3 h-3 md:h-3.5" />
-                        {uploadedAudio ? "Uploaded" : "Audio"}
-                      </label>
-                      {uploadedAudio && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUploadedAudio("");
-                            toast.success("Audio file removed");
-                          }}
-                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs"
-                          title="Remove audio"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              <div className="flex flex-col items-end gap-1.5 -mt-3">
-                <div className="text-white/80 text-[11px] leading-none">
+            {/* Mobile: second row - credits/generate */}
+            <div className="flex md:hidden justify-end items-center gap-2 w-full px-1 mt-1">
+              <div className="flex flex-col items-end gap-0.25">
+                <div className="text-white/80 text-[9px] md:text-[11px] leading-none">
                   Total credits:{" "}
                   <span className="font-semibold">{liveCreditCost}</span>
                 </div>
@@ -8713,6 +9181,46 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
 
+            {/* Mobile: second-last row - model family selectors */}
+              <div className="flex md:hidden w-full items-center gap-2 px-1 mt-0 overflow-x-auto no-scrollbar">
+                <div className="shrink-0">
+                  <VideoModelsDropdown
+                    selectedModel={selectedModel}
+                    onModelChange={handleModelChange}
+                  generationMode={generationMode}
+                  selectedDuration={
+                    selectedModel.includes("MiniMax")
+                      ? `${selectedMiniMaxDuration}s`
+                      : formatDurationForCreditLookup(duration)
+                  }
+                  selectedResolution={modelDropdownResolution}
+                  activeFeature={activeFeature}
+                  onCloseOtherDropdowns={() => {
+                    setCloseFrameSizeDropdown(true);
+                    setCloseDurationDropdown(true);
+                    setCloseCameraMotionDropdown(true);
+                    setTimeout(() => {
+                      setCloseFrameSizeDropdown(false);
+                      setCloseDurationDropdown(false);
+                      setCloseCameraMotionDropdown(false);
+                    }, 100);
+                  }}
+                  onCloseThisDropdown={
+                    closeModelsDropdown ? () => {} : undefined
+                    }
+                  />
+                </div>
+                {shouldShowSecondaryFamilySelector(selectedModel) ? (
+                  <div className="shrink-0">{renderFamilyVariantDropdown()}</div>
+                ) : null}
+              </div>
+
+            {/* Mobile: last row - parameters */}
+            <div className="flex md:hidden w-full flex-nowrap items-center gap-1 px-1 py-1 mt-1 overflow-x-auto overflow-y-visible no-scrollbar">
+              {renderMobileParameterControls()}
+              {renderMobileAudioControls()}
+            </div>
+
             {/* Desktop toolbar */}
             <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_auto] w-full flex-1 min-w-0 items-start gap-3 pb-0 pt-3">
               <div className="grid w-full min-w-0 grid-rows-[auto_auto] gap-2">
@@ -8744,30 +9252,12 @@ const InputBox = (props: InputBoxProps = {}) => {
                       }
                     />
                   </div>
-                  {shouldShowSeedance2FamilySelector(selectedModel) ? (
-                    <div className="flex-shrink-0">
-                      <SeedanceFamilyVariantDropdown
-                        options={SEEDANCE_2_VARIANT_OPTIONS}
-                        selectedValue={selectedSeedance2Variant}
-                        onChange={handleSeedance2VariantChange}
-                        onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true);
-                          setCloseFrameSizeDropdown(true);
-                          setCloseDurationDropdown(true);
-                          setCloseCameraMotionDropdown(true);
-                          setTimeout(() => {
-                            setCloseModelsDropdown(false);
-                            setCloseFrameSizeDropdown(false);
-                            setCloseDurationDropdown(false);
-                            setCloseCameraMotionDropdown(false);
-                          }, 100);
-                        }}
-                      />
-                    </div>
+                  {shouldShowSecondaryFamilySelector(selectedModel) ? (
+                    <div className="flex-shrink-0">{renderFamilyVariantDropdown()}</div>
                   ) : null}
                 </div>
 
-                <div className="flex w-full min-w-0 flex-row gap-2 items-center overflow-hidden">
+                <div className="flex w-full min-w-0 flex-row gap-2 items-center overflow-visible">
                   {/* Dynamic Controls Based on Model Capabilities */}
                   <div
                   ref={desktopToolbarControlsRef}
@@ -9038,7 +9528,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -9128,7 +9618,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -9225,7 +9715,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -9246,24 +9736,6 @@ const InputBox = (props: InputBoxProps = {}) => {
                           >
                             <Music className="w-4 h-4" />
                             {uploadedAudio ? "Audio: Uploaded" : "Upload Audio"}
-                          </label>
-                        </div>
-                      )}
-                      {selectedModel.startsWith("ltx-2.3-pro") && (
-                        <div className="relative">
-                          <input
-                            type="file"
-                            accept="video/mp4,video/webm,video/ogg,video/quicktime,video/mov,.mp4,.webm,.ogg,.mov"
-                            onChange={handleVideoUpload}
-                            className="hidden"
-                            id="video-upload-ltx-pro"
-                          />
-                          <label
-                            htmlFor="video-upload-ltx-pro"
-                            className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20  text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-2 transition-all"
-                          >
-                            <FilePlay className="w-4 h-4" />
-                            {uploadedVideo ? "Video: Uploaded" : "Upload Video"}
                           </label>
                         </div>
                       )}
@@ -9345,7 +9817,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                               ) : (
                                 <VolumeX className="w-5 h-5" />
                               )}
-                              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                              <div className={newLocal}>
                                 {generateAudio ? "Audio: On" : "Audio: Off"}
                               </div>
                             </div>
@@ -9409,7 +9881,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -9488,7 +9960,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -9731,7 +10203,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                             ) : (
                               <VolumeX className="w-5 h-5" />
                             )}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            <div className={newLocal}>
                               {generateAudio ? "Audio: On" : "Audio: Off"}
                             </div>
                           </div>
@@ -9850,7 +10322,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                             ) : (
                               <VolumeX className="w-5 h-5" />
                             )}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                            <div className={newLocal}>
                               {generateAudio ? "Audio: On" : "Audio: Off"}
                             </div>
                           </div>
@@ -10006,7 +10478,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             </div>
 
             {/* Mobile: Second row - All other dropdowns */}
-            <div className="flex md:hidden gap-2 w-full pl-1 flex-nowrap overflow-x-auto overflow-y-visible no-scrollbar py-1">
+            <div className="order-2 flex md:hidden gap-2 w-full pl-1 flex-nowrap overflow-x-auto overflow-y-visible no-scrollbar py-1 mt-1">
               {/* Use the same dynamic controls logic as desktop - extract it to avoid duplication */}
               {(() => {
                 // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
@@ -10212,7 +10684,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -10304,24 +10776,6 @@ const InputBox = (props: InputBoxProps = {}) => {
                           >
                             <Music className="w-3.5 h-3.5" />
                             {uploadedAudio ? "Audio OK" : "Audio"}
-                          </label>
-                        </div>
-                      )}
-                      {isLtx23ProModel && (
-                        <div className="relative flex-shrink-0">
-                          <input
-                            type="file"
-                            accept="video/mp4,video/webm,video/ogg,video/quicktime,video/mov,.mp4,.webm,.ogg,.mov"
-                            onChange={handleVideoUpload}
-                            className="hidden"
-                            id="video-upload-ltx-pro-mobile"
-                          />
-                          <label
-                            htmlFor="video-upload-ltx-pro-mobile"
-                            className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-white/10 text-white/80 hover:text-white hover:bg-white/20 cursor-pointer flex items-center gap-1.5 transition-all"
-                          >
-                            <FilePlay className="w-3.5 h-3.5" />
-                            {uploadedVideo ? "Video OK" : "Video"}
                           </label>
                         </div>
                       )}
@@ -10439,7 +10893,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           ) : (
                             <VolumeX className="w-5 h-5" />
                           )}
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-7 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap">
+                          <div className={newLocal}>
                             {generateAudio ? "Audio: On" : "Audio: Off"}
                           </div>
                         </div>
@@ -10937,3 +11391,4 @@ const InputBox = (props: InputBoxProps = {}) => {
 };
 
 export default InputBox;
+

@@ -10576,6 +10576,7 @@ const InputBox = () => {
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
+          persistLocalDeviceUploads={false}
           remainingSlots={Math.max(
             0,
             getInputImageLimitForModel(selectedModel) -

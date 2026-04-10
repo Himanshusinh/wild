@@ -29,6 +29,32 @@ const SEEDANCE_2_FAMILY_VALUES = new Set([
 const isSeedance2FamilyModel = (value: string) =>
   SEEDANCE_2_FAMILY_VALUES.has(value);
 
+const isSeedanceFamilyModel = (value: string) => value.includes("seedance");
+const isVeo31FamilyModel = (value: string) => value.includes("veo3.1");
+const isKlingFamilyModel = (value: string) =>
+  value === "kling-o1" ||
+  value === "kling-v3-standard" ||
+  value === "kling-v3-pro" ||
+  value === "kling-2.6-pro" ||
+  value === "kling-v2.5-turbo-pro-t2v";
+const isHailuoFamilyModel = (value: string) =>
+  value === "MiniMax-Hailuo-2.3" || value === "MiniMax-Hailuo-2.3-Fast";
+const isSoraFamilyModel = (value: string) =>
+  value === "sora2-t2v" || value === "sora2-pro-t2v";
+const isLtxFamilyModel = (value: string) =>
+  value === "ltx-2.3-pro-t2v" || value === "ltx-2.3-fast-t2v";
+const isWanFamilyModel = (value: string) =>
+  value === "wan-2.5-t2v" || value === "wan-2.5-t2v-fast";
+const FAMILY_DISPLAY_ORDER = [
+  "Seedance",
+  "Veo 3.1",
+  "Kling",
+  "LTX",
+  "WAN",
+  "Sora",
+  "Hailuo",
+] as const;
+
 interface VideoModelsDropdownProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
@@ -427,22 +453,134 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     ];
   };
 
-  const availableModels = getAvailableModels().filter((model) => {
-    if (model.value === "seedance-2.0-r2v") return false;
-    if (model.value === "seedance-2.0-fast") return false;
-    if (model.value === "seedance-2.0-fast-r2v") return false;
-    return true;
-  });
+  const availableModels = getAvailableModels()
+    .filter((model) => {
+      if (
+        model.value === "veo3.1-lite-t2v-8s" ||
+        model.value === "veo3.1-fast-t2v-8s" ||
+        model.value === "kling-o1" ||
+        model.value === "kling-v3-pro" ||
+        model.value === "kling-2.6-pro" ||
+        model.value === "kling-v2.5-turbo-pro-t2v" ||
+        model.value === "MiniMax-Hailuo-2.3-Fast" ||
+        model.value === "sora2-pro-t2v" ||
+        model.value === "ltx-2.3-fast-t2v" ||
+        model.value === "wan-2.5-t2v-fast" ||
+        model.value === "seedance-2.0-r2v" ||
+        model.value === "seedance-2.0-fast" ||
+        model.value === "seedance-2.0-fast-r2v" ||
+        model.value === "seedance-1.5-pro-t2v" ||
+        model.value === "seedance-1.0-pro-t2v" ||
+        model.value === "seedance-1.0-pro-fast-t2v" ||
+        model.value === "seedance-1.0-lite-t2v"
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .map((model) =>
+      model.value === "seedance-2.0-t2v"
+        ? {
+            ...model,
+            label: "Seedance",
+            description:
+              "The premier choice for crafting stunning, movie-quality cinematic shots from any input.",
+          }
+        : model.value === "veo3.1-t2v-8s"
+          ? {
+              ...model,
+              label: "Veo 3.1",
+              description:
+                "Top-tier cinematic realism and high-fidelity physical textures in 720p and 1080p.",
+            }
+          : model.value === "kling-v3-standard"
+            ? {
+                ...model,
+                label: "Kling",
+                description:
+                  "Superior physics simulation and complex, dynamic character motion from text or image inputs.",
+              }
+            : model.value === "MiniMax-Hailuo-2.3"
+              ? {
+                  ...model,
+                  label: "Hailuo",
+                  description:
+                    "Fast, highly prompt-accurate generation ideal for stylized and expressive shots.",
+                }
+              : model.value === "sora2-t2v"
+                ? {
+                    ...model,
+                    label: "Sora",
+                    description:
+                      "Industry-leading temporal consistency and photorealism for complex, long-form storytelling.",
+                  }
+                : model.value === "ltx-2.3-pro-t2v"
+                  ? {
+                      ...model,
+                      label: "LTX",
+                      description:
+                        "The precision-focused choice offering ultimate camera control and ultra-high resolutions up to 4K.",
+                    }
+                  : model.value === "wan-2.5-t2v"
+                    ? {
+                        ...model,
+                        label: "WAN",
+                        description:
+                          "A highly flexible model specializing in fluid motion dynamics and variable generation speeds.",
+                      }
+          : model,
+    )
+    .sort((a, b) => {
+      const aIndex = FAMILY_DISPLAY_ORDER.indexOf(
+        a.label as (typeof FAMILY_DISPLAY_ORDER)[number],
+      );
+      const bIndex = FAMILY_DISPLAY_ORDER.indexOf(
+        b.label as (typeof FAMILY_DISPLAY_ORDER)[number],
+      );
+      const safeA = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+      const safeB = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+      return safeA - safeB;
+    });
   // Prefer exact match; otherwise map t2v/i2v variants to the same base model for display
   const selectedModelInfo =
     availableModels.find((model) =>
-      isSeedance2FamilyModel(selectedModel)
+      isSeedanceFamilyModel(selectedModel)
         ? model.value === "seedance-2.0-t2v"
+        : isVeo31FamilyModel(selectedModel)
+          ? model.value === "veo3.1-t2v-8s"
+          : isKlingFamilyModel(selectedModel)
+            ? model.value === "kling-v3-standard"
+            : isHailuoFamilyModel(selectedModel)
+              ? model.value === "MiniMax-Hailuo-2.3"
+              : isSoraFamilyModel(selectedModel)
+                ? model.value === "sora2-t2v"
+                : isLtxFamilyModel(selectedModel)
+                  ? model.value === "ltx-2.3-pro-t2v"
+                  : isWanFamilyModel(selectedModel)
+                    ? model.value === "wan-2.5-t2v"
         : model.value === selectedModel,
     ) ||
     availableModels.find((model) => {
-      if (isSeedance2FamilyModel(selectedModel)) {
+      if (isSeedanceFamilyModel(selectedModel)) {
         return model.value === "seedance-2.0-t2v";
+      }
+      if (isVeo31FamilyModel(selectedModel)) {
+        return model.value === "veo3.1-t2v-8s";
+      }
+      if (isKlingFamilyModel(selectedModel)) {
+        return model.value === "kling-v3-standard";
+      }
+      if (isHailuoFamilyModel(selectedModel)) {
+        return model.value === "MiniMax-Hailuo-2.3";
+      }
+      if (isSoraFamilyModel(selectedModel)) {
+        return model.value === "sora2-t2v";
+      }
+      if (isLtxFamilyModel(selectedModel)) {
+        return model.value === "ltx-2.3-pro-t2v";
+      }
+      if (isWanFamilyModel(selectedModel)) {
+        return model.value === "wan-2.5-t2v";
       }
       const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
@@ -649,8 +787,20 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   useEffect(() => {
     // Check if selectedModel matches any available model directly
     const exactMatch = availableModels.find((model) =>
-      isSeedance2FamilyModel(selectedModel)
+      isSeedanceFamilyModel(selectedModel)
         ? model.value === "seedance-2.0-t2v"
+        : isVeo31FamilyModel(selectedModel)
+          ? model.value === "veo3.1-t2v-8s"
+          : isKlingFamilyModel(selectedModel)
+            ? model.value === "kling-v3-standard"
+            : isHailuoFamilyModel(selectedModel)
+              ? model.value === "MiniMax-Hailuo-2.3"
+              : isSoraFamilyModel(selectedModel)
+                ? model.value === "sora2-t2v"
+                : isLtxFamilyModel(selectedModel)
+                  ? model.value === "ltx-2.3-pro-t2v"
+                  : isWanFamilyModel(selectedModel)
+                    ? model.value === "wan-2.5-t2v"
         : model.value === selectedModel,
     );
     if (exactMatch) return;
@@ -658,8 +808,26 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     // Check if selectedModel is a variant (e.g. i2v vs t2v) of an available model
     // Common pattern: model-name-t2v vs model-name-i2v
     const variantMatch = availableModels.find((model) => {
-      if (isSeedance2FamilyModel(selectedModel)) {
+      if (isSeedanceFamilyModel(selectedModel)) {
         return model.value === "seedance-2.0-t2v";
+      }
+      if (isVeo31FamilyModel(selectedModel)) {
+        return model.value === "veo3.1-t2v-8s";
+      }
+      if (isKlingFamilyModel(selectedModel)) {
+        return model.value === "kling-v3-standard";
+      }
+      if (isHailuoFamilyModel(selectedModel)) {
+        return model.value === "MiniMax-Hailuo-2.3";
+      }
+      if (isSoraFamilyModel(selectedModel)) {
+        return model.value === "sora2-t2v";
+      }
+      if (isLtxFamilyModel(selectedModel)) {
+        return model.value === "ltx-2.3-pro-t2v";
+      }
+      if (isWanFamilyModel(selectedModel)) {
+        return model.value === "wan-2.5-t2v";
       }
       const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
@@ -684,14 +852,38 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   ]);
 
   const selectedModelEntry = modelsWithCredits.find((model) =>
-    isSeedance2FamilyModel(selectedModel)
+    isSeedanceFamilyModel(selectedModel)
       ? model.value === "seedance-2.0-t2v"
+      : isVeo31FamilyModel(selectedModel)
+        ? model.value === "veo3.1-t2v-8s"
+        : isKlingFamilyModel(selectedModel)
+          ? model.value === "kling-v3-standard"
+          : isHailuoFamilyModel(selectedModel)
+            ? model.value === "MiniMax-Hailuo-2.3"
+            : isSoraFamilyModel(selectedModel)
+              ? model.value === "sora2-t2v"
+              : isLtxFamilyModel(selectedModel)
+                ? model.value === "ltx-2.3-pro-t2v"
+                : isWanFamilyModel(selectedModel)
+                  ? model.value === "wan-2.5-t2v"
       : model.value === selectedModel,
   );
 
   const isOptionSelected = (modelValue: string) =>
     modelValue === "seedance-2.0-t2v"
-      ? isSeedance2FamilyModel(selectedModel)
+      ? isSeedanceFamilyModel(selectedModel)
+      : modelValue === "veo3.1-t2v-8s"
+        ? isVeo31FamilyModel(selectedModel)
+        : modelValue === "kling-v3-standard"
+          ? isKlingFamilyModel(selectedModel)
+          : modelValue === "MiniMax-Hailuo-2.3"
+            ? isHailuoFamilyModel(selectedModel)
+            : modelValue === "sora2-t2v"
+              ? isSoraFamilyModel(selectedModel)
+              : modelValue === "ltx-2.3-pro-t2v"
+                ? isLtxFamilyModel(selectedModel)
+                : modelValue === "wan-2.5-t2v"
+                  ? isWanFamilyModel(selectedModel)
       : selectedModel === modelValue;
 
   const handleVideoModelSelect = (modelValue: string) => {
@@ -710,7 +902,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     isOpen && dropdownPosition ? (
       <div
         data-dropdown={dropdownId}
-        className="fixed md:w-[28rem] w-40 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999] md:max-h-100 max-h-100 overflow-y-auto dropdown-scrollbar-thin"
+        className={`fixed w-auto bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999] max-h-100 overflow-y-auto dropdown-scrollbar-thin ${
+          generationMode === "text_to_video" ? "md:w-auto" : "md:w-auto"
+        }`}
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`,
@@ -723,97 +917,55 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           const filteredModels = modelsWithCredits;
 
           if (generationMode === "text_to_video") {
-            const left = filteredModels.slice(
-              0,
-              Math.ceil(filteredModels.length / 2),
-            );
-            const right = filteredModels.slice(
-              Math.ceil(filteredModels.length / 2),
-            );
             return (
-              <div className="md:grid md:grid-cols-2 grid-cols-1 gap-0">
-                <div className="divide-y divide-white/10">
-                  {left.map((model) => (
-                    <button
-                      key={`t2v-left-${model.value}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVideoModelSelect(model.value);
-                      }}
-                      className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        isOptionSelected(model.value)
-                          ? "bg-white text-black"
-                          : "text-white/90 hover:bg-white/10"
-                      }`}
+              <div className="divide-y divide-white/10">
+                {filteredModels.map((model) => (
+                  <button
+                    key={`t2v-${model.value}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleVideoModelSelect(model.value);
+                    }}
+                    className={`flex w-full items-center justify-between md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] ${
+                      isOptionSelected(model.value)
+                        ? "bg-white text-black"
+                        : "text-white/90 hover:bg-white/10"
+                    }`}
                     >
-                      <div className="flex flex-col mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.label}
-                          {model.isLocked && (
-                            <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
-                          )}
-                          <img
-                            src="/icons/crown.svg"
-                            alt="pro"
-                            className="md:w-4 w-3 h-3 md:h-4"
-                          />
-                        </span>
+                    <div className="flex flex-col mb-0">
+                      <span className="flex items-center gap-2">
+                        {model.label}
+                        {model.isLocked && (
+                          <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                        )}
+                        <img
+                          src="/icons/crown.svg"
+                          alt="pro"
+                          className="md:w-4 w-3 h-3 md:h-4"
+                        />
+                      </span>
+                      {model.isLocked ? (
                         <span className="md:text-[11px] text-[9px] opacity-80 -mt-0.5 font-normal">
-                          {model.isLocked
-                            ? "Upgrade to access"
-                            : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
+                          Upgrade to access
                         </span>
-                      </div>
-                      {isOptionSelected(model.value) && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <div className="md:border-l border-white/10 divide-y divide-white/10">
-                  {right.map((model) => (
-                    <button
-                      key={`t2v-right-${model.value}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVideoModelSelect(model.value);
-                      }}
-                      className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
-                        isOptionSelected(model.value)
-                          ? "bg-white text-black"
-                          : "text-white/90 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex flex-col -mb-0">
-                        <span className="flex items-center gap-2">
-                          {model.label}
-                          {model.isLocked && (
-                            <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
-                          )}
-                          <img
-                            src="/icons/crown.svg"
-                            alt="pro"
-                            className="md:w-4 w-3 h-3 md:h-4"
-                          />
+                      ) : null}
+                      {model.description ? (
+                        <span
+                          className={`mt-0.5 max-w-[210px] text-[9px] leading-snug md:max-w-[240px] md:text-[10px] ${
+                            isOptionSelected(model.value)
+                              ? "text-black/100"
+                              : "text-white/70"
+                          }`}
+                        >
+                          {model.description}
                         </span>
-                        <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
-                          {model.isLocked
-                            ? "Upgrade to access"
-                            : model.displayText ||
-                              (model.credits != null
-                                ? `${model.credits} credits`
-                                : "credits unavailable")}
-                        </span>
-                      </div>
-                      {isOptionSelected(model.value) && (
-                        <div className="w-2 h-2 bg-black rounded-full"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                      ) : null}
+                    </div>
+                    {isOptionSelected(model.value) && (
+                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                    )}
+                  </button>
+                ))}
               </div>
             );
           }
@@ -836,7 +988,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       e.stopPropagation();
                       handleVideoModelSelect(model.value);
                     }}
-                    className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                    className={`flex w-full items-center justify-between md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] ${
                       isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
@@ -877,7 +1029,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       e.stopPropagation();
                       handleVideoModelSelect(model.value);
                     }}
-                    className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+                    className={`flex w-full items-center justify-between md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] ${
                       isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
@@ -927,10 +1079,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-white text-black hover:bg-white/95`}
+        className={`flex h-[28px] w-auto max-w-[44vw] min-w-0 items-center justify-between gap-1 rounded-lg bg-white px-2 text-[11px] font-medium text-black transition hover:bg-white/95 ring-1 ring-white/20 hover:ring-white/30 md:h-[32px] md:max-w-none md:w-auto md:px-4 md:text-[13px] md:justify-start`}
       >
         <Cpu className="md:w-4 w-3 h-3 md:h-4  mr-1" />
-        {selectedModelInfo?.label || selectedModel}
+        <span className="truncate">{selectedModelInfo?.label || selectedModel}</span>
         {selectedModelEntry?.isLocked && (
           <Lock className="md:w-4 w-3 h-3 md:h-4 text-black/70" />
         )}
