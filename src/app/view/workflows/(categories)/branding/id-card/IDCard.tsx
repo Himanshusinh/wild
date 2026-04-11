@@ -362,6 +362,7 @@ export default function IDCard() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => urls.length > 0 && handleImageSelect(urls[0])}
@@ -371,3 +372,4 @@ export default function IDCard() {
     </>
   );
 }
+

@@ -3,6 +3,10 @@ import { creditDistributionData, ModelCreditInfo } from "./creditDistribution";
 import { buildCreditModelName, getModelMapping } from "./modelMapping";
 import {
   computeSeedance2Credits,
+  computeSeedance2FastI2vCredits,
+  computeSeedance2FastReferenceCredits,
+  computeSeedance2ReferenceCredits,
+  computeSeedance2FastT2vCredits,
   getCreditsForModel,
   MODEL_CREDITS_MAPPING,
 } from "./modelCredits";
@@ -38,6 +42,7 @@ export const getVideoCreditCost = (
   duration?: number | string,
   generateAudio?: boolean,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== "video") {
@@ -113,6 +118,29 @@ export const getVideoCreditCost = (
     return computeSeedance2Credits(resolution, duration, aspectRatio);
   }
   if (
+    frontendModel === "seedance-2.0-fast" ||
+    frontendModel === "seedance-2.0-fast-t2v" ||
+    frontendModel === "seedance-2.0-fast-i2v"
+  ) {
+    return computeSeedance2FastI2vCredits(resolution, duration, aspectRatio);
+  }
+  if (frontendModel === "seedance-2.0-fast-r2v") {
+    return computeSeedance2FastReferenceCredits(
+      resolution,
+      duration,
+      aspectRatio,
+      inputVideoDurationSec,
+    );
+  }
+  if (frontendModel === "seedance-2.0-r2v") {
+    return computeSeedance2ReferenceCredits(
+      resolution,
+      duration,
+      aspectRatio,
+      inputVideoDurationSec,
+    );
+  }
+  if (
     frontendModel.includes("seedance") ||
     frontendModel.includes("wan-2.5") ||
     frontendModel.startsWith("kling-") ||
@@ -126,8 +154,7 @@ export const getVideoCreditCost = (
     frontendModel === "gen3a_turbo"
   ) {
     // Use default values if not provided for WAN models to avoid "Unknown model" error
-    const defaultDuration =
-      duration == null || duration === "" ? 5 : duration;
+    const defaultDuration = duration == null || duration === "" ? 5 : duration;
     const defaultResolution = resolution || "720p";
     // For models where pricing depends on audio, pass generateAudio through
     const audioParam =
@@ -141,6 +168,10 @@ export const getVideoCreditCost = (
       `${defaultDuration}s`,
       defaultResolution,
       audioParam,
+      undefined,
+      undefined,
+      undefined,
+      inputVideoDurationSec,
     );
     if (cost !== null && cost > 0) {
       console.log(
@@ -481,6 +512,7 @@ export const getVideoGenerationCreditCost = (
   resolution?: string,
   duration?: number | string,
   aspectRatio?: string,
+  inputVideoDurationSec?: number,
 ): number => {
   return getVideoCreditCost(
     frontendModel,
@@ -488,6 +520,7 @@ export const getVideoGenerationCreditCost = (
     duration,
     undefined,
     aspectRatio,
+    inputVideoDurationSec,
   );
 };
 

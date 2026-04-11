@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Monitor } from "lucide-react";
 
 interface QualityDropdownProps {
@@ -19,8 +20,14 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
   onCloseThisDropdown,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  } | null>(null);
+  const dropdownId = "video-quality-dropdown";
 
   // Get available qualities based on selected model
   const getAvailableQualities = () => {
@@ -29,26 +36,40 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
       // Sora 2 Pro supports 720p and 1080p
       return [
         { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
-        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+        {
+          value: "1080p",
+          label: "1080p",
+          description: "Full HD Quality (1920x1080)",
+        },
       ];
     }
     if (selectedModel?.includes("sora2")) {
       // Sora 2 Standard supports only 720p
       return [
-        { value: "720p", label: "720p", description: "HD Quality (1280x720)" }
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
       ];
     }
-    if (selectedModel === "seedance-2.0-t2v") {
+    if (
+      selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-r2v" ||
+      selectedModel === "seedance-2.0-fast" ||
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      selectedModel === "seedance-2.0-fast-r2v"
+    ) {
       return [
         { value: "480p", label: "480p", description: "SD Quality (854x480)" },
-        { value: "720p", label: "720p", description: "HD Quality (1280x720)" }
+        { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
       ];
     }
     // Veo 3.1 models support 720p, 1080p
     if (selectedModel?.includes("veo3.1")) {
       return [
         { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
-        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+        {
+          value: "1080p",
+          label: "1080p",
+          description: "Full HD Quality (1920x1080)",
+        },
       ];
     }
     // PixVerse models support 360p, 540p, 720p, 1080p
@@ -57,7 +78,11 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
         { value: "360p", label: "360p", description: "SD Quality (640x360)" },
         { value: "540p", label: "540p", description: "HD- Quality (960x540)" },
         { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
-        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+        {
+          value: "1080p",
+          label: "1080p",
+          description: "Full HD Quality (1920x1080)",
+        },
       ];
     }
     // Seedance models support 480p, 720p, 1080p
@@ -65,38 +90,88 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
       return [
         { value: "480p", label: "480p", description: "SD Quality (854x480)" },
         { value: "720p", label: "720p", description: "HD Quality (1280x720)" },
-        { value: "1080p", label: "1080p", description: "Full HD Quality (1920x1080)" }
+        {
+          value: "1080p",
+          label: "1080p",
+          description: "Full HD Quality (1920x1080)",
+        },
       ];
     }
     // Default: other models support 720p and 1080p
     return [
       { value: "720p", label: "720p", description: "HD Quality" },
-      { value: "1080p", label: "1080p", description: "Full HD Quality" }
+      { value: "1080p", label: "1080p", description: "Full HD Quality" },
     ];
   };
 
   const availableQualities = getAvailableQualities();
 
-  const selectedQualityInfo = availableQualities.find(quality => quality.value === selectedQuality);
+  const selectedQualityInfo = availableQualities.find(
+    (quality) => quality.value === selectedQuality,
+  );
 
   // Auto-select first available quality if current selection is invalid
   useEffect(() => {
-    if (availableQualities.length > 0 && !availableQualities.find(q => q.value === selectedQuality)) {
+    if (
+      availableQualities.length > 0 &&
+      !availableQualities.find((q) => q.value === selectedQuality)
+    ) {
       onQualityChange(availableQualities[0].value);
     }
   }, [selectedModel, selectedQuality, availableQualities, onQualityChange]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const target = event.target as HTMLElement;
+      if (buttonRef.current?.contains(target)) return;
+      if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
+      setIsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [dropdownId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const updateDropdownPosition = () => {
+      if (!buttonRef.current) return;
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = window.innerWidth >= 768 ? 192 : 112;
+      let left = buttonRect.left;
+      let top = buttonRect.top;
+      let openUp = true;
+
+      if (left + dropdownWidth > window.innerWidth - 8) {
+        left = window.innerWidth - dropdownWidth - 8;
+      }
+      if (left < 8) {
+        left = 8;
+      }
+      if (top < 8) {
+        top = buttonRect.bottom + 8;
+        openUp = false;
+      }
+
+      setDropdownPosition({ top, left, openUp });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [isOpen]);
 
   // Auto-close dropdown after 20 seconds
   useEffect(() => {
@@ -105,7 +180,7 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
@@ -137,9 +212,57 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
     }
   }, [onCloseThisDropdown, isOpen]);
 
+  const dropdownContent =
+    isOpen && dropdownPosition ? (
+      <div
+        data-dropdown={dropdownId}
+        className="fixed md:w-48 w-28 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999]"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          transform: dropdownPosition.openUp
+            ? "translateY(calc(-100% - 8px))"
+            : "none",
+        }}
+      >
+        {availableQualities.map((quality) => (
+          <button
+            key={quality.value}
+            onClick={() => {
+              onQualityChange(quality.value);
+              setIsOpen(false);
+            }}
+            className={`w-full md:px-4 md:p-2 p-2 text-left transition-all duration-200 flex items-center justify-between ${
+              selectedQuality === quality.value
+                ? "bg-white"
+                : "hover:bg-white/10"
+            }`}
+          >
+            <div className="flex flex-col items-start">
+              <span
+                className={`font-medium md:text-sm text-xs ${selectedQuality === quality.value ? "text-black" : "text-white/90"}`}
+              >
+                {quality.label}
+              </span>
+              <span
+                className={`md:text-xs text-xs ${selectedQuality === quality.value ? "text-black/80 " : "text-white/60"}`}
+              >
+                {quality.description}{" "}
+              </span>
+            </div>
+            {selectedQuality === quality.value && (
+              <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
+            )}
+          </button>
+        ))}
+      </div>
+    ) : null;
+
   return (
-    <div className="relative dropdown-container" ref={dropdownRef}>
+    <>
+    <div className="relative dropdown-container">
       <button
+        ref={buttonRef}
         onClick={() => {
           // Close other dropdowns if they exist
           if (onCloseOtherDropdowns) {
@@ -151,35 +274,15 @@ const QualityDropdown: React.FC<QualityDropdownProps> = ({
       >
         <Monitor className="md:w-4 w-3 h-3 md:h-4  mr-1" />
         {selectedQualityInfo?.label || selectedQuality}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronUp
+          className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/80 backdrop-blur-xl rounded-xl overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-          {availableQualities.map((quality) => (
-            <button
-              key={quality.value}
-              onClick={() => {
-                onQualityChange(quality.value);
-                setIsOpen(false);
-              }}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition-all duration-200 flex items-center justify-between ${
-                selectedQuality === quality.value
-                  ? 'bg-white'
-                  : 'hover:bg-white/10'
-              }`}
-            >
-              <div className="flex flex-col items-start">
-                <span className={`font-medium md:text-sm text-xs ${selectedQuality === quality.value ? 'text-black' : 'text-white/90'}`}>{quality.label}</span>
-                <span className={`md:text-xs text-xs ${selectedQuality === quality.value ? 'text-black/80 ' : 'text-white/60'}`}>{quality.description} </span>
-              </div>
-              {selectedQuality === quality.value && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
+    {typeof window !== "undefined" &&
+      dropdownContent &&
+      createPortal(dropdownContent, document.body)}
+    </>
   );
 };
 

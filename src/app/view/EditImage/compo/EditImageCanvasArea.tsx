@@ -16,7 +16,7 @@ export const EditImageCanvasArea: React.FC<EditImageCanvasAreaProps> = ({
   return (
     <div className="flex-1 flex flex-col relative bg-[#0E0E12] overflow-hidden">
       {topBar && (
-        <div className="w-full h-[48px] flex items-center bg-[#0E0E12] border-b border-white/[0.06] z-30 shrink-0 px-4">
+        <div className="w-full h-[48px] flex items-center bg-[#0E0E12] border-b border-white/[0.06] z-30 shrink-0">
           {topBar}
         </div>
       )}

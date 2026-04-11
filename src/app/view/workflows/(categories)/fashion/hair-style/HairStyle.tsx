@@ -278,6 +278,7 @@ export default function HairStyle() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -291,3 +292,4 @@ export default function HairStyle() {
     </>
   );
 }
+

@@ -67,6 +67,12 @@ export function toMediaProxy(urlOrPath: string): string {
   if (!urlOrPath) return ''
   const lowered = urlOrPath.toLowerCase()
   if (lowered.startsWith('blob:') || lowered.startsWith('data:')) return ''
+  
+  // If it's already a full HTTP/HTTPS URL, return it as-is
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    return urlOrPath;
+  }
+  
   const path = toZataPath(urlOrPath)
   if (!path) return ''
   return `/api/proxy/media/${encodeURIComponent(path)}`

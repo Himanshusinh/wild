@@ -194,6 +194,7 @@ export default function Relight() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -208,3 +209,4 @@ export default function Relight() {
     </>
   );
 }
+

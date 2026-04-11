@@ -253,6 +253,7 @@ export default function FashionModelingPoses() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -266,3 +267,4 @@ export default function FashionModelingPoses() {
     </>
   );
 }
+

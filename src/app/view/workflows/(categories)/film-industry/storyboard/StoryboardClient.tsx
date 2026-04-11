@@ -436,6 +436,7 @@ export default function Storyboard() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -449,3 +450,4 @@ export default function Storyboard() {
     </>
   );
 }
+

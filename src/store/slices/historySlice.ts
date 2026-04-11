@@ -391,6 +391,8 @@ export const loadHistory = createAsyncThunk(
       }
 
       // Normalize dates so UI always has a valid timestamp (ISO)
+      // Also normalize upload-only entries: backend may return `inputImages` with empty `images`.
+      // The image grid reads `entry.images`, so map inputImages into images as a fallback.
       const items = (result.items || []).map((it: any) => {
         const created = it?.createdAt || it?.updatedAt || it?.timestamp;
         const iso =
@@ -400,8 +402,33 @@ export const loadHistory = createAsyncThunk(
               ? created.toString()
               : undefined;
         const timestamp = iso || new Date().toISOString();
+        const hasRenderableImages =
+          Array.isArray(it?.images) &&
+          it.images.some(
+            (img: any) =>
+              Boolean(
+                img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl,
+              ),
+          );
+        const normalizedInputImages = Array.isArray(it?.inputImages)
+          ? it.inputImages
+              .map((img: any, idx: number) => {
+                const url = String(img?.url || img?.originalUrl || "").trim();
+                if (!url) return null;
+                return {
+                  id: img?.id || `input-${it?.id || "entry"}-${idx}`,
+                  url,
+                  thumbnailUrl: url,
+                  avifUrl: url,
+                  originalUrl: img?.originalUrl || url,
+                  storagePath: img?.storagePath,
+                };
+              })
+              .filter(Boolean)
+          : [];
         return {
           ...it,
+          images: hasRenderableImages ? it.images : normalizedInputImages,
           timestamp,
           createdAt: it?.createdAt || timestamp,
         };
@@ -777,6 +804,8 @@ export const loadMoreHistory = createAsyncThunk(
       });
 
       // Normalize dates so UI always has a valid timestamp (ISO)
+      // Also normalize upload-only entries: backend may return `inputImages` with empty `images`.
+      // The image grid reads `entry.images`, so map inputImages into images as a fallback.
       const items = (result.items || []).map((it: any) => {
         const created = it?.createdAt || it?.updatedAt || it?.timestamp;
         const iso =
@@ -786,8 +815,33 @@ export const loadMoreHistory = createAsyncThunk(
               ? created.toString()
               : undefined;
         const timestamp = iso || new Date().toISOString();
+        const hasRenderableImages =
+          Array.isArray(it?.images) &&
+          it.images.some(
+            (img: any) =>
+              Boolean(
+                img?.url || img?.thumbnailUrl || img?.avifUrl || img?.originalUrl,
+              ),
+          );
+        const normalizedInputImages = Array.isArray(it?.inputImages)
+          ? it.inputImages
+              .map((img: any, idx: number) => {
+                const url = String(img?.url || img?.originalUrl || "").trim();
+                if (!url) return null;
+                return {
+                  id: img?.id || `input-${it?.id || "entry"}-${idx}`,
+                  url,
+                  thumbnailUrl: url,
+                  avifUrl: url,
+                  originalUrl: img?.originalUrl || url,
+                  storagePath: img?.storagePath,
+                };
+              })
+              .filter(Boolean)
+          : [];
         return {
           ...it,
+          images: hasRenderableImages ? it.images : normalizedInputImages,
           timestamp,
           createdAt: it?.createdAt || timestamp,
         };

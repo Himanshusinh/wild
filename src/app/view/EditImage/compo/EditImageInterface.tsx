@@ -5013,7 +5013,7 @@ const EditImageInterface: React.FC = () => {
   };
 
   return (
-    <div className="body box-border flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12 pl-4">
+    <div className="body box-border flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12">
       {/* Sticky header like ArtStation */}
       {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#0E0E12] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
@@ -6974,7 +6974,7 @@ const EditImageInterface: React.FC = () => {
       {/* Right Main Area - Image Display */}
       <EditImageCanvasArea
         topBar={
-          <div className="flex items-center w-full h-full px-4 gap-3">
+          <div className="flex items-center w-full h-full gap-2">
             {/* Left: Breadcrumb */}
 
             {/* Center: Feature tabs */}
@@ -7072,7 +7072,7 @@ const EditImageInterface: React.FC = () => {
             </div>
 
             {/* Right: Action icons */}
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="hidden md:flex items-center gap-1 shrink-0">
               {/* Zoom in */}
               <button
                 title="Zoom in"
@@ -7208,6 +7208,103 @@ const EditImageInterface: React.FC = () => {
                   } catch {}
                 }}
               >
+                {inputs[selectedFeature] && (
+                  <div className="absolute top-0 left-1 z-30 md:hidden">
+                    <div className="flex items-center gap-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-1">
+                      <button
+                        title="Zoom in"
+                        onClick={() => {
+                          const newScale = Math.min(6, scale + 0.1);
+                          setScale(newScale);
+                          setOffset(clampOffset(offset, newScale));
+                        }}
+                        disabled={scale >= 6}
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
+                        </svg>
+                      </button>
+                      <button
+                        title="Zoom out"
+                        onClick={() => {
+                          const newScale = Math.max(0.1, scale - 0.1);
+                          setScale(newScale);
+                          setOffset(clampOffset(offset, newScale));
+                        }}
+                        disabled={scale <= 0.1}
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="M21 21l-4.35-4.35M8 11h6" />
+                        </svg>
+                      </button>
+                      <span className="w-px h-4 bg-white/15 mx-0.5" />
+                      <button
+                        title="Download"
+                        onClick={handleDownloadOutput}
+                        disabled={!outputs[selectedFeature]}
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                        </svg>
+                      </button>
+                      <button
+                        title="Share"
+                        onClick={handleShareOutput}
+                        disabled={!outputs[selectedFeature]}
+                        className="w-7 h-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="18" cy="5" r="3" />
+                          <circle cx="6" cy="12" r="3" />
+                          <circle cx="18" cy="19" r="3" />
+                          <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {outputs[selectedFeature] && (
                   <div className="absolute md:top-5 top-0 md:left-4 left-1 z-10  ">
                     <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">
@@ -8747,18 +8844,6 @@ const EditImageInterface: React.FC = () => {
                                 strokeLinejoin="round"
                               />
                               <path
-                                d="M3 15a4 4 0 004 4h10a4 4 0 100-8h-1.26A8 8 0 103 15z"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <circle
-                                cx="12"
-                                cy="13"
-                                r="3"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                              />
-                              <path
                                 d="M5 12h14"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -8795,7 +8880,7 @@ const EditImageInterface: React.FC = () => {
                 {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
                 {/* Fill mask overlay moved to input area */}
                 {processing[selectedFeature] && (
-                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-transparent backdrop-blur-sm">
                     <img
                       src="/styles/Logo.gif"
                       alt="Generating..."
@@ -8807,7 +8892,7 @@ const EditImageInterface: React.FC = () => {
 
               {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
               {selectedFeature === "live-chat" && liveHistory.length > 0 && (
-                <div className="px-0 md:px-0 md:pr-4 md:mt-0 md:mt-0 w-full md:w-auto h-full flex flex-col gap-2">
+                <div className="px-0 md:px-0 md:pr-4 md:mt-0 w-full md:w-auto h-[58vh] md:h-[72vh] min-h-0 flex flex-col gap-2">
                   {/* <div className="hidden md:block">
                     <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
                       Secondary Preview
@@ -8831,8 +8916,8 @@ const EditImageInterface: React.FC = () => {
                     <h3 className="hidden md:block text-white/50 text-[10px] uppercase tracking-wider font-semibold mb-1 ml-1">
                       Preview
                     </h3>
-                    <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 h-auto md:h-full very-thin-scrollbar overflow-x-auto md:overflow-y-auto">
-                      <div className="flex flex-row md:flex-col items-center md:items-start md:gap-3 gap-1 pr-1 min-w-max">
+                    <div className="bg-[#0E0E12] backdrop-blur-xl border border-white/10 rounded-2xl md:p-2 p-1 flex-1 min-h-0 very-thin-scrollbar overflow-y-auto overflow-x-hidden overscroll-y-contain">
+                      <div className="flex flex-col items-start md:gap-3 gap-1 pr-1 min-w-0">
                         {/* Generated images (latest first) */}
                         {(liveHistory || [])
                           .filter((item) => item.url !== outputs["live-chat"])

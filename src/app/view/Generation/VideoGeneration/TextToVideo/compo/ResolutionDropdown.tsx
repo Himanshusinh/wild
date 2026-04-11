@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Monitor } from "lucide-react";
 
 interface ResolutionDropdownProps {
@@ -17,33 +18,52 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  } | null>(null);
+  const dropdownId = "video-resolution-dropdown";
 
   // Get available resolutions based on model
   const getAvailableResolutions = () => {
     if (selectedModel === "wan-2.2-animate-replace") {
       return ["480p", "720p"]; // WAN 2.2 Animate Replace only supports 480p and 720p
-    } else if (selectedModel === "seedance-2.0-t2v") {
+    } else if (
+      selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-r2v" ||
+      selectedModel === "seedance-2.0-fast" ||
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      selectedModel === "seedance-2.0-fast-r2v"
+    ) {
       return ["480p", "720p"];
     } else if (selectedModel?.includes("seedance")) {
       return ["480p", "720p", "1080p"];
     } else if (selectedModel === "MiniMax-Hailuo-02") {
       return ["768P", "1080P"];
-    } else if (selectedModel.includes("Director") || selectedModel === "S2V-01") {
+    } else if (
+      selectedModel.includes("Director") ||
+      selectedModel === "S2V-01"
+    ) {
       return ["720P"];
-    } else if (selectedModel?.includes("ltx2") || selectedModel?.startsWith('ltx-2.3-fast') || selectedModel?.startsWith('ltx-2.3-pro')) {
+    } else if (
+      selectedModel?.includes("ltx2") ||
+      selectedModel?.startsWith("ltx-2.3-fast") ||
+      selectedModel?.startsWith("ltx-2.3-pro")
+    ) {
       return ["1080p", "2k", "4k"]; // LTX V2, 2.3 Fast, and 2.3 Pro support 1080p/2k/4k
-    } else if (selectedModel?.includes('veo3.1')) {
+    } else if (selectedModel?.includes("veo3.1")) {
       // Veo 3.1 supports 720p/1080p
       return ["720p", "1080p"];
-    } else if (selectedModel?.includes('veo3')) {
+    } else if (selectedModel?.includes("veo3")) {
       return ["720p", "1080p"];
-    } else if (selectedModel?.includes('sora2')) {
+    } else if (selectedModel?.includes("sora2")) {
       // Sora 2 Standard T2V: 720p; Pro T2V: 720p/1080p; I2V: auto/720p (Pro also 1080p)
       const lower = selectedModel.toLowerCase();
-      if (lower.includes('i2v')) return ["auto", "720p", "1080p"];
-      if (lower.includes('pro')) return ["720p", "1080p"];
+      if (lower.includes("i2v")) return ["auto", "720p", "1080p"];
+      if (lower.includes("pro")) return ["720p", "1080p"];
       return ["720p"];
     }
     return ["1080P"];
@@ -53,15 +73,56 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const target = event.target as HTMLElement;
+      if (buttonRef.current?.contains(target)) return;
+      if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
+      setIsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [dropdownId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const updateDropdownPosition = () => {
+      if (!buttonRef.current) return;
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = window.innerWidth >= 768 ? 192 : 112;
+      let left = buttonRect.left;
+      let top = buttonRect.top;
+      let openUp = true;
+
+      if (left + dropdownWidth > window.innerWidth - 8) {
+        left = window.innerWidth - dropdownWidth - 8;
+      }
+      if (left < 8) {
+        left = 8;
+      }
+      if (top < 8) {
+        top = buttonRect.bottom + 8;
+        openUp = false;
+      }
+
+      setDropdownPosition({ top, left, openUp });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [isOpen]);
 
   // Auto-close dropdown after 5 seconds
   useEffect(() => {
@@ -98,40 +159,73 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
 
   // Auto-select first available resolution if current selection is invalid
   useEffect(() => {
-    if (availableResolutions.length > 0 && !availableResolutions.includes(selectedResolution)) {
+    if (
+      availableResolutions.length > 0 &&
+      !availableResolutions.includes(selectedResolution)
+    ) {
       onResolutionChange(availableResolutions[0]);
     }
-  }, [selectedModel, selectedResolution, availableResolutions, onResolutionChange]);
+  }, [
+    selectedModel,
+    selectedResolution,
+    availableResolutions,
+    onResolutionChange,
+  ]);
+
+  const dropdownContent =
+    isOpen && dropdownPosition ? (
+      <div
+        data-dropdown={dropdownId}
+        className="fixed md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999]"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          transform: dropdownPosition.openUp
+            ? "translateY(calc(-100% - 8px))"
+            : "none",
+        }}
+      >
+        {availableResolutions.map((resolution) => (
+          <button
+            key={resolution}
+            onClick={() => handleResolutionSelect(resolution)}
+            className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${
+              selectedResolution === resolution
+                ? "bg-white text-black"
+                : "text-white/90 hover:bg-white/10"
+            }`}
+          >
+            <span className="md:text-sm text-xs">{resolution}</span>
+            {selectedResolution === resolution && (
+              <div className="w-2 h-2 bg-black rounded-full"></div>
+            )}
+          </button>
+        ))}
+      </div>
+    ) : null;
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
+    <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5 ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-          }`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5 ${
+          disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+        }`}
       >
         <Monitor className="md:w-4 w-3 h-3 md:h-4  mr-1" />
-        {selectedResolution || 'Resolution'}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        {selectedResolution || "Resolution"}
+        <ChevronUp
+          className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
-
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-          {availableResolutions.map((resolution) => (
-            <button
-              key={resolution}
-              onClick={() => handleResolutionSelect(resolution)}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between ${selectedResolution === resolution ? 'bg-white text-black' : 'text-white/90 hover:bg-white/10'
-                }`}
-            >
-              <span className="md:text-sm text-xs">{resolution}</span>
-              {selectedResolution === resolution && <div className="w-2 h-2 bg-black rounded-full"></div>}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
+    {typeof window !== "undefined" &&
+      dropdownContent &&
+      createPortal(dropdownContent, document.body)}
+    </>
   );
 };
 

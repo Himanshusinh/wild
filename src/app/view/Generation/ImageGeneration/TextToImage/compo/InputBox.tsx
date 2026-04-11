@@ -48,9 +48,12 @@ import {
   setImageCount,
   setFrameSize,
   setStyle,
+  setOutputFormat,
   setNanoBananaResolution,
   setNanoBananaGoogleSearch,
   setNanoBananaImageSearch,
+  setNanoBananaThinkingLevel,
+  setNanoBananaLimitGenerations,
 } from "@/store/slices/generationSlice";
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import {
@@ -115,6 +118,7 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 import QualityDropdown from "./QualityDropdown";
+import ThinkingLevelDropdown from "./ThinkingLevelDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from "next/dynamic";
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), {
@@ -146,6 +150,8 @@ import {
   getImageGenerationCreditCost,
   formatCredits,
 } from "@/utils/creditValidation";
+import { saveUpload } from "@/lib/libraryApi";
+import { normalizeImageModelValue } from "@/utils/normalizeImageModelValue";
 import Image from "next/image";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toResourceProxy, toZataPath, toDirectUrl } from "@/lib/thumb";
@@ -205,6 +211,9 @@ const getInputImageLimitForModel = (model?: string): number => {
   }
   return 10;
 };
+
+const normalizeIncomingImageModel = (model?: string | null): string =>
+  normalizeImageModelValue(model);
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -681,7 +690,7 @@ const InputBox = () => {
 
       const modelToApply = mdl || studioDraft?.model;
       if (modelToApply) {
-        dispatch(setSelectedModel(mapIncomingModel(modelToApply)));
+        dispatch(setSelectedModel(normalizeIncomingImageModel(modelToApply)));
       }
 
       const frameToApply = frm || studioDraft?.frameSize;
@@ -751,8 +760,10 @@ const InputBox = () => {
     } catch {}
   }, [dispatch, searchParams, pathname, router]);
 
-  // Track if initial load has been attempted (to prevent guide flash on refresh)
+  // Track the first history request lifecycle so empty accounts can show the guide
+  // after a real load completes, without flashing the guide before the request starts.
   const hasAttemptedInitialLoadRef = useRef(false);
+  const hasStartedInitialLoadRef = useRef(false);
 
   // Unified initial load (single guarded request) via custom hook
   const fallbackGenerationTypes = useMemo(
@@ -1334,6 +1345,45 @@ const InputBox = () => {
     }
   };
 
+  const ensureProviderReadyImageUrl = useCallback(
+    async (url: string): Promise<string> => {
+      const normalized = toAbsoluteFromProxy(String(url || "").trim());
+      if (!normalized) return normalized;
+      if (
+        normalized.startsWith("http://") ||
+        normalized.startsWith("https://")
+      ) {
+        return normalized;
+      }
+      if (
+        normalized.startsWith("data:") ||
+        normalized.startsWith("blob:")
+      ) {
+        const resp = await saveUpload({ url: normalized, type: "image" });
+        if (resp.responseStatus === "success" && resp.data?.url) {
+          return resp.data.url;
+        }
+        throw new Error(resp.message || "Failed to prepare input image");
+      }
+      return normalized;
+    },
+    [],
+  );
+
+  const ensureProviderReadyImageUrls = useCallback(
+    async (urls: string[], limit = 14): Promise<string[]> => {
+      const prepared: string[] = [];
+      for (const rawUrl of (urls || []).slice(0, limit)) {
+        const resolvedUrl = await ensureProviderReadyImageUrl(rawUrl);
+        if (resolvedUrl) {
+          prepared.push(resolvedUrl);
+        }
+      }
+      return prepared;
+    },
+    [ensureProviderReadyImageUrl],
+  );
+
   // Fetch only first page on mount; further pages load on scroll
   // Replace legacy refresh helpers with hook-driven variants (wrapped with cooldown guard)
   // IMPORTANT: Use backend-filter-aware refresh to avoid overwriting date-filtered views.
@@ -1810,9 +1860,45 @@ const InputBox = () => {
   const nanoBananaImageSearch = useAppSelector(
     (state: any) => state.generation?.nanoBananaImageSearch || false,
   );
+  const nanoBananaThinkingLevel = useAppSelector(
+    (state: any) => state.generation?.nanoBananaThinkingLevel || "minimal",
+  );
+  const nanoBananaLimitGenerations = useAppSelector(
+    (state: any) => state.generation?.nanoBananaLimitGenerations ?? true,
+  );
   const outputFormat = useAppSelector(
     (state: any) => state.generation?.outputFormat || "jpeg",
   );
+  const nanoSupportedOutputFormats = useMemo<Array<"jpg" | "png" | "webp">>(() => {
+    if (selectedModel === "google/nano-banana-2") {
+      return ["jpg", "png"];
+    }
+    if (
+      selectedModel === "google/nano-banana-pro" ||
+      selectedModel === "gemini-25-flash-image"
+    ) {
+      return ["jpg", "png", "webp"];
+    }
+    return ["jpg", "png", "webp"];
+  }, [selectedModel]);
+
+  // Keep output format aligned with model schema and normalize legacy "jpeg" to "jpg".
+  useEffect(() => {
+    const isNanoModel =
+      selectedModel === "google/nano-banana-2" ||
+      selectedModel === "google/nano-banana-pro" ||
+      selectedModel === "gemini-25-flash-image";
+    if (!isNanoModel) return;
+
+    const normalized = outputFormat === "jpeg" ? "jpg" : outputFormat;
+    if (!nanoSupportedOutputFormats.includes(normalized as any)) {
+      dispatch(setOutputFormat(nanoSupportedOutputFormats[0]));
+      return;
+    }
+    if (normalized !== outputFormat) {
+      dispatch(setOutputFormat(normalized));
+    }
+  }, [dispatch, selectedModel, outputFormat, nanoSupportedOutputFormats]);
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector(
     (state: any) => state.ui?.activeDropdown,
@@ -1887,9 +1973,15 @@ const InputBox = () => {
     const filtered = allEntries.filter((entry: any) => {
       const normalizedType = normalize(entry.generationType);
       const normalizedModel = normalize(entry.model);
+      const isUploadFileEntry = normalizedModel === "upload-file";
       const isSeedream = normalizedModel.includes("seedream");
       const isTextToImage = normalizedType === "text-to-image";
       const isImageToImage = normalizedType === "image-to-image";
+
+      // Hide raw upload records from Image Generation history grid.
+      if (isUploadFileEntry) {
+        return false;
+      }
 
       // Explicitly exclude video types - video entries should NOT appear in image generation
       const isVideoType =
@@ -2486,9 +2578,15 @@ const InputBox = () => {
     return filtered;
   }, [historyEntries, searchQuery, dateRange]);
 
-  // Mark that we've attempted initial load once loading starts or completes
+  // Mark that the initial load has started/completed even if the backend returns zero entries.
   useEffect(() => {
-    if (loading || historyEntries.length > 0) {
+    if (loading) {
+      hasStartedInitialLoadRef.current = true;
+      hasAttemptedInitialLoadRef.current = true;
+      return;
+    }
+
+    if (historyEntries.length > 0 || hasStartedInitialLoadRef.current) {
       hasAttemptedInitialLoadRef.current = true;
     }
   }, [loading, historyEntries.length]);
@@ -3404,6 +3502,7 @@ const InputBox = () => {
     requireScrollAfterLoad: true,
     postLoadCooldownMs: 500, // Reduced cooldown for smoother loading
     blockLoadRef: postGenerationBlockRef, // hard block during generation completion window
+    allowAutoloadWhenNotScrollable: true,
   });
 
   // IntersectionObserver removed; relying solely on bottom scroll pagination above.
@@ -4815,6 +4914,29 @@ const InputBox = () => {
             0,
             getInputImageLimitForModel(selectedModel),
           );
+          const preparedImages = await ensureProviderReadyImageUrls(
+            combinedImages,
+            getInputImageLimitForModel(selectedModel),
+          );
+          const nanoBananaAllowedAspect = new Set([
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9",
+          ]);
+          const normalizedAspect =
+            (selectedModel === "google/nano-banana-pro" ||
+              selectedModel === "gemini-25-flash-image")
+              ? nanoBananaAllowedAspect.has(frameSize)
+                ? frameSize
+                : "1:1"
+              : frameSize;
           const result = await dispatch(
             falGenerate({
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -4822,10 +4944,8 @@ const InputBox = () => {
               model: selectedModel,
               // New schema: num_images + aspect_ratio
               num_images: imageCount,
-              aspect_ratio: frameSize as any,
-              uploadedImages: combinedImages.map((u: string) =>
-                toAbsoluteFromProxy(u),
-              ),
+              aspect_ratio: normalizedAspect as any,
+              uploadedImages: preparedImages,
               output_format: "jpeg",
               resolution: nanoBananaProResolution,
               generationType: "text-to-image",
@@ -5238,16 +5358,17 @@ const InputBox = () => {
           }
           // Filter out SVG files - Seedream doesn't support SVG as input
           if (uploadedImages && uploadedImages.length > 0) {
-            const validImages = uploadedImages
-              .slice(0, 10)
-              .map((u: string) => toAbsoluteFromProxy(u))
-              .filter((url: string) => {
-                // Exclude SVG files (vectorized images)
-                const lowerUrl = url.toLowerCase();
-                return (
-                  !lowerUrl.includes(".svg") && !lowerUrl.includes("vectorized")
-                );
-              });
+            const resolvedImages = await ensureProviderReadyImageUrls(
+              uploadedImages,
+              10,
+            );
+            const validImages = resolvedImages.filter((url: string) => {
+              // Exclude SVG files (vectorized images)
+              const lowerUrl = url.toLowerCase();
+              return (
+                !lowerUrl.includes(".svg") && !lowerUrl.includes("vectorized")
+              );
+            });
             if (validImages.length > 0) {
               payload.image_input = validImages;
             }
@@ -6513,9 +6634,6 @@ const InputBox = () => {
           ]);
           const aspect = allowedAspect.has(frameSize) ? frameSize : "1:1";
 
-          // Use the selected resolution from state
-          const resolution = nanoBananaProResolution;
-
           const promptAdjusted = adjustPromptImageNumbers(
             finalPrompt,
             getCombinedUploadedImages(),
@@ -6530,11 +6648,11 @@ const InputBox = () => {
               model: "google/nano-banana-pro",
               num_images: imageCount,
               aspect_ratio: aspect as any,
-              resolution: resolution,
+              resolution: nanoBananaProResolution,
               uploadedImages: combinedImages.map((u: string) =>
                 toAbsoluteFromProxy(u),
               ),
-              output_format: "jpeg",
+              output_format: outputFormat,
               generationType: "text-to-image",
               isPublic,
             }),
@@ -6599,176 +6717,103 @@ const InputBox = () => {
           return;
         }
       } else if (selectedModel === "google/nano-banana-2") {
-        // Google Nano Banana 2 via Replicate
+        // Google Nano Banana 2 via FAL generate endpoint
         try {
+          // Map our frameSize to allowed aspect ratios for Nano Banana 2
+          const allowedAspect = new Set([
+            "match_input_image",
+            "1:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9",
+            "21:9",
+          ]);
+          const aspect = allowedAspect.has(frameSize) ? frameSize : "1:1";
+
           const promptAdjusted = adjustPromptImageNumbers(
             finalPrompt,
             getCombinedUploadedImages(),
             selectedCharacters,
           );
           const combinedImages = getCombinedUploadedImages();
-          const payload: any = {
-            prompt: `${promptAdjusted} [Style: ${style}]`,
-            model: "google/nano-banana-2",
-            aspect_ratio: frameSize,
-            num_images: 1,
-            resolution: nanoBananaResolution,
-            google_search: nanoBananaGoogleSearch,
-            image_search: nanoBananaImageSearch,
-            isPublic,
-          };
+          const preparedImages = await ensureProviderReadyImageUrls(
+            combinedImages,
+            getInputImageLimitForModel(selectedModel),
+          );
 
-          if (combinedImages && combinedImages.length > 0) {
-            payload.image_input = combinedImages.map((u: string) =>
-              toAbsoluteFromProxy(u),
-            );
-          }
-
-          const result = await dispatch(replicateGenerate(payload)).unwrap();
-
-          if (
-            (!result.images || result.images.length === 0) &&
-            (result.status === "submitted" ||
-              result.requestId ||
-              (result as any)?.requestId)
-          ) {
-            const reqId = result.requestId || (result as any)?.requestId;
-            qlog("Nano Banana 2 queued submission detected", {
-              model: result.model,
-              reqId,
+          const result = await dispatch(
+            falGenerate({
+              prompt: `${promptAdjusted} [Style: ${style}]`,
+              userPrompt: prompt,
+              model: "google/nano-banana-2",
+              num_images: imageCount,
+              aspect_ratio: aspect as any,
+              resolution: nanoBananaResolution,
+              enable_web_search: nanoBananaGoogleSearch,
+              thinking_level: nanoBananaThinkingLevel,
+              limit_generations: nanoBananaLimitGenerations,
+              uploadedImages: preparedImages,
+              output_format: outputFormat,
+              generationType:
+                preparedImages.length > 0 ? "image-to-image" : "text-to-image",
+              isPublic,
               generationId,
-            });
+            }),
+          ).unwrap();
 
-            try {
-              const startedAt = Date.now();
-              if (generationId) {
-                dispatch(
-                  updateActiveGeneration({
-                    id: generationId,
-                    updates: {
-                      status: "generating",
-                      startedAt,
-                      historyId: (result as any)?.historyId || generationId,
-                      params: {
-                        ...(activeGenerations.find((g) => g.id === generationId)
-                          ?.params || {}),
-                        requestId: reqId,
-                      },
-                    },
-                  }),
-                );
-                void pollForMatchingHistory({
-                  generationId,
-                  tempEntryId,
-                  model: result.model,
-                  prompt: finalPrompt,
-                  requestId: reqId,
-                  startedAt,
-                });
-              }
-            } catch {}
+          // Update the local loading entry with completed images
+          try {
+            const completedEntry: HistoryEntry = {
+              ...tempEntry,
+              id: tempEntryId,
+              images: result.images || [],
+              status: "completed",
+              timestamp: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              imageCount: result.images?.length || imageCount,
+            } as any;
+            upsertLocalGeneratingEntry(completedEntry);
 
-            // Poll Replicate queue
-            try {
-              const api = getApiClient();
-              let finalResult: any;
-              let consecutiveErrors = 0;
-              for (let attempts = 0; attempts < 360; attempts++) {
-                try {
-                  const statusRes = await api.get(
-                    "/api/replicate/queue/status",
-                    { params: { requestId: reqId }, timeout: 15000 },
-                  );
-                  const status = statusRes.data?.data || statusRes.data;
-                  consecutiveErrors = 0;
-                  const s = String(status?.status || "").toLowerCase();
-                  if (
-                    s === "completed" ||
-                    s === "success" ||
-                    s === "succeeded"
-                  ) {
-                    const resultRes = await api.get(
-                      "/api/replicate/queue/result",
-                      { params: { requestId: reqId }, timeout: 15000 },
-                    );
-                    finalResult = resultRes.data?.data || resultRes.data;
-                    if (generationId) {
-                      dispatch(
-                        updateActiveGeneration({
-                          id: generationId,
-                          updates: {
-                            status: "completed",
-                            images: finalResult.images || [],
-                            historyId:
-                              finalResult.historyId ||
-                              (result as any)?.historyId,
-                          },
-                        }),
-                      );
-                    }
-                    const resultHistoryId =
-                      (finalResult as any)?.historyId ||
-                      (result as any)?.historyId ||
-                      firebaseHistoryId ||
-                      generationId;
-                    if (resultHistoryId)
-                      await refreshSingleGeneration(resultHistoryId);
-                    if (transactionId)
-                      await handleGenerationSuccess(transactionId);
-                    break;
-                  }
-                  if (s === "failed" || s === "error")
-                    throw new Error("Nano Banana 2 generation failed (queue)");
-                } catch (statusError: any) {
-                  consecutiveErrors++;
-                  if (consecutiveErrors >= 5) throw statusError;
-                }
-                await new Promise((res) => setTimeout(res, 1000));
-              }
-              return;
-            } catch (queueErr) {
-              if (generationId)
-                dispatch(
-                  updateActiveGeneration({
-                    id: generationId,
-                    updates: {
-                      status: "failed",
-                      error:
-                        (queueErr as any)?.message ||
-                        "Nano Banana 2 generation failed",
-                    },
-                  }),
-                );
-              await handleReplicateError(queueErr, {
-                generationId,
-                tempEntryId,
-                tempEntry,
-                transactionId,
-                modelName: "Nano Banana 2",
-              });
-              return;
+            // CRITICAL: Update active generation with backend historyId for queue sync
+            if (generationId) {
+              dispatch(
+                updateActiveGeneration({
+                  id: generationId,
+                  updates: {
+                    status: "completed",
+                    images: result.images || [],
+                    historyId: (result as any)?.historyId || firebaseHistoryId,
+                  },
+                }),
+              );
             }
+          } catch {}
+
+          clearInputs();
+
+          // Keep local entries visible for a moment before refreshing
+          setTimeout(() => {
+            setLocalGeneratingEntries([]);
+          }, 1000);
+
+          const resultHistoryId =
+            (result as any)?.historyId || firebaseHistoryId;
+          if (resultHistoryId) {
+            await refreshSingleGeneration(resultHistoryId);
+          } else {
+            await refreshHistory();
           }
 
-          // Immediate result
-          if (generationId) {
-            dispatch(
-              updateActiveGeneration({
-                id: generationId,
-                updates: {
-                  status: "completed",
-                  images: result.images || [],
-                  historyId: (result as any)?.historyId,
-                },
-              }),
-            );
+          if (transactionId) {
+            await handleGenerationSuccess(transactionId);
           }
-          clearInputs();
-          const resId = (result as any)?.historyId || generationId;
-          if (resId) await refreshSingleGeneration(resId);
-          if (transactionId) await handleGenerationSuccess(transactionId);
         } catch (error) {
-          await handleReplicateError(error, {
+          await handleFalError(error, {
             generationId,
             tempEntryId,
             tempEntry,
@@ -7551,8 +7596,9 @@ const InputBox = () => {
             selectedModel === "seedream-5-lite"
           ) {
             if (combinedImages && combinedImages.length > 0) {
-              const seedreamImageInput = combinedImages.map((u: string) =>
-                toAbsoluteFromProxy(u),
+              const seedreamImageInput = await ensureProviderReadyImageUrls(
+                combinedImages,
+                14,
               );
               generationPayload.image_input = seedreamImageInput;
             }
@@ -7794,9 +7840,15 @@ const InputBox = () => {
   };
   handleGenerateRef.current = handleGenerate;
 
-  // Mark that we've attempted initial load once loading starts or completes
+  // Mark that the initial load has started/completed even if the backend returns zero entries.
   useEffect(() => {
-    if (loading || historyEntries.length > 0) {
+    if (loading) {
+      hasStartedInitialLoadRef.current = true;
+      hasAttemptedInitialLoadRef.current = true;
+      return;
+    }
+
+    if (historyEntries.length > 0 || hasStartedInitialLoadRef.current) {
       hasAttemptedInitialLoadRef.current = true;
     }
   }, [loading, historyEntries.length]);
@@ -7857,7 +7909,7 @@ const InputBox = () => {
     }
     if (data.model) {
       console.log("[AutoResume] Restoring model:", data.model);
-      dispatch(setSelectedModel(data.model));
+      dispatch(setSelectedModel(normalizeIncomingImageModel(data.model)));
     }
     if (data.imageCount) dispatch(setImageCount(data.imageCount));
     if (data.frameSize) dispatch(setFrameSize(data.frameSize));
@@ -7934,9 +7986,11 @@ const InputBox = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
       if (
         activeDropdown &&
-        !(event.target as HTMLElement).closest(".dropdown-container")
+        !target.closest(".dropdown-container") &&
+        !target.closest("[data-dropdown]")
       ) {
         dispatch(toggleDropdown(""));
       }
@@ -8771,12 +8825,7 @@ const InputBox = () => {
                 ) : (
                   !loading &&
                   !isFiltering && (
-                    <div className="flex flex-col items-center justify-center py-24 md:py-40 px-6 text-center w-full min-h-[50vh]">
-                      <GifLoader size={120} alt="Loading" />
-                      <div className="text-white text-lg text-center mt-4">
-                        Loading generations...
-                      </div>
-                    </div>
+                    <ImageGenerationGuide />
                   )
                 ))}
 
@@ -8969,7 +9018,12 @@ const InputBox = () => {
                                                 );
                                               }}
                                             />
-                                            {/* Shimmer loading effect - only show if image hasn't loaded yet */}
+                                            {/* Shimmer loading effect - only show if image 
+                                            
+                                            
+                                            
+                                            
+                                            't loaded yet */}
                                             {!isImageLoaded && (
                                               <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                                             )}
@@ -9366,7 +9420,7 @@ const InputBox = () => {
       {!isInlineEditImagePage && (
         <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
-            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-5 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${
+            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${
               isInputBoxHovered
                 ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
                 : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -10134,8 +10188,21 @@ const InputBox = () => {
                         setNanoBananaProResolution(val as "1K" | "2K" | "4K")
                       }
                       options={["1K", "2K", "4K"]}
-                      dropdownId="nanoBananaProResolution"
-                      optionCredits={nanoBananaProResolutionCredits as any}
+                      dropdownId="nanoBananaProResolutionMb"
+                      optionCredits={nanoBananaProResolutionCredits}
+                    />
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={
+                        (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                          | "png"
+                          | "jpg"
+                          | "webp"
+                      }
+                      onOutputFormatChange={(val) =>
+                        dispatch(setOutputFormat(val))
+                      }
+                      dropdownId="nanoBananaOutputFormatMb"
+                      options={nanoSupportedOutputFormats}
                     />
                   </div>
                 )}
@@ -10149,21 +10216,52 @@ const InputBox = () => {
                         )
                       }
                       options={["1K", "2K", "4K"]}
-                      dropdownId="nanoBananaResolutionMb"
-                      optionCredits={nanoBanana2ResolutionCredits as any}
+                      dropdownId="nanoBanana2ResolutionMb"
+                      optionCredits={nanoBanana2ResolutionCredits}
                     />
-                    {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                    <ZTurboOutputFormatDropdown
+                      outputFormat={
+                        (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                          | "png"
+                          | "jpg"
+                          | "webp"
+                      }
+                      onOutputFormatChange={(val) =>
+                        dispatch(setOutputFormat(val))
+                      }
+                      dropdownId="nanoBanana2OutputFormatMb"
+                      options={nanoSupportedOutputFormats}
+                    />
+                    <ThinkingLevelDropdown
+                      thinkingLevel={nanoBananaThinkingLevel}
+                      onThinkingLevelChange={(val) =>
+                        dispatch(setNanoBananaThinkingLevel(val))
+                      }
+                      dropdownId="nanoBananaThinkingLevelMb"
+                    />
                     {/* <button
-                      onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
-                      className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                      onClick={() =>
+                        dispatch(
+                          setNanoBananaLimitGenerations(
+                            !nanoBananaLimitGenerations,
+                          ),
+                        )
+                      }
+                      title="Limit Generations"
+                      className={`h-[23px] md:h-[32px] md:px-3 px-2 rounded-lg text-[11px] font-medium transition-all ${nanoBananaLimitGenerations ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                     >
-                      Google Search
+                      Limit
                     </button>
                     <button
-                      onClick={() => dispatch(setNanoBananaImageSearch(!nanoBananaImageSearch))}
-                      className={`h-[32px] px-3 rounded-lg text-[11px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                      onClick={() =>
+                        dispatch(
+                          setNanoBananaGoogleSearch(!nanoBananaGoogleSearch),
+                        )
+                      }
+                      title="Google Search"
+                      className={`h-[23px] md:h-[32px] md:px-3 px-2 rounded-lg text-[11px] font-medium transition-all ${nanoBananaGoogleSearch ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                     >
-                      Image Search
+                      Search
                     </button> */}
                   </div>
                 )}
@@ -10291,8 +10389,9 @@ const InputBox = () => {
               </div>
 
               {/* Desktop: All dropdowns in one row */}
-              <div className="hidden md:flex flex-wrap items-center gap-3 flex-1 min-w-0 justify-between">
-                <div className="flex items-center gap-3 -mb-2">
+              <div className="hidden md:flex flex-1 min-w-0 items-center">
+                <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-[290px]">
+                  <div className="flex min-w-max items-center gap-2">
                   <ModelsDropdown />
                   <ImageCountDropdown />
                   <FrameSizeDropdown />
@@ -10306,11 +10405,26 @@ const InputBox = () => {
                       <ResolutionDropdown
                         resolution={nanoBananaProResolution}
                         onResolutionChange={(val) =>
-                          setNanoBananaProResolution(val as "1K" | "2K" | "4K")
+                          setNanoBananaProResolution(
+                            val as "1K" | "2K" | "4K",
+                          )
                         }
                         options={["1K", "2K", "4K"]}
-                        dropdownId="nanoBananaProResolution"
-                        optionCredits={nanoBananaProResolutionCredits as any}
+                        dropdownId="nanoBananaProResolutionDesk"
+                        optionCredits={nanoBananaProResolutionCredits}
+                      />
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={
+                          (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                            | "png"
+                            | "jpg"
+                            | "webp"
+                        }
+                        onOutputFormatChange={(val) =>
+                          dispatch(setOutputFormat(val))
+                        }
+                        dropdownId="nanoBananaOutputFormatDesk"
+                        options={nanoSupportedOutputFormats}
                       />
                     </div>
                   )}
@@ -10324,21 +10438,50 @@ const InputBox = () => {
                           )
                         }
                         options={["1K", "2K", "4K"]}
-                        dropdownId="nanoBananaResolution"
-                        optionCredits={nanoBanana2ResolutionCredits as any}
+                        dropdownId="nanoBanana2ResolutionDesk"
+                        optionCredits={nanoBanana2ResolutionCredits}
                       />
-                      {/* Bug 45 Fix: Google Search and Image Search buttons hidden for Nano Banana 2 to prevent sub-option cropping */}
+                      <ZTurboOutputFormatDropdown
+                        outputFormat={
+                          (outputFormat === "jpeg" ? "jpg" : outputFormat) as
+                            | "png"
+                            | "jpg"
+                            | "webp"
+                        }
+                        onOutputFormatChange={(val) =>
+                          dispatch(setOutputFormat(val))
+                        }
+                        dropdownId="nanoBanana2OutputFormatDesk"
+                        options={nanoSupportedOutputFormats}
+                      />
+                      <ThinkingLevelDropdown
+                        thinkingLevel={nanoBananaThinkingLevel}
+                        onThinkingLevelChange={(val) =>
+                          dispatch(setNanoBananaThinkingLevel(val))
+                        }
+                        dropdownId="nanoBananaThinkingLevelDesk"
+                      />
                       {/* <button
-                        onClick={() => dispatch(setNanoBananaGoogleSearch(!nanoBananaGoogleSearch))}
-                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                        onClick={() =>
+                          dispatch(
+                            setNanoBananaLimitGenerations(
+                              !nanoBananaLimitGenerations,
+                            ),
+                          )
+                        }
+                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaLimitGenerations ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                       >
-                        Google Search
+                        Limit Generations
                       </button>
                       <button
-                        onClick={() => dispatch(setNanoBananaImageSearch(!nanoBananaImageSearch))}
-                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaImageSearch ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                        onClick={() =>
+                          dispatch(
+                            setNanoBananaGoogleSearch(!nanoBananaGoogleSearch),
+                          )
+                        }
+                        className={`h-[32px] px-3 rounded-lg text-[13px] font-medium transition-all ${nanoBananaGoogleSearch ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50" : "bg-white/5 text-white/50 hover:bg-white/10"}`}
                       >
-                        Image Search
+                        Google Search
                       </button> */}
                     </div>
                   )}
@@ -10466,6 +10609,7 @@ const InputBox = () => {
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}
+                  </div>
                 </div>
               </div>
             </div>
@@ -10523,6 +10667,7 @@ const InputBox = () => {
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
+          persistLocalDeviceUploads={false}
           remainingSlots={Math.max(
             0,
             getInputImageLimitForModel(selectedModel) -

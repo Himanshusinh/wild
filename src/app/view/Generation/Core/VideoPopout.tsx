@@ -117,12 +117,11 @@ export const VideoPopout = ({
                         <div className="flex flex-col gap-2">
                             <div className="text-[10px] font-bold text-zinc-300 tracking-[0.2em] uppercase pl-1">Models</div>
                             <div className="flex flex-col gap-0.5 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
+                                <ModelItem href="/text-to-video?model=seedance-2.0-t2v" tag="CINEMATIC" tagColor="#F97316" name="Seedance 2.0" desc="Premium cinematic video from text, image, or reference" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-video?model=veo3.1-t2v-4s" tag="TOP PICK" tagColor="#9D4EDD" name="Veo 3.1" desc="Google's most capable video model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=veo3.1-lite-t2v-8s" tag="SMART" tagColor="#7CFFB2" name="Veo 3.1 Lite" desc="Efficient cinematic generation with FFLF support" onClick={onMouseLeave} />
                                 <ModelItem href="/text-to-video?model=sora2-t2v" tag="LATEST" tagColor="#00E5FF" name="Sora 2" desc="OpenAI's latest video generation" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=kling-2.6-pro" tag="ULTRA" tagColor="#3A86FF" name="Kling 2.6 Pro" desc="High-fidelity cinematic generation" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=wan-2.5-t2v" tag="QUICK" tagColor="#00B4D8" name="Wan 2.5" desc="Hyper-realistic and fast" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=MiniMax-Hailuo-2.3" tag="" name="Hailuo 2.3" desc="Minimax's creative video model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=pixverse-v5-t2v" tag="" name="PixVerse 5" desc="Incredible anime & stylized video" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=kling-v3-standard" tag="ULTRA" tagColor="#3A86FF" name="Kling 3.0" desc="Advanced motion and strong character consistency" onClick={onMouseLeave} />
                             </div>
                         </div>
 

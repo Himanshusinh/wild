@@ -355,7 +355,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         ))}
 
       {sortedDates.map((date) => (
-        <div key={date} className="md:space-y-4 space-y-2 mb-8">
+        <div key={date} className="md:space-y-2 space-y-2 mb-6">
           {/* Date Header */}
           <div className="flex items-center md:gap-3 gap-2 px-0 pt-0">
             <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">

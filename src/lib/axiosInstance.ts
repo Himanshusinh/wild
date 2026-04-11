@@ -88,6 +88,190 @@ const isApiDebugEnabled = (): boolean => {
   return process.env.NEXT_PUBLIC_API_DEBUG === "true";
 };
 
+const isProviderGenerationRequest = (requestUrl: string): boolean =>
+  requestUrl.startsWith("/api/fal/") ||
+  requestUrl.startsWith("/api/replicate/") ||
+  requestUrl.startsWith("/api/runway/") ||
+  requestUrl.startsWith("/api/bfl/") ||
+  requestUrl.startsWith("/api/minimax/");
+
+const hasCustomGenerationToastHandler = (requestUrl: string): boolean =>
+  isProviderGenerationRequest(requestUrl) &&
+  (requestUrl.includes("/generate") ||
+    requestUrl.includes("/submit") ||
+    requestUrl.includes("/create"));
+
+const shouldNormalizeInlineWorkflowImages = (requestUrl: string): boolean =>
+  requestUrl.startsWith("/api/workflows/");
+
+const isInlineImageDataUrl = (value: unknown): value is string =>
+  typeof value === "string" && value.startsWith("data:image/");
+
+const uploadMediaLibraryImage = async (
+  dataUrl: string,
+  authHeader?: string,
+): Promise<string> => {
+  const response = await axios.post(
+    `${resolvedBaseUrl}/api/canvas/media-library/upload`,
+    {
+      url: dataUrl,
+      type: "image",
+    },
+    {
+      withCredentials: true,
+      timeout: 1200000,
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+    },
+  );
+
+  const uploadedUrl = response?.data?.data?.url;
+  if (!uploadedUrl || typeof uploadedUrl !== "string") {
+    throw new Error("Failed to persist uploaded image");
+  }
+  return uploadedUrl;
+};
+
+const normalizeInlineWorkflowImages = async (
+  value: any,
+  authHeader?: string,
+): Promise<any> => {
+  if (isInlineImageDataUrl(value)) {
+    return uploadMediaLibraryImage(value, authHeader);
+  }
+
+  if (Array.isArray(value)) {
+    return Promise.all(
+      value.map((item) => normalizeInlineWorkflowImages(item, authHeader)),
+    );
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    typeof File === "undefined" ? true : !(value instanceof File) &&
+    typeof Blob === "undefined" ? true : !(value instanceof Blob) &&
+    typeof FormData === "undefined" ? true : !(value instanceof FormData)
+  ) {
+    const entries = await Promise.all(
+      Object.entries(value).map(async ([key, nestedValue]) => [
+        key,
+        await normalizeInlineWorkflowImages(nestedValue, authHeader),
+      ]),
+    );
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+};
+
+const isBackgroundPollingRequest = (requestUrl: string): boolean =>
+  requestUrl.startsWith("/api/fal/queue/status") ||
+  requestUrl.startsWith("/api/fal/queue/result") ||
+  requestUrl.startsWith("/api/replicate/queue/status") ||
+  requestUrl.startsWith("/api/replicate/queue/result") ||
+  requestUrl.startsWith("/api/runway/tasks/");
+
+const isGenericAxiosMessage = (message?: string): boolean => {
+  const normalized = String(message || "")
+    .trim()
+    .toLowerCase();
+  return (
+    !normalized ||
+    normalized.startsWith("request failed with status code") ||
+    normalized === "request failed" ||
+    normalized === "network error"
+  );
+};
+
+const getGlobalApiErrorMessage = (error: any, requestUrl: string): string => {
+  const status = Number(error?.response?.status || error?.status || 0);
+  const isAuthRequest = requestUrl.startsWith("/api/auth/");
+  const isCreditsRequest = requestUrl.startsWith("/api/credits");
+
+  const candidates = [
+    error?.response?.data?.message,
+    error?.response?.data?.error,
+    error?.response?.data?.detail,
+    error?.response?.data?.data?.message,
+    error?.message,
+  ];
+
+  const explicitMessage = candidates.find(
+    (value) => typeof value === "string" && !isGenericAxiosMessage(value),
+  );
+
+  if (typeof explicitMessage === "string") {
+    return explicitMessage.trim();
+  }
+
+  const rawMessage = String(error?.message || "").toLowerCase();
+  const isNetworkIssue =
+    rawMessage.includes("fetch failed") ||
+    rawMessage.includes("failed to fetch") ||
+    rawMessage.includes("network error") ||
+    rawMessage.includes("timeout") ||
+    rawMessage.includes("econnreset") ||
+    rawMessage.includes("socket hang up");
+
+  if (isNetworkIssue) {
+    return "Unable to reach the server. Please check your connection and try again.";
+  }
+
+  if (status === 401) {
+    return isAuthRequest
+      ? "Login failed. Please check your credentials and try again."
+      : "Your session has expired. Please log in again.";
+  }
+
+  if (status === 403) {
+    if (isCreditsRequest) {
+      return "You do not have permission to access credits right now.";
+    }
+    return "You do not have permission to perform this action.";
+  }
+
+  if (status === 404) {
+    return "The requested resource was not found.";
+  }
+
+  if (status === 429) {
+    return "Too many requests. Please try again later.";
+  }
+
+  if (status >= 500) {
+    if (isAuthRequest) {
+      return "Authentication service is unavailable right now. Please try again later.";
+    }
+    if (isCreditsRequest) {
+      return "Credits service is unavailable right now. Please try again later.";
+    }
+    return "The server is temporarily unavailable. Please try again later.";
+  }
+
+  return "Request failed. Please try again.";
+};
+
+const showGenericApiErrorToast = async (
+  error: any,
+  requestUrl: string,
+): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const toastModule = await import("react-hot-toast");
+    toastModule.default.error(getGlobalApiErrorMessage(error, requestUrl), {
+      duration: 5000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 // Attach device headers; rely on Bearer tokens primarily (session cookie is optional fallback)
 axiosInstance.interceptors.request.use(async (config) => {
   try {
@@ -192,6 +376,21 @@ axiosInstance.interceptors.request.use(async (config) => {
         headers["Authorization"] = `Bearer ${token}`;
         config.headers = headers;
       }
+
+      if (
+        shouldNormalizeInlineWorkflowImages(url) &&
+        config.data &&
+        typeof config.data === "object"
+      ) {
+        const authHeader =
+          (config.headers as any)?.Authorization ||
+          (config.headers as any)?.authorization;
+        config.data = await normalizeInlineWorkflowImages(
+          config.data,
+          authHeader,
+        );
+      }
+
       // Be explicit about no-cache for generations endpoints to avoid stale browser cache
       try {
         if (url.startsWith("/api/generations")) {
@@ -844,29 +1043,17 @@ axiosInstance.interceptors.response.use(
 
       // Some generation flows already show domain-specific toasts in their own handlers.
       // Avoid duplicate toasts by suppressing the global interceptor toast for those endpoints.
-      const hasCustomGenerationToast =
-        requestUrl.startsWith("/api/fal/generate") ||
-        requestUrl.startsWith("/api/replicate/generate") ||
-        requestUrl.startsWith("/api/runway/generate") ||
-        requestUrl.startsWith("/api/bfl/generate") ||
-        requestUrl.startsWith("/api/minimax/generate");
-
-      // Queue status/result requests are background polling. Let callers decide how to surface
-      // a final failure instead of emitting a toast for every retry attempt.
-      const isBackgroundPollingRequest =
-        requestUrl.startsWith("/api/fal/queue/status") ||
-        requestUrl.startsWith("/api/fal/queue/result") ||
-        requestUrl.startsWith("/api/replicate/queue/status") ||
-        requestUrl.startsWith("/api/replicate/queue/result") ||
-        requestUrl.startsWith("/api/runway/tasks/");
-
       if (
         !shouldSuppress &&
         !skipGlobalErrorToast &&
-        !hasCustomGenerationToast &&
+        !hasCustomGenerationToastHandler(requestUrl) &&
         !isBackgroundPollingRequest
       ) {
-        await showFalErrorToast(error);
+        if (requestUrl.startsWith("/api/fal/")) {
+          await showFalErrorToast(error);
+        } else {
+          await showGenericApiErrorToast(error, requestUrl);
+        }
       }
     } catch {}
     try {

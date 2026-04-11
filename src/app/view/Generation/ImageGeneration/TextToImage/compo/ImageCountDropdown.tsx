@@ -15,9 +15,7 @@ const ImageCountDropdown = () => {
   );
   const normalizedModel = String(selectedModel || "").trim().toLowerCase();
   const maxCount =
-    normalizedModel === "google/nano-banana-2"
-      ? 1
-      : normalizedModel === "seedream-4.5" ||
+    normalizedModel === "seedream-4.5" ||
           normalizedModel === "bytedance/seedream-4.5" ||
           normalizedModel === "seedream-5-lite" ||
           normalizedModel === "bytedance/seedream-5-lite"
@@ -37,7 +35,7 @@ const ImageCountDropdown = () => {
   };
 
   return (
-    <div className="flex items-center md:gap-2 gap-0 bg-transparent rounded-lg border border-white/20 md:p-1.5 p-0.75">
+    <div className="flex items-center md:gap-2 gap-0 bg-transparent rounded-lg border border-white/20  p-0.75 md:p-2">
       <button
         onClick={handleDecrease}
         disabled={imageCount <= 1}

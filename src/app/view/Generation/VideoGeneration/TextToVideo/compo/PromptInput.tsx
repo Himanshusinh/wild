@@ -56,7 +56,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
           className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
           rows={1}
           style={{
-            minHeight: "80px",
+            minHeight: "56px",
             maxHeight: "90px",
             lineHeight: "1.2",
             scrollbarWidth: "thin",

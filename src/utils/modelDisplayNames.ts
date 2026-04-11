@@ -100,7 +100,27 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "wan-2.5-i2v": "WAN 2.5 I2V",
   "wan-2.5-i2v-fast": "WAN 2.5 I2V Fast",
   "MiniMax-Hailuo-02-i2v": "MiniMax-Hailuo-02",
-
+  "seedance-2.0-t2v": "Seedance 2.0",
+  "seedance-2.0-r2v": "Seedance 2.0 Reference",
+  "seedance-2.0-fast": "Seedance 2.0 Fast",
+  "seedance-2.0-fast-t2v": "Seedance 2.0 Fast",
+  "seedance-2.0-fast-i2v": "Seedance 2.0 Fast",
+  "seedance-2.0-fast-r2v": "Seedance 2.0 Fast Reference",
+  "bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
+  "bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
+  "bytedance/seedance-2.0/reference-to-video": "Seedance 2.0 Reference",
+  "bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
+  "bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
+  "bytedance/seedance-2.0/fast/reference-to-video":
+    "Seedance 2.0 Fast Reference",
+  "fal-ai/bytedance/seedance-2.0/text-to-video": "Seedance 2.0",
+  "fal-ai/bytedance/seedance-2.0/image-to-video": "Seedance 2.0",
+  "fal-ai/bytedance/seedance-2.0/reference-to-video":
+    "Seedance 2.0 Reference",
+  "fal-ai/bytedance/seedance-2.0/fast/text-to-video": "Seedance 2.0 Fast",
+  "fal-ai/bytedance/seedance-2.0/fast/image-to-video": "Seedance 2.0 Fast",
+  "fal-ai/bytedance/seedance-2.0/fast/reference-to-video":
+    "Seedance 2.0 Fast Reference",
   // Music Generation Models
   "musicgen-remixer": "MusicGen Remixer",
   "musicgen-melody": "MusicGen Melody",
@@ -133,6 +153,7 @@ export function getModelDisplayName(
     .replace(/^\s*(replicate)\s*/i, "")
     .replace(/^\s*(runway)\s*/i, "")
     .replace(/^\s*(minimax)\s*/i, "")
+    .replace(/^\s*(bytedance)\s*/i, "")
     .replace(/^\s*(kwai|kwaivgi|kuaishou|kuaigv)\s*/i, "")
     .replace(/\bkling\s*video\b/gi, "kling")
     .replace(/\bvideo\b/gi, "")
@@ -145,6 +166,20 @@ export function getModelDisplayName(
 
   // Heuristic remapping for models if provider text snuck into the model string
   const lower = normalized.toLowerCase();
+
+  if (lower.includes("seedance-2.0/fast")) {
+    if (lower.includes("reference-to-video")) {
+      return "Seedance 2.0 Fast Reference";
+    }
+    return "Seedance 2.0 Fast";
+  }
+
+  if (lower.includes("seedance-2.0")) {
+    if (lower.includes("reference-to-video")) {
+      return "Seedance 2.0 Reference";
+    }
+    return "Seedance 2.0";
+  }
 
   // Runway Act-Two model (check before other Runway models)
   if (
@@ -229,6 +264,12 @@ export function getModelDisplayName(
     if (lower.includes("2.5")) return `Kling 2.5${isMaster ? " Master" : ""}`;
     if (lower.includes("2.1")) return `Kling 2.1${isMaster ? " Master" : ""}`;
     return `Kling${isMaster ? " Master" : ""}`;
+  }
+
+  // Seedance models
+  if (lower.includes("seedance")) {
+    if (lower.includes("fast")) return "Seedance 2.0 Fast";
+    return "Seedance 2.0";
   }
 
   // Check if we have a direct mapping

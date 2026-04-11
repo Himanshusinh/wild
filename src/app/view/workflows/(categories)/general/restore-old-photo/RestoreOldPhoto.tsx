@@ -363,6 +363,7 @@ export default function RestoreOldPhoto() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={true}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -376,3 +377,4 @@ export default function RestoreOldPhoto() {
     </>
   );
 }
+

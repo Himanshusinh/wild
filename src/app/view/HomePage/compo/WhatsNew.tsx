@@ -2,70 +2,105 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  Bot,
-  ImagePlus,
-  Layers3,
-  Sparkles,
-  Wand2,
-} from "lucide-react";
+import { Bot, Sparkles, Wand2 } from "lucide-react";
 
 type NewItem = {
   id: string;
   eyebrow: string;
   title: string;
   desc: string;
+  features?: string[];
   href: string;
-  accent: string;
+  color: string; // primary accent hex
   Icon: typeof Sparkles;
+  media: {
+    kind: "image" | "video";
+    src: string;
+    alt: string;
+    position?: string;
+  };
 };
 
 const NEW_ITEMS: NewItem[] = [
   {
-    id: "new-feature",
-    eyebrow: "New Feature",
-    title: "Prompt Enhance",
-    desc: "Refine rough ideas into clearer image prompts with faster creative guidance.",
-    href: "/text-to-image",
-    accent: "from-[#3B82F6]/25 via-[#60A5FA]/12 to-transparent",
-    Icon: Sparkles,
-  },
-  {
     id: "new-model",
     eyebrow: "New Model",
-    title: "GPT Image 1.5",
-    desc: "Sharper instruction-following for polished image generations and edits.",
-    href: "/text-to-image?model=openai/gpt-image-1.5",
-    accent: "from-[#8B5CF6]/25 via-[#C084FC]/10 to-transparent",
+    title: "Seedance 2.0",
+    desc: "Fast video generation for both text-to-video and image-to-video creation inside WildMind.",
+    features: ["Auto / 4-15s", "480p / 720p", "T2V + I2V", "Audio On/Off"],
+    href: "/text-to-video?model=seedance-2.0-t2v",
+    color: "#8B5CF6",
     Icon: Bot,
+    media: {
+      kind: "video",
+      src: "/core/cyberpunk.gif",
+      alt: "Neon city motion preview for Seedance 2.0",
+      position: "center",
+    },
   },
   {
-    id: "new-app",
-    eyebrow: "New App",
-    title: "Edit Image",
-    desc: "Jump into quick edits, cleanup, and visual changes without leaving the studio flow.",
-    href: "/text-to-image/edit-image",
-    accent: "from-[#10B981]/25 via-[#34D399]/10 to-transparent",
-    Icon: ImagePlus,
-  },
-  {
-    id: "new-video",
-    eyebrow: "New Video",
-    title: "Veo 3.1",
-    desc: "Create more cinematic motion with an upgraded text-to-video generation experience.",
-    href: "/text-to-video?model=veo3.1-t2v-8s",
-    accent: "from-[#F97316]/25 via-[#FB923C]/10 to-transparent",
+    id: "new-model-veo-lite",
+    eyebrow: "New Model",
+    title: "Veo 3.1 Lite",
+    desc: "Lower-cost cinematic video model for faster text-to-video and image-to-video generation.",
+    features: ["4 / 6 / 8s", "720p / 1080p", "T2V + I2V", "16:9 / 9:16"],
+    href: "/text-to-video?model=veo3.1-lite-t2v-8s",
+    color: "#F97316",
     Icon: Wand2,
+    media: {
+      kind: "video",
+      src: "/HomePage/whatsnew/veo-clouds.mp4",
+      alt: "Cinematic cloud motion video for Veo 3.1 Lite",
+      position: "center",
+    },
   },
   {
-    id: "new-workflow",
-    eyebrow: "New Workflow",
-    title: "Remove Background",
-    desc: "Cleanly isolate products, portraits, and assets in one tap for faster content production.",
-    href: "/view/workflows/general/remove-background",
-    accent: "from-[#EC4899]/25 via-[#F472B6]/10 to-transparent",
-    Icon: Layers3,
+    id: "new-model-kling-pro",
+    eyebrow: "New Model",
+    title: "Kling 3.0 Pro",
+    desc: "High-control video model for polished motion, better prompt follow-through, and audio-ready generation.",
+    features: ["5-15s", "16:9 / 9:16 / 1:1", "T2V + I2V", "Audio On/Off"],
+    href: "/text-to-video?model=kling-v3-pro",
+    color: "#22C55E",
+    Icon: Bot,
+    media: {
+      kind: "video",
+      src: "/HomePage/whatsnew/kling-run.mp4",
+      alt: "Dynamic motion video for Kling 3.0 Pro",
+      position: "center",
+    },
+  },
+  {
+    id: "new-model-nano-banana-2",
+    eyebrow: "New Model",
+    title: "Nano Banana 2",
+    desc: "Next-gen image generation with cleaner detail, stronger consistency, and flexible text-to-image creation.",
+    features: ["1K / 2K / 4K", "14 Ratios", "Text to Image", "High Consistency"],
+    href: "/text-to-image?model=google/nano-banana-2",
+    color: "#38BDF8",
+    Icon: Sparkles,
+    media: {
+      kind: "image",
+      src: "/styles/creative.jpg",
+      alt: "Creative image backdrop for Nano Banana 2",
+      position: "center",
+    },
+  },
+  {
+    id: "new-model-qwen-image-2-pro",
+    eyebrow: "New Model",
+    title: "Qwen Image 2 Pro",
+    desc: "Premium image generation with high-fidelity results, stronger prompt alignment, and polished compositions.",
+    features: ["1K / 2K", "9 Ratios", "High Fidelity", "Prompt Align"],
+    href: "/text-to-image?model=qwen/qwen-image-2-pro",
+    color: "#EC4899",
+    Icon: Sparkles,
+    media: {
+      kind: "image",
+      src: "/styles/pro_color_photography.jpg",
+      alt: "High-fidelity photography background for Qwen Image 2 Pro",
+      position: "center",
+    },
   },
 ];
 
@@ -73,6 +108,7 @@ export default function WhatsNew() {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const arrowThreshold = 12;
 
   const scrollRight = () => {
     const el = railRef.current;
@@ -91,20 +127,34 @@ export default function WhatsNew() {
     if (!el) return;
 
     const updateArrows = () => {
-      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-      setShowLeftArrow(el.scrollLeft > 2);
-      setShowRightArrow(el.scrollLeft < maxScroll - 2);
+      const firstCard = el.firstElementChild as HTMLElement | null;
+      const lastCard = el.lastElementChild as HTMLElement | null;
+      const railRect = el.getBoundingClientRect();
+
+      const hasHiddenContentOnLeft = firstCard
+        ? firstCard.getBoundingClientRect().left < railRect.left - arrowThreshold
+        : Math.max(0, el.scrollLeft) > arrowThreshold;
+
+      const hasHiddenContentOnRight = lastCard
+        ? lastCard.getBoundingClientRect().right > railRect.right + arrowThreshold
+        : Math.max(0, el.scrollWidth - el.clientWidth - el.scrollLeft) >
+          arrowThreshold;
+
+      setShowLeftArrow(hasHiddenContentOnLeft);
+      setShowRightArrow(hasHiddenContentOnRight);
     };
 
-    updateArrows();
+    el.scrollTo({ left: 0, behavior: "auto" });
+    const frameId = window.requestAnimationFrame(updateArrows);
     el.addEventListener("scroll", updateArrows, { passive: true });
     window.addEventListener("resize", updateArrows);
 
     return () => {
+      window.cancelAnimationFrame(frameId);
       el.removeEventListener("scroll", updateArrows);
       window.removeEventListener("resize", updateArrows);
     };
-  }, []);
+  }, [arrowThreshold]);
 
   return (
     <section className="bg-[#0E0E12] px-4 pb-6 pt-4 sm:px-6 sm:pb-8 lg:px-8">
@@ -136,70 +186,143 @@ export default function WhatsNew() {
       <div className="relative">
         <div
           ref={railRef}
-          className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-6 lg:px-16"
+          className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5 sm:px-6 lg:px-16"
         >
-          {NEW_ITEMS.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              className="group relative min-h-[220px] w-[280px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-[#14141A] p-4 transition-all duration-300 hover:border-white/20 hover:bg-[#181821] sm:min-h-[240px] sm:w-[320px] sm:p-5"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.accent} opacity-100`} />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_34%)] opacity-60" />
+          {NEW_ITEMS.map((item) => {
+            const isRealVideo =
+              item.media.kind === "video" &&
+              /\.(mp4|webm|mov)$/i.test(item.media.src);
 
-              <div className="relative flex h-full flex-col">
-                <div className="mb-10 flex items-start justify-between">
-                  <span className="rounded-full border border-white/12 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/75 backdrop-blur-md">
-                    {item.eyebrow}
-                  </span>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 text-white/85 backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
-                    <item.Icon size={19} strokeWidth={1.9} />
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                style={
+                  {
+                    "--accent": item.color,
+                  } as React.CSSProperties
+                }
+                className="group relative flex aspect-[3/4] w-[300px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-white/[0.08] bg-gradient-to-b from-[#17171F] to-[#101016] p-5 transition-all duration-500 hover:-translate-y-1 hover:border-[color:var(--accent)]/40 hover:shadow-[0_20px_60px_-20px_var(--accent)] sm:w-[330px] sm:p-6"
+              >
+                {isRealVideo ? (
+                  <video
+                    src={item.media.src}
+                    aria-label={item.media.alt}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
+                    style={{ objectPosition: item.media.position || "center" }}
+                  />
+                ) : (
+                  <img
+                    src={item.media.src}
+                    alt={item.media.alt}
+                    loading="lazy"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
+                    style={{ objectPosition: item.media.position || "center" }}
+                  />
+                )}
+
+                <div className="pointer-events-none absolute inset-0 bg-[#07080D]/30" />
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background: `linear-gradient(180deg, rgba(7,8,13,0.04) 0%, rgba(7,8,13,0.1) 26%, rgba(7,8,13,0.28) 46%, rgba(7,8,13,0.76) 74%, rgba(7,8,13,0.96) 100%), linear-gradient(135deg, ${item.color}22 0%, transparent 38%, rgba(7,8,13,0.74) 100%)`,
+                  }}
+                />
+
+                {/* Top-right accent glow */}
+                <div
+                  className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full opacity-40 blur-3xl transition-opacity duration-500 group-hover:opacity-70"
+                  style={{ background: `radial-gradient(circle, ${item.color} 0%, transparent 70%)` }}
+                />
+
+                {/* Top accent line */}
+                <div
+                  className="pointer-events-none absolute left-0 right-0 top-0 h-[2px] opacity-60 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{
+                    background: `linear-gradient(90deg, transparent 0%, ${item.color} 50%, transparent 100%)`,
+                  }}
+                />
+
+                <div className="relative z-10 flex h-full flex-1 flex-col">
+                  {item.media.kind === "video" && (
+                    <div className="flex justify-end">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-black/40 text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.32)] backdrop-blur-md">
+                        <svg width="13" height="13" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <path d="M4.2 3.2L8.4 6 4.2 8.8V3.2Z" fill="currentColor" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-auto flex flex-1 flex-col justify-end px-1 pb-1 pt-28 sm:pt-32">
+                    <h3
+                      className="mt-4 max-w-[230px] text-[26px] uppercase leading-[0.95] tracking-[0.02em] text-white sm:text-[30px]"
+                      style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }} 
+                    >
+                      {item.title}
+                    </h3>
+
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <div
+                        className="h-[2px] w-8 rounded-full transition-all duration-500 group-hover:w-14"
+                        style={{ background: item.color }}
+                      />
+                      <div className="h-[2px] flex-1 rounded-full bg-white/5" />
+                    </div>
+
+                    <p className="mt-3 max-w-[270px] text-[12px] leading-[1.6] text-white/72">
+                      {item.desc}
+                    </p>
+
+                    {item.features && item.features.length > 0 && (
+                      <div className="mt-3.5 flex max-w-[280px] flex-wrap gap-1.5">
+                        {item.features.map((feature) => (
+                          <span
+                            key={feature}
+                            className="rounded-md border border-white/10 bg-white/[0.05] px-2 py-[3px] text-[9.5px] font-semibold uppercase tracking-[0.06em] text-white/78"
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                <div className="mt-auto">
-                  <h3
-                    className="max-w-[210px] text-[28px] uppercase leading-none tracking-[0.04em] text-white sm:text-[32px]"
-                    style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 max-w-[250px] text-[12px] leading-[1.55] text-white/55 sm:max-w-[270px] sm:text-[12.5px]">
-                    {item.desc}
-                  </p>
-                  <div className="mt-4 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/72 transition-colors group-hover:text-white">
-                    <span>Open</span>
-                    <ArrowUpRight size={13} />
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
-        <button
-          type="button"
-          onClick={scrollLeft}
-          disabled={!showLeftArrow}
-          aria-label="Scroll what's new left"
-          className={`absolute left-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 md:flex lg:left-10 ${showLeftArrow ? "opacity-100" : "opacity-35"}`}
-        >
-          <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        {showLeftArrow && (
+          <button
+            type="button"
+            onClick={scrollLeft}
+            aria-label="Scroll what's new left"
+            className="absolute left-0 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 md:flex lg:left-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
 
-        <button
-          type="button"
-          onClick={scrollRight}
-          disabled={!showRightArrow}
-          aria-label="Scroll what's new right"
-          className={`absolute right-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 md:flex lg:right-10 ${showRightArrow ? "opacity-100" : "opacity-35"}`}
-        >
-          <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        {showRightArrow && (
+          <button
+            type="button"
+            onClick={scrollRight}
+            aria-label="Scroll what's new right"
+            className="absolute right-0 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 md:flex lg:right-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
       </div>
     </section>
   );

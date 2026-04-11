@@ -19,6 +19,8 @@ interface InputActionsProps {
   uploadedImages: string[];
   lastFrameImage?: string;
   selectedResolution?: string;
+  canSwapFrames?: boolean;
+  onSwapFrames?: () => void;
 }
 
 const InputActions: React.FC<InputActionsProps> = ({
@@ -37,10 +39,38 @@ const InputActions: React.FC<InputActionsProps> = ({
   uploadedImages,
   lastFrameImage,
   selectedResolution,
+  canSwapFrames = false,
+  onSwapFrames,
 }) => {
   const hasImageToVideoSupport =
     currentModelCapabilities?.supportsImageToVideo ||
     currentModelCapabilities?.requiresFirstFrame;
+  const isSeedance2ReferenceModel =
+    selectedModel === "seedance-2.0-r2v" ||
+    selectedModel === "seedance-2.0-fast-r2v";
+  const referenceLimit =
+    generationMode === "image_to_video" && selectedModel === "S2V-01"
+      ? 1
+      : generationMode === "video_to_video"
+        ? 4
+        : isSeedance2ReferenceModel
+          ? 9
+          : 4;
+  const supportsLastFrameUpload =
+    ((selectedModel === "MiniMax-Hailuo-02" &&
+      (selectedResolution === "768P" || selectedResolution === "1080P")) ||
+      selectedModel.includes("veo3.1") ||
+      selectedModel === "kling-o1" ||
+      selectedModel.startsWith("ltx-2.3-fast") ||
+      selectedModel.startsWith("ltx-2.3-pro") ||
+      selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-fast" ||
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      (selectedModel.includes("seedance") &&
+        selectedModel !== "seedance-2.0-t2v" &&
+        !selectedModel.includes("pro-fast") &&
+        !selectedModel.includes("i2v"))) &&
+    hasImageToVideoSupport;
 
   return (
     <>
@@ -58,14 +88,15 @@ const InputActions: React.FC<InputActionsProps> = ({
         )}
 
         {/* References Upload */}
-        {currentModelCapabilities.requiresReferenceImage && (
+        {(currentModelCapabilities.requiresReferenceImage ||
+          isSeedance2ReferenceModel) && (
           <div className="relative">
             <button
               className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${
                 (generationMode === "image_to_video" &&
                   selectedModel === "S2V-01" &&
                   references.length >= 1) ||
-                (generationMode === "video_to_video" && references.length >= 4)
+                references.length >= referenceLimit
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:bg-white/10"
               }`}
@@ -77,7 +108,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                 (generationMode === "image_to_video" &&
                   selectedModel === "S2V-01" &&
                   references.length >= 1) ||
-                (generationMode === "video_to_video" && references.length >= 4)
+                references.length >= referenceLimit
               }
             >
               <FilePlus2
@@ -86,8 +117,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   (generationMode === "image_to_video" &&
                     selectedModel === "S2V-01" &&
                     references.length >= 1) ||
-                  (generationMode === "video_to_video" &&
-                    references.length >= 4)
+                  references.length >= referenceLimit
                     ? "text-gray-400"
                     : "text-green-400"
                 }`}
@@ -96,7 +126,9 @@ const InputActions: React.FC<InputActionsProps> = ({
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
               {generationMode === "image_to_video" && selectedModel === "S2V-01"
                 ? "Upload character reference (1 max)"
-                : "Upload references"}
+                : isSeedance2ReferenceModel
+                  ? `Upload references (${referenceLimit} max)`
+                  : "Upload references"}
             </div>
 
             {/* References Count Badge */}
@@ -106,8 +138,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   (generationMode === "image_to_video" &&
                     selectedModel === "S2V-01" &&
                     references.length >= 1) ||
-                  (generationMode === "video_to_video" &&
-                    references.length >= 4)
+                  references.length >= referenceLimit
                     ? "bg-red-500"
                     : "bg-green-500"
                 }`}
@@ -125,7 +156,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   {generationMode === "image_to_video" &&
                   selectedModel === "S2V-01"
                     ? `Character Reference (${references.length}/1)`
-                    : `References (${references.length}/4)`}
+                    : `References (${references.length}/${referenceLimit})`}
                 </div>
                 <div className="space-y-2">
                   {references.map((ref, index) => (
@@ -185,7 +216,11 @@ const InputActions: React.FC<InputActionsProps> = ({
                 />
               </button>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                {selectedModel === "seedance-2.0-t2v" ? "Image" : "First Frame"}
+                {selectedModel === "seedance-2.0-t2v" ||
+                selectedModel === "seedance-2.0-fast" ||
+                selectedModel === "seedance-2.0-fast-i2v"
+                  ? "Image"
+                  : "First Frame"}
               </div>
             </div>
           )}
@@ -216,62 +251,64 @@ const InputActions: React.FC<InputActionsProps> = ({
           )}
 
         {/* Arrow (First -> Last Frame) */}
-        {((selectedModel === "MiniMax-Hailuo-02" &&
-          (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-          selectedModel.includes("veo3.1") ||
-          selectedModel === "kling-o1" ||
-          selectedModel.startsWith("ltx-2.3-fast") ||
-          selectedModel.startsWith("ltx-2.3-pro") ||
-          (selectedModel.includes("seedance") &&
-            !selectedModel.includes("pro-fast") &&
-            !selectedModel.includes("i2v"))) &&
-          hasImageToVideoSupport && (
-            <div className="flex items-center justify-center">
+        {supportsLastFrameUpload && (
+          <div className="relative">
+            <button
+              type="button"
+              aria-label="Swap first and last frame"
+              className={`p-1 rounded-lg transition-all duration-200 peer relative flex items-center justify-center ${
+                canSwapFrames
+                  ? "cursor-pointer hover:bg-white/10"
+                  : "cursor-not-allowed opacity-50"
+              }`}
+              onClick={() => {
+                if (canSwapFrames) onSwapFrames?.();
+              }}
+              disabled={!canSwapFrames}
+            >
               <Image
                 src="/icons/arrow-right-left.svg"
-                alt="Arrow"
+                alt="Swap first and last frame"
                 width={14}
                 height={14}
                 className="opacity-80 mr-0"
               />
+            </button>
+            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+              {canSwapFrames
+                ? "Swap first and last frame"
+                : "Upload both frames to swap"}
             </div>
-          )}
+          </div>
+        )}
 
         {/* Last Frame Upload */}
-        {((selectedModel === "MiniMax-Hailuo-02" &&
-          (selectedResolution === "768P" || selectedResolution === "1080P")) ||
-          selectedModel.includes("veo3.1") ||
-          selectedModel === "kling-o1" ||
-          selectedModel.startsWith("ltx-2.3-fast") ||
-          selectedModel.startsWith("ltx-2.3-pro") ||
-          (selectedModel.includes("seedance") &&
-            !selectedModel.includes("pro-fast") &&
-            !selectedModel.includes("i2v"))) &&
-          hasImageToVideoSupport && (
-            <div className="relative">
-              <button
-                className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
-                onClick={() => {
-                  setUploadModalType("image");
-                  setUploadModalTarget("last_frame");
-                  setIsUploadModalOpen(true);
-                }}
-              >
-                <FilePlus2
-                  size={16}
-                  className={`text-white transition-all duration-200 ${lastFrameImage ? "text-blue-300" : ""}`}
-                />
-              </button>
-              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                Last Frame (optional)
-              </div>
+        {supportsLastFrameUpload && (
+          <div className="relative">
+            <button
+              className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+              onClick={() => {
+                setUploadModalType("image");
+                setUploadModalTarget("last_frame");
+                setIsUploadModalOpen(true);
+              }}
+            >
+              <FilePlus2
+                size={16}
+                className={`text-white transition-all duration-200 ${lastFrameImage ? "text-blue-300" : ""}`}
+              />
+            </button>
+            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+              Last Frame (optional)
             </div>
-          )}
+          </div>
+        )}
 
         {/* Video Upload */}
         {(currentModelCapabilities.supportsVideoToVideo ||
           selectedModel === "wan-2.2-animate-replace" ||
-          selectedModel.startsWith("ltx-2.3-pro")) && (
+          selectedModel.startsWith("ltx-2.3-pro") ||
+          isSeedance2ReferenceModel) && (
           <div className="relative">
             <button
               className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
