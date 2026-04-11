@@ -191,7 +191,7 @@ export default function VideoGenerationPage() {
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-40 border-b border-white/5 bg-[#0E0E12]/80 backdrop-blur-xl shadow-xl">
             <div className="mb-0 pt-0 md:mb-1 md:pt-0">
-              <div className="mb-0 flex min-h-10 items-center justify-between px-1.5 py-1.5 md:mb-2 md:min-h-14 md:px-0 md:py-0">
+              <div className="mb-0 flex min-h-10 items-center justify-between px-1.5 py-1.5 md:mb-0 md:min-h-14 md:px-0 md:py-0">
                 <div className="flex min-w-0 items-center gap-1.5 md:gap-2 md:pt-2">
                   <button
                     onClick={() => dispatch(setSidebarExpanded(true))}
@@ -389,7 +389,7 @@ export default function VideoGenerationPage() {
                 )}
               </div>
 
-              <p className="hidden md:flex px-1.5 pb-2 text-[13px] leading-5 text-white/75 md:px-0 md:text-sm">
+              <p className="hidden md:flex px-1.5 pb-0 text-[13px] leading-5 text-white/75 md:px-0 md:text-sm">
                 Transform your ideas into stunning videos using advanced AI
                 models
               </p>

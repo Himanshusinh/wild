@@ -116,16 +116,17 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     const updateDropdownPosition = () => {
       if (!buttonRef.current) return;
       const buttonRect = buttonRef.current.getBoundingClientRect();
-      const dropdownWidth = window.innerWidth >= 768 ? 448 : 160;
+      const dropdownWidth =
+        window.innerWidth >= 768 ? 448 : Math.min(300, window.innerWidth - 24);
       let left = buttonRect.left;
       let top = buttonRect.top;
       let openUp = true;
 
-      if (left + dropdownWidth > window.innerWidth - 8) {
-        left = window.innerWidth - dropdownWidth - 8;
+      if (left + dropdownWidth > window.innerWidth - 12) {
+        left = window.innerWidth - dropdownWidth - 12;
       }
-      if (left < 8) {
-        left = 8;
+      if (left < 12) {
+        left = 12;
       }
       if (top < 8) {
         top = buttonRect.bottom + 8;
@@ -902,9 +903,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     isOpen && dropdownPosition ? (
       <div
         data-dropdown={dropdownId}
-        className={`fixed w-auto bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999] max-h-100 overflow-y-auto dropdown-scrollbar-thin ${
-          generationMode === "text_to_video" ? "md:w-auto" : "md:w-auto"
-        }`}
+        className="fixed z-[9999] w-[min(calc(100vw-24px),220px)] max-w-[calc(100vw-24px)] max-h-[36vh] overflow-y-auto overflow-x-hidden rounded-lg bg-black/90 pb-1.5 pt-1.5 shadow-2xl ring-1 ring-white/30 backdrop-blur-3xl dropdown-scrollbar-thin md:max-h-[min(42vh,40rem)] md:w-auto md:min-w-[300px] md:max-w-none md:pb-2 md:pt-2"
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`,
@@ -926,32 +925,32 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       e.stopPropagation();
                       handleVideoModelSelect(model.value);
                     }}
-                    className={`flex w-full items-center justify-between md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] ${
+                    className={`flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left transition text-[10px] md:gap-3 md:px-4 md:py-2 md:text-[13px] ${
                       isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
                     }`}
                     >
-                    <div className="flex flex-col mb-0">
-                      <span className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col mb-0">
+                      <span className="flex flex-wrap items-center gap-1 md:gap-2">
                         {model.label}
                         {model.isLocked && (
-                          <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                          <Lock className="h-2.5 w-2.5 text-amber-300 md:h-4 md:w-4" />
                         )}
                         <img
                           src="/icons/crown.svg"
                           alt="pro"
-                          className="md:w-4 w-3 h-3 md:h-4"
+                          className="h-2.5 w-2.5 md:h-4 md:w-4"
                         />
                       </span>
                       {model.isLocked ? (
-                        <span className="md:text-[11px] text-[9px] opacity-80 -mt-0.5 font-normal">
+                        <span className="-mt-0.5 font-normal text-[8px] opacity-80 md:text-[11px]">
                           Upgrade to access
                         </span>
                       ) : null}
                       {model.description ? (
                         <span
-                          className={`mt-0.5 max-w-[210px] text-[9px] leading-snug md:max-w-[240px] md:text-[10px] ${
+                          className={`mt-0.5 max-w-none text-[8px] leading-tight md:max-w-[240px] md:text-[10px] md:leading-snug ${
                             isOptionSelected(model.value)
                               ? "text-black/100"
                               : "text-white/70"
@@ -962,7 +961,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       ) : null}
                     </div>
                     {isOptionSelected(model.value) && (
-                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-black md:h-2 md:w-2"></div>
                     )}
                   </button>
                 ))}
@@ -988,25 +987,25 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       e.stopPropagation();
                       handleVideoModelSelect(model.value);
                     }}
-                    className={`flex w-full items-center justify-between md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] ${
+                    className={`flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left transition text-[10px] md:gap-3 md:px-4 md:py-2 md:text-[13px] ${
                       isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
                     }`}
                   >
-                    <div className="flex flex-col mb-0">
-                      <span className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col mb-0">
+                      <span className="flex flex-wrap items-center gap-1 md:gap-2">
                         {model.label}
                         {model.isLocked && (
-                          <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                          <Lock className="h-2.5 w-2.5 text-amber-300 md:h-4 md:w-4" />
                         )}
                         <img
                           src="/icons/crown.svg"
                           alt="pro"
-                          className="md:w-4 w-3 h-3 md:h-4"
+                          className="h-2.5 w-2.5 md:h-4 md:w-4"
                         />
                       </span>
-                      <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
+                      <span className="-mt-0.5 font-normal text-[8px] opacity-80 md:text-[11px]">
                         {model.isLocked
                           ? "Upgrade to access"
                           : model.displayText ||
@@ -1016,7 +1015,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       </span>
                     </div>
                     {isOptionSelected(model.value) && (
-                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-black md:h-2 md:w-2"></div>
                     )}
                   </button>
                 ))}
@@ -1029,25 +1028,25 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       e.stopPropagation();
                       handleVideoModelSelect(model.value);
                     }}
-                    className={`flex w-full items-center justify-between md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] ${
+                    className={`flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left transition text-[10px] md:gap-3 md:px-4 md:py-2 md:text-[13px] ${
                       isOptionSelected(model.value)
                         ? "bg-white text-black"
                         : "text-white/90 hover:bg-white/10"
                     }`}
                   >
-                    <div className="flex flex-col -mb-0">
-                      <span className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col -mb-0">
+                      <span className="flex flex-wrap items-center gap-1 md:gap-2">
                         {model.label}
                         {model.isLocked && (
-                          <Lock className="md:w-4 w-3 h-3 md:h-4 text-amber-300" />
+                          <Lock className="h-2.5 w-2.5 text-amber-300 md:h-4 md:w-4" />
                         )}
                         <img
                           src="/icons/crown.svg"
                           alt="pro"
-                          className="md:w-4 w-3 h-3 md:h-4"
+                          className="h-2.5 w-2.5 md:h-4 md:w-4"
                         />
                       </span>
-                      <span className="md:text-[11px] text-xs opacity-80 -mt-0.5 font-normal">
+                      <span className="-mt-0.5 font-normal text-[8px] opacity-80 md:text-[11px]">
                         {model.isLocked
                           ? "Upgrade to access"
                           : model.displayText ||
@@ -1057,7 +1056,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                       </span>
                     </div>
                     {isOptionSelected(model.value) && (
-                      <div className="w-2 h-2 bg-black rounded-full"></div>
+                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-black md:h-2 md:w-2"></div>
                     )}
                   </button>
                 ))}

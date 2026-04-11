@@ -56,14 +56,14 @@ const SoraFamilyVariantDropdown: React.FC<SoraFamilyVariantDropdownProps> = ({
       if (!buttonRef.current) return;
       const buttonRect = buttonRef.current.getBoundingClientRect();
       const dropdownWidth =
-        window.innerWidth >= 768 ? 260 : Math.min(260, window.innerWidth - 16);
+        window.innerWidth >= 768 ? 260 : Math.min(248, window.innerWidth - 32);
       let left = buttonRect.left;
       let top = buttonRect.top;
       let openUp = true;
-      if (left + dropdownWidth > window.innerWidth - 8) {
-        left = window.innerWidth - dropdownWidth - 8;
+      if (left + dropdownWidth > window.innerWidth - 12) {
+        left = window.innerWidth - dropdownWidth - 12;
       }
-      if (left < 8) left = 8;
+      if (left < 12) left = 12;
       if (top < 8) {
         top = buttonRect.bottom + 8;
         openUp = false;
@@ -83,16 +83,16 @@ const SoraFamilyVariantDropdown: React.FC<SoraFamilyVariantDropdownProps> = ({
     isOpen && dropdownPosition ? (
       <div
         data-dropdown={dropdownId}
-        className="fixed w-auto min-w-auto max-w-[calc(100vw-16px)] rounded-lg border border-white/15 bg-black/90 shadow-2xl backdrop-blur-3xl z-[9999]"
+        className="fixed z-[9999] w-auto overflow-hidden rounded-lg border border-white/15 bg-black/90 shadow-2xl backdrop-blur-3xl md:w-auto md:min-w-[260px] md:max-w-[min(calc(100vw-24px),360px)]"
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`,
           transform: dropdownPosition.openUp
-            ? "translateY(calc(-100% - 8px))"
+            ? "translateY(calc(-100% - 2px))"
             : "none",
         }}
       >
-        <div className="space-y-1">
+        <div className="max-h-[38vh] space-y-0.5 overflow-y-auto overflow-x-hidden py-1 md:max-h-[min(60vh,24rem)] md:space-y-1 md:py-1">
           {options.map((option) => {
             const isSelected = option.value === selectedValue;
             return (
@@ -103,17 +103,17 @@ const SoraFamilyVariantDropdown: React.FC<SoraFamilyVariantDropdownProps> = ({
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className={`flex w-full min-w-auto items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-[12px] transition ${
+                className={`flex w-full flex-col items-stretch gap-1 rounded-md px-2 py-1.5 text-left text-[10px] transition md:flex-row md:items-center md:justify-between md:gap-3 md:px-3 md:py-2 md:text-[12px] ${
                   isSelected
                     ? "bg-white text-black"
                     : "text-white/85 hover:bg-white/10"
                 }`}
               >
-                <span className="shrink-0">{option.label}</span>
-                <span className="ml-auto flex items-center gap-2">
+                <span className="shrink-0 font-medium">{option.label}</span>
+                <span className="flex flex-row flex-wrap items-center justify-between gap-1.5 md:ml-auto md:flex-nowrap md:justify-end md:gap-2">
                   {option.info ? (
                     <span
-                      className={`rounded-lg px-2 py-0.5 text-[10px] font-medium ${
+                      className={`max-w-full rounded-md px-1.5 py-0.5 text-left text-[8px] font-medium leading-tight md:max-w-[200px] md:rounded-lg md:px-2 md:py-0.5 md:text-[10px] ${
                         isSelected
                           ? "bg-black/5 text-black/95"
                           : "bg-white/5 text-white/85"
@@ -123,7 +123,7 @@ const SoraFamilyVariantDropdown: React.FC<SoraFamilyVariantDropdownProps> = ({
                     </span>
                   ) : null}
                   {isSelected && (
-                    <span className="h-2 w-2 rounded-full bg-black" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black md:h-2 md:w-2" />
                   )}
                 </span>
               </button>
