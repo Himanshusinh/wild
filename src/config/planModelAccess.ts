@@ -43,6 +43,18 @@ export const PLAN_ID_ALIASES: Record<string, CanonicalPlanId> = {
   PLAN_B: "creator",
   PLAN_C: "studio",
   PLAN_D: "agency",
+
+  // New billing codes (subscription variants)
+  STARTER_MONTHLY: "starter",
+  STARTER_YEARLY: "starter",
+  SPARK_MONTHLY: "spark",
+  SPARK_YEARLY: "spark",
+  CREATOR_MONTHLY: "creator",
+  CREATOR_YEARLY: "creator",
+  STUDIO_MONTHLY: "studio",
+  STUDIO_YEARLY: "studio",
+  AGENCY_MONTHLY: "agency",
+  AGENCY_YEARLY: "agency",
 };
 
 export function normalizePlanId(planId?: string | null): CanonicalPlanId {

@@ -11,6 +11,13 @@ export interface AuthUser {
   provider?: string;
   credits?: number;
   plan?: string;
+  planCode?: string;
+  /** ISO 4217 — persisted in Firestore */
+  preferredCurrency?: string;
+  /** ISO 4217 — computed on server (preference or geo) */
+  displayCurrency?: string;
+  suggestedCurrency?: string;
+  detectedCountryCode?: string | null;
 }
 
 interface AuthState {

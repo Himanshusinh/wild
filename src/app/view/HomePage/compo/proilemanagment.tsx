@@ -12,6 +12,7 @@ import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import toast from 'react-hot-toast';
+import { getPlanLabel } from '@/utils/planLabel';
 
 interface UserData {
   uid: string;
@@ -29,6 +30,7 @@ interface UserData {
   userAgent?: string;
   credits?: number;
   plan?: string;
+  planCode?: string;
   metadata?: {
     accountStatus: string;
     roles: string[];
@@ -353,7 +355,9 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
                 <div className="text-white font-semibold text-lg md:text-xl truncate">{userData?.username || 'User'}</div>
                 <div className="text-white/70 text-xs md:text-sm truncate">{userData?.email || 'user@example.com'}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10">Plan: {userData?.plan || 'Free'}</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10">
+                    Plan: {getPlanLabel((userData as any)?.planCode || userData?.plan).label}
+                  </span>
                   <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1 min-w-[45px] justify-center">
                     <Image src="/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
                     {creditBalance ?? userData?.credits ?? 0}

@@ -10,6 +10,7 @@ interface CheckoutModalProps {
   onClose: () => void;
   onConfirm: (billingDetails: BillingDetails) => Promise<void>;
   isLoadingPlanChange: boolean;
+  changeType?: "upgrade" | "downgrade" | "new";
 }
 
 interface BillingDetails {
@@ -65,6 +66,7 @@ export default function CheckoutModal({
   onClose,
   onConfirm,
   isLoadingPlanChange = false,
+  changeType = "new",
 }: CheckoutModalProps) {
   const [billingDetails, setBillingDetails] = useState<BillingDetails>({
     gstin: "",
@@ -157,6 +159,10 @@ export default function CheckoutModal({
   };
 
   const pricing = calculateGST();
+  const isHighValuePlan =
+    (plan.billingInterval === "MONTHLY" ? plan.totalPriceINR : plan.totalPriceINR / 12) >=
+      10000 ||
+    String(plan.code || "").toUpperCase().includes("AGENCY");
 
   if (!isOpen) return null;
 
@@ -184,14 +190,42 @@ export default function CheckoutModal({
             <h3 className="font-semibold text-lg mb-2">{plan.name} Plan</h3>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span>Credits refreshed:</span>
-                <span className="font-medium">{plan.credits.toLocaleString()}</span>
+                <span>Credits refresh:</span>
+                <span className="font-medium">
+                  {plan.credits.toLocaleString()} / month
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Storage:</span>
                 <span className="font-medium">{plan.storageGB} GB</span>
               </div>
             </div>
+            <div className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+              <div>Credits refresh every month.</div>
+              {plan.billingInterval === "YEARLY" ? (
+                <div>Paid yearly. Credits are added monthly.</div>
+              ) : null}
+              <div>Unused credits expire at refresh.</div>
+              {plan.billingInterval === "YEARLY" ? (
+                <div>Cancel anytime (no refund).</div>
+              ) : (
+                <div>Cancel anytime.</div>
+              )}
+            </div>
+            {changeType === "upgrade" ? (
+              <div className="mt-3 text-xs text-blue-800 dark:text-blue-200 font-medium">
+                Upgrade now to get additional credits instantly. New pricing will apply from your next billing cycle.
+              </div>
+            ) : changeType === "downgrade" ? (
+              <div className="mt-3 text-xs text-blue-800 dark:text-blue-200 font-medium">
+                Downgrade will take effect from your next billing cycle.
+              </div>
+            ) : null}
+            {isHighValuePlan ? (
+              <div className="mt-3 text-xs text-amber-800 dark:text-amber-200">
+                UPI Autopay may not support high-value recurring payments. Recommended: pay with card for uninterrupted renewals.
+              </div>
+            ) : null}
           </div>
 
           {/* GST Toggle */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { auth } from "@/lib/firebase";
@@ -37,6 +37,9 @@ export default function BillingPage() {
   const credits = useSelector(selectCredits);
   const loading = useSelector(selectSubscriptionLoading);
   const creatingSubscription = useSelector(selectCreatingSubscription);
+  const paymentBlocked = ["PAST_DUE", "HALTED"].includes(
+    String(subscription?.status || "").toUpperCase(),
+  );
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -49,6 +52,12 @@ export default function BillingPage() {
   );
 
   const [isMounted, setIsMounted] = useState(false);
+  const [flashNotice, setFlashNotice] = useState<{
+    kind: "success" | "info";
+    title: string;
+    detail?: string;
+  } | null>(null);
+  const lastCreditBalanceRef = useRef<number | null>(null);
   /** Shown before Razorpay when UPI plan change needs a new mandate */
   const [mandateNotice, setMandateNotice] = useState<{
     onContinue: () => void;
@@ -73,6 +82,17 @@ export default function BillingPage() {
   }, [dispatch]);
 
   useEffect(() => {
+    if (typeof credits?.creditBalance === "number") {
+      lastCreditBalanceRef.current = credits.creditBalance;
+    }
+  }, [credits?.creditBalance]);
+
+  const nextBillingLabel = useMemo(() => {
+    const status = String(subscription?.status || "").toUpperCase();
+    return status === "CANCELLED" ? "Active until" : "Next billing date";
+  }, [subscription?.status]);
+
+  useEffect(() => {
     const currentCode = subscription?.planCode || credits?.planCode;
     const currentSku = findCatalogSkuByCode(catalog, currentCode);
     if (currentSku?.billingInterval) {
@@ -87,6 +107,17 @@ export default function BillingPage() {
         entry.monthly?.code === planCode || entry.yearly?.code === planCode,
     );
     if (!sku || !familyPlan) return;
+
+    const currentCode = subscription?.planCode || credits?.planCode || null;
+    const currentSku = findCatalogSkuByCode(catalog, currentCode);
+    const currentPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
+    const nextPrice = sku.priceInPaise / 100;
+    const changeType: "upgrade" | "downgrade" | "new" =
+      currentCode && currentCode !== "FREE"
+        ? nextPrice > currentPrice
+          ? "upgrade"
+          : "downgrade"
+        : "new";
 
     setSelectedPlan({
       family: familyPlan.family,
@@ -103,6 +134,9 @@ export default function BillingPage() {
       features: [],
       popular: familyPlan.family === "creator",
     });
+    try {
+      (window as any).__wmSelectedChangeType = changeType;
+    } catch {}
     setShowCheckout(true);
   };
 
@@ -134,6 +168,12 @@ export default function BillingPage() {
               keyId?: string;
               upiNotSupportedForPlan?: boolean;
               maxUpiRecurringPaise?: number;
+              proration?: {
+                remainingFraction?: number;
+                remainingValuePaise?: number;
+                newCostPaise?: number;
+                payablePaise?: number;
+              };
             }
           | undefined;
 
@@ -142,6 +182,23 @@ export default function BillingPage() {
           payload.razorpaySubscriptionId &&
           payload.keyId
         ) {
+          // Optional: show a simple yearly-upgrade breakdown if backend provided proration.
+          try {
+            const p = (payload as any)?.proration;
+            if (
+              p &&
+              typeof p.remainingValuePaise === "number" &&
+              typeof p.newCostPaise === "number" &&
+              typeof p.payablePaise === "number"
+            ) {
+              const r = (p.remainingValuePaise / 100).toFixed(2);
+              const n = (p.newCostPaise / 100).toFixed(2);
+              const z = (p.payablePaise / 100).toFixed(2);
+              alert(
+                `Yearly upgrade breakdown:\n\nRemaining value: ₹${r}\nNew plan cost (remaining period): ₹${n}\nYou pay now: ₹${z}`,
+              );
+            }
+          } catch {}
           const openPlanChangeCheckout = async () => {
             if (payload.upiNotSupportedForPlan) {
               const cap =
@@ -191,7 +248,23 @@ export default function BillingPage() {
         setShowCheckout(false);
         setShowCelebration(true);
         dispatch(fetchCurrentSubscription());
-        dispatch(fetchUserCredits());
+        dispatch(fetchUserCredits()).then((res) => {
+          try {
+            const before = lastCreditBalanceRef.current;
+            const after = (res as any)?.payload?.creditBalance;
+            const delta =
+              typeof before === "number" && typeof after === "number"
+                ? Math.max(0, after - before)
+                : null;
+            setFlashNotice({
+              kind: "success",
+              title: "Plan updated successfully",
+              detail: delta != null && delta > 0 ? `Credits added: ${delta.toLocaleString()}` : undefined,
+            });
+            // Auto-clear after a short while
+            setTimeout(() => setFlashNotice(null), 6000);
+          } catch {}
+        });
         return;
       }
 
@@ -373,6 +446,26 @@ export default function BillingPage() {
       />
 
       <div className="container mx-auto max-w-6xl">
+        {paymentBlocked ? (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-100">
+            <div className="font-semibold">
+              Payment failed. Please update your payment method to continue.
+            </div>
+            <div className="mt-1 text-xs text-red-800/80 dark:text-red-200/90">
+              Credits will not refresh until payment succeeds.
+            </div>
+          </div>
+        ) : null}
+        {flashNotice ? (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100">
+            <div className="font-semibold">{flashNotice.title}</div>
+            {flashNotice.detail ? (
+              <div className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/90">
+                {flashNotice.detail}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -381,6 +474,22 @@ export default function BillingPage() {
           <p className="text-gray-600 dark:text-gray-400">
             Manage your subscription, view invoices, and track payments
           </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
+              Current plan status: {String(subscription?.status || "UNKNOWN").toUpperCase()}
+            </span>
+            {subscription?.nextBillingDate ? (
+              <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
+                {nextBillingLabel}:{' '}
+                {new Date(subscription.nextBillingDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            ) : null}
+          </div>
 
           {/* Quick Access Links */}
           <div className="flex gap-3 mt-4">
@@ -498,6 +607,13 @@ export default function BillingPage() {
             }}
             onConfirm={handleCheckoutConfirm}
             isLoadingPlanChange={creatingSubscription}
+            changeType={(() => {
+              try {
+                return (window as any).__wmSelectedChangeType as any;
+              } catch {
+                return "new";
+              }
+            })()}
           />
         )}
       </div>

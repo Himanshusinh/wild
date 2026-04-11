@@ -3,6 +3,7 @@
 import React from 'react';
 import { getApiClient } from '../../../../lib/axiosInstance';
 import { getMeCached } from '../../../../lib/me';
+import { getPlanLabel } from '@/utils/planLabel';
 
 function CurrentPlan() {
   const [credits, setCredits] = React.useState<number | null>(null);
@@ -25,7 +26,8 @@ function CurrentPlan() {
         // Fetch user to get plan
         try {
           const data = await getMeCached();
-          if (data?.plan) setPlan(String(data.plan));
+          const planFromMe = (data as any)?.planCode || (data as any)?.plan;
+          if (planFromMe) setPlan(String(planFromMe));
 
           // Derive activation date from multiple possible fields
           const rawDate = (
@@ -72,7 +74,9 @@ function CurrentPlan() {
 
       <div className="md:min-h-[92px] min-h-[60px]">
         <h1 className="md:text-2xl text-xl font-semibold mx-2">Current Plan</h1>
-        <p className="md:text-medium text-sm text-white/80 mt-1 mx-2">{loading ? '...' : (plan || 'Free')}</p>
+        <p className="md:text-medium text-sm text-white/80 mt-1 mx-2">
+          {loading ? '...' : getPlanLabel(plan).label}
+        </p>
       </div>
 
       <div className="absolute md:top-6 top-4 md:right-6 right-4 text-right">
