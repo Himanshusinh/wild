@@ -1,14 +1,28 @@
 'use client';
 
 import React from 'react';
-import { formatInr } from './pricingMath';
+import { formatInr, PRICE_SKELETON_STARTER_CLASS } from './pricingMath';
 
 interface StarterCapsuleProps {
   priceINR: number;
   onCta: () => void;
+  displayCurrency?: string;
+  formatDisplayMoney?: (amountInr: number) => string;
+  isPriceLoading?: boolean;
 }
 
-export function StarterCapsule({ priceINR, onCta }: StarterCapsuleProps) {
+export function StarterCapsule({
+  priceINR,
+  onCta,
+  displayCurrency = 'INR',
+  formatDisplayMoney,
+  isPriceLoading = false,
+}: StarterCapsuleProps) {
+  const isForeign =
+    String(displayCurrency || '')
+      .trim()
+      .toUpperCase() !== 'INR' && typeof formatDisplayMoney === 'function';
+  const primary = isForeign ? formatDisplayMoney!(priceINR) : formatInr(priceINR);
   return (
     <button
       type="button"
@@ -23,9 +37,22 @@ export function StarterCapsule({ priceINR, onCta }: StarterCapsuleProps) {
       ].join(' ')}
     >
       <span className="text-sm sm:text-base font-semibold text-white tracking-tight">Try out starter plan</span>
-      <span className="flex items-baseline gap-1.5 shrink-0">
-        <span className="text-xl sm:text-2xl font-bold tabular-nums text-white">{formatInr(priceINR)}</span>
-        <span className="text-xs text-slate-400">/mo</span>
+      <span className="flex flex-col items-end sm:items-end gap-0.5 shrink-0">
+        {isPriceLoading ? (
+          <span className={PRICE_SKELETON_STARTER_CLASS} aria-hidden />
+        ) : (
+          <>
+            <span className="flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-bold tabular-nums text-white">{primary}</span>
+              <span className="text-xs text-slate-400">/mo</span>
+            </span>
+            {isForeign ? (
+              <span className="text-[10px] text-slate-500 tabular-nums">
+                ≈ {formatInr(priceINR)} INR
+              </span>
+            ) : null}
+          </>
+        )}
       </span>
     </button>
   );

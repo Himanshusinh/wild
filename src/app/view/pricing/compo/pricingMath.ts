@@ -110,3 +110,11 @@ export function getPlanPricingDerived(plan: MainPlanConfig) {
     credits,
   };
 }
+
+/** High-contrast pulse block for converted plan prices on dark cards (FX loading). */
+export const PRICE_SKELETON_CLASS =
+  'shrink-0 h-10 sm:h-11 w-40 max-w-[90%] rounded-lg border border-white/15 bg-gradient-to-b from-slate-400/40 via-slate-500/35 to-slate-600/40 animate-pulse shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_24px_rgba(96,165,250,0.12)]';
+
+/** Starter capsule row (shorter height). */
+export const PRICE_SKELETON_STARTER_CLASS =
+  'relative z-20 h-8 w-28 shrink-0 rounded-lg border border-white/15 bg-gradient-to-b from-slate-400/40 via-slate-500/35 to-slate-600/40 animate-pulse shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_24px_rgba(96,165,250,0.12)]';

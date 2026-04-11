@@ -1,5 +1,40 @@
 import api from "@/lib/axiosInstance";
 
+const CATALOG_STORAGE_KEY = "wm_subscription_catalog_v1";
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
+
+function loadCatalogCache(): { data: SubscriptionCatalog; fetchedAt: number } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CATALOG_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      data: SubscriptionCatalog;
+      fetchedAt: number;
+    };
+    if (!parsed?.data?.plans || typeof parsed.fetchedAt !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveCatalogCache(data: SubscriptionCatalog) {
+  try {
+    sessionStorage.setItem(
+      CATALOG_STORAGE_KEY,
+      JSON.stringify({ data, fetchedAt: Date.now() }),
+    );
+  } catch {}
+}
+
+/** Sync read for layout hydration (sessionStorage, TTL). */
+export function peekCachedSubscriptionCatalog(): SubscriptionCatalog | null {
+  const c = loadCatalogCache();
+  if (!c || Date.now() - c.fetchedAt >= CATALOG_TTL_MS) return null;
+  return c.data;
+}
+
 export type SubscriptionCatalogSku = {
   code: string;
   name: string;
@@ -37,8 +72,14 @@ export type SubscriptionCatalog = {
 };
 
 export async function fetchSubscriptionCatalog(): Promise<SubscriptionCatalog> {
+  const cached = loadCatalogCache();
+  if (cached && Date.now() - cached.fetchedAt < CATALOG_TTL_MS) {
+    return cached.data;
+  }
   const response = await api.get("/api/plans/subscription-catalog");
-  return response.data?.data as SubscriptionCatalog;
+  const data = response.data?.data as SubscriptionCatalog;
+  saveCatalogCache(data);
+  return data;
 }
 
 export function findCatalogSkuByCode(

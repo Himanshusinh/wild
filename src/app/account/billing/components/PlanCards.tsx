@@ -1,5 +1,9 @@
 "use client";
 
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
+import { PRICE_SKELETON_CLASS } from "@/app/view/pricing/compo/pricingMath";
+import { CurrencySwitcher } from "@/app/view/pricing/compo/CurrencySwitcher";
+
 export interface Plan {
   family: string;
   code: string;
@@ -46,6 +50,10 @@ export default function PlanCards({
   currentPlanCode,
   onSelectPlan,
 }: PlanCardsProps) {
+  const { displayCurrency, formatMoney, fxLoading, hasFxRates } = useDisplayCurrency();
+  const isForeign = displayCurrency !== "INR";
+  const isPriceFxPending = isForeign && (!hasFxRates || fxLoading);
+
   const currentSku =
     plans
       .flatMap((plan) => [plan.monthly, plan.yearly].filter(Boolean))
@@ -75,11 +83,18 @@ export default function PlanCards({
         cycleLabel: intervalLabel,
         popular: plan.family === "creator",
         features: [
-          `${sku.credits.toLocaleString()} credits refreshed monthly`,
+          "Credits refresh every month.",
+          ...(selectedBillingInterval === "YEARLY"
+            ? ["Paid yearly. Credits are added monthly."]
+            : []),
+          "Unused credits expire at refresh.",
           `${sku.storageGB} GB storage`,
           selectedBillingInterval === "YEARLY"
-            ? "Billed yearly with 20% discount"
-            : "Billed monthly",
+            ? "Billed yearly (save 20%)."
+            : "Billed monthly.",
+          selectedBillingInterval === "YEARLY"
+            ? "Cancel anytime (no refund)."
+            : "Cancel anytime.",
           "Invoices with GST support",
         ],
       });
@@ -87,7 +102,11 @@ export default function PlanCards({
     }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="w-full">
+      <div className="flex justify-end mb-4">
+        <CurrencySwitcher />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {displayPlans.map((plan) => {
         const isCurrent = plan.code === currentPlanCode;
         const currentPlanPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
@@ -121,14 +140,31 @@ export default function PlanCards({
             {/* Plan Header */}
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-              <div className="flex items-baseline justify-center gap-1">
-                <span className="text-4xl font-extrabold">
-                  ₹{plan.priceINR}
-                </span>
-                {plan.priceINR > 0 && (
-                  <span className="text-gray-500 dark:text-gray-400">
-                    /{plan.cycleLabel}
-                  </span>
+              <div className="flex flex-col items-center gap-1">
+                {isPriceFxPending && plan.priceINR > 0 ? (
+                  <div className="relative z-20 flex min-h-[2.5rem] items-center justify-center py-1">
+                    <div className={PRICE_SKELETON_CLASS} aria-hidden />
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative z-10 flex items-baseline justify-center gap-1">
+                      <span className="text-4xl font-extrabold">
+                        {isForeign && plan.priceINR > 0
+                          ? formatMoney(plan.priceINR)
+                          : `₹${plan.priceINR}`}
+                      </span>
+                      {plan.priceINR > 0 && (
+                        <span className="text-gray-500 dark:text-gray-400">
+                          /{plan.cycleLabel}
+                        </span>
+                      )}
+                    </div>
+                    {isForeign && plan.priceINR > 0 ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                        ≈ ₹{plan.priceINR.toLocaleString("en-IN")} charged in INR
+                      </p>
+                    ) : null}
+                  </>
                 )}
               </div>
               {plan.priceINR > 0 && (
@@ -204,6 +240,7 @@ export default function PlanCards({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
