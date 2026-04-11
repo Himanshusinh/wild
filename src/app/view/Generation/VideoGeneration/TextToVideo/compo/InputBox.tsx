@@ -8898,6 +8898,34 @@ const InputBox = (props: InputBoxProps = {}) => {
       );
     }
 
+    if (selectedModel.includes("MiniMax")) {
+      return (
+        <div className="flex w-full max-w-full flex-wrap items-center gap-2 pr-1">
+          <VideoFrameSizeDropdown
+            selectedFrameSize={selectedResolution}
+            onFrameSizeChange={setSelectedResolution}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            miniMaxDuration={selectedMiniMaxDuration}
+            onCloseOtherDropdowns={closeModelAndDuration}
+            onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+          />
+          <VideoDurationDropdown
+            selectedDuration={selectedMiniMaxDuration}
+            onDurationChange={(value) => {
+              if (typeof value === "number") {
+                setSelectedMiniMaxDuration(value);
+              }
+            }}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+        </div>
+      );
+    }
+
     return null;
   };
 
