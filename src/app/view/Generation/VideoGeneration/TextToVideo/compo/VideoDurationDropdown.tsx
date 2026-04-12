@@ -157,8 +157,32 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
         { value: 12, label: "12 seconds", description: "Long video" },
       ];
     }
-    if (selectedModel?.includes("pixverse")) {
-      // PixVerse supports 5s and 8s
+    if (selectedModel === "pixverse-v6-t2v") {
+      return Array.from({ length: 11 }, (_, i) => {
+        const value = 5 + i;
+        return {
+          value,
+          label: `${value} seconds`,
+          description: hasFirstFrame
+            ? "PixVerse V6 (first frame)"
+            : "PixVerse V6 (text)",
+        };
+      });
+    }
+    if (selectedModel === "pixverse-v6-i2v") {
+      return Array.from({ length: 11 }, (_, i) => {
+        const value = 5 + i;
+        return {
+          value,
+          label: `${value} seconds`,
+          description: "PixVerse V6 (first frame)",
+        };
+      });
+    }
+    if (
+      selectedModel === "pixverse-v5-t2v" ||
+      selectedModel === "pixverse-v5-i2v"
+    ) {
       return [
         { value: 5, label: "5 seconds", description: "Standard" },
         { value: 8, label: "8 seconds", description: "Long" },

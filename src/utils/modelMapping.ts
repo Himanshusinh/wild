@@ -107,25 +107,25 @@ export const MODEL_MAPPING: ModelMapping[] = [
     generationType: "image",
     provider: "fal",
     options: {
-      resolution: ["1K", "2K", "4K"],
+      resolution: ["0.5K", "1K", "2K", "4K"],
       aspect_ratio: [
-        "match_input_image",
-        "1:1",
-        "1:4",
-        "1:8",
-        "2:3",
-        "3:2",
-        "3:4",
-        "4:1",
-        "4:3",
-        "4:5",
-        "5:4",
-        "8:1",
-        "9:16",
-        "16:9",
+        "auto",
         "21:9",
+        "16:9",
+        "3:2",
+        "4:3",
+        "5:4",
+        "1:1",
+        "4:5",
+        "3:4",
+        "2:3",
+        "9:16",
+        "4:1",
+        "1:4",
+        "8:1",
+        "1:8",
       ],
-      output_format: ["jpg", "png"],
+      output_format: ["jpeg", "png", "webp"],
     },
   },
   {
@@ -927,6 +927,26 @@ export const MODEL_MAPPING: ModelMapping[] = [
       duration: [5, 8],
     },
   },
+  {
+    frontendValue: "pixverse-v6-t2v",
+    creditModelName: "PixVerse V6 T2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["360p", "540p", "720p", "1080p"],
+      duration: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    },
+  },
+  {
+    frontendValue: "pixverse-v6-i2v",
+    creditModelName: "PixVerse V6 I2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["360p", "540p", "720p", "1080p"],
+      duration: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    },
+  },
 
   // Sora 2 Models (FAL)
   {
@@ -1289,6 +1309,7 @@ export const buildCreditModelName = (
     duration?: number;
     frameSize?: string;
     quality?: string;
+    generateAudio?: boolean;
   },
 ): string | null => {
   const mapping = getModelMapping(frontendValue);
@@ -1454,15 +1475,37 @@ export const buildCreditModelName = (
     const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
     modelName = `Seedance 1.0 ${tier} ${mode} ${durForPricing}s ${resNormalized}`;
   }
-  // Handle PixVerse models
+  // Handle PixVerse V6 (FAL T2V / I2V — same credit SKU pattern)
   else if (
-    mapping.frontendValue.includes("pixverse") &&
+    (mapping.frontendValue === "pixverse-v6-t2v" ||
+      mapping.frontendValue === "pixverse-v6-i2v") &&
+    options?.duration != null &&
+    options?.resolution
+  ) {
+    const d = Number(options.duration);
+    const durClamped =
+      Number.isFinite(d) ? Math.min(15, Math.max(5, Math.round(d))) : 5;
+    const qual = String(options.resolution).toLowerCase();
+    const qualNormalized = qual.includes("360")
+      ? "360p"
+      : qual.includes("540")
+        ? "540p"
+        : qual.includes("1080")
+          ? "1080p"
+          : "720p";
+    const audioSuffix =
+      options.generateAudio === true ? " Audio On" : " No Audio";
+    modelName = `PixVerse V6 T2V ${durClamped}s ${qualNormalized}${audioSuffix}`;
+  }
+  // Handle PixVerse V5
+  else if (
+    (mapping.frontendValue === "pixverse-v5-t2v" ||
+      mapping.frontendValue === "pixverse-v5-i2v") &&
     options?.duration &&
     options?.resolution
   ) {
     const d = options.duration;
     const qual = String(options.resolution).toLowerCase();
-    // Normalize quality: 360p, 540p, 720p, 1080p
     const qualNormalized = qual.includes("360")
       ? "360p"
       : qual.includes("540")
@@ -1470,7 +1513,6 @@ export const buildCreditModelName = (
         : qual.includes("720")
           ? "720p"
           : "1080p";
-    // Duration: 5 or 8 seconds
     const durForPricing = d === 5 || d === 8 ? d : 5;
     const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
     modelName = `PixVerse 5 ${mode} ${durForPricing}s ${qualNormalized}`;

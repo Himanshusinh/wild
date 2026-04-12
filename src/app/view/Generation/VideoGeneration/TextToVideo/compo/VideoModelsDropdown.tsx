@@ -45,12 +45,18 @@ const isLtxFamilyModel = (value: string) =>
   value === "ltx-2.3-pro-t2v" || value === "ltx-2.3-fast-t2v";
 const isWanFamilyModel = (value: string) =>
   value === "wan-2.5-t2v" || value === "wan-2.5-t2v-fast";
+const isPixverseFamilyModel = (value: string) =>
+  value === "pixverse-v6-t2v" ||
+  value === "pixverse-v6-i2v" ||
+  value === "pixverse-v5-t2v" ||
+  value === "pixverse-v5-i2v";
 const FAMILY_DISPLAY_ORDER = [
   "Seedance",
   "Veo 3.1",
   "Kling",
   "LTX",
   "WAN",
+  "PixVerse",
   "Sora",
   "Hailuo",
 ] as const;
@@ -62,6 +68,8 @@ interface VideoModelsDropdownProps {
   selectedDuration?: string;
   selectedResolution?: string;
   selectedAspectRatio?: string;
+  /** PixVerse V6 T2V credits depend on generate_audio_switch */
+  pixverseV6GenerateAudio?: boolean;
   onCloseOtherDropdowns?: () => void;
   onCloseThisDropdown?: () => void;
   activeFeature?: "Video" | "Lipsync" | "Animate" | "Edit" | "Video editor";
@@ -74,6 +82,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
   selectedDuration = "5s",
   selectedResolution = "512P",
   selectedAspectRatio,
+  pixverseV6GenerateAudio = false,
   onCloseOtherDropdowns,
   onCloseThisDropdown,
   activeFeature = "Video",
@@ -433,6 +442,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         provider: "replicate",
       },
       {
+        value: "pixverse-v6-t2v",
+        label: "PixVerse V6",
+        description:
+          "Text or first-frame video, 5–15s / 1–15s with image, 360p–1080p, styles, audio & multi-angle",
+        provider: "fal",
+      },
+      {
         value: "wan-2.5-t2v",
         label: "WAN 2.5",
         description: "Text→Video & Image→Video, 5s/10s, 480p/720p/1080p",
@@ -473,7 +489,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         model.value === "seedance-1.5-pro-t2v" ||
         model.value === "seedance-1.0-pro-t2v" ||
         model.value === "seedance-1.0-pro-fast-t2v" ||
-        model.value === "seedance-1.0-lite-t2v"
+        model.value === "seedance-1.0-lite-t2v" ||
+        model.value === "pixverse-v5-t2v" ||
+        model.value === "pixverse-v5-i2v" ||
+        model.value === "pixverse-v6-i2v"
       ) {
         return false;
       }
@@ -529,6 +548,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         description:
                           "A highly flexible model specializing in fluid motion dynamics and variable generation speeds.",
                       }
+                    : model.value === "pixverse-v6-t2v"
+                      ? {
+                          ...model,
+                          label: "PixVerse",
+                          description:
+                            "Cinematic text or first-frame video, resolution tiers, optional generated audio, and multi-angle clips.",
+                        }
           : model,
     )
     .sort((a, b) => {
@@ -559,6 +585,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   ? model.value === "ltx-2.3-pro-t2v"
                   : isWanFamilyModel(selectedModel)
                     ? model.value === "wan-2.5-t2v"
+                    : isPixverseFamilyModel(selectedModel)
+                      ? model.value === "pixverse-v6-t2v"
         : model.value === selectedModel,
     ) ||
     availableModels.find((model) => {
@@ -582,6 +610,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       }
       if (isWanFamilyModel(selectedModel)) {
         return model.value === "wan-2.5-t2v";
+      }
+      if (isPixverseFamilyModel(selectedModel)) {
+        return model.value === "pixverse-v6-t2v";
       }
       const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
@@ -655,7 +686,10 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       if (rUpper.includes("768")) r = "768P";
       else if (rUpper.includes("1080")) r = "1080P";
       else r = "768P"; // Default to 768P for 2.3 models
-    } else if (model.value.includes("pixverse")) {
+    } else if (
+      model.value === "pixverse-v6-t2v" ||
+      model.value === "pixverse-v6-i2v"
+    ) {
       d = normalizeDuration(selectedDuration, "5s");
       const rRaw = normalizeResolution(selectedResolution, "720p");
       const rLower = rRaw.toLowerCase();
@@ -729,11 +763,23 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     const aspectRatioForCredits =
       model.value === "seedance-2.0-t2v" ? selectedAspectRatio || "auto" : undefined;
 
+    const generateAudioForCredits =
+      model.value === "pixverse-v6-t2v" || model.value === "pixverse-v6-i2v"
+        ? pixverseV6GenerateAudio === true
+        : undefined;
+
+    const creditModelId =
+      model.value === "pixverse-v6-t2v" || model.value === "pixverse-v6-i2v"
+        ? selectedModel === "pixverse-v6-i2v"
+          ? "pixverse-v6-i2v"
+          : "pixverse-v6-t2v"
+        : model.value;
+
     let creditInfo = getModelCreditInfo(
-      model.value,
+      creditModelId,
       d,
       r,
-      undefined,
+      generateAudioForCredits,
       undefined,
       aspectRatioForCredits,
     );
@@ -802,6 +848,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   ? model.value === "ltx-2.3-pro-t2v"
                   : isWanFamilyModel(selectedModel)
                     ? model.value === "wan-2.5-t2v"
+                    : isPixverseFamilyModel(selectedModel)
+                      ? model.value === "pixverse-v6-t2v"
         : model.value === selectedModel,
     );
     if (exactMatch) return;
@@ -830,6 +878,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       if (isWanFamilyModel(selectedModel)) {
         return model.value === "wan-2.5-t2v";
       }
+      if (isPixverseFamilyModel(selectedModel)) {
+        return model.value === "pixverse-v6-t2v";
+      }
       const baseAvailable = model.value.replace(/-t2v$|-i2v$|-r2v$/, "");
       const baseSelected = selectedModel.replace(/-t2v$|-i2v$|-r2v$/, "");
       return baseAvailable === baseSelected;
@@ -850,6 +901,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
     selectedModel,
     onModelChange,
     activeFeature,
+    pixverseV6GenerateAudio,
   ]);
 
   const selectedModelEntry = modelsWithCredits.find((model) =>
@@ -867,6 +919,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                 ? model.value === "ltx-2.3-pro-t2v"
                 : isWanFamilyModel(selectedModel)
                   ? model.value === "wan-2.5-t2v"
+                  : isPixverseFamilyModel(selectedModel)
+                    ? model.value === "pixverse-v6-t2v"
       : model.value === selectedModel,
   );
 
@@ -885,6 +939,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                 ? isLtxFamilyModel(selectedModel)
                 : modelValue === "wan-2.5-t2v"
                   ? isWanFamilyModel(selectedModel)
+                  : modelValue === "pixverse-v6-t2v"
+                    ? isPixverseFamilyModel(selectedModel)
       : selectedModel === modelValue;
 
   const handleVideoModelSelect = (modelValue: string) => {

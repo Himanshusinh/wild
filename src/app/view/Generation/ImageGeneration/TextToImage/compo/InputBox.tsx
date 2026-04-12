@@ -118,7 +118,6 @@ import FileTypeDropdown from "./FileTypeDropdown";
 import ResolutionDropdown from "./ResolutionDropdown";
 import ZTurboOutputFormatDropdown from "./ZTurboOutputFormatDropdown";
 import QualityDropdown from "./QualityDropdown";
-import ThinkingLevelDropdown from "./ThinkingLevelDropdown";
 // Lazy load heavy modal components for better initial load performance
 import dynamic from "next/dynamic";
 const ImagePreviewModal = dynamic(() => import("./ImagePreviewModal"), {
@@ -1869,26 +1868,24 @@ const InputBox = () => {
   const outputFormat = useAppSelector(
     (state: any) => state.generation?.outputFormat || "jpeg",
   );
-  const nanoSupportedOutputFormats = useMemo<Array<"jpg" | "png" | "webp">>(() => {
-    if (selectedModel === "google/nano-banana-2") {
-      return ["jpg", "png"];
-    }
-    if (
-      selectedModel === "google/nano-banana-pro" ||
-      selectedModel === "gemini-25-flash-image"
-    ) {
-      return ["jpg", "png", "webp"];
-    }
-    return ["jpg", "png", "webp"];
-  }, [selectedModel]);
+  const nanoSupportedOutputFormats = useMemo<Array<"jpg" | "png" | "webp">>(
+    () => ["png", "jpg", "webp"],
+    [],
+  );
 
   // Keep output format aligned with model schema and normalize legacy "jpeg" to "jpg".
   useEffect(() => {
     const isNanoModel =
       selectedModel === "google/nano-banana-2" ||
       selectedModel === "google/nano-banana-pro" ||
+      selectedModel === "nano-banana-pro" ||
       selectedModel === "gemini-25-flash-image";
     if (!isNanoModel) return;
+
+    if (outputFormat === "jpeg") {
+      dispatch(setOutputFormat("png"));
+      return;
+    }
 
     const normalized = outputFormat === "jpeg" ? "jpg" : outputFormat;
     if (!nanoSupportedOutputFormats.includes(normalized as any)) {
@@ -1899,6 +1896,63 @@ const InputBox = () => {
       dispatch(setOutputFormat(normalized));
     }
   }, [dispatch, selectedModel, outputFormat, nanoSupportedOutputFormats]);
+
+  // Nano Banana 2 (FAL): aspect_ratio must match schema (auto + listed ratios; no match_input_image).
+  useEffect(() => {
+    if (selectedModel !== "google/nano-banana-2") return;
+    const allowed = new Set([
+      "auto",
+      "21:9",
+      "16:9",
+      "3:2",
+      "4:3",
+      "5:4",
+      "1:1",
+      "4:5",
+      "3:4",
+      "2:3",
+      "9:16",
+      "4:1",
+      "1:4",
+      "8:1",
+      "1:8",
+    ]);
+    if (!allowed.has(frameSize) || frameSize === "match_input_image") {
+      dispatch(setFrameSize("auto"));
+    }
+  }, [selectedModel, frameSize, dispatch]);
+
+  // Gemini 25 Flash image: no "auto"; Nano Banana Pro: allow "auto" per FAL schema.
+  useEffect(() => {
+    const flashAllowed = new Set([
+      "21:9",
+      "16:9",
+      "3:2",
+      "4:3",
+      "5:4",
+      "1:1",
+      "4:5",
+      "3:4",
+      "2:3",
+      "9:16",
+    ]);
+    const proAllowed = new Set([...flashAllowed, "auto"]);
+    if (selectedModel === "gemini-25-flash-image") {
+      if (!flashAllowed.has(frameSize) || frameSize === "auto") {
+        dispatch(setFrameSize("1:1"));
+      }
+      return;
+    }
+    if (
+      selectedModel === "google/nano-banana-pro" ||
+      selectedModel === "nano-banana-pro"
+    ) {
+      if (!proAllowed.has(frameSize)) {
+        dispatch(setFrameSize("auto"));
+      }
+    }
+  }, [selectedModel, frameSize, dispatch]);
+
   const error = useAppSelector((state: any) => state.generation?.error);
   const activeDropdown = useAppSelector(
     (state: any) => state.ui?.activeDropdown,
@@ -3110,8 +3164,7 @@ const InputBox = () => {
   const expectedCredits = useMemo(() => {
     try {
       const resolution =
-        selectedModel === "google/nano-banana-pro" ||
-        selectedModel === "gemini-25-flash-image"
+        selectedModel === "google/nano-banana-pro"
           ? nanoBananaProResolution
           : selectedModel === "google/nano-banana-2"
             ? nanoBananaResolution
@@ -3188,6 +3241,14 @@ const InputBox = () => {
 
   const nanoBanana2ResolutionCredits = useMemo(
     () => ({
+      "0.5K": getImageGenerationCreditCost(
+        "google/nano-banana-2",
+        1,
+        frameSize,
+        style,
+        "0.5K",
+        getCombinedUploadedImages(),
+      ),
       "1K": getImageGenerationCreditCost(
         "google/nano-banana-2",
         1,
@@ -3377,11 +3438,13 @@ const InputBox = () => {
     resolution:
       selectedModel === "google/nano-banana-pro"
         ? nanoBananaProResolution
-        : selectedModel === "flux-2-pro"
-          ? flux2ProResolution
-          : selectedModel === "qwen-image-edit-2512"
-            ? qwenResolution
-            : undefined,
+        : selectedModel === "google/nano-banana-2"
+          ? nanoBananaResolution
+          : selectedModel === "flux-2-pro"
+            ? flux2ProResolution
+            : selectedModel === "qwen-image-edit-2512"
+              ? qwenResolution
+              : undefined,
     quality:
       selectedModel === "openai/gpt-image-1.5" ? gptImage15Quality : undefined,
   });
@@ -4918,7 +4981,7 @@ const InputBox = () => {
             combinedImages,
             getInputImageLimitForModel(selectedModel),
           );
-          const nanoBananaAllowedAspect = new Set([
+          const nanoBananaFlashAspect = new Set([
             "1:1",
             "2:3",
             "3:2",
@@ -4930,13 +4993,25 @@ const InputBox = () => {
             "16:9",
             "21:9",
           ]);
+          const nanoBananaProAspect = new Set([
+            ...nanoBananaFlashAspect,
+            "auto",
+          ]);
           const normalizedAspect =
-            (selectedModel === "google/nano-banana-pro" ||
-              selectedModel === "gemini-25-flash-image")
-              ? nanoBananaAllowedAspect.has(frameSize)
+            selectedModel === "google/nano-banana-pro" ||
+            selectedModel === "nano-banana-pro"
+              ? nanoBananaProAspect.has(frameSize as string)
                 ? frameSize
-                : "1:1"
-              : frameSize;
+                : "auto"
+              : nanoBananaFlashAspect.has(frameSize as string)
+                ? frameSize
+                : "1:1";
+          const falNanoImageOutputFormat =
+            outputFormat === "jpg" || outputFormat === "jpeg"
+              ? "jpeg"
+              : outputFormat === "webp"
+                ? "webp"
+                : "png";
           const result = await dispatch(
             falGenerate({
               prompt: `${promptAdjusted} [Style: ${style}]`,
@@ -4946,8 +5021,11 @@ const InputBox = () => {
               num_images: imageCount,
               aspect_ratio: normalizedAspect as any,
               uploadedImages: preparedImages,
-              output_format: "jpeg",
-              resolution: nanoBananaProResolution,
+              output_format: falNanoImageOutputFormat,
+              ...(selectedModel === "google/nano-banana-pro" ||
+              selectedModel === "nano-banana-pro"
+                ? { resolution: nanoBananaProResolution }
+                : {}),
               generationType: "text-to-image",
               isPublic,
             }),
@@ -6719,21 +6797,28 @@ const InputBox = () => {
       } else if (selectedModel === "google/nano-banana-2") {
         // Google Nano Banana 2 via FAL generate endpoint
         try {
-          // Map our frameSize to allowed aspect ratios for Nano Banana 2
+          // FAL nano-banana-2 aspect_ratio enum (auto + ratios; match_input_image → auto)
           const allowedAspect = new Set([
-            "match_input_image",
-            "1:1",
-            "2:3",
-            "3:2",
-            "3:4",
-            "4:3",
-            "4:5",
-            "5:4",
-            "9:16",
-            "16:9",
+            "auto",
             "21:9",
+            "16:9",
+            "3:2",
+            "4:3",
+            "5:4",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3",
+            "9:16",
+            "4:1",
+            "1:4",
+            "8:1",
+            "1:8",
           ]);
-          const aspect = allowedAspect.has(frameSize) ? frameSize : "1:1";
+          let aspect: string = allowedAspect.has(frameSize)
+            ? frameSize
+            : "auto";
+          if (frameSize === "match_input_image") aspect = "auto";
 
           const promptAdjusted = adjustPromptImageNumbers(
             finalPrompt,
@@ -6758,7 +6843,12 @@ const InputBox = () => {
               thinking_level: nanoBananaThinkingLevel,
               limit_generations: nanoBananaLimitGenerations,
               uploadedImages: preparedImages,
-              output_format: outputFormat,
+              output_format:
+                outputFormat === "jpg" || outputFormat === "jpeg"
+                  ? "jpeg"
+                  : outputFormat === "webp"
+                    ? "webp"
+                    : "png",
               generationType:
                 preparedImages.length > 0 ? "image-to-image" : "text-to-image",
               isPublic,
@@ -10182,15 +10272,17 @@ const InputBox = () => {
                 {(selectedModel === "google/nano-banana-pro" ||
                   selectedModel === "gemini-25-flash-image") && (
                   <div className="flex items-center gap-2 relative">
-                    <ResolutionDropdown
-                      resolution={nanoBananaProResolution}
-                      onResolutionChange={(val) =>
-                        setNanoBananaProResolution(val as "1K" | "2K" | "4K")
-                      }
-                      options={["1K", "2K", "4K"]}
-                      dropdownId="nanoBananaProResolutionMb"
-                      optionCredits={nanoBananaProResolutionCredits}
-                    />
+                    {selectedModel === "google/nano-banana-pro" && (
+                      <ResolutionDropdown
+                        resolution={nanoBananaProResolution}
+                        onResolutionChange={(val) =>
+                          setNanoBananaProResolution(val as "1K" | "2K" | "4K")
+                        }
+                        options={["1K", "2K", "4K"]}
+                        dropdownId="nanoBananaProResolutionMb"
+                        optionCredits={nanoBananaProResolutionCredits}
+                      />
+                    )}
                     <ZTurboOutputFormatDropdown
                       outputFormat={
                         (outputFormat === "jpeg" ? "jpg" : outputFormat) as
@@ -10212,10 +10304,12 @@ const InputBox = () => {
                       resolution={nanoBananaResolution}
                       onResolutionChange={(val) =>
                         dispatch(
-                          setNanoBananaResolution(val as "1K" | "2K" | "4K"),
+                          setNanoBananaResolution(
+                            val as "0.5K" | "1K" | "2K" | "4K",
+                          ),
                         )
                       }
-                      options={["1K", "2K", "4K"]}
+                      options={["0.5K", "1K", "2K", "4K"]}
                       dropdownId="nanoBanana2ResolutionMb"
                       optionCredits={nanoBanana2ResolutionCredits}
                     />
@@ -10231,13 +10325,6 @@ const InputBox = () => {
                       }
                       dropdownId="nanoBanana2OutputFormatMb"
                       options={nanoSupportedOutputFormats}
-                    />
-                    <ThinkingLevelDropdown
-                      thinkingLevel={nanoBananaThinkingLevel}
-                      onThinkingLevelChange={(val) =>
-                        dispatch(setNanoBananaThinkingLevel(val))
-                      }
-                      dropdownId="nanoBananaThinkingLevelMb"
                     />
                     {/* <button
                       onClick={() =>
@@ -10402,17 +10489,19 @@ const InputBox = () => {
                   {(selectedModel === "google/nano-banana-pro" ||
                     selectedModel === "gemini-25-flash-image") && (
                     <div className="flex items-center gap-2 relative">
-                      <ResolutionDropdown
-                        resolution={nanoBananaProResolution}
-                        onResolutionChange={(val) =>
-                          setNanoBananaProResolution(
-                            val as "1K" | "2K" | "4K",
-                          )
-                        }
-                        options={["1K", "2K", "4K"]}
-                        dropdownId="nanoBananaProResolutionDesk"
-                        optionCredits={nanoBananaProResolutionCredits}
-                      />
+                      {selectedModel === "google/nano-banana-pro" && (
+                        <ResolutionDropdown
+                          resolution={nanoBananaProResolution}
+                          onResolutionChange={(val) =>
+                            setNanoBananaProResolution(
+                              val as "1K" | "2K" | "4K",
+                            )
+                          }
+                          options={["1K", "2K", "4K"]}
+                          dropdownId="nanoBananaProResolutionDesk"
+                          optionCredits={nanoBananaProResolutionCredits}
+                        />
+                      )}
                       <ZTurboOutputFormatDropdown
                         outputFormat={
                           (outputFormat === "jpeg" ? "jpg" : outputFormat) as
@@ -10434,10 +10523,12 @@ const InputBox = () => {
                         resolution={nanoBananaResolution}
                         onResolutionChange={(val) =>
                           dispatch(
-                            setNanoBananaResolution(val as "1K" | "2K" | "4K"),
+                            setNanoBananaResolution(
+                              val as "0.5K" | "1K" | "2K" | "4K",
+                            ),
                           )
                         }
-                        options={["1K", "2K", "4K"]}
+                        options={["0.5K", "1K", "2K", "4K"]}
                         dropdownId="nanoBanana2ResolutionDesk"
                         optionCredits={nanoBanana2ResolutionCredits}
                       />
@@ -10453,13 +10544,6 @@ const InputBox = () => {
                         }
                         dropdownId="nanoBanana2OutputFormatDesk"
                         options={nanoSupportedOutputFormats}
-                      />
-                      <ThinkingLevelDropdown
-                        thinkingLevel={nanoBananaThinkingLevel}
-                        onThinkingLevelChange={(val) =>
-                          dispatch(setNanoBananaThinkingLevel(val))
-                        }
-                        dropdownId="nanoBananaThinkingLevelDesk"
                       />
                       {/* <button
                         onClick={() =>
