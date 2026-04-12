@@ -9248,7 +9248,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     if (selectedModel.includes("MiniMax")) {
       return (
-        <div className="flex w-full max-w-full flex-wrap items-center gap-2 pr-1">
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
           <VideoFrameSizeDropdown
             selectedFrameSize={selectedResolution}
             onFrameSizeChange={setSelectedResolution}
@@ -9284,7 +9284,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         setTimeout(() => setCloseDurationDropdown(false), 0);
       };
       return (
-        <div className="flex w-full max-w-full flex-wrap items-center gap-x-1 gap-y-2 pr-1">
+        <div className="flex min-w-max flex-nowrap items-center gap-x-1 pr-1">
           {!hidePixverseV6AspectRatio && (
             <VideoFrameSizeDropdown
               selectedFrameSize={frameSize}
@@ -9408,12 +9408,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed left-1/2 z-[50] h-auto max-h-[calc(100vh-16px)] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
+      <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-1.5 space-y-2 md:space-y-4 transition-all duration-300 overflow-y-visible ${
+          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-visible overflow-y-visible ${
             isInputBoxHovered
-              ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
+              ? "bg-black/40 ring-white/30 shadow-2xl md:scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
           }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
@@ -9789,9 +9789,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-0">
-            {/* Mobile: second row - credits/generate */}
-            <div className="flex md:hidden justify-end items-center gap-2 w-full px-1 mt-1">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
+            {/* Mobile: credits / generate */}
+            <div className="flex md:hidden shrink-0 justify-end items-center gap-2 w-full px-1 pt-0.5">
               <div className="flex flex-col items-end gap-0.25">
                 <div className="text-white/80 text-[9px] md:text-[11px] leading-none">
                   Total credits:{" "}
@@ -9834,33 +9834,34 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
 
-            {/* Mobile: second-last row - model family selectors */}
-              <div className="flex md:hidden w-full items-center gap-2 px-1 mt-0 pb-0 overflow-x-auto no-scrollbar">
+            {/* Mobile: model + family variant (dedicated row; no negative margin — avoids overlap with params). */}
+            <div className="relative z-[21] flex md:hidden w-full min-w-0 shrink-0 items-stretch gap-2 px-1 py-0.5">
+              <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x no-scrollbar">
                 <div className="shrink-0">
                   <VideoModelsDropdown
                     selectedModel={selectedModel}
                     onModelChange={handleModelChange}
-                  generationMode={generationMode}
-                  selectedDuration={
-                    selectedModel.includes("MiniMax")
-                      ? `${selectedMiniMaxDuration}s`
-                      : formatDurationForCreditLookup(duration)
-                  }
-                  selectedResolution={modelDropdownResolution}
-                  pixverseV6GenerateAudio={pixverseV6GenerateAudio}
-                  activeFeature={activeFeature}
-                  onCloseOtherDropdowns={() => {
-                    setCloseFrameSizeDropdown(true);
-                    setCloseDurationDropdown(true);
-                    setCloseCameraMotionDropdown(true);
-                    setTimeout(() => {
-                      setCloseFrameSizeDropdown(false);
-                      setCloseDurationDropdown(false);
-                      setCloseCameraMotionDropdown(false);
-                    }, 100);
-                  }}
-                  onCloseThisDropdown={
-                    closeModelsDropdown ? () => {} : undefined
+                    generationMode={generationMode}
+                    selectedDuration={
+                      selectedModel.includes("MiniMax")
+                        ? `${selectedMiniMaxDuration}s`
+                        : formatDurationForCreditLookup(duration)
+                    }
+                    selectedResolution={modelDropdownResolution}
+                    pixverseV6GenerateAudio={pixverseV6GenerateAudio}
+                    activeFeature={activeFeature}
+                    onCloseOtherDropdowns={() => {
+                      setCloseFrameSizeDropdown(true);
+                      setCloseDurationDropdown(true);
+                      setCloseCameraMotionDropdown(true);
+                      setTimeout(() => {
+                        setCloseFrameSizeDropdown(false);
+                        setCloseDurationDropdown(false);
+                        setCloseCameraMotionDropdown(false);
+                      }, 100);
+                    }}
+                    onCloseThisDropdown={
+                      closeModelsDropdown ? () => {} : undefined
                     }
                   />
                 </div>
@@ -9868,11 +9869,18 @@ const InputBox = (props: InputBoxProps = {}) => {
                   <div className="shrink-0">{renderFamilyVariantDropdown()}</div>
                 ) : null}
               </div>
+            </div>
 
-            {/* Mobile: param row — z-[20] keeps chips above PromptInput when they overlap; PixVerse tooltips use PortalHoverTooltip. */}
-            <div className="relative z-[20] -mt-0.5 flex md:hidden w-full min-w-0 flex-wrap items-start gap-x-1 gap-y-2 px-1 pb-1 overflow-visible">
-              {renderMobileParameterControls()}
-              {renderMobileAudioControls()}
+            {/* Mobile: parameters + audio — last row; horizontal scroll; extra vertical padding avoids clip/overlap. */}
+            <div className="relative z-[20] flex md:hidden w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x md:py-1.5 pb-2 no-scrollbar">
+              <div className="flex w-max min-w-0 flex-nowrap items-center gap-2 px-1">
+                <div className="flex shrink-0 flex-nowrap items-center gap-2">
+                  {renderMobileParameterControls()}
+                </div>
+                <div className="flex shrink-0 flex-nowrap items-center gap-2">
+                  {renderMobileAudioControls()}
+                </div>
+              </div>
             </div>
 
             {/* Desktop toolbar */}
