@@ -9567,7 +9567,7 @@ const InputBox = () => {
       {!isInlineEditImagePage && (
         <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
-            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-0.5 space-y-2 md:space-y-4 transition-all duration-300 ${
+            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-0.5 pt-2  space-y-0 md:space-y-4 transition-all duration-300 ${
               isInputBoxHovered
                 ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
                 : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -9863,10 +9863,10 @@ const InputBox = () => {
                     const inputEvent = new Event("input", { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 -mb-4 pr-1 pt-1 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
+                  className={`flex-1 -mb-4 pr-1 pt-0 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
                   style={{
                     minHeight: "80px",
-                    maxHeight: "90px",
+                    maxHeight: "100px",
                     lineHeight: "1.2",
                     scrollbarWidth: "thin",
                     scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
@@ -10194,7 +10194,7 @@ const InputBox = () => {
 
             {/* Bottom row: pill options */}
 
-            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-1 md:pt-0">
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-0 md:pt-0">
 
 
               {/* Mobile/Tablet: First row - Model dropdown and Generate button */}

@@ -9790,12 +9790,46 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
-            {/* Mobile: credits / generate */}
-            <div className="flex md:hidden shrink-0 justify-end items-center gap-2 w-full px-1 pt-0.5">
-              <div className="flex flex-col items-end gap-0.25">
-                <div className="text-white/80 text-[9px] md:text-[11px] leading-none">
-                  Total credits:{" "}
-                  <span className="font-semibold">{liveCreditCost}</span>
+            {/* Mobile: model + family variant + generate (dedicated row; avoids overlap with params). */}
+            <div className="relative z-[21] flex md:hidden w-full min-w-0 shrink-0 items-center justify-between gap-1 px-1 py-1">
+              <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x no-scrollbar shrink">
+                <div className="shrink-0 flex items-center">
+                  <VideoModelsDropdown
+                    selectedModel={selectedModel}
+                    onModelChange={handleModelChange}
+                    generationMode={generationMode}
+                    selectedDuration={
+                      selectedModel.includes("MiniMax")
+                        ? `${selectedMiniMaxDuration}s`
+                        : formatDurationForCreditLookup(duration)
+                    }
+                    selectedResolution={modelDropdownResolution}
+                    pixverseV6GenerateAudio={pixverseV6GenerateAudio}
+                    activeFeature={activeFeature}
+                    onCloseOtherDropdowns={() => {
+                      setCloseFrameSizeDropdown(true);
+                      setCloseDurationDropdown(true);
+                      setCloseCameraMotionDropdown(true);
+                      setTimeout(() => {
+                        setCloseFrameSizeDropdown(false);
+                        setCloseDurationDropdown(false);
+                        setCloseCameraMotionDropdown(false);
+                      }, 100);
+                    }}
+                    onCloseThisDropdown={
+                      closeModelsDropdown ? () => {} : undefined
+                    }
+                  />
+                </div>
+                {shouldShowSecondaryFamilySelector(selectedModel) ? (
+                  <div className="shrink-0 flex items-center">{renderFamilyVariantDropdown()}</div>
+                ) : null}
+              </div>
+
+              {/* Mobile: generate button */}
+              <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1">
+                <div className="text-white/80 text-[10px] leading-none mb-0.5">
+                  Total credits: <span className="font-semibold">{liveCreditCost}</span>
                 </div>
                 <button
                   onClick={handleGenerate}
@@ -9827,47 +9861,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                         uploadedImages.length === 0);
                     return disabled;
                   })()}
-                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white md:px-4 px-2.5 md:py-2.5 py-1 rounded-lg md:text-sm text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-2.5 py-1 rounded-lg text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
                 >
                   Generate
                 </button>
-              </div>
-            </div>
-
-            {/* Mobile: model + family variant (dedicated row; no negative margin — avoids overlap with params). */}
-            <div className="relative z-[21] flex md:hidden w-full min-w-0 shrink-0 items-stretch gap-2 px-1 py-0.5">
-              <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x no-scrollbar">
-                <div className="shrink-0">
-                  <VideoModelsDropdown
-                    selectedModel={selectedModel}
-                    onModelChange={handleModelChange}
-                    generationMode={generationMode}
-                    selectedDuration={
-                      selectedModel.includes("MiniMax")
-                        ? `${selectedMiniMaxDuration}s`
-                        : formatDurationForCreditLookup(duration)
-                    }
-                    selectedResolution={modelDropdownResolution}
-                    pixverseV6GenerateAudio={pixverseV6GenerateAudio}
-                    activeFeature={activeFeature}
-                    onCloseOtherDropdowns={() => {
-                      setCloseFrameSizeDropdown(true);
-                      setCloseDurationDropdown(true);
-                      setCloseCameraMotionDropdown(true);
-                      setTimeout(() => {
-                        setCloseFrameSizeDropdown(false);
-                        setCloseDurationDropdown(false);
-                        setCloseCameraMotionDropdown(false);
-                      }, 100);
-                    }}
-                    onCloseThisDropdown={
-                      closeModelsDropdown ? () => {} : undefined
-                    }
-                  />
-                </div>
-                {shouldShowSecondaryFamilySelector(selectedModel) ? (
-                  <div className="shrink-0">{renderFamilyVariantDropdown()}</div>
-                ) : null}
               </div>
             </div>
 
