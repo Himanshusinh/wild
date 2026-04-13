@@ -9723,6 +9723,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             }}
             placeholder={placeholder}
             inputRef={inputEl as React.RefObject<HTMLTextAreaElement>}
+            fixedHeightOnMobile
             actions={
               <InputActions
                 generationMode={generationMode}

@@ -74,7 +74,7 @@ const InputActions: React.FC<InputActionsProps> = ({
 
   return (
     <>
-      <div className="flex items-center gap-1 h-[40px]">
+      <div className="flex items-center gap-0 h-[40px]">
         {/* Camera Movements */}
         {((generationMode === "text_to_video" &&
           selectedModel === "T2V-01-Director") ||
