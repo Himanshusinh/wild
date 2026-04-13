@@ -87,6 +87,15 @@ const getCleanPrompt = (promptText: string): string => {
   return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
 };
 
+/** Same as Image Generation grid: library / device uploads are not real generations — skip in ←/→ navigation. */
+const normalizeModelKey = (t?: string) =>
+  t ? String(t).replace(/[_-]/g, "-").toLowerCase() : "";
+
+const isUploadFileHistoryEntry = (entry?: HistoryEntry | null): boolean => {
+  if (!entry) return false;
+  return normalizeModelKey((entry as any).model) === "upload-file";
+};
+
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
   onClose: () => void;
@@ -117,6 +126,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const activeEntryId = currentEntry?.id || preview?.entry?.id || null;
   const isLoadingMoreRef = React.useRef(false);
 
+  /** Prefer full API payload over the shallow list row so model/prompt/uploads stay correct when navigating. */
+  const resolvedEntry = React.useMemo((): HistoryEntry | null => {
+    const id = activeEntryId || "";
+    if (id && entryDetails[id]) return entryDetails[id] as HistoryEntry;
+    return currentEntry || preview?.entry || null;
+  }, [activeEntryId, entryDetails, currentEntry, preview?.entry]);
+
   // Keep ref in sync with state
   React.useEffect(() => {
     entryDetailsRef.current = entryDetails;
@@ -128,6 +144,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
     const pushIfValid = (entry?: HistoryEntry | null) => {
       if (!entry || !entry.id) return;
+      if (isUploadFileHistoryEntry(entry)) return;
       const imgs = (entry as any)?.images;
       if (!Array.isArray(imgs) || imgs.length === 0) return;
       if (seen.has(entry.id)) return;
@@ -138,7 +155,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     historyEntries.forEach((entry: HistoryEntry) => pushIfValid(entry));
 
     const active = currentEntry || preview?.entry || null;
-    if (active && active.id) {
+    if (active && active.id && !isUploadFileHistoryEntry(active)) {
       const activeImgs = (active as any)?.images;
       if (Array.isArray(activeImgs) && activeImgs.length > 0) {
         if (!seen.has(active.id)) {
@@ -494,15 +511,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [isFsOpen]);
 
   // Build gallery from images in the SAME ENTRY (same generation run)
-  // Use currentEntry instead of preview.entry so it updates after deletion
   const sameDateGallery = React.useMemo(() => {
     try {
-      const entryToUse = currentEntry || preview?.entry;
-      if (!entryToUse) return [] as Array<{ entry: any, image: any }>;
+      const entryToUse = resolvedEntry;
+      if (!entryToUse) return [] as Array<{ entry: any; image: any }>;
       const imgs = (entryToUse as any)?.images || [];
       return imgs.map((im: any) => ({ entry: entryToUse, image: im }));
-    } catch { return []; }
-  }, [currentEntry, preview]);
+    } catch {
+      return [];
+    }
+  }, [resolvedEntry]);
 
   const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
     try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch { }
@@ -687,19 +705,32 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   // (moved above for navigation callbacks)
 
-  // Select clicked image within same-date gallery
-  const initialIndex = React.useMemo(() => {
-    if (!preview) return 0;
-    const mUrl = (preview.image as any)?.url;
+  // Only align image index when opening a different asset from the grid — not when navigating with ←/→
+  React.useEffect(() => {
+    if (!preview?.entry) return;
+    const imgs = (preview.entry as any)?.images || [];
     const mId = (preview.image as any)?.id;
-    const mEntryId = (preview.entry as any)?.id;
-    const idx = sameDateGallery.findIndex((pair: any) => {
-      return (pair?.entry?.id === mEntryId) && ((mId && pair?.image?.id === mId) || (mUrl && pair?.image?.url === mUrl));
-    });
-    return idx >= 0 ? idx : 0;
-  }, [sameDateGallery, preview]);
+    const mUrl = (preview.image as any)?.url;
+    let idx = 0;
+    if (imgs.length > 0) {
+      const found = imgs.findIndex(
+        (im: any) =>
+          (mId && im.id === mId) || (mUrl && im.url === mUrl),
+      );
+      if (found >= 0) idx = found;
+    }
+    setSelectedIndex(idx);
+  }, [preview?.entry?.id, preview?.image?.id, preview?.image?.url]);
 
-  React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
+  // If the active generation has fewer images than the current index (e.g. after switching generations), clamp
+  React.useEffect(() => {
+    const n = Array.isArray((resolvedEntry as any)?.images)
+      ? (resolvedEntry as any).images.length
+      : 0;
+    if (n > 0 && selectedIndex > n - 1) {
+      setSelectedIndex(n - 1);
+    }
+  }, [resolvedEntry?.id, (resolvedEntry as any)?.images?.length, selectedIndex]);
 
   // Use refs to avoid dependency issues with keyboard handlers
   const goPrevImageRef = React.useRef(goPrevImage);
@@ -737,10 +768,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // Prefer per-image visibility if present, otherwise fall back to entry-level isPublic.
   React.useEffect(() => {
     try {
-      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
-      const selectedImage = selectedPair.image || preview?.image;
-      const imageIsPublic = (selectedImage as any)?.isPublic;
-      const entryIsPublic = (selectedPair.entry as any)?.isPublic ?? (preview?.entry as any)?.isPublic;
+      const imgs = Array.isArray((resolvedEntry as any)?.images)
+        ? (resolvedEntry as any).images
+        : [];
+      const n = imgs.length;
+      const si = n > 0 ? Math.min(Math.max(0, selectedIndex), n - 1) : 0;
+      const img = imgs[si] || preview?.image;
+      const imageIsPublic = (img as any)?.isPublic;
+      const entryIsPublic =
+        (resolvedEntry as any)?.isPublic ?? (preview?.entry as any)?.isPublic;
 
       let nextFlag: boolean;
       if (typeof imageIsPublic === 'boolean') {
@@ -754,18 +790,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
       setIsPublicFlag(nextFlag);
     } catch { }
-  }, [selectedIndex, sameDateGallery, preview]);
+  }, [selectedIndex, resolvedEntry, preview?.entry]);
 
   // Only show immediate neighbors (left/right) in the sidebar thumbnails
   const windowGallery = React.useMemo(() => {
     const total = (sameDateGallery as any[]).length;
     if (total === 0) return [] as any[];
     if (total === 1) return [sameDateGallery[0]] as any[];
-    const prevIdx = (selectedIndex - 1 + total) % total;
-    const nextIdx = (selectedIndex + 1) % total;
+    const safe = Math.min(Math.max(0, selectedIndex), total - 1);
+    const prevIdx = (safe - 1 + total) % total;
+    const nextIdx = (safe + 1) % total;
     const result: any[] = [];
     result.push(sameDateGallery[prevIdx]);
-    result.push(sameDateGallery[selectedIndex]);
+    result.push(sameDateGallery[safe]);
     if (total > 2) result.push(sameDateGallery[nextIdx]);
     return result;
   }, [sameDateGallery, selectedIndex]);
@@ -797,15 +834,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, []);
 
   // Resolve the active image URL without issuing duplicate fetches (browser caches handle it)
-  const currentEntryImagesLength = Array.isArray((currentEntry as any)?.images)
-    ? (currentEntry as any).images.length
+  const currentEntryImagesLength = Array.isArray((resolvedEntry as any)?.images)
+    ? (resolvedEntry as any).images.length
     : 0;
 
   // Preload adjacent images for instant navigation (within same generation)
   // ENHANCED: Preload ±3 images instead of ±1 for instant rapid navigation
   React.useEffect(() => {
     if (!preview) return;
-    const entryToUse = currentEntry || preview.entry;
+    const entryToUse = resolvedEntry || preview.entry;
     const images = (entryToUse as any)?.images || [];
     const total = images.length;
     if (total <= 1) return;
@@ -837,7 +874,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (selectedIndex >= total - 2 && showGenerationNav && activeEntryIndex >= 0) {
       loadMoreIfNeededRef.current(activeEntryIndex, generationSequence.length);
     }
-  }, [selectedIndex, currentEntry, preview, showGenerationNav, activeEntryIndex, generationSequence.length]);
+  }, [selectedIndex, resolvedEntry, preview, showGenerationNav, activeEntryIndex, generationSequence.length]);
 
   // Preload images AND entry data from adjacent generations for instant generation navigation
   // ENHANCED: Fetch full entry data proactively to eliminate API delay
@@ -898,10 +935,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   React.useEffect(() => {
     if (!preview) return;
 
-    const entryToUse = currentEntry || preview.entry;
+    const entryToUse = resolvedEntry || preview.entry;
     const images = (entryToUse as any)?.images || [];
-    const selectedImage = images[selectedIndex] || preview.image;
-    const imageUrl = (selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image?.url;
+    const n = images.length;
+    const safeIdx =
+      n > 0 ? Math.min(Math.max(0, selectedIndex), n - 1) : 0;
+    const selectedImageForUrl = images[safeIdx] || preview.image;
+    const imageUrl =
+      (selectedImageForUrl as any)?.avifUrl ||
+      selectedImageForUrl?.url ||
+      (preview.image as any)?.avifUrl ||
+      preview.image?.url;
 
     if (!imageUrl) {
       setObjectUrl('');
@@ -913,7 +957,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     setObjectUrl(proxyUrl);
     setImageDimensions(null);
   }, [
-    currentEntry?.id,
+    resolvedEntry?.id,
     currentEntryImagesLength,
     preview?.entry?.id,
     preview?.image?.id,
@@ -921,13 +965,22 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     selectedIndex,
   ]);
 
-  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
-  const selectedImage: any = selectedPair.image || preview?.image;
-  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+  const galleryImages: any[] = Array.isArray((resolvedEntry as any)?.images)
+    ? (resolvedEntry as any).images
+    : [];
+  const safeImageIndex =
+    galleryImages.length > 0
+      ? Math.min(Math.max(0, selectedIndex), galleryImages.length - 1)
+      : 0;
+  const selectedImage: any =
+    galleryImages[safeImageIndex] ?? preview?.image;
+  const selectedEntry: any = resolvedEntry || preview?.entry;
 
-  // Compute button visibility
-  const isFirstImage = selectedIndex === 0;
-  const isLastImage = selectedIndex >= sameDateGallery.length - 1;
+  // Compute button visibility (within current generation strip; main arrows use flattened sequence)
+  const isFirstImage = safeImageIndex <= 0;
+  const isLastImage =
+    galleryImages.length > 0 &&
+    safeImageIndex >= galleryImages.length - 1;
 
   // Generation navigation: Index 0 = Latest/Newest, Last = Oldest
   const isFirstGeneration = activeEntryIndex <= 0; // Latest/newest generation
@@ -1195,9 +1248,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       return;
     }
     try {
-      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
-      const imageToDelete = selectedPair.image || preview?.image;
-      const entry = selectedPair.entry || preview?.entry;
+      const imageToDelete = selectedImage || preview?.image;
+      const entry = selectedEntry || preview?.entry;
 
       if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
 
@@ -1783,7 +1835,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       onClick={() => {
                         try { setSelectedIndex(idx); } catch { }
                       }}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${safeImageIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       {(() => {
                         const thumbBest = (pair.image?.thumbnailUrl || pair.image?.avifUrl || pair.image?.url);

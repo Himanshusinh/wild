@@ -1593,7 +1593,9 @@ const InputBox = () => {
               typeof createdRaw === "number"
                 ? createdRaw
                 : Date.parse(String(createdRaw || "")) || Date.now();
-            const MAX_TIME_DIFF = 120000; // 2 minutes
+            /** History row must be from *this* job: created at/after generation start (not a prior run with the same prompt). */
+            const START_SKEW_MS = 5000; // clock / ordering slack only
+            const LATE_RESULT_CAP_MS = 45 * 60 * 1000; // allow slow models; still reject impossible timestamps
 
             activeGenerations.forEach((g: any) => {
               try {
@@ -1608,7 +1610,10 @@ const InputBox = () => {
                   typeof gTimeRaw === "number"
                     ? gTimeRaw
                     : Date.parse(String(gTimeRaw || "")) || 0;
-                const timeDiff = Math.abs(neTime - gTime);
+                const resultAfterStart =
+                  gTime > 0 && neTime >= gTime - START_SKEW_MS;
+                const resultNotAbsurdlyLate =
+                  neTime <= gTime + LATE_RESULT_CAP_MS;
                 const promptMatch =
                   gPrompt &&
                   nePrompt &&
@@ -1618,8 +1623,10 @@ const InputBox = () => {
                 const modelMatch = gModel && neModel && gModel === neModel;
 
                 if (
-                  (promptMatch && timeDiff < MAX_TIME_DIFF) ||
-                  (promptMatch && modelMatch && timeDiff < MAX_TIME_DIFF)
+                  resultAfterStart &&
+                  resultNotAbsurdlyLate &&
+                  promptMatch &&
+                  (!gModel || !neModel || modelMatch)
                 ) {
                   console.log(
                     "[queue] Correlating active generation by prompt+time",
@@ -1627,7 +1634,7 @@ const InputBox = () => {
                       generationId: g.id,
                       historyId: normalizedEntry.id,
                       promptMatch: gPrompt.slice(0, 50),
-                      timeDiff,
+                      deltaMs: neTime - gTime,
                     },
                   );
                   dispatch(
@@ -1751,7 +1758,13 @@ const InputBox = () => {
           }
         }
 
-        // Otherwise, attempt fuzzy prompt + timestamp match
+        // Otherwise, attempt fuzzy prompt + timestamp match (must be THIS run — not an older row with the same prompt)
+        const startMs =
+          typeof startedAt === "number" && Number.isFinite(startedAt)
+            ? startedAt
+            : Date.now();
+        const POLL_START_SKEW_MS = 15000;
+        const POLL_LATE_CAP_MS = 30 * 60 * 1000; // ignore entries impossibly far in the future
         for (const it of items) {
           try {
             if (!it || !it.prompt) continue;
@@ -1760,13 +1773,26 @@ const InputBox = () => {
               Date.parse(
                 String(it.createdAt || it.timestamp || it.updatedAt || 0),
               ) || 0;
-            const age = Math.abs(t - (startedAt || Date.now()));
-            // Accept matches created within +/- 90s and with prompt substring match
-            if (target && p.includes(target) && age < 90000) {
+            if (!t) continue;
+            // History row must be created at/after when this job started (minus small skew)
+            const isNewEnough = t >= startMs - POLL_START_SKEW_MS;
+            const notFromFuture = t <= startMs + POLL_LATE_CAP_MS;
+            const modelOk =
+              !model ||
+              !it.model ||
+              String(it.model).toLowerCase() === String(model).toLowerCase();
+            if (
+              target &&
+              p.includes(target) &&
+              isNewEnough &&
+              notFromFuture &&
+              modelOk
+            ) {
               qlog("pollForMatchingHistory: fuzzy matched item", {
                 matchedId: it.id,
                 promptMatch: p.slice(0, 100),
-                age,
+                itemTime: t,
+                startMs,
               });
               await refreshSingleGeneration(it.id);
               if (generationId)
@@ -2366,10 +2392,14 @@ const InputBox = () => {
         // 2. OR generation was created within 10 seconds (likely a refresh scenario)
         // This ensures brand new generations with the same prompt/config can still generate
         if (!match && gen.prompt) {
+          const genStartMsRaw =
+            typeof gen.startedAt === "number"
+              ? gen.startedAt
+              : gen.createdAt;
           const genTime =
-            typeof gen.createdAt === "number"
-              ? gen.createdAt
-              : new Date(gen.createdAt).getTime();
+            typeof genStartMsRaw === "number"
+              ? genStartMsRaw
+              : new Date(genStartMsRaw).getTime();
           const now = Date.now();
           const ageInSeconds = (now - genTime) / 1000;
 
@@ -2389,9 +2419,9 @@ const InputBox = () => {
               },
             );
 
-            // Use a much smaller time window for fallback matching (30 seconds)
-            // This is only for refresh scenarios, not for matching new generations to old ones
-            const TIME_WINDOW = 30000; // 30 second window (only for refresh scenarios)
+            /** History row must belong to *this* queue item: created at/after job start (not a prior run with the same prompt). */
+            const SYNC_SKEW_MS = 5000;
+            const SYNC_LATE_CAP_MS = 20 * 60 * 1000;
 
             // OPTIMIZED: Pre-normalize prompt once instead of in loop
             const normalizePrompt = (p: string) => {
@@ -2404,15 +2434,18 @@ const InputBox = () => {
             const genPromptNormalized = normalizePrompt(gen.prompt);
             const genModel = String(gen.model || "");
 
-            // OPTIMIZED: Filter by time window first to reduce iterations
+            // OPTIMIZED: Filter to entries created after this job started (same prompt allowed)
             const recentEntries = historyEntries.filter((e: any) => {
               const eTimeRaw = e.timestamp || e.createdAt || e.created_at;
               const eTime =
                 typeof eTimeRaw === "number"
                   ? eTimeRaw
                   : new Date(eTimeRaw).getTime();
-              if (isNaN(eTime)) return false;
-              return Math.abs(genTime - eTime) < TIME_WINDOW;
+              if (isNaN(eTime) || isNaN(genTime)) return false;
+              return (
+                eTime >= genTime - SYNC_SKEW_MS &&
+                eTime <= genTime + SYNC_LATE_CAP_MS
+              );
             });
 
             // OPTIMIZED: Only search through recent entries (much smaller set)
@@ -2434,8 +2467,11 @@ const InputBox = () => {
 
               const modelMatch = String(e.model || "") === genModel;
 
-              // Only log close matches (within time window)
-              if (timeDiff < TIME_WINDOW) {
+              if (
+                !isNaN(eTime) &&
+                eTime >= genTime - SYNC_SKEW_MS &&
+                eTime <= genTime + SYNC_LATE_CAP_MS
+              ) {
                 console.log("[queue] Comparing with history entry:", {
                   historyId: e.id,
                   timeDiff,
@@ -2446,7 +2482,12 @@ const InputBox = () => {
                 });
               }
 
-              return promptMatch && modelMatch;
+              return (
+                promptMatch &&
+                modelMatch &&
+                eTime >= genTime - SYNC_SKEW_MS &&
+                eTime <= genTime + SYNC_LATE_CAP_MS
+              );
             });
 
             if (match) {
@@ -2807,6 +2848,19 @@ const InputBox = () => {
   // ContentEditable approach for inline character tags (like Cursor)
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
+  /** Clears previous timeouts so an old 100ms timer cannot drop isUpdatingRef while the user is still typing (that let updateContentEditable run and jump the caret to the start). */
+  const promptInputIdleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (promptInputIdleTimeoutRef.current) {
+        clearTimeout(promptInputIdleTimeoutRef.current);
+        promptInputIdleTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Function to update contentEditable with tags
   const updateContentEditable = React.useCallback(() => {
@@ -8034,14 +8088,16 @@ const InputBox = () => {
         const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
         // Ensure imageOnlyActiveGenerations will include this by adding proper metadata
+        const resumeStart = Date.now();
         dispatch(
           addActiveGeneration({
             id: generationId,
             prompt: data.prompt,
             model: data.model || selectedModel,
             status: "pending",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: resumeStart,
+            startedAt: resumeStart,
+            updatedAt: resumeStart,
             generationType: "text-to-image", // Top-level for filtering
             params: {
               imageCount: data.imageCount || imageCount,
@@ -9274,15 +9330,16 @@ const InputBox = () => {
           }
 
           const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
+          const assistantStart = Date.now();
           dispatch(
             addActiveGeneration({
               id: generationId,
               prompt: newPrompt, // Use the new prompt from assistant
               model: selectedModel,
               status: "pending",
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
+              createdAt: assistantStart,
+              startedAt: assistantStart,
+              updatedAt: assistantStart,
               generationType: "text-to-image",
               params: {
                 imageCount,
@@ -9623,8 +9680,9 @@ const InputBox = () => {
                   suppressContentEditableWarning
                   data-prompt-editor="true"
                   onInput={(e) => {
-                    if (isUpdatingRef.current) return;
-
+                    // Do NOT bail when isUpdatingRef is true: that ref stays true for 100ms after
+                    // each keystroke to block updateContentEditable, but skipping onInput here drops
+                    // rapid follow-up keys (DOM shows "CAT" while Redux stays "C" → wrong generate payload).
                     const div = e.currentTarget;
 
                     // Extract text content (including from tags)
@@ -9664,10 +9722,15 @@ const InputBox = () => {
                     div.style.height = "auto";
                     div.style.height = Math.min(div.scrollHeight, 96) + "px";
 
-                    // Re-render tags after a short delay to ensure they're visible
-                    setTimeout(() => {
+                    if (promptInputIdleTimeoutRef.current) {
+                      clearTimeout(promptInputIdleTimeoutRef.current);
+                      promptInputIdleTimeoutRef.current = null;
+                    }
+                    // Single idle timer: only the last keystroke may clear isUpdatingRef.
+                    // Stacked timers used to clear the guard mid-word → updateContentEditable ran → caret jumped to start.
+                    promptInputIdleTimeoutRef.current = setTimeout(() => {
+                      promptInputIdleTimeoutRef.current = null;
                       isUpdatingRef.current = false;
-                      // Check if tags need to be re-rendered
                       const hasTags = div.querySelector(".character-tag");
                       const shouldHaveTags =
                         selectedCharacters.length > 0 &&
@@ -10022,14 +10085,16 @@ const InputBox = () => {
                         model: selectedModel,
                         prompt: prompt.slice(0, 50),
                       });
+                      const desktopQueueStart = Date.now();
                       dispatch(
                         addActiveGeneration({
                           id: generationId,
                           prompt: prompt,
                           model: selectedModel,
                           status: "pending",
-                          createdAt: Date.now(),
-                          updatedAt: Date.now(),
+                          createdAt: desktopQueueStart,
+                          startedAt: desktopQueueStart,
+                          updatedAt: desktopQueueStart,
                           generationType: "text-to-image", // Added at top level
                           params: {
                             imageCount,
@@ -10177,15 +10242,16 @@ const InputBox = () => {
                       }
 
                       const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
+                      const mobileQueueStart = Date.now();
                       dispatch(
                         addActiveGeneration({
                           id: generationId,
                           prompt: prompt,
                           model: selectedModel,
                           status: "pending",
-                          createdAt: Date.now(),
-                          updatedAt: Date.now(),
+                          createdAt: mobileQueueStart,
+                          startedAt: mobileQueueStart,
+                          updatedAt: mobileQueueStart,
                           generationType: "text-to-image", // Added at top level
                           params: {
                             imageCount,
