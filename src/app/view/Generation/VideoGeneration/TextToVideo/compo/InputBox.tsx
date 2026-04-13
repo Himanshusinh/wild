@@ -1694,12 +1694,74 @@ const InputBox = (props: InputBoxProps = {}) => {
     null,
   );
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
+  const desktopToolbarControlsRef = useRef<HTMLDivElement | null>(null);
+  const isDraggingDesktopToolbarRef = useRef(false);
+  const desktopToolbarDragStartXRef = useRef(0);
+  const desktopToolbarScrollLeftRef = useRef(0);
   const [historyScrollElement, setHistoryScrollElement] =
     useState<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasUserScrolledRef = useRef(false);
   const [extraVideoEntries, setExtraVideoEntries] = useState<any[]>([]);
   const staleFalPlaceholderChecksRef = useRef<Set<string>>(new Set());
+
+  const handleDesktopToolbarWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      const container = desktopToolbarControlsRef.current;
+      if (!container) return;
+
+      const canScrollHorizontally =
+        container.scrollWidth > container.clientWidth + 1;
+      if (!canScrollHorizontally) return;
+
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+
+      event.preventDefault();
+      container.scrollLeft += event.deltaY;
+    },
+    [],
+  );
+
+  const handleDesktopToolbarPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const container = desktopToolbarControlsRef.current;
+      if (!container) return;
+      if (container.scrollWidth <= container.clientWidth + 1) return;
+
+      isDraggingDesktopToolbarRef.current = true;
+      desktopToolbarDragStartXRef.current = event.clientX;
+      desktopToolbarScrollLeftRef.current = container.scrollLeft;
+      container.setPointerCapture?.(event.pointerId);
+      container.style.cursor = "grabbing";
+      container.style.userSelect = "none";
+    },
+    [],
+  );
+
+  const handleDesktopToolbarPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const container = desktopToolbarControlsRef.current;
+      if (!container || !isDraggingDesktopToolbarRef.current) return;
+
+      const deltaX = event.clientX - desktopToolbarDragStartXRef.current;
+      container.scrollLeft = desktopToolbarScrollLeftRef.current - deltaX;
+    },
+    [],
+  );
+
+  const endDesktopToolbarDrag = useCallback(
+    (event?: React.PointerEvent<HTMLDivElement>) => {
+      const container = desktopToolbarControlsRef.current;
+      isDraggingDesktopToolbarRef.current = false;
+      if (!container) return;
+      if (event) {
+        container.releasePointerCapture?.(event.pointerId);
+      }
+      container.style.cursor = "";
+      container.style.userSelect = "";
+    },
+    [],
+  );
 
   // Get history entries for video generation
   const historyEntries = useAppSelector((state: any) => {
@@ -8447,7 +8509,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-0">
             {/* Mobile: First row - Model dropdown and Generate button */}
             <div className="flex md:hidden justify-between items-center gap-2 w-full px-1 mt-1">
               <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -8602,10 +8664,11 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
 
-            {/* Desktop: Original layout - changed to flex-row for size parity */}
-            <div className="hidden md:flex flex-1 min-w-0 flex-row gap-3 items-center pb-0 ">
-              {/* Model selector */}
-              <div className="flex-shrink-0">
+            {/* Desktop toolbar */}
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_auto] w-full flex-1 min-w-0 items-end gap-3 pb-0 pt-3">
+              <div className="flex w-full min-w-0 flex-row gap-2 items-center overflow-hidden">
+                {/* Model selector */}
+                <div className="flex-shrink-0">
                 <VideoModelsDropdown
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
@@ -8638,12 +8701,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                     }, 100);
                   }}
                   onCloseThisDropdown={closeModelsDropdown ? () => {} : undefined}
-                />
-              </div>
+                  />
+                </div>
 
-              {/* Dynamic Controls Based on Model Capabilities */}
-              <div className="flex-1 min-w-0 overflow-x-auto overflow-y-visible no-scrollbar pr-[180px] py-1">
-                {(() => {
+                {/* Dynamic Controls Based on Model Capabilities */}
+                <div
+                  ref={desktopToolbarControlsRef}
+                  onWheel={handleDesktopToolbarWheel}
+                  onPointerDown={handleDesktopToolbarPointerDown}
+                  onPointerMove={handleDesktopToolbarPointerMove}
+                  onPointerUp={endDesktopToolbarDrag}
+                  onPointerCancel={endDesktopToolbarDrag}
+                  onPointerLeave={endDesktopToolbarDrag}
+                  className="flex-1 min-w-0 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-3 cursor-grab"
+                >
+                  {(() => {
                   // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
                   // MUST BE FIRST CHECK to prevent other controls from showing
                   const isWanAnimateReplace =
@@ -8655,8 +8727,8 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                 if (isWanAnimateReplace) {
                   return (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                         {/* Resolution Dropdown - 480 or 720 ONLY */}
                         <div className="relative">
                           <select
@@ -8914,7 +8986,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
                 if (selectedModel.includes("ltx2")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
                       {generationMode === "image_to_video" ? (
                         <VideoFrameSizeDropdown
@@ -9007,7 +9079,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.includes("ltx-2.3-pro")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9138,8 +9210,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Veo 3.1 Models: Full customization (check before Veo3)
                 if (selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
-                      {/* Aspect Ratio - Always shown for Veo 3.1 models */}
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                      {/* Aspect Ratio - Always shown for Veo 3.1 models */} 
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
                         onFrameSizeChange={setFrameSize}
@@ -9225,7 +9297,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.startsWith("kling-v3")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9288,7 +9360,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("veo3.1")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Always shown for Veo3 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9364,7 +9436,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Kling Models: Full customization
                 if (selectedModel.startsWith("kling-")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Always shown for Kling models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9435,7 +9507,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Always shown for WAN models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9505,7 +9577,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Seedance Models: Full customization
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Seedance 2.0 supports this for both T2V and I2V */}
                       {(generationMode === "text_to_video" ||
                         isSeedance2FamilyModel(selectedModel)) && (
@@ -9639,7 +9711,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // PixVerse Models: Full customization
                 if (selectedModel.includes("pixverse")) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9732,7 +9804,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2-animate")
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Aspect Ratio - Always shown for Runway models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -9787,7 +9859,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel === "S2V-01"
                 ) {
                   return (
-                    <div className="flex flex-row gap-3 flex-nowrap items-center min-w-max">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
                       {/* Resolution - For MiniMax models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={selectedResolution}
@@ -10679,12 +10751,13 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
-                return null;
-              })()}
-            </div>
+                    return null;
+                  })()}
+                </div>
+              </div>
 
-            {/* Desktop: Generate button section - positioned at bottom right */}
-            <div className="absolute bottom-3 right-3 hidden md:flex flex-col items-end gap-0 z-20">
+              {/* Desktop: Generate button section */}
+              <div className="hidden md:flex min-w-[100px] flex-shrink-0 flex-col items-end gap-0 justify-self-end">
 
               <div className="text-white/60 text-[11px] pr-1">
                 Total credits:{" "}
