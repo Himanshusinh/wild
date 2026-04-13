@@ -9616,7 +9616,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
+          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
             isInputBoxHovered
               ? "bg-black/40 ring-white/30 shadow-2xl md:scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -9999,7 +9999,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
             {/* Mobile: keep controls anchored and prevent sideways swipe. */}
-            <div className="md:hidden sticky bottom-0 z-[25] px-1 pb-1 pt-1 bg-transparent border-white/10 rounded-b-lg overscroll-x-none overscroll-y-none touch-pan-y">
+            <div className="md:hidden sticky bottom-0 z-[25] px-0 pb-0.5 pt-1 bg-transparent border-white/10 rounded-b-lg overscroll-x-none overscroll-y-none touch-pan-y">
               {/* Mobile: model + family variant + generate */}
               <div className="relative z-[21] flex w-full min-w-0 shrink-0 items-center justify-between gap-1 px-1 py-0">
                 <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar shrink -mb-1">
@@ -10083,7 +10083,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
               {/* Mobile: parameters + audio — single row (scroll within row if needed). */}
               <div className="relative z-[20] flex w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar pb-2">
-                <div className="flex w-max min-w-max flex-nowrap items-center gap-2 px-1">
+                <div className="flex w-max min-w-max flex-nowrap items-center gap-2 px-1 -mb-2.5">
                   <div className="flex flex-nowrap items-center gap-2">
                     {renderMobileParameterControls()}
                   </div>
