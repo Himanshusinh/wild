@@ -11991,7 +11991,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white h-[32px] px-4 py-0 rounded-lg text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white h-[34px] px-4 py-0 rounded-lg text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
               >
                 {isEnhancing
                   ? "Enhancing..."
