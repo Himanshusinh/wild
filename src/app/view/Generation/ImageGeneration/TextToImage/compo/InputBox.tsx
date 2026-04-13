@@ -9863,7 +9863,7 @@ const InputBox = () => {
                     const inputEvent = new Event("input", { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 -mb-4 pr-7 md:pr-1 pt-1 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
+                  className={`flex-1 -mb-4 pr-1 pt-1 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
                   style={{
                     minHeight: "80px",
                     maxHeight: "90px",
@@ -9879,35 +9879,95 @@ const InputBox = () => {
                       : ""
                   }
                 />
-                {prompt.trim() && (
-                  <button
-                    onClick={() => {
-                      dispatch(setPrompt(""));
-                      if (contentEditableRef.current) {
-                        contentEditableRef.current.textContent = "";
-                      }
-                      if (inputEl.current) {
-                        inputEl.current.focus();
-                      }
-                    }}
-                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/75 transition hover:bg-white/10 md:hidden"
-                    aria-label="Clear prompt"
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                {/* Mobile-only Action Buttons Column */}
+                <div className="md:hidden flex flex-col items-end gap-1.5 pr-2 pt-1 flex-shrink-0">
+                  <div className="flex flex-row items-center gap-1.5">
+                    {prompt.trim() && (
+                      <button
+                        onClick={() => {
+                          dispatch(setPrompt(""));
+                          if (contentEditableRef.current) {
+                            contentEditableRef.current.textContent = "";
+                          }
+                          if (inputEl.current) {
+                            inputEl.current.focus();
+                          }
+                        }}
+                        className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/75 transition hover:bg-white/10"
+                        aria-label="Clear prompt"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleEnhancePrompt}
+                      disabled={isEnhancing || !prompt.trim()}
+                      type="button"
+                      className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10 disabled:opacity-50"
+                      aria-label="Enhance prompt"
+                      aria-pressed={isEnhancing}
                     >
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="w-3.5 h-3.5"
+                      >
+                        <path
+                          d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z"
+                          fill="currentColor"
+                          opacity="0.95"
+                        />
+                        <path
+                          d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z"
+                          fill="currentColor"
+                          opacity="0.6"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <button
+                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
+                    onClick={() => setIsCharacterModalOpen(true)}
+                    type="button"
+                    aria-label="Upload character"
+                  >
+                    <Image
+                      src="/icons/character.svg"
+                      alt="Attach"
+                      width={14}
+                      height={14}
+                      className="w-3.5 h-3.5"
+                    />
                   </button>
-                )}
+
+                  <button
+                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
+                    onClick={() => setIsAssistantOpen((prev) => !prev)}
+                    type="button"
+                    aria-label="Toggle Assistant"
+                    aria-pressed={isAssistantOpen}
+                  >
+                    <Sparkles
+                      className={`w-3 h-3 transition-colors ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
+                    />
+                  </button>
+
+                  <button
+                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
+                    onClick={() => setIsUploadOpen(true)}
+                    type="button"
+                    aria-label="Upload image"
+                  >
+                    <FilePlus2
+                      className="w-3.5 h-3.5 text-white"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
                 <div className="hidden md:flex md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 pt-1 md:-mb-6">
                   <div className="relative flex md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
                     {/* Clear prompt button - only show when there's text */}
@@ -10135,74 +10195,7 @@ const InputBox = () => {
             {/* Bottom row: pill options */}
 
             <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-1 md:pt-0">
-              <div className="md:hidden flex items-center justify-end gap-1.5 px-1 pb-1">
-                <button
-                  onClick={handleEnhancePrompt}
-                  disabled={isEnhancing || !prompt.trim()}
-                  type="button"
-                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10 disabled:opacity-50"
-                  aria-label="Enhance prompt"
-                  aria-pressed={isEnhancing}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    className="w-3.5 h-3.5"
-                  >
-                    <path
-                      d="M12 2l1.9 4.2L18 8l-4.1 1.8L12 14l-1.9-4.2L6 8l4.1-1.8L12 2z"
-                      fill="currentColor"
-                      opacity="0.95"
-                    />
-                    <path
-                      d="M3 13l2 1-2 1 1 2-1 2 2-1 1 2 0-2 2 0-1-2 2-1-2-1 1-2-2 1-1-2-1 2z"
-                      fill="currentColor"
-                      opacity="0.6"
-                    />
-                  </svg>
-                </button>
 
-                <button
-                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
-                  onClick={() => setIsCharacterModalOpen(true)}
-                  type="button"
-                  aria-label="Upload character"
-                >
-                  <Image
-                    src="/icons/character.svg"
-                    alt="Attach"
-                    width={14}
-                    height={14}
-                    className="w-3.5 h-3.5"
-                  />
-                </button>
-
-                <button
-                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
-                  onClick={() => setIsAssistantOpen((prev) => !prev)}
-                  type="button"
-                  aria-label="Toggle Assistant"
-                  aria-pressed={isAssistantOpen}
-                >
-                  <Sparkles
-                    className={`w-3 h-3 transition-colors ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
-                  />
-                </button>
-
-                <button
-                  className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
-                  onClick={() => setIsUploadOpen(true)}
-                  type="button"
-                  aria-label="Upload image"
-                >
-                  <FilePlus2
-                    className="w-3.5 h-3.5 text-white"
-                    aria-hidden="true"
-                  />
-                </button>
-              </div>
 
               {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
 
@@ -10218,7 +10211,11 @@ const InputBox = () => {
                 ) : (
                   <div className="flex-1 min-w-0" />
                 )}
-
+{expectedCredits > 0 && !error && (
+                  <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
+                    {Math.round(expectedCredits).toLocaleString()} credits
+                  </div>
+                )}
                 <button
                   onClick={async () => {
                     if (!userData) {
@@ -10276,7 +10273,7 @@ const InputBox = () => {
                     runningGenerationsCount >= 4 ||
                     isEnhancing
                   }
-                  className="flex h-6 w-8 items-center justify-center bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white rounded-md transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
+                  className="flex h-7 px-3 items-center justify-center bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white rounded-md transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex-shrink-0"
                   aria-busy={isEnhancing}
                   aria-label={
                     isEnhancing
@@ -10312,14 +10309,10 @@ const InputBox = () => {
                   ) : runningGenerationsCount >= 4 ? (
                     <span className="text-[10px] font-semibold">4/4</span>
                   ) : (
-                    <ArrowRight size={16} strokeWidth={2.5} />
+                    <span className="text-[11px] font-bold">Generate</span>
                   )}
                 </button>
-                {expectedCredits > 0 && !error && (
-                  <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
-                    {Math.round(expectedCredits).toLocaleString()} credits
-                  </div>
-                )}
+                
               </div>
 
               {/* Removed Mobile Separator Line for cleaner look matching Image 2 */}
