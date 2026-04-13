@@ -9908,7 +9908,7 @@ const InputBox = () => {
                     </svg>
                   </button>
                 )}
-                <div className="hidden md:flex md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 pt-1 md:-mb-6">
+                <div className="hidden md:flex md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 md:-mb-6">
                   <div className="relative flex md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
                     {/* Clear prompt button - only show when there's text */}
                     {prompt.trim() && (

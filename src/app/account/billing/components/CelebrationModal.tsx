@@ -46,50 +46,55 @@ export default function CelebrationModal({ isOpen, onClose, planName = "Pro" }: 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           />
           
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 overflow-hidden text-center z-50"
+            className="relative z-50 w-full max-w-md overflow-hidden rounded-2xl border border-white/[0.1] bg-[#0a0a0a] p-6 text-center shadow-[0_24px_64px_rgba(0,0,0,0.65)]"
           >
-            {/* Background decoration */}
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+            <div
+              className="absolute left-0 top-0 h-1 w-full bg-[#2F6BFF]"
+              aria-hidden
+            />
             
             <button 
+              type="button"
               onClick={onClose}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="absolute right-4 top-4 text-zinc-500 transition-colors hover:text-white"
             >
               <X size={20} />
             </button>
 
-            <div className="flex justify-center mb-6 mt-2">
-              <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
-                <CheckCircle className="w-12 h-12 text-green-500" strokeWidth={3} />
+            <div className="mb-6 mt-2 flex justify-center">
+              <div className="rounded-full bg-emerald-500/15 p-4 ring-1 ring-emerald-500/30">
+                <CheckCircle className="h-12 w-12 text-emerald-400" strokeWidth={3} />
               </div>
             </div>
 
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h2 className="mb-2 text-3xl font-bold text-white">
               Congratulations!
             </h2>
             
-            <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
-              You've successfully upgraded to the <span className="font-semibold text-gray-900 dark:text-white">{planName}</span> plan.
+            <p className="mb-6 text-lg text-zinc-400">
+              You&apos;ve successfully upgraded to the{" "}
+              <span className="font-semibold text-white">{planName}</span> plan.
             </p>
 
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
-               <p className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="mb-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+               <p className="text-sm text-zinc-500">
                  Your new limits are active immediately. Create something amazing!
                </p>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              className="w-full rounded-xl bg-[#2F6BFF] py-3 px-6 font-semibold text-white shadow-[0_4px_16px_rgba(47,107,255,0.4)] transition-all duration-200 hover:bg-[#2a5fe3] hover:shadow-[0_6px_20px_rgba(47,107,255,0.45)] active:scale-[0.98]"
             >
-              Start Creating
+              Start creating
             </button>
           </motion.div>
         </div>
