@@ -53,7 +53,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
           autoComplete="off"
           autoCorrect="on"
           autoCapitalize="on"
-          className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
+          className={`flex-1 pl-0 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
           rows={1}
           style={{
             minHeight: "56px",

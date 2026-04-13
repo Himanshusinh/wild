@@ -2121,10 +2121,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         container.scrollWidth > container.clientWidth + 1;
       if (!canScrollHorizontally) return;
 
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-
+      // Prevent the parent container from vertically scrolling (which makes
+      // the toolbar feel like it "slides up/down") and map wheel intent to horizontal scroll.
+      event.stopPropagation();
       event.preventDefault();
-      container.scrollLeft += event.deltaY;
+      const primaryDelta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      container.scrollLeft += primaryDelta;
     },
     [],
   );
@@ -9408,10 +9411,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
+      <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto overflow-x-hidden overscroll-x-none touch-pan-y md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-visible overflow-y-visible ${
+          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
             isInputBoxHovered
               ? "bg-black/40 ring-white/30 shadow-2xl md:scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -9790,92 +9793,98 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
-            {/* Mobile: model + family variant + generate (dedicated row; avoids overlap with params). */}
-            <div className="relative z-[21] flex md:hidden w-full min-w-0 shrink-0 items-center justify-between gap-1 px-1 py-1">
-              <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x no-scrollbar shrink">
-                <div className="shrink-0 flex items-center">
-                  <VideoModelsDropdown
-                    selectedModel={selectedModel}
-                    onModelChange={handleModelChange}
-                    generationMode={generationMode}
-                    selectedDuration={
-                      selectedModel.includes("MiniMax")
-                        ? `${selectedMiniMaxDuration}s`
-                        : formatDurationForCreditLookup(duration)
-                    }
-                    selectedResolution={modelDropdownResolution}
-                    pixverseV6GenerateAudio={pixverseV6GenerateAudio}
-                    activeFeature={activeFeature}
-                    onCloseOtherDropdowns={() => {
-                      setCloseFrameSizeDropdown(true);
-                      setCloseDurationDropdown(true);
-                      setCloseCameraMotionDropdown(true);
-                      setTimeout(() => {
-                        setCloseFrameSizeDropdown(false);
-                        setCloseDurationDropdown(false);
-                        setCloseCameraMotionDropdown(false);
-                      }, 100);
-                    }}
-                    onCloseThisDropdown={
-                      closeModelsDropdown ? () => {} : undefined
-                    }
-                  />
+            {/* Mobile: keep controls anchored and prevent sideways swipe. */}
+            <div className="md:hidden sticky bottom-0 z-[25] px-1 pb-1 pt-1 bg-transparent border-white/10 rounded-b-lg overscroll-x-none overscroll-y-none touch-pan-y">
+              {/* Mobile: model + family variant + generate */}
+              <div className="relative z-[21] flex w-full min-w-0 shrink-0 items-center justify-between gap-1 px-1 py-0">
+                <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar shrink -mb-1">
+                  <div className="shrink-0 flex items-center">
+                    <VideoModelsDropdown
+                      selectedModel={selectedModel}
+                      onModelChange={handleModelChange}
+                      generationMode={generationMode}
+                      selectedDuration={
+                        selectedModel.includes("MiniMax")
+                          ? `${selectedMiniMaxDuration}s`
+                          : formatDurationForCreditLookup(duration)
+                      }
+                      selectedResolution={modelDropdownResolution}
+                      pixverseV6GenerateAudio={pixverseV6GenerateAudio}
+                      activeFeature={activeFeature}
+                      onCloseOtherDropdowns={() => {
+                        setCloseFrameSizeDropdown(true);
+                        setCloseDurationDropdown(true);
+                        setCloseCameraMotionDropdown(true);
+                        setTimeout(() => {
+                          setCloseFrameSizeDropdown(false);
+                          setCloseDurationDropdown(false);
+                          setCloseCameraMotionDropdown(false);
+                        }, 100);
+                      }}
+                      onCloseThisDropdown={
+                        closeModelsDropdown ? () => {} : undefined
+                      }
+                    />
+                  </div>
+                  {shouldShowSecondaryFamilySelector(selectedModel) ? (
+                    <div className="shrink-0 flex items-center">
+                      {renderFamilyVariantDropdown()}
+                    </div>
+                  ) : null}
                 </div>
-                {shouldShowSecondaryFamilySelector(selectedModel) ? (
-                  <div className="shrink-0 flex items-center">{renderFamilyVariantDropdown()}</div>
-                ) : null}
+
+                {/* Mobile: generate button */}
+                <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 pb-2">
+                  <div className="text-white/80 text-[10px] leading-none mb-0">
+                    Credits:{" "}
+                    <span className="font-semibold">{liveCreditCost}</span>
+                  </div>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={(() => {
+                      const disabled =
+                        runningGenerationsCount >= 4 ||
+                        !prompt.trim() ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel !== "S2V-01" &&
+                          !selectedModel.includes("wan-2.5") &&
+                          !selectedModel.startsWith("kling-") &&
+                          selectedModel !== "gen4_turbo" &&
+                          selectedModel !== "gen3a_turbo" &&
+                          !selectedModel.includes("ltx-2.3-fast") &&
+                          uploadedImages.length === 0) ||
+                        (generationMode === "video_to_video" && !uploadedVideo) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel === "I2V-01-Director" &&
+                          uploadedImages.length === 0) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel === "S2V-01" &&
+                          references.length === 0) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel === "MiniMax-Hailuo-02" &&
+                          selectedResolution === "512P" &&
+                          uploadedImages.length === 0) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel.includes("wan-2.5") &&
+                          uploadedImages.length === 0);
+                      return disabled;
+                    })()}
+                    className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  >
+                    Generate
+                  </button>
+                </div>
               </div>
 
-              {/* Mobile: generate button */}
-              <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1">
-                <div className="text-white/80 text-[10px] leading-none mb-0.5">
-                  Total credits: <span className="font-semibold">{liveCreditCost}</span>
-                </div>
-                <button
-                  onClick={handleGenerate}
-                  disabled={(() => {
-                    const disabled =
-                      runningGenerationsCount >= 4 ||
-                      !prompt.trim() ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel !== "S2V-01" &&
-                        !selectedModel.includes("wan-2.5") &&
-                        !selectedModel.startsWith("kling-") &&
-                        selectedModel !== "gen4_turbo" &&
-                        selectedModel !== "gen3a_turbo" &&
-                        !selectedModel.includes("ltx-2.3-fast") &&
-                        uploadedImages.length === 0) ||
-                      (generationMode === "video_to_video" && !uploadedVideo) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel === "I2V-01-Director" &&
-                        uploadedImages.length === 0) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel === "S2V-01" &&
-                        references.length === 0) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel === "MiniMax-Hailuo-02" &&
-                        selectedResolution === "512P" &&
-                        uploadedImages.length === 0) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel.includes("wan-2.5") &&
-                        uploadedImages.length === 0);
-                    return disabled;
-                  })()}
-                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-2.5 py-1 rounded-lg text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                >
-                  Generate
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile: parameters + audio — last row; horizontal scroll; extra vertical padding avoids clip/overlap. */}
-            <div className="relative z-[20] flex md:hidden w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x md:py-1.5 pb-2 no-scrollbar">
-              <div className="flex w-max min-w-0 flex-nowrap items-center gap-2 px-1">
-                <div className="flex shrink-0 flex-nowrap items-center gap-2">
-                  {renderMobileParameterControls()}
-                </div>
-                <div className="flex shrink-0 flex-nowrap items-center gap-2">
-                  {renderMobileAudioControls()}
+              {/* Mobile: parameters + audio — single row (scroll within row if needed). */}
+              <div className="relative z-[20] flex w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar pb-2">
+                <div className="flex w-max min-w-max flex-nowrap items-center gap-2 px-1">
+                  <div className="flex flex-nowrap items-center gap-2">
+                    {renderMobileParameterControls()}
+                  </div>
+                  <div className="flex flex-nowrap items-center gap-2">
+                    {renderMobileAudioControls()}
+                  </div>
                 </div>
               </div>
             </div>
@@ -9926,7 +9935,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   onPointerUp={endDesktopToolbarDrag}
                   onPointerCancel={endDesktopToolbarDrag}
                   onPointerLeave={endDesktopToolbarDrag}
-                  className="flex-1 min-w-0 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-3 cursor-grab"
+                  className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x py-1 pr-3 cursor-grab"
                 >
                   {(() => {
                   // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
@@ -9941,7 +9950,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (isWanAnimateReplace) {
                   return (
                     <div className="flex flex-col gap-2">
-                      <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                      <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0">
                         {/* Resolution Dropdown - 480 or 720 ONLY */}
                         <div className="relative">
                           <select
@@ -10199,7 +10208,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
                 if (selectedModel.includes("ltx2")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
                       {generationMode === "image_to_video" ? (
                         <VideoFrameSizeDropdown
@@ -10292,7 +10301,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.includes("ltx-2.3-pro")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10405,7 +10414,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Veo 3.1 Models: Full customization (check before Veo3)
                 if (selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Veo 3.1 models */} 
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10492,7 +10501,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.startsWith("kling-v3")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10555,7 +10564,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("veo3.1")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Veo3 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10631,7 +10640,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Kling Models: Full customization
                 if (selectedModel.startsWith("kling-")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Kling models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10702,7 +10711,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for WAN models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10772,7 +10781,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Seedance Models: Full customization
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0.5">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0.25 -mb-0.5">
                       {/* Aspect Ratio - Seedance 2.0 supports this for both T2V and I2V */}
                       {(generationMode === "text_to_video" ||
                         isSeedance2FamilyModel(selectedModel)) && (
@@ -10906,7 +10915,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // PixVerse Models: Full customization
                 if (selectedModel.includes("pixverse")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {!hidePixverseV6AspectRatio && (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
@@ -11049,7 +11058,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2-animate")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Runway models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -11104,7 +11113,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel === "S2V-01"
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Resolution - For MiniMax models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={selectedResolution}
@@ -11934,7 +11943,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
 
               {/* Desktop: Generate button section */}
-              <div className="hidden md:flex min-w-[100px] flex-shrink-0 flex-col items-end gap-0 justify-self-end">
+              <div className="hidden md:flex min-w-[100px] flex-shrink-0 flex-col items-end gap-0 justify-self-end -mb-5">
 
               <div className="text-white/60 text-[11px] pr-1">
                 Total credits:{" "}
@@ -11982,7 +11991,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white h-[32px] px-4 py-0 rounded-lg text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
               >
                 {isEnhancing
                   ? "Enhancing..."

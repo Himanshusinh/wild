@@ -48,6 +48,11 @@ body {
   font-family: var(--font-poppins, "Poppins"), sans-serif;
   font-weight: 400;
   min-height: 100px;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 button:not(:disabled),

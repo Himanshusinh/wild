@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronUp, Layers } from "lucide-react";
+import { ChevronUp, Layers, Zap } from "lucide-react";
 
 interface VeoVariantOption {
   value: string;
@@ -158,7 +158,21 @@ const VeoFamilyVariantDropdown: React.FC<VeoFamilyVariantDropdownProps> = ({
           className="flex h-[28px] w-auto max-w-[44vw] min-w-0 items-center justify-between gap-2 rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] font-medium text-white/90 transition hover:bg-white/15 md:h-[32px] md:max-w-none md:w-auto md:px-4 md:text-[13px] md:justify-start"
         >
           <Layers className="h-3 w-3 md:h-4 md:w-4" />
-          <span className="truncate mt-0.5">{selectedOption?.label}</span>
+          {/* Desktop: full label. Mobile: compact label + fast icon. */}
+          <span className="hidden md:inline truncate mt-0.5">
+            {selectedOption?.label}
+          </span>
+          <span className="md:hidden flex items-center gap-1 min-w-0 flex-shrink truncate mt-0.5">
+            <span className="truncate">
+              {selectedOption?.label
+                .replace("Reference", "Ref")
+                .replace("Standard", "Std")
+                .replace(" Fast", "")}
+            </span>
+            {selectedOption?.label.includes("Fast") && (
+              <Zap className="h-2.5 w-2.5 fill-amber-400 text-amber-400 shrink-0" />
+            )}
+          </span>
           <ChevronUp
             className={`h-3 w-3 transition-transform duration-200 md:h-4 md:w-4 ${
               isOpen ? "rotate-180" : ""
