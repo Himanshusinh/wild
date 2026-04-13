@@ -9412,6 +9412,208 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       {/* Main Input Box with a sticky tabs row above it */}
       <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto overflow-x-hidden overscroll-x-none touch-pan-y md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
+        {/* Mobile: show uploaded previews OUTSIDE the input box (like Image 2). */}
+        {(() => {
+          const displayImages =
+            selectedModel === SEEDANCE_2_MODEL
+              ? uploadedImages.slice(0, 2)
+              : selectedModel.includes("veo3.1") ||
+                  selectedModel === "kling-o1" ||
+                  (selectedModel.includes("seedance") &&
+                    !selectedModel.includes("pro-fast") &&
+                    !selectedModel.includes("i2v"))
+                ? uploadedImages.slice(0, 2)
+                : uploadedImages;
+
+          const extraLastFrame =
+            !!lastFrameImage &&
+            (selectedModel.includes("veo3.1") ||
+              selectedModel === "kling-o1" ||
+              selectedModel.startsWith("ltx-2.3-fast") ||
+              selectedModel.startsWith("ltx-2.3-pro") ||
+              (selectedModel.includes("seedance") &&
+                !selectedModel.includes("pro-fast") &&
+                !selectedModel.includes("i2v")) ||
+              (selectedModel === "MiniMax-Hailuo-02" &&
+                ["768P", "1080P"].includes(selectedResolution) &&
+                currentModelCapabilities.supportsImageToVideo));
+
+          const hasAnything =
+            displayImages.length > 0 ||
+            extraLastFrame ||
+            !!uploadedVideo ||
+            !!uploadedCharacterImage;
+
+          if (!hasAnything) return null;
+
+          return (
+            <div className="md:hidden mb-0">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar px-1 pt-2">
+                {displayImages.map((image, index) => (
+                  <div key={`img-${index}`} className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-lg overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: image,
+                          assetType: "image",
+                          title: `Uploaded Image ${index + 1}`,
+                        });
+                      }}
+                    >
+                      <img
+                        src={image}
+                        alt={`Uploaded ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                    <div className="absolute -top-1 -left-1 w-4 h-4 rounded bg-black/80 ring-1 ring-white/20 text-[10px] leading-none flex items-center justify-center text-white">
+                      {index + 1}
+                    </div>
+                    <button
+                      aria-label="Remove image"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedImages((prev) =>
+                          prev.filter((_, i) => i !== index),
+                        );
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                {extraLastFrame && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: lastFrameImage,
+                          assetType: "image",
+                          title: "Last Frame Image",
+                        });
+                      }}
+                    >
+                      <img
+                        src={lastFrameImage}
+                        alt="Last Frame"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                    <div className="absolute -top-1 -left-1 w-4 h-4 rounded bg-black/80 ring-1 ring-white/20 text-[10px] leading-none flex items-center justify-center text-white">
+                      {displayImages.length + 1}
+                    </div>
+                    <button
+                      aria-label="Remove last frame"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLastFrameImage("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {uploadedVideo && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: uploadedVideo,
+                          assetType: "video",
+                          title: "Uploaded Video",
+                        });
+                      }}
+                    >
+                      <video
+                        src={
+                          uploadedVideo.startsWith("blob:") ||
+                          uploadedVideo.startsWith("data:")
+                            ? uploadedVideo
+                            : toFrontendProxyMediaUrl(uploadedVideo)
+                        }
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                    </button>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-6 h-6 rounded-full bg-black/55 ring-1 ring-white/20 flex items-center justify-center">
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="text-white/90 translate-x-[1px]"
+                        >
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <button
+                      aria-label="Remove video"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedVideo("");
+                        setSourceHistoryEntryId("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {uploadedCharacterImage && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: uploadedCharacterImage,
+                          assetType: "image",
+                          title: "Character Image",
+                        });
+                      }}
+                    >
+                      <img
+                        src={uploadedCharacterImage}
+                        alt="Character"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                    <button
+                      aria-label="Remove character image"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedCharacterImage("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
           className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
@@ -9575,103 +9777,105 @@ const InputBox = (props: InputBoxProps = {}) => {
                     ["768P", "1080P"].includes(selectedResolution) &&
                     currentModelCapabilities.supportsImageToVideo));
               return displayImages.length > 0 || extraLastFrame ? (
-                <div className="md:mb-0 mb-3">
-                  <div className="text-xs text-white/60 mb-1">
-                    Uploaded Images (
-                    {displayImages.length + (extraLastFrame ? 1 : 0)})
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {displayImages.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <div
-                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: image,
-                              assetType: "image",
-                              title: `Uploaded Image ${index + 1}`,
-                            });
-                          }}
-                        >
-                          <img
-                            src={image}
-                            alt={`Uploaded ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onLoad={() =>
-                              console.log(
-                                "Video generation - image loaded successfully:",
-                                image,
-                              )
-                            }
-                            onError={(e) =>
-                              console.error(
-                                "Video generation - image failed to load:",
-                                image,
-                                e,
-                              )
-                            }
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                            {index === 0
-                              ? selectedModel === SEEDANCE_2_MODEL
-                                ? displayImages.length > 1
-                                  ? "First Frame"
-                                  : "Input Image"
-                                : "First Frame"
-                              : selectedModel === SEEDANCE_2_MODEL
-                                ? "Last Frame"
-                                : `Image ${index + 1}`}
+                <div className="md:mb-0 mb-0">
+                  {/* Desktop: existing preview UI (unchanged). */}
+                  <div className="hidden md:block">
+                    <div className="text-xs text-white/60 mb-1">
+                      Uploaded Images (
+                      {displayImages.length + (extraLastFrame ? 1 : 0)})
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {displayImages.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <div
+                            className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                            onClick={() => {
+                              setAssetViewer({
+                                isOpen: true,
+                                assetUrl: image,
+                                assetType: "image",
+                                title: `Uploaded Image ${index + 1}`,
+                              });
+                            }}
+                          >
+                            <img
+                              src={image}
+                              alt={`Uploaded ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onLoad={() =>
+                                console.log(
+                                  "Video generation - image loaded successfully:",
+                                  image,
+                                )
+                              }
+                              onError={(e) =>
+                                console.error(
+                                  "Video generation - image failed to load:",
+                                  image,
+                                  e,
+                                )
+                              }
+                            />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                              {index === 0
+                                ? selectedModel === SEEDANCE_2_MODEL
+                                  ? displayImages.length > 1
+                                    ? "First Frame"
+                                    : "Input Image"
+                                  : "First Frame"
+                                : selectedModel === SEEDANCE_2_MODEL
+                                  ? "Last Frame"
+                                  : `Image ${index + 1}`}
+                            </div>
                           </div>
+                          <button
+                            aria-label="Remove image"
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                            onClick={() => {
+                              setUploadedImages((prev) =>
+                                prev.filter((_, i) => i !== index),
+                              );
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
-                        <button
-                          aria-label="Remove image"
-                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          onClick={() => {
-                            setUploadedImages((prev) =>
-                              prev.filter((_, i) => i !== index),
-                            );
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                      ))}
 
-                    {/* Last Frame Image Display */}
-                    {extraLastFrame && (
-                      <div className="relative group">
-                        <div
-                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: lastFrameImage,
-                              assetType: "image",
-                              title: "Last Frame Image",
-                            });
-                          }}
-                        >
-                          <img
-                            src={lastFrameImage}
-                            alt="Last Frame"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                            Last Frame
+                      {extraLastFrame && (
+                        <div className="relative group">
+                          <div
+                            className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                            onClick={() => {
+                              setAssetViewer({
+                                isOpen: true,
+                                assetUrl: lastFrameImage,
+                                assetType: "image",
+                                title: "Last Frame Image",
+                              });
+                            }}
+                          >
+                            <img
+                              src={lastFrameImage}
+                              alt="Last Frame"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                              Last Frame
+                            </div>
                           </div>
+                          <button
+                            aria-label="Remove last frame"
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                            onClick={() => {
+                              setLastFrameImage("");
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
-                        <button
-                          aria-label="Remove last frame"
-                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          onClick={() => {
-                            setLastFrameImage("");
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : null;
@@ -9679,7 +9883,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
             {/* Uploaded Video */}
             {uploadedVideo && (
-              <div className="md:mb-3 mb-0">
+              <div className="hidden md:block md:mb-3 mb-0">
                 <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
                 <div className="relative group w-fit">
                   <div
