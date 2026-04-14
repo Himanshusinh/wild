@@ -71,6 +71,22 @@ const NEW_ITEMS: NewItem[] = [
     },
   },
   {
+    id: "new-model-pixverse-v6",
+    eyebrow: "New Model",
+    title: "PixVerse V6",
+    desc: "Multishot cinematic video with optional synced audio, style presets, and strong text- or image-to-video control.",
+    features: ["5–15s", "360p / 1080p", "T2V + I2V", "Audio + Multishot"],
+    href: "/text-to-video?model=pixverse-v6-t2v",
+    color: "#E879F9",
+    Icon: Bot,
+    media: {
+      kind: "video",
+      src: "/HomePage/whatsnew/veo-clouds.mp4",
+      alt: "Atmospheric motion preview for PixVerse V6",
+      position: "50% 35%",
+    },
+  },
+  {
     id: "new-model-nano-banana-2",
     eyebrow: "New Model",
     title: "Nano Banana 2",
