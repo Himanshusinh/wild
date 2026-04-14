@@ -305,8 +305,56 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           },
         ];
       }
-    } else if (selectedModel?.includes("pixverse")) {
-      // PixVerse supports 16:9, 9:16, 1:1 for both T2V and I2V
+    } else if (selectedModel === "pixverse-v6-t2v") {
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "4:3",
+          label: "4:3",
+          description: "Classic landscape",
+          icon: "landscape",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+        {
+          value: "3:4",
+          label: "3:4",
+          description: "Classic portrait",
+          icon: "portrait",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
+        {
+          value: "2:3",
+          label: "2:3",
+          description: "Portrait",
+          icon: "portrait",
+        },
+        {
+          value: "3:2",
+          label: "3:2",
+          description: "Landscape",
+          icon: "landscape",
+        },
+        {
+          value: "21:9",
+          label: "21:9",
+          description: "Ultrawide",
+          icon: "landscape",
+        },
+      ];
+    } else if (
+      selectedModel === "pixverse-v5-t2v" ||
+      selectedModel === "pixverse-v5-i2v"
+    ) {
       return [
         {
           value: "16:9",

@@ -64,6 +64,7 @@ import {
   Volume2,
   VolumeX,
   Sparkles,
+  Scan,
 } from "lucide-react";
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import { getApiClient } from "@/lib/axiosInstance";
@@ -95,6 +96,9 @@ import HailuoFamilyVariantDropdown from "./HailuoFamilyVariantDropdown";
 import SoraFamilyVariantDropdown from "./SoraFamilyVariantDropdown";
 import LtxFamilyVariantDropdown from "./LtxFamilyVariantDropdown";
 import WanFamilyVariantDropdown from "./WanFamilyVariantDropdown";
+import PixverseFamilyVariantDropdown from "./PixverseFamilyVariantDropdown";
+import PixverseV6StyleDropdown from "./PixverseV6StyleDropdown";
+import PortalHoverTooltip from "./PortalHoverTooltip";
 import ResolutionDropdown from "./ResolutionDropdown";
 import CameraMotionDropdown from "./CameraMotionDropdown";
 import VideoFrameSizeDropdown from "./VideoFrameSizeDropdown";
@@ -148,6 +152,10 @@ const LTX_23_PRO_MODEL = "ltx-2.3-pro-t2v";
 const LTX_23_FAST_MODEL = "ltx-2.3-fast-t2v";
 const WAN_25_MODEL = "wan-2.5-t2v";
 const WAN_25_FAST_MODEL = "wan-2.5-t2v-fast";
+const PIXVERSE_V6_T2V_MODEL = "pixverse-v6-t2v";
+const PIXVERSE_V6_I2V_MODEL = "pixverse-v6-i2v";
+const PIXVERSE_V5_T2V_MODEL = "pixverse-v5-t2v";
+const PIXVERSE_V5_I2V_MODEL = "pixverse-v5-i2v";
 const SEEDANCE_2_MODEL = "seedance-2.0-t2v";
 const SEEDANCE_2_REFERENCE_MODEL = "seedance-2.0-r2v";
 const SEEDANCE_2_FAST_MODEL = "seedance-2.0-fast";
@@ -190,6 +198,12 @@ const isLtxFamilyModel = (model: string) =>
 const isWanFamilyModel = (model: string) =>
   model === WAN_25_MODEL || model === WAN_25_FAST_MODEL;
 
+const isPixverseFamilyModel = (model: string) =>
+  model === PIXVERSE_V6_T2V_MODEL ||
+  model === PIXVERSE_V6_I2V_MODEL ||
+  model === PIXVERSE_V5_T2V_MODEL ||
+  model === PIXVERSE_V5_I2V_MODEL;
+
 const shouldShowSecondaryFamilySelector = (model: string) =>
   isSeedanceFamilyModel(model) ||
   isVeo31FamilyModel(model) ||
@@ -197,7 +211,8 @@ const shouldShowSecondaryFamilySelector = (model: string) =>
   isHailuoFamilyModel(model) ||
   isSoraFamilyModel(model) ||
   isLtxFamilyModel(model) ||
-  isWanFamilyModel(model);
+  isWanFamilyModel(model) ||
+  isPixverseFamilyModel(model);
 
 const isSeedance2TextModel = (model: string) =>
   model === SEEDANCE_2_MODEL ||
@@ -339,6 +354,24 @@ const LTX_VARIANT_OPTIONS = [
 const WAN_VARIANT_OPTIONS = [
   { value: WAN_25_MODEL, label: "2.5", info: "Image, Text to video" },
   { value: WAN_25_FAST_MODEL, label: "2.5 Fast", info: "Image, Text to video" },
+];
+
+const PIXVERSE_VARIANT_OPTIONS = [
+  {
+    value: PIXVERSE_V6_T2V_MODEL,
+    label: "V6",
+    info: "Text or first-frame video, 5–15s, styles, audio, multi-angle",
+  },
+  {
+    value: PIXVERSE_V5_T2V_MODEL,
+    label: "V5 T2V",
+    info: "Text-to-video",
+  },
+  {
+    value: PIXVERSE_V5_I2V_MODEL,
+    label: "V5 I2V",
+    info: "Image-to-video",
+  },
 ];
 
 const InputBox = (props: InputBoxProps = {}) => {
@@ -731,6 +764,26 @@ const InputBox = (props: InputBoxProps = {}) => {
     "720p",
     "text-to-video",
   ); // For PixVerse quality (360p/540p/720p/1080p)
+  const [pixverseV6GenerateAudio, setPixverseV6GenerateAudio] =
+    usePersistedGenerationState(
+      "pixverseV6GenerateAudio",
+      false,
+      "text-to-video",
+    );
+  const [pixverseV6MultiClip, setPixverseV6MultiClip] =
+    usePersistedGenerationState(
+      "pixverseV6MultiClip",
+      false,
+      "text-to-video",
+    );
+  const [pixverseV6Style, setPixverseV6Style] = usePersistedGenerationState<
+    | ""
+    | "anime"
+    | "3d_animation"
+    | "clay"
+    | "comic"
+    | "cyberpunk"
+  >("pixverseV6Style", "", "text-to-video");
   // WAN 2.2 Animate Replace specific state
   const [wanAnimateResolution, setWanAnimateResolution] =
     usePersistedGenerationState<"720" | "480">(
@@ -1056,11 +1109,14 @@ const InputBox = (props: InputBoxProps = {}) => {
 
       // Pass generateAudio only for models whose pricing depends on it
       const audioParam =
-        normalizedModelForCredits === "kling-2.6-pro" ||
-        normalizedModelForCredits.startsWith("kling-v3") ||
-        normalizedModelForCredits.includes("seedance-1.5")
-          ? generateAudio
-          : undefined;
+        normalizedModelForCredits === "pixverse-v6-t2v" ||
+        normalizedModelForCredits === "pixverse-v6-i2v"
+          ? pixverseV6GenerateAudio
+          : normalizedModelForCredits === "kling-2.6-pro" ||
+              normalizedModelForCredits.startsWith("kling-v3") ||
+              normalizedModelForCredits.includes("seedance-1.5")
+            ? generateAudio
+            : undefined;
       return Math.max(
         0,
         Number(
@@ -1088,6 +1144,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     selectedMiniMaxDuration,
     generationMode,
     generateAudio,
+    pixverseV6GenerateAudio,
     frameSize,
     uploadedImages,
     uploadedVideoDurationSec,
@@ -1116,6 +1173,26 @@ const InputBox = (props: InputBoxProps = {}) => {
   const supportsTextToVideo = currentModelCapabilities.supportsTextToVideo;
   const supportsImageToVideo = currentModelCapabilities.supportsImageToVideo;
   const supportsVideoToVideo = currentModelCapabilities.supportsVideoToVideo;
+
+  /** PixVerse V6: first-frame pipeline when an image (or reference) is present */
+  const pixverseV6HasFirstFrameImage = useMemo(
+    () =>
+      (selectedModel === PIXVERSE_V6_T2V_MODEL ||
+        selectedModel === PIXVERSE_V6_I2V_MODEL) &&
+      (uploadedImages.length > 0 || Boolean(references[0])),
+    [
+      selectedModel,
+      uploadedImages.length,
+      references.length,
+      references[0],
+    ],
+  );
+  const hidePixverseV6AspectRatio = useMemo(
+    () =>
+      selectedModel === PIXVERSE_V6_I2V_MODEL ||
+      (selectedModel === PIXVERSE_V6_T2V_MODEL && pixverseV6HasFirstFrameImage),
+    [selectedModel, pixverseV6HasFirstFrameImage],
+  );
 
   // Memoize the computed mode to prevent unnecessary recalculations
   const computedMode = useMemo(() => {
@@ -1641,11 +1718,31 @@ const InputBox = (props: InputBoxProps = {}) => {
             setUploadedAudio("");
           }
         } else if (newModel.includes("pixverse")) {
-          // PixVerse models: duration default 5s, quality default 720p, aspect ratio default 16:9
-          setDuration(5);
           setPixverseQuality("720p");
           setFrameSize("16:9");
-          // Clear audio when switching away from WAN models
+          if (newModel === PIXVERSE_V6_T2V_MODEL) {
+            setDuration((prev) => {
+              if (prev === "auto") return 5;
+              const num =
+                typeof prev === "number"
+                  ? prev
+                  : parseInt(String(prev).replace(/s$/i, ""), 10);
+              if (!Number.isFinite(num)) return 5;
+              return Math.min(15, Math.max(5, num));
+            });
+          } else if (newModel === PIXVERSE_V6_I2V_MODEL) {
+            setDuration((prev) => {
+              if (prev === "auto") return 5;
+              const num =
+                typeof prev === "number"
+                  ? prev
+                  : parseInt(String(prev).replace(/s$/i, ""), 10);
+              if (!Number.isFinite(num)) return 5;
+              return Math.min(15, Math.max(5, num));
+            });
+          } else {
+            setDuration(5);
+          }
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
@@ -1831,11 +1928,24 @@ const InputBox = (props: InputBoxProps = {}) => {
             setUploadedAudio("");
           }
         } else if (newModel.includes("pixverse")) {
-          // PixVerse models: duration default 5s, quality default 720p
-          setDuration(5);
           setPixverseQuality("720p");
           setFrameSize("16:9");
-          // Clear audio when switching away from WAN models
+          if (
+            newModel === PIXVERSE_V6_T2V_MODEL ||
+            newModel === PIXVERSE_V6_I2V_MODEL
+          ) {
+            setDuration((prev) => {
+              if (prev === "auto") return 5;
+              const num =
+                typeof prev === "number"
+                  ? prev
+                  : parseInt(String(prev).replace(/s$/i, ""), 10);
+              if (!Number.isFinite(num)) return 5;
+              return Math.min(15, Math.max(5, num));
+            });
+          } else {
+            setDuration(5);
+          }
           if (selectedModel.includes("wan-2.5")) {
             setUploadedAudio("");
           }
@@ -1891,6 +2001,51 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     }
   };
+
+  useEffect(() => {
+    if (selectedModel !== PIXVERSE_V6_I2V_MODEL) return;
+    setSelectedModel(PIXVERSE_V6_T2V_MODEL);
+  }, [selectedModel, setSelectedModel]);
+
+  useEffect(() => {
+    if (generationMode !== "image_to_video") return;
+    if (selectedModel === PIXVERSE_V5_T2V_MODEL) {
+      handleModelChange(PIXVERSE_V5_I2V_MODEL);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync variant when mode changes
+  }, [generationMode, selectedModel]);
+
+  useEffect(() => {
+    if (generationMode !== "text_to_video") return;
+    if (selectedModel === PIXVERSE_V5_I2V_MODEL) {
+      handleModelChange(PIXVERSE_V6_T2V_MODEL);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generationMode, selectedModel]);
+
+  useEffect(() => {
+    if (selectedModel !== PIXVERSE_V6_T2V_MODEL) return;
+    if (duration === "auto") return;
+    const n =
+      typeof duration === "number"
+        ? duration
+        : parseInt(String(duration).replace(/s$/i, ""), 10);
+    if (!Number.isFinite(n)) return;
+    if (n < 5) setDuration(5);
+    else if (n > 15) setDuration(15);
+  }, [selectedModel, duration, setDuration]);
+
+  useEffect(() => {
+    if (selectedModel !== PIXVERSE_V6_I2V_MODEL) return;
+    if (duration === "auto") return;
+    const n =
+      typeof duration === "number"
+        ? duration
+        : parseInt(String(duration).replace(/s$/i, ""), 10);
+    if (!Number.isFinite(n)) return;
+    if (n < 5) setDuration(5);
+    else if (n > 15) setDuration(15);
+  }, [selectedModel, duration, setDuration]);
 
   const loading = useAppSelector(
     (state: any) => state.history?.loading || false,
@@ -4188,7 +4343,9 @@ const InputBox = (props: InputBoxProps = {}) => {
               selectedModel.includes("ltx2") ||
               selectedModel === "kling-o1" ||
               selectedModel === "kling-2.6-pro" ||
-              selectedModel.startsWith("kling-v3")
+              selectedModel.startsWith("kling-v3") ||
+              selectedModel === PIXVERSE_V6_T2V_MODEL ||
+              selectedModel === PIXVERSE_V6_I2V_MODEL
             ? "fal"
             : selectedModel.includes("wan-2.5") ||
                 (selectedModel.startsWith("kling-") &&
@@ -4196,7 +4353,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.startsWith("kling-v3")) ||
                 (selectedModel.includes("seedance") &&
                   !isSeedance2TextModel(selectedModel)) ||
-                selectedModel.includes("pixverse") ||
+                (selectedModel.includes("pixverse") &&
+                  !selectedModel.includes("v6")) ||
                 selectedModel.includes("ltx-2.3-fast") ||
                 selectedModel.includes("ltx-2.3-pro") ||
                 selectedModel === "wan-2.2-animate-replace"
@@ -4668,11 +4826,35 @@ const InputBox = (props: InputBoxProps = {}) => {
           apiEndpoint = isProFast
             ? "/api/replicate/seedance-pro-fast-t2v/submit"
             : "/api/replicate/seedance-t2v/submit";
+        } else if (selectedModel === PIXVERSE_V6_T2V_MODEL) {
+          const apiPrompt = getApiPrompt(prompt);
+          let pvDur =
+            typeof duration === "number"
+              ? duration
+              : parseInt(String(duration), 10) || 5;
+          pvDur = Math.min(15, Math.max(5, pvDur));
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            aspect_ratio: frameSize,
+            resolution: pixverseQuality,
+            duration: pvDur,
+            generate_audio_switch: Boolean(pixverseV6GenerateAudio),
+            generate_multi_clip_switch: Boolean(pixverseV6MultiClip),
+            thinking_type: "auto",
+            generationType: "text-to-video",
+            isPublic,
+          };
+          if (pixverseV6Style) {
+            (requestBody as any).style = pixverseV6Style;
+          }
+          generationType = "text-to-video";
+          apiEndpoint = "/api/fal/pixverse/v6/text-to-video/submit";
         } else if (
           selectedModel.includes("pixverse") &&
           !selectedModel.includes("i2v")
         ) {
-          // PixVerse T2V
+          // PixVerse V5 T2V (Replicate)
           const apiPrompt = getApiPrompt(prompt);
           requestBody = {
             model: "pixverse/pixverse-v5",
@@ -4817,7 +4999,12 @@ const InputBox = (props: InputBoxProps = {}) => {
           !selectedModel.includes("veo3") &&
           !selectedModel.includes("wan-2.5") &&
           !selectedModel.includes("seedance") &&
-          !selectedModel.includes("pixverse") &&
+          (selectedModel === PIXVERSE_V5_I2V_MODEL ||
+          selectedModel === PIXVERSE_V6_I2V_MODEL ||
+          (selectedModel === PIXVERSE_V6_T2V_MODEL &&
+            generationMode === "image_to_video")
+            ? true
+            : !selectedModel.includes("pixverse")) &&
           !selectedModel.includes("sora2") &&
           !selectedModel.includes("ltx2") &&
           !selectedModel.includes("ltx-2.3-fast") &&
@@ -5456,8 +5643,8 @@ const InputBox = (props: InputBoxProps = {}) => {
           apiEndpoint = isProFast
             ? "/api/replicate/seedance-pro-fast-i2v/submit"
             : "/api/replicate/seedance-i2v/submit";
-        } else if (selectedModel.includes("pixverse")) {
-          // PixVerse I2V - supports both t2v and i2v variants, use I2V when image is uploaded
+        } else if (selectedModel === PIXVERSE_V5_I2V_MODEL) {
+          // PixVerse V5 I2V (Replicate)
           if (uploadedImages.length === 0) {
             setError("PixVerse image-to-video requires an input image");
             return;
@@ -5476,6 +5663,39 @@ const InputBox = (props: InputBoxProps = {}) => {
           };
           generationType = "image-to-video";
           apiEndpoint = "/api/replicate/pixverse-v5-i2v/submit";
+        } else if (
+          selectedModel === PIXVERSE_V6_I2V_MODEL ||
+          selectedModel === PIXVERSE_V6_T2V_MODEL
+        ) {
+          const firstStill =
+            uploadedImages[0] || references[0] || "";
+          if (!firstStill) {
+            setError("PixVerse V6 image-to-video requires an input image");
+            return;
+          }
+          const apiPrompt = getApiPrompt(prompt);
+          let pvDur =
+            typeof duration === "number"
+              ? duration
+              : parseInt(String(duration), 10) || 5;
+          pvDur = Math.min(15, Math.max(5, pvDur));
+          requestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            image_url: firstStill,
+            resolution: pixverseQuality,
+            duration: pvDur,
+            generate_audio_switch: Boolean(pixverseV6GenerateAudio),
+            generate_multi_clip_switch: Boolean(pixverseV6MultiClip),
+            thinking_type: "auto",
+            generationType: "image-to-video",
+            isPublic,
+          };
+          if (pixverseV6Style) {
+            (requestBody as any).style = pixverseV6Style;
+          }
+          generationType = "image-to-video";
+          apiEndpoint = "/api/fal/pixverse/v6/image-to-video/submit";
         } else if (
           selectedModel.includes("sora2") &&
           !selectedModel.includes("v2v")
@@ -7774,10 +7994,118 @@ const InputBox = (props: InputBoxProps = {}) => {
           );
           throw new Error("Seedance video generation did not complete in time");
         }
-      } else if (selectedModel.includes("pixverse")) {
-        // PixVerse flow - queue-based polling via replicate queue endpoints (same as WAN/Kling/Seedance)
+      } else if (
+        selectedModel === PIXVERSE_V6_T2V_MODEL ||
+        selectedModel === PIXVERSE_V6_I2V_MODEL
+      ) {
         console.log(
-          "🎬 PixVerse video generation started, request ID:",
+          "🎬 PixVerse V6 (FAL) video generation started, request ID:",
+          result.requestId,
+        );
+        let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+        const maxAttemptsPixverseV6 = 900;
+
+        for (let attempts = 0; attempts < maxAttemptsPixverseV6; attempts++) {
+          try {
+            const statusRes = await api.get("/api/fal/queue/status", {
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000,
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            const s = String(status?.status || "").toLowerCase();
+            consecutiveErrors = 0;
+
+            if (s === "completed" || s === "success" || s === "succeeded") {
+              const resultRes = await api.get("/api/fal/queue/result", {
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000,
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              if (generationId) {
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+              }
+              break;
+            }
+            if (s === "failed" || s === "error") {
+              throw new Error("PixVerse V6 video generation failed");
+            }
+          } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            const isNetworkError =
+              errorMsg.includes("timeout") ||
+              errorMsg.includes("ECONNREFUSED") ||
+              errorMsg.includes("ENOTFOUND");
+
+            if (isNetworkError) {
+              console.warn(
+                `[queue] PixVerse V6 - Network error (${attempts + 1}/${maxAttemptsPixverseV6}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                errorMsg,
+              );
+            } else {
+              console.error(
+                `[queue] PixVerse V6 - Error (${attempts + 1}/${maxAttemptsPixverseV6}):`,
+                errorMsg,
+              );
+            }
+
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `PixVerse V6: Too many network errors. ${errorMsg}`,
+              );
+            }
+            if (attempts === maxAttemptsPixverseV6 - 1) {
+              throw new Error(
+                `PixVerse V6: Timeout after ${maxAttemptsPixverseV6} attempts. ${errorMsg}`,
+              );
+            }
+          }
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
+          videoUrl = videoResult.videos[0].url;
+        } else if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
+          videoUrl = videoResult.output;
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
+          videoUrl = videoResult.output[0];
+        } else {
+          throw new Error("PixVerse V6 video generation did not complete in time");
+        }
+      } else if (
+        selectedModel === PIXVERSE_V5_T2V_MODEL ||
+        selectedModel === PIXVERSE_V5_I2V_MODEL
+      ) {
+        // PixVerse V5 — Replicate queue
+        console.log(
+          "🎬 PixVerse V5 video generation started, request ID:",
           result.requestId,
         );
         console.log("🎬 Model:", result.model);
@@ -7786,15 +8114,15 @@ const InputBox = (props: InputBoxProps = {}) => {
         let videoResult: any;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 5;
-        const maxAttemptsPixverse = 900; // up to 15 minutes (same as WAN/Kling/Seedance)
+        const maxAttemptsPixverse = 900;
         console.log(
-          `🎬 Starting PixVerse polling with ${maxAttemptsPixverse} attempts (15 minutes max)`,
+          `🎬 Starting PixVerse V5 polling with ${maxAttemptsPixverse} attempts (15 minutes max)`,
         );
 
         for (let attempts = 0; attempts < maxAttemptsPixverse; attempts++) {
           try {
             console.log(
-              `🎬 PixVerse polling attempt ${attempts + 1}/${maxAttemptsPixverse}`,
+              `🎬 PixVerse V5 polling attempt ${attempts + 1}/${maxAttemptsPixverse}`,
             );
             console.log(
               `🎬 Checking status for requestId: ${result.requestId}`,
@@ -7808,23 +8136,21 @@ const InputBox = (props: InputBoxProps = {}) => {
             const statusValue = String(status?.status || "").toLowerCase();
             consecutiveErrors = 0;
 
-            console.log(`🎬 PixVerse status check result:`, status);
+            console.log(`🎬 PixVerse V5 status check result:`, status);
             if (
               statusValue === "completed" ||
               statusValue === "success" ||
               statusValue === "succeeded"
             ) {
               console.log(
-                "✅ PixVerse generation completed, fetching result...",
+                "✅ PixVerse V5 generation completed, fetching result...",
               );
-              // Get the result
               const resultRes = await api.get("/api/replicate/queue/result", {
                 params: { requestId: result.requestId },
                 timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
-              console.log("✅ PixVerse result fetched:", videoResult);
-              // CRITICAL: Update queue status immediately to mark as completed
+              console.log("✅ PixVerse V5 result fetched:", videoResult);
               if (generationId) {
                 dispatch(
                   updateActiveGeneration({
@@ -7835,22 +8161,21 @@ const InputBox = (props: InputBoxProps = {}) => {
                     },
                   }),
                 );
-                console.log("[queue] PixVerse marked as completed in queue");
+                console.log("[queue] PixVerse V5 marked as completed in queue");
               }
               break;
             }
             if (statusValue === "failed" || statusValue === "error") {
               console.error(
-                "❌ PixVerse generation failed with status:",
+                "❌ PixVerse V5 generation failed with status:",
                 status,
               );
-              throw new Error("PixVerse video generation failed");
+              throw new Error("PixVerse V5 video generation failed");
             }
 
-            // Log progress every 30 seconds
             if (attempts % 30 === 0 && attempts > 0) {
               console.log(
-                `🎬 PixVerse still processing... (${Math.floor(attempts / 60)} minutes elapsed)`,
+                `🎬 PixVerse V5 still processing... (${Math.floor(attempts / 60)} minutes elapsed)`,
               );
             }
           } catch (statusError: any) {
@@ -7864,23 +8189,23 @@ const InputBox = (props: InputBoxProps = {}) => {
             if (attempts % 10 === 0 || isNetworkError) {
               if (isNetworkError) {
                 console.warn(
-                  `[queue] PixVerse - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+                  `[queue] PixVerse V5 - Network error (${attempts + 1}/${maxAttemptsPixverse}, ${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
                   errorMsg,
                 );
               } else {
                 console.error(
-                  `[queue] PixVerse - Error (${attempts + 1}/${maxAttemptsPixverse}):`,
+                  `[queue] PixVerse V5 - Error (${attempts + 1}/${maxAttemptsPixverse}):`,
                   errorMsg,
                 );
               }
             }
 
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-              throw new Error(`PixVerse: Too many network errors. ${errorMsg}`);
+              throw new Error(`PixVerse V5: Too many network errors. ${errorMsg}`);
             }
             if (attempts === maxAttemptsPixverse - 1)
               throw new Error(
-                `PixVerse: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`,
+                `PixVerse V5: Timeout after ${maxAttemptsPixverse} attempts. ${errorMsg}`,
               );
           }
           await new Promise((res) => setTimeout(res, 1000));
@@ -7892,11 +8217,11 @@ const InputBox = (props: InputBoxProps = {}) => {
           videoResult.videos[0]?.url
         ) {
           videoUrl = videoResult.videos[0].url;
-          console.log("✅ PixVerse video completed with URL:", videoUrl);
+          console.log("✅ PixVerse V5 video completed with URL:", videoUrl);
         } else if (videoResult?.video && videoResult.video?.url) {
           videoUrl = videoResult.video.url;
           console.log(
-            "✅ PixVerse video completed with URL (fallback):",
+            "✅ PixVerse V5 video completed with URL (fallback):",
             videoUrl,
           );
         } else if (
@@ -7905,7 +8230,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         ) {
           videoUrl = videoResult.output;
           console.log(
-            "✅ PixVerse video completed with URL (output string):",
+            "✅ PixVerse V5 video completed with URL (output string):",
             videoUrl,
           );
         } else if (
@@ -7915,18 +8240,18 @@ const InputBox = (props: InputBoxProps = {}) => {
         ) {
           videoUrl = videoResult.output[0];
           console.log(
-            "✅ PixVerse video completed with URL (output array):",
+            "✅ PixVerse V5 video completed with URL (output array):",
             videoUrl,
           );
         } else {
           console.error(
-            "❌ PixVerse video generation did not complete properly",
+            "❌ PixVerse V5 video generation did not complete properly",
           );
           console.error(
             "❌ Video result structure:",
             JSON.stringify(videoResult, null, 2),
           );
-          throw new Error("PixVerse video generation did not complete in time");
+          throw new Error("PixVerse V5 video generation did not complete in time");
         }
       } else if (
         selectedModel.startsWith("ltx-2.3-fast") ||
@@ -8445,7 +8770,14 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   const newLocal =
-    "pointer-events-none absolute bottom-full left-1/2 z-[60] mb-2 -translate-x-1/2 rounded-md bg-black/90 px-2 py-1 text-[10px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100";
+    "pointer-events-none absolute top-full left-1/2 z-[80] mt-1 -translate-x-1/2 rounded-md bg-black/90 px-2 py-1 text-[10px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100";
+  /** Multi-angle: strong blue (primary). Audio on: softer accent so only multi-angle reads as “selected”. */
+  const pixverseV6ToggleActive =
+    "bg-[#2F6BFF]/50 text-white ring-2 ring-[#6B9FFF] shadow-[0_0_20px_rgba(47,107,255,0.5)]";
+  const pixverseV6ToggleAudioActive =
+    "bg-white/[0.12] text-white ring-1 ring-[#4d7ee8]/80 shadow-[0_0_12px_rgba(47,107,255,0.22)]";
+  const pixverseV6ToggleInactive =
+    "bg-black/35 text-white/35 ring-1 ring-white/18 hover:bg-white/[0.1] hover:text-white/90 hover:ring-white/35";
   const isLtx23Model =
     selectedModel.includes("ltx-2.3-fast") ||
     selectedModel.includes("ltx-2.3-pro");
@@ -8480,6 +8812,14 @@ const InputBox = (props: InputBoxProps = {}) => {
               ? LTX_VARIANT_OPTIONS
               : isWanFamilyModel(selectedModel)
                 ? WAN_VARIANT_OPTIONS
+                : isPixverseFamilyModel(selectedModel)
+                  ? PIXVERSE_VARIANT_OPTIONS.filter((o) =>
+                      generationMode === "image_to_video"
+                        ? o.value === PIXVERSE_V6_T2V_MODEL ||
+                          o.value === PIXVERSE_V5_I2V_MODEL
+                        : o.value !== PIXVERSE_V5_I2V_MODEL &&
+                          o.value !== PIXVERSE_V6_I2V_MODEL,
+                    )
       : [];
 
   const selectedFamilyVariant = familyVariantOptions.some(
@@ -8537,8 +8877,16 @@ const InputBox = (props: InputBoxProps = {}) => {
       return <WanFamilyVariantDropdown {...sharedProps} />;
     }
 
+    if (isPixverseFamilyModel(selectedModel)) {
+      return <PixverseFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isSeedanceFamilyModel(selectedModel)) {
       return <SeedanceFamilyVariantDropdown {...sharedProps} />;
-    };
+    }
+
+    return null;
+  };
 
   const renderMobileAudioControls = () => (
     <>
@@ -8900,7 +9248,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     if (selectedModel.includes("MiniMax")) {
       return (
-        <div className="flex w-full max-w-full flex-wrap items-center gap-2 pr-1">
+        <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
           <VideoFrameSizeDropdown
             selectedFrameSize={selectedResolution}
             onFrameSizeChange={setSelectedResolution}
@@ -8922,6 +9270,106 @@ const InputBox = (props: InputBoxProps = {}) => {
             onCloseOtherDropdowns={closeModelAndFrame}
             onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
           />
+        </div>
+      );
+    }
+
+    if (selectedModel.includes("pixverse")) {
+      const closePixverseOthers = () => {
+        setCloseModelsDropdown(true);
+        setTimeout(() => setCloseModelsDropdown(false), 0);
+        setCloseFrameSizeDropdown(true);
+        setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+        setCloseDurationDropdown(true);
+        setTimeout(() => setCloseDurationDropdown(false), 0);
+      };
+      return (
+        <div className="flex min-w-max flex-nowrap items-center gap-x-1 pr-1">
+          {!hidePixverseV6AspectRatio && (
+            <VideoFrameSizeDropdown
+              selectedFrameSize={frameSize}
+              onFrameSizeChange={setFrameSize}
+              selectedModel={selectedModel}
+              generationMode={generationMode}
+              onCloseOtherDropdowns={closeModelAndDuration}
+              onCloseThisDropdown={closeFrameSizeDropdown ? () => {} : undefined}
+            />
+          )}
+          <QualityDropdown
+            selectedModel={selectedModel}
+            selectedQuality={pixverseQuality}
+            onQualityChange={setPixverseQuality}
+            onCloseOtherDropdowns={closePixverseOthers}
+            onCloseThisDropdown={undefined}
+          />
+          <VideoDurationDropdown
+            selectedDuration={duration}
+            onDurationChange={setDuration}
+            selectedModel={selectedModel}
+            generationMode={generationMode}
+            hasFirstFrame={pixverseV6HasFirstFrameImage}
+            onCloseOtherDropdowns={closeModelAndFrame}
+            onCloseThisDropdown={closeDurationDropdown ? () => {} : undefined}
+          />
+          {(selectedModel === PIXVERSE_V6_T2V_MODEL ||
+            selectedModel === PIXVERSE_V6_I2V_MODEL) && (
+            <>
+              <PortalHoverTooltip
+                wrapperClassName="shrink-0"
+                content={
+                  pixverseV6GenerateAudio
+                    ? "Audio on: BGM, SFX, and dialogue"
+                    : "Audio off: no generated soundtrack"
+                }
+              >
+                <button
+                  type="button"
+                  aria-label="Toggle generated audio"
+                  aria-pressed={pixverseV6GenerateAudio}
+                  onClick={() => setPixverseV6GenerateAudio((v) => !v)}
+                  className={`md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center transition-all duration-150 ${
+                    pixverseV6GenerateAudio
+                      ? pixverseV6ToggleAudioActive
+                      : pixverseV6ToggleInactive
+                  }`}
+                >
+                  {pixverseV6GenerateAudio ? (
+                    <Volume2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                  ) : (
+                    <VolumeX className="h-4 w-4 shrink-0 opacity-90" strokeWidth={2} />
+                  )}
+                </button>
+              </PortalHoverTooltip>
+              <PortalHoverTooltip
+                wrapperClassName="shrink-0"
+                content={`Multishot: ${pixverseV6MultiClip ? "on" : "off"}\nMulti-angle clips: camera moves and cuts between shots`}
+              >
+                <button
+                  type="button"
+                  aria-label="Multi-angle dynamic clips"
+                  aria-pressed={pixverseV6MultiClip}
+                  onClick={() => setPixverseV6MultiClip((v) => !v)}
+                  className={`md:h-[32px] h-[28px] md:w-[32px] w-[28px] rounded-lg flex items-center justify-center transition-all duration-150 ${
+                    pixverseV6MultiClip
+                      ? pixverseV6ToggleActive
+                      : pixverseV6ToggleInactive
+                  }`}
+                >
+                  <Scan
+                    className={`h-4 w-4 shrink-0 ${
+                      pixverseV6MultiClip ? "text-white" : "opacity-80"
+                    }`}
+                    strokeWidth={pixverseV6MultiClip ? 2.35 : 1.85}
+                  />
+                </button>
+              </PortalHoverTooltip>
+              <PixverseV6StyleDropdown
+                value={pixverseV6Style}
+                onChange={setPixverseV6Style}
+                onCloseOtherDropdowns={closePixverseOthers}
+              />
+            </>
+          )}
         </div>
       );
     }
@@ -8960,12 +9408,12 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed left-1/2 z-[50] h-auto max-h-[calc(100vh-16px)] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
+      <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-1.5 space-y-2 md:space-y-4 transition-all duration-300 overflow-y-visible ${
+          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-visible overflow-y-visible ${
             isInputBoxHovered
-              ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
+              ? "bg-black/40 ring-white/30 shadow-2xl md:scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
           }`}
           onMouseEnter={() => setIsInputBoxHovered(true)}
@@ -9341,9 +9789,9 @@ const InputBox = (props: InputBoxProps = {}) => {
           </div>
 
           {/* Bottom row: pill options */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-0">
-            {/* Mobile: second row - credits/generate */}
-            <div className="flex md:hidden justify-end items-center gap-2 w-full px-1 mt-1">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
+            {/* Mobile: credits / generate */}
+            <div className="flex md:hidden shrink-0 justify-end items-center gap-2 w-full px-1 pt-0.5">
               <div className="flex flex-col items-end gap-0.25">
                 <div className="text-white/80 text-[9px] md:text-[11px] leading-none">
                   Total credits:{" "}
@@ -9386,32 +9834,34 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
 
-            {/* Mobile: second-last row - model family selectors */}
-              <div className="flex md:hidden w-full items-center gap-2 px-1 mt-0 overflow-x-auto no-scrollbar">
+            {/* Mobile: model + family variant (dedicated row; no negative margin — avoids overlap with params). */}
+            <div className="relative z-[21] flex md:hidden w-full min-w-0 shrink-0 items-stretch gap-2 px-1 py-0.5">
+              <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x no-scrollbar">
                 <div className="shrink-0">
                   <VideoModelsDropdown
                     selectedModel={selectedModel}
                     onModelChange={handleModelChange}
-                  generationMode={generationMode}
-                  selectedDuration={
-                    selectedModel.includes("MiniMax")
-                      ? `${selectedMiniMaxDuration}s`
-                      : formatDurationForCreditLookup(duration)
-                  }
-                  selectedResolution={modelDropdownResolution}
-                  activeFeature={activeFeature}
-                  onCloseOtherDropdowns={() => {
-                    setCloseFrameSizeDropdown(true);
-                    setCloseDurationDropdown(true);
-                    setCloseCameraMotionDropdown(true);
-                    setTimeout(() => {
-                      setCloseFrameSizeDropdown(false);
-                      setCloseDurationDropdown(false);
-                      setCloseCameraMotionDropdown(false);
-                    }, 100);
-                  }}
-                  onCloseThisDropdown={
-                    closeModelsDropdown ? () => {} : undefined
+                    generationMode={generationMode}
+                    selectedDuration={
+                      selectedModel.includes("MiniMax")
+                        ? `${selectedMiniMaxDuration}s`
+                        : formatDurationForCreditLookup(duration)
+                    }
+                    selectedResolution={modelDropdownResolution}
+                    pixverseV6GenerateAudio={pixverseV6GenerateAudio}
+                    activeFeature={activeFeature}
+                    onCloseOtherDropdowns={() => {
+                      setCloseFrameSizeDropdown(true);
+                      setCloseDurationDropdown(true);
+                      setCloseCameraMotionDropdown(true);
+                      setTimeout(() => {
+                        setCloseFrameSizeDropdown(false);
+                        setCloseDurationDropdown(false);
+                        setCloseCameraMotionDropdown(false);
+                      }, 100);
+                    }}
+                    onCloseThisDropdown={
+                      closeModelsDropdown ? () => {} : undefined
                     }
                   />
                 </div>
@@ -9419,16 +9869,23 @@ const InputBox = (props: InputBoxProps = {}) => {
                   <div className="shrink-0">{renderFamilyVariantDropdown()}</div>
                 ) : null}
               </div>
+            </div>
 
-            {/* Mobile: last row - parameters */}
-            <div className="flex md:hidden w-full flex-nowrap items-center gap-1 px-1 py-1 mt-1 overflow-x-auto overflow-y-visible no-scrollbar">
-              {renderMobileParameterControls()}
-              {renderMobileAudioControls()}
+            {/* Mobile: parameters + audio — last row; horizontal scroll; extra vertical padding avoids clip/overlap. */}
+            <div className="relative z-[20] flex md:hidden w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x md:py-1.5 pb-2 no-scrollbar">
+              <div className="flex w-max min-w-0 flex-nowrap items-center gap-2 px-1">
+                <div className="flex shrink-0 flex-nowrap items-center gap-2">
+                  {renderMobileParameterControls()}
+                </div>
+                <div className="flex shrink-0 flex-nowrap items-center gap-2">
+                  {renderMobileAudioControls()}
+                </div>
+              </div>
             </div>
 
             {/* Desktop toolbar */}
-            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_auto] w-full flex-1 min-w-0 items-start gap-3 pb-0 pt-3">
-              <div className="grid w-full min-w-0 grid-rows-[auto_auto] gap-2">
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_auto] w-full flex-1 min-w-0 items-start gap-3 pb-0 pt-1.5">
+              <div className="grid w-full min-w-0 grid-rows-[auto_auto] gap-0.5">
                 <div className="flex w-full flex-wrap items-center gap-2 overflow-visible">
                   <div className="flex-shrink-0">
                     <VideoModelsDropdown
@@ -9441,6 +9898,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                           : formatDurationForCreditLookup(duration)
                       }
                       selectedResolution={modelDropdownResolution}
+                      pixverseV6GenerateAudio={pixverseV6GenerateAudio}
                       activeFeature={activeFeature}
                       onCloseOtherDropdowns={() => {
                         setCloseFrameSizeDropdown(true);
@@ -9462,8 +9920,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   ) : null}
                 </div>
 
-                <div className="flex w-full min-w-0 flex-row gap-2 items-center overflow-visible">
-                  {/* Dynamic Controls Based on Model Capabilities */}
+                <div className="relative z-[20] flex w-full min-w-0 flex-row gap-2 items-center overflow-visible">
                   <div
                   ref={desktopToolbarControlsRef}
                   onWheel={handleDesktopToolbarWheel}
@@ -10453,26 +10910,23 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (selectedModel.includes("pixverse")) {
                   return (
                     <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
-                      {/* Aspect Ratio - Always shown for PixVerse models (both T2V and I2V) */}
-                      <VideoFrameSizeDropdown
-                        selectedFrameSize={frameSize}
-                        onFrameSizeChange={setFrameSize}
-                        selectedModel={selectedModel}
-                        generationMode={generationMode}
-                        onCloseOtherDropdowns={() => {
-                          // Close models dropdown
-                          setCloseModelsDropdown(true);
-                          setTimeout(() => setCloseModelsDropdown(false), 0);
-                          // Close duration dropdown
-                          setCloseDurationDropdown(true);
-                          setTimeout(() => setCloseDurationDropdown(false), 0);
-                          // Close quality dropdown
-                          // QualityDropdown handles its own state
-                        }}
-                        onCloseThisDropdown={
-                          closeFrameSizeDropdown ? () => {} : undefined
-                        }
-                      />
+                      {!hidePixverseV6AspectRatio && (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
+                        />
+                      )}
                       {/* Quality - Always shown for PixVerse models */}
                       <QualityDropdown
                         selectedModel={selectedModel}
@@ -10497,6 +10951,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         onDurationChange={setDuration}
                         selectedModel={selectedModel}
                         generationMode={generationMode}
+                        hasFirstFrame={pixverseV6HasFirstFrameImage}
                         onCloseOtherDropdowns={() => {
                           // Close models dropdown
                           setCloseModelsDropdown(true);
@@ -10511,27 +10966,79 @@ const InputBox = (props: InputBoxProps = {}) => {
                           closeDurationDropdown ? () => {} : undefined
                         }
                       />
-                      {(selectedModel.includes("seedance-1.5") ||
-                        isSeedance2FamilyModel(selectedModel)) && (
-                        <button
-                          onClick={() => setGenerateAudio((v) => !v)}
-                          className={`group h-[32px] w-[32px] rounded-lg flex items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                            generateAudio
-                              ? "bg-transparent text-white "
-                              : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                          }`}
-                        >
-                          <div className="relative">
-                            {generateAudio ? (
-                              <Volume2 className="w-5 h-5" />
-                            ) : (
-                              <VolumeX className="w-5 h-5" />
-                            )}
-                            <div className={newLocal}>
-                              {generateAudio ? "Audio: On" : "Audio: Off"}
-                            </div>
-                          </div>
-                        </button>
+                      {(selectedModel === PIXVERSE_V6_T2V_MODEL ||
+                        selectedModel === PIXVERSE_V6_I2V_MODEL) && (
+                        <>
+                          <PortalHoverTooltip
+                            wrapperClassName="shrink-0"
+                            content={
+                              pixverseV6GenerateAudio
+                                ? "Audio on: BGM, SFX, and dialogue"
+                                : "Audio off: no generated soundtrack"
+                            }
+                          >
+                            <button
+                              type="button"
+                              aria-label="Toggle generated audio"
+                              aria-pressed={pixverseV6GenerateAudio}
+                              onClick={() =>
+                                setPixverseV6GenerateAudio((v) => !v)
+                              }
+                              className={`h-[32px] w-[32px] shrink-0 rounded-lg flex items-center justify-center transition-all duration-150 ${
+                                pixverseV6GenerateAudio
+                                  ? pixverseV6ToggleAudioActive
+                                  : pixverseV6ToggleInactive
+                              }`}
+                            >
+                              {pixverseV6GenerateAudio ? (
+                                <Volume2 className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                              ) : (
+                                <VolumeX className="h-5 w-5 shrink-0 opacity-90" strokeWidth={2} />
+                              )}
+                            </button>
+                          </PortalHoverTooltip>
+                          <PortalHoverTooltip
+                            wrapperClassName="shrink-0"
+                            content={`Multishot: ${pixverseV6MultiClip ? "on" : "off"}\nMulti-angle clips: camera moves and cuts between shots`}
+                          >
+                            <button
+                              type="button"
+                              aria-label="Multi-angle dynamic clips"
+                              aria-pressed={pixverseV6MultiClip}
+                              onClick={() => setPixverseV6MultiClip((v) => !v)}
+                              className={`h-[32px] w-[32px] shrink-0 rounded-lg flex items-center justify-center transition-all duration-150 ${
+                                pixverseV6MultiClip
+                                  ? pixverseV6ToggleActive
+                                  : pixverseV6ToggleInactive
+                              }`}
+                            >
+                              <Scan
+                                className={`h-5 w-5 shrink-0 ${
+                                  pixverseV6MultiClip ? "text-white" : "opacity-80"
+                                }`}
+                                strokeWidth={pixverseV6MultiClip ? 2.35 : 1.85}
+                              />
+                            </button>
+                          </PortalHoverTooltip>
+                          <PixverseV6StyleDropdown
+                            value={pixverseV6Style}
+                            onChange={setPixverseV6Style}
+                            onCloseOtherDropdowns={() => {
+                              setCloseModelsDropdown(true);
+                              setTimeout(() => setCloseModelsDropdown(false), 0);
+                              setCloseFrameSizeDropdown(true);
+                              setTimeout(
+                                () => setCloseFrameSizeDropdown(false),
+                                0,
+                              );
+                              setCloseDurationDropdown(true);
+                              setTimeout(
+                                () => setCloseDurationDropdown(false),
+                                0,
+                              );
+                            }}
+                          />
+                        </>
                       )}
                     </div>
                   );
@@ -10682,8 +11189,8 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
             </div>
 
-            {/* Mobile: Second row - All other dropdowns */}
-            <div className="order-2 flex md:hidden gap-2 w-full pl-1 flex-nowrap overflow-x-auto overflow-y-visible no-scrollbar py-1 mt-1">
+            {/* Mobile: Second row - All other dropdowns (no overflow-x-auto: clips upward tooltips from nested controls). */}
+            <div className="relative z-[20] order-2 flex md:hidden flex-wrap gap-2 w-full pl-1 overflow-visible py-1 mt-1">
               {/* Use the same dynamic controls logic as desktop - extract it to avoid duplication */}
               {(() => {
                 // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
@@ -11324,57 +11831,6 @@ const InputBox = (props: InputBoxProps = {}) => {
                           )}
                         </div>
                       )}
-                    </div>
-                  );
-                }
-
-                if (selectedModel.includes("pixverse")) {
-                  return (
-                    <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
-                      <VideoFrameSizeDropdown
-                        selectedFrameSize={frameSize}
-                        onFrameSizeChange={setFrameSize}
-                        selectedModel={selectedModel}
-                        generationMode={generationMode}
-                        onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true);
-                          setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseDurationDropdown(true);
-                          setTimeout(() => setCloseDurationDropdown(false), 0);
-                        }}
-                        onCloseThisDropdown={
-                          closeFrameSizeDropdown ? () => {} : undefined
-                        }
-                      />
-                      <QualityDropdown
-                        selectedModel={selectedModel}
-                        selectedQuality={pixverseQuality}
-                        onQualityChange={setPixverseQuality}
-                        onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true);
-                          setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseFrameSizeDropdown(true);
-                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                          setCloseDurationDropdown(true);
-                          setTimeout(() => setCloseDurationDropdown(false), 0);
-                        }}
-                        onCloseThisDropdown={undefined}
-                      />
-                      <VideoDurationDropdown
-                        selectedDuration={duration}
-                        onDurationChange={setDuration}
-                        selectedModel={selectedModel}
-                        generationMode={generationMode}
-                        onCloseOtherDropdowns={() => {
-                          setCloseModelsDropdown(true);
-                          setTimeout(() => setCloseModelsDropdown(false), 0);
-                          setCloseFrameSizeDropdown(true);
-                          setTimeout(() => setCloseFrameSizeDropdown(false), 0);
-                        }}
-                        onCloseThisDropdown={
-                          closeDurationDropdown ? () => {} : undefined
-                        }
-                      />
                     </div>
                   );
                 }

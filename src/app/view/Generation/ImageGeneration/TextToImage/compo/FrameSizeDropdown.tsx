@@ -272,11 +272,11 @@ const FrameSizeDropdown = ({
   const isSeedream =
     selectedModel === "seedream-v4" || selectedModel === "seedream-5-lite";
   const isSeedream45 = selectedModel === "seedream-4.5";
-  const isGoogleNanoBanana =
-    selectedModel === "gemini-25-flash-image" ||
+  const isGemini25Flash = selectedModel === "gemini-25-flash-image";
+  const isNanoBananaPro =
     selectedModel === "google/nano-banana-pro" ||
-    selectedModel === "nano-banana-pro" ||
-    selectedModel === "google/nano-banana-2";
+    selectedModel === "nano-banana-pro";
+  const isNanoBanana2 = selectedModel === "google/nano-banana-2";
   const isFlux2Pro = selectedModel === "flux-2-pro";
   const isRecraftV4 =
     selectedModel === "recraft-ai/recraft-v4" || selectedModel === "recraft-v4";
@@ -380,27 +380,71 @@ const FrameSizeDropdown = ({
       const allowed = new Set(["1:1", "4:3", "3:4", "16:9", "9:16"]);
       return baseSizes.filter((s) => allowed.has(s.value));
     }
-    if (isGoogleNanoBanana) {
-      // Google Nano Banana family (including 2): official schema supported ratios
-      // Supported: 21:9, 1:1, 4:3, 3:2, 2:3, 5:4, 4:5, 3:4, 16:9, 9:16, 1:4, 1:8, 4:1, 8:1, match_input_image
+    if (isNanoBanana2) {
+      // FAL google/nano-banana-2 only: aspect_ratio enum includes auto + extreme ratios (no match_input_image).
       const allowed = new Set([
+        "auto",
         "21:9",
-        "1:1",
-        "4:3",
+        "16:9",
         "3:2",
-        "2:3",
+        "4:3",
         "5:4",
+        "1:1",
         "4:5",
         "3:4",
-        "16:9",
+        "2:3",
         "9:16",
-        "1:4",
-        "1:8",
         "4:1",
+        "1:4",
         "8:1",
-        "match_input_image",
+        "1:8",
+      ]);
+      const autoEntry = {
+        name: "Auto",
+        value: "auto",
+        icon: "square" as const,
+      };
+      const rest = baseSizes.filter((s) => allowed.has(s.value));
+      return [autoEntry, ...rest];
+    }
+    if (isGemini25Flash) {
+      // FAL gemini-25-flash-image: fixed aspect_ratio enum (no auto, no match_input_image).
+      const allowed = new Set([
+        "21:9",
+        "16:9",
+        "3:2",
+        "4:3",
+        "5:4",
+        "1:1",
+        "4:5",
+        "3:4",
+        "2:3",
+        "9:16",
       ]);
       return baseSizes.filter((s) => allowed.has(s.value));
+    }
+    if (isNanoBananaPro) {
+      // FAL nano-banana-pro: auto + same fixed ratios as schema.
+      const allowed = new Set([
+        "auto",
+        "21:9",
+        "16:9",
+        "3:2",
+        "4:3",
+        "5:4",
+        "1:1",
+        "4:5",
+        "3:4",
+        "2:3",
+        "9:16",
+      ]);
+      const autoEntry = {
+        name: "Auto",
+        value: "auto",
+        icon: "square" as const,
+      };
+      const rest = baseSizes.filter((s) => allowed.has(s.value));
+      return [autoEntry, ...rest];
     }
     if (isImagen) {
       // Imagen 4 models: 1:1,16:9,9:16,3:4,4:3 (from validateFalGenerate)

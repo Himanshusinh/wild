@@ -85,30 +85,30 @@ export default function PaymentsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-5 h-5 text-emerald-400" />;
       case 'failed':
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-5 h-5 text-red-400" />;
       case 'pending':
-        return <Clock className="w-5 h-5 text-yellow-500" />;
+        return <Clock className="w-5 h-5 text-amber-400" />;
       case 'refunded':
-        return <AlertCircle className="w-5 h-5 text-blue-500" />;
+        return <AlertCircle className="w-5 h-5 text-[#2F6BFF]" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-500" />;
+        return <Clock className="w-5 h-5 text-zinc-500" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'success':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200';
       case 'failed':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+        return 'border-red-500/25 bg-red-500/10 text-red-200';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+        return 'border-amber-500/25 bg-amber-500/10 text-amber-200';
       case 'refunded':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'border-[#2F6BFF]/25 bg-[#2F6BFF]/10 text-[#7aa3ff]';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+        return 'border-white/[0.12] bg-white/[0.04] text-zinc-300';
     }
   };
 
@@ -128,71 +128,73 @@ export default function PaymentsPage() {
     .reduce((sum, p) => sum + p.amountInPaise, 0) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="min-h-screen bg-black px-2 py-8 text-white sm:px-3 md:pl-20 md:pr-4 md:py-10 lg:pl-24 lg:pr-6">
+      <div className="mx-auto w-full max-w-[1600px]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <header className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <CreditCard className="w-8 h-8 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Payment History</h1>
+            <div className="mb-3 flex items-center gap-3">
+              <CreditCard className="h-8 w-8 text-[#2F6BFF]" />
+              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Payment history
+              </h1>
             </div>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="max-w-2xl text-base text-zinc-400">
               View all your payment transactions
             </p>
           </div>
           <button
+            type="button"
             onClick={() => router.push('/account/billing')}
-            className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/[0.14] bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Billing
+            <ArrowLeft className="h-4 w-4" />
+            Back to billing
           </button>
-        </div>
+        </header>
 
         {/* Stats */}
         {!loading && Array.isArray(payments) && payments.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-3 mb-2">
-                <CheckCircle className="w-5 h-5 text-green-500" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Successful Payments</p>
+          <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] p-6">
+              <div className="mb-2 flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-emerald-400" />
+                <p className="text-sm text-zinc-400">Successful payments</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{successCount}</p>
+              <p className="text-2xl font-bold tabular-nums text-white">{successCount}</p>
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-3 mb-2">
-                <DollarSign className="w-5 h-5 text-blue-500" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Paid</p>
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] p-6">
+              <div className="mb-2 flex items-center gap-3">
+                <DollarSign className="h-5 w-5 text-[#2F6BFF]" />
+                <p className="text-sm text-zinc-400">Total paid</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalAmount)}</p>
+              <p className="text-2xl font-bold tabular-nums text-white">{formatCurrency(totalAmount)}</p>
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-3 mb-2">
-                <XCircle className="w-5 h-5 text-red-500" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Failed Attempts</p>
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] p-6">
+              <div className="mb-2 flex items-center gap-3">
+                <XCircle className="h-5 w-5 text-red-400" />
+                <p className="text-sm text-zinc-400">Failed attempts</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{failedCount}</p>
+              <p className="text-2xl font-bold tabular-nums text-white">{failedCount}</p>
             </div>
           </div>
         )}
 
         {/* Filters */}
         {!loading && Array.isArray(payments) && payments.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</span>
-              <div className="flex gap-2">
+          <div className="mb-8 rounded-2xl border border-white/[0.08] bg-[#0a0a0a] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-zinc-300">Filter:</span>
+              <div className="flex flex-wrap gap-2">
                 {['all', 'success', 'failed'].map((status) => (
                   <button
                     key={status}
+                    type="button"
                     onClick={() => setFilter(status as any)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       filter === status
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ? 'bg-[#2F6BFF] text-white shadow-[0_4px_12px_rgba(47,107,255,0.35)]'
+                        : 'border border-white/[0.12] bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08]'
                     }`}
                   >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -207,26 +209,27 @@ export default function PaymentsPage() {
         {loading ? (
           <div className="flex justify-center items-center py-20">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Loading payment history...</p>
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-white/10 border-t-[#2F6BFF]" />
+              <p className="text-zinc-400">Loading payment history...</p>
             </div>
           </div>
         ) : filteredPayments.length === 0 ? (
           /* Empty State */
-          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-            <CreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] py-16 text-center">
+            <CreditCard className="mx-auto mb-4 h-16 w-16 text-zinc-600" />
+            <h3 className="mb-2 text-xl font-semibold text-white">
               {filter === 'all' ? 'No Payment History' : `No ${getStatusLabel(filter)} Payments`}
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="mb-6 text-zinc-400">
               {filter === 'all' 
                 ? 'Your payment transactions will appear here'
                 : `You don't have any ${filter} payments yet`}
             </p>
             {filter !== 'all' && (
               <button
+                type="button"
                 onClick={() => setFilter('all')}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                className="font-semibold text-[#7aa3ff] hover:text-white transition"
               >
                 View All Payments
               </button>
@@ -238,7 +241,7 @@ export default function PaymentsPage() {
             {filteredPayments.map((payment) => (
               <div
                 key={payment.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow overflow-hidden"
+                className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a] transition hover:border-white/[0.14]"
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between">
@@ -247,43 +250,43 @@ export default function PaymentsPage() {
                       <div className="flex items-center gap-3 mb-3">
                         {getStatusIcon(payment.status)}
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-white">
                             {formatCurrency(payment.amountInPaise)}
                           </h3>
                           {payment.planName && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-sm text-zinc-400">
                               {payment.planName} Plan
                             </p>
                           )}
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(payment.status)}`}>
                           {getStatusLabel(payment.status)}
                         </span>
                       </div>
 
                       <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <div className="flex items-center gap-2 text-zinc-400">
                           <Calendar className="w-4 h-4" />
                           <span>{formatDate(payment.createdAt)} at {formatTime(payment.createdAt)}</span>
                         </div>
                         
                         {payment.paymentMethod && (
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                          <div className="flex items-center gap-2 text-zinc-400">
                             <CreditCard className="w-4 h-4" />
                             <span>{payment.paymentMethod}</span>
                           </div>
                         )}
 
                         {payment.razorpayPaymentId && (
-                          <div className="text-xs text-gray-500 dark:text-gray-500">
+                          <div className="text-xs text-zinc-500">
                             Transaction ID: {payment.razorpayPaymentId}
                           </div>
                         )}
                       </div>
 
                       {payment.errorMessage && (
-                        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                          <p className="text-sm text-red-800 dark:text-red-200">
+                        <div className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 p-3">
+                          <p className="text-sm text-red-200">
                             <strong>Error:</strong> {payment.errorMessage}
                           </p>
                         </div>

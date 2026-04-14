@@ -149,6 +149,53 @@ export default function BillingPage() {
     setShowCheckout(true);
   };
 
+  const handleCheckoutIntervalChange = (interval: "MONTHLY" | "YEARLY") => {
+    if (!selectedPlan || !catalog) return;
+    if (selectedPlan.billingInterval === interval) return;
+
+    const familyPlan = catalog.plans.find(
+      (entry) =>
+        entry.family === selectedPlan.family ||
+        entry.monthly?.code === selectedPlan.code ||
+        entry.yearly?.code === selectedPlan.code,
+    );
+    if (!familyPlan) return;
+
+    const targetSku = interval === "YEARLY" ? familyPlan.yearly : familyPlan.monthly;
+    if (!targetSku) return;
+
+    const currentCode = subscription?.planCode || credits?.planCode || null;
+    const currentSku = findCatalogSkuByCode(catalog, currentCode);
+    const currentPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
+    const nextPrice = targetSku.priceInPaise / 100;
+    const changeType: "upgrade" | "downgrade" | "new" =
+      currentCode && currentCode !== "FREE"
+        ? nextPrice > currentPrice
+          ? "upgrade"
+          : "downgrade"
+        : "new";
+    try {
+      (window as any).__wmSelectedChangeType = changeType;
+    } catch {}
+
+    setSelectedPlan((prev) =>
+      prev
+        ? {
+            ...prev,
+            code: targetSku.code,
+            billingInterval: interval,
+            credits: targetSku.credits,
+            storageGB: targetSku.storageGB,
+            priceINR: targetSku.priceInPaise / 100,
+            gstRatePercent: targetSku.gstRatePercent,
+            gstAmountINR: targetSku.gstAmountInPaise / 100,
+            totalPriceINR: targetSku.totalWithGstInPaise / 100,
+            cycleLabel: interval === "YEARLY" ? "year" : "month",
+          }
+        : prev,
+    );
+  };
+
   const handleCheckoutConfirm = async (billingDetails: any) => {
     if (!selectedPlan) return;
 
@@ -454,8 +501,11 @@ export default function BillingPage() {
   // server renders the content view initially, so client must match for first render
   if (isMounted && loading && !subscription) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div
+          className="h-12 w-12 animate-spin rounded-full border-2 border-white/10 border-t-[#2F6BFF]"
+          aria-hidden
+        />
       </div>
     );
   }
@@ -481,31 +531,22 @@ export default function BillingPage() {
       : undefined;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8">
-      <BillingMessageDialog
-        open={billingMessage != null}
-        title={billingMessage?.title ?? ""}
-        body={billingMessage?.body ?? ""}
-        variant={billingMessage?.variant}
-        primaryLabel={billingMessage?.primaryLabel}
-        onContinue={billingMessage?.onContinue}
-        onClose={() => setBillingMessage(null)}
-      />
+    <div className="min-h-screen bg-black px-2 py-8 text-white sm:px-3 md:pl-20 md:pr-4 md:py-10 lg:pl-24 lg:pr-6">
       {mandateNotice && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="mandate-notice-title"
         >
-          <div className="max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+          <div className="max-w-md rounded-2xl border border-white/[0.1] bg-[#0a0a0a] p-6 shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
             <h3
               id="mandate-notice-title"
-              className="mb-2 text-lg font-semibold text-gray-900 dark:text-white"
+              className="mb-2 text-lg font-semibold text-white"
             >
               New UPI AutoPay authorization
             </h3>
-            <p className="mb-6 text-sm text-gray-600 dark:text-gray-300">
+            <p className="mb-6 text-sm text-zinc-400">
               You pay with UPI. Changing your plan needs a new AutoPay mandate
               for the new amount. You&apos;ll complete a quick checkout to
               authorize it.
@@ -513,7 +554,7 @@ export default function BillingPage() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5"
                 onClick={() => {
                   setMandateNotice(null);
                   setShowCheckout(false);
@@ -523,7 +564,7 @@ export default function BillingPage() {
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="rounded-lg bg-[#2F6BFF] px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(47,107,255,0.4)] transition hover:bg-[#2a5fe3]"
                 onClick={() => mandateNotice.onContinue()}
               >
                 Continue to checkout
@@ -552,72 +593,85 @@ export default function BillingPage() {
         }
       />
 
-      <div className="container mx-auto max-w-6xl">
+      <div className="mx-auto w-full max-w-[1600px]">
         {paymentBlocked ? (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-100">
+          <div className="mb-8 rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100">
             <div className="font-semibold">
               Payment failed. Please update your payment method to continue.
             </div>
-            <div className="mt-1 text-xs text-red-800/80 dark:text-red-200/90">
+            <div className="mt-1 text-xs text-red-200/80">
               Credits will not refresh until payment succeeds.
             </div>
           </div>
         ) : null}
         {flashNotice ? (
-          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100">
+          <div className="mb-8 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-100">
             <div className="font-semibold">{flashNotice.title}</div>
             {flashNotice.detail ? (
-              <div className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/90">
+              <div className="mt-1 text-xs text-emerald-200/85">
                 {flashNotice.detail}
               </div>
             ) : null}
           </div>
         ) : null}
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Billing & Subscription
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage your subscription, view invoices, and track payments
-          </p>
+        <header className="mb-12 space-y-6">
+          <div>
+            <h1 className="mb-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              Billing & Subscription
+            </h1>
+            <p className="max-w-2xl text-base text-zinc-400">
+              Manage your subscription, view invoices, and track payments
+            </p>
+          </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
-              Current plan status: {String(subscription?.status || "UNKNOWN").toUpperCase()}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className={`rounded-full border px-3 py-1.5 font-medium ${
+                String(subscription?.status || "").toUpperCase() === "ACTIVE"
+                  ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+                  : "border-white/[0.12] bg-white/[0.04] text-zinc-300"
+              }`}
+            >
+              Current plan status:{" "}
+              {String(subscription?.status || "UNKNOWN").toUpperCase()}
             </span>
             {subscription?.nextBillingDate ? (
-              <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
-                {nextBillingLabel}:{' '}
-                {new Date(subscription.nextBillingDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+              <span className="rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 font-medium text-zinc-300">
+                {nextBillingLabel}:{" "}
+                {new Date(subscription.nextBillingDate).toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                )}
               </span>
             ) : null}
           </div>
 
-          {/* Quick Access Links */}
-          <div className="flex gap-3 mt-4">
+          <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => router.push('/account/invoices')}
-              className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition text-sm font-medium"
+              type="button"
+              onClick={() => router.push("/account/invoices")}
+              className="rounded-lg bg-[#2F6BFF] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(47,107,255,0.4)] transition hover:bg-[#2a5fe3]"
             >
-              View Invoices
+              View invoices
             </button>
             <button
-              onClick={() => router.push('/account/payments')}
-              className="px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition text-sm font-medium"
+              type="button"
+              onClick={() => router.push("/account/payments")}
+              className="rounded-lg border border-white/[0.14] bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
             >
-              Payment History
+              Payment history
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Current Subscription Card */}
         {subscription && (currentCatalogSku || (subscription as any)?.plan) && (
-          <div className="mb-8">
+          <div className="mb-12">
             <ActivePlanCard
               subscription={{
                 id: subscription.id || "",
@@ -667,17 +721,19 @@ export default function BillingPage() {
         )}
 
         {/* Available Plans */}
-        <div className="mb-8">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-2xl font-semibold">Available Plans</h2>
-            <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-700 p-1">
+        <div className="mb-16">
+          <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-2xl font-semibold tracking-tight text-white">
+              Available plans
+            </h2>
+            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1">
               <button
                 type="button"
                 onClick={() => setBillingInterval("MONTHLY")}
-                className={`rounded-md px-4 py-2 text-sm font-medium ${
+                className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${
                   billingInterval === "MONTHLY"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 dark:text-gray-300"
+                    ? "bg-[#2F6BFF] text-white shadow-[0_4px_12px_rgba(47,107,255,0.35)]"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Monthly
@@ -685,10 +741,10 @@ export default function BillingPage() {
               <button
                 type="button"
                 onClick={() => setBillingInterval("YEARLY")}
-                className={`rounded-md px-4 py-2 text-sm font-medium ${
+                className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${
                   billingInterval === "YEARLY"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 dark:text-gray-300"
+                    ? "bg-[#2F6BFF] text-white shadow-[0_4px_12px_rgba(47,107,255,0.35)]"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Yearly
@@ -714,6 +770,7 @@ export default function BillingPage() {
             }}
             onConfirm={handleCheckoutConfirm}
             isLoadingPlanChange={creatingSubscription}
+            onBillingIntervalChange={handleCheckoutIntervalChange}
             changeType={(() => {
               try {
                 return (window as any).__wmSelectedChangeType as any;

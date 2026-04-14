@@ -6,7 +6,7 @@ import { ChevronUp } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { toggleDropdown } from '@/store/slices/uiSlice';
 
-type ResolutionType = '1K' | '2K' | '3K' | '4K' | 'custom';
+type ResolutionType = "0.5K" | "1K" | "2K" | "3K" | "4K" | "custom";
 
 type ResolutionDropdownProps = {
   openDirection?: 'up' | 'down';
@@ -20,7 +20,7 @@ type ResolutionDropdownProps = {
 const ResolutionDropdown = ({
   openDirection = 'up',
   resolution,
-  onResolutionChange,
+  onResolutionChange,  
   options,
   dropdownId,
   optionCredits

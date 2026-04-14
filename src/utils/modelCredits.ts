@@ -212,9 +212,10 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "gemini-25-flash-image": 32, // Google nano banana (T2I)
   "gemini-25-flash-image-i2i": 32, // Google nano banana (I2I)
   "gpt-5-nano": 1, // GPT-5 Nano (Assistant)
-  "google/nano-banana-2-1k": 54,
-  "google/nano-banana-2-2k": 81,
-  "google/nano-banana-2-4k": 121,
+  "google/nano-banana-2-0.5k": 48,
+  "google/nano-banana-2-1k": 64,
+  "google/nano-banana-2-2k": 96,
+  "google/nano-banana-2-4k": 128,
   "google/nano-banana-pro": 120, // Google nano banana pro (default 1K/2K - 120 credits, 4K - 240 credits)
   "seedream-v4": 80,
   "seedream-4.5": 32, // Bytedance Seedream-4.5
@@ -849,20 +850,39 @@ export const getCreditsForModel = (
     return MODEL_CREDITS_MAPPING[key] || null;
   }
 
-  // Handle PixVerse models
-  if (modelValue.includes("pixverse")) {
+  // PixVerse V6 T2V / I2V (FAL) — same product table; I2V allows 1–15s API but credits use ≥5s tier
+  if (modelValue === "pixverse-v6-t2v" || modelValue === "pixverse-v6-i2v") {
+    const raw = duration
+      ? parseInt(String(duration).replace(/s$/i, ""), 10)
+      : 5;
+    const d = Math.min(15, Math.max(5, Number.isFinite(raw) ? raw : 5));
+    const steps = d - 5;
+    const res = String(resolution || "720p").toLowerCase();
+    const withAudio = generateAudio === true;
+    if (res.includes("360"))
+      return withAudio ? 140 + steps * 28 : 100 + steps * 20;
+    if (res.includes("540"))
+      return withAudio ? 180 + steps * 36 : 140 + steps * 28;
+    if (res.includes("1080"))
+      return withAudio ? 460 + steps * 92 : 360 + steps * 72;
+    return withAudio ? 240 + steps * 48 : 180 + steps * 36;
+  }
+
+  // PixVerse V5 (Replicate) T2V / I2V
+  if (
+    modelValue === "pixverse-v5-t2v" ||
+    modelValue === "pixverse-v5-i2v"
+  ) {
     const isI2V = modelValue.includes("i2v");
     const modelType = isI2V ? "i2v" : "t2v";
 
-    // Map quality/resolution: 360p, 540p, 720p, 1080p
     let qualityKey = "";
     if (resolution?.includes("360")) qualityKey = "360p";
     else if (resolution?.includes("540")) qualityKey = "540p";
     else if (resolution?.includes("720")) qualityKey = "720p";
     else if (resolution?.includes("1080")) qualityKey = "1080p";
-    else qualityKey = "720p"; // Default
+    else qualityKey = "720p";
 
-    // Duration: 5 or 8 seconds
     const durationNum = duration
       ? parseInt(String(duration).replace("s", ""))
       : 5;
@@ -1070,15 +1090,13 @@ export const getCreditsForModel = (
     return is4K ? 240 : 120; // 1K/2K => 120, 4K => 240
   }
 
-  // Handle Google nano banana 2 with resolution
+  // Handle Google nano banana 2 with resolution (Replicate tiers: 0.5K / 1K / 2K / 4K)
   if (modelValue === "google/nano-banana-2") {
-    if (resolution === "4K") {
-      return MODEL_CREDITS_MAPPING["google/nano-banana-2-4k"];
-    } else if (resolution === "2K") {
-      return MODEL_CREDITS_MAPPING["google/nano-banana-2-2k"];
-    } else {
-      return MODEL_CREDITS_MAPPING["google/nano-banana-2-1k"];
-    }
+    const r = String(resolution || "1K").toUpperCase();
+    if (r === "4K") return MODEL_CREDITS_MAPPING["google/nano-banana-2-4k"];
+    if (r === "2K") return MODEL_CREDITS_MAPPING["google/nano-banana-2-2k"];
+    if (r === "0.5K") return MODEL_CREDITS_MAPPING["google/nano-banana-2-0.5k"];
+    return MODEL_CREDITS_MAPPING["google/nano-banana-2-1k"];
   }
 
   // Handle SeedVR2 models

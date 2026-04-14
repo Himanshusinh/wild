@@ -160,7 +160,9 @@ export const getVideoCreditCost = (
     const audioParam =
       frontendModel === "kling-2.6-pro" ||
       frontendModel.startsWith("kling-v3") ||
-      frontendModel.includes("seedance-1.5")
+      frontendModel.includes("seedance-1.5") ||
+      frontendModel === "pixverse-v6-t2v" ||
+      frontendModel === "pixverse-v6-i2v"
         ? generateAudio
         : undefined;
     const cost = getCreditsForModel(
@@ -198,6 +200,12 @@ export const getVideoCreditCost = (
   if (
     frontendModel === "kling-2.6-pro" ||
     frontendModel.startsWith("kling-v3")
+  ) {
+    buildOptions.generateAudio = generateAudio;
+  }
+  if (
+    frontendModel === "pixverse-v6-t2v" ||
+    frontendModel === "pixverse-v6-i2v"
   ) {
     buildOptions.generateAudio = generateAudio;
   }
@@ -402,14 +410,16 @@ export const getImageGenerationCreditCost = (
     return cost * Math.max(1, Math.min(count, 4)); // Max 4 images
   }
 
-  // Handle resolution-based pricing for google/nano-banana-2
+  // Handle resolution-based pricing for google/nano-banana-2 (Replicate: 0.5K, 1K, 2K, 4K)
   if (frontendModel === "google/nano-banana-2") {
     const res = resolution?.toUpperCase() || "1K";
-    let cost = 54; // Default to 1K
-    if (res === "2K") {
-      cost = 81;
+    let cost = 64; // Default 1K
+    if (res === "0.5K") {
+      cost = 48;
+    } else if (res === "2K") {
+      cost = 96;
     } else if (res === "4K") {
-      cost = 121;
+      cost = 128;
     }
     console.log(
       `Google Nano Banana 2 cost: ${cost} credits for resolution: ${res}`,

@@ -14,6 +14,7 @@ import {
 import VideoGenerationGuide from "./VideoGenerationGuide";
 import HistoryControls from "./HistoryControls";
 import { useAppSelector } from "@/store/hooks";
+import { getModelDisplayName } from "@/utils/modelDisplayNames";
 
 const MAX_GENERATING_PLACEHOLDER_AGE_MS = 30 * 60 * 1000;
 
@@ -411,7 +412,9 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                         <div className="flex items-center gap-1.5 justify-center">
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                           <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">
-                            {entry.model || "Generating"}
+                            {entry.model
+                              ? getModelDisplayName(entry.model)
+                              : "Generating"}
                           </span>
                         </div>
                         <p className="text-[10px] text-white/60 line-clamp-2 px-2 italic font-medium">

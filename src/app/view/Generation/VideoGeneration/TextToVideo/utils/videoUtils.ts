@@ -343,8 +343,15 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     // Seedance supports both T2V and I2V
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
-  } else if (model.includes("pixverse") && !model.includes("i2v")) {
-    // PixVerse supports both T2V and I2V
+  } else if (model === "pixverse-v6-t2v") {
+    // Single V6 entry: text when no image, image-to-video when a first frame is provided
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model === "pixverse-v6-i2v") {
+    // Legacy persisted id — same behavior as V6 above
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+  } else if (model === "pixverse-v5-t2v") {
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
   } else if (
@@ -383,7 +390,7 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     (model.includes("wan-2.5") && model.includes("i2v")) ||
     (model.startsWith("kling-") && model.includes("i2v")) ||
     (model.includes("seedance") && model.includes("i2v")) ||
-    (model.includes("pixverse") && model.includes("i2v")) ||
+    model === "pixverse-v5-i2v" ||
     (model.includes("sora2") && model.includes("i2v")) ||
     (model.includes("ltx-2.3-pro") && model.includes("i2v")) ||
     (model.includes("ltx-2.3-fast") && model.includes("i2v"))

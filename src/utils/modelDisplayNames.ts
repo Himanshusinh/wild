@@ -83,6 +83,12 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   "fal-ai/kling-video/v2.6/pro/image-to-video": "Kling 2.6 Pro",
   "wan-2.5-t2v": "WAN 2.5 T2V",
   "wan-2.5-t2v-fast": "WAN 2.5 T2V Fast",
+  "pixverse-v6-t2v": "PixVerse V6",
+  "pixverse-v6-i2v": "PixVerse V6",
+  "pixverse-v5-t2v": "PixVerse V5 T2V",
+  "pixverse-v5-i2v": "PixVerse V5 I2V",
+  "fal-ai/pixverse/v6/text-to-video": "PixVerse V6",
+  "fal-ai/pixverse/v6/image-to-video": "PixVerse V6",
   "MiniMax-Hailuo-2.3": "MiniMax-Hailuo-2.3",
   "MiniMax-Hailuo-2.3-Fast": "MiniMax-Hailuo-2.3 Fast",
   "MiniMax-Hailuo-02": "MiniMax-Hailuo-02",
@@ -208,6 +214,11 @@ export function getModelDisplayName(
     if (lower.includes("remix") || lower.includes("v2v")) return "Sora 2 Remix";
     if (lower.includes("pro")) return "Sora 2 Pro";
     return "Sora 2";
+  }
+
+  // PixVerse V6 (frontend ids, FAL queue ids, or normalized strings where "video" was stripped)
+  if (lower.includes("pixverse") && lower.includes("v6")) {
+    return "PixVerse V6";
   }
 
   // Veo 3.1 models (check before generic Veo3)
