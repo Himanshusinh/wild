@@ -22,6 +22,7 @@ type UploadModalProps = {
   loading?: boolean;
   accept?: string;
   persistLocalDeviceUploads?: boolean;
+  maxFileSizeBytes?: number;
 };
 
 const UploadModal: React.FC<UploadModalProps> = ({
@@ -38,6 +39,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   loading: propLoading,
   accept = 'image/*',
   persistLocalDeviceUploads = true,
+  maxFileSizeBytes,
 }) => {
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
 
@@ -129,10 +131,21 @@ const UploadModal: React.FC<UploadModalProps> = ({
       toast.error(`Unsupported file type: ${names}. Please upload image files only.`);
     }
 
-    if (!validFiles.length) return;
+    const sizeOkFiles = (maxFileSizeBytes
+      ? validFiles.filter((file) => {
+          if (file.size > maxFileSizeBytes) {
+            const mb = Math.round(maxFileSizeBytes / (1024 * 1024));
+            toast.error(`"${file.name}" is too large. Max ${mb}MB per image.`);
+            return false;
+          }
+          return true;
+        })
+      : validFiles);
+
+    if (!sizeOkFiles.length) return;
 
     const urls: string[] = [];
-    for (const file of validFiles) {
+    for (const file of sizeOkFiles) {
       const reader = new FileReader();
       const asDataUrl: string = await new Promise((res) => {
         reader.onload = () => res(reader.result as string);

@@ -11,6 +11,8 @@ interface PromptInputProps {
   placeholder?: string;
   actions?: React.ReactNode;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
+  /** If true, keep a fixed height on mobile and scroll internally. */
+  fixedHeightOnMobile?: boolean;
 }
 
 const PromptInput: React.FC<PromptInputProps> = ({
@@ -23,10 +25,15 @@ const PromptInput: React.FC<PromptInputProps> = ({
   placeholder,
   actions,
   inputRef,
+  fixedHeightOnMobile = false,
 }) => {
   const hasPrompt = prompt.trim().length > 0;
 
+  const isMobile =
+    typeof window !== "undefined" ? window.innerWidth < 768 : false;
+
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
+    if (fixedHeightOnMobile && isMobile) return;
     element.style.height = "auto";
     element.style.height = `${Math.min(element.scrollHeight, 96)}px`;
   };
@@ -39,7 +46,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
 
   return (
     <div className="flex items-start md:gap-3 gap-0 p-0 relative z-10">
-      <div className="flex-1 flex items-start gap-2 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
+      <div className="flex-1 flex items-start gap-0 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
         <textarea
           ref={inputRef}
           placeholder={placeholder}
@@ -53,11 +60,15 @@ const PromptInput: React.FC<PromptInputProps> = ({
           autoComplete="off"
           autoCorrect="on"
           autoCapitalize="on"
-          className={`flex-1 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
+          className={`flex-1 pl-0 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
+            fixedHeightOnMobile
+              ? "h-[60px] max-h-[60px] md:h-auto md:max-h-[90px]"
+              : ""
+          } ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
           rows={1}
           style={{
             minHeight: "56px",
-            maxHeight: "90px",
+            maxHeight: fixedHeightOnMobile && isMobile ? "68px" : "90px",
             lineHeight: "1.2",
             scrollbarWidth: "thin",
             scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
@@ -83,7 +94,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
         />
         {/* Fixed position buttons container */}
         <div className="flex items-center md:gap-0 gap-0 flex-shrink-0 md:p-0 p-0">
-          <div className="flex w-[44px] items-center justify-end gap-1">
+          <div className="flex w-[44px] items-center justify-end gap-0">
             <div
               className={`relative transition-opacity ${hasPrompt ? "opacity-100" : "opacity-0 pointer-events-none"}`}
               aria-hidden={!hasPrompt}
@@ -137,7 +148,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 h-[20px]">{actions}</div>
+          <div className="flex items-center gap-0 h-[20px]">{actions}</div>
         </div>
       </div>
     </div>

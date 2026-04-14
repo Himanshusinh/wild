@@ -399,9 +399,25 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     
                     return (
                       <button key={key} onClick={() => {
-                        const next = new Set(selection);
-                        if (selected) next.delete(videoUrl); else next.add(videoUrl);
-                        setSelection(next);
+                        setSelection(prev => {
+                          const next = new Set(prev);
+                          if (selected) {
+                            next.delete(videoUrl);
+                            return next;
+                          }
+                          // Enforce selection limit (typically 1) without changing UI.
+                          // If user selects a new video beyond the limit, replace selection with the latest.
+                          if (remainingSlots <= 1) {
+                            return new Set([videoUrl]);
+                          }
+                          next.add(videoUrl);
+                          // If we somehow exceed the limit, keep the most recent selections.
+                          const arr = Array.from(next);
+                          if (arr.length > remainingSlots) {
+                            return new Set(arr.slice(arr.length - remainingSlots));
+                          }
+                          return next;
+                        });
                       }} className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         {vsrc ? (
                           <video
