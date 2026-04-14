@@ -60,27 +60,22 @@ export function SettingsPanel({
   const ratioOptions = getAspectRatioMenuForModel(model);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">Count</span>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {IMAGE_COUNTS.map((c) => (
             <Chip key={c} value={c} active={imageCount === c} onClick={() => onCountChange(c)} />
           ))}
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
           Ratio ({model === "google/nano-banana-pro" ? "Pro" : "Nano 2"})
         </span>
-        <p className="text-[10px] leading-snug text-white/20">
-          {model === "google/nano-banana-pro"
-            ? "Pro FAL enum (default in API: 1:1). Pick auto to let the model choose from your prompt."
-            : "Nano Banana 2 FAL enum includes extreme ratios; default in API is auto."}
-        </p>
-        <div className="max-h-36 overflow-y-auto rounded-xl border border-white/[0.06] bg-[#13131a]/50 p-2 [scrollbar-width:thin]">
-          <div className="flex flex-wrap gap-1.5">
+        <div className="max-h-32 overflow-y-auto rounded-xl border border-white/[0.06] bg-[#13131a]/50 p-2 [scrollbar-width:thin]">
+          <div className="flex flex-wrap gap-1">
             {ratioOptions.map((r) => (
               <Chip
                 key={r}
@@ -94,15 +89,11 @@ export function SettingsPanel({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
-          Advanced prompt (optional)
-        </span>
-        <p className="text-[10px] leading-snug text-white/20">
-          Keep these off to reduce added details. Turn on only if you want the larger reference blocks to influence the
-          output.
-        </p>
-        <div className="flex flex-wrap gap-1.5">
+      <details className="rounded-xl border border-white/[0.06] bg-[#13131a]/40 px-3 py-2">
+        <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
+          Advanced prompt
+        </summary>
+        <div className="mt-2 flex flex-wrap gap-1">
           <Chip
             value="benchmark"
             label="Benchmark"
@@ -122,7 +113,10 @@ export function SettingsPanel({
             onClick={() => onIncludeRestyleChange(!includeRestyle)}
           />
         </div>
-      </div>
+        <p className="mt-2 text-[10px] leading-snug text-white/15">
+          Off by default to reduce added details.
+        </p>
+      </details>
     </div>
   );
 }

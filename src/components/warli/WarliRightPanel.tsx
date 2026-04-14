@@ -22,9 +22,9 @@ interface WarliRightPanelProps {
 function EmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
-      <p className="text-sm font-medium text-white/20">Your Warli art will appear here</p>
-      <p className="max-w-[200px] text-xs leading-relaxed text-white/10">
-        Describe a scene or upload a photo, then hit Generate
+      <p className="text-sm font-medium text-white/20">No output yet</p>
+      <p className="max-w-[240px] text-xs leading-relaxed text-white/10">
+        Add a short scene (or upload an image), then Generate.
       </p>
     </div>
   );

@@ -14,7 +14,7 @@ export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps)
   const families: StyleFamily[] = ["A", "B", "C"];
 
   return (
-    <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0E0E12] px-6 py-4">
+    <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0E0E12] px-5 py-3">
       <div className="flex items-center gap-3">
         {/* Warli badge */}
         <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
@@ -23,8 +23,6 @@ export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps)
             Warli
           </span>
         </div>
-
-        <span className="text-sm font-medium text-white/70">Create</span>
 
         {/* Style A / B / C tabs */}
         <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-[#13131a] p-[3px]">

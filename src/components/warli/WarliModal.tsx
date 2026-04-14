@@ -442,14 +442,14 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 p-6 backdrop-blur-xl">
+    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Warli Generator"
-        className={`relative flex h-full w-full max-h-[calc(100vh-48px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_80px_rgba(0,0,0,0.85)] transition-all duration-300 ${
+        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
         }`}
       >
@@ -459,7 +459,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
           onClose={onClose}
         />
 
-        <div className="grid flex-1 overflow-hidden" style={{ gridTemplateColumns: "420px 1fr" }}>
+        <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <WarliLeftPanel
             state={state}
             ratioSummary={ratioSummary}
