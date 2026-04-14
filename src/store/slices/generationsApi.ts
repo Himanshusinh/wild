@@ -216,10 +216,20 @@ export const replicateGenerate = createAsyncThunk(
       console.error('[replicateGenerate] ERROR', e);
       // Extract structured error information
       const errorDetails = extractReplicateErrorDetails(e);
+      const backendMessage =
+        e?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        (typeof e?.response?.data === 'string' ? e.response.data : undefined);
 
       // Return structured error with all details
       const errorPayload: any = {
-        message: errorDetails?.message || e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Replicate generate failed',
+        // Prefer backend-provided message first (e.g. sensitive content E005),
+        // then structured extractor fallback.
+        message:
+          backendMessage ||
+          errorDetails?.message ||
+          e?.message ||
+          'Replicate generate failed',
         detail: errorDetails?.detail,
         status: errorDetails?.status || e?.response?.status,
         retryable: errorDetails?.retryable,

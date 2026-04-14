@@ -139,6 +139,7 @@ const computeSeedance2ReferenceCreditsWithRate = (
   duration?: string | number,
   aspectRatio?: string,
   inputVideoDurationSec: number = 0,
+  hasReferenceVideoInput: boolean = false,
   baseRateUsdPerSecond720p: number = SEEDANCE_2_REFERENCE_USD_PER_SECOND_720P,
   usdPer1kTokens: number = SEEDANCE_2_USD_PER_1K_TOKENS,
 ): number => {
@@ -158,8 +159,10 @@ const computeSeedance2ReferenceCreditsWithRate = (
   const outputPixelRatio = (dims.width * dims.height) / (1280 * 720);
   const baseVideoUsdCost = outputDurationSec * baseRateUsdPerSecond720p * outputPixelRatio;
   const subtotalUsd = baseVideoUsdCost + tokenUsdCost;
+  const shouldApplyReferenceVideoMultiplier =
+    hasReferenceVideoInput || safeInputVideoDurationSec > 0;
   const totalUsd =
-    safeInputVideoDurationSec > 0
+    shouldApplyReferenceVideoMultiplier
       ? subtotalUsd * SEEDANCE_2_FAST_REFERENCE_VIDEO_INPUT_MULTIPLIER
       : subtotalUsd;
 
@@ -171,12 +174,14 @@ export const computeSeedance2ReferenceCredits = (
   duration?: string | number,
   aspectRatio?: string,
   inputVideoDurationSec: number = 0,
+  hasReferenceVideoInput: boolean = false,
 ): number =>
   computeSeedance2ReferenceCreditsWithRate(
     resolution,
     duration,
     aspectRatio,
     inputVideoDurationSec,
+    hasReferenceVideoInput,
     SEEDANCE_2_REFERENCE_USD_PER_SECOND_720P,
     SEEDANCE_2_USD_PER_1K_TOKENS,
   );
@@ -186,12 +191,14 @@ export const computeSeedance2FastReferenceCredits = (
   duration?: string | number,
   aspectRatio?: string,
   inputVideoDurationSec: number = 0,
+  hasReferenceVideoInput: boolean = false,
 ): number =>
   computeSeedance2ReferenceCreditsWithRate(
     resolution,
     duration,
     aspectRatio,
     inputVideoDurationSec,
+    hasReferenceVideoInput,
     SEEDANCE_2_FAST_REFERENCE_USD_PER_SECOND_720P,
     SEEDANCE_2_FAST_USD_PER_1K_TOKENS,
   );
@@ -556,6 +563,7 @@ export const getCreditsForModel = (
   quality?: string,
   aspectRatio?: string,
   inputVideoDurationSec?: number,
+  hasReferenceVideoInput?: boolean,
 ): number | null => {
   if (modelValue === "seedance-2.0-t2v") {
     return computeSeedance2Credits(resolution, duration, aspectRatio);
@@ -573,6 +581,7 @@ export const getCreditsForModel = (
       duration,
       aspectRatio,
       inputVideoDurationSec,
+      Boolean(hasReferenceVideoInput),
     );
   }
   if (modelValue === "seedance-2.0-r2v") {
@@ -581,6 +590,7 @@ export const getCreditsForModel = (
       duration,
       aspectRatio,
       inputVideoDurationSec,
+      Boolean(hasReferenceVideoInput),
     );
   }
 

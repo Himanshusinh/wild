@@ -23,6 +23,40 @@ type ReplicateErrorEnvelope = {
 
 const FRIENDLY_RETRY_MESSAGE =
   "We could not complete this request right now. Please try again in a moment.";
+const GENERIC_REQUEST_FAILURE_PATTERNS = [
+  /^request failed$/i,
+  /^request failed with status code \d+$/i,
+  /^the server is temporarily unavailable/i,
+];
+
+const looksGenericFailureMessage = (message?: string): boolean => {
+  const text = String(message || "").trim();
+  if (!text) return true;
+  return GENERIC_REQUEST_FAILURE_PATTERNS.some((pattern) => pattern.test(text));
+};
+
+const extractDeepBackendMessage = (error: any): string | undefined => {
+  const candidates = [
+    error?.response?.data?.message,
+    error?.response?.data?.detail,
+    error?.data?.message,
+    error?.data?.detail,
+    error?.payload?.message,
+    error?.payload?.detail,
+    error?.detail?.message,
+    error?.detail?.detail,
+    error?.raw?.response?.data?.message,
+    error?.raw?.response?.data?.detail,
+    typeof error?.raw?.response?.data === "string"
+      ? error.raw.response.data
+      : undefined,
+  ];
+  const best = candidates.find((value) => {
+    const text = String(value || "").trim();
+    return text.length > 0 && !looksGenericFailureMessage(text);
+  });
+  return typeof best === "string" ? best : undefined;
+};
 
 const toFriendlyReplicateMessage = (message?: string): string => {
   const raw = String(message || "").trim();
@@ -75,11 +109,20 @@ const REPLICATE_ERROR_MESSAGES: Record<
     }
     return "Too many requests. Please slow down and try again.";
   },
-  500: () =>
+  500: (detail) =>
+    detail.detail ||
+    detail.message ||
+    detail.error ||
     "Replicate service is experiencing issues. Please try again in a few minutes.",
-  502: () =>
+  502: (detail) =>
+    detail.detail ||
+    detail.message ||
+    detail.error ||
     "Replicate service is temporarily unavailable. Please try again in a few minutes.",
-  503: () =>
+  503: (detail) =>
+    detail.detail ||
+    detail.message ||
+    detail.error ||
     "Replicate service is temporarily unavailable. Please try again in a few minutes.",
   504: () =>
     "Request timed out. The generation took too long. Please try again with a simpler prompt.",
@@ -89,6 +132,53 @@ const extractReplicateEnvelope = (
   error: any,
 ): ReplicateErrorEnvelope | null => {
   if (!error) return null;
+
+  // Handle normalized errors from Redux rejectWithValue payloads first.
+  // These often look like: { message, detail, status, retryable, raw }.
+  const normalizedRawResponseData = error?.raw?.response?.data;
+  const normalizedMessage =
+    error?.message ||
+    error?.detail?.message ||
+    error?.detail?.detail ||
+    (typeof normalizedRawResponseData === "string"
+      ? normalizedRawResponseData
+      : normalizedRawResponseData?.message || normalizedRawResponseData?.detail);
+  if (normalizedMessage || error?.status || error?.retryable != null) {
+    const deepBackendMessage = extractDeepBackendMessage(error);
+    const resolvedMessage =
+      (looksGenericFailureMessage(normalizedMessage)
+        ? deepBackendMessage
+        : normalizedMessage) ||
+      normalizedMessage ||
+      deepBackendMessage ||
+      "Replicate request failed";
+    return {
+      message: toFriendlyReplicateMessage(resolvedMessage),
+      detail:
+        typeof error?.detail === "object"
+          ? {
+              detail: error.detail?.detail,
+              message: error.detail?.message,
+              error: error.detail?.error,
+              status: error?.status || error.detail?.status,
+              retryable:
+                typeof error?.retryable === "boolean"
+                  ? error.retryable
+                  : error.detail?.retryable,
+            }
+          : undefined,
+      status: error?.status,
+      retryable:
+        typeof error?.retryable === "boolean" ? error.retryable : undefined,
+      toast: {
+        type: "error",
+        title: "Replicate Generation Failed",
+        message: toFriendlyReplicateMessage(resolvedMessage),
+        retryable:
+          typeof error?.retryable === "boolean" ? error.retryable : undefined,
+      },
+    };
+  }
 
   // Try to extract from response.data (axios format)
   const responseData = error?.response?.data;
@@ -108,12 +198,20 @@ const extractReplicateEnvelope = (
           detail?.message ||
           detail?.error ||
           "Replicate request failed";
+    const deepBackendMessage = extractDeepBackendMessage(error);
+    const resolvedErrorMessage =
+      (looksGenericFailureMessage(errorMessage)
+        ? deepBackendMessage
+        : errorMessage) ||
+      errorMessage ||
+      deepBackendMessage ||
+      "Replicate request failed";
 
     // Determine if error is retryable based on status code
     const retryable = status ? status >= 500 || status === 429 : false;
 
     // Get user-friendly message based on status code
-    let friendlyMessage = errorMessage;
+    let friendlyMessage = resolvedErrorMessage;
     if (status && REPLICATE_ERROR_MESSAGES[status]) {
       friendlyMessage = REPLICATE_ERROR_MESSAGES[status]({
         detail: typeof detail === "string" ? detail : undefined,
