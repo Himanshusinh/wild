@@ -9411,7 +9411,7 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto overflow-x-hidden overscroll-x-none touch-pan-y md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
+      <div className="fixed left-1/2 z-[50] h-auto max-md:py-1 md:max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto overflow-x-hidden overscroll-x-none touch-pan-y md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible md:py-0">
         {/* Mobile: show uploaded previews OUTSIDE the input box (like Image 2). */}
         {(() => {
           const displayImages =
@@ -9616,7 +9616,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
+          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl px-1 pt-1 md:p-3 md:pb-3 pb-0 max-md:space-y-3 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
             isInputBoxHovered
               ? "bg-black/40 ring-white/30 shadow-2xl md:scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -9999,10 +9999,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
             {/* Mobile: keep controls anchored and prevent sideways swipe. */}
-            <div className="md:hidden sticky bottom-0 z-[25] px-0 pb-0.5 pt-1 bg-transparent border-white/10 rounded-b-lg overscroll-x-none overscroll-y-none touch-pan-y">
+            <div className="md:hidden sticky bottom-0 z-[25] px-0 pb-1 pt-2 bg-transparent border-white/10 rounded-b-lg overscroll-x-none overscroll-y-none touch-pan-y">
               {/* Mobile: model + family variant + generate */}
               <div className="relative z-[21] flex w-full min-w-0 shrink-0 items-center justify-between gap-1 px-1 py-0">
-                <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar shrink -mb-1">
+                <div className="flex min-h-[42px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar shrink -mb-4 ">
                   <div className="shrink-0 flex items-center">
                     <VideoModelsDropdown
                       selectedModel={selectedModel}
@@ -10039,7 +10039,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 </div>
 
                 {/* Mobile: generate button */}
-                <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 pb-2">
+                <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 pb-0 -mb-1.5">
                   <div className="text-white/80 text-[10px] leading-none mb-0">
                     Credits:{" "}
                     <span className="font-semibold">{liveCreditCost}</span>
@@ -10082,7 +10082,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
 
               {/* Mobile: parameters + audio — single row (scroll within row if needed). */}
-              <div className="relative z-[20] flex w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar pb-2">
+              <div className="relative z-[20] flex w-full min-h-[46px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar pb-0">
                 <div className="flex w-max min-w-max flex-nowrap items-center gap-2 px-1 -mb-2.5">
                   <div className="flex flex-nowrap items-center gap-2">
                     {renderMobileParameterControls()}

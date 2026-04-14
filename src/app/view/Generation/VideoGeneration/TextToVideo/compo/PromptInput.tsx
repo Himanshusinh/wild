@@ -46,7 +46,7 @@ const PromptInput: React.FC<PromptInputProps> = ({
 
   return (
     <div className="flex items-start md:gap-3 gap-0 p-0 relative z-10">
-      <div className="flex-1 flex items-start gap-2 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
+      <div className="flex-1 flex items-start gap-0 bg-transparent md:rounded-lg rounded-md pr-0 md:p-0 p-0">
         <textarea
           ref={inputRef}
           placeholder={placeholder}
@@ -61,12 +61,14 @@ const PromptInput: React.FC<PromptInputProps> = ({
           autoCorrect="on"
           autoCapitalize="on"
           className={`flex-1 pl-0 bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed resize-none overflow-y-auto transition-all duration-200 ${
-            fixedHeightOnMobile ? "h-[56px] max-h-[56px] md:h-auto md:max-h-[90px]" : ""
+            fixedHeightOnMobile
+              ? "h-[60px] max-h-[60px] md:h-auto md:max-h-[90px]"
+              : ""
           } ${prompt ? "text-white" : "text-white/70"} ${isEnhancing ? "animate-text-shine" : ""}`}
           rows={1}
           style={{
             minHeight: "56px",
-            maxHeight: fixedHeightOnMobile && isMobile ? "56px" : "90px",
+            maxHeight: fixedHeightOnMobile && isMobile ? "68px" : "90px",
             lineHeight: "1.2",
             scrollbarWidth: "thin",
             scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
