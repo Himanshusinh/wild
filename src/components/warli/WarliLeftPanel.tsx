@@ -4,24 +4,27 @@ import React from "react";
 import { ModeToggle } from "./ModeToggle";
 import { SceneInput } from "./SceneInput";
 import { UploadZone } from "./UploadZone";
-import { VariationSelector } from "./VariationSelector";
 import { ModelSelector } from "./ModelSelector";
 import { SettingsPanel } from "./SettingsPanel";
 import { SelectionSummary } from "./SelectionSummary";
 import { GenerateButton } from "./GenerateButton";
-import { WarliState, InputMode, Variation, ModelId, ImageCount, AspectRatio } from "./types";
+import { WarliState, InputMode, ModelId, ImageCount, AspectRatio } from "./types";
 
 interface WarliLeftPanelProps {
   state: WarliState;
+  ratioSummary: string;
   onModeChange: (v: InputMode) => void;
   onSceneTextChange: (v: string) => void;
   onUpload: (v: string) => void;
   onImageNoteChange: (v: string) => void;
-  onVariationChange: (v: Variation) => void;
   onModelChange: (v: ModelId) => void;
   onCountChange: (v: ImageCount) => void;
   onRatioChange: (v: AspectRatio) => void;
+  onIncludeBenchmarkChange: (v: boolean) => void;
+  onIncludeVariableChange: (v: boolean) => void;
+  onIncludeRestyleChange: (v: boolean) => void;
   onGenerate: () => void;
+  onOpenStudio: () => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -34,36 +37,35 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function WarliLeftPanel({
   state,
+  ratioSummary,
   onModeChange,
   onSceneTextChange,
   onUpload,
   onImageNoteChange,
-  onVariationChange,
   onModelChange,
   onCountChange,
   onRatioChange,
+  onIncludeBenchmarkChange,
+  onIncludeVariableChange,
+  onIncludeRestyleChange,
   onGenerate,
+  onOpenStudio,
 }: WarliLeftPanelProps) {
   const loading = state.panelState === "loading";
 
   return (
     <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
-      {/* Scrollable area */}
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
-
-        {/* Input mode */}
         <div className="flex flex-col gap-2">
           <SectionLabel>Input</SectionLabel>
           <ModeToggle mode={state.inputMode} onChange={onModeChange} />
         </div>
 
-        {/* Scene / upload */}
         {state.inputMode === "text" ? (
           <SceneInput value={state.sceneText} onChange={onSceneTextChange} />
         ) : (
           <div className="flex flex-col gap-3">
             <UploadZone uploadedImage={state.uploadedImage} onUpload={onUpload} />
-            {/* Additional context — always visible in image mode */}
             <textarea
               value={state.imageNote}
               onChange={(e) => onImageNoteChange(e.target.value)}
@@ -77,36 +79,42 @@ export function WarliLeftPanel({
           </div>
         )}
 
-        {/* Variation */}
-        <div className="flex flex-col gap-2">
-          <SectionLabel>Variation</SectionLabel>
-          <VariationSelector value={state.variation} onChange={onVariationChange} />
-        </div>
-
-        {/* Model */}
         <div className="flex flex-col gap-2">
           <SectionLabel>Model</SectionLabel>
           <ModelSelector value={state.model} onChange={onModelChange} />
         </div>
 
-        {/* Settings */}
         <SettingsPanel
+          model={state.model}
           imageCount={state.imageCount}
           ratio={state.ratio}
+          includeBenchmark={state.includeBenchmark}
+          includeVariable={state.includeVariable}
+          includeRestyle={state.includeRestyle}
           onCountChange={onCountChange}
           onRatioChange={onRatioChange}
+          onIncludeBenchmarkChange={onIncludeBenchmarkChange}
+          onIncludeVariableChange={onIncludeVariableChange}
+          onIncludeRestyleChange={onIncludeRestyleChange}
         />
       </div>
 
-      {/* Sticky footer */}
       <SelectionSummary
         style={state.style}
-        variation={state.variation}
         model={state.model}
         imageCount={state.imageCount}
-        ratio={state.ratio}
+        ratioSummary={ratioSummary}
       />
       <GenerateButton imageCount={state.imageCount} loading={loading} onClick={onGenerate} />
+      <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 pb-4">
+        <button
+          type="button"
+          onClick={onOpenStudio}
+          className="w-full rounded-lg border border-white/10 bg-transparent py-2 text-[11px] font-medium text-white/40 transition hover:border-white/20 hover:text-white/70"
+        >
+          Continue in Text-to-Image
+        </button>
+      </div>
     </aside>
   );
 }
