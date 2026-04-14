@@ -28,6 +28,8 @@ import {
   findCatalogSkuByCode,
   type SubscriptionCatalog,
 } from "@/lib/subscriptionCatalog";
+import { getErrorMessage } from "@/lib/errorMessage";
+import BillingMessageDialog from "./components/BillingMessageDialog";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -61,6 +63,13 @@ export default function BillingPage() {
   /** Shown before Razorpay when UPI plan change needs a new mandate */
   const [mandateNotice, setMandateNotice] = useState<{
     onContinue: () => void;
+  } | null>(null);
+  const [billingMessage, setBillingMessage] = useState<{
+    title: string;
+    body: string;
+    variant?: "error" | "info";
+    onContinue?: () => void;
+    primaryLabel?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -182,30 +191,50 @@ export default function BillingPage() {
           payload.razorpaySubscriptionId &&
           payload.keyId
         ) {
-          // Optional: show a simple yearly-upgrade breakdown if backend provided proration.
-          try {
-            const p = (payload as any)?.proration;
-            if (
-              p &&
-              typeof p.remainingValuePaise === "number" &&
-              typeof p.newCostPaise === "number" &&
-              typeof p.payablePaise === "number"
-            ) {
-              const r = (p.remainingValuePaise / 100).toFixed(2);
-              const n = (p.newCostPaise / 100).toFixed(2);
-              const z = (p.payablePaise / 100).toFixed(2);
-              alert(
-                `Yearly upgrade breakdown:\n\nRemaining value: ₹${r}\nNew plan cost (remaining period): ₹${n}\nYou pay now: ₹${z}`,
-              );
-            }
-          } catch {}
           const openPlanChangeCheckout = async () => {
             if (payload.upiNotSupportedForPlan) {
               const cap =
                 (payload.maxUpiRecurringPaise ?? 1_500_000) / 100;
-              alert(
-                `This plan is above the ₹${cap.toLocaleString("en-IN")} monthly limit for UPI AutoPay. In the payment window, choose Card or bank mandate (eMandate).`,
-              );
+              setBillingMessage({
+                title: "UPI AutoPay limit",
+                body:
+                  `This plan’s charge (incl. GST) is above the ₹${cap.toLocaleString("en-IN")} per-cycle limit for UPI AutoPay (NPCI). Typical for Agency-tier and similar. In the payment window, choose Card or bank e-mandate.`,
+                variant: "info",
+                onContinue: async () => {
+                  await ensureRazorpayScriptLoaded();
+                  openRazorpaySubscriptionCheckout({
+                    keyId: payload.keyId!,
+                    subscriptionId: payload.razorpaySubscriptionId!,
+                    planName: selectedPlan.name,
+                    prefill: {
+                      name: billingDetails?.name || userName,
+                      email: billingDetails?.email || userEmail,
+                      contact: billingDetails?.phone,
+                    },
+                    onSuccess: () => {
+                      setShowCheckout(false);
+                      setShowCelebration(true);
+                      dispatch(fetchCurrentSubscription());
+                      dispatch(fetchUserCredits());
+                      window.history.replaceState(
+                        {},
+                        document.title,
+                        window.location.pathname,
+                      );
+                    },
+                    onFailure: (msg) => {
+                      setBillingMessage({
+                        title: "Payment failed",
+                        body: msg,
+                        variant: "error",
+                      });
+                      setShowCheckout(false);
+                    },
+                    onDismiss: () => setShowCheckout(false),
+                  });
+                },
+              });
+              return;
             }
             await ensureRazorpayScriptLoaded();
             openRazorpaySubscriptionCheckout({
@@ -229,19 +258,46 @@ export default function BillingPage() {
                 );
               },
               onFailure: (msg) => {
-                alert(msg);
+                setBillingMessage({
+                  title: "Payment failed",
+                  body: msg,
+                  variant: "error",
+                });
                 setShowCheckout(false);
               },
               onDismiss: () => setShowCheckout(false),
             });
           };
 
-          setMandateNotice({
-            onContinue: () => {
-              setMandateNotice(null);
-              void openPlanChangeCheckout();
-            },
-          });
+          const p = (payload as any)?.proration;
+          const hasProration =
+            p &&
+            typeof p.remainingValuePaise === "number" &&
+            typeof p.newCostPaise === "number" &&
+            typeof p.payablePaise === "number";
+
+          const showMandateThenCheckout = () => {
+            setMandateNotice({
+              onContinue: () => {
+                setMandateNotice(null);
+                void openPlanChangeCheckout();
+              },
+            });
+          };
+
+          if (hasProration) {
+            const r = (p.remainingValuePaise / 100).toFixed(2);
+            const n = (p.newCostPaise / 100).toFixed(2);
+            const z = (p.payablePaise / 100).toFixed(2);
+            setBillingMessage({
+              title: "Yearly upgrade breakdown",
+              body: `Remaining value: ₹${r}\nNew plan cost (remaining period): ₹${n}\nYou pay now: ₹${z}`,
+              variant: "info",
+              onContinue: showMandateThenCheckout,
+            });
+          } else {
+            showMandateThenCheckout();
+          }
           return;
         }
 
@@ -288,7 +344,12 @@ export default function BillingPage() {
 
       if (!subscriptionId || !keyId) {
         console.error("❌ Missing subscription ID or key ID in response!");
-        alert("Unable to initiate payment. Please try again or contact support.");
+        setBillingMessage({
+          title: "Couldn’t start payment",
+          body:
+            "Unable to initiate payment. Please try again or contact support.",
+          variant: "error",
+        });
         setShowCheckout(false);
         setSelectedPlan(null);
         return;
@@ -300,41 +361,68 @@ export default function BillingPage() {
             maxUpiRecurringPaise?: number;
           }
         | undefined;
+
+      const openNewSubscriptionCheckout = async () => {
+        await ensureRazorpayScriptLoaded();
+        console.log("🚀 Opening Razorpay checkout modal");
+        openRazorpaySubscriptionCheckout({
+          keyId,
+          subscriptionId,
+          planName: selectedPlan?.name || "Plan",
+          prefill: {
+            name: billingDetails?.name || userName,
+            email: billingDetails?.email || userEmail,
+            contact: billingDetails?.phone,
+          },
+          onSuccess: () => {
+            setShowCheckout(false);
+            setShowCelebration(true);
+            dispatch(fetchCurrentSubscription());
+            dispatch(fetchUserCredits());
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname,
+            );
+          },
+          onFailure: (msg) => {
+            setBillingMessage({
+              title: "Payment failed",
+              body: msg,
+              variant: "error",
+            });
+            setShowCheckout(false);
+          },
+          onDismiss: () => setShowCheckout(false),
+        });
+      };
+
       if (d?.upiNotSupportedForPlan) {
         const cap = (d.maxUpiRecurringPaise ?? 1_500_000) / 100;
-        alert(
-          `This plan is above the ₹${cap.toLocaleString("en-IN")} monthly limit for UPI AutoPay. In the payment window, choose Card or bank mandate (eMandate).`,
-        );
+        setBillingMessage({
+          title: "UPI AutoPay limit",
+          body:
+            `This plan’s charge (incl. GST) is above the ₹${cap.toLocaleString("en-IN")} per-cycle limit for UPI AutoPay (NPCI). Typical for Agency-tier and similar. In the payment window, choose Card or bank e-mandate.`,
+          variant: "info",
+          onContinue: () => {
+            void openNewSubscriptionCheckout();
+          },
+        });
+        return;
       }
 
-      await ensureRazorpayScriptLoaded();
-      console.log("🚀 Opening Razorpay checkout modal");
-      openRazorpaySubscriptionCheckout({
-        keyId,
-        subscriptionId,
-        planName: selectedPlan?.name || "Plan",
-        prefill: {
-          name: billingDetails?.name || userName,
-          email: billingDetails?.email || userEmail,
-          contact: billingDetails?.phone,
-        },
-        onSuccess: () => {
-          setShowCheckout(false);
-          setShowCelebration(true);
-          dispatch(fetchCurrentSubscription());
-          dispatch(fetchUserCredits());
-          window.history.replaceState({}, document.title, window.location.pathname);
-        },
-        onFailure: (msg) => {
-          alert(`Payment failed: ${msg}`);
-          setShowCheckout(false);
-        },
-        onDismiss: () => setShowCheckout(false),
-      });
+      await openNewSubscriptionCheckout();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Checkout error:", error);
-      alert(`Error: ${error.message || "Failed to create subscription"}`);
+      setBillingMessage({
+        title: "Couldn’t complete checkout",
+        body: getErrorMessage(
+          error,
+          "Failed to create or change your subscription.",
+        ),
+        variant: "error",
+      });
       setShowCheckout(false);
     }
   };
@@ -346,9 +434,19 @@ export default function BillingPage() {
 
     try {
       await dispatch(cancelSubscription({ immediate: false })).unwrap();
-      alert("Subscription cancelled. It will remain active until the end of the current billing period.");
-    } catch (error: any) {
-      alert(`Error: ${error.message || "Failed to cancel subscription"}`);
+      setFlashNotice({
+        kind: "success",
+        title: "Subscription cancelled",
+        detail:
+          "It will remain active until the end of the current billing period.",
+      });
+      setTimeout(() => setFlashNotice(null), 6000);
+    } catch (error: unknown) {
+      setBillingMessage({
+        title: "Couldn’t cancel subscription",
+        body: getErrorMessage(error, "Failed to cancel subscription."),
+        variant: "error",
+      });
     }
   };
 
@@ -384,6 +482,15 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8">
+      <BillingMessageDialog
+        open={billingMessage != null}
+        title={billingMessage?.title ?? ""}
+        body={billingMessage?.body ?? ""}
+        variant={billingMessage?.variant}
+        primaryLabel={billingMessage?.primaryLabel}
+        onContinue={billingMessage?.onContinue}
+        onClose={() => setBillingMessage(null)}
+      />
       {mandateNotice && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4"
