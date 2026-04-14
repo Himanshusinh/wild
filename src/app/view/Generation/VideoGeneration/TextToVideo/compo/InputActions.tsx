@@ -74,7 +74,7 @@ const InputActions: React.FC<InputActionsProps> = ({
 
   return (
     <>
-      <div className="flex items-center gap-1 h-[40px]">
+      <div className="flex items-center gap-0 h-[40px]">
         {/* Camera Movements */}
         {((generationMode === "text_to_video" &&
           selectedModel === "T2V-01-Director") ||
@@ -203,7 +203,7 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel !== "S2V-01" && (
             <div className="relative">
               <button
-                className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+                className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType("image");
                   setUploadModalTarget("first_frame");
@@ -232,7 +232,7 @@ const InputActions: React.FC<InputActionsProps> = ({
             currentModelCapabilities.supportsImageToVideo) && (
             <div className="relative">
               <button
-                className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+                className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType("image");
                   setUploadModalTarget("first_frame");
@@ -286,7 +286,7 @@ const InputActions: React.FC<InputActionsProps> = ({
         {supportsLastFrameUpload && (
           <div className="relative">
             <button
-              className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+              className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
               onClick={() => {
                 setUploadModalType("image");
                 setUploadModalTarget("last_frame");
@@ -311,7 +311,7 @@ const InputActions: React.FC<InputActionsProps> = ({
           isSeedance2ReferenceModel) && (
           <div className="relative">
             <button
-              className="p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+              className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
               onClick={() => {
                 setUploadModalType("video");
                 setIsUploadModalOpen(true);

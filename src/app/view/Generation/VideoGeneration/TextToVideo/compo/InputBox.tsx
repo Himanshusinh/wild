@@ -510,6 +510,11 @@ const InputBox = (props: InputBoxProps = {}) => {
     "",
     "text-to-video",
   );
+  // Seedance 2.0 Reference supports multiple reference videos (up to 3).
+  // Keep `uploadedVideo` as the first video for backward-compatible UI preview logic.
+  const [uploadedVideos, setUploadedVideos] = usePersistedGenerationState<
+    string[]
+  >("uploadedVideos", [], "text-to-video");
   const [uploadedVideoDurationSec, setUploadedVideoDurationSec] =
     usePersistedGenerationState<number>(
       "uploadedVideoDurationSec",
@@ -548,6 +553,15 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [error, setError] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
   const isNormalizingLocalImagesRef = useRef(false);
+
+  // Backward-compat: if we have a single uploadedVideo but no uploadedVideos array yet,
+  // treat it as the first (and only) element.
+  useEffect(() => {
+    if (uploadedVideos.length === 0 && uploadedVideo) {
+      setUploadedVideos([uploadedVideo]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadedVideo]);
 
   const isLocalImageUrl = useCallback((value?: string | null): boolean => {
     const url = String(value || "").trim();
@@ -2121,10 +2135,13 @@ const InputBox = (props: InputBoxProps = {}) => {
         container.scrollWidth > container.clientWidth + 1;
       if (!canScrollHorizontally) return;
 
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-
+      // Prevent the parent container from vertically scrolling (which makes
+      // the toolbar feel like it "slides up/down") and map wheel intent to horizontal scroll.
+      event.stopPropagation();
       event.preventDefault();
-      container.scrollLeft += event.deltaY;
+      const primaryDelta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      container.scrollLeft += primaryDelta;
     },
     [],
   );
@@ -3504,6 +3521,25 @@ const InputBox = (props: InputBoxProps = {}) => {
     setPreview({ entry, video });
   }, []);
 
+  const getSeedanceReferenceLimits = useCallback(() => {
+    const isSeedanceRef = isSeedance2ReferenceModel(selectedModel);
+    return {
+      maxTotalFiles: isSeedanceRef ? 12 : Infinity,
+      maxReferenceImages: isSeedanceRef ? 9 : 4,
+      maxImageBytes: isSeedanceRef ? 30 * 1024 * 1024 : Infinity,
+    };
+  }, [selectedModel]);
+
+  const getCurrentModalityFileCount = useCallback(() => {
+    // Total files across modalities for Seedance reference models:
+    // - reference images: references[]
+    // - reference videos: uploadedVideos[]
+    // - reference audio: uploadedAudio (single)
+    const videoCount = uploadedVideos?.length || (uploadedVideo ? 1 : 0);
+    const audioCount = uploadedAudio ? 1 : 0;
+    return (references?.length || 0) + videoCount + audioCount;
+  }, [references, uploadedAudio, uploadedVideo, uploadedVideos]);
+
   // Handle references upload
   const handleReferencesUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -3511,33 +3547,50 @@ const InputBox = (props: InputBoxProps = {}) => {
     const files = event.target.files;
     if (!files) return;
 
-    const newReferences: string[] = [];
-    const maxReferences = 4;
+    const { maxTotalFiles, maxReferenceImages, maxImageBytes } =
+      getSeedanceReferenceLimits();
+    const currentTotal = getCurrentModalityFileCount();
+    const remainingTotalSlots = Math.max(0, maxTotalFiles - currentTotal);
+    const remainingImageSlots = Math.max(0, maxReferenceImages - references.length);
+    const slotsLeft = Math.min(remainingTotalSlots, remainingImageSlots);
+
+    if (slotsLeft <= 0) {
+      if (isSeedance2ReferenceModel(selectedModel)) {
+        toast.error("Reference limit reached (max 9 images, max 12 total files).");
+      }
+      event.target.value = "";
+      return;
+    }
 
     Array.from(files).forEach((file) => {
-      if (newReferences.length >= maxReferences) return;
-
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          if (result) {
-            setReferences((prev) => {
-              const updated = [...prev, result];
-              if (updated.length > maxReferences) {
-                return updated.slice(0, maxReferences);
-              }
-              console.log(
-                "📸 References updated:",
-                updated.length,
-                "for S2V-01",
-              );
-              return updated;
-            });
-          }
-        };
-        reader.readAsDataURL(file);
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file");
+        return;
       }
+
+      if (isSeedance2ReferenceModel(selectedModel) && file.size > maxImageBytes) {
+        toast.error(`"${file.name}" is too large. Max 30MB per image.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (!result) return;
+        setReferences((prev) => {
+          const next = [...prev, result];
+          // Enforce max counts deterministically.
+          const limitedByImages = next.slice(0, maxReferenceImages);
+          const totalBefore = (prev?.length || 0) + (uploadedVideo ? 1 : 0) + (uploadedAudio ? 1 : 0);
+          const remaining = Math.max(0, maxTotalFiles - totalBefore);
+          const limitedByTotal = limitedByImages.slice(0, remaining);
+          if (limitedByTotal.length < next.length && isSeedance2ReferenceModel(selectedModel)) {
+            toast.error("Some files were not added (max 9 images, max 12 total files).");
+          }
+          return limitedByTotal;
+        });
+      };
+      reader.readAsDataURL(file);
     });
 
     // Reset input
@@ -3573,18 +3626,38 @@ const InputBox = (props: InputBoxProps = {}) => {
         }
       }
     } else if (uploadModalType === "reference") {
-      setReferences((prev) => [...prev, ...urls]);
+      const { maxTotalFiles, maxReferenceImages } = getSeedanceReferenceLimits();
+      const totalBefore = getCurrentModalityFileCount();
+      const remainingTotalSlots = Math.max(0, maxTotalFiles - totalBefore);
+      const remainingImageSlots = Math.max(0, maxReferenceImages - references.length);
+      const canAdd = Math.min(remainingTotalSlots, remainingImageSlots);
+
+      if (isSeedance2ReferenceModel(selectedModel) && canAdd <= 0) {
+        toast.error("Reference limit reached (max 9 images, max 12 total files).");
+      } else {
+        const toAdd = urls.slice(0, canAdd);
+        const dropped = urls.length - toAdd.length;
+        if (dropped > 0 && isSeedance2ReferenceModel(selectedModel)) {
+          toast.error("Some files were not added (max 9 images, max 12 total files).");
+        }
+        if (toAdd.length) {
+          setReferences((prev) => [...prev, ...toAdd].slice(0, maxReferenceImages));
+        }
+      }
     } else if (uploadModalType === "video") {
-      const url = urls[0] || "";
-      setUploadedVideo(url);
+      const maxVideos = isSeedance2ReferenceModel(selectedModel) ? 3 : 1;
+      const nextVideos = (urls || []).slice(0, maxVideos);
+      const first = nextVideos[0] || "";
+      setUploadedVideos(nextVideos);
+      setUploadedVideo(first);
       setUploadedVideoDurationSec(0);
       if (filesByUrl && Object.keys(filesByUrl).length) {
         setLocalVideoFilesByUrl((prev) => ({ ...prev, ...filesByUrl }));
       }
-      if (url) {
+      if (first) {
         (async () => {
           try {
-            const d = await loadVideoDurationSeconds(url);
+            const d = await loadVideoDurationSeconds(first);
             setUploadedVideoDurationSec(d);
           } catch (e) {
             console.warn("[VideoInputBox] Failed to read video duration", e);
@@ -3593,7 +3666,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         })();
       }
       // For Sora 2 Remix, use the entry ID from the modal if provided
-      if (urls[0] && selectedModel.includes("sora2-v2v")) {
+      if (first && selectedModel.includes("sora2-v2v")) {
         if (entries && entries.length > 0 && entries[0]?.id) {
           // Use the entry ID directly from the modal
           setSourceHistoryEntryId(entries[0].id);
@@ -3603,9 +3676,9 @@ const InputBox = (props: InputBoxProps = {}) => {
             const entryVideos = entry?.images || [];
             return entryVideos.some(
               (img: any) =>
-                img?.url === urls[0] ||
-                img?.firebaseUrl === urls[0] ||
-                img?.originalUrl === urls[0],
+                img?.url === first ||
+                img?.firebaseUrl === first ||
+                img?.originalUrl === first,
             );
           });
           if (matchingEntry?.id) {
@@ -3708,14 +3781,17 @@ const InputBox = (props: InputBoxProps = {}) => {
       "audio/x-mpeg-3",
     ]);
 
-    const maxBytes = 30 * 1024 * 1024; // 30MB max
+    const maxBytes = isSeedance2ReferenceModel(selectedModel)
+      ? 15 * 1024 * 1024 // Seedance schema: 15MB per file
+      : 30 * 1024 * 1024; // 30MB max (legacy WAN)
     if (!allowedMimes.has(file.type) && !file.name.match(/\.(wav|mp3)$/i)) {
       toast.error("Unsupported audio type. Use WAV or MP3 format");
       event.target.value = "";
       return;
     }
     if (file.size > maxBytes) {
-      toast.error("Audio file too large. Please upload an audio file ≤ 30MB");
+      const mb = Math.floor(maxBytes / (1024 * 1024));
+      toast.error(`Audio file too large. Please upload an audio file ≤ ${mb}MB`);
       event.target.value = "";
       return;
     }
@@ -3725,6 +3801,14 @@ const InputBox = (props: InputBoxProps = {}) => {
       reader.onload = (e) => {
         const result = e.target?.result as string;
         if (result) {
+          if (isSeedance2ReferenceModel(selectedModel)) {
+            const nextTotal = getCurrentModalityFileCount() + 1; // adding audio
+            if (nextTotal > 12) {
+              toast.error("Too many reference files (max 12 total). Remove something and try again.");
+              event.target.value = "";
+              return;
+            }
+          }
           setUploadedAudio(result);
           toast.success("Audio file uploaded successfully");
         }
@@ -4676,30 +4760,51 @@ const InputBox = (props: InputBoxProps = {}) => {
           apiEndpoint = "/api/replicate/kling-t2v/submit";
         } else if (isSeedance2ReferenceModel(selectedModel)) {
           const apiPrompt = getApiPrompt(prompt);
-          if (references.length === 0 && !uploadedVideo) {
+          const seedanceRefVideos =
+            uploadedVideos && uploadedVideos.length > 0
+              ? uploadedVideos
+              : uploadedVideo
+                ? [uploadedVideo]
+                : [];
+          if (references.length === 0 && seedanceRefVideos.length === 0) {
             throw new Error(
               `${isSeedance2FastReferenceModel(selectedModel) ? "Seedance 2.0 Fast Reference" : "Seedance 2.0 Reference"} requires at least one reference image or video.`,
             );
           }
 
-          // Handle local video upload if needed
-          let videoForRequest = uploadedVideo;
-          if (videoForRequest?.startsWith("blob:")) {
-            const cached = uploadedUrlByLocalUrl[videoForRequest];
-            if (cached) {
-              videoForRequest = cached;
-            } else {
-              const file = localVideoFilesByUrl[videoForRequest];
-              if (!file) {
-                throw new Error("Selected local video is not available. Please re-select the video.");
+          // Handle local video uploads (blob:) if needed (up to 3).
+          let videosForRequest = seedanceRefVideos.slice(0, 3);
+          const resolvedVideos: string[] = [];
+          for (const v of videosForRequest) {
+            let nextV = v;
+            if (nextV?.startsWith("blob:")) {
+              const cached = uploadedUrlByLocalUrl[nextV];
+              if (cached) {
+                nextV = cached;
+              } else {
+                const file = localVideoFilesByUrl[nextV];
+                if (!file) {
+                  throw new Error(
+                    "Selected local video is not available. Please re-select the video.",
+                  );
+                }
+                const uploaded = await uploadLocalVideoFile(file);
+                if (!uploaded?.url) throw new Error("Video upload failed");
+                const remoteUrl = uploaded.url;
+                setUploadedUrlByLocalUrl((prev) => ({ ...prev, [nextV]: remoteUrl }));
+                nextV = remoteUrl;
               }
-              const uploaded = await uploadLocalVideoFile(file);
-              if (!uploaded?.url) throw new Error("Video upload failed");
-              const remoteUrl = uploaded.url;
-              setUploadedUrlByLocalUrl(prev => ({ ...prev, [videoForRequest]: remoteUrl }));
-              setUploadedVideo(remoteUrl);
-              videoForRequest = remoteUrl;
             }
+            if (nextV) resolvedVideos.push(nextV);
+          }
+
+          // Persist resolved remote URLs back into state (keeps previews stable).
+          if (resolvedVideos.length) {
+            setUploadedVideos(resolvedVideos.slice(0, 3));
+            setUploadedVideo(resolvedVideos[0] || "");
+            videosForRequest = resolvedVideos.slice(0, 3);
+          } else {
+            videosForRequest = [];
           }
 
           requestBody = {
@@ -4712,7 +4817,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             generate_audio: generateAudio,
             generationType: "text-to-video",
             isPublic,
-            ...(videoForRequest ? { video_urls: [videoForRequest] } : {}),
+            ...(videosForRequest.length ? { video_urls: videosForRequest } : {}),
             ...(uploadedAudio ? { audio_urls: [uploadedAudio] } : {}),
           };
           generationType = "text-to-video";
@@ -9408,10 +9513,238 @@ const InputBox = (props: InputBoxProps = {}) => {
       )}
 
       {/* Main Input Box with a sticky tabs row above it */}
-      <div className="fixed left-1/2 z-[50] h-auto max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible">
+      <div className="fixed left-1/2 z-[50] h-auto max-md:py-1 md:max-h-[min(100dvh-12px,calc(100vh-16px))] w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 max-md:overscroll-y-contain overflow-y-auto overflow-x-hidden overscroll-x-none touch-pan-y md:bottom-6 md:max-h-none md:w-[90%] md:max-w-[900px] md:overflow-visible md:py-0">
+        {/* Mobile: show uploaded previews OUTSIDE the input box (like Image 2). */}
+        {(() => {
+          const displayImages =
+            selectedModel === SEEDANCE_2_MODEL
+              ? uploadedImages.slice(0, 2)
+              : selectedModel.includes("veo3.1") ||
+                  selectedModel === "kling-o1" ||
+                  (selectedModel.includes("seedance") &&
+                    !selectedModel.includes("pro-fast") &&
+                    !selectedModel.includes("i2v"))
+                ? uploadedImages.slice(0, 2)
+                : uploadedImages;
+
+          const extraLastFrame =
+            !!lastFrameImage &&
+            (selectedModel.includes("veo3.1") ||
+              selectedModel === "kling-o1" ||
+              selectedModel.startsWith("ltx-2.3-fast") ||
+              selectedModel.startsWith("ltx-2.3-pro") ||
+              (selectedModel.includes("seedance") &&
+                !selectedModel.includes("pro-fast") &&
+                !selectedModel.includes("i2v")) ||
+              (selectedModel === "MiniMax-Hailuo-02" &&
+                ["768P", "1080P"].includes(selectedResolution) &&
+                currentModelCapabilities.supportsImageToVideo));
+
+          const hasAnything =
+            displayImages.length > 0 ||
+            extraLastFrame ||
+            !!uploadedVideo ||
+            !!uploadedCharacterImage;
+
+          if (!hasAnything) return null;
+
+          return (
+            <div className="md:hidden mb-0">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar px-1 pt-2">
+                {displayImages.map((image, index) => (
+                  <div key={`img-${index}`} className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-lg overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: image,
+                          assetType: "image",
+                          title: `Uploaded Image ${index + 1}`,
+                        });
+                      }}
+                    >
+                      <img
+                        src={image}
+                        alt={`Uploaded ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                    <div className="absolute -top-1 -left-1 w-4 h-4 rounded bg-black/80 ring-1 ring-white/20 text-[10px] leading-none flex items-center justify-center text-white">
+                      {index + 1}
+                    </div>
+                    <button
+                      aria-label="Remove image"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedImages((prev) =>
+                          prev.filter((_, i) => i !== index),
+                        );
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                {extraLastFrame && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: lastFrameImage,
+                          assetType: "image",
+                          title: "Last Frame Image",
+                        });
+                      }}
+                    >
+                      <img
+                        src={lastFrameImage}
+                        alt="Last Frame"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                    <div className="absolute -top-1 -left-1 w-4 h-4 rounded bg-black/80 ring-1 ring-white/20 text-[10px] leading-none flex items-center justify-center text-white">
+                      {displayImages.length + 1}
+                    </div>
+                    <button
+                      aria-label="Remove last frame"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLastFrameImage("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {(() => {
+                  const isSeedanceRef = isSeedance2ReferenceModel(selectedModel);
+                  const videos =
+                    isSeedanceRef && uploadedVideos && uploadedVideos.length > 0
+                      ? uploadedVideos.slice(0, 3)
+                      : uploadedVideo
+                        ? [uploadedVideo]
+                        : [];
+                  if (!videos.length) return null;
+
+                  return videos.map((v, idx) => (
+                    <div key={`${v}-${idx}`} className="relative shrink-0">
+                      <button
+                        type="button"
+                        className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/20 bg-white/5"
+                        onClick={() => {
+                          setAssetViewer({
+                            isOpen: true,
+                            assetUrl: v,
+                            assetType: "video",
+                            title: isSeedanceRef
+                              ? `Reference Video ${idx + 1}`
+                              : "Uploaded Video",
+                          });
+                        }}
+                      >
+                        <video
+                          src={
+                            v.startsWith("blob:") || v.startsWith("data:")
+                              ? v
+                              : toFrontendProxyMediaUrl(v)
+                          }
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                      </button>
+                      {isSeedanceRef && (
+                        <div className="absolute -top-1 -left-1 w-4 h-4 rounded bg-black/80 ring-1 ring-white/20 text-[10px] leading-none flex items-center justify-center text-white">
+                          {idx + 1}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-6 h-6 rounded-full bg-black/55 ring-1 ring-white/20 flex items-center justify-center">
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="text-white/90 translate-x-[1px]"
+                          >
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <button
+                        aria-label="Remove video"
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isSeedanceRef) {
+                            setUploadedVideos((prev) => {
+                              const next = (prev || []).filter((_, i) => i !== idx);
+                              const first = next[0] || "";
+                              setUploadedVideo(first);
+                              return next;
+                            });
+                          } else {
+                            setUploadedVideo("");
+                          }
+                          setSourceHistoryEntryId("");
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ));
+                })()}
+
+                {uploadedCharacterImage && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-xl overflow-hidden ring-1 ring-white/20 bg-white/5"
+                      onClick={() => {
+                        setAssetViewer({
+                          isOpen: true,
+                          assetUrl: uploadedCharacterImage,
+                          assetType: "image",
+                          title: "Character Image",
+                        });
+                      }}
+                    >
+                      <img
+                        src={uploadedCharacterImage}
+                        alt="Character"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                    <button
+                      aria-label="Remove character image"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] leading-none flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedCharacterImage("");
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Toggle buttons removed - model selection determines input requirements */}
         <div
-          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl p-1.5 md:p-3 md:pb-3 pb-0  space-y-0 md:space-y-4 transition-all duration-300 overflow-x-visible overflow-y-visible ${
+          className={`relative isolate w-full rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl px-1 pt-1 md:p-3 md:pb-3 pb-0 max-md:space-y-3 md:space-y-4 transition-all duration-300 overflow-x-hidden md:overflow-x-visible overflow-y-visible ${
             isInputBoxHovered
               ? "bg-black/40 ring-white/30 shadow-2xl md:scale-[1.01]"
               : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
@@ -9461,7 +9794,16 @@ const InputBox = (props: InputBoxProps = {}) => {
                 url.match(/\.(mp4|webm|ogg|mov)$/i) ||
                 url.startsWith("data:video/")
               ) {
-                setUploadedVideo(url);
+                if (isSeedance2ReferenceModel(selectedModel)) {
+                  setUploadedVideos((prev) => {
+                    const existing = Array.isArray(prev) ? prev : [];
+                    const next = [...existing, url].slice(0, 3);
+                    setUploadedVideo(next[0] || "");
+                    return next;
+                  });
+                } else {
+                  setUploadedVideo(url);
+                }
                 toast.success("Video added from URL");
               }
               // Check if Image
@@ -9518,6 +9860,7 @@ const InputBox = (props: InputBoxProps = {}) => {
             }}
             placeholder={placeholder}
             inputRef={inputEl as React.RefObject<HTMLTextAreaElement>}
+            fixedHeightOnMobile
             actions={
               <InputActions
                 generationMode={generationMode}
@@ -9572,182 +9915,208 @@ const InputBox = (props: InputBoxProps = {}) => {
                     ["768P", "1080P"].includes(selectedResolution) &&
                     currentModelCapabilities.supportsImageToVideo));
               return displayImages.length > 0 || extraLastFrame ? (
-                <div className="md:mb-0 mb-3">
-                  <div className="text-xs text-white/60 mb-1">
-                    Uploaded Images (
-                    {displayImages.length + (extraLastFrame ? 1 : 0)})
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {displayImages.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <div
-                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: image,
-                              assetType: "image",
-                              title: `Uploaded Image ${index + 1}`,
-                            });
-                          }}
-                        >
-                          <img
-                            src={image}
-                            alt={`Uploaded ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onLoad={() =>
-                              console.log(
-                                "Video generation - image loaded successfully:",
-                                image,
-                              )
-                            }
-                            onError={(e) =>
-                              console.error(
-                                "Video generation - image failed to load:",
-                                image,
-                                e,
-                              )
-                            }
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                            {index === 0
-                              ? selectedModel === SEEDANCE_2_MODEL
-                                ? displayImages.length > 1
-                                  ? "First Frame"
-                                  : "Input Image"
-                                : "First Frame"
-                              : selectedModel === SEEDANCE_2_MODEL
-                                ? "Last Frame"
-                                : `Image ${index + 1}`}
+                <div className="md:mb-0 mb-0">
+                  {/* Desktop: existing preview UI (unchanged). */}
+                  <div className="hidden md:block">
+                    <div className="text-xs text-white/60 mb-1">
+                      Uploaded Images (
+                      {displayImages.length + (extraLastFrame ? 1 : 0)})
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {displayImages.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <div
+                            className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                            onClick={() => {
+                              setAssetViewer({
+                                isOpen: true,
+                                assetUrl: image,
+                                assetType: "image",
+                                title: `Uploaded Image ${index + 1}`,
+                              });
+                            }}
+                          >
+                            <img
+                              src={image}
+                              alt={`Uploaded ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onLoad={() =>
+                                console.log(
+                                  "Video generation - image loaded successfully:",
+                                  image,
+                                )
+                              }
+                              onError={(e) =>
+                                console.error(
+                                  "Video generation - image failed to load:",
+                                  image,
+                                  e,
+                                )
+                              }
+                            />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                              {index === 0
+                                ? selectedModel === SEEDANCE_2_MODEL
+                                  ? displayImages.length > 1
+                                    ? "First Frame"
+                                    : "Input Image"
+                                  : "First Frame"
+                                : selectedModel === SEEDANCE_2_MODEL
+                                  ? "Last Frame"
+                                  : `Image ${index + 1}`}
+                            </div>
                           </div>
+                          <button
+                            aria-label="Remove image"
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                            onClick={() => {
+                              setUploadedImages((prev) =>
+                                prev.filter((_, i) => i !== index),
+                              );
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
-                        <button
-                          aria-label="Remove image"
-                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          onClick={() => {
-                            setUploadedImages((prev) =>
-                              prev.filter((_, i) => i !== index),
-                            );
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                      ))}
 
-                    {/* Last Frame Image Display */}
-                    {extraLastFrame && (
-                      <div className="relative group">
-                        <div
-                          className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
-                          onClick={() => {
-                            setAssetViewer({
-                              isOpen: true,
-                              assetUrl: lastFrameImage,
-                              assetType: "image",
-                              title: "Last Frame Image",
-                            });
-                          }}
-                        >
-                          <img
-                            src={lastFrameImage}
-                            alt="Last Frame"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
-                            Last Frame
+                      {extraLastFrame && (
+                        <div className="relative group">
+                          <div
+                            className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer"
+                            onClick={() => {
+                              setAssetViewer({
+                                isOpen: true,
+                                assetUrl: lastFrameImage,
+                                assetType: "image",
+                                title: "Last Frame Image",
+                              });
+                            }}
+                          >
+                            <img
+                              src={lastFrameImage}
+                              alt="Last Frame"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                              Last Frame
+                            </div>
                           </div>
+                          <button
+                            aria-label="Remove last frame"
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                            onClick={() => {
+                              setLastFrameImage("");
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
-                        <button
-                          aria-label="Remove last frame"
-                          className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                          onClick={() => {
-                            setLastFrameImage("");
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : null;
             })()}
 
             {/* Uploaded Video */}
-            {uploadedVideo && (
-              <div className="md:mb-3 mb-0">
-                <div className="text-xs text-white/60 mb-2">Uploaded Video</div>
-                <div className="relative group w-fit">
-                  <div
-                    className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-white/5"
-                    onClick={() => {
-                      setAssetViewer({
-                        isOpen: true,
-                        assetUrl: uploadedVideo,
-                        assetType: "video",
-                        title: "Uploaded Video",
-                      });
-                    }}
-                  >
-                    {(() => {
-                      // Handle blob URLs directly, otherwise use proxy
-                      const isBlob =
-                        uploadedVideo.startsWith("blob:") ||
-                        uploadedVideo.startsWith("data:");
-                      const videoSrc = isBlob
-                        ? uploadedVideo
-                        : toFrontendProxyMediaUrl(uploadedVideo);
+            {(() => {
+              const isSeedanceRef = isSeedance2ReferenceModel(selectedModel);
+              const videos =
+                isSeedanceRef && uploadedVideos && uploadedVideos.length > 0
+                  ? uploadedVideos.slice(0, 3)
+                  : uploadedVideo
+                    ? [uploadedVideo]
+                    : [];
+              if (!videos.length) return null;
 
-                      return (
-                        <video
-                          src={videoSrc}
-                          className="w-full h-full object-cover"
-                          muted
-                          playsInline
-                          loop
-                          preload="metadata"
-                          onMouseEnter={(e) => {
-                            const video = e.currentTarget;
-                            video
-                              .play()
-                              .catch((err) =>
-                                console.error(
-                                  "Video preview play failed:",
-                                  err,
-                                ),
-                              );
-                          }}
-                          onMouseLeave={(e) => {
-                            const video = e.currentTarget;
-                            video.pause();
-                            video.currentTime = 0;
-                          }}
-                        />
-                      );
-                    })()}
-                  </div>
-
-                  {/* Tooltip - Positioned outside overflow-hidden container */}
-                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+              return (
+                <div className="hidden md:block md:mb-3 mb-0">
+                  <div className="text-xs text-white/60 mb-2">
                     Uploaded Video
                   </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {videos.map((v, idx) => {
+                      const isBlob =
+                        v.startsWith("blob:") || v.startsWith("data:");
+                      const videoSrc = isBlob ? v : toFrontendProxyMediaUrl(v);
+                      return (
+                        <div key={`${v}-${idx}`} className="relative group w-fit">
+                          <div
+                            className="w-32 h-20 rounded-lg overflow-hidden ring-1 ring-white/20 cursor-pointer bg-white/5"
+                            onClick={() => {
+                              setAssetViewer({
+                                isOpen: true,
+                                assetUrl: v,
+                                assetType: "video",
+                                title: isSeedanceRef
+                                  ? `Reference Video ${idx + 1}`
+                                  : "Uploaded Video",
+                              });
+                            }}
+                          >
+                            <video
+                              src={videoSrc}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              loop
+                              preload="metadata"
+                              onMouseEnter={(e) => {
+                                const video = e.currentTarget;
+                                video
+                                  .play()
+                                  .catch((err) =>
+                                    console.error(
+                                      "Video preview play failed:",
+                                      err,
+                                    ),
+                                  );
+                              }}
+                              onMouseLeave={(e) => {
+                                const video = e.currentTarget;
+                                video.pause();
+                                video.currentTime = 0;
+                              }}
+                            />
+                          </div>
 
-                  {/* Delete Button - Positioned at corner */}
-                  <button
-                    aria-label="Remove video"
-                    className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold z-50 shadow-md hover:bg-red-600"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setUploadedVideo("");
-                      setSourceHistoryEntryId(""); // Clear source history entry when clearing video
-                    }}
-                  >
-                    ×
-                  </button>
+                          {/* Tooltip - Positioned outside overflow-hidden container */}
+                          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-50">
+                            {isSeedanceRef
+                              ? `Reference Video ${idx + 1}`
+                              : "Uploaded Video"}
+                          </div>
+
+                          {/* Delete Button - Positioned at corner */}
+                          <button
+                            aria-label="Remove video"
+                            className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold z-50 shadow-md hover:bg-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isSeedanceRef) {
+                                setUploadedVideos((prev) => {
+                                  const next = (prev || []).filter(
+                                    (_, i) => i !== idx,
+                                  );
+                                  setUploadedVideo(next[0] || "");
+                                  return next;
+                                });
+                              } else {
+                                setUploadedVideo("");
+                              }
+                              setSourceHistoryEntryId(""); // Clear source history entry when clearing video
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Uploaded Character Image (for WAN 2.2 Animate Replace) */}
             {uploadedCharacterImage && (
@@ -9790,95 +10159,98 @@ const InputBox = (props: InputBoxProps = {}) => {
 
           {/* Bottom row: pill options */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center md:gap-0">
-            {/* Mobile: credits / generate */}
-            <div className="flex md:hidden shrink-0 justify-end items-center gap-2 w-full px-1 pt-0.5">
-              <div className="flex flex-col items-end gap-0.25">
-                <div className="text-white/80 text-[9px] md:text-[11px] leading-none">
-                  Total credits:{" "}
-                  <span className="font-semibold">{liveCreditCost}</span>
+            {/* Mobile: keep controls anchored and prevent sideways swipe. */}
+            <div className="md:hidden sticky bottom-0 z-[25] px-0 pb-1 pt-2 bg-transparent border-white/10 rounded-b-lg overscroll-x-none overscroll-y-none touch-pan-y">
+              {/* Mobile: model + family variant + generate */}
+              <div className="relative z-[21] flex w-full min-w-0 shrink-0 items-center justify-between gap-1 px-1 py-0">
+                <div className="flex min-h-[42px] min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar shrink -mb-4 ">
+                  <div className="shrink-0 flex items-center">
+                    <VideoModelsDropdown
+                      selectedModel={selectedModel}
+                      onModelChange={handleModelChange}
+                      generationMode={generationMode}
+                      selectedDuration={
+                        selectedModel.includes("MiniMax")
+                          ? `${selectedMiniMaxDuration}s`
+                          : formatDurationForCreditLookup(duration)
+                      }
+                      selectedResolution={modelDropdownResolution}
+                      pixverseV6GenerateAudio={pixverseV6GenerateAudio}
+                      activeFeature={activeFeature}
+                      onCloseOtherDropdowns={() => {
+                        setCloseFrameSizeDropdown(true);
+                        setCloseDurationDropdown(true);
+                        setCloseCameraMotionDropdown(true);
+                        setTimeout(() => {
+                          setCloseFrameSizeDropdown(false);
+                          setCloseDurationDropdown(false);
+                          setCloseCameraMotionDropdown(false);
+                        }, 100);
+                      }}
+                      onCloseThisDropdown={
+                        closeModelsDropdown ? () => {} : undefined
+                      }
+                    />
+                  </div>
+                  {shouldShowSecondaryFamilySelector(selectedModel) ? (
+                    <div className="shrink-0 flex items-center">
+                      {renderFamilyVariantDropdown()}
+                    </div>
+                  ) : null}
                 </div>
-                <button
-                  onClick={handleGenerate}
-                  disabled={(() => {
-                    const disabled =
-                      runningGenerationsCount >= 4 ||
-                      !prompt.trim() ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel !== "S2V-01" &&
-                        !selectedModel.includes("wan-2.5") &&
-                        !selectedModel.startsWith("kling-") &&
-                        selectedModel !== "gen4_turbo" &&
-                        selectedModel !== "gen3a_turbo" &&
-                        !selectedModel.includes("ltx-2.3-fast") &&
-                        uploadedImages.length === 0) ||
-                      (generationMode === "video_to_video" && !uploadedVideo) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel === "I2V-01-Director" &&
-                        uploadedImages.length === 0) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel === "S2V-01" &&
-                        references.length === 0) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel === "MiniMax-Hailuo-02" &&
-                        selectedResolution === "512P" &&
-                        uploadedImages.length === 0) ||
-                      (generationMode === "image_to_video" &&
-                        selectedModel.includes("wan-2.5") &&
-                        uploadedImages.length === 0);
-                    return disabled;
-                  })()}
-                  className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white md:px-4 px-2.5 md:py-2.5 py-1 rounded-lg md:text-sm text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
-                >
-                  Generate
-                </button>
-              </div>
-            </div>
 
-            {/* Mobile: model + family variant (dedicated row; no negative margin — avoids overlap with params). */}
-            <div className="relative z-[21] flex md:hidden w-full min-w-0 shrink-0 items-stretch gap-2 px-1 py-0.5">
-              <div className="flex min-h-[36px] min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x no-scrollbar">
-                <div className="shrink-0">
-                  <VideoModelsDropdown
-                    selectedModel={selectedModel}
-                    onModelChange={handleModelChange}
-                    generationMode={generationMode}
-                    selectedDuration={
-                      selectedModel.includes("MiniMax")
-                        ? `${selectedMiniMaxDuration}s`
-                        : formatDurationForCreditLookup(duration)
-                    }
-                    selectedResolution={modelDropdownResolution}
-                    pixverseV6GenerateAudio={pixverseV6GenerateAudio}
-                    activeFeature={activeFeature}
-                    onCloseOtherDropdowns={() => {
-                      setCloseFrameSizeDropdown(true);
-                      setCloseDurationDropdown(true);
-                      setCloseCameraMotionDropdown(true);
-                      setTimeout(() => {
-                        setCloseFrameSizeDropdown(false);
-                        setCloseDurationDropdown(false);
-                        setCloseCameraMotionDropdown(false);
-                      }, 100);
-                    }}
-                    onCloseThisDropdown={
-                      closeModelsDropdown ? () => {} : undefined
-                    }
-                  />
+                {/* Mobile: generate button */}
+                <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 pb-0 -mb-1.5">
+                  <div className="text-white/80 text-[10px] leading-none mb-0">
+                    Credits:{" "}
+                    <span className="font-semibold">{liveCreditCost}</span>
+                  </div>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={(() => {
+                      const disabled =
+                        runningGenerationsCount >= 4 ||
+                        !prompt.trim() ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel !== "S2V-01" &&
+                          !selectedModel.includes("wan-2.5") &&
+                          !selectedModel.startsWith("kling-") &&
+                          selectedModel !== "gen4_turbo" &&
+                          selectedModel !== "gen3a_turbo" &&
+                          !selectedModel.includes("ltx-2.3-fast") &&
+                          uploadedImages.length === 0) ||
+                        (generationMode === "video_to_video" && !uploadedVideo) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel === "I2V-01-Director" &&
+                          uploadedImages.length === 0) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel === "S2V-01" &&
+                          references.length === 0) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel === "MiniMax-Hailuo-02" &&
+                          selectedResolution === "512P" &&
+                          uploadedImages.length === 0) ||
+                        (generationMode === "image_to_video" &&
+                          selectedModel.includes("wan-2.5") &&
+                          uploadedImages.length === 0);
+                      return disabled;
+                    })()}
+                    className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:hover:bg-[#2F6BFF] text-white px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                  >
+                    Generate
+                  </button>
                 </div>
-                {shouldShowSecondaryFamilySelector(selectedModel) ? (
-                  <div className="shrink-0">{renderFamilyVariantDropdown()}</div>
-                ) : null}
               </div>
-            </div>
 
-            {/* Mobile: parameters + audio — last row; horizontal scroll; extra vertical padding avoids clip/overlap. */}
-            <div className="relative z-[20] flex md:hidden w-full min-h-[40px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-visible overscroll-x-contain touch-pan-x md:py-1.5 pb-2 no-scrollbar">
-              <div className="flex w-max min-w-0 flex-nowrap items-center gap-2 px-1">
-                <div className="flex shrink-0 flex-nowrap items-center gap-2">
-                  {renderMobileParameterControls()}
-                </div>
-                <div className="flex shrink-0 flex-nowrap items-center gap-2">
-                  {renderMobileAudioControls()}
+              {/* Mobile: parameters + audio — single row (scroll within row if needed). */}
+              <div className="relative z-[20] flex w-full min-h-[46px] min-w-0 shrink-0 items-center overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x no-scrollbar pb-0">
+                <div className="flex w-max min-w-max flex-nowrap items-center gap-2 px-1 -mb-2.5">
+                  <div className="flex flex-nowrap items-center gap-2">
+                    {renderMobileParameterControls()}
+                  </div>
+                  <div className="flex flex-nowrap items-center gap-2">
+                    {renderMobileAudioControls()}
+                  </div>
                 </div>
               </div>
             </div>
@@ -9929,7 +10301,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   onPointerUp={endDesktopToolbarDrag}
                   onPointerCancel={endDesktopToolbarDrag}
                   onPointerLeave={endDesktopToolbarDrag}
-                  className="flex-1 min-w-0 overflow-x-auto overflow-y-visible overscroll-x-contain py-1 pr-3 cursor-grab"
+                  className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none touch-pan-x py-1 pr-3 cursor-grab"
                 >
                   {(() => {
                   // WAN 2.2 Animate Replace: Resolution, Refert Num, Go Fast, Merge Audio, FPS, Seed
@@ -9944,7 +10316,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 if (isWanAnimateReplace) {
                   return (
                     <div className="flex flex-col gap-2">
-                      <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                      <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0">
                         {/* Resolution Dropdown - 480 or 720 ONLY */}
                         <div className="relative">
                           <select
@@ -10202,7 +10574,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // LTX V2 Models: Resolution + Duration (T2V fixed 16:9)
                 if (selectedModel.includes("ltx2")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - For I2V allow user selection; for T2V, fixed 16:9 */}
                       {generationMode === "image_to_video" ? (
                         <VideoFrameSizeDropdown
@@ -10295,7 +10667,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.includes("ltx-2.3-pro")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Allow user selection for both T2V and I2V */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10408,7 +10780,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Veo 3.1 Models: Full customization (check before Veo3)
                 if (selectedModel.includes("veo3.1")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Veo 3.1 models */} 
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10495,7 +10867,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel.startsWith("kling-v3")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10558,7 +10930,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("veo3.1")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Veo3 models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10634,7 +11006,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Kling Models: Full customization
                 if (selectedModel.startsWith("kling-")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Kling models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10705,7 +11077,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for WAN models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -10775,7 +11147,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // Seedance Models: Full customization
                 if (selectedModel.includes("seedance")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0.5">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-0.25 -mb-0.5">
                       {/* Aspect Ratio - Seedance 2.0 supports this for both T2V and I2V */}
                       {(generationMode === "text_to_video" ||
                         isSeedance2FamilyModel(selectedModel)) && (
@@ -10909,7 +11281,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                 // PixVerse Models: Full customization
                 if (selectedModel.includes("pixverse")) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {!hidePixverseV6AspectRatio && (
                         <VideoFrameSizeDropdown
                           selectedFrameSize={frameSize}
@@ -11052,7 +11424,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   !selectedModel.includes("wan-2.2-animate")
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Aspect Ratio - Always shown for Runway models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={frameSize}
@@ -11107,7 +11479,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                   selectedModel === "S2V-01"
                 ) {
                   return (
-                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max pl-1">
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
                       {/* Resolution - For MiniMax models */}
                       <VideoFrameSizeDropdown
                         selectedFrameSize={selectedResolution}
@@ -11937,7 +12309,7 @@ const InputBox = (props: InputBoxProps = {}) => {
               </div>
 
               {/* Desktop: Generate button section */}
-              <div className="hidden md:flex min-w-[100px] flex-shrink-0 flex-col items-end gap-0 justify-self-end">
+              <div className="hidden md:flex min-w-[100px] flex-shrink-0 flex-col items-end gap-0 justify-self-end -mb-5">
 
               <div className="text-white/60 text-[11px] pr-1">
                 Total credits:{" "}
@@ -11985,7 +12357,7 @@ const InputBox = (props: InputBoxProps = {}) => {
 
                   return disabled;
                 })()}
-                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white h-[34px] px-4 py-0 rounded-lg text-[13px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center justify-center"
               >
                 {isEnhancing
                   ? "Enhancing..."
@@ -12018,6 +12390,16 @@ const InputBox = (props: InputBoxProps = {}) => {
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
           persistLocalDeviceUploads={false}
+          accept={
+            uploadModalType === "reference" && isSeedance2ReferenceModel(selectedModel)
+              ? "image/jpeg,image/png,image/webp"
+              : undefined
+          }
+          maxFileSizeBytes={
+            uploadModalType === "reference" && isSeedance2ReferenceModel(selectedModel)
+              ? 30 * 1024 * 1024
+              : undefined
+          }
           remainingSlots={
             uploadModalType === "image"
               ? // For WAN 2.2 Animate Replace character image, only 1 slot
@@ -12032,8 +12414,14 @@ const InputBox = (props: InputBoxProps = {}) => {
                     selectedModel === "S2V-01"
                   ? 1
                 : isSeedance2ReferenceModel(selectedModel)
-                  ? 9
-                  : 4 // S2V-01 needs 1 reference, video-to-video needs up to 4
+                  ? Math.min(
+                      9 - (references?.length || 0),
+                      12 -
+                        ((references?.length || 0) +
+                          (uploadedVideo ? 1 : 0) +
+                          (uploadedAudio ? 1 : 0)),
+                    )
+                  : 4 // video-to-video needs up to 4
           }
         />
       )}
@@ -12044,7 +12432,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={handleImageUploadFromModal}
-          remainingSlots={1} // Only 1 video for video-to-video
+          remainingSlots={isSeedance2ReferenceModel(selectedModel) ? 3 : 1}
         />
       )}
     </React.Fragment>
