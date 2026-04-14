@@ -103,10 +103,10 @@ export default function PlanCards({
 
   return (
     <div className="w-full">
-      <div className="flex justify-end mb-4">
+      <div className="mb-6 flex justify-end">
         <CurrencySwitcher />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
       {displayPlans.map((plan) => {
         const isCurrent = plan.code === currentPlanCode;
         const currentPlanPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
@@ -115,31 +115,34 @@ export default function PlanCards({
         return (
           <div
             key={plan.code}
-            className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all hover:shadow-xl ${
-              isCurrent ? "ring-2 ring-green-500" : ""
-            } ${plan.popular ? "ring-2 ring-blue-500" : ""}`}
+            className={`relative rounded-2xl border bg-[#0a0a0a] p-6 transition-all duration-200 ${
+              isCurrent
+                ? "border-[#2F6BFF]/50 shadow-[0_0_0_1px_rgba(47,107,255,0.2)]"
+                : "border-white/[0.08] hover:border-white/[0.14]"
+            } ${
+              plan.popular && !isCurrent
+                ? "shadow-[0_0_0_1px_rgba(47,107,255,0.35)]"
+                : ""
+            }`}
           >
-            {/* Popular Badge */}
             {plan.popular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
+                <span className="rounded-full bg-[#2F6BFF] px-3 py-1 text-xs font-bold text-white shadow-[0_4px_14px_rgba(47,107,255,0.45)]">
                   MOST POPULAR
                 </span>
               </div>
             )}
 
-            {/* Current Plan Badge */}
             {isCurrent && (
               <div className="absolute -top-3 right-4">
-                <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <span className="rounded-full border border-[#2F6BFF]/40 bg-[#2F6BFF]/15 px-3 py-1 text-xs font-bold text-[#7aa3ff]">
                   CURRENT PLAN
                 </span>
               </div>
             )}
 
-            {/* Plan Header */}
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+            <div className="mb-6 text-center">
+              <h3 className="mb-2 text-2xl font-bold text-white">{plan.name}</h3>
               <div className="flex flex-col items-center gap-1">
                 {isPriceFxPending && plan.priceINR > 0 ? (
                   <div className="relative z-20 flex min-h-[2.5rem] items-center justify-center py-1">
@@ -148,19 +151,17 @@ export default function PlanCards({
                 ) : (
                   <>
                     <div className="relative z-10 flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-extrabold">
+                      <span className="text-4xl font-extrabold tabular-nums text-white">
                         {isForeign && plan.priceINR > 0
                           ? formatMoney(plan.priceINR)
                           : `₹${plan.priceINR}`}
                       </span>
                       {plan.priceINR > 0 && (
-                        <span className="text-gray-500 dark:text-gray-400">
-                          /{plan.cycleLabel}
-                        </span>
+                        <span className="text-zinc-500">/{plan.cycleLabel}</span>
                       )}
                     </div>
                     {isForeign && plan.priceINR > 0 ? (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                      <p className="tabular-nums text-xs text-zinc-500">
                         ≈ ₹{plan.priceINR.toLocaleString("en-IN")} charged in INR
                       </p>
                     ) : null}
@@ -168,37 +169,33 @@ export default function PlanCards({
                 )}
               </div>
               {plan.priceINR > 0 && (
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-xs text-zinc-500">
                   +{plan.gstRatePercent}% GST at checkout
                 </p>
               )}
             </div>
 
-            {/* Credits & Storage */}
             <div className="mb-6 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Credits
-                </span>
-                <span className="font-semibold">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-zinc-500">Credits</span>
+                <span className="font-semibold tabular-nums text-zinc-200">
                   {plan.credits.toLocaleString()}
                   {"/mo"}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Storage
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-zinc-500">Storage</span>
+                <span className="font-semibold tabular-nums text-zinc-200">
+                  {plan.storageGB} GB
                 </span>
-                <span className="font-semibold">{plan.storageGB} GB</span>
               </div>
             </div>
 
-            {/* Features List */}
-            <ul className="space-y-3 mb-6">
+            <ul className="mb-6 space-y-3">
               {plan.features.map((feature, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <svg
-                    className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                    className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#2F6BFF]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -210,32 +207,30 @@ export default function PlanCards({
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {feature}
-                  </span>
+                  <span className="text-sm text-zinc-400">{feature}</span>
                 </li>
               ))}
             </ul>
 
-            {/* CTA Button */}
             <button
+              type="button"
               onClick={() => onSelectPlan(plan.code)}
               disabled={isCurrent}
-              className={`w-full py-3 px-6 rounded-lg font-semibold transition-all ${
+              className={`w-full rounded-lg py-3 px-6 text-sm font-semibold transition-all ${
                 isCurrent
-                  ? "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+                  ? "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
                   : plan.popular
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
-                  : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
+                    ? "bg-[#2F6BFF] text-white shadow-[0_4px_16px_rgba(47,107,255,0.4)] hover:bg-[#2a5fe3]"
+                    : "border border-white/[0.12] bg-white/[0.06] text-white hover:bg-white/[0.1]"
               }`}
             >
               {isCurrent
-                ? "Current Plan"
+                ? "Current plan"
                 : canUpgrade
-                ? plan.priceINR === 0
-                  ? "Get Started"
-                  : "Upgrade"
-                : "Downgrade"}
+                  ? plan.priceINR === 0
+                    ? "Get started"
+                    : "Upgrade"
+                  : "Downgrade"}
             </button>
           </div>
         );
