@@ -8,8 +8,14 @@ interface SettingsPanelProps {
   model: ModelId;
   imageCount: ImageCount;
   ratio: AspectRatio;
+  includeBenchmark: boolean;
+  includeVariable: boolean;
+  includeRestyle: boolean;
   onCountChange: (c: ImageCount) => void;
   onRatioChange: (r: AspectRatio) => void;
+  onIncludeBenchmarkChange: (v: boolean) => void;
+  onIncludeVariableChange: (v: boolean) => void;
+  onIncludeRestyleChange: (v: boolean) => void;
 }
 
 function Chip<T extends string | number>({
@@ -42,8 +48,14 @@ export function SettingsPanel({
   model,
   imageCount,
   ratio,
+  includeBenchmark,
+  includeVariable,
+  includeRestyle,
   onCountChange,
   onRatioChange,
+  onIncludeBenchmarkChange,
+  onIncludeVariableChange,
+  onIncludeRestyleChange,
 }: SettingsPanelProps) {
   const ratioOptions = getAspectRatioMenuForModel(model);
 
@@ -79,6 +91,36 @@ export function SettingsPanel({
               />
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
+          Advanced prompt (optional)
+        </span>
+        <p className="text-[10px] leading-snug text-white/20">
+          Keep these off to reduce added details. Turn on only if you want the larger reference blocks to influence the
+          output.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            value="benchmark"
+            label="Benchmark"
+            active={includeBenchmark}
+            onClick={() => onIncludeBenchmarkChange(!includeBenchmark)}
+          />
+          <Chip
+            value="variable"
+            label="Variable"
+            active={includeVariable}
+            onClick={() => onIncludeVariableChange(!includeVariable)}
+          />
+          <Chip
+            value="restyle"
+            label="Restyle"
+            active={includeRestyle}
+            onClick={() => onIncludeRestyleChange(!includeRestyle)}
+          />
         </div>
       </div>
     </div>

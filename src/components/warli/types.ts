@@ -16,6 +16,9 @@ export interface WarliState {
   model: ModelId;
   imageCount: ImageCount;
   ratio: AspectRatio;
+  includeBenchmark: boolean;
+  includeVariable: boolean;
+  includeRestyle: boolean;
   panelState: RightPanelState;
   generatedImages: string[];
   assembledPrompt: string;
@@ -49,6 +52,9 @@ export const INITIAL_STATE: WarliState = {
   model: "google/nano-banana-2",
   imageCount: 2,
   ratio: "auto",
+  includeBenchmark: false,
+  includeVariable: false,
+  includeRestyle: false,
   panelState: "empty",
   generatedImages: [],
   assembledPrompt: "",

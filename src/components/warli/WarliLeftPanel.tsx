@@ -20,6 +20,9 @@ interface WarliLeftPanelProps {
   onModelChange: (v: ModelId) => void;
   onCountChange: (v: ImageCount) => void;
   onRatioChange: (v: AspectRatio) => void;
+  onIncludeBenchmarkChange: (v: boolean) => void;
+  onIncludeVariableChange: (v: boolean) => void;
+  onIncludeRestyleChange: (v: boolean) => void;
   onGenerate: () => void;
   onOpenStudio: () => void;
 }
@@ -42,6 +45,9 @@ export function WarliLeftPanel({
   onModelChange,
   onCountChange,
   onRatioChange,
+  onIncludeBenchmarkChange,
+  onIncludeVariableChange,
+  onIncludeRestyleChange,
   onGenerate,
   onOpenStudio,
 }: WarliLeftPanelProps) {
@@ -82,8 +88,14 @@ export function WarliLeftPanel({
           model={state.model}
           imageCount={state.imageCount}
           ratio={state.ratio}
+          includeBenchmark={state.includeBenchmark}
+          includeVariable={state.includeVariable}
+          includeRestyle={state.includeRestyle}
           onCountChange={onCountChange}
           onRatioChange={onRatioChange}
+          onIncludeBenchmarkChange={onIncludeBenchmarkChange}
+          onIncludeVariableChange={onIncludeVariableChange}
+          onIncludeRestyleChange={onIncludeRestyleChange}
         />
       </div>
 

@@ -87,6 +87,9 @@ type Action =
   | { type: "SET_MODEL"; payload: ModelId }
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
+  | { type: "SET_INCLUDE_BENCHMARK"; payload: boolean }
+  | { type: "SET_INCLUDE_VARIABLE"; payload: boolean }
+  | { type: "SET_INCLUDE_RESTYLE"; payload: boolean }
   | { type: "SET_PANEL_STATE"; payload: WarliState["panelState"] }
   | { type: "SET_GENERATED_IMAGES"; payload: string[] }
   | { type: "SET_ASSEMBLED_PROMPT"; payload: string }
@@ -113,6 +116,12 @@ function reducer(state: WarliState, action: Action): WarliState {
       return { ...state, imageCount: action.payload };
     case "SET_RATIO":
       return { ...state, ratio: action.payload };
+    case "SET_INCLUDE_BENCHMARK":
+      return { ...state, includeBenchmark: Boolean(action.payload) };
+    case "SET_INCLUDE_VARIABLE":
+      return { ...state, includeVariable: Boolean(action.payload) };
+    case "SET_INCLUDE_RESTYLE":
+      return { ...state, includeRestyle: Boolean(action.payload) };
     case "SET_PANEL_STATE":
       return { ...state, panelState: action.payload };
     case "SET_GENERATED_IMAGES":
@@ -128,6 +137,20 @@ function reducer(state: WarliState, action: Action): WarliState {
 
 // ─── Prompt assembly ──────────────────────────────────────────────────────────
 
+function compactWarliStyleLock(template: string): string {
+  const t0 = String(template || "").trim();
+  if (!t0) return t0;
+
+  const start = t0.indexOf("DETAIL RULE:");
+  const end = t0.indexOf("NEGATIVE LOCK:");
+  if (start >= 0 && end > start) {
+    const before = t0.slice(0, start).trimEnd();
+    const after = t0.slice(end).trimStart();
+    return `${before}\n\n${after}`.trim();
+  }
+  return t0;
+}
+
 function buildPrompt(state: WarliState): string {
   const family = WARLI_PROMPT_FAMILIES[state.style];
   const sceneLines: string[] = [];
@@ -142,7 +165,7 @@ function buildPrompt(state: WarliState): string {
   const sceneSection =
     sceneLines.length > 0
       ? sceneLines.join("\n")
-      : "- Use the benchmark Warli scene guidance and locked style instructions above as the base composition.";
+      : "- Scene description: (none). Do not invent any scene content; keep output minimal and style-accurate only.";
 
   const aspectForPrompt = coerceWarliAspectRatio(state.ratio, state.model);
   const ratioLine =
@@ -150,21 +173,36 @@ function buildPrompt(state: WarliState): string {
       ? "auto (API: model chooses aspect from prompt)"
       : aspectForPrompt;
 
+  const styleLock = compactWarliStyleLock(family.promptTemplate);
+  const extraBlocks: string[] = [];
+  if (state.includeBenchmark) {
+    extraBlocks.push("REFERENCE (OPTIONAL) — BENCHMARK SCENE:");
+    extraBlocks.push(family.benchmarkScene.trim());
+    extraBlocks.push("");
+  }
+  if (state.includeVariable) {
+    extraBlocks.push("REFERENCE (OPTIONAL) — VARIABLE (slot-based):");
+    extraBlocks.push(family.promptVariable.trim());
+    extraBlocks.push("");
+  }
+  if (state.includeRestyle) {
+    extraBlocks.push("REFERENCE (OPTIONAL) — RESTYLE:");
+    extraBlocks.push(family.promptRestyle.trim());
+    extraBlocks.push("");
+  }
+
   return [
-    "BENCHMARK SCENE:",
-    family.benchmarkScene.trim(),
+    "PRIMARY DIRECTIVE (STYLE LOCK — follow strictly):",
+    styleLock,
     "",
-    "PRIMARY DIRECTIVE (TEMPLATE — follow unless user explicitly requests variable-slot or restyle semantics):",
-    family.promptTemplate.trim(),
-    "",
-    "REFERENCE VARIANT — VARIABLE (slot-based):",
-    family.promptVariable.trim(),
-    "",
-    "REFERENCE VARIANT — RESTYLE:",
-    family.promptRestyle.trim(),
-    "",
+    ...(extraBlocks.length > 0 ? extraBlocks : []),
     "PROJECT INPUTS:",
     sceneSection,
+    "",
+    "CONTENT CONSTRAINT (STRICT):",
+    "- Do not add or invent new people, animals, objects, scenery, borders, symbols, text, ornaments, or background elements unless explicitly requested in PROJECT INPUTS.",
+    "- If something is unspecified, omit it rather than guessing.",
+    "- Keep composition simple; avoid decorative fillers unless requested.",
     "",
     "RENDER SETTINGS:",
     `- Preferred aspect ratio: ${ratioLine}`,
@@ -432,6 +470,15 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
             onModelChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })}
             onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })}
             onRatioChange={handleRatioChange}
+            onIncludeBenchmarkChange={(v) =>
+              dispatchLocal({ type: "SET_INCLUDE_BENCHMARK", payload: v })
+            }
+            onIncludeVariableChange={(v) =>
+              dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })
+            }
+            onIncludeRestyleChange={(v) =>
+              dispatchLocal({ type: "SET_INCLUDE_RESTYLE", payload: v })
+            }
             onGenerate={() => void handleGenerate()}
             onOpenStudio={() => void handleOpenStudio()}
           />
