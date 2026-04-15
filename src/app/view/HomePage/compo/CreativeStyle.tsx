@@ -28,56 +28,12 @@ const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
   {
-    id: "Maharashtra",
-    name: "Maharashtra",
-    title: "Warli",
-    desc: "Warli art is a traditional folk style from India that uses basic geometric shapes, like triangles, circles, and lines, to create stick-figure depictions of daily social life and nature",
+    id: "AndhraPradesh",
+    name: "Andhra Pradesh",
+    title: "Kalamkari",
+    desc: "Machilipatnam Kalamkari is a block-printed natural-dye textile tradition from Andhra Pradesh, known for Persian-floral ornament grammar, border-to-field structure, and repeat-capable motif systems.",
     image: "/HomePage/creativeStyle/warli.jpeg",
-    tag: "Film",
-    titleColor: "#ffffff",
-    href: "/text-to-image",
-    imageFilter: "brightness(0.85) saturate(0.9)",
-  },
-  {
-    id: "Maharashtra",
-    name: "Maharashtra",
-    title: "Warli",
-    desc: "Warli art is a traditional folk style from India that uses basic geometric shapes, like triangles, circles, and lines, to create stick-figure depictions of daily social life and nature",
-    image: "/HomePage/creativeStyle/warli.jpeg",
-    tag: "Film",
-    titleColor: "#ffffff",
-    href: "/text-to-image",
-    imageFilter: "brightness(0.85) saturate(0.9)",
-  },
-  {
-    id: "Maharashtra",
-    name: "Maharashtra",
-    title: "Warli",
-    desc: "Warli art is a traditional folk style from India that uses basic geometric shapes, like triangles, circles, and lines, to create stick-figure depictions of daily social life and nature",
-    image: "/HomePage/creativeStyle/warli.jpeg",
-    tag: "Film",
-    titleColor: "#ffffff",
-    href: "/text-to-image",
-    imageFilter: "brightness(0.85) saturate(0.9)",
-  },
- {
-    id: "Maharashtra",
-    name: "Maharashtra",
-    title: "Warli",
-    desc: "Warli art is a traditional folk style from India that uses basic geometric shapes, like triangles, circles, and lines, to create stick-figure depictions of daily social life and nature",
-    image: "/HomePage/creativeStyle/warli.jpeg",
-    tag: "Film",
-    titleColor: "#ffffff",
-    href: "/text-to-image",
-    imageFilter: "brightness(0.85) saturate(0.9)",
-  },
-  {
-    id: "Maharashtra",
-    name: "Maharashtra",
-    title: "Warli",
-    desc: "Warli art is a traditional folk style from India that uses basic geometric shapes, like triangles, circles, and lines, to create stick-figure depictions of daily social life and nature",
-    image: "/HomePage/creativeStyle/warli.jpeg",
-    tag: "Film",
+    tag: "Textile",
     titleColor: "#ffffff",
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.9)",
@@ -86,20 +42,25 @@ const STYLES: StyleItem[] = [
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
+  onKalamkariOpen?: () => void;
 };
 
-export default function CreativeStyle({ onWarliOpen }: CreativeStyleProps) {
+export default function CreativeStyle({ onWarliOpen, onKalamkariOpen }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
   const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
-    if (style.title.toLowerCase() !== "warli" || !onWarliOpen) {
+    const t = style.title.toLowerCase();
+    if (t === "warli" && onWarliOpen) {
+      event.preventDefault();
+      onWarliOpen();
       return;
     }
-
-    event.preventDefault();
-    onWarliOpen();
+    if (t === "kalamkari" && onKalamkariOpen) {
+      event.preventDefault();
+      onKalamkariOpen();
+    }
   };
 
   const scrollRight = () => {

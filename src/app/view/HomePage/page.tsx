@@ -28,6 +28,12 @@ const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
 const WarliFullscreenWalkthrough = dynamic(() => import('./compo/WarliFullscreenWalkthrough'), {
     ssr: false
 })
+const KalamkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KalamkariFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -70,6 +76,7 @@ const HomePage: React.FC = () => {
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
+    const [showKalamkariWalkthrough, setShowKalamkariWalkthrough] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const onViewChange = (view: ViewType) => {
@@ -241,6 +248,10 @@ const HomePage: React.FC = () => {
                         onWarliOpen={() => {
                             setShowWelcomeModal(false);
                             setShowWarliWalkthrough(true);
+                        }}
+                        onKalamkariOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowKalamkariWalkthrough(true);
                         }}
                     />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
@@ -423,6 +434,11 @@ const HomePage: React.FC = () => {
             <WarliFullscreenWalkthrough
                 isOpen={showWarliWalkthrough}
                 onClose={() => setShowWarliWalkthrough(false)}
+            />
+
+            <KalamkariFullscreenWalkthrough
+                isOpen={showKalamkariWalkthrough}
+                onClose={() => setShowKalamkariWalkthrough(false)}
             />
 
             {/* Welcome Modal */}
