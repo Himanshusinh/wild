@@ -311,7 +311,7 @@ const InputActions: React.FC<InputActionsProps> = ({
           isSeedance2ReferenceModel) && (
           <div className="relative">
             <button
-              className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+              className="p-1.5  md:pl-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
               onClick={() => {
                 setUploadModalType("video");
                 setIsUploadModalOpen(true);
