@@ -46,6 +46,12 @@ const UppadaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => vo
         ssr: false
     }
 )
+const TholuFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/TholuFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -91,6 +97,7 @@ const HomePage: React.FC = () => {
     const [showKalamkariWalkthrough, setShowKalamkariWalkthrough] = useState(false);
     const [showSrikalahastiWalkthrough, setShowSrikalahastiWalkthrough] = useState(false);
     const [showUppadaWalkthrough, setShowUppadaWalkthrough] = useState(false);
+    const [showTholuWalkthrough, setShowTholuWalkthrough] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const onViewChange = (view: ViewType) => {
@@ -262,6 +269,10 @@ const HomePage: React.FC = () => {
                         onWarliOpen={() => {
                             setShowWelcomeModal(false);
                             setShowWarliWalkthrough(true);
+                        }}
+                        onTholuOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowTholuWalkthrough(true);
                         }}
                         onKalamkariOpen={() => {
                             setShowWelcomeModal(false);
@@ -471,6 +482,11 @@ const HomePage: React.FC = () => {
             <UppadaFullscreenWalkthrough
                 isOpen={showUppadaWalkthrough}
                 onClose={() => setShowUppadaWalkthrough(false)}
+            />
+
+            <TholuFullscreenWalkthrough
+                isOpen={showTholuWalkthrough}
+                onClose={() => setShowTholuWalkthrough(false)}
             />
 
             {/* Welcome Modal */}

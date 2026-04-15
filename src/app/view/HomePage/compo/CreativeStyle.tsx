@@ -28,6 +28,17 @@ const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
   {
+    id: "tholu",
+    name: "Andhra Pradesh",
+    title: "LEATHER PUPPETRY",
+    desc: "A traditional shadow theatre art crafted from translucent leather, known for its intricate perforations, vibrant colors, and dramatic backlit storytelling.",
+    image: "/HomePage/creativeStyle/ANDRA LEATHER.png",
+    tag: "Theatre",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
     id: "uppadajamdani",
     name: "Andhra Pradesh",
     title: "UPPADA JAMDANI",
@@ -67,6 +78,7 @@ type CreativeStyleProps = {
   onKalamkariOpen?: () => void;
   onSrikalahastiOpen?: () => void;
   onUppadaOpen?: () => void;
+  onTholuOpen?: () => void;
 };
 
 export default function CreativeStyle({
@@ -74,6 +86,7 @@ export default function CreativeStyle({
   onKalamkariOpen,
   onSrikalahastiOpen,
   onUppadaOpen,
+  onTholuOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -84,6 +97,11 @@ export default function CreativeStyle({
     if (t === "warli" && onWarliOpen) {
       event.preventDefault();
       onWarliOpen();
+      return;
+    }
+    if (style.id === "tholu" && onTholuOpen) {
+      event.preventDefault();
+      onTholuOpen();
       return;
     }
     if (style.id === "uppadajamdani" && onUppadaOpen) {
