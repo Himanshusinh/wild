@@ -567,7 +567,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
         {/* Content */}
         <div className="md:flex md:flex-row md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-[40vh] md:h-[84vh] md:flex-1 group flex items-center justify-center">
+          <div className="relative bg-transparent h-[40vh] md:h-[78vh] md:flex-1 group flex items-center justify-center pl-4">
             {videoUrl && videoUrl.length > 0 ? (
               videoUrl.startsWith('data:image/') ? (
                 <img 
