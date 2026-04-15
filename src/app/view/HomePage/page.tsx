@@ -34,6 +34,18 @@ const KalamkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () =>
         ssr: false
     }
 )
+const SrikalahastiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SrikalahastiFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const UppadaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/UppadaFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -77,6 +89,8 @@ const HomePage: React.FC = () => {
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
     const [showKalamkariWalkthrough, setShowKalamkariWalkthrough] = useState(false);
+    const [showSrikalahastiWalkthrough, setShowSrikalahastiWalkthrough] = useState(false);
+    const [showUppadaWalkthrough, setShowUppadaWalkthrough] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const onViewChange = (view: ViewType) => {
@@ -252,6 +266,14 @@ const HomePage: React.FC = () => {
                         onKalamkariOpen={() => {
                             setShowWelcomeModal(false);
                             setShowKalamkariWalkthrough(true);
+                        }}
+                        onSrikalahastiOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowSrikalahastiWalkthrough(true);
+                        }}
+                        onUppadaOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowUppadaWalkthrough(true);
                         }}
                     />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
@@ -439,6 +461,16 @@ const HomePage: React.FC = () => {
             <KalamkariFullscreenWalkthrough
                 isOpen={showKalamkariWalkthrough}
                 onClose={() => setShowKalamkariWalkthrough(false)}
+            />
+
+            <SrikalahastiFullscreenWalkthrough
+                isOpen={showSrikalahastiWalkthrough}
+                onClose={() => setShowSrikalahastiWalkthrough(false)}
+            />
+
+            <UppadaFullscreenWalkthrough
+                isOpen={showUppadaWalkthrough}
+                onClose={() => setShowUppadaWalkthrough(false)}
             />
 
             {/* Welcome Modal */}

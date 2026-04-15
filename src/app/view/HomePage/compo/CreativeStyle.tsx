@@ -65,9 +65,16 @@ const STYLES: StyleItem[] = [
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
   onKalamkariOpen?: () => void;
+  onSrikalahastiOpen?: () => void;
+  onUppadaOpen?: () => void;
 };
 
-export default function CreativeStyle({ onWarliOpen, onKalamkariOpen }: CreativeStyleProps) {
+export default function CreativeStyle({
+  onWarliOpen,
+  onKalamkariOpen,
+  onSrikalahastiOpen,
+  onUppadaOpen,
+}: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
@@ -79,9 +86,19 @@ export default function CreativeStyle({ onWarliOpen, onKalamkariOpen }: Creative
       onWarliOpen();
       return;
     }
-    if (t === "kalamkari" && onKalamkariOpen) {
+    if (style.id === "uppadajamdani" && onUppadaOpen) {
+      event.preventDefault();
+      onUppadaOpen();
+      return;
+    }
+    if (style.id === "machilipatnam" && onKalamkariOpen) {
       event.preventDefault();
       onKalamkariOpen();
+      return;
+    }
+    if (style.id === "srikalahasti" && onSrikalahastiOpen) {
+      event.preventDefault();
+      onSrikalahastiOpen();
     }
   };
 
