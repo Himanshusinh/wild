@@ -263,6 +263,12 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           generationType: "text-to-image",
           model: state.model,
           prompt: promptForModel,
+          meta: {
+            style_premium: true,
+            style_key: "machilipatnam",
+            style_version: state.style,
+            source: "homepage-machilipatnam-modal",
+          },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
           output_format: outputFormat,

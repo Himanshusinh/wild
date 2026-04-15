@@ -256,6 +256,12 @@ export function UppadaModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           generationType: "text-to-image",
           model: state.model,
           prompt: promptForModel,
+          meta: {
+            style_premium: true,
+            style_key: "uppadajamdani",
+            style_version: state.style,
+            source: "homepage-uppada-modal",
+          },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
           output_format: outputFormat,

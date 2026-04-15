@@ -256,6 +256,12 @@ export function SrikalahastiModal({ isOpen, onClose }: { isOpen: boolean; onClos
           generationType: "text-to-image",
           model: state.model,
           prompt: promptForModel,
+          meta: {
+            style_premium: true,
+            style_key: "srikalahasti",
+            style_version: state.style,
+            source: "homepage-srikalahasti-modal",
+          },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
           output_format: outputFormat,
