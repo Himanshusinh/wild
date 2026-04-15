@@ -197,32 +197,7 @@ const cards: CardConfig[] = [
     footerClassName: "bg-[rgba(16,185,129,0.06)] text-[#10b981]",
     cta: "Try Now ->",
   },
-  {
-    title: "Creatively\nUpscale",
-    subtitle: "Enhance images with sharper detail",
-    href: "/view/workflows/general/creatively-upscale",
-    featureType: "image",
-    badge: "UPSCALE",
-    icon: <ImageIcon size={20} />,
-    iconClassName: "bg-[linear-gradient(135deg,#7c2d12,#f97316)] shadow-[0_8px_24px_rgba(249,115,22,0.4)]",
-    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.18),transparent_68%)]",
-    hoverClassName: "hover:border-[#f97316]/55 hover:shadow-[0_14px_34px_rgba(249,115,22,0.14)]",
-    footerClassName: "bg-[rgba(249,115,22,0.06)] text-[#f97316]",
-    cta: "Try Now ->",
-  },
-  // {
-  //   title: "Remove\nBackground",
-  //   subtitle: "Clean background cutout workflow",
-  //   href: "/view/workflows/general/remove-background",
-  //   featureType: "image",
-  //   badge: "CUTOUT",
-  //   icon: <Scissors size={20} />,
-  //   iconClassName: "bg-[linear-gradient(135deg,#14532d,#22c55e)] shadow-[0_8px_24px_rgba(34,197,94,0.4)]",
-  //   glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.18),transparent_68%)]",
-  //   hoverClassName: "hover:border-[#22c55e]/55 hover:shadow-[0_14px_34px_rgba(34,197,94,0.14)]",
-  //   footerClassName: "bg-[rgba(34,197,94,0.06)] text-[#22c55e]",
-  //   cta: "Try Now ->",
-  // },
+
   {
     title: "Remove\nWatermark",
     subtitle: "Clear overlays from images",
@@ -427,11 +402,11 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
   return (
     <section className="bg-[#0E0E12] pb-12 pt-0">
       <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8">
-        <div className="mb-2 flex items-center justify-between gap-4">
-          <p className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3b82f6]">
-            <span className="h-[1.5px] w-4 bg-[#3b82f6]" />
-            All Features
-          </p>
+        <div className="mb-5 flex items-center gap-[10px]">
+          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/30">
+            All features
+          </span>
+          <div className="h-[0.5px] flex-1 bg-white/10" />
         </div>
 
         <div className="relative">
@@ -463,38 +438,77 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
             className={`scrollbar-hide no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto overflow-y-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mode === "video" && !isOverflowing ? "justify-start pr-0" : "pr-12"}`}
             style={{ touchAction: "auto", WebkitOverflowScrolling: "touch" }}
           >
-            {visibleCards.map((card) => (
-              <Link
-                key={card.title}
-                href={card.href}
-                className={`group ${CARD_WIDTH} shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-[#171a26] transition-all duration-300 ${card.hoverClassName}`}
-              >
-                <div className="relative min-h-[188px] p-[16px] pb-[0px]">
-                  <div className={`pointer-events-none absolute left-[-28px] top-[-28px] h-40 w-40 ${card.glowClassName}`} />
-                  <div className="relative z-[1] mb-[32px] flex items-start justify-between">
-                    <span className={`flex h-[44px] w-[44px] items-center justify-center rounded-[12px] text-white ${card.iconClassName}`}>{card.icon}</span>
-                    {typeof card.badge === "string" ? (
-                      <span className="rounded-full border border-white/15 bg-white/5 px-[9px] py-[3px] text-[8px] font-bold uppercase tracking-[0.07em] text-white/80">
-                        {card.badge}
-                      </span>
-                    ) : (
-                      card.badge
-                    )}
-                  </div>
+            {visibleCards.map((card) => {
+              const imageMap: Record<string, string> = {
+                "Image\nGeneration": "/HomePage/Allfeatures/image-generation-bg.png",
+                "Create\nVideo": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&q=80",
+                "Edit\nImage": "/HomePage/Allfeatures/edit-image-bg.png",
+                "Upscale": "/HomePage/Allfeatures/upscale-bg.png",
+                "Remove\nBG": "/HomePage/Allfeatures/remove-bg.png",
+                "Erase /\nReplace": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80",
+                "Expand\nCanvas": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80",
+                "Vectorize": "/HomePage/Allfeatures/vectorize-bg.png",
+                "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.png",
+                "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.png",
+                "Line Drawing\nTo Photo": "/HomePage/Allfeatures/line-drawing-to-photo-bg.png",
+                "Remove\nElement": "https://images.unsplash.com/photo-1594911772125-07fabee57c4f?w=400&q=80",
+                "Replace\nElement": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=400&q=80",
 
-                  <div className="relative z-[1]">
-                    <h3 className="mb-[6px] whitespace-pre-line text-[16px] font-bold leading-[1.2] tracking-[-0.01em] text-white">
-                      {card.title}
-                    </h3>
-                    <p className="text-[11px] leading-[1.5] text-white/46">{card.subtitle}</p>
-                  </div>
-                </div>
+                "Remove\nWatermark": "https://images.unsplash.com/photo-1555536551-70bf8575a7fc?w=400&q=80",
+                "Product\nPhotography": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
+                "Relight\nPortrait": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=80",
+                "Apps": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
+                "Lipsync\nStudio": "https://images.unsplash.com/photo-1588825829910-619cd00e8b2b?w=400&q=80",
+                "Video\nUpscale": "https://images.unsplash.com/photo-1588698711463-548d1e0281b9?w=400&q=80",
+                "Text To\nMusic": "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&q=80",
+                "Remove\nVideo BG": "https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?w=400&q=80"
+              };
+              const cardImage = imageMap[card.title] || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80";
 
-                <div className={`border-t border-white/10 px-4 py-3 text-center text-[12px] font-bold tracking-[0.02em] ${card.footerClassName}`}>
-                  {card.cta}
-                </div>
-              </Link>
-            ))}
+              return (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  className="group flex w-[195px] shrink-0 snap-start flex-col overflow-hidden rounded-[14px] border-[0.5px] border-white/10 bg-[#16161C] transition-all duration-150 hover:-translate-y-[3px] hover:border-blue-400/40"
+                >
+                  <div className="relative h-[115px] overflow-hidden bg-[#1E1E26]">
+                    <img
+                      className="block h-full w-full object-cover opacity-85"
+                      src={cardImage}
+                      alt={card.title.replace('\n', ' ')}
+                      onError={(e) => {
+                        (e.target as HTMLElement).parentElement!.style.background = '#1a1a24';
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute left-2 top-2 rounded-full border-[0.5px] border-blue-400/30 bg-[#0E0E12]/70 px-[9px] py-[3px] text-[10px] font-semibold uppercase tracking-[0.05em] text-blue-400 backdrop-blur-[4px]">
+                      {typeof card.badge === "string" ? card.badge : "1× · 4×"}
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-[7px] p-[14px]">
+                    <div className="flex items-center gap-[9px]">
+                      <div className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg ${card.iconClassName}`}>
+                        <div className="[&>svg]:h-[15px] [&>svg]:w-[15px]">
+                          {card.icon}
+                        </div>
+                      </div>
+                      <p className="whitespace-pre-line text-[13px] font-medium leading-[1.3] text-white">
+                        {card.title.replace('\n', ' ')}
+                      </p>
+                    </div>
+                    <p className="flex-1 text-[11px] leading-[1.55] text-white/40">
+                      {card.subtitle}
+                    </p>
+                    <p className="mt-[2px] flex items-center gap-1 text-[11px] font-semibold text-[#60A5FA]">
+                      {card.cta.replace(' ->', '')}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-[10px] w-[10px]">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
