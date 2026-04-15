@@ -251,11 +251,11 @@ export default function WhatsNew() {
                 <div className="relative z-10 flex h-full flex-1 flex-col">
                   {item.media.kind === "video" && (
                     <div className="flex justify-end">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-black/40 text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.32)] backdrop-blur-md">
+                      {/* <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-black/40 text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.32)] backdrop-blur-md">
                         <svg width="13" height="13" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                           <path d="M4.2 3.2L8.4 6 4.2 8.8V3.2Z" fill="currentColor" />
                         </svg>
-                      </div>
+                      </div> */}
                     </div>
                   )}
 
