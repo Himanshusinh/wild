@@ -64,20 +64,42 @@ const STYLES: StyleItem[] = [
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
+  onKalamkariOpen?: () => void;
+  onSrikalahastiOpen?: () => void;
+  onUppadaOpen?: () => void;
 };
 
-export default function CreativeStyle({ onWarliOpen }: CreativeStyleProps) {
+export default function CreativeStyle({
+  onWarliOpen,
+  onKalamkariOpen,
+  onSrikalahastiOpen,
+  onUppadaOpen,
+}: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
   const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
-    if (style.title.toLowerCase() !== "warli" || !onWarliOpen) {
+    const t = style.title.toLowerCase();
+    if (t === "warli" && onWarliOpen) {
+      event.preventDefault();
+      onWarliOpen();
       return;
     }
-
-    event.preventDefault();
-    onWarliOpen();
+    if (style.id === "uppadajamdani" && onUppadaOpen) {
+      event.preventDefault();
+      onUppadaOpen();
+      return;
+    }
+    if (style.id === "machilipatnam" && onKalamkariOpen) {
+      event.preventDefault();
+      onKalamkariOpen();
+      return;
+    }
+    if (style.id === "srikalahasti" && onSrikalahastiOpen) {
+      event.preventDefault();
+      onSrikalahastiOpen();
+    }
   };
 
   const scrollRight = () => {
