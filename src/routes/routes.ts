@@ -59,7 +59,7 @@ export const NAV_ROUTES = {
   PRICING: '/view/pricing',
   BLOG: '/blog',
   CONTACT: '/view/Landingpage?section=contact',
-  SUPPORT: '/view/Landingpage?section=support',
+  SUPPORT: '/company/support',
   ABOUT: '/view/Landingpage?section=about',
   BOOKMARK: '/bookmarks',
   LANDING: '/view/Landingpage',
@@ -89,7 +89,7 @@ export const LEGAL_ROUTES = {
 export const PRODUCT_ROUTES = {
   PRICING: '/view/pricing',
   FAQS: '/product/faqs',
-  DOCUMENTATION: '/view/Landingpage?section=support', // Using support section as documentation
+  DOCUMENTATION: '/company/support',
 } as const;
 
 // Company Routes
@@ -97,7 +97,7 @@ export const COMPANY_ROUTES = {
   ABOUT: '/company/about',
   BLOG: '/blog',
   CONTACT: '/company/contact-us',
-  SUPPORT: '/view/Landingpage?section=support',
+  SUPPORT: '/company/support',
   NEWSLETTER: '/company/newsletter',
   CAREERS: '/company/careers', // Careers page route
 } as const;
