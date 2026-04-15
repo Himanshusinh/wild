@@ -43,6 +43,7 @@ export const getVideoCreditCost = (
   generateAudio?: boolean,
   aspectRatio?: string,
   inputVideoDurationSec?: number,
+  hasReferenceVideoInput?: boolean,
 ): number => {
   const mapping = getModelMapping(frontendModel);
   if (!mapping || mapping.generationType !== "video") {
@@ -130,6 +131,7 @@ export const getVideoCreditCost = (
       duration,
       aspectRatio,
       inputVideoDurationSec,
+      Boolean(hasReferenceVideoInput),
     );
   }
   if (frontendModel === "seedance-2.0-r2v") {
@@ -138,6 +140,7 @@ export const getVideoCreditCost = (
       duration,
       aspectRatio,
       inputVideoDurationSec,
+      Boolean(hasReferenceVideoInput),
     );
   }
   if (
@@ -174,6 +177,7 @@ export const getVideoCreditCost = (
       undefined,
       undefined,
       inputVideoDurationSec,
+      hasReferenceVideoInput,
     );
     if (cost !== null && cost > 0) {
       console.log(
@@ -523,6 +527,7 @@ export const getVideoGenerationCreditCost = (
   duration?: number | string,
   aspectRatio?: string,
   inputVideoDurationSec?: number,
+  hasReferenceVideoInput?: boolean,
 ): number => {
   return getVideoCreditCost(
     frontendModel,
@@ -531,6 +536,7 @@ export const getVideoGenerationCreditCost = (
     undefined,
     aspectRatio,
     inputVideoDurationSec,
+    hasReferenceVideoInput,
   );
 };
 

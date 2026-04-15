@@ -3631,6 +3631,28 @@ const InputBox = () => {
   // cooldown and visibility metrics rather than looping effects.
 
   // Helper function to handle FAL errors with structured error messages
+  const extractQueueFailureMessage = (
+    status: any,
+    fallbackMessage: string,
+  ): string => {
+    const candidates = [
+      status?.message,
+      status?.error,
+      status?.failure,
+      status?.detail,
+      status?.data?.message,
+      status?.data?.error,
+      status?.data?.detail,
+      status?.response?.message,
+      status?.response?.error,
+      status?.response?.detail,
+    ];
+    const resolved = candidates.find(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    ) as string | undefined;
+    return resolved || fallbackMessage;
+  };
+
   const handleFalError = async (
     error: any,
     context: {
@@ -4881,11 +4903,19 @@ const InputBox = () => {
                   }
 
                   if (s === "failed" || s === "error") {
-                    throw new Error("Flux 2 Pro generation failed (queue)");
+                    throw new Error(
+                      extractQueueFailureMessage(
+                        status,
+                        "Flux 2 Pro generation failed (queue)",
+                      ),
+                    );
                   }
                 } catch (statusError: any) {
                   consecutiveErrors++;
-                  const errorMsg = statusError?.message || String(statusError);
+                  const errorMsg = extractQueueFailureMessage(
+                    statusError,
+                    statusError?.message || String(statusError),
+                  );
                   const isNetworkError =
                     errorMsg.includes("timeout") ||
                     errorMsg.includes("ECONNREFUSED") ||
@@ -4933,9 +4963,10 @@ const InputBox = () => {
                     id: generationId,
                     updates: {
                       status: "failed",
-                      error:
-                        (queueErr as any)?.message ||
+                      error: extractQueueFailureMessage(
+                        queueErr,
                         "Flux 2 Pro generation failed",
+                      ),
                     },
                   }),
                 );
@@ -5213,11 +5244,19 @@ const InputBox = () => {
                   }
 
                   if (s === "failed" || s === "error") {
-                    throw new Error("Gemini generation failed (queue)");
+                    throw new Error(
+                      extractQueueFailureMessage(
+                        status,
+                        "Gemini generation failed (queue)",
+                      ),
+                    );
                   }
                 } catch (statusError: any) {
                   consecutiveErrors++;
-                  const errorMsg = statusError?.message || String(statusError);
+                  const errorMsg = extractQueueFailureMessage(
+                    statusError,
+                    statusError?.message || String(statusError),
+                  );
                   const isNetworkError =
                     errorMsg.includes("timeout") ||
                     errorMsg.includes("ECONNREFUSED") ||
@@ -5268,9 +5307,10 @@ const InputBox = () => {
                     id: generationId,
                     updates: {
                       status: "failed",
-                      error:
-                        (queueErr as any)?.message ||
+                      error: extractQueueFailureMessage(
+                        queueErr,
                         "Gemini generation failed",
+                      ),
                     },
                   }),
                 );
@@ -5650,11 +5690,19 @@ const InputBox = () => {
                   }
 
                   if (s === "failed" || s === "error") {
-                    throw new Error("Seedream generation failed (queue)");
+                    throw new Error(
+                      extractQueueFailureMessage(
+                        status,
+                        "Seedream generation failed (queue)",
+                      ),
+                    );
                   }
                 } catch (statusError: any) {
                   consecutiveErrors++;
-                  const errorMsg = statusError?.message || String(statusError);
+                  const errorMsg = extractQueueFailureMessage(
+                    statusError,
+                    statusError?.message || String(statusError),
+                  );
                   const isNetworkError =
                     errorMsg.includes("timeout") ||
                     errorMsg.includes("ECONNREFUSED") ||
@@ -5710,9 +5758,10 @@ const InputBox = () => {
                     id: generationId,
                     updates: {
                       status: "failed",
-                      error:
-                        (queueErr as any)?.message ||
+                      error: extractQueueFailureMessage(
+                        queueErr,
                         "Seedream generation failed",
+                      ),
                     },
                   }),
                 );
@@ -5994,11 +6043,19 @@ const InputBox = () => {
                   }
 
                   if (s === "failed" || s === "error") {
-                    throw new Error("Seedream 4.5 generation failed (queue)");
+                    throw new Error(
+                      extractQueueFailureMessage(
+                        status,
+                        "Seedream 4.5 generation failed (queue)",
+                      ),
+                    );
                   }
                 } catch (statusError: any) {
                   consecutiveErrors++;
-                  const errorMsg = statusError?.message || String(statusError);
+                  const errorMsg = extractQueueFailureMessage(
+                    statusError,
+                    statusError?.message || String(statusError),
+                  );
                   const isNetworkError =
                     errorMsg.includes("timeout") ||
                     errorMsg.includes("ECONNREFUSED") ||
@@ -6052,9 +6109,10 @@ const InputBox = () => {
                     id: generationId,
                     updates: {
                       status: "failed",
-                      error:
-                        (queueErr as any)?.message ||
+                      error: extractQueueFailureMessage(
+                        queueErr,
                         "Seedream 4.5 generation failed",
+                      ),
                     },
                   }),
                 );
@@ -10102,7 +10160,6 @@ const InputBox = () => {
 
               {/* Fixed position Generate button - Desktop only */}
               <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
-                {error && <div className="text-red-500 text-xs">{error}</div>}
                 {expectedCredits > 0 && (
                   <div className="text-white/60 text-[11px] pr-1">
                     Total credits:{" "}
@@ -10204,14 +10261,8 @@ const InputBox = () => {
                   <ModelsDropdown />
                 </div>
 
-                {error ? (
-                  <div className="text-red-500 text-[10px] truncate flex-1 text-center">
-                    {error}
-                  </div>
-                ) : (
-                  <div className="flex-1 min-w-0" />
-                )}
-{expectedCredits > 0 && !error && (
+                <div className="flex-1 min-w-0" />
+{expectedCredits > 0 && (
                   <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
                     {Math.round(expectedCredits).toLocaleString()} credits
                   </div>

@@ -6,15 +6,15 @@ import { Download, Expand } from "lucide-react";
 interface OutputGridProps {
   images: string[];
   count: number;
+  onSaveImage?: (index: number) => void;
+  onExpandImage?: (index: number) => void;
 }
 
 function Placeholder() {
-  return (
-    <div className="flex h-full w-full items-center justify-center bg-[#13131a]" />
-  );
+  return <div className="flex h-full w-full items-center justify-center bg-[#13131a]" />;
 }
 
-export function OutputGrid({ images, count }: OutputGridProps) {
+export function OutputGrid({ images, count, onSaveImage, onExpandImage }: OutputGridProps) {
   return (
     <div className={`grid gap-3 ${count === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
       {Array.from({ length: count }).map((_, i) => (
@@ -28,19 +28,35 @@ export function OutputGrid({ images, count }: OutputGridProps) {
           ) : (
             <Placeholder />
           )}
-          <div
-            className="absolute inset-0 flex items-end p-3 opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)" }}
-          >
-            <div className="flex gap-1.5">
-              <button type="button" className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur-sm transition hover:text-white">
-                <Download className="h-3 w-3" /> Save
-              </button>
-              <button type="button" className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur-sm transition hover:text-white">
-                <Expand className="h-3 w-3" /> Expand
-              </button>
+          {images[i] ? (
+            <div
+              className="absolute inset-0 flex items-end p-3 opacity-0 transition-opacity group-hover:opacity-100"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)" }}
+            >
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur-sm transition hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSaveImage?.(i);
+                  }}
+                >
+                  <Download className="h-3 w-3" /> Save
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur-sm transition hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExpandImage?.(i);
+                  }}
+                >
+                  <Expand className="h-3 w-3" /> Expand
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       ))}
     </div>

@@ -71,6 +71,22 @@ const NEW_ITEMS: NewItem[] = [
     },
   },
   {
+    id: "new-model-pixverse-v6",
+    eyebrow: "New Model",
+    title: "PixVerse V6",
+    desc: "Multishot cinematic video with optional synced audio, style presets, and strong text- or image-to-video control.",
+    features: ["5–15s", "360p / 1080p", "T2V + I2V", "Audio + Multishot"],
+    href: "/text-to-video?model=pixverse-v6-t2v",
+    color: "#E879F9",
+    Icon: Bot,
+    media: {
+      kind: "video",
+      src: "/HomePage/whatsnew/veo-clouds.mp4",
+      alt: "Atmospheric motion preview for PixVerse V6",
+      position: "50% 35%",
+    },
+  },
+  {
     id: "new-model-nano-banana-2",
     eyebrow: "New Model",
     title: "Nano Banana 2",
@@ -251,11 +267,11 @@ export default function WhatsNew() {
                 <div className="relative z-10 flex h-full flex-1 flex-col">
                   {item.media.kind === "video" && (
                     <div className="flex justify-end">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-black/40 text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.32)] backdrop-blur-md">
+                      {/* <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-black/40 text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.32)] backdrop-blur-md">
                         <svg width="13" height="13" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                           <path d="M4.2 3.2L8.4 6 4.2 8.8V3.2Z" fill="currentColor" />
                         </svg>
-                      </div>
+                      </div> */}
                     </div>
                   )}
 

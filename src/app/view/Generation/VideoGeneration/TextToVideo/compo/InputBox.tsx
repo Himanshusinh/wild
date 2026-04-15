@@ -996,6 +996,15 @@ const InputBox = (props: InputBoxProps = {}) => {
   const creditsModel = hasVeo31LiteFirstLastFrames
     ? "veo3.1-lite-flf2v-8s"
     : selectedModel;
+  const hasSeedanceReferenceVideoInput =
+    isSeedance2ReferenceModel(selectedModel) && uploadedVideos.length > 0;
+  const seedanceReferenceInputDurationForCredits = isSeedance2ReferenceModel(
+    selectedModel,
+  )
+    ? uploadedVideos.length > 0
+      ? uploadedVideoDurationSec || 0
+      : 0
+    : undefined;
 
   const {
     validateAndReserveCredits,
@@ -1015,9 +1024,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     frameSize: isSeedance2FamilyModel(selectedModel)
       ? seedance2AspectRatio
       : undefined,
-    inputVideoDurationSec: isSeedance2ReferenceModel(selectedModel)
-      ? uploadedVideoDurationSec || 0
-      : undefined,
+    inputVideoDurationSec: seedanceReferenceInputDurationForCredits,
+    hasReferenceVideoInput: hasSeedanceReferenceVideoInput,
   });
 
   const loadVideoDurationSeconds = useCallback(
@@ -1143,7 +1151,12 @@ const InputBox = (props: InputBoxProps = {}) => {
               ? seedance2AspectRatio
               : undefined,
             isSeedance2ReferenceModel(normalizedModelForCredits)
-              ? uploadedVideoDurationSec || 0
+              ? uploadedVideos.length > 0
+                ? uploadedVideoDurationSec || 0
+                : 0
+              : undefined,
+            isSeedance2ReferenceModel(normalizedModelForCredits)
+              ? uploadedVideos.length > 0
               : undefined,
           ),
         ) || 0,
@@ -1161,6 +1174,7 @@ const InputBox = (props: InputBoxProps = {}) => {
     pixverseV6GenerateAudio,
     frameSize,
     uploadedImages,
+    uploadedVideos,
     uploadedVideoDurationSec,
     references,
     lastFrameImage,

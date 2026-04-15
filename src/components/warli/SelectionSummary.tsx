@@ -1,14 +1,13 @@
 "use client";
 
 import React from "react";
-import { StyleFamily, ModelId, ImageCount, AspectRatio, Variation, STYLE_LABELS } from "./types";
+import { StyleFamily, ModelId, ImageCount, STYLE_LABELS, MODELS } from "./types";
 
 interface SelectionSummaryProps {
   style: StyleFamily;
-  variation: Variation;
   model: ModelId;
   imageCount: ImageCount;
-  ratio: AspectRatio;
+  ratioSummary: string;
 }
 
 function Tag({ label, value }: { label?: string; value: string }) {
@@ -20,26 +19,15 @@ function Tag({ label, value }: { label?: string; value: string }) {
   );
 }
 
-const MODEL_LABELS: Record<ModelId, string> = {
-  "flux-2-pro": "Flux 2 Pro",
-  "seedream-4.5": "Seedream 4.5",
-  "imagen-4": "Imagen 4",
-};
+export function SelectionSummary({ style, model, imageCount, ratioSummary }: SelectionSummaryProps) {
+  const modelLabel = MODELS.find((m) => m.id === model)?.label ?? model;
 
-const VARIATION_LABELS: Record<Variation, string> = {
-  template: "Template",
-  variable: "Variable",
-  restyle: "Restyle",
-};
-
-export function SelectionSummary({ style, variation, model, imageCount, ratio }: SelectionSummaryProps) {
   return (
     <div className="flex flex-wrap gap-1.5 border-t border-white/[0.06] bg-[#0E0E12] px-4 py-3">
       <Tag label="Style" value={`${style} · ${STYLE_LABELS[style].badge.split(" ")[0]}`} />
-      <Tag value={VARIATION_LABELS[variation]} />
-      <Tag label="Model" value={MODEL_LABELS[model]} />
+      <Tag label="Model" value={modelLabel} />
       <Tag value={`${imageCount}×`} />
-      <Tag value={ratio} />
+      <Tag label="Ratio" value={ratioSummary} />
     </div>
   );
 }
