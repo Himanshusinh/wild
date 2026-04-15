@@ -638,7 +638,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
               <div className="absolute top-3 left-3 bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/30">User upload</div>
             )}
             
-            <button
+            {/* <button
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-opacity"
@@ -650,7 +650,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                 <path d="M21 15v4a2 2 0 0 1-2 2h-4" />
                 <path d="M3 15v4a2 2 0 0 0 2 2h4" />
               </svg>
-            </button>
+            </button> */}
           </div>
 
           {/* Sidebar */}
