@@ -1625,7 +1625,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         {/* Content */}
         <div className="flex flex-col md:flex md:flex-row h-[90vh] md:h-full   md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-full md:h-[84vh] md:flex-1 group flex items-center justify-center ">
+          <div className="relative bg-transparent h-full md:h-auto md:flex-1 group flex items-center justify-center py-4 ">
             {(selectedImage?.avifUrl || selectedImage?.url) && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
@@ -1647,7 +1647,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 )}
               </div>
             )}
-            <button
+            {/* <button
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute md:top-3 top-0 md:left-3 left-0 z-30 p-2 rounded-full md:bg-white/10 hover:bg-white/20 text-white transition-opacity"
@@ -1659,7 +1659,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 <path d="M21 15v4a2 2 0 0 1-2 2h-4" />
                 <path d="M3 15v4a2 2 0 0 0 2 2h4" />
               </svg>
-            </button>
+            </button> */}
           </div>
           {/* Sidebar */}
           <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent max-h-[18rem] md:max-h-none md:min-h-[70vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
