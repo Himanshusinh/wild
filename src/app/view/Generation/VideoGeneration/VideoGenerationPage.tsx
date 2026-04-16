@@ -19,6 +19,8 @@ import VideoGenerationGuide from "./TextToVideo/compo/VideoGenerationGuide";
 import { usePathname } from "next/navigation";
 import EditVideoInterface from "../../EditVideo/compo/EditVideoInterface";
 import HistoryControls from "./TextToVideo/compo/HistoryControls";
+import { loadHistory, setFilters } from "@/store/slices/historySlice";
+import { setCurrentGenerationType } from "@/store/slices/uiSlice";
 
 type VideoFeature = "Video" | "Lipsync" | "Animate" | "Edit" | "Video editor";
 
@@ -37,6 +39,56 @@ export default function VideoGenerationPage() {
   const allHistoryEntries = useAppSelector(
     (state: any) => state.history?.entries || [],
   );
+  const historyLoading = useAppSelector((state: any) => state.history?.loading);
+  const didAutoFetchVideoHistoryRef = useRef(false);
+
+  // Ensure video history is loaded even when using AnimateInputBox (which doesn't fetch history on mount).
+  useEffect(() => {
+    if (!authUser) return;
+    if (historyLoading) return;
+    if (didAutoFetchVideoHistoryRef.current) return;
+
+    // Only auto-fetch for the main video generation surface (Video/Lipsync/Animate).
+    if (isInlineEditVideoPage) return;
+    if (!["Video", "Lipsync", "Animate"].includes(activeFeature)) return;
+
+    // IMPORTANT: historySlice has a guard that aborts when UI currentGenerationType doesn't match expectedType.
+    // Set it to a video type so loadHistory isn't condition-aborted.
+    try {
+      dispatch(setCurrentGenerationType("text-to-video" as any));
+    } catch {}
+
+    // If we already have entries, don't force another fetch.
+    if (Array.isArray(allHistoryEntries) && allHistoryEntries.length > 0) {
+      didAutoFetchVideoHistoryRef.current = true;
+      return;
+    }
+
+    didAutoFetchVideoHistoryRef.current = true;
+    try {
+      dispatch(
+        setFilters({
+          ...(typeof (window as any) !== "undefined"
+            ? ({} as any)
+            : ({} as any)),
+          mode: "video",
+          sortOrder: "desc",
+        } as any),
+      );
+    } catch {}
+    (dispatch as any)(
+      loadHistory({
+        filters: { mode: "video", sortOrder: "desc" } as any,
+        backendFilters: { mode: "video", sortOrder: "desc" } as any,
+        paginationParams: { limit: 20 },
+        requestOrigin: "page",
+        expectedType: "video",
+        forceRefresh: true,
+        debugTag: `VideoGenerationPage:autoHistory:${Date.now()}`,
+      } as any),
+    ).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser, activeFeature, isInlineEditVideoPage, historyLoading]);
 
   // If user just logged in and the URL requests opening the external video editor, do it once.
   useEffect(() => {

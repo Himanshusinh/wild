@@ -2746,7 +2746,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
         </div>
       )}
 
-      <div className="fixed left-1/2 z-[100] h-auto w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 md:bottom-6 md:w-[90%] md:max-w-[900px] rounded-lg bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-1.5 md:p-3 md:pb-5 transition-all duration-300">
+      <div className="fixed left-1/2 z-[50] h-auto w-[92%] max-w-[92%] -translate-x-1/2 bottom-2 md:bottom-6 md:w-[90%] md:max-w-[900px] rounded-lg bg-gradient-to-b from-white/5 to-white/5 border border-white/10 backdrop-blur-xl p-1.5 md:p-3 md:pb-5 transition-all duration-300">
         <PromptInput
           prompt={prompt}
           onChange={setPrompt}

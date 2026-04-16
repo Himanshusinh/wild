@@ -1375,9 +1375,13 @@ export const buildCreditModelName = (
     }
 
     const d =
-      options.duration === 4 || options.duration === 6 ? options.duration : 8;
+      options.duration === 4 ||
+      options.duration === 6 ||
+      options.duration === 8
+        ? options.duration
+        : 8;
     const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
-    modelName = `Veo 3.1 Lite ${mode} ${res === "1080p" ? 8 : d}s ${res}`;
+    modelName = `Veo 3.1 Lite ${mode} ${d}s ${res}`;
   }
   // Handle Kling models
   else if (mapping.frontendValue.startsWith("kling") && options?.duration) {
