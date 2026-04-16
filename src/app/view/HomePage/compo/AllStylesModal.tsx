@@ -14,13 +14,13 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-4 sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-3 sm:p-6" onClick={onClose}>
       <div 
         className="relative w-full max-w-8xl max-h-[90vh] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 sm:px-8">
+        <div className="flex items-center justify-between border-b border-white/5 px-5 py-4 sm:px-7">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight sm:text-3xl" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
               Explore All Styles
@@ -36,15 +36,15 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
         </div>
 
         {/* Grid Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
             {STYLES.map((style) => (
               <button
                 key={style.id}
                 onClick={() => onSelectStyle(style.id)}
                 className="group flex flex-col text-left transition-all hover:-translate-y-1"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f]">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20">
                   <img
                     src={style.image}
                     alt={style.title}
@@ -57,6 +57,12 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
                     <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
                       {style.title}
                     </div>
+                    <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
+                      {style.name}
+                    </div>
+                    <div className="mt-1 text-[10px] leading-snug text-white/55 line-clamp-2">
+                      {style.desc}
+                    </div>
                   </div>
 
                   <div className="absolute left-4 top-4">
@@ -66,9 +72,9 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
                   </div>
                 </div>
                 
-                <div className="mt-3 px-1">
-                  <div className="text-[13px] font-bold text-white/90">{style.name}</div>
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/30">{style.desc}</p>
+                <div className="sr-only">
+                  <div>{style.name}</div>
+                  <p>{style.desc}</p>
                 </div>
               </button>
             ))}

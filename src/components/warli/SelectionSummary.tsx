@@ -6,6 +6,7 @@ import { StyleFamily, ModelId, ImageCount, STYLE_LABELS, MODELS } from "./types"
 interface SelectionSummaryProps {
   style: StyleFamily;
   model: ModelId;
+  resolution: string;
   imageCount: ImageCount;
   ratioSummary: string;
 }
@@ -19,13 +20,20 @@ function Tag({ label, value }: { label?: string; value: string }) {
   );
 }
 
-export function SelectionSummary({ style, model, imageCount, ratioSummary }: SelectionSummaryProps) {
+export function SelectionSummary({
+  style,
+  model,
+  resolution,
+  imageCount,
+  ratioSummary,
+}: SelectionSummaryProps) {
   const modelLabel = MODELS.find((m) => m.id === model)?.label ?? model;
 
   return (
     <div className="flex flex-wrap gap-1.5 border-t border-white/[0.06] bg-[#0a0a0f] px-4 py-3">
       <Tag label="Style" value={`${style} · ${STYLE_LABELS[style].badge.split(" ")[0]}`} />
       <Tag label="Model" value={modelLabel} />
+      <Tag label="Res" value={resolution} />
       <Tag value={`${imageCount}×`} />
       <Tag label="Ratio" value={ratioSummary} />
     </div>

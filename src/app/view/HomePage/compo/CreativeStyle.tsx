@@ -28,6 +28,127 @@ export const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
   {
+    id: "madhubani",
+    name: "Bihar",
+    title: "MADHUBANI",
+    desc: "A traditional Mithila painting style known for its bold outlines, symbolic motifs, and richly filled compositions with no empty space.",
+    image: "/HomePage/creativeStyle/MADHUBANI.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.98)",
+  },
+  {
+    id: "kyilkhor",
+    name: "Arunachal Pradesh",
+    title: "KYIL-KHOR",
+    desc: "A sacred Buddhist mandala system representing a structured cosmic diagram with central hierarchy, symbolic geometry, and ritual significance.",
+    image: "/HomePage/creativeStyle/KYIL-KHOR.png",
+    tag: "Sacred",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sherdukpen",
+    name: "Arunachal Pradesh",
+    title: "SHERDUKPEN TEXTILE",
+    desc: "A handwoven textile tradition known for its centered motifs, white-ground structure, and functional woven forms used as carrying cloths.",
+    image: "/HomePage/creativeStyle/SHERDUKPEN TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "idumishmi",
+    name: "Arunachal Pradesh",
+    title: "IDU MISHMI TEXTILE",
+    desc: "A handwoven textile tradition known for its bold geometric patterns, diamond motifs, and dense loom-based craftsmanship.",
+    image: "/HomePage/creativeStyle/IDU MISHMI TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "etikoppaka",
+    name: "Andhra Pradesh",
+    title: "ETIKOPPAKA TOYS",
+    desc: "A traditional lacquered wood craft known for its smooth turned forms, vibrant natural colors, and refined handcrafted finish",
+    image: "/HomePage/creativeStyle/ETIKOPPAKA TOYS.png",
+    tag: "Toy",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.98)",
+  },
+  {
+    id: "kondapalli",
+    name: "Andhra Pradesh",
+    title: "KONDAPALLI TOYS",
+    desc: "A traditional wooden toy craft known for its hand-carved forms, vibrant painted surfaces, and charming miniature storytelling scenes.",
+    image: "/HomePage/creativeStyle/KONDAPALLI TOYS.png",
+    tag: "Toy",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.98)",
+  },
+  {
+    id: "monpamask",
+    name: "Arunachal Pradesh",
+    title: "MONPA MASK",
+    desc: "A ritual woodcraft tradition known for its symbolic carved masks, bold expressions, and ceremonial significance in cultural performances.",
+    image: "/HomePage/creativeStyle/MONPA MASK.png",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "handmadepaper",
+    name: "Arunachal Pradesh",
+    title: "HANDMADE PAPER",
+    desc: "A traditional bark-fiber paper craft known for its natural texture, matte finish, and quiet material elegance rooted in handmade processes.",
+    image: "/HomePage/creativeStyle/HANDMADE PAPER.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "monpa",
+    name: "Arunachal Pradesh",
+    title: "MONPA TEXTILE",
+    desc: "A handwoven textile tradition defined by rhythmic patterns, banded structures, and deeply rooted loom-based craftsmanship.",
+    image: "/HomePage/creativeStyle/MONPA TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "wancho",
+    name: "Arunachal Pradesh",
+    title: "WANCHO CARVING",
+    desc: "A traditional wood carving practice known for its bold, head-centric forms, symbolic expressions, and deeply carved handcrafted textures.",
+    image: "/HomePage/creativeStyle/WANCHO CARVING.png",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "thangka",
+    name: "Arunachal Pradesh",
+    title: "THANGKA",
+    desc: "A sacred Buddhist scroll painting tradition known for its precise iconography, spiritual symbolism, and intricate hand-painted detailing on cloth.",
+    image: "/HomePage/creativeStyle/SACRED THANGKA ART.png",
+    tag: "Sacred",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
     id: "tholu",
     name: "Andhra Pradesh",
     title: "LEATHER PUPPETRY",
@@ -75,19 +196,39 @@ export const STYLES: StyleItem[] = [
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
+  onMadhubaniOpen?: () => void;
+  onKyilKhorOpen?: () => void;
+  onSherdukpenOpen?: () => void;
+  onEtikoppakaOpen?: () => void;
+  onKondapalliOpen?: () => void;
   onKalamkariOpen?: () => void;
   onSrikalahastiOpen?: () => void;
   onUppadaOpen?: () => void;
   onTholuOpen?: () => void;
+  onThangkaOpen?: () => void;
+  onWanchoOpen?: () => void;
+  onMonpaOpen?: () => void;
+  onHandmadePaperOpen?: () => void;
+  onMonpaMaskOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
 export default function CreativeStyle({
   onWarliOpen,
+  onMadhubaniOpen,
+  onKyilKhorOpen,
+  onSherdukpenOpen,
+  onEtikoppakaOpen,
+  onKondapalliOpen,
   onKalamkariOpen,
   onSrikalahastiOpen,
   onUppadaOpen,
   onTholuOpen,
+  onThangkaOpen,
+  onWanchoOpen,
+  onMonpaOpen,
+  onHandmadePaperOpen,
+  onMonpaMaskOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -99,6 +240,56 @@ export default function CreativeStyle({
     if (t === "warli" && onWarliOpen) {
       event.preventDefault();
       onWarliOpen();
+      return;
+    }
+    if (style.id === "madhubani" && onMadhubaniOpen) {
+      event.preventDefault();
+      onMadhubaniOpen();
+      return;
+    }
+    if (style.id === "kyilkhor" && onKyilKhorOpen) {
+      event.preventDefault();
+      onKyilKhorOpen();
+      return;
+    }
+    if (style.id === "sherdukpen" && onSherdukpenOpen) {
+      event.preventDefault();
+      onSherdukpenOpen();
+      return;
+    }
+    if (style.id === "etikoppaka" && onEtikoppakaOpen) {
+      event.preventDefault();
+      onEtikoppakaOpen();
+      return;
+    }
+    if (style.id === "kondapalli" && onKondapalliOpen) {
+      event.preventDefault();
+      onKondapalliOpen();
+      return;
+    }
+    if (style.id === "monpamask" && onMonpaMaskOpen) {
+      event.preventDefault();
+      onMonpaMaskOpen();
+      return;
+    }
+    if (style.id === "handmadepaper" && onHandmadePaperOpen) {
+      event.preventDefault();
+      onHandmadePaperOpen();
+      return;
+    }
+    if (style.id === "monpa" && onMonpaOpen) {
+      event.preventDefault();
+      onMonpaOpen();
+      return;
+    }
+    if (style.id === "wancho" && onWanchoOpen) {
+      event.preventDefault();
+      onWanchoOpen();
+      return;
+    }
+    if (style.id === "thangka" && onThangkaOpen) {
+      event.preventDefault();
+      onThangkaOpen();
       return;
     }
     if (style.id === "tholu" && onTholuOpen) {
@@ -217,12 +408,18 @@ export default function CreativeStyle({
                     >
                       {style.title}
                     </div>
+                    <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+                      {style.name}
+                    </div>
+                    <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+                      {style.desc}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="px-0.5 pb-1">
-                <div className="mb-1 text-[12.5px] font-bold tracking-[-0.01em] text-white sm:text-[13px]">{style.name}</div>
-                <p className="line-clamp-2 text-[11px] leading-[1.45] text-white/45 sm:text-[11.5px] sm:leading-[1.5]">{style.desc}</p>
+              <div className="sr-only">
+                <div>{style.name}</div>
+                <p>{style.desc}</p>
               </div>
             </Link>
           ))}
@@ -233,7 +430,9 @@ export default function CreativeStyle({
           onClick={scrollLeft}
           disabled={!showLeftArrow}
           aria-label="Scroll styles left"
-          className={`absolute left-1 top-[40%] z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 md:flex lg:left-10 ${showLeftArrow ? "opacity-100" : "opacity-35"}`}
+          className={`absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:left-8 ${
+            showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         >
           <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -245,7 +444,9 @@ export default function CreativeStyle({
           onClick={scrollRight}
           disabled={!showRightArrow}
           aria-label="Scroll styles right"
-          className={`absolute right-1 top-[40%] z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 md:flex lg:right-10 ${showRightArrow ? "opacity-100" : "opacity-35"}`}
+          className={`absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:right-8 ${
+            showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         >
           <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

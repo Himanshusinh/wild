@@ -14,6 +14,8 @@ export interface WarliState {
   uploadedImage: string | null;
   imageNote: string;
   model: ModelId;
+  /** FAL output resolution; options depend on model (see SettingsPanel). */
+  resolution: string;
   imageCount: ImageCount;
   ratio: AspectRatio;
   includeBenchmark: boolean;
@@ -50,6 +52,7 @@ export const INITIAL_STATE: WarliState = {
   uploadedImage: null,
   imageNote: "",
   model: "google/nano-banana-2",
+  resolution: "1K",
   imageCount: 2,
   ratio: "auto",
   includeBenchmark: false,

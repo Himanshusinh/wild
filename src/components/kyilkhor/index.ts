@@ -1,0 +1,2 @@
+export { KyilKhorModal } from "./KyilKhorModal";
+
