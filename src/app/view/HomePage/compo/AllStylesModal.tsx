@@ -37,7 +37,7 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
 
         {/* Grid Content */}
         <div className="flex-1 min-h-0 overflow-y-auto p-6 sm:p-8 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {STYLES.map((style) => (
               <button
                 key={style.id}
