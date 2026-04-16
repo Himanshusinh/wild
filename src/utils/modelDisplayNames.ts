@@ -173,19 +173,7 @@ export function getModelDisplayName(
   // Heuristic remapping for models if provider text snuck into the model string
   const lower = normalized.toLowerCase();
 
-  if (lower.includes("seedance-2.0/fast")) {
-    if (lower.includes("reference-to-video")) {
-      return "Seedance 2.0 Fast Reference";
-    }
-    return "Seedance 2.0 Fast";
-  }
 
-  if (lower.includes("seedance-2.0")) {
-    if (lower.includes("reference-to-video")) {
-      return "Seedance 2.0 Reference";
-    }
-    return "Seedance 2.0";
-  }
 
   // Runway Act-Two model (check before other Runway models)
   if (
@@ -279,7 +267,17 @@ export function getModelDisplayName(
 
   // Seedance models
   if (lower.includes("seedance")) {
-    if (lower.includes("fast")) return "Seedance 2.0 Fast";
+    if (lower.includes("1.5")) return "Seedance 1.5 Pro";
+    if (lower.includes("1-lite") || lower.includes("1.0-lite")) return "Seedance 1.0 Lite";
+    if (lower.includes("1-pro-fast") || lower.includes("1.0-pro-fast")) return "Seedance 1.0 Pro Fast";
+    if (lower.includes("1-pro") || lower.includes("1.0-pro")) return "Seedance 1.0 Pro";
+    
+    // Seedance 2.0 logic
+    const isReference = lower.includes("reference") || lower.includes("r2v");
+    const isFast = lower.includes("fast");
+    if (isFast && isReference) return "Seedance 2.0 Fast Reference";
+    if (isReference) return "Seedance 2.0 Reference";
+    if (isFast) return "Seedance 2.0 Fast";
     return "Seedance 2.0";
   }
 

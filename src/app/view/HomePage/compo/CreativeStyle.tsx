@@ -28,6 +28,17 @@ const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
   {
+    id: "tholu",
+    name: "Andhra Pradesh",
+    title: "LEATHER PUPPETRY",
+    desc: "A traditional shadow theatre art crafted from translucent leather, known for its intricate perforations, vibrant colors, and dramatic backlit storytelling.",
+    image: "/HomePage/creativeStyle/ANDRA LEATHER.png",
+    tag: "Theatre",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
     id: "uppadajamdani",
     name: "Andhra Pradesh",
     title: "UPPADA JAMDANI",
@@ -64,20 +75,49 @@ const STYLES: StyleItem[] = [
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
+  onKalamkariOpen?: () => void;
+  onSrikalahastiOpen?: () => void;
+  onUppadaOpen?: () => void;
+  onTholuOpen?: () => void;
 };
 
-export default function CreativeStyle({ onWarliOpen }: CreativeStyleProps) {
+export default function CreativeStyle({
+  onWarliOpen,
+  onKalamkariOpen,
+  onSrikalahastiOpen,
+  onUppadaOpen,
+  onTholuOpen,
+}: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
   const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
-    if (style.title.toLowerCase() !== "warli" || !onWarliOpen) {
+    const t = style.title.toLowerCase();
+    if (t === "warli" && onWarliOpen) {
+      event.preventDefault();
+      onWarliOpen();
       return;
     }
-
-    event.preventDefault();
-    onWarliOpen();
+    if (style.id === "tholu" && onTholuOpen) {
+      event.preventDefault();
+      onTholuOpen();
+      return;
+    }
+    if (style.id === "uppadajamdani" && onUppadaOpen) {
+      event.preventDefault();
+      onUppadaOpen();
+      return;
+    }
+    if (style.id === "machilipatnam" && onKalamkariOpen) {
+      event.preventDefault();
+      onKalamkariOpen();
+      return;
+    }
+    if (style.id === "srikalahasti" && onSrikalahastiOpen) {
+      event.preventDefault();
+      onSrikalahastiOpen();
+    }
   };
 
   const scrollRight = () => {

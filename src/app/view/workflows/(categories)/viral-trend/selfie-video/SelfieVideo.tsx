@@ -137,6 +137,27 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const pollReplicateVideoResult = async (requestId: string, token: string): Promise<string> => {
+    const extractVideoUrl = (payload: any): string | null => {
+      const candidates: any[] = [
+        payload?.data?.videos?.[0]?.url,
+        payload?.data?.videos?.[0]?.originalUrl,
+        payload?.data?.videoUrl,
+        payload?.data?.url,
+        payload?.data?.output?.[0],
+        payload?.data?.output,
+        payload?.videos?.[0]?.url,
+        payload?.videos?.[0]?.originalUrl,
+        payload?.videoUrl,
+        payload?.url,
+        payload?.output?.[0],
+        payload?.output,
+      ];
+      for (const c of candidates) {
+        if (typeof c === 'string' && c.length > 0) return c;
+      }
+      return null;
+    };
+
     // Poll Replicate status first; when succeeded, finalize via queue/result.
     // Note: /queue/result also performs server-side storage + history finalization.
     const timeoutMs = 8 * 60 * 1000;
@@ -153,6 +174,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         throw new Error(err?.message || 'Failed to fetch video status');
       }
       const statusJson = await statusRes.json();
+      // Backend may return either a raw Replicate prediction status OR a finalized result payload.
+      const finalizedUrl = extractVideoUrl(statusJson);
+      if (finalizedUrl) return finalizedUrl;
+
       const status = String(statusJson?.data?.status || '').toLowerCase();
 
       if (status === 'succeeded') {
@@ -167,8 +192,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
           throw new Error(err?.message || 'Failed to fetch video result');
         }
         const resultJson = await resultRes.json();
-        const videoUrl = resultJson?.data?.videos?.[0]?.url;
-        if (typeof videoUrl === 'string' && videoUrl.length > 0) return videoUrl;
+        const videoUrl = extractVideoUrl(resultJson);
+        if (videoUrl) return videoUrl;
         throw new Error('Video completed but URL missing');
       }
 

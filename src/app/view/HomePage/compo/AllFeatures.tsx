@@ -86,7 +86,7 @@ const cards: CardConfig[] = [
   {
     title: "Remove\nBG",
     subtitle: "One-click BG removal",
-    href: "/view/EditImage?feature=remove-bg",
+    href: "/text-to-image/edit-image?feature=remove-bg",
     badge: "REMOVE",
     icon: <Scissors size={20} />,
     iconClassName: "bg-[linear-gradient(135deg,#14532d,#16a34a)] shadow-[0_8px_24px_rgba(22,163,74,0.45)]",
