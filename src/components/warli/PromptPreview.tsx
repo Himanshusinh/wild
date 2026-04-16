@@ -33,7 +33,7 @@ export function PromptPreview({ prompt }: PromptPreviewProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-medium text-white/30 transition hover:border-white/20 hover:text-white/60"
+            className="flex items-center gap-1 rounded-lg border border-white/10 bg-transparent px-2 py-1 text-[10px] font-medium text-white/30 transition hover:border-white/20 hover:text-white/60"
           >
             {copied ? (
               <>

@@ -15,7 +15,7 @@ type StyleItem = {
   imageFilter?: string;
 };
 
-const STYLES: StyleItem[] = [
+export const STYLES: StyleItem[] = [
   {
     id: "Maharashtra",
     name: "Maharashtra",
@@ -79,6 +79,7 @@ type CreativeStyleProps = {
   onSrikalahastiOpen?: () => void;
   onUppadaOpen?: () => void;
   onTholuOpen?: () => void;
+  onAllStylesOpen?: () => void;
 };
 
 export default function CreativeStyle({
@@ -87,6 +88,7 @@ export default function CreativeStyle({
   onSrikalahastiOpen,
   onUppadaOpen,
   onTholuOpen,
+  onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -168,15 +170,16 @@ export default function CreativeStyle({
           </h2>
         </div>
 
-        <Link
-          href="/text-to-image"
+        <button
+          type="button"
+          onClick={onAllStylesOpen}
           className="hidden items-center gap-1 rounded-full border border-white/10 px-4 py-2 text-[11px] font-semibold text-white/55 transition-colors hover:border-[#3B82F6]/40 hover:text-[#3B82F6] md:inline-flex"
         >
           <span>All styles</span>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </Link>
+        </button>
       </div>
 
       <div className="relative">

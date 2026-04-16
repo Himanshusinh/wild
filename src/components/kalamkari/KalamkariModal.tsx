@@ -464,7 +464,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <button
                     type="button"
                     onClick={() => void handleRegenerate()}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
+                    className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
                   >
                     Regenerate
                   </button>
@@ -472,7 +472,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     type="button"
                     onClick={() => void handleSaveAll()}
                     disabled={!state.generatedImages.some(Boolean)}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
+                    className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
                   >
                     Save all
                   </button>

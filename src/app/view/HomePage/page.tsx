@@ -83,6 +83,7 @@ import CreationCTASection from './compo/CreationCTASection';
 import CreativeStyle from './compo/CreativeStyle';
 import ImageVideoToggle from './compo/ImageVideoToggle';
 import WhatsNew from './compo/WhatsNew';
+import AllStylesModal from './compo/AllStylesModal';
 
 
 
@@ -98,7 +99,17 @@ const HomePage: React.FC = () => {
     const [showSrikalahastiWalkthrough, setShowSrikalahastiWalkthrough] = useState(false);
     const [showUppadaWalkthrough, setShowUppadaWalkthrough] = useState(false);
     const [showTholuWalkthrough, setShowTholuWalkthrough] = useState(false);
+    const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
+
+    const handleStyleSelect = (id: string) => {
+        setShowAllStylesModal(false);
+        if (id === "Maharashtra") setShowWarliWalkthrough(true);
+        if (id === "tholu") setShowTholuWalkthrough(true);
+        if (id === "uppadajamdani") setShowUppadaWalkthrough(true);
+        if (id === "machilipatnam") setShowKalamkariWalkthrough(true);
+        if (id === "srikalahasti") setShowSrikalahastiWalkthrough(true);
+    };
 
     const onViewChange = (view: ViewType) => {
         setCurrentView(view);
@@ -286,6 +297,7 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowUppadaWalkthrough(true);
                         }}
+                        onAllStylesOpen={() => setShowAllStylesModal(true)}
                     />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
@@ -487,6 +499,12 @@ const HomePage: React.FC = () => {
             <TholuFullscreenWalkthrough
                 isOpen={showTholuWalkthrough}
                 onClose={() => setShowTholuWalkthrough(false)}
+            />
+
+            <AllStylesModal
+                isOpen={showAllStylesModal}
+                onClose={() => setShowAllStylesModal(false)}
+                onSelectStyle={handleStyleSelect}
             />
 
             {/* Welcome Modal */}
