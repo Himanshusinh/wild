@@ -23,7 +23,7 @@ export function SelectionSummary({ style, model, imageCount, ratioSummary }: Sel
   const modelLabel = MODELS.find((m) => m.id === model)?.label ?? model;
 
   return (
-    <div className="flex flex-wrap gap-1.5 border-t border-white/[0.06] bg-[#0E0E12] px-4 py-3">
+    <div className="flex flex-wrap gap-1.5 border-t border-white/[0.06] bg-[#0a0a0f] px-4 py-3">
       <Tag label="Style" value={`${style} · ${STYLE_LABELS[style].badge.split(" ")[0]}`} />
       <Tag label="Model" value={modelLabel} />
       <Tag value={`${imageCount}×`} />

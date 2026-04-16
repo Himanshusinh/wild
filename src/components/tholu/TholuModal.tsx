@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { saveAutoResumeIntent } from "@/lib/autoResume";
 import { saveStudioDraft } from "@/lib/studioDraft";
 import { saveUpload } from "@/lib/libraryApi";
-import { KALAMKARI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/kalamkariPromptCatalog";
+import { THOLU_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/tholuPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -20,10 +20,10 @@ import { SettingsPanel } from "@/components/warli/SettingsPanel";
 import { OutputGrid } from "@/components/warli/OutputGrid";
 import { PromptPreview } from "@/components/warli/PromptPreview";
 import { coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
-import { KalamkariHeader } from "./KalamkariHeader";
+import { TholuHeader } from "./TholuHeader";
 import {
   INITIAL_STATE,
-  KalamkariState,
+  TholuState,
   StyleFamily,
   InputMode,
   ModelId,
@@ -33,7 +33,7 @@ import {
   STYLE_LABELS,
 } from "./types";
 
-const STYLE_TAG = "Kalamkari";
+const STYLE_TAG = "TholuBommalata";
 
 function toAbsoluteFromProxy(url: string): string {
   try {
@@ -93,12 +93,12 @@ type Action =
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
   | { type: "SET_INCLUDE_VARIABLE"; payload: boolean }
-  | { type: "SET_PANEL_STATE"; payload: KalamkariState["panelState"] }
+  | { type: "SET_PANEL_STATE"; payload: TholuState["panelState"] }
   | { type: "SET_GENERATED_IMAGES"; payload: string[] }
   | { type: "SET_ASSEMBLED_PROMPT"; payload: string }
   | { type: "RESET" };
 
-function reducer(state: KalamkariState, action: Action): KalamkariState {
+function reducer(state: TholuState, action: Action): TholuState {
   switch (action.type) {
     case "SET_STYLE":
       return { ...state, style: action.payload };
@@ -134,17 +134,13 @@ function reducer(state: KalamkariState, action: Action): KalamkariState {
   }
 }
 
-function buildPrompt(state: KalamkariState): string {
-  const family = KALAMKARI_PROMPT_FAMILIES[state.style];
+function buildPrompt(state: TholuState): string {
+  const family = THOLU_PROMPT_FAMILIES[state.style];
   const aspect = coerceWarliAspectRatio(state.ratio, state.model);
 
   const projectInputs =
-    state.inputMode === "text"
-      ? state.sceneText.trim()
-      : state.imageNote.trim();
-
-  const base =
-    state.inputMode === "image" ? family.promptI2I.trim() : family.promptHard.trim();
+    state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
+  const base = state.inputMode === "image" ? family.promptI2I.trim() : family.promptHard.trim();
 
   const blocks: string[] = [];
   blocks.push("PRIMARY DIRECTIVE (STYLE LOCK — follow strictly):");
@@ -158,11 +154,8 @@ function buildPrompt(state: KalamkariState): string {
   }
 
   blocks.push("PROJECT INPUTS (ONLY SOURCE OF TRUTH FOR CONTENT):");
-  if (projectInputs) {
-    blocks.push(`- ${projectInputs}`);
-  } else {
-    blocks.push("- (none). Do not invent content; keep output minimal and style-accurate only.");
-  }
+  if (projectInputs) blocks.push(`- ${projectInputs}`);
+  else blocks.push("- (none). Do not invent content; keep output minimal and style-accurate only.");
   blocks.push("");
 
   blocks.push("CONTENT CONSTRAINT (STRICT):");
@@ -180,7 +173,7 @@ function buildPrompt(state: KalamkariState): string {
   return blocks.join("\n");
 }
 
-export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
@@ -265,9 +258,9 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           prompt: promptForModel,
           meta: {
             style_premium: true,
-            style_key: "machilipatnam",
+            style_key: "tholu",
             style_version: state.style,
-            source: "homepage-machilipatnam-modal",
+            source: "homepage-tholu-modal",
           },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
@@ -308,7 +301,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     if (!urls.length) return;
     const t = toast.loading("Saving images…");
     try {
-      await downloadAllImageUrls(urls, `kalamkari-${state.style}`);
+      await downloadAllImageUrls(urls, `tholu-${state.style}`);
       toast.dismiss(t);
       toast.success("All downloads started");
     } catch {
@@ -322,7 +315,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     if (!url) return;
     const t = toast.loading("Saving…");
     try {
-      await downloadImageUrl(url, `kalamkari-${state.style}-${index + 1}`);
+      await downloadImageUrl(url, `tholu-${state.style}-${index + 1}`);
       toast.dismiss(t);
       toast.success("Download started");
     } catch {
@@ -352,12 +345,12 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       model: state.model,
       imageCount: state.imageCount,
       frameSize: frameForDraft,
-      style: "Kalamkari",
+      style: "TholuBommalata",
       ...(uploadedImages?.length ? { uploadedImages } : {}),
       metadata: {
-        source: "homepage-kalamkari-modal",
-        kalamkariVersion: state.style,
-        kalamkariModal: true,
+        source: "homepage-tholu-modal",
+        tholuVersion: state.style,
+        tholuModal: true,
       },
     };
     saveStudioDraft(payload);
@@ -367,7 +360,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   if (!isOpen) return null;
 
-  const familyMeta = KALAMKARI_PROMPT_FAMILIES[state.style];
+  const familyMeta = THOLU_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} · ${familyMeta.chip}`;
 
   return (
@@ -377,12 +370,12 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Kalamkari Generator"
+        aria-label="Leather Puppetry Generator"
         className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0f]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
         }`}
       >
-        <KalamkariHeader
+        <TholuHeader
           style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
           onClose={onClose}
@@ -407,7 +400,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
-                    placeholder="Optional notes... e.g. keep motif distribution dense, strong border system, no narrative panel"
+                    placeholder="Optional notes... e.g. strong backlight, visible perforations, articulated joints"
                     className="w-full resize-none rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
@@ -444,7 +437,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
-                Generate Kalamkari
+                Generate Leather Puppetry
               </button>
               
             </div>
@@ -484,8 +477,8 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               {state.panelState === "empty" ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                   <p className="text-sm font-medium text-white/20">No output yet</p>
-                  <p className="max-w-[260px] text-xs leading-relaxed text-white/10">
-                    Describe a motif system (or upload an image), then Generate.
+                  <p className="max-w-[280px] text-xs leading-relaxed text-white/10">
+                    Describe an epic puppet scene (or upload an image), then Generate.
                   </p>
                 </div>
               ) : null}
@@ -508,7 +501,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-white/20">Generating Kalamkari…</p>
+                  <p className="text-[11px] text-white/20">Generating…</p>
                 </div>
               ) : null}
 

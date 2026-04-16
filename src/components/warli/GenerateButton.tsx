@@ -12,7 +12,7 @@ interface GenerateButtonProps {
 
 export function GenerateButton({ imageCount, loading, onClick }: GenerateButtonProps) {
   return (
-    <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">
+    <div className="border-t border-white/[0.06] bg-[#0a0a0f] px-5 py-4">
       <button
         type="button"
         onClick={onClick}
@@ -35,9 +35,6 @@ export function GenerateButton({ imageCount, loading, onClick }: GenerateButtonP
           </>
         )}
       </button>
-      <p className="mt-2 text-center text-[10px] text-white/20">
-        Uses {imageCount} {imageCount === 1 ? "credit" : "credits"} · High quality
-      </p>
     </div>
   );
 }

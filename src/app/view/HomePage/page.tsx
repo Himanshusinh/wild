@@ -46,6 +46,12 @@ const UppadaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => vo
         ssr: false
     }
 )
+const TholuFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/TholuFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -77,6 +83,7 @@ import CreationCTASection from './compo/CreationCTASection';
 import CreativeStyle from './compo/CreativeStyle';
 import ImageVideoToggle from './compo/ImageVideoToggle';
 import WhatsNew from './compo/WhatsNew';
+import AllStylesModal from './compo/AllStylesModal';
 
 
 
@@ -91,7 +98,18 @@ const HomePage: React.FC = () => {
     const [showKalamkariWalkthrough, setShowKalamkariWalkthrough] = useState(false);
     const [showSrikalahastiWalkthrough, setShowSrikalahastiWalkthrough] = useState(false);
     const [showUppadaWalkthrough, setShowUppadaWalkthrough] = useState(false);
+    const [showTholuWalkthrough, setShowTholuWalkthrough] = useState(false);
+    const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
+
+    const handleStyleSelect = (id: string) => {
+        setShowAllStylesModal(false);
+        if (id === "Maharashtra") setShowWarliWalkthrough(true);
+        if (id === "tholu") setShowTholuWalkthrough(true);
+        if (id === "uppadajamdani") setShowUppadaWalkthrough(true);
+        if (id === "machilipatnam") setShowKalamkariWalkthrough(true);
+        if (id === "srikalahasti") setShowSrikalahastiWalkthrough(true);
+    };
 
     const onViewChange = (view: ViewType) => {
         setCurrentView(view);
@@ -263,6 +281,10 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowWarliWalkthrough(true);
                         }}
+                        onTholuOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowTholuWalkthrough(true);
+                        }}
                         onKalamkariOpen={() => {
                             setShowWelcomeModal(false);
                             setShowKalamkariWalkthrough(true);
@@ -275,6 +297,7 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowUppadaWalkthrough(true);
                         }}
+                        onAllStylesOpen={() => setShowAllStylesModal(true)}
                     />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
@@ -471,6 +494,17 @@ const HomePage: React.FC = () => {
             <UppadaFullscreenWalkthrough
                 isOpen={showUppadaWalkthrough}
                 onClose={() => setShowUppadaWalkthrough(false)}
+            />
+
+            <TholuFullscreenWalkthrough
+                isOpen={showTholuWalkthrough}
+                onClose={() => setShowTholuWalkthrough(false)}
+            />
+
+            <AllStylesModal
+                isOpen={showAllStylesModal}
+                onClose={() => setShowAllStylesModal(false)}
+                onSelectStyle={handleStyleSelect}
             />
 
             {/* Welcome Modal */}

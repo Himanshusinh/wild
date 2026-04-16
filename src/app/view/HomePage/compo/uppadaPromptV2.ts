@@ -1,88 +1,150 @@
-/** Uppada Jamdani — V2 (Artisan Translation) prompts. */
+/** Uppada Jamdani — V2 (Creative 2D + 3D Translation) prompts. */
 
 export const uppadaPromptV2 = {
-  promptHard: `Create an authentic handcrafted dimensional version of Uppada Jamdani from Andhra Pradesh.
-Keep the source grammar fully intact, but translate it into a believable handcrafted dimensional textile-image object.
-The image must still feel like a handwoven extra-weft figured cloth.
-It must not become print, embroidery, appliqué, or generic realism.
+  promptHard: `Create a creative 2D + 3D translation of Uppada Jamdani from Andhra Pradesh.
+This must be built from true Uppada Jamdani weave grammar:
+handwoven identity,
+extra-weft Jamdani construction,
+motifs woven into the plain ground,
+motif-ground fusion,
+fine lightweight drape,
+delicate handloom refinement,
+two-sided figured clarity as a visual memory,
+integrated zari where relevant,
+woven ornament, never applied ornament.
 
-Preserve the source grammar:
-- handwoven identity
-- extra-weft motif construction
-- motif-ground fusion
-- lightweight elegant drape
-- two-sided figured clarity as a visual memory
-- delicate handloom refinement
-- woven ornament, not surface ornament
-- zari integration where relevant
+Whole-frame rule:
+rebuild the entire image through Uppada Jamdani logic.
+Do not style only clothing or visible surfaces.
+Translate all elements into the same woven system:
+characters,
+faces,
+bodies,
+posture,
+silhouette,
+clothing,
+props,
+trees,
+leaves,
+foliage,
+ground,
+paths,
+architecture,
+background forms,
+and the complete environment.
+Nothing may remain generic.
+If any character, tree, leaf, prop, or background object looks like it belongs to another visual language, the result is wrong.
 
-Now add handcrafted dimensionality:
-- mild to moderate tactile depth
-- delicate material body
-- handcrafted cloth presence
-- slightly more objecthood
-- more readable weave structure
-- more tangible surface intelligence
-- dimensionality that comes from weave planning, motif hierarchy, textile layering, and cloth behavior
+V2 must stay in the hybrid zone between 2D and 3D.
+It is not a flat design placed in depth.
+It is not a literal artisan demonstration.
+It is a creative structural translation of the style into a hybrid visual world.
 
-Important:
-the dimensionality must remain delicate and textile-born.
-The style must still feel like a woven textile-image object, not a relief object, not embossed craft, not brocade heaviness, and not a full cinematic world.
-Motifs should feel more present and tactile, but still structurally woven into the ground.
-The fabric should feel more physically there, but still light, refined, and drape-aware.
+Create dimensionality through Uppada-specific logic:
+weave planning,
+thread hierarchy,
+motif-ground fusion,
+cloth layering,
+drape planes,
+border-body-pallu zoning,
+figured insertion clarity,
+lightweight field structure,
+delicate woven spacing,
+integrated ornament rhythm.
 
-Do not create full scene-world depth.
-Do not turn woven delicacy into embossed ornament.
-Do not use generic artisan texture without weave logic.
-Do not make motifs feel raised on top of the cloth.
-Do not make it thick, stiff, or heavy.
+Characters must already be style-built:
+faces shaped by Uppada’s refined woven logic, not generic AI faces,
+bodies elegant and simplified by the same cloth rhythm,
+clothing feeling like true figured weave, not printed textile,
+grouping and posture following the same integrated style system.
 
-The final result must feel like Uppada Jamdani translated into a delicate handcrafted dimensional textile-image object.`,
+Environment must already be style-built:
+trees and leaves must follow the same delicate woven motif logic,
+ground must feel organized by woven field intelligence,
+architecture must feel built from textile zoning, motif hierarchy, and woven rhythm,
+props and minor objects must belong to the same woven style family.
 
-  promptVariable: `Create [SUBJECT / MOTIF SYSTEM / TEXTILE LAYOUT] as an authentic handcrafted dimensional version of Uppada Jamdani from Andhra Pradesh.
-Treat the image as a woven figured textile translated into delicate dimensional objecthood.
+The image should feel:
+crafted,
+inventive,
+structurally transformed,
+rooted in source grammar,
+hybrid between 2D and 3D,
+lightweight,
+delicate,
+and fully unified.
 
-Preserve these source rules:
-- handwoven identity
-- extra-weft motif construction
-- woven motif-ground fusion
-- lightweight elegant drape
-- refined handloom texture
-- integrated ornament
-- two-sided figured clarity as a visual memory
+Do not make it:
+generic realism,
+printed fabric,
+embroidered fabric,
+appliqué,
+heavy brocade,
+luxury showroom image,
+decorated normal world,
+or a generic image with Uppada motifs added on top.
 
-Translate the design like this:
-- [MAIN MOTIF] becomes a more tactile woven focal insertion
-- [SECONDARY MOTIFS] become supporting figured weave elements
-- [GROUND] remains structurally fused to the motifs
-- [BORDER / PALLU / BODY] remain textile zones, not scene zones
-- [ZARI] remains woven and refined, not flashy metallic decoration
+The final image must feel like the whole scene was born from Uppada Jamdani as one unified hybrid woven style-world.`,
 
-Keep:
-mild-to-moderate depth, tactile woven presence, delicate material body, cloth intelligence, artisan-made refinement.
+  promptVariable: `Create [SUBJECT / SCENE / WORLD] as a creative 2D + 3D translation of Uppada Jamdani from Andhra Pradesh.
+
+Preserve:
+handwoven identity,
+extra-weft figured construction,
+motif-ground fusion,
+lightweight elegant drape,
+delicate handloom refinement,
+woven ornament,
+integrated zari where relevant.
+
+Translate the whole frame through the same hybrid woven system:
+[MAIN SUBJECT],
+[SECONDARY FIGURES],
+[PROPS],
+[TREES / LEAVES / FOLIAGE],
+[GROUND],
+[ARCHITECTURE],
+[BACKGROUND].
+
+Build dimensionality through:
+thread hierarchy,
+weave planning,
+cloth layering,
+drape planes,
+motif insertion logic,
+woven spacing,
+and border-body-pallu structure.
+
+Keep it:
+creative,
+hybrid,
+woven-first,
+fully unified.
 
 Avoid:
-embossed relief look, applique feel, print drift, heavy brocade drift, generic craft texture, full scene-world depth, and decorative surface-only stylization.`,
+flat mural-in-depth,
+decorated realism,
+embossed textile look,
+printed or embroidered drift,
+generic AI figures,
+and generic background scenery.`,
 
-  promptI2I: `Convert this source image into an authentic handcrafted dimensional version of Uppada Jamdani from Andhra Pradesh.
-Preserve the source image’s core motif identity and major relationships, but rebuild the whole image as a woven extra-weft figured textile with delicate dimensional presence.
+  promptI2I: `Convert this source image into a creative 2D + 3D Uppada Jamdani translation.
+Preserve the source scene’s core structure, but rebuild the entire frame through Uppada Jamdani weave grammar in a hybrid 2D + 3D form.
 
 Use:
-handwoven motif-ground fusion,
-lightweight drape,
-refined cloth texture,
-integrated figured ornament,
-subtle tactile weave presence,
-and mild-to-moderate handcrafted dimensionality.
+motif-ground fusion,
+thread hierarchy,
+cloth zoning,
+woven drape planes,
+figured insertion clarity,
+lightweight handloom refinement,
+and integrated ornament rhythm.
 
-The dimensionality must come from weave logic, cloth layering, motif hierarchy, and textile body.
-It must not come from embossing, surface decoration, or generic realism.
+Translate every element — characters, clothing, props, foliage, ground, architecture, and background — into the same creative woven system.
+Do not create a normal image with Uppada motifs layered on top.
+Do not let any object remain generic.
 
-Do not make motifs feel placed on top.
-Do not make the fabric thick or brocade-heavy.
-Do not make it embroidered or printed.
-Do not turn it into a full cinematic scene.
-
-The final result must feel like Uppada Jamdani transformed into a delicate dimensional textile-image object.`,
+The final result must feel like a hybrid woven world naturally generated by Uppada Jamdani logic.`,
 } as const;
 
