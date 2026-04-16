@@ -61,6 +61,17 @@ export const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.9) saturate(0.95)",
   },
   {
+    id: "idumishmi",
+    name: "Arunachal Pradesh",
+    title: "IDU MISHMI TEXTILE",
+    desc: "A handwoven textile tradition known for its bold geometric patterns, diamond motifs, and dense loom-based craftsmanship.",
+    image: "/HomePage/creativeStyle/IDU MISHMI TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
     id: "etikoppaka",
     name: "Andhra Pradesh",
     title: "ETIKOPPAKA TOYS",
@@ -397,12 +408,18 @@ export default function CreativeStyle({
                     >
                       {style.title}
                     </div>
+                    <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+                      {style.name}
+                    </div>
+                    <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+                      {style.desc}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="px-0.5 pb-1">
-                <div className="mb-1 text-[12.5px] font-bold tracking-[-0.01em] text-white sm:text-[13px]">{style.name}</div>
-                <p className="line-clamp-2 text-[11px] leading-[1.45] text-white/45 sm:text-[11.5px] sm:leading-[1.5]">{style.desc}</p>
+              <div className="sr-only">
+                <div>{style.name}</div>
+                <p>{style.desc}</p>
               </div>
             </Link>
           ))}
