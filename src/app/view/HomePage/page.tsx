@@ -170,16 +170,39 @@ const HomePage: React.FC = () => {
     const [showKyilKhorWalkthrough, setShowKyilKhorWalkthrough] = useState(false);
     const [showSherdukpenWalkthrough, setShowSherdukpenWalkthrough] = useState(false);
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
+    const [openedFromAllStyles, setOpenedFromAllStyles] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const handleStyleSelect = (id: string) => {
+        setOpenedFromAllStyles(true);
         setShowAllStylesModal(false);
-        if (id === "Maharashtra") setShowWarliWalkthrough(true);
-        if (id === "tholu") setShowTholuWalkthrough(true);
-        if (id === "uppadajamdani") setShowUppadaWalkthrough(true);
-        if (id === "machilipatnam") setShowKalamkariWalkthrough(true);
-        if (id === "srikalahasti") setShowSrikalahastiWalkthrough(true);
-        if (id === "sherdukpen") setShowSherdukpenWalkthrough(true);
+        
+        switch (id) {
+            case "Maharashtra": setShowWarliWalkthrough(true); break;
+            case "madhubani": setShowMadhubaniWalkthrough(true); break;
+            case "kyilkhor": setShowKyilKhorWalkthrough(true); break;
+            case "sherdukpen": setShowSherdukpenWalkthrough(true); break;
+            case "etikoppaka": setShowEtikoppakaWalkthrough(true); break;
+            case "kondapalli": setShowKondapalliWalkthrough(true); break;
+            case "monpamask": setShowMonpaMaskWalkthrough(true); break;
+            case "handmadepaper": setShowHandmadePaperWalkthrough(true); break;
+            case "monpa": setShowMonpaWalkthrough(true); break;
+            case "wancho": setShowWanchoWalkthrough(true); break;
+            case "thangka": setShowThangkaWalkthrough(true); break;
+            case "tholu": setShowTholuWalkthrough(true); break;
+            case "uppadajamdani": setShowUppadaWalkthrough(true); break;
+            case "machilipatnam": setShowKalamkariWalkthrough(true); break;
+            case "srikalahasti": setShowSrikalahastiWalkthrough(true); break;
+            default: break;
+        }
+    };
+
+    const handleCloseWalkthrough = (setter: (v: boolean) => void) => {
+        setter(false);
+        if (openedFromAllStyles) {
+            setShowAllStylesModal(true);
+            setOpenedFromAllStyles(false);
+        }
     };
 
     const onViewChange = (view: ViewType) => {
@@ -349,62 +372,77 @@ const HomePage: React.FC = () => {
                     <WhatsNew />
                     <CreativeStyle
                         onWarliOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowWarliWalkthrough(true);
                         }}
                         onMadhubaniOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowMadhubaniWalkthrough(true);
                         }}
                         onKyilKhorOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowKyilKhorWalkthrough(true);
                         }}
                         onSherdukpenOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowSherdukpenWalkthrough(true);
                         }}
                         onEtikoppakaOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowEtikoppakaWalkthrough(true);
                         }}
                         onKondapalliOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowKondapalliWalkthrough(true);
                         }}
                         onMonpaMaskOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowMonpaMaskWalkthrough(true);
                         }}
                         onHandmadePaperOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowHandmadePaperWalkthrough(true);
                         }}
                         onMonpaOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowMonpaWalkthrough(true);
                         }}
                         onWanchoOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowWanchoWalkthrough(true);
                         }}
                         onThangkaOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowThangkaWalkthrough(true);
                         }}
                         onTholuOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowTholuWalkthrough(true);
                         }}
                         onKalamkariOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowKalamkariWalkthrough(true);
                         }}
                         onSrikalahastiOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowSrikalahastiWalkthrough(true);
                         }}
                         onUppadaOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowUppadaWalkthrough(true);
                         }}
@@ -589,77 +627,77 @@ const HomePage: React.FC = () => {
             {/* Welcome Modal */}
             <WarliFullscreenWalkthrough
                 isOpen={showWarliWalkthrough}
-                onClose={() => setShowWarliWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowWarliWalkthrough)}
             />
 
             <KalamkariFullscreenWalkthrough
                 isOpen={showKalamkariWalkthrough}
-                onClose={() => setShowKalamkariWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowKalamkariWalkthrough)}
             />
 
             <SrikalahastiFullscreenWalkthrough
                 isOpen={showSrikalahastiWalkthrough}
-                onClose={() => setShowSrikalahastiWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowSrikalahastiWalkthrough)}
             />
 
             <UppadaFullscreenWalkthrough
                 isOpen={showUppadaWalkthrough}
-                onClose={() => setShowUppadaWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowUppadaWalkthrough)}
             />
 
             <TholuFullscreenWalkthrough
                 isOpen={showTholuWalkthrough}
-                onClose={() => setShowTholuWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowTholuWalkthrough)}
             />
 
             <ThangkaFullscreenWalkthrough
                 isOpen={showThangkaWalkthrough}
-                onClose={() => setShowThangkaWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowThangkaWalkthrough)}
             />
 
             <WanchoFullscreenWalkthrough
                 isOpen={showWanchoWalkthrough}
-                onClose={() => setShowWanchoWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowWanchoWalkthrough)}
             />
 
             <MonpaFullscreenWalkthrough
                 isOpen={showMonpaWalkthrough}
-                onClose={() => setShowMonpaWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowMonpaWalkthrough)}
             />
 
             <HandmadePaperFullscreenWalkthrough
                 isOpen={showHandmadePaperWalkthrough}
-                onClose={() => setShowHandmadePaperWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowHandmadePaperWalkthrough)}
             />
 
             <MonpaMaskFullscreenWalkthrough
                 isOpen={showMonpaMaskWalkthrough}
-                onClose={() => setShowMonpaMaskWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowMonpaMaskWalkthrough)}
             />
 
             <KondapalliFullscreenWalkthrough
                 isOpen={showKondapalliWalkthrough}
-                onClose={() => setShowKondapalliWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowKondapalliWalkthrough)}
             />
 
             <EtikoppakaFullscreenWalkthrough
                 isOpen={showEtikoppakaWalkthrough}
-                onClose={() => setShowEtikoppakaWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowEtikoppakaWalkthrough)}
             />
 
             <MadhubaniFullscreenWalkthrough
                 isOpen={showMadhubaniWalkthrough}
-                onClose={() => setShowMadhubaniWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowMadhubaniWalkthrough)}
             />
 
             <KyilKhorFullscreenWalkthrough
                 isOpen={showKyilKhorWalkthrough}
-                onClose={() => setShowKyilKhorWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowKyilKhorWalkthrough)}
             />
             
             <SherdukpenFullscreenWalkthrough
                 isOpen={showSherdukpenWalkthrough}
-                onClose={() => setShowSherdukpenWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowSherdukpenWalkthrough)}
             />
 
             <AllStylesModal
