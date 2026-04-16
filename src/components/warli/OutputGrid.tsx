@@ -11,7 +11,7 @@ interface OutputGridProps {
 }
 
 function Placeholder() {
-  return <div className="flex h-full w-full items-center justify-center bg-[#13131a]" />;
+  return <div className="flex h-full w-full items-center justify-center bg-transparent" />;
 }
 
 export function OutputGrid({ images, count, onSaveImage, onExpandImage }: OutputGridProps) {
@@ -20,7 +20,7 @@ export function OutputGrid({ images, count, onSaveImage, onExpandImage }: Output
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#13131a] transition-all hover:border-white/20"
+          className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-transparent transition-all hover:border-white/20"
         >
           {images[i] ? (
             // eslint-disable-next-line @next/next/no-img-element

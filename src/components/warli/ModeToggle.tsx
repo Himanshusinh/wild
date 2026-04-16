@@ -10,7 +10,7 @@ interface ModeToggleProps {
 
 export function ModeToggle({ mode, onChange }: ModeToggleProps) {
   return (
-    <div className="grid grid-cols-2 gap-[3px] rounded-xl border border-white/10 bg-[#13131a] p-[3px]">
+    <div className="grid grid-cols-2 gap-[3px] rounded-xl border border-white/10 bg-transparent p-[3px]">
       <button
         type="button"
         onClick={() => onChange("text")}

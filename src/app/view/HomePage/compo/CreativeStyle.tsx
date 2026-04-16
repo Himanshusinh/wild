@@ -15,7 +15,7 @@ type StyleItem = {
   imageFilter?: string;
 };
 
-const STYLES: StyleItem[] = [
+export const STYLES: StyleItem[] = [
   {
     id: "Maharashtra",
     name: "Maharashtra",
@@ -48,6 +48,17 @@ const STYLES: StyleItem[] = [
     titleColor: "#ffffff",
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sherdukpen",
+    name: "Arunachal Pradesh",
+    title: "SHERDUKPEN TEXTILE",
+    desc: "A handwoven textile tradition known for its centered motifs, white-ground structure, and functional woven forms used as carrying cloths.",
+    image: "/HomePage/creativeStyle/SHERDUKPEN TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
   },
   {
     id: "etikoppaka",
@@ -176,6 +187,7 @@ type CreativeStyleProps = {
   onWarliOpen?: () => void;
   onMadhubaniOpen?: () => void;
   onKyilKhorOpen?: () => void;
+  onSherdukpenOpen?: () => void;
   onEtikoppakaOpen?: () => void;
   onKondapalliOpen?: () => void;
   onKalamkariOpen?: () => void;
@@ -187,12 +199,14 @@ type CreativeStyleProps = {
   onMonpaOpen?: () => void;
   onHandmadePaperOpen?: () => void;
   onMonpaMaskOpen?: () => void;
+  onAllStylesOpen?: () => void;
 };
 
 export default function CreativeStyle({
   onWarliOpen,
   onMadhubaniOpen,
   onKyilKhorOpen,
+  onSherdukpenOpen,
   onEtikoppakaOpen,
   onKondapalliOpen,
   onKalamkariOpen,
@@ -204,6 +218,7 @@ export default function CreativeStyle({
   onMonpaOpen,
   onHandmadePaperOpen,
   onMonpaMaskOpen,
+  onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -224,6 +239,11 @@ export default function CreativeStyle({
     if (style.id === "kyilkhor" && onKyilKhorOpen) {
       event.preventDefault();
       onKyilKhorOpen();
+      return;
+    }
+    if (style.id === "sherdukpen" && onSherdukpenOpen) {
+      event.preventDefault();
+      onSherdukpenOpen();
       return;
     }
     if (style.id === "etikoppaka" && onEtikoppakaOpen) {
@@ -330,15 +350,16 @@ export default function CreativeStyle({
           </h2>
         </div>
 
-        <Link
-          href="/text-to-image"
+        <button
+          type="button"
+          onClick={onAllStylesOpen}
           className="hidden items-center gap-1 rounded-full border border-white/10 px-4 py-2 text-[11px] font-semibold text-white/55 transition-colors hover:border-[#3B82F6]/40 hover:text-[#3B82F6] md:inline-flex"
         >
           <span>All styles</span>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </Link>
+        </button>
       </div>
 
       <div className="relative">

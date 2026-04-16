@@ -108,7 +108,7 @@ const cards: CardConfig[] = [
     cta: "Try Now ->",
   },
   {
-    title: "Expand\nCanvas",
+    title: "Expand\nImage",
     subtitle: "Outpaint and resize frame",
     href: "/text-to-image/edit-image?tool=erase-replace&feature=resize",
     badge: "EXPAND",
@@ -442,11 +442,11 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
               const imageMap: Record<string, string> = {
                 "Image\nGeneration": "/HomePage/Allfeatures/image-generation-bg.png",
                 "Create\nVideo": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&q=80",
-                "Edit\nImage": "/HomePage/Allfeatures/edit-image-bg.png",
+                "Edit\nImage": "/HomePage/Allfeatures/edit-image.png",
                 "Upscale": "/HomePage/Allfeatures/upscale-bg.png",
                 "Remove\nBG": "/HomePage/Allfeatures/remove-bg.png",
                 "Erase /\nReplace": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80",
-                "Expand\nCanvas": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80",
+                "Expand\nImage": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80",
                 "Vectorize": "/HomePage/Allfeatures/vectorize-bg.png",
                 "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.png",
                 "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.png",

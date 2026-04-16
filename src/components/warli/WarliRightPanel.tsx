@@ -115,7 +115,7 @@ export function WarliRightPanel({
 
   return (
     <main className="flex min-h-0 flex-col overflow-hidden bg-[#0a0a0f]">
-      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5 py-3.5">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0a0a0f] px-5 py-3.5">
         <span className="text-xs font-medium text-white/25">{rightTitle}</span>
 
         {panelState === "results" && (
@@ -123,7 +123,7 @@ export function WarliRightPanel({
             <button
               type="button"
               onClick={onRegenerate}
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
             >
               <RefreshCw className="h-3 w-3" />
               Regenerate
@@ -132,7 +132,7 @@ export function WarliRightPanel({
               type="button"
               disabled={!hasImages}
               onClick={onSaveAll}
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
             >
               <Download className="h-3 w-3" />
               Save all

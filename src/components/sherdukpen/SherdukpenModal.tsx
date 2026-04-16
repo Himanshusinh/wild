@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { saveAutoResumeIntent } from "@/lib/autoResume";
 import { saveStudioDraft } from "@/lib/studioDraft";
 import { saveUpload } from "@/lib/libraryApi";
-import { THOLU_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/tholuPromptCatalog";
+import { SHERDUKPEN_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/sherdukpenPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -19,14 +19,11 @@ import { ModelSelector } from "@/components/warli/ModelSelector";
 import { SettingsPanel } from "@/components/warli/SettingsPanel";
 import { OutputGrid } from "@/components/warli/OutputGrid";
 import { PromptPreview } from "@/components/warli/PromptPreview";
-import {
-  coerceStyleModalResolution,
-  coerceWarliAspectRatio,
-} from "@/components/warli/warliNanoAspect";
-import { TholuHeader } from "./TholuHeader";
+import { coerceStyleModalResolution, coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
+import { SherdukpenHeader } from "./SherdukpenHeader";
 import {
   INITIAL_STATE,
-  TholuState,
+  SherdukpenState,
   StyleFamily,
   InputMode,
   ModelId,
@@ -36,7 +33,7 @@ import {
   STYLE_LABELS,
 } from "./types";
 
-const STYLE_TAG = "TholuBommalata";
+const STYLE_TAG = "Sherdukpen";
 
 function toAbsoluteFromProxy(url: string): string {
   try {
@@ -64,14 +61,10 @@ function toAbsoluteFromProxy(url: string): string {
 async function ensureHostedImageUrl(url: string): Promise<string> {
   const normalized = toAbsoluteFromProxy(String(url || "").trim());
   if (!normalized) return normalized;
-  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-    return normalized;
-  }
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) return normalized;
   if (normalized.startsWith("data:") || normalized.startsWith("blob:")) {
     const resp = await saveUpload({ url: normalized, type: "image" });
-    if (resp.responseStatus === "success" && resp.data?.url) {
-      return resp.data.url;
-    }
+    if (resp.responseStatus === "success" && resp.data?.url) return resp.data.url;
     throw new Error(resp.message || "Failed to prepare input image");
   }
   return normalized;
@@ -97,12 +90,12 @@ type Action =
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
   | { type: "SET_INCLUDE_VARIABLE"; payload: boolean }
-  | { type: "SET_PANEL_STATE"; payload: TholuState["panelState"] }
+  | { type: "SET_PANEL_STATE"; payload: SherdukpenState["panelState"] }
   | { type: "SET_GENERATED_IMAGES"; payload: string[] }
   | { type: "SET_ASSEMBLED_PROMPT"; payload: string }
   | { type: "RESET" };
 
-function reducer(state: TholuState, action: Action): TholuState {
+function reducer(state: SherdukpenState, action: Action): SherdukpenState {
   switch (action.type) {
     case "SET_STYLE":
       return { ...state, style: action.payload };
@@ -121,10 +114,7 @@ function reducer(state: TholuState, action: Action): TholuState {
       return { ...state, model: nextModel, ratio: nextRatio, resolution: nextResolution };
     }
     case "SET_RESOLUTION":
-      return {
-        ...state,
-        resolution: coerceStyleModalResolution(action.payload, state.model),
-      };
+      return { ...state, resolution: coerceStyleModalResolution(action.payload, state.model) };
     case "SET_COUNT":
       return { ...state, imageCount: action.payload };
     case "SET_RATIO":
@@ -144,46 +134,42 @@ function reducer(state: TholuState, action: Action): TholuState {
   }
 }
 
-function buildPrompt(state: TholuState): string {
-  const family = THOLU_PROMPT_FAMILIES[state.style];
+function buildPrompt(state: SherdukpenState): string {
+  const family = SHERDUKPEN_PROMPT_FAMILIES[state.style];
   const aspect = coerceWarliAspectRatio(state.ratio, state.model);
 
   const projectInputs =
     state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
-  const base = state.inputMode === "image" ? family.promptI2I.trim() : family.promptHard.trim();
 
-  const blocks: string[] = [];
-  blocks.push("PRIMARY DIRECTIVE (STYLE LOCK — follow strictly):");
-  blocks.push(base);
-  blocks.push("");
+  const projectLine = projectInputs
+    ? `- ${projectInputs}`
+    : "- (none). Keep the Sherdukpen woven utility-object field centered and coherent; do not invent extra bags, figures, or environments.";
 
-  if (state.includeVariable) {
-    blocks.push("REFERENCE (OPTIONAL) — VARIABLE (slot-based):");
-    blocks.push(family.promptVariable.trim());
-    blocks.push("");
-  }
+  const variableBlock = state.includeVariable
+    ? `\n\nREFERENCE (OPTIONAL) — VARIABLE (slot-based):\n${family.promptVariable.trim()}\n`
+    : "";
 
-  blocks.push("PROJECT INPUTS (ONLY SOURCE OF TRUTH FOR CONTENT):");
-  if (projectInputs) blocks.push(`- ${projectInputs}`);
-  else blocks.push("- (none). Do not invent content; keep output minimal and style-accurate only.");
-  blocks.push("");
-
-  blocks.push("CONTENT CONSTRAINT (STRICT):");
-  blocks.push(
-    "- Do not add or invent new people, animals, objects, scenery, borders, symbols, text, ornaments, or background elements unless explicitly requested in PROJECT INPUTS.",
-  );
-  blocks.push("- If something is unspecified, omit it rather than guessing.");
-  blocks.push("- Keep composition simple; avoid decorative fillers unless requested.");
-  blocks.push("");
-
-  blocks.push("RENDER SETTINGS:");
-  blocks.push(`- Preferred aspect ratio: ${aspect === "auto" ? "auto" : aspect}`);
-  blocks.push(`- Preferred image count: ${state.imageCount}`);
-
-  return blocks.join("\n");
+  return [
+    "PRIMARY DIRECTIVE (STYLE LOCK — follow strictly):",
+    family.promptHard.trim(),
+    variableBlock.trimEnd(),
+    "",
+    "PROJECT INPUTS:",
+    projectLine,
+    "",
+    "CONTENT CONSTRAINT (STRICT):",
+    "- Keep the output in Sherdukpen woven object-field logic: white ground + centered motif hierarchy.",
+    "- Do not drift into generic Himalayan textile décor or printed fabric look.",
+    "- Keep figures (if present) secondary to carrying cloth/object truth.",
+    "",
+    "RENDER SETTINGS:",
+    `- Preferred aspect ratio: ${aspect === "auto" ? "auto" : aspect}`,
+    `- Preferred resolution: ${state.resolution}`,
+    `- Preferred image count: ${state.imageCount}`,
+  ].filter(Boolean).join("\n");
 }
 
-export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
@@ -201,16 +187,13 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     }
 
     dispatchLocal({ type: "RESET" });
-
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     const openTimer = setTimeout(() => setIsVisible(true), 16);
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
@@ -256,18 +239,20 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     }
 
     const aspect = coerceWarliAspectRatio(state.ratio, state.model);
+    const generationType =
+      state.inputMode === "image" && uploadedForFal.length > 0 ? "image-to-image" : "text-to-image";
 
     try {
       const res = await dispatch(
         falGenerate({
-          generationType: "text-to-image",
+          generationType,
           model: state.model,
           prompt: promptForModel,
           meta: {
             style_premium: true,
-            style_key: "tholu",
+            style_key: "sherdukpen",
             style_version: state.style,
-            source: "homepage-tholu-modal",
+            source: "homepage-sherdukpen-modal",
           },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
@@ -280,7 +265,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         }) as any,
       ).unwrap();
 
-      const images = extractImageUrls(res?.data ?? res);
+      const images = extractImageUrls((res as any)?.data ?? res);
       dispatchLocal({ type: "SET_GENERATED_IMAGES", payload: images });
       dispatchLocal({ type: "SET_PANEL_STATE", payload: images.length ? "results" : "empty" });
       if (!images.length) toast.error("No images returned");
@@ -307,7 +292,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     if (!urls.length) return;
     const t = toast.loading("Saving images…");
     try {
-      await downloadAllImageUrls(urls, `tholu-${state.style}`);
+      await downloadAllImageUrls(urls, `sherdukpen-${state.style}`);
       toast.dismiss(t);
       toast.success("All downloads started");
     } catch {
@@ -316,19 +301,22 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     }
   }, [state.generatedImages, state.style]);
 
-  const handleSaveImage = useCallback(async (index: number) => {
-    const url = state.generatedImages[index];
-    if (!url) return;
-    const t = toast.loading("Saving…");
-    try {
-      await downloadImageUrl(url, `tholu-${state.style}-${index + 1}`);
-      toast.dismiss(t);
-      toast.success("Download started");
-    } catch {
-      toast.dismiss(t);
-      toast.error("Save failed");
-    }
-  }, [state.generatedImages, state.style]);
+  const handleSaveImage = useCallback(
+    async (index: number) => {
+      const url = state.generatedImages[index];
+      if (!url) return;
+      const t = toast.loading("Saving…");
+      try {
+        await downloadImageUrl(url, `sherdukpen-${state.style}-${index + 1}`);
+        toast.dismiss(t);
+        toast.success("Download started");
+      } catch {
+        toast.dismiss(t);
+        toast.error("Save failed");
+      }
+    },
+    [state.generatedImages, state.style],
+  );
 
   const handleOpenStudio = useCallback(async () => {
     const prompt = assembledPrompt;
@@ -349,14 +337,15 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     const payload = {
       prompt,
       model: state.model,
+      resolution: state.resolution,
       imageCount: state.imageCount,
       frameSize: frameForDraft,
-      style: "TholuBommalata",
+      style: "Sherdukpen Textile",
       ...(uploadedImages?.length ? { uploadedImages } : {}),
       metadata: {
-        source: "homepage-tholu-modal",
-        tholuVersion: state.style,
-        tholuModal: true,
+        source: "homepage-sherdukpen-modal",
+        sherdukpenVersion: state.style,
+        sherdukpenModal: true,
       },
     };
     saveStudioDraft(payload);
@@ -366,7 +355,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
   if (!isOpen) return null;
 
-  const familyMeta = THOLU_PROMPT_FAMILIES[state.style];
+  const familyMeta = SHERDUKPEN_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} · ${familyMeta.chip}`;
 
   return (
@@ -376,19 +365,19 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Leather Puppetry Generator"
-        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0f]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
+        aria-label="Sherdukpen Textile Generator"
+        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
         }`}
       >
-        <TholuHeader
+        <SherdukpenHeader
           style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
           onClose={onClose}
         />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
-          <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0a0a0f]">
+          <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
@@ -401,13 +390,16 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 <SceneInput value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone uploadedImage={state.uploadedImage} onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })} />
+                  <UploadZone
+                    uploadedImage={state.uploadedImage}
+                    onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
+                  />
                   <textarea
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
-                    placeholder="Optional notes... e.g. strong backlight, visible perforations, articulated joints"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
+                    placeholder="Optional notes... e.g. centered motifs, white ground, utility-carrying cloth"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
               )}
@@ -438,21 +430,13 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-3">
               <div className="flex flex-wrap gap-2 text-[11px] text-white/35">
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
-                  {styleTitle}
-                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{styleTitle}</span>
                 <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
                   {MODELS.find((m) => m.id === state.model)?.label ?? state.model}
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
-                  {state.imageCount} img
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
-                  {state.resolution}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
-                  {ratioSummary}
-                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.imageCount} img</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.resolution}</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{ratioSummary}</span>
               </div>
             </div>
 
@@ -463,14 +447,20 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
-                Generate Leather Puppetry
+                Generate Sherdukpen Textile
               </button>
-              
+              <button
+                type="button"
+                onClick={() => void handleOpenStudio()}
+                className="mt-2 w-full rounded-lg border border-white/10 bg-transparent py-2 text-[11px] font-medium text-white/40 transition hover:border-white/20 hover:text-white/70"
+              >
+                Continue in Text-to-Image
+              </button>
             </div>
           </aside>
 
           <main className="flex min-h-0 flex-col overflow-hidden bg-[#0a0a0f]">
-            <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0a0a0f] px-5 py-3.5">
+            <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5 py-3.5">
               <span className="text-xs font-medium text-white/25">
                 {state.panelState === "results"
                   ? `${state.imageCount} ${state.imageCount === 1 ? "image" : "images"} · ${STYLE_LABELS[state.style].title}`
@@ -483,7 +473,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                   <button
                     type="button"
                     onClick={() => void handleRegenerate()}
-                    className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
+                    className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
                   >
                     Regenerate
                   </button>
@@ -491,7 +481,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                     type="button"
                     onClick={() => void handleSaveAll()}
                     disabled={!state.generatedImages.some(Boolean)}
-                    className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
+                    className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
                   >
                     Save all
                   </button>
@@ -503,21 +493,24 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
               {state.panelState === "empty" ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                   <p className="text-sm font-medium text-white/20">No output yet</p>
-                  <p className="max-w-[280px] text-xs leading-relaxed text-white/10">
-                    Describe an epic puppet scene (or upload an image), then Generate.
+                  <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
+                    Describe a Sherdukpen carrying-cloth scene (or upload an image), then Generate.
                   </p>
                 </div>
               ) : null}
 
               {state.panelState === "loading" ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-                  <div className={`grid w-full gap-3 ${state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
+                  <div
+                    className={`grid w-full gap-3 ${
+                      state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
+                    }`}
+                  >
                     {Array.from({ length: state.imageCount }).map((_, i) => (
                       <div
                         key={i}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src="/styles/Logo.gif"
                           alt="Generating..."
@@ -537,7 +530,11 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                     images={state.generatedImages}
                     count={state.imageCount}
                     onSaveImage={(i) => void handleSaveImage(i)}
-                    onExpandImage={() => {}}
+                    onExpandImage={(i) => {
+                      const url = state.generatedImages[i];
+                      if (!url) return;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
                   />
                   <PromptPreview prompt={assembledPrompt} />
                 </div>
@@ -549,5 +546,4 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     </div>
   );
 }
-
 

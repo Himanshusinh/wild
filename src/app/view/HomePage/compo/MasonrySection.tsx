@@ -349,7 +349,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             onClick={handleGenerate}
             disabled={isGenerating}
             aria-label="Generate"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B82F6] text-white shadow-[0_4px_18px_rgba(59,130,246,0.42)] transition-all hover:bg-[#60a5fa] hover:shadow-[0_8px_26px_rgba(59,130,246,0.55)] disabled:cursor-default disabled:opacity-75 sm:h-auto sm:w-auto sm:gap-2 sm:px-7 sm:py-3 sm:text-[14px]"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF]text-white shadow-[0_4px_18px_rgba(59,130,246,0.42)] transition-all  disabled:cursor-default sm:h-auto sm:w-auto sm:gap-2 sm:px-7 sm:py-3 sm:text-[14px]"
           >
             {isGenerating ? (
               <>

@@ -54,7 +54,7 @@ export function UploadZone({ uploadedImage, onUpload }: UploadZoneProps) {
             const file = e.dataTransfer.files[0];
             if (file?.type.startsWith("image/")) handleFile(file);
           }}
-          className="flex w-full flex-col items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-[#13131a] px-5 py-7 text-center transition hover:border-[#2F6BFF]/30 hover:bg-[#2F6BFF]/[0.04]"
+          className="flex w-full flex-col items-center gap-2.5 rounded-xl border border-dashed border-white/10 bg-transparent px-5 py-7 text-center transition hover:border-[#2F6BFF]/30 hover:bg-[#2F6BFF]/[0.04]"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/25">
             <Upload className="h-4 w-4" />

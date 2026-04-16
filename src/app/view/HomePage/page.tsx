@@ -106,6 +106,12 @@ const KyilKhorFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => 
         ssr: false
     }
 )
+const SherdukpenFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SherdukpenFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -137,6 +143,7 @@ import CreationCTASection from './compo/CreationCTASection';
 import CreativeStyle from './compo/CreativeStyle';
 import ImageVideoToggle from './compo/ImageVideoToggle';
 import WhatsNew from './compo/WhatsNew';
+import AllStylesModal from './compo/AllStylesModal';
 
 
 
@@ -161,7 +168,19 @@ const HomePage: React.FC = () => {
     const [showEtikoppakaWalkthrough, setShowEtikoppakaWalkthrough] = useState(false);
     const [showMadhubaniWalkthrough, setShowMadhubaniWalkthrough] = useState(false);
     const [showKyilKhorWalkthrough, setShowKyilKhorWalkthrough] = useState(false);
+    const [showSherdukpenWalkthrough, setShowSherdukpenWalkthrough] = useState(false);
+    const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
+
+    const handleStyleSelect = (id: string) => {
+        setShowAllStylesModal(false);
+        if (id === "Maharashtra") setShowWarliWalkthrough(true);
+        if (id === "tholu") setShowTholuWalkthrough(true);
+        if (id === "uppadajamdani") setShowUppadaWalkthrough(true);
+        if (id === "machilipatnam") setShowKalamkariWalkthrough(true);
+        if (id === "srikalahasti") setShowSrikalahastiWalkthrough(true);
+        if (id === "sherdukpen") setShowSherdukpenWalkthrough(true);
+    };
 
     const onViewChange = (view: ViewType) => {
         setCurrentView(view);
@@ -341,6 +360,10 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowKyilKhorWalkthrough(true);
                         }}
+                        onSherdukpenOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowSherdukpenWalkthrough(true);
+                        }}
                         onEtikoppakaOpen={() => {
                             setShowWelcomeModal(false);
                             setShowEtikoppakaWalkthrough(true);
@@ -385,6 +408,7 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowUppadaWalkthrough(true);
                         }}
+                        onAllStylesOpen={() => setShowAllStylesModal(true)}
                     />
                     <ImageVideoToggle mode={homepageMode} onChange={setHomepageMode} className="pb-8" />
 
@@ -631,6 +655,17 @@ const HomePage: React.FC = () => {
             <KyilKhorFullscreenWalkthrough
                 isOpen={showKyilKhorWalkthrough}
                 onClose={() => setShowKyilKhorWalkthrough(false)}
+            />
+            
+            <SherdukpenFullscreenWalkthrough
+                isOpen={showSherdukpenWalkthrough}
+                onClose={() => setShowSherdukpenWalkthrough(false)}
+            />
+
+            <AllStylesModal
+                isOpen={showAllStylesModal}
+                onClose={() => setShowAllStylesModal(false)}
+                onSelectStyle={handleStyleSelect}
             />
 
             {/* Welcome Modal */}

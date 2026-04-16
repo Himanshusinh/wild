@@ -384,7 +384,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         role="dialog"
         aria-modal="true"
         aria-label="Kalamkari Generator"
-        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
+        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0f]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
         }`}
       >
@@ -395,7 +395,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
-          <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
+          <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0a0a0f]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
@@ -414,7 +414,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
                     placeholder="Optional notes... e.g. keep motif distribution dense, strong border system, no narrative panel"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
               )}
@@ -472,18 +472,12 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               >
                 Generate Kalamkari
               </button>
-              <button
-                type="button"
-                onClick={() => void handleOpenStudio()}
-                className="mt-2 w-full rounded-lg border border-white/10 bg-transparent py-2 text-[11px] font-medium text-white/40 transition hover:border-white/20 hover:text-white/70"
-              >
-                Continue in Text-to-Image
-              </button>
+              
             </div>
           </aside>
 
           <main className="flex min-h-0 flex-col overflow-hidden bg-[#0a0a0f]">
-            <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5 py-3.5">
+            <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0a0a0f] px-5 py-3.5">
               <span className="text-xs font-medium text-white/25">
                 {state.panelState === "results"
                   ? `${state.imageCount} ${state.imageCount === 1 ? "image" : "images"} · ${STYLE_LABELS[state.style].title}`
@@ -496,7 +490,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <button
                     type="button"
                     onClick={() => void handleRegenerate()}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
+                    className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
                   >
                     Regenerate
                   </button>
@@ -504,7 +498,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     type="button"
                     onClick={() => void handleSaveAll()}
                     disabled={!state.generatedImages.some(Boolean)}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
+                    className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70 disabled:pointer-events-none disabled:opacity-35"
                   >
                     Save all
                   </button>
@@ -562,4 +556,5 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     </div>
   );
 }
+
 

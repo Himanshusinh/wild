@@ -14,7 +14,7 @@ export function UppadaHeader({ style, onStyleChange, onClose }: UppadaHeaderProp
   const families: StyleFamily[] = ["V1", "V2", "V3"];
 
   return (
-    <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0E0E12] px-5 py-3">
+    <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0a0f] px-5 py-3">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
@@ -23,7 +23,7 @@ export function UppadaHeader({ style, onStyleChange, onClose }: UppadaHeaderProp
           </span>
         </div>
 
-        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-[#13131a] p-[3px]">
+        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-transparent p-[3px]">
           {families.map((f) => (
             <button
               key={f}
