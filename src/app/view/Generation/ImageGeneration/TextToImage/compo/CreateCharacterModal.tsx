@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Character } from "./CharacterModal";
 import UploadModal from "./UploadModal";
+import { useGenerationCredits } from "@/hooks/useCredits";
 
 type CreateCharacterModalProps = {
   isOpen: boolean;
@@ -30,6 +31,8 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
   const [rightImage, setRightImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { validateAndReserveCredits, handleGenerationSuccess, handleGenerationFailure } = useGenerationCredits('image', 'gemini-25-flash-image', { count: 1 });
   
   // Upload modal states
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -91,8 +94,12 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
     setIsGenerating(true);
     setError(null);
+    let transactionId: string | undefined;
 
     try {
+      const reservation = await validateAndReserveCredits('fal');
+      transactionId = reservation.transactionId;
+
       const characterPrompt = `${name.trim()}, passport photo style, front facing, looking directly at camera, neutral expression, head and shoulders visible, hands partially visible, preserve exact skin texture and details from reference image, natural looking, maintain identical skin tone and complexion, professional photography, high quality, photorealistic, square format, light neutral background, even studio lighting, no white borders, no white padding, no white margins, no frames, no white space, edge-to-edge, full frame character, seamless background integration`;
       const uploadedImages: string[] = [frontImage];
       if (leftImage) uploadedImages.push(leftImage);
@@ -148,8 +155,14 @@ const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       };
 
       onCharacterCreated(character);
+      if (transactionId) {
+        await handleGenerationSuccess(transactionId);
+      }
       onClose();
     } catch (err: any) {
+      if (transactionId) {
+        await handleGenerationFailure(transactionId);
+      }
       setError(err?.message || "Failed to create character");
     } finally {
       setIsGenerating(false);
