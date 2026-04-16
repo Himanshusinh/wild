@@ -20,7 +20,7 @@ export function PromptPreview({ prompt }: PromptPreviewProps) {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#13131a]">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-transparent">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
         <button
           type="button"

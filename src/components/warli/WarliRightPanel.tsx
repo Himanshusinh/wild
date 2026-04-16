@@ -115,7 +115,7 @@ export function WarliRightPanel({
 
   return (
     <main className="flex min-h-0 flex-col overflow-hidden bg-[#0a0a0f]">
-      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5 py-3.5">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0a0a0f] px-5 py-3.5">
         <span className="text-xs font-medium text-white/25">{rightTitle}</span>
 
         {panelState === "results" && (
