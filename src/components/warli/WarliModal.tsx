@@ -23,7 +23,7 @@ import {
   ImageCount,
   AspectRatio,
 } from "./types";
-import { coerceWarliAspectRatio } from "./warliNanoAspect";
+import { coerceStyleModalResolution, coerceWarliAspectRatio } from "./warliNanoAspect";
 import { downloadAllImageUrls, downloadImageUrl } from "./warliDownload";
 
 const STYLE_TAG = "Warli";
@@ -85,6 +85,7 @@ type Action =
   | { type: "SET_UPLOADED_IMAGE"; payload: string }
   | { type: "SET_IMAGE_NOTE"; payload: string }
   | { type: "SET_MODEL"; payload: ModelId }
+  | { type: "SET_RESOLUTION"; payload: string }
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
   | { type: "SET_INCLUDE_BENCHMARK"; payload: boolean }
@@ -110,8 +111,14 @@ function reducer(state: WarliState, action: Action): WarliState {
     case "SET_MODEL": {
       const nextModel = action.payload;
       const nextRatio = coerceWarliAspectRatio(state.ratio, nextModel);
-      return { ...state, model: nextModel, ratio: nextRatio };
+      const nextResolution = coerceStyleModalResolution(state.resolution, nextModel);
+      return { ...state, model: nextModel, ratio: nextRatio, resolution: nextResolution };
     }
+    case "SET_RESOLUTION":
+      return {
+        ...state,
+        resolution: coerceStyleModalResolution(action.payload, state.model),
+      };
     case "SET_COUNT":
       return { ...state, imageCount: action.payload };
     case "SET_RATIO":
@@ -224,9 +231,6 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
 
-  const nanoBananaResolution = useAppSelector(
-    (s: RootState) => s.generation.nanoBananaResolution || "1K",
-  );
   const nanoBananaGoogleSearch = useAppSelector((s: RootState) => s.generation.nanoBananaGoogleSearch);
   const nanoBananaThinkingLevel = useAppSelector((s: RootState) => s.generation.nanoBananaThinkingLevel);
   const nanoBananaLimitGenerations = useAppSelector((s: RootState) => s.generation.nanoBananaLimitGenerations);
@@ -315,7 +319,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
             },
             num_images: state.imageCount,
             aspect_ratio: aspect as any,
-            resolution: "2K",
+            resolution: state.resolution,
             uploadedImages: prepared,
             output_format: outputFormat,
             generationType,
@@ -341,7 +345,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
           },
           num_images: state.imageCount,
           aspect_ratio: aspect as any,
-          resolution: nanoBananaResolution,
+          resolution: state.resolution,
           enable_web_search: nanoBananaGoogleSearch,
           thinking_level: nanoBananaThinkingLevel,
           limit_generations: nanoBananaLimitGenerations,
@@ -362,7 +366,6 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   }, [
     state,
     dispatch,
-    nanoBananaResolution,
     nanoBananaGoogleSearch,
     nanoBananaThinkingLevel,
     nanoBananaLimitGenerations,
@@ -480,6 +483,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
             onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
             onImageNoteChange={(v) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: v })}
             onModelChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })}
+            onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })}
             onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })}
             onRatioChange={handleRatioChange}
             onIncludeBenchmarkChange={(v) =>

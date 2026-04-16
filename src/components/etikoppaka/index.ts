@@ -1,0 +1,2 @@
+export { EtikoppakaModal } from "./EtikoppakaModal";
+

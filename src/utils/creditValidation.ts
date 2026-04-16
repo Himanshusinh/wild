@@ -74,8 +74,8 @@ export const getVideoCreditCost = (
       typeof duration === "number"
         ? duration
         : parseFloat(String(duration || 5)) || 5;
-    // Updated pricing: 5s -> 870, 10s (or >=10) -> 1710
-    return dur >= 10 ? 1710 : 870;
+    // 5s -> 336, 10s (or >=10) -> 671
+    return dur >= 10 ? 671 : 336;
   }
   // WAN 2.2 Animate models use duration-based pricing: 8 credits per 1 second of input video
   if (

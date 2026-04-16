@@ -7,6 +7,7 @@ import { UploadZone } from "./UploadZone";
 import { ModelSelector } from "./ModelSelector";
 import { SettingsPanel } from "./SettingsPanel";
 import { GenerateButton } from "./GenerateButton";
+import { SelectionSummary } from "./SelectionSummary";
 import { WarliState, InputMode, ModelId, ImageCount, AspectRatio } from "./types";
 
 interface WarliLeftPanelProps {
@@ -17,6 +18,7 @@ interface WarliLeftPanelProps {
   onUpload: (v: string) => void;
   onImageNoteChange: (v: string) => void;
   onModelChange: (v: ModelId) => void;
+  onResolutionChange: (v: string) => void;
   onCountChange: (v: ImageCount) => void;
   onRatioChange: (v: AspectRatio) => void;
   onIncludeBenchmarkChange: (v: boolean) => void;
@@ -42,6 +44,7 @@ export function WarliLeftPanel({
   onUpload,
   onImageNoteChange,
   onModelChange,
+  onResolutionChange,
   onCountChange,
   onRatioChange,
   onIncludeBenchmarkChange,
@@ -85,12 +88,14 @@ export function WarliLeftPanel({
 
         <SettingsPanel
           model={state.model}
+          resolution={state.resolution}
           imageCount={state.imageCount}
           ratio={state.ratio}
           includeBenchmark={state.includeBenchmark}
           includeVariable={state.includeVariable}
           includeRestyle={state.includeRestyle}
           onCountChange={onCountChange}
+          onResolutionChange={onResolutionChange}
           onRatioChange={onRatioChange}
           onIncludeBenchmarkChange={onIncludeBenchmarkChange}
           onIncludeVariableChange={onIncludeVariableChange}
@@ -98,7 +103,13 @@ export function WarliLeftPanel({
         />
       </div>
 
-
+      <SelectionSummary
+        style={state.style}
+        model={state.model}
+        resolution={state.resolution}
+        imageCount={state.imageCount}
+        ratioSummary={ratioSummary}
+      />
       <GenerateButton imageCount={state.imageCount} loading={loading} onClick={onGenerate} />
     </aside>
   );

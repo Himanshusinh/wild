@@ -19,7 +19,10 @@ import { ModelSelector } from "@/components/warli/ModelSelector";
 import { SettingsPanel } from "@/components/warli/SettingsPanel";
 import { OutputGrid } from "@/components/warli/OutputGrid";
 import { PromptPreview } from "@/components/warli/PromptPreview";
-import { coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
+import {
+  coerceStyleModalResolution,
+  coerceWarliAspectRatio,
+} from "@/components/warli/warliNanoAspect";
 import { KalamkariHeader } from "./KalamkariHeader";
 import {
   INITIAL_STATE,
@@ -90,6 +93,7 @@ type Action =
   | { type: "SET_UPLOADED_IMAGE"; payload: string }
   | { type: "SET_IMAGE_NOTE"; payload: string }
   | { type: "SET_MODEL"; payload: ModelId }
+  | { type: "SET_RESOLUTION"; payload: string }
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
   | { type: "SET_INCLUDE_VARIABLE"; payload: boolean }
@@ -113,8 +117,14 @@ function reducer(state: KalamkariState, action: Action): KalamkariState {
     case "SET_MODEL": {
       const nextModel = action.payload;
       const nextRatio = coerceWarliAspectRatio(state.ratio, nextModel);
-      return { ...state, model: nextModel, ratio: nextRatio };
+      const nextResolution = coerceStyleModalResolution(state.resolution, nextModel);
+      return { ...state, model: nextModel, ratio: nextRatio, resolution: nextResolution };
     }
+    case "SET_RESOLUTION":
+      return {
+        ...state,
+        resolution: coerceStyleModalResolution(action.payload, state.model),
+      };
     case "SET_COUNT":
       return { ...state, imageCount: action.payload };
     case "SET_RATIO":
@@ -186,9 +196,6 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
 
-  const nanoBananaResolution = useAppSelector(
-    (s: RootState) => s.generation.nanoBananaResolution || "1K",
-  );
   const nanoBananaGoogleSearch = useAppSelector((s: RootState) => s.generation.nanoBananaGoogleSearch);
   const nanoBananaThinkingLevel = useAppSelector((s: RootState) => s.generation.nanoBananaThinkingLevel);
   const nanoBananaLimitGenerations = useAppSelector((s: RootState) => s.generation.nanoBananaLimitGenerations);
@@ -272,7 +279,7 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
           output_format: outputFormat,
-          resolution: nanoBananaResolution,
+          resolution: state.resolution,
           thinking_level: nanoBananaThinkingLevel,
           enable_web_search: nanoBananaGoogleSearch,
           limit_generations: nanoBananaLimitGenerations,
@@ -293,7 +300,6 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     dispatch,
     nanoBananaGoogleSearch,
     nanoBananaLimitGenerations,
-    nanoBananaResolution,
     nanoBananaThinkingLevel,
     outputFormat,
     state,
@@ -422,12 +428,14 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
               <SettingsPanel
                 model={state.model}
+                resolution={state.resolution}
                 imageCount={state.imageCount}
                 ratio={state.ratio}
                 includeBenchmark={false}
                 includeVariable={state.includeVariable}
                 includeRestyle={false}
                 onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })}
+                onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })}
                 onRatioChange={handleRatioChange}
                 onIncludeBenchmarkChange={() => {}}
                 onIncludeVariableChange={(v) => dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })}
@@ -435,9 +443,27 @@ export function KalamkariModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               />
             </div>
 
-            
+            <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-3">
+              <div className="flex flex-wrap gap-2 text-[11px] text-white/35">
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+                  {styleTitle}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+                  {MODELS.find((m) => m.id === state.model)?.label ?? state.model}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+                  {state.imageCount} img
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+                  {state.resolution}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+                  {ratioSummary}
+                </span>
+              </div>
+            </div>
 
-            <div className="border-t border-white/[0.06] bg-[#0a0a0f] px-5 py-4">
+            <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">
               <button
                 type="button"
                 onClick={() => void handleGenerate()}

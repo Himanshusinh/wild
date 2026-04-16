@@ -3,16 +3,18 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { ImageCount, AspectRatio, IMAGE_COUNTS, ModelId } from "./types";
-import { getAspectRatioMenuForModel } from "./warliNanoAspect";
+import { getAspectRatioMenuForModel, getResolutionMenuForModel } from "./warliNanoAspect";
 
 interface SettingsPanelProps {
   model: ModelId;
+  resolution: string;
   imageCount: ImageCount;
   ratio: AspectRatio;
   includeBenchmark: boolean;
   includeVariable: boolean;
   includeRestyle: boolean;
   onCountChange: (c: ImageCount) => void;
+  onResolutionChange: (v: string) => void;
   onRatioChange: (r: AspectRatio) => void;
   onIncludeBenchmarkChange: (v: boolean) => void;
   onIncludeVariableChange: (v: boolean) => void;
@@ -25,7 +27,7 @@ function DropdownSelector<T extends string | number>({
   onChange,
   renderLabel,
 }: {
-  items: T[];
+  items: readonly T[];
   value: T;
   onChange: (v: T) => void;
   renderLabel: (v: T) => string;
@@ -120,21 +122,40 @@ function Chip<T extends string | number>({
 
 export function SettingsPanel({
   model,
+  resolution,
   imageCount,
   ratio,
   includeBenchmark,
   includeVariable,
   includeRestyle,
   onCountChange,
+  onResolutionChange,
   onRatioChange,
   onIncludeBenchmarkChange,
   onIncludeVariableChange,
   onIncludeRestyleChange,
 }: SettingsPanelProps) {
   const ratioOptions = getAspectRatioMenuForModel(model);
+  const resolutionOptions = getResolutionMenuForModel(model);
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
+          Resolution ({model === "google/nano-banana-pro" ? "Pro" : "Nano 2"})
+        </span>
+        <div className="flex flex-wrap gap-1">
+          {resolutionOptions.map((res) => (
+            <Chip
+              key={res}
+              value={res}
+              active={resolution === res}
+              onClick={() => onResolutionChange(res)}
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">Count</span>
         <DropdownSelector

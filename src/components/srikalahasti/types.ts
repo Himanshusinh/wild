@@ -15,6 +15,7 @@ export interface SrikalahastiState {
   uploadedImage: string | null;
   imageNote: string;
   model: ModelId;
+  resolution: string;
   imageCount: ImageCount;
   ratio: AspectRatio;
   includeVariable: boolean;
@@ -43,6 +44,7 @@ export const INITIAL_STATE: SrikalahastiState = {
   uploadedImage: null,
   imageNote: "",
   model: "google/nano-banana-2",
+  resolution: "1K",
   imageCount: 2,
   ratio: "auto",
   includeVariable: false,

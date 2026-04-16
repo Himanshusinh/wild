@@ -57,6 +57,12 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
                     <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
                       {style.title}
                     </div>
+                    <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
+                      {style.name}
+                    </div>
+                    <div className="mt-1 text-[10px] leading-snug text-white/55 line-clamp-2">
+                      {style.desc}
+                    </div>
                   </div>
 
                   <div className="absolute left-4 top-4">
@@ -66,9 +72,9 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
                   </div>
                 </div>
                 
-                <div className="mt-3 px-1">
-                  <div className="text-[13px] font-bold text-white/90">{style.name}</div>
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/30">{style.desc}</p>
+                <div className="sr-only">
+                  <div>{style.name}</div>
+                  <p>{style.desc}</p>
                 </div>
               </button>
             ))}

@@ -60,3 +60,31 @@ export function coerceWarliAspectRatio(raw: string, model: NanoBananaModelId): W
   if (set.has(v)) return v as WarliAspectRatioChoice;
   return model === "google/nano-banana-pro" ? "1:1" : "auto";
 }
+
+/** FAL `resolution` values allowed per model (see validateFalGenerate). */
+export const NANO_BANANA_2_RESOLUTION_OPTIONS = ["0.5K", "1K", "2K", "4K"] as const;
+export const NANO_BANANA_PRO_RESOLUTION_OPTIONS = ["1K", "2K", "4K"] as const;
+
+const PRO_RES_SET = new Set<string>(NANO_BANANA_PRO_RESOLUTION_OPTIONS);
+const NB2_RES_SET = new Set<string>(NANO_BANANA_2_RESOLUTION_OPTIONS);
+
+export function getResolutionMenuForModel(model: NanoBananaModelId): readonly string[] {
+  return model === "google/nano-banana-pro"
+    ? NANO_BANANA_PRO_RESOLUTION_OPTIONS
+    : NANO_BANANA_2_RESOLUTION_OPTIONS;
+}
+
+/** Default when opening a modal or after model switch drops an invalid tier (e.g. 0.5K → Pro). */
+export function defaultResolutionForStyleModal(model: NanoBananaModelId): string {
+  return model === "google/nano-banana-pro" ? "2K" : "1K";
+}
+
+export function coerceStyleModalResolution(
+  raw: string | undefined,
+  model: NanoBananaModelId,
+): string {
+  const v = String(raw ?? "").trim();
+  const set = model === "google/nano-banana-pro" ? PRO_RES_SET : NB2_RES_SET;
+  if (set.has(v)) return v;
+  return defaultResolutionForStyleModal(model);
+}
