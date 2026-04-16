@@ -28,6 +28,105 @@ const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
   {
+    id: "madhubani",
+    name: "Bihar",
+    title: "MADHUBANI",
+    desc: "A traditional Mithila painting style known for its bold outlines, symbolic motifs, and richly filled compositions with no empty space.",
+    image: "/HomePage/creativeStyle/MADHUBANI.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.98)",
+  },
+  {
+    id: "kyilkhor",
+    name: "Arunachal Pradesh",
+    title: "KYIL-KHOR",
+    desc: "A sacred Buddhist mandala system representing a structured cosmic diagram with central hierarchy, symbolic geometry, and ritual significance.",
+    image: "/HomePage/creativeStyle/KYIL-KHOR.png",
+    tag: "Sacred",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "etikoppaka",
+    name: "Andhra Pradesh",
+    title: "ETIKOPPAKA TOYS",
+    desc: "A traditional lacquered wood craft known for its smooth turned forms, vibrant natural colors, and refined handcrafted finish",
+    image: "/HomePage/creativeStyle/ETIKOPPAKA TOYS.png",
+    tag: "Toy",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.98)",
+  },
+  {
+    id: "kondapalli",
+    name: "Andhra Pradesh",
+    title: "KONDAPALLI TOYS",
+    desc: "A traditional wooden toy craft known for its hand-carved forms, vibrant painted surfaces, and charming miniature storytelling scenes.",
+    image: "/HomePage/creativeStyle/KONDAPALLI TOYS.png",
+    tag: "Toy",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.98)",
+  },
+  {
+    id: "monpamask",
+    name: "Arunachal Pradesh",
+    title: "MONPA MASK",
+    desc: "A ritual woodcraft tradition known for its symbolic carved masks, bold expressions, and ceremonial significance in cultural performances.",
+    image: "/HomePage/creativeStyle/MONPA MASK.png",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "handmadepaper",
+    name: "Arunachal Pradesh",
+    title: "HANDMADE PAPER",
+    desc: "A traditional bark-fiber paper craft known for its natural texture, matte finish, and quiet material elegance rooted in handmade processes.",
+    image: "/HomePage/creativeStyle/HANDMADE PAPER.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "monpa",
+    name: "Arunachal Pradesh",
+    title: "MONPA TEXTILE",
+    desc: "A handwoven textile tradition defined by rhythmic patterns, banded structures, and deeply rooted loom-based craftsmanship.",
+    image: "/HomePage/creativeStyle/MONPA TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "wancho",
+    name: "Arunachal Pradesh",
+    title: "WANCHO CARVING",
+    desc: "A traditional wood carving practice known for its bold, head-centric forms, symbolic expressions, and deeply carved handcrafted textures.",
+    image: "/HomePage/creativeStyle/WANCHO CARVING.png",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "thangka",
+    name: "Arunachal Pradesh",
+    title: "THANGKA",
+    desc: "A sacred Buddhist scroll painting tradition known for its precise iconography, spiritual symbolism, and intricate hand-painted detailing on cloth.",
+    image: "/HomePage/creativeStyle/SACRED THANGKA ART.png",
+    tag: "Sacred",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
     id: "tholu",
     name: "Andhra Pradesh",
     title: "LEATHER PUPPETRY",
@@ -75,18 +174,36 @@ const STYLES: StyleItem[] = [
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
+  onMadhubaniOpen?: () => void;
+  onKyilKhorOpen?: () => void;
+  onEtikoppakaOpen?: () => void;
+  onKondapalliOpen?: () => void;
   onKalamkariOpen?: () => void;
   onSrikalahastiOpen?: () => void;
   onUppadaOpen?: () => void;
   onTholuOpen?: () => void;
+  onThangkaOpen?: () => void;
+  onWanchoOpen?: () => void;
+  onMonpaOpen?: () => void;
+  onHandmadePaperOpen?: () => void;
+  onMonpaMaskOpen?: () => void;
 };
 
 export default function CreativeStyle({
   onWarliOpen,
+  onMadhubaniOpen,
+  onKyilKhorOpen,
+  onEtikoppakaOpen,
+  onKondapalliOpen,
   onKalamkariOpen,
   onSrikalahastiOpen,
   onUppadaOpen,
   onTholuOpen,
+  onThangkaOpen,
+  onWanchoOpen,
+  onMonpaOpen,
+  onHandmadePaperOpen,
+  onMonpaMaskOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -97,6 +214,51 @@ export default function CreativeStyle({
     if (t === "warli" && onWarliOpen) {
       event.preventDefault();
       onWarliOpen();
+      return;
+    }
+    if (style.id === "madhubani" && onMadhubaniOpen) {
+      event.preventDefault();
+      onMadhubaniOpen();
+      return;
+    }
+    if (style.id === "kyilkhor" && onKyilKhorOpen) {
+      event.preventDefault();
+      onKyilKhorOpen();
+      return;
+    }
+    if (style.id === "etikoppaka" && onEtikoppakaOpen) {
+      event.preventDefault();
+      onEtikoppakaOpen();
+      return;
+    }
+    if (style.id === "kondapalli" && onKondapalliOpen) {
+      event.preventDefault();
+      onKondapalliOpen();
+      return;
+    }
+    if (style.id === "monpamask" && onMonpaMaskOpen) {
+      event.preventDefault();
+      onMonpaMaskOpen();
+      return;
+    }
+    if (style.id === "handmadepaper" && onHandmadePaperOpen) {
+      event.preventDefault();
+      onHandmadePaperOpen();
+      return;
+    }
+    if (style.id === "monpa" && onMonpaOpen) {
+      event.preventDefault();
+      onMonpaOpen();
+      return;
+    }
+    if (style.id === "wancho" && onWanchoOpen) {
+      event.preventDefault();
+      onWanchoOpen();
+      return;
+    }
+    if (style.id === "thangka" && onThangkaOpen) {
+      event.preventDefault();
+      onThangkaOpen();
       return;
     }
     if (style.id === "tholu" && onTholuOpen) {

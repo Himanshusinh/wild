@@ -2,16 +2,18 @@
 
 import React from "react";
 import { ImageCount, AspectRatio, IMAGE_COUNTS, ModelId } from "./types";
-import { getAspectRatioMenuForModel } from "./warliNanoAspect";
+import { getAspectRatioMenuForModel, getResolutionMenuForModel } from "./warliNanoAspect";
 
 interface SettingsPanelProps {
   model: ModelId;
+  resolution: string;
   imageCount: ImageCount;
   ratio: AspectRatio;
   includeBenchmark: boolean;
   includeVariable: boolean;
   includeRestyle: boolean;
   onCountChange: (c: ImageCount) => void;
+  onResolutionChange: (v: string) => void;
   onRatioChange: (r: AspectRatio) => void;
   onIncludeBenchmarkChange: (v: boolean) => void;
   onIncludeVariableChange: (v: boolean) => void;
@@ -46,21 +48,40 @@ function Chip<T extends string | number>({
 
 export function SettingsPanel({
   model,
+  resolution,
   imageCount,
   ratio,
   includeBenchmark,
   includeVariable,
   includeRestyle,
   onCountChange,
+  onResolutionChange,
   onRatioChange,
   onIncludeBenchmarkChange,
   onIncludeVariableChange,
   onIncludeRestyleChange,
 }: SettingsPanelProps) {
   const ratioOptions = getAspectRatioMenuForModel(model);
+  const resolutionOptions = getResolutionMenuForModel(model);
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
+          Resolution ({model === "google/nano-banana-pro" ? "Pro" : "Nano 2"})
+        </span>
+        <div className="flex flex-wrap gap-1">
+          {resolutionOptions.map((res) => (
+            <Chip
+              key={res}
+              value={res}
+              active={resolution === res}
+              onClick={() => onResolutionChange(res)}
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">Count</span>
         <div className="flex flex-wrap gap-1">
