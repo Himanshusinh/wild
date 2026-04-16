@@ -8376,6 +8376,23 @@ const InputBox = (props: InputBoxProps = {}) => {
         selectedModel.startsWith("ltx-2.3-fast") ||
         selectedModel.startsWith("ltx-2.3-pro")
       ) {
+        const buildReplicateErrorDisplay = (providerResult: any): string => {
+          const err =
+            providerResult?.error?.message ??
+            providerResult?.error ??
+            providerResult?.errors ??
+            providerResult?.detail ??
+            providerResult?.message ??
+            providerResult;
+          const errorObj =
+            typeof err === "string"
+              ? { message: err }
+              : err && typeof err === "object"
+                ? err
+                : { message: String(err) };
+          return `Failed to generate video: ${JSON.stringify({ type: "error", error: errorObj })}`;
+        };
+
         // LTX 2.3 Fast/Pro flow - queue-based polling via replicate queue endpoints
         const ltxTierLabel = selectedModel.startsWith("ltx-2.3-pro")
           ? "Pro"
@@ -8415,27 +8432,60 @@ const InputBox = (props: InputBoxProps = {}) => {
                 timeout: 1200000,
               });
               videoResult = resultRes.data?.data || resultRes.data;
-              // mark as completed
-              if (generationId) {
-                dispatch(
-                  updateActiveGeneration({
-                    id: generationId,
-                    updates: {
-                      status: "completed",
-                      historyId: result.historyId,
-                    },
-                  }),
-                );
+              // Replicate can return a terminal error payload even when a poll endpoint
+              // reports a completed-ish state. Detect and surface that error immediately.
+              if (
+                videoResult &&
+                (videoResult?.status === "failed" ||
+                  videoResult?.status === "canceled" ||
+                  videoResult?.status === "cancelled" ||
+                  videoResult?.status === "error" ||
+                  videoResult?.error)
+              ) {
+                const display = buildReplicateErrorDisplay(videoResult);
+                if (generationId) {
+                  dispatch(
+                    updateActiveGeneration({
+                      id: generationId,
+                      updates: { status: "failed", error: display },
+                    }),
+                  );
+                }
+                dispatch(addNotification({ type: "error", message: display }));
+                // Terminal error: stop polling immediately
+                consecutiveErrors = MAX_CONSECUTIVE_ERRORS;
+                throw new Error(display);
               }
               break;
             }
             if (statusValue === "failed" || statusValue === "error") {
-              throw new Error(
-                `LTX 2.3 ${ltxTierLabel} video generation failed`,
-              );
+              // Fetch the provider result to extract the exact error message
+              let providerResult: any = null;
+              try {
+                const resultRes = await api.get("/api/replicate/queue/result", {
+                  params: { requestId: result.requestId },
+                  timeout: 1200000,
+                });
+                providerResult = resultRes.data?.data || resultRes.data;
+              } catch {}
+              const display = buildReplicateErrorDisplay(providerResult || status);
+              if (generationId) {
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: { status: "failed", error: display },
+                  }),
+                );
+              }
+              dispatch(addNotification({ type: "error", message: display }));
+              // Terminal error: stop polling immediately
+              consecutiveErrors = MAX_CONSECUTIVE_ERRORS;
+              throw new Error(display);
             }
           } catch (e: any) {
             consecutiveErrors++;
+            // Terminal failure should not be retried.
+            // (We set consecutiveErrors to MAX_CONSECUTIVE_ERRORS before throwing for those.)
             if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) throw e;
           }
           await new Promise((res) => setTimeout(res, 1000));
@@ -8470,6 +8520,19 @@ const InputBox = (props: InputBoxProps = {}) => {
           );
           throw new Error(
             `LTX 2.3 ${ltxTierLabel} video generation did not complete in time`,
+          );
+        }
+
+        // Mark as completed only after we have a usable URL.
+        if (generationId) {
+          dispatch(
+            updateActiveGeneration({
+              id: generationId,
+              updates: {
+                status: "completed",
+                historyId: result.historyId,
+              },
+            }),
           );
         }
       } else if (apiEndpoint === "/api/runway/video") {
