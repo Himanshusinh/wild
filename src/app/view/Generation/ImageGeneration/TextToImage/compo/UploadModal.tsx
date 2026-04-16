@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { fetchLibrary, fetchUploads, LibraryItem, UploadItem, saveUpload, getLibraryPage, getUploadsPage } from '@/lib/libraryApi';
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb';
 import toast from 'react-hot-toast';
@@ -41,6 +42,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   persistLocalDeviceUploads = true,
   maxFileSizeBytes,
 }) => {
+  const [mounted, setMounted] = React.useState(false);
   const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
 
   // State for library and uploads data
@@ -61,6 +63,10 @@ const UploadModal: React.FC<UploadModalProps> = ({
   React.useEffect(() => {
     onTabChangeCallbackRef.current = onTabChange;
   }, [onTabChange]);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Call onTabChange when tab changes, but only once per tab change and only when modal is open
   React.useEffect(() => {
@@ -633,7 +639,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
     }
   };
 
-  return (
+  const modal = (
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
@@ -990,6 +996,10 @@ const UploadModal: React.FC<UploadModalProps> = ({
       </div>
     </div>
   );
+
+  // Render in a portal so it doesn't get trapped under transformed/sticky parents (some pages render this inside a transformed container).
+  if (!mounted) return null;
+  return createPortal(modal, document.body);
 };
 
 export default UploadModal;

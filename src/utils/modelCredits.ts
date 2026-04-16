@@ -270,7 +270,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
 
   // Video Generation Models - Default durations
   gen4_turbo: 520, // Gen-4 Turbo 5s (default)
-  gen3a_turbo: 520, // Gen-3a Turbo 5s (default)
+  gen3a_turbo: 200, // Gen-3a Turbo 5s (default)
   gen4_aleph: 360, // Gen-4 Aleph 1s (creditDistribution shows 1s variant)
   "minimax-hailuo-01": 220, // Minimax-Hailuo-01 512P 6s
   "MiniMax-Hailuo-02": 320, // Minimax-Hailuo-02 512P 6s (legacy default)
@@ -319,8 +319,8 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "gen4_turbo-10s": 1020,
 
   // Gen-3a Turbo variants
-  "gen3a_turbo-5s": 520,
-  "gen3a_turbo-10s": 1020,
+  "gen3a_turbo-5s": 200,
+  "gen3a_turbo-10s": 400,
 
   // Veo3 models
   "veo3-t2v-4s": 3260,
@@ -334,80 +334,84 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "RW-veo3-8s": 6460,
 
   // Veo 3.1 models (AUDIO ON - default)
-  "veo3.1-t2v-4s": 3260,
-  "veo3.1-t2v-6s": 4860,
-  "veo3.1-t2v-8s": 6460,
-  "veo3.1-i2v-4s": 3260,
-  "veo3.1-i2v-6s": 4860,
-  "veo3.1-i2v-8s": 6460,
-  "veo3.1-fast-t2v-4s": 1260,
-  "veo3.1-fast-t2v-6s": 1860,
-  "veo3.1-fast-t2v-8s": 2460,
-  "veo3.1-fast-i2v-4s": 1260,
-  "veo3.1-fast-i2v-6s": 1860,
-  "veo3.1-fast-i2v-8s": 2460,
+  "veo3.1-t2v-4s": 1280,
+  "veo3.1-t2v-6s": 1923,
+  "veo3.1-t2v-8s": 2560,
+  "veo3.1-i2v-4s": 1280,
+  "veo3.1-i2v-6s": 1923,
+  "veo3.1-i2v-8s": 2560,
+  "veo3.1-fast-t2v-4s": 480,
+  "veo3.1-fast-t2v-6s": 720,
+  "veo3.1-fast-t2v-8s": 960,
+  "veo3.1-fast-i2v-4s": 480,
+  "veo3.1-fast-i2v-6s": 720,
+  "veo3.1-fast-i2v-8s": 960,
   // Veo 3.1 models (AUDIO OFF)
-  "veo3.1-t2v-4s-audio-off": 1660,
-  "veo3.1-t2v-6s-audio-off": 2460,
-  "veo3.1-t2v-8s-audio-off": 3260,
-  "veo3.1-i2v-4s-audio-off": 1660,
-  "veo3.1-i2v-6s-audio-off": 2460,
-  "veo3.1-i2v-8s-audio-off": 3260,
-  "veo3.1-fast-t2v-4s-audio-off": 860,
-  "veo3.1-fast-t2v-6s-audio-off": 1260,
-  "veo3.1-fast-t2v-8s-audio-off": 1660,
-  "veo3.1-fast-i2v-4s-audio-off": 860,
-  "veo3.1-fast-i2v-6s-audio-off": 1260,
-  "veo3.1-fast-i2v-8s-audio-off": 1660,
-  "veo3.1-lite-t2v-4s-720p": 460,
-  "veo3.1-lite-t2v-6s-720p": 660,
-  "veo3.1-lite-t2v-8s-720p": 860,
-  "veo3.1-lite-t2v-8s-1080p": 1340,
-  "veo3.1-lite-i2v-4s-720p": 460,
-  "veo3.1-lite-i2v-6s-720p": 660,
-  "veo3.1-lite-i2v-8s-720p": 860,
-  "veo3.1-lite-i2v-8s-1080p": 1340,
-  "veo3.1-lite-flf2v-8s-720p": 820,
-  "veo3.1-lite-flf2v-8s-1080p": 1300,
+  "veo3.1-t2v-4s-audio-off": 640,
+  "veo3.1-t2v-6s-audio-off": 960,
+  "veo3.1-t2v-8s-audio-off": 1280,
+  "veo3.1-i2v-4s-audio-off": 640,
+  "veo3.1-i2v-6s-audio-off": 960,
+  "veo3.1-i2v-8s-audio-off": 1280,
+  "veo3.1-fast-t2v-4s-audio-off": 320,
+  "veo3.1-fast-t2v-6s-audio-off": 480,
+  "veo3.1-fast-t2v-8s-audio-off": 640,
+  "veo3.1-fast-i2v-4s-audio-off": 320,
+  "veo3.1-fast-i2v-6s-audio-off": 480,
+  "veo3.1-fast-i2v-8s-audio-off": 640,
+  "veo3.1-lite-t2v-4s-720p": 160,
+  "veo3.1-lite-t2v-6s-720p": 240,
+  "veo3.1-lite-t2v-8s-720p": 320,
+  "veo3.1-lite-t2v-4s-1080p": 256,
+  "veo3.1-lite-t2v-6s-1080p": 384,
+  "veo3.1-lite-t2v-8s-1080p": 512,
+  "veo3.1-lite-i2v-4s-720p": 160,
+  "veo3.1-lite-i2v-6s-720p": 240,
+  "veo3.1-lite-i2v-8s-720p": 320,
+  "veo3.1-lite-i2v-4s-1080p": 256,
+  "veo3.1-lite-i2v-6s-1080p": 384,
+  "veo3.1-lite-i2v-8s-1080p": 512,
+  "veo3.1-lite-flf2v-8s-720p": 320,
+  "veo3.1-lite-flf2v-8s-1080p": 512,
 
-  // WAN 2.5 Standard T2V (updated per provided sheet)
-  "wan-2.5-t2v-5s-480p": 480,
-  "wan-2.5-t2v-5s-720p": 900,
-  "wan-2.5-t2v-5s-1080p": 1460,
-  "wan-2.5-t2v-10s-480p": 900,
-  "wan-2.5-t2v-10s-720p": 1740,
-  "wan-2.5-t2v-10s-1080p": 2860,
+  // WAN 2.5 Standard T2V
+  "wan-2.5-t2v-5s-480p": 200,
+  "wan-2.5-t2v-5s-720p": 400,
+  "wan-2.5-t2v-5s-1080p": 600,
+  "wan-2.5-t2v-10s-480p": 400,
+  "wan-2.5-t2v-10s-720p": 800,
+  "wan-2.5-t2v-10s-1080p": 1200,
 
-  // WAN 2.5 Standard I2V (updated per provided sheet)
-  "wan-2.5-i2v-5s-480p": 480,
-  "wan-2.5-i2v-5s-720p": 900,
-  "wan-2.5-i2v-5s-1080p": 1460,
-  "wan-2.5-i2v-10s-480p": 900,
-  "wan-2.5-i2v-10s-720p": 1740,
-  "wan-2.5-i2v-10s-1080p": 2860,
+  // WAN 2.5 Standard I2V
+  "wan-2.5-i2v-5s-480p": 200,
+  "wan-2.5-i2v-5s-720p": 400,
+  "wan-2.5-i2v-5s-1080p": 600,
+  "wan-2.5-i2v-10s-480p": 400,
+  "wan-2.5-i2v-10s-720p": 800,
+  "wan-2.5-i2v-10s-1080p": 1200,
 
-  // WAN 2.5 Fast T2V (updated per provided sheet)
-  "wan-2.5-fast-t2v-5s-720p": 740,
-  "wan-2.5-fast-t2v-5s-1080p": 1080,
-  "wan-2.5-fast-t2v-10s-720p": 1420,
-  "wan-2.5-fast-t2v-10s-1080p": 2100,
+  // WAN 2.5 Fast T2V
+  "wan-2.5-fast-t2v-5s-720p": 272,
+  "wan-2.5-fast-t2v-5s-1080p": 408,
+  "wan-2.5-fast-t2v-10s-720p": 544,
+  "wan-2.5-fast-t2v-10s-1080p": 816,
 
-  // WAN 2.5 Fast I2V (updated per provided sheet)
-  "wan-2.5-fast-i2v-5s-720p": 740,
-  "wan-2.5-fast-i2v-5s-1080p": 1080,
-  "wan-2.5-fast-i2v-10s-720p": 1420,
-  "wan-2.5-fast-i2v-10s-1080p": 2100,
+  // WAN 2.5 Fast I2V
+  "wan-2.5-fast-i2v-5s-720p": 272,
+  "wan-2.5-fast-i2v-5s-1080p": 408,
+  "wan-2.5-fast-i2v-10s-720p": 544,
+  "wan-2.5-fast-i2v-10s-1080p": 816,
 
-  // Kling 2.6 Pro credit SKUs (FAL, audio on/off variants) - matches creditDistribution.ts format
-  "kling-2.6-pro-t2v-i2v-5s-audio-off": 740, // From creditDistribution: Kling 2.6 Pro T2V/I2V 5s Audio Off (740 credits)
-  "kling-2.6-pro-t2v-i2v-5s-audio-on": 1440, // From creditDistribution: Kling 2.6 Pro T2V/I2V 5s Audio On (1440 credits)
-  "kling-2.6-pro-t2v-i2v-10s-audio-off": 1440, // From creditDistribution: Kling 2.6 Pro T2V/I2V 10s Audio Off (1440 credits)
-  "kling-2.6-pro-t2v-i2v-10s-audio-on": 2840, // From creditDistribution: Kling 2.6 Pro T2V/I2V 10s Audio On (2840 credits)
+  // Kling 2.6 Pro credit SKUs (FAL, audio on/off variants)
+  "kling-2.6-pro-t2v-i2v-5s-audio-off": 280,
+  "kling-2.6-pro-t2v-i2v-5s-audio-on": 560,
+  "kling-2.6-pro-t2v-i2v-10s-audio-off": 560,
+  "kling-2.6-pro-t2v-i2v-10s-audio-on": 1120,
   // Kling credit SKUs (map to distribution names)
-  "kling-v2.5-turbo-pro-t2v-5s": 760,
-  "kling-v2.5-turbo-pro-t2v-10s": 1460,
-  "kling-v2.5-turbo-pro-i2v-5s": 760,
-  "kling-v2.5-turbo-pro-i2v-10s": 1460,
+  "kling-v2.5-turbo-pro-t2v-5s": 280,
+  "kling-v2.5-turbo-pro-t2v-10s": 560,
+  "kling-v2.5-turbo-pro-i2v-5s": 280,
+  "kling-v2.5-turbo-pro-i2v-10s": 560,
   "kling-v2.1-master-t2v-5s": 2920,
   "kling-v2.1-master-t2v-10s": 5720,
   "kling-v2.1-master-i2v-5s": 2920,
@@ -423,101 +427,101 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "kling-v2.1-i2v-10s-1080p": 1860,
 
   // Seedance 1.0 Pro T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
-  "seedance-1.0-pro-t2v-5s-480p": 360,
-  "seedance-1.0-pro-t2v-5s-720p": 660,
-  "seedance-1.0-pro-t2v-5s-1080p": 1560,
-  "seedance-1.0-pro-t2v-10s-480p": 660,
-  "seedance-1.0-pro-t2v-10s-720p": 1260,
-  "seedance-1.0-pro-t2v-10s-1080p": 3060,
-  "seedance-1.0-pro-i2v-5s-480p": 360,
-  "seedance-1.0-pro-i2v-5s-720p": 660,
-  "seedance-1.0-pro-i2v-5s-1080p": 1560,
-  "seedance-1.0-pro-i2v-10s-480p": 660,
-  "seedance-1.0-pro-i2v-10s-720p": 1260,
-  "seedance-1.0-pro-i2v-10s-1080p": 3060,
+  "seedance-1.0-pro-t2v-5s-480p": 120,
+  "seedance-1.0-pro-t2v-5s-720p": 240,
+  "seedance-1.0-pro-t2v-5s-1080p": 600,
+  "seedance-1.0-pro-t2v-10s-480p": 240,
+  "seedance-1.0-pro-t2v-10s-720p": 480,
+  "seedance-1.0-pro-t2v-10s-1080p": 1200,
+  "seedance-1.0-pro-i2v-5s-480p": 120,
+  "seedance-1.0-pro-i2v-5s-720p": 240,
+  "seedance-1.0-pro-i2v-5s-1080p": 600,
+  "seedance-1.0-pro-i2v-10s-480p": 240,
+  "seedance-1.0-pro-i2v-10s-720p": 480,
+  "seedance-1.0-pro-i2v-10s-1080p": 1200,
 
   // Seedance 1.0 Lite T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
-  "seedance-1.0-lite-t2v-5s-480p": 200,
-  "seedance-1.0-lite-t2v-5s-720p": 380,
-  "seedance-1.0-lite-t2v-5s-1080p": 740,
-  "seedance-1.0-lite-t2v-10s-480p": 380,
-  "seedance-1.0-lite-t2v-10s-720p": 740,
-  "seedance-1.0-lite-t2v-10s-1080p": 1460,
-  "seedance-1.0-lite-i2v-5s-480p": 200,
-  "seedance-1.0-lite-i2v-5s-720p": 380,
-  "seedance-1.0-lite-i2v-5s-1080p": 740,
-  "seedance-1.0-lite-i2v-10s-480p": 380,
-  "seedance-1.0-lite-i2v-10s-720p": 740,
-  "seedance-1.0-lite-i2v-10s-1080p": 1460,
+  "seedance-1.0-lite-t2v-5s-480p": 72,
+  "seedance-1.0-lite-t2v-5s-720p": 144,
+  "seedance-1.0-lite-t2v-5s-1080p": 288,
+  "seedance-1.0-lite-t2v-10s-480p": 144,
+  "seedance-1.0-lite-t2v-10s-720p": 288,
+  "seedance-1.0-lite-t2v-10s-1080p": 576,
+  "seedance-1.0-lite-i2v-5s-480p": 72,
+  "seedance-1.0-lite-i2v-5s-720p": 144,
+  "seedance-1.0-lite-i2v-5s-1080p": 288,
+  "seedance-1.0-lite-i2v-10s-480p": 144,
+  "seedance-1.0-lite-i2v-10s-720p": 288,
+  "seedance-1.0-lite-i2v-10s-1080p": 576,
 
   // Seedance 1.0 Pro Fast T2V/I2V (duration mapped: 2-6s -> 5s, 7-12s -> 10s)
-  "seedance-1.0-pro-fast-t2v-5s-480p": 180,
-  "seedance-1.0-pro-fast-t2v-5s-720p": 280,
-  "seedance-1.0-pro-fast-t2v-5s-1080p": 630,
-  "seedance-1.0-pro-fast-t2v-10s-480p": 330,
-  "seedance-1.0-pro-fast-t2v-10s-720p": 530,
-  "seedance-1.0-pro-fast-t2v-10s-1080p": 1230,
-  "seedance-1.0-pro-fast-i2v-5s-480p": 180,
-  "seedance-1.0-pro-fast-i2v-5s-720p": 280,
-  "seedance-1.0-pro-fast-i2v-5s-1080p": 630,
-  "seedance-1.0-pro-fast-i2v-10s-480p": 330,
-  "seedance-1.0-pro-fast-i2v-10s-720p": 530,
-  "seedance-1.0-pro-fast-i2v-10s-1080p": 1230,
+  "seedance-1.0-pro-fast-t2v-5s-480p": 60,
+  "seedance-1.0-pro-fast-t2v-5s-720p": 100,
+  "seedance-1.0-pro-fast-t2v-5s-1080p": 240,
+  "seedance-1.0-pro-fast-t2v-10s-480p": 120,
+  "seedance-1.0-pro-fast-t2v-10s-720p": 200,
+  "seedance-1.0-pro-fast-t2v-10s-1080p": 480,
+  "seedance-1.0-pro-fast-i2v-5s-480p": 60,
+  "seedance-1.0-pro-fast-i2v-5s-720p": 100,
+  "seedance-1.0-pro-fast-i2v-5s-1080p": 240,
+  "seedance-1.0-pro-fast-i2v-10s-480p": 120,
+  "seedance-1.0-pro-fast-i2v-10s-720p": 200,
+  "seedance-1.0-pro-fast-i2v-10s-1080p": 480,
 
   // PixVerse 5 T2V/I2V (duration: 5s or 8s)
-  "pixverse-v5-t2v-5s-360p": 660,
-  "pixverse-v5-t2v-5s-540p": 660,
-  "pixverse-v5-t2v-5s-720p": 860,
-  "pixverse-v5-t2v-5s-1080p": 1660,
-  "pixverse-v5-t2v-8s-360p": 1260,
-  "pixverse-v5-t2v-8s-540p": 1260,
-  "pixverse-v5-t2v-8s-720p": 1660,
-  "pixverse-v5-t2v-8s-1080p": 3260,
-  "pixverse-v5-i2v-5s-360p": 660,
-  "pixverse-v5-i2v-5s-540p": 660,
-  "pixverse-v5-i2v-5s-720p": 860,
-  "pixverse-v5-i2v-5s-1080p": 1660,
-  "pixverse-v5-i2v-8s-360p": 1260,
-  "pixverse-v5-i2v-8s-540p": 1260,
-  "pixverse-v5-i2v-8s-720p": 1660,
-  "pixverse-v5-i2v-8s-1080p": 3260,
+  "pixverse-v5-t2v-5s-360p": 240,
+  "pixverse-v5-t2v-5s-540p": 240,
+  "pixverse-v5-t2v-5s-720p": 320,
+  "pixverse-v5-t2v-5s-1080p": 640,
+  "pixverse-v5-t2v-8s-360p": 480,
+  "pixverse-v5-t2v-8s-540p": 480,
+  "pixverse-v5-t2v-8s-720p": 640,
+  "pixverse-v5-t2v-8s-1080p": 1280,
+  "pixverse-v5-i2v-5s-360p": 240,
+  "pixverse-v5-i2v-5s-540p": 240,
+  "pixverse-v5-i2v-5s-720p": 320,
+  "pixverse-v5-i2v-5s-1080p": 640,
+  "pixverse-v5-i2v-8s-360p": 480,
+  "pixverse-v5-i2v-8s-540p": 480,
+  "pixverse-v5-i2v-8s-720p": 640,
+  "pixverse-v5-i2v-8s-1080p": 1280,
 
   // Sora 2 Standard (T2V/I2V)
-  "sora2-t2v-4s": 860,
-  "sora2-t2v-8s": 1660,
-  "sora2-t2v-12s": 2460,
-  "sora2-i2v-4s": 860,
-  "sora2-i2v-8s": 1660,
-  "sora2-i2v-12s": 2460,
+  "sora2-t2v-4s": 320,
+  "sora2-t2v-8s": 640,
+  "sora2-t2v-12s": 960,
+  "sora2-i2v-4s": 320,
+  "sora2-i2v-8s": 640,
+  "sora2-i2v-12s": 960,
 
   // Sora 2 Pro (T2V/I2V) - 720p
-  "sora2-pro-t2v-4s-720p": 2460,
-  "sora2-pro-t2v-8s-720p": 4860,
-  "sora2-pro-t2v-12s-720p": 7260,
-  "sora2-pro-i2v-4s-720p": 2460,
-  "sora2-pro-i2v-8s-720p": 4860,
-  "sora2-pro-i2v-12s-720p": 7260,
+  "sora2-pro-t2v-4s-720p": 960,
+  "sora2-pro-t2v-8s-720p": 1923,
+  "sora2-pro-t2v-12s-720p": 2878,
+  "sora2-pro-i2v-4s-720p": 960,
+  "sora2-pro-i2v-8s-720p": 1923,
+  "sora2-pro-i2v-12s-720p": 2878,
 
   // Sora 2 Pro (T2V/I2V) - 1080p
-  "sora2-pro-t2v-4s-1080p": 4060,
-  "sora2-pro-t2v-8s-1080p": 8060,
-  "sora2-pro-t2v-12s-1080p": 12060,
-  "sora2-pro-i2v-4s-1080p": 4060,
-  "sora2-pro-i2v-8s-1080p": 8060,
-  "sora2-pro-i2v-12s-1080p": 12060,
+  "sora2-pro-t2v-4s-1080p": 1600,
+  "sora2-pro-t2v-8s-1080p": 3200,
+  "sora2-pro-t2v-12s-1080p": 4811,
+  "sora2-pro-i2v-4s-1080p": 1600,
+  "sora2-pro-i2v-8s-1080p": 3200,
+  "sora2-pro-i2v-12s-1080p": 4811,
 
   // SeedVR2 models (duration and resolution variants)
-  "seedvr2-5s-720p": 1060,
-  "seedvr2-5s-1080p": 3060,
-  "seedvr2-5s-2k": 6060,
-  "seedvr2-10s-720p": 2060,
-  "seedvr2-10s-1080p": 6060,
-  "seedvr2-10s-2k": 12060,
+  "seedvr2-5s-720p": 400,
+  "seedvr2-5s-1080p": 1200,
+  "seedvr2-5s-2k": 2395,
+  "seedvr2-10s-720p": 800,
+  "seedvr2-10s-1080p": 2395,
+  "seedvr2-10s-2k": 4811,
 
   // Kling o1 (FAL first/last frame)
-  "kling-o1": 870, // Default to 5s for base lookup
-  "kling-o1-5s": 870,
-  "kling-o1-10s": 1710,
+  "kling-o1": 336,
+  "kling-o1-5s": 336,
+  "kling-o1-10s": 671,
 
   // Image Utility Models
   "fal-image2svg": 4, // Image to SVG
@@ -652,8 +656,11 @@ export const getCreditsForModel = (
         .includes("1080")
         ? "1080p"
         : "720p";
-      const dur = duration === "4s" || duration === "6s" ? duration : "8s";
-      const key = `veo3.1-lite-${mode}-${res === "1080p" ? "8s" : dur}-${res}`;
+      const dur =
+        duration === "4s" || duration === "6s" || duration === "8s"
+          ? duration
+          : "8s";
+      const key = `veo3.1-lite-${mode}-${dur}-${res}`;
       return MODEL_CREDITS_MAPPING[key] || null;
     }
 
@@ -739,11 +746,11 @@ export const getCreditsForModel = (
       const isPro = modelValue === "kling-v3-pro";
       const creditsPerSecond = isPro
         ? generateAudio !== false
-          ? 356
-          : 244
+          ? 403 / 3
+          : 269 / 3
         : generateAudio !== false
-          ? 272
-          : 188;
+          ? 302 / 3
+          : 67;
       return Math.ceil(durationSeconds * creditsPerSecond);
     }
     // Special case: kling-o1 is a simple FAL model with only duration-based pricing (5s / 10s)
@@ -796,7 +803,7 @@ export const getCreditsForModel = (
     const durationSeconds = Number.isFinite(d)
       ? Math.min(15, Math.max(3, d))
       : 5;
-    const creditsPerSecond = generateAudio !== false ? 272 : 188;
+    const creditsPerSecond = generateAudio !== false ? 302 / 3 : 67;
     return Math.ceil(durationSeconds * creditsPerSecond);
   }
   if (
@@ -807,7 +814,7 @@ export const getCreditsForModel = (
     const durationSeconds = Number.isFinite(d)
       ? Math.min(15, Math.max(3, d))
       : 5;
-    const creditsPerSecond = generateAudio !== false ? 356 : 244;
+    const creditsPerSecond = generateAudio !== false ? 403 / 3 : 269 / 3;
     return Math.ceil(durationSeconds * creditsPerSecond);
   }
 
@@ -947,34 +954,34 @@ export const getCreditsForModel = (
 
     const table: Record<"1080p" | "2k" | "4k", Record<number, number>> = {
       "1080p": {
-        6: 540,
-        8: 700,
-        10: 860,
-        12: 1020,
-        14: 1180,
-        16: 1340,
-        18: 1500,
-        20: 1660,
+        6: 192,
+        8: 249,
+        10: 306,
+        12: 363,
+        14: 420,
+        16: 476,
+        18: 533,
+        20: 590,
       },
       "2k": {
-        6: 1020,
-        8: 1340,
-        10: 1660,
-        12: 1980,
-        14: 2300,
-        16: 2620,
-        18: 2940,
-        20: 3260,
+        6: 384,
+        8: 504,
+        10: 625,
+        12: 745,
+        14: 866,
+        16: 986,
+        18: 1107,
+        20: 1227,
       },
       "4k": {
-        6: 1980,
-        8: 2620,
-        10: 3260,
-        12: 3900,
-        14: 4540,
-        16: 5180,
-        18: 5820,
-        20: 6460,
+        6: 768,
+        8: 1016,
+        10: 1264,
+        12: 1513,
+        14: 1761,
+        16: 2009,
+        18: 2257,
+        20: 2506,
       },
     };
     const resKey = (
@@ -997,9 +1004,9 @@ export const getCreditsForModel = (
     const durNum: 6 | 8 | 10 = durNumRaw <= 6 ? 6 : durNumRaw <= 8 ? 8 : 10;
 
     const table: Record<"1080p" | "2k" | "4k", Record<6 | 8 | 10, number>> = {
-      "1080p": { 6: 780, 8: 1020, 10: 1260 },
-      "2k": { 6: 1500, 8: 1980, 10: 2460 },
-      "4k": { 6: 2940, 8: 3900, 10: 4860 },
+      "1080p": { 6: 288, 8: 384, 10: 480 },
+      "2k": { 6: 576, 8: 768, 10: 960 },
+      "4k": { 6: 1152, 8: 1533, 10: 1923 },
     };
     const resKey = (
       res.includes("4k") || res.includes("2160")
@@ -1024,7 +1031,7 @@ export const getCreditsForModel = (
     if (isV2V) {
       // Return an estimated default cost (8s, 720p standard as fallback)
       // The backend will use the actual source video parameters for final pricing
-      return MODEL_CREDITS_MAPPING["sora2-t2v-8s"] || 1660; // Default to standard 8s cost
+      return MODEL_CREDITS_MAPPING["sora2-t2v-8s"] || 640;
     }
 
     const modelType = isI2V ? "i2v" : "t2v";
