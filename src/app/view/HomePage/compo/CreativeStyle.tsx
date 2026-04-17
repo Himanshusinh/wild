@@ -364,7 +364,7 @@ export default function CreativeStyle({
             className="text-[30px] uppercase leading-none tracking-[0.03em] text-white sm:text-[38px]"
             style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
           >
-            Explore Creative Styles
+            Explore Indian Styles
           </h2>
         </div>
 

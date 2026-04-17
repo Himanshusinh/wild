@@ -402,11 +402,9 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
   return (
     <section className="bg-[#0E0E12] pb-12 pt-0">
       <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-center gap-[10px]">
-          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/30">
-            All features
-          </span>
-          <div className="h-[0.5px] flex-1 bg-white/10" />
+        <div className="mb-5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3B82F6] sm:text-[10px]">
+          <span className="inline-block h-[1.5px] w-3.5 bg-[#3B82F6] sm:w-4" />
+          All Features
         </div>
 
         <div className="relative">
@@ -445,18 +443,18 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
                 "Edit\nImage": "/HomePage/Allfeatures/edit-image.avif",
                 "Upscale": "/HomePage/Allfeatures/upscale-bg.avif",
                 "Remove\nBG": "/HomePage/Allfeatures/remove-bg.avif",
-                "Erase /\nReplace": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80",
-                "Expand\nImage": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80",
+                "Erase /\nReplace": "/HomePage/Allfeatures/Erase-replace.avif",
+                "Expand\nImage": "/HomePage/Allfeatures/expand-image.avif",
                 "Vectorize": "/HomePage/Allfeatures/vectorize-bg.avif",
                 "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.avif",
                 "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.avif",
                 "Line Drawing\nTo Photo": "/HomePage/Allfeatures/line-drawing-to-photo-bg.avif",
-                "Remove\nElement": "https://images.unsplash.com/photo-1594911772125-07fabee57c4f?w=400&q=80",
-                "Replace\nElement": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=400&q=80",
+                "Remove\nElement": "/HomePage/Allfeatures/RemoveElement.avif",
+                "Replace\nElement": "/HomePage/Allfeatures/ReplaceElement.avif",
 
-                "Remove\nWatermark": "https://images.unsplash.com/photo-1555536551-70bf8575a7fc?w=400&q=80",
-                "Product\nPhotography": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
-                "Relight\nPortrait": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=80",
+                "Remove\nWatermark": "/HomePage/Allfeatures/removewatermark.avif",
+                "Product\nPhotography": "/HomePage/Allfeatures/productphotography.avif",
+                "Relight\nPortrait": "/HomePage/Allfeatures/RelightPortrait.avif",
                 "Apps": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
                 "Lipsync\nStudio": "https://images.unsplash.com/photo-1588825829910-619cd00e8b2b?w=400&q=80",
                 "Video\nUpscale": "https://images.unsplash.com/photo-1588698711463-548d1e0281b9?w=400&q=80",
@@ -502,7 +500,7 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
                     <p className="mt-[2px] flex items-center gap-1 text-[11px] font-semibold text-[#60A5FA]">
                       {card.cta.replace(' ->', '')}
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-[10px] w-[10px]">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                        <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </p>
                   </div>

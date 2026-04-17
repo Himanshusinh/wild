@@ -70,7 +70,8 @@ export function useUsernameAvailability(apiBase = '') {
         setStatus(data.available ? 'available' : 'taken')
       })
       .catch((e) => {
-        if (e?.name === 'AbortError') { setStatus('idle'); return }
+        if (lastRequestedRef.current !== value) return
+        if (e?.name === 'AbortError') { return }
         setError(e?.message || 'Network error')
         setStatus('error')
       })
